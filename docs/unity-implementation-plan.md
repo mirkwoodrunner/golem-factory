@@ -18,8 +18,12 @@ Settled design decisions:
 - **World model: spatial**, Factorio/Satisfactory-style — golems and conveyors are
   physically placed on a map and resources visibly flow between them (not an
   abstracted logic-graph/schematic game).
-- **Presentation: 2D top-down**, Factorio-style — fastest to prototype, and easiest to
-  combine a physical factory view with a golem-programming UI.
+- **Presentation: cozy isometric pixel art**, Stardew Valley-esque, set in a
+  wood-and-brass steampunk workshop — supersedes the earlier "2D top-down,
+  Factorio-style" call. See `docs/digital-design.md` for the full aesthetic, golem
+  roster, and Workbench UI spec this section implements. The underlying spatial
+  simulation (grid truth, belts, golem execution) is unaffected by this change; only
+  the tilemap/rendering/camera setup differs from a plain orthographic top-down grid.
 - **Primary focus for the first build**: factory automation mechanics and golem
   programming (the punch-card Logic Core / Appendages / Chassis system), since that's
   the mechanic most unique to this design and least dependent on other players.
@@ -31,9 +35,13 @@ milestone plan.
 
 ### Unity setup
 - Unity 6 LTS, 2D (URP) template, URP 2D Renderer.
-- Packages: new Input System, 2D Tilemap + Extras, Cinemachine v3, TextMeshPro, Test
-  Framework (EditMode + PlayMode). Skip Addressables, DOTS/ECS, and any netcode
-  package for v1.
+- Packages: new Input System, 2D Tilemap + Extras (isometric grid layout, Y-sort on
+  the sprite renderers), Cinemachine v3, TextMeshPro, Test Framework (EditMode +
+  PlayMode). Skip Addressables, DOTS/ECS, and any netcode package for v1.
+- Isometric presentation is a rendering/tilemap concern only — `GridMap` truth stays
+  `Vector2Int`-indexed exactly as in a top-down grid (see Spatial simulation systems
+  below); only the `Grid`/`Tilemap` components and camera setup use Unity's isometric
+  layout instead of orthographic-rectangular.
 - **Simulation architecture: plain, data-oriented C# — not DOTS/ECS.** Drive
   everything from one central fixed-tick loop (`SimulationClock` + `ITickable`
   registrants) instead of per-object `Update()`. The known perf trap in this genre is
@@ -82,6 +90,12 @@ runtime/save instance state. No custom DSL for v1.
   configured logic core instance, and an ordered list of appendage instances.
 - `GolemEntity` (MonoBehaviour) — holds a `GolemProgram` and execution state
   (`currentStepIndex`, `Idle`/`Running`/`Stalled`), implements `ITickable`.
+- Five authored `ChassisDefinition` presets cover the named roster from
+  `docs/digital-design.md` (Clockwork Scavenger, Brass Presser, Aether-Hauler,
+  Mainspring Overclocker, Zeppelin Freight Loader) — each a preset slot
+  count/tier/sprite plus a default Logic Core + Appendage loadout players can
+  reprogram. They share the one `GolemEntity`/`GolemProgram` execution path; no
+  per-golem subclassing.
 
 **Execution is strictly linear and non-adaptive** — this is the mechanical heart of
 the "golems are rigid, cannot pivot" design requirement. Each tick, an `Idle` golem
@@ -134,7 +148,8 @@ Assets/_Project/Scripts/
   AssemblyLine/ AssemblyLineState, DraftableCardDefinition
   Economy/      ResourceInventory, ItemType definitions
   Player/       ArtificerController, BuildModeController, ArtificerFocusMeter
-  UI/           ProgrammingPanel, GolemStatusPanel, HUD, BuildMenu
+  UI/           WorkbenchPanel (blueprint viewport + Card Vault + Engage Gears
+                 lever), GolemStatusPanel, HUD, BuildMenu
   Events/       event bus for triggers
   Save/         (later) serialization
 Assets/_Project/{Prefabs,ScriptableObjects,Scenes,Art,Tilemaps}/
@@ -156,6 +171,8 @@ Key scene-resident managers: `SimulationClock`, `GridMap`, `ConveyorSystem`,
   on AlwaysOn trigger. *Smallest playable slice.*
 - **M3** — Punch-card data model + minimal (list-based) programming UI: a few Logic
   Core/Appendage/Chassis SOs, assemble/assign `GolemProgram`, capacity enforcement.
+  List-based UI only at this stage; the full Workbench/Card Vault visual treatment
+  lands in M8.
 - **M4** — Belts: `BeltSegment`/`ConveyorSystem`, connect golem→belt→golem/storage,
   visualize flow.
 - **M5** — Multiple resource chains: Brass/Aether nodes, a Refine appendage (recipe
@@ -167,7 +184,9 @@ Key scene-resident managers: `SimulationClock`, `GridMap`, `ConveyorSystem`,
   Golem B to refine → triggers Golem C to load into a sell/ship building. *Demoable
   vertical-slice checkpoint.*
 - **M8** — Artificer Focus meter + build UI polish: reprogramming/patenting resource
-  cost, drag-and-drop punch-card UI, Assembly Bay structures with tiers/capacity.
+  cost, Assembly Bay structures with tiers/capacity, and the full Workbench UI —
+  blueprint viewport, drag-and-drop Card Vault with teal (Logic Core) / copper
+  (Appendage) card coloring, diagnostic tape ticker, "Engage Gears" activation lever.
 - **M9 (stretch)** — Solo Assembly Line drafting loop, Blueprint/Patent Registry UI,
   save/load, polish.
 
