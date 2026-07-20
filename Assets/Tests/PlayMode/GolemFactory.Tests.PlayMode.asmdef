@@ -1,0 +1,22 @@
+{
+    "name": "GolemFactory.Tests.PlayMode",
+    "rootNamespace": "GolemFactory.Tests.PlayMode",
+    "references": [
+        "GolemFactory.Simulation",
+        "GolemFactory.Runtime",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": []
+}
