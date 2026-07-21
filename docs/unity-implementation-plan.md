@@ -28,8 +28,10 @@ Settled design decisions:
   programming (the punch-card Logic Core / Appendages / Chassis system), since that's
   the mechanic most unique to this design and least dependent on other players.
 
-No Unity project exists in this repo yet. This is a from-scratch architecture and
-milestone plan.
+This is a from-scratch architecture and milestone plan. **Status: the M0 project
+scaffold is done** — see `docs/unity-mcp-setup-guide.md` for the setup steps
+that were validated end-to-end (Unity 6.5.4f1, 2D URP template, all packages
+below installed, `ProjectSettings`/`Packages`/`Assets` committed to `main`).
 
 ## Recommended Approach
 
@@ -162,8 +164,11 @@ Key scene-resident managers: `SimulationClock`, `GridMap`, `ConveyorSystem`,
 `ItemDatabase`, `EventBus`, `PatentRegistry`, `AssemblyLineState`.
 
 ### Milestones (each independently playable)
-- **M0** — Project scaffolding: Unity 6 LTS 2D URP project, packages, folders/asmdefs,
-  empty scene + camera/grid, Unity `.gitignore`, pan/zoom input.
+- **M0 (done)** — Project scaffolding: Unity 6 LTS 2D URP project, packages,
+  folders/asmdefs, empty scene, Unity `.gitignore`. Remaining from the original
+  scope: camera/grid setup and pan/zoom input aren't wired up yet — pick those
+  up as part of M1 alongside placement, since both need the same camera/input
+  groundwork.
 - **M1** — Grid + placement: `GridMap`, click-to-place/remove a placeholder building,
   no simulation yet.
 - **M2** — Tick clock + one hardcoded golem: `SimulationClock` with play/pause/speed,
