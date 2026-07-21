@@ -19,25 +19,45 @@ clients.
 
 ## 2. Create the Unity project inside this repo clone
 
-MCP for Unity needs an actual Unity project to attach to — this repo currently
-only has the C# script scaffold (`Assets/_Project/...`) checked in, not
-`ProjectSettings/` or `Packages/manifest.json`, since those are Unity-version- and
-template-specific and safest to let the real Editor generate.
+**Status: done.** `ProjectSettings/` and `Packages/` are checked into `main`
+alongside the `Assets/_Project/...` script scaffold, so a fresh clone can just be
+opened directly in Unity Hub via **Add** (skip straight to step 3 below). The
+steps here are kept for reference / for setting up a second machine from
+scratch, since Unity Hub can't create a *new* project directly inside a
+non-empty folder — the working sequence was to generate the project files in a
+scratch folder and merge just the two Unity-generated folders in:
 
-1. Clone this repo locally (branch `claude/unity-mcp-integration-u62310`) if you
-   haven't already, e.g. to `C:\dev\golem-factory`.
-2. In Unity Hub: **New Project** → select the **2D (URP)** template → set
-   **Location** to the *parent* folder (`C:\dev`) and **Name** to `golem-factory`
-   so Unity creates/populates its files directly inside the existing clone,
-   alongside `README.md` and `docs/`, without touching them.
-   - If Unity Hub refuses a non-empty target folder, create the project
-     elsewhere instead, then move the generated `ProjectSettings/` and
-     `Packages/` folders into the repo root and reopen it there via Unity Hub.
-3. Open the project. Unity will import the existing `Assets/_Project/Scripts/**`
-   files and auto-generate their `.meta` files on first import — check the
-   Console for compile errors before continuing.
+1. Clone this repo locally, e.g. to `C:\dev\golem-factory` — **not inside a
+   OneDrive/Dropbox/Google-Drive-synced folder.** Cloud sync agents don't always
+   fully materialize every file before a subsequent move/copy, and this caused
+   `ProjectSettings/ProjectVersion.txt` (the tiny file Unity uses to identify
+   which Editor version a project belongs to) to be silently dropped during
+   setup. If a cloud-synced location is unavoidable, right-click each folder →
+   "Always keep on this device" *before* moving anything, and don't proceed
+   until the sync status icon shows fully synced (not the blue in-progress
+   icon).
+2. In Unity Hub: **New Project** → **2D (URP)** template → **Location**: any
+   scratch folder outside the repo (e.g. `C:\dev\_scratch`), **Name**: anything.
+   Let it fully generate and open once — confirm the Editor window actually
+   loads (Hierarchy/Scene/Console visible) before moving on.
+3. Close that project. Copy just the generated `ProjectSettings/` and
+   `Packages/` folders from the scratch project into the repo clone root
+   (`C:\dev\golem-factory`), next to the existing `Assets/`, `README.md`, and
+   `docs/`. Do **not** copy the scratch project's `Assets/` folder — the repo's
+   `Assets/_Project` scaffold is what you want to keep.
+4. Delete the scratch project folder.
+5. In Unity Hub, click **Add** (not New) → browse to `C:\dev\golem-factory` →
+   select it. If Hub says "no project found," it means
+   `ProjectSettings/ProjectVersion.txt` is missing or the wrong folder was
+   selected — see Troubleshooting below.
+6. Open it. Unity will import the existing `Assets/_Project/Scripts/**` files
+   and auto-generate their `.meta` files on first import — check the Console
+   for compile errors before continuing.
 
 ## 3. Add the remaining packages
+
+**Status: done** (Input System, 2D Tilemap Extras, and Cinemachine v3 are
+installed and committed via `Packages/manifest.json`/`packages-lock.json`).
 
 The 2D URP template doesn't include everything the project plan
 (`docs/unity-implementation-plan.md`) calls for. In **Window > Package Manager**,
@@ -48,8 +68,33 @@ add:
 - **Test Framework** (should already be present; confirm both EditMode and
   PlayMode are enabled)
 
+The Package Manager window defaults to an **"In Project"** filter, which only
+lists packages already installed — switch the dropdown at the top-left to
+**"Unity Registry"** to find and install new ones.
+
 TextMeshPro is usually prompted for automatically the first time a TMP component
 is used.
+
+## 3a. Commit the generated project files to git
+
+Once the project opens clean, save the scene (**File > Save**, into
+`Assets/_Project/Scenes/`) and the project (**File > Save Project**), then
+commit `Assets/`, `Packages/`, and `ProjectSettings/` (all the new `.meta`
+files, `manifest.json`, and the `ProjectSettings/*.asset` files) so the working
+project is reproducible from a clean clone.
+
+Add `*.slnx` to `.gitignore` alongside the existing `*.sln` entry — Unity/your
+IDE regenerates the solution file automatically and it shouldn't be tracked.
+`.vsconfig` is fine to commit either way.
+
+**Windows-specific gotcha**: `git add`/`git commit` may intermittently fail
+with `error: unable to write file .git/objects/...: Permission denied`. This is
+a third-party antivirus (e.g. Norton 360) or Windows Defender real-time scanner
+transiently locking newly-written objects, not a real permissions problem.
+Retrying the same command usually makes forward progress (already-written
+objects are skipped) and eventually succeeds, but the real fix is adding the
+repo folder to your antivirus's exclusion list (in Norton: **Settings > Antivirus
+> Scans and Risks > Items to Exclude from Auto-Protect... > Configure > Add**).
 
 ## 4. Install Python 3.10+ and `uv`
 
