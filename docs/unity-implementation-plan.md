@@ -169,12 +169,12 @@ Key scene-resident managers: `SimulationClock`, `GridMap`, `ConveyorSystem`,
   scope: camera/grid setup and pan/zoom input aren't wired up yet — pick those
   up as part of M1 alongside placement, since both need the same camera/input
   groundwork.
-- **M1 (code done, manual step pending)** — Grid + placement:
+- **M1 (done)** — Grid + placement:
   `GridMap`/`GridCoordinateConverter`/`BuildModeController`/
   `CameraRigController`/`PlaceableBuilding` and their EditMode/PlayMode tests
-  are all written and committed. Only the "Manual Editor setup" checklist
-  below remains — do that in-Editor before this milestone is playable.
-- **M2 (code done, manual step pending)** — Tick clock + one hardcoded golem:
+  are all written and committed; the "Manual Editor setup" checklist below has
+  been run in-Editor and the resulting scene/prefab changes are on `main`.
+- **M2 (done)** — Tick clock + one hardcoded golem:
   `SimulationClock`/`ITickable`/`TickScheduler`/`EventBus`/`GolemEntity`/
   `GolemProgram` and the `LogicCoreDefinition`/`AppendageActionDefinition`/
   `ChassisDefinition` SO shells landed alongside M1 (previously undocumented).
@@ -185,8 +185,10 @@ Key scene-resident managers: `SimulationClock`, `GridMap`, `ConveyorSystem`,
   `AlwaysOn` program from runtime `ScriptableObject` instances so M2 is
   demoable without pre-authored `.asset` files), plus expanded EditMode
   coverage (`SimulationClockTests`, `TickSchedulerTests`, extended
-  `GolemExecutionTests`). See "M2 manual editor setup" below for what's left
-  to wire up in-Editor. *Smallest playable slice.*
+  `GolemExecutionTests`), and `GolemDemoBootstrap` (wires the hardcoded
+  program onto a `GolemEntity` and calls `Play()`). The "M2 manual editor
+  setup" checklist below has been run in-Editor; Play mode confirmed the
+  golem ticks through its 2-step cycle. *Smallest playable slice.*
 - **M3** — Punch-card data model + minimal (list-based) programming UI: a few Logic
   Core/Appendage/Chassis SOs, assemble/assign `GolemProgram`, capacity enforcement.
   List-based UI only at this stage; the full Workbench/Card Vault visual treatment
@@ -339,22 +341,19 @@ verify) risks a broken scene, so this is a checklist to run once in-Editor:
   `ScriptableObject` instances, so the milestone is demoable without
   pre-authored `.asset` files.
 
-### M2 manual editor setup (can't be authored from git alone)
-Run this alongside M1's checklist above in the same Editor session:
-1. In `Main.unity`, create a `SimulationClockRunner` GameObject and add the
+### M2 manual editor setup (done)
+Ran alongside M1's checklist, using the bootstrap-`MonoBehaviour` option:
+1. `Main.unity` has a `SimulationClockRunner` GameObject with the
    `SimulationClockRunner` component.
-2. Create a `Golem` GameObject, add `GolemEntity`. In a small bootstrap
-   `MonoBehaviour` (or directly in `GolemEntity.Start`, whichever is less
-   friction in-Editor), assign its program from
-   `HardcodedDemoProgram.ExtractAndDeposit()` and call
-   `SimulationClockRunner.Register(golemEntity)` — or, if you'd rather test
-   with authored data, create `.asset` files for a `LogicCoreDefinition`
-   (`AlwaysOn`) and two `AppendageActionDefinition`s and drag them onto the
-   `GolemEntity`'s `Program` fields in the Inspector instead.
-3. Call `SimulationClockRunner.Play()` on start (temporary — a real
-   play/pause/speed HUD is an M8 concern) so the clock actually advances in
-   Play mode.
-4. Save the scene and commit the resulting `.unity`/`.meta` changes.
+2. A `Golem` GameObject has `GolemEntity`.
+3. A `GolemDemoBootstrap` GameObject (`Golems/GolemDemoBootstrap.cs`) holds
+   references to both; on `Start()` it assigns
+   `HardcodedDemoProgram.ExtractAndDeposit()` onto the golem's program,
+   calls `SimulationClockRunner.Register(golemEntity)`, then
+   `SimulationClockRunner.Play()` — so the clock advances and the golem ticks
+   automatically once Play mode starts (no separate play/pause/speed HUD
+   needed yet; that's still an M8 concern).
+4. Scene/prefab changes are committed to `main`.
 
 ### Testing
 - EditMode: `SimulationClock` play/pause gating, tick-accumulation math,
@@ -364,6 +363,5 @@ Run this alongside M1's checklist above in the same Editor session:
   evaluation (`AlwaysOn` every tick, `Interval` on multiples), step
   advancement, and `GolemCompletedEvent` publication on cycle wrap —
   `Tests/EditMode/Golems/GolemExecutionTests.cs`.
-- Manual: run Play mode, confirm the hardcoded golem actually ticks through
-  its 2-step cycle once `SimulationClockRunner` is wired up per the checklist
-  above (not automatable from this environment — no Unity install here).
+- Manual: verified in-Editor — Play mode runs clean and the hardcoded golem
+  ticks through its 2-step cycle via `GolemDemoBootstrap`.
