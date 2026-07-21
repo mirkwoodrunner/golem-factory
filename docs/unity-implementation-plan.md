@@ -169,13 +169,24 @@ Key scene-resident managers: `SimulationClock`, `GridMap`, `ConveyorSystem`,
   scope: camera/grid setup and pan/zoom input aren't wired up yet — pick those
   up as part of M1 alongside placement, since both need the same camera/input
   groundwork.
-- **M1 (in progress)** — Grid + placement: `GridMap`, click-to-place/remove a
-  placeholder building, no simulation yet. Also carries the camera/grid/pan-zoom
-  work deferred from M0. See "M1 implementation notes" below for the detailed
-  design.
-- **M2** — Tick clock + one hardcoded golem: `SimulationClock` with play/pause/speed,
-  a single `GolemEntity` running a hardcoded 2-step program (Extract Scrap → deposit)
-  on AlwaysOn trigger. *Smallest playable slice.*
+- **M1 (code done, manual step pending)** — Grid + placement:
+  `GridMap`/`GridCoordinateConverter`/`BuildModeController`/
+  `CameraRigController`/`PlaceableBuilding` and their EditMode/PlayMode tests
+  are all written and committed. Only the "Manual Editor setup" checklist
+  below remains — do that in-Editor before this milestone is playable.
+- **M2 (code done, manual step pending)** — Tick clock + one hardcoded golem:
+  `SimulationClock`/`ITickable`/`TickScheduler`/`EventBus`/`GolemEntity`/
+  `GolemProgram` and the `LogicCoreDefinition`/`AppendageActionDefinition`/
+  `ChassisDefinition` SO shells landed alongside M1 (previously undocumented).
+  This pass adds the missing pieces: `SimulationClockRunner` (the
+  `MonoBehaviour` wrapper called for in `SimulationClock.cs`'s doc comment,
+  exposing `Play`/`Pause`/`SetSpeed` and publishing `TickAdvancedEvent`) and
+  `HardcodedDemoProgram` (builds the "Extract Scrap → deposit" 2-step
+  `AlwaysOn` program from runtime `ScriptableObject` instances so M2 is
+  demoable without pre-authored `.asset` files), plus expanded EditMode
+  coverage (`SimulationClockTests`, `TickSchedulerTests`, extended
+  `GolemExecutionTests`). See "M2 manual editor setup" below for what's left
+  to wire up in-Editor. *Smallest playable slice.*
 - **M3** — Punch-card data model + minimal (list-based) programming UI: a few Logic
   Core/Appendage/Chassis SOs, assemble/assign `GolemProgram`, capacity enforcement.
   List-based UI only at this stage; the full Workbench/Card Vault visual treatment
@@ -301,3 +312,58 @@ verify) risks a broken scene, so this is a checklist to run once in-Editor:
   `Tests/PlayMode/Player/BuildModeControllerTests.cs`.
 - Manual: pan/zoom feel, ghost-preview readability — verified in-Editor per the
   setup checklist above (not automatable from this environment).
+
+## M2 implementation notes (tick clock + one hardcoded golem)
+
+### Code (done)
+- `Simulation/SimulationClock.cs`, `Simulation/ITickable.cs`,
+  `Simulation/TickScheduler.cs` — plain C# tick source and one-off scheduled
+  callbacks, unit-testable without a scene (`GolemFactory.Simulation` asmdef
+  has `noEngineReferences: true`).
+- `Events/EventBus.cs` — static event bus (`TickAdvanced`, `ThresholdCrossed`,
+  `GolemCompleted`, `GolemStalled`).
+- `Golems/GolemProgram.cs`, `Golems/GolemEntity.cs` — `Idle`/`Running`/
+  `Stalled` state machine driven by `ITickable.Tick`; trigger evaluation
+  (`AlwaysOn`/`Interval` live, `Threshold`/`Signal` deferred to M7); appendage
+  execution is currently a stub that always succeeds (real
+  Haul/ExtractFromNode/Refine/LoadIntoBuffer behavior lands M3–M5).
+- `PunchCards/LogicCoreDefinition.cs`, `AppendageActionDefinition.cs`,
+  `ChassisDefinition.cs` — SO shells for trigger/action/chassis data (full
+  authored `.asset` roster is an M3 task).
+- `SimulationClockRunner.cs` — scene-resident `MonoBehaviour` wrapper around
+  `SimulationClock` (mirrors `GridMapHolder`'s ownership of `GridMap`),
+  exposing `Play()`/`Pause()`/`SetSpeed(float)` and publishing
+  `TickAdvancedEvent` from `Update()`.
+- `Golems/HardcodedDemoProgram.cs` — builds the M2 demo `GolemProgram`
+  (`AlwaysOn` trigger, `ExtractFromNode` → `LoadIntoBuffer`) from runtime
+  `ScriptableObject` instances, so the milestone is demoable without
+  pre-authored `.asset` files.
+
+### M2 manual editor setup (can't be authored from git alone)
+Run this alongside M1's checklist above in the same Editor session:
+1. In `Main.unity`, create a `SimulationClockRunner` GameObject and add the
+   `SimulationClockRunner` component.
+2. Create a `Golem` GameObject, add `GolemEntity`. In a small bootstrap
+   `MonoBehaviour` (or directly in `GolemEntity.Start`, whichever is less
+   friction in-Editor), assign its program from
+   `HardcodedDemoProgram.ExtractAndDeposit()` and call
+   `SimulationClockRunner.Register(golemEntity)` — or, if you'd rather test
+   with authored data, create `.asset` files for a `LogicCoreDefinition`
+   (`AlwaysOn`) and two `AppendageActionDefinition`s and drag them onto the
+   `GolemEntity`'s `Program` fields in the Inspector instead.
+3. Call `SimulationClockRunner.Play()` on start (temporary — a real
+   play/pause/speed HUD is an M8 concern) so the clock actually advances in
+   Play mode.
+4. Save the scene and commit the resulting `.unity`/`.meta` changes.
+
+### Testing
+- EditMode: `SimulationClock` play/pause gating, tick-accumulation math,
+  tickable registration order — `Tests/EditMode/Simulation/
+  SimulationClockTests.cs`. `TickScheduler` due-tick firing/removal —
+  `Tests/EditMode/Simulation/TickSchedulerTests.cs`. `GolemEntity` trigger
+  evaluation (`AlwaysOn` every tick, `Interval` on multiples), step
+  advancement, and `GolemCompletedEvent` publication on cycle wrap —
+  `Tests/EditMode/Golems/GolemExecutionTests.cs`.
+- Manual: run Play mode, confirm the hardcoded golem actually ticks through
+  its 2-step cycle once `SimulationClockRunner` is wired up per the checklist
+  above (not automatable from this environment — no Unity install here).
