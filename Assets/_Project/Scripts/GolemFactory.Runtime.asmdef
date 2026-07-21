@@ -2,7 +2,8 @@
     "name": "GolemFactory.Runtime",
     "rootNamespace": "GolemFactory",
     "references": [
-        "GolemFactory.Simulation"
+        "GolemFactory.Simulation",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
