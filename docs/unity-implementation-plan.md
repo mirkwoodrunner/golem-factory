@@ -169,8 +169,10 @@ Key scene-resident managers: `SimulationClock`, `GridMap`, `ConveyorSystem`,
   scope: camera/grid setup and pan/zoom input aren't wired up yet — pick those
   up as part of M1 alongside placement, since both need the same camera/input
   groundwork.
-- **M1** — Grid + placement: `GridMap`, click-to-place/remove a placeholder building,
-  no simulation yet.
+- **M1 (in progress)** — Grid + placement: `GridMap`, click-to-place/remove a
+  placeholder building, no simulation yet. Also carries the camera/grid/pan-zoom
+  work deferred from M0. See "M1 implementation notes" below for the detailed
+  design.
 - **M2** — Tick clock + one hardcoded golem: `SimulationClock` with play/pause/speed,
   a single `GolemEntity` running a hardcoded 2-step program (Extract Scrap → deposit)
   on AlwaysOn trigger. *Smallest playable slice.*
@@ -228,3 +230,74 @@ the user.
   refined Brass only after threshold-triggered Golem B completes).
 - CI (Unity batch-mode `-runTests` in GitHub Actions) is a nice-to-have once
   EditMode/PlayMode asmdefs exist — not a v1 blocker.
+
+## M1 implementation notes (grid + placement)
+
+### Camera & input
+- New Input System asset `Assets/_Project/Input/GolemFactoryInputActions.inputactions`,
+  one `Gameplay` action map: `Pan` (Vector2, WASD composite), `Zoom` (Axis, mouse
+  scroll), `Click` (Button, left mouse). Components read it via
+  `InputActionAsset.FindActionMap`/`FindAction` rather than generating a C# wrapper
+  class, so no Editor-generated code is required to check in.
+- `Player/CameraRigController.cs` — plain `MonoBehaviour` that reads `Pan`/`Zoom`
+  from the asset each frame and drives the `Camera` transform/`orthographicSize`
+  directly (clamped to a min/max zoom).
+- **Scope trim from the original Unity-setup section**: Cinemachine v3 is
+  installed (`Packages/manifest.json`) but *not* wired into the camera for M1 —
+  driving the plain `Camera` directly is enough to satisfy M1's "pan/zoom works"
+  requirement, and it avoids hand-authoring Cinemachine component YAML/asmdef
+  references that can't be verified without the Unity Editor open. Swapping to a
+  Cinemachine-driven follow rig later is a camera-only change; it doesn't touch
+  `GridMap`, `GridCoordinateConverter`, the input asset, or `BuildModeController`.
+
+### Grid & placement
+- `World/GridCoordinateConverter.cs` — plain C# isometric world↔cell math
+  (`WorldToCell`/`CellToWorldCenter`), parameterized by cell size and decoupled
+  from Unity's `Tilemap` component so it's unit-testable without a scene. The
+  Tilemap's cell size (set in the Editor per the manual setup steps below) must
+  match the value passed into this converter.
+- `World/GridMapHolder.cs` — thin scene-resident `MonoBehaviour` that owns a
+  `GridMap` instance, mirroring how `SimulationClock` is owned by a wrapper
+  (`Simulation/SimulationClock.cs`'s doc comment).
+- `Buildings/PlaceableBuilding.cs` — minimal `MonoBehaviour` placeholder:
+  `Cell`, `OwnerId` (hardcoded `LocalPlayer`, matching the multiplayer-seam
+  convention used elsewhere in this plan). Not `ITickable` — no simulation in M1.
+- `Player/BuildModeController.cs` — each frame, converts the pointer position to
+  a cell via `GridCoordinateConverter`, moves a ghost `SpriteRenderer` to that
+  cell's center, and tints it green/red based on `GridMap.IsOccupied`. On
+  `Click`: empty cell → instantiate the placeholder prefab and
+  `GridMap.TryOccupy`; occupied cell → look up the occupant via
+  `GridMap.TryGetOccupant`, destroy it, `GridMap.Free`. One click does double
+  duty (place/remove) — no separate mode toggle for M1. The place/remove logic
+  itself is exposed as `PlaceOrRemove(Vector2Int cell)`, callable directly from
+  tests without simulating Input System events.
+
+### Manual Editor setup (can't be authored from git alone)
+Scene composition, prefabs, and cross-object references need the Unity Editor —
+hand-editing `Main.unity`'s YAML for these blindly (no Editor available to
+verify) risks a broken scene, so this is a checklist to run once in-Editor:
+1. In `Main.unity`, add a `Grid` GameObject (Isometric cell layout, cell size
+   matching whatever's passed to `GridCoordinateConverter`, e.g. `1 × 0.5`) with
+   a child `Tilemap` + `Tilemap Renderer` for the visual grid.
+2. Create an empty `PlaceholderBuilding` GameObject with a `SpriteRenderer` +
+   `PlaceableBuilding` component, save it as a prefab under
+   `Assets/_Project/Prefabs/`.
+3. Create a `BuildMode` GameObject, add `BuildModeController`, assign: the main
+   `Camera`, a `GridMapHolder` (add that component to a `GridMap` manager
+   GameObject in-scene), the placeholder prefab, a ghost `SpriteRenderer` (a
+   separate semi-transparent sprite object), and the
+   `GolemFactoryInputActions` asset.
+4. Create a `CameraRig` GameObject, add `CameraRigController`, assign the main
+   `Camera` and the input actions asset.
+5. Save the scene and commit the resulting `.unity`/`.meta`/prefab changes.
+
+### Testing
+- EditMode: `GridMap` occupancy edge cases (double-occupy rejected, free-then-
+  reoccupy, empty-cell lookup) and `GridCoordinateConverter` cell↔world
+  round-trips — `Tests/EditMode/World/GridMapTests.cs`,
+  `Tests/EditMode/World/GridCoordinateConverterTests.cs`.
+- PlayMode: `BuildModeController.PlaceOrRemove` place/remove flow against a real
+  `GridMapHolder` and instantiated `PlaceableBuilding` —
+  `Tests/PlayMode/Player/BuildModeControllerTests.cs`.
+- Manual: pan/zoom feel, ghost-preview readability — verified in-Editor per the
+  setup checklist above (not automatable from this environment).
