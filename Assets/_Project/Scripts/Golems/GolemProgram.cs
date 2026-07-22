@@ -32,5 +32,39 @@ namespace GolemFactory.Golems
                 CurrentStepIndex = 0;
             }
         }
+
+        // Chassis capacity is enforced only here, at assembly time (per the M3 design
+        // note); execution never re-checks slot counts.
+        public bool TryAssignChassis(ChassisDefinition newChassis)
+        {
+            if (newChassis == null || appendages.Count > newChassis.maxAppendageSlots)
+            {
+                return false;
+            }
+
+            chassis = newChassis;
+            return true;
+        }
+
+        public bool TryAddAppendage(AppendageActionDefinition appendage)
+        {
+            if (appendage == null || chassis == null || appendages.Count >= chassis.maxAppendageSlots)
+            {
+                return false;
+            }
+
+            appendages.Add(appendage);
+            return true;
+        }
+
+        public void RemoveAppendageAt(int index)
+        {
+            if (index < 0 || index >= appendages.Count)
+            {
+                return;
+            }
+
+            appendages.RemoveAt(index);
+        }
     }
 }
