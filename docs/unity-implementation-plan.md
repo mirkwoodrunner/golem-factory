@@ -189,10 +189,11 @@ Key scene-resident managers: `SimulationClock`, `GridMap`, `ConveyorSystem`,
   program onto a `GolemEntity` and calls `Play()`). The "M2 manual editor
   setup" checklist below has been run in-Editor; Play mode confirmed the
   golem ticks through its 2-step cycle. *Smallest playable slice.*
-- **M3** — Punch-card data model + minimal (list-based) programming UI: a few Logic
-  Core/Appendage/Chassis SOs, assemble/assign `GolemProgram`, capacity enforcement.
-  List-based UI only at this stage; the full Workbench/Card Vault visual treatment
-  lands in M8.
+- **M3 (done)** — Punch-card data model + minimal (list-based) programming UI: an
+  authored roster of Logic Core/Appendage/Chassis `.asset` instances, capacity-
+  enforced `GolemProgram.TryAssignChassis`/`TryAddAppendage`/`RemoveAppendageAt`, and
+  `UI/GolemProgrammingPanel` (`OnGUI`-based list UI wired to that roster). List-based
+  UI only at this stage; the full Workbench/Card Vault visual treatment lands in M8.
 - **M4** — Belts: `BeltSegment`/`ConveyorSystem`, connect golem→belt→golem/storage,
   visualize flow.
 - **M5** — Multiple resource chains: Brass/Aether nodes, a Refine appendage (recipe
@@ -365,3 +366,60 @@ Ran alongside M1's checklist, using the bootstrap-`MonoBehaviour` option:
   `Tests/EditMode/Golems/GolemExecutionTests.cs`.
 - Manual: verified in-Editor — Play mode runs clean and the hardcoded golem
   ticks through its 2-step cycle via `GolemDemoBootstrap`.
+
+## M3 implementation notes (punch-card data model + list-based programming UI)
+
+### Code (done)
+- `Golems/GolemProgram.cs` gains the assembly API the milestone calls for:
+  `TryAssignChassis` (rejects a chassis whose `maxAppendageSlots` is smaller
+  than the program's current appendage count, leaving the old chassis in
+  place), `TryAddAppendage` (rejects once `appendages.Count` reaches the
+  assigned chassis's `maxAppendageSlots`, and rejects with no chassis
+  assigned at all), and `RemoveAppendageAt` (bounds-checked no-op on an
+  invalid index). This is the "capacity enforcement" called for in the
+  milestone description; per the design doc it's assembly-time only —
+  `GolemEntity.Tick`/execution never re-checks slot counts.
+- An authored roster of `.asset` instances now backs the SO shells added in
+  M2, under `Assets/_Project/ScriptableObjects/`:
+  - `LogicCores/`: `AlwaysOnCore`, `IntervalCore10` (10-tick interval).
+  - `Appendages/`: `ExtractScrap`, `HaulScrap`, `RefineBrass`,
+    `LoadIntoScrapBuffer` — one per `AppendageActionType`, reusing the
+    `ScrapNode`/`ScrapBuffer` ids from `HardcodedDemoProgram` plus a
+    `BrassBuffer` id for the refine step.
+  - `Chassis/`: all five named in `docs/digital-design.md`'s roster —
+    `ClockworkScavenger` (2 slots, tier 1), `BrassPresser` (3, tier 1),
+    `AetherHauler` (3, tier 2), `MainspringOverclocker` (4, tier 2),
+    `ZeppelinFreightLoader` (5, tier 3) — with placeholder Scrap/Brass costs
+    since no economy balancing pass has happened yet.
+  These are plain-data `.asset` YAML files (no cross-object scene
+  references), so — unlike scene/prefab composition — they were safe to
+  author directly rather than deferring to an in-Editor checklist.
+- `UI/GolemProgrammingPanel.cs` — the "minimal (list-based) programming UI":
+  an `OnGUI` panel (no Canvas/UGUI scene wiring required) that lists
+  Inspector-assigned `availableChassis`/`availableLogicCores`/
+  `availableAppendages` arrays as toggle/button rows, calls the
+  `GolemProgram` assembly API above, and surfaces a status message when an
+  action is rejected (chassis-swap-too-small, appendage-add-at-capacity).
+  Full drag-and-drop Card Vault styling is explicitly deferred to M8.
+
+### M3 manual editor setup (can't be authored from git alone)
+1. Create a `GolemProgrammingPanel` GameObject in `Main.unity`, add the
+   `GolemProgrammingPanel` component.
+2. Assign its `Target Golem` field to the scene's `Golem` GameObject (from
+   the M2 setup).
+3. Populate `Available Chassis`/`Available Logic Cores`/`Available
+   Appendages` by dragging the `.asset` files under
+   `Assets/_Project/ScriptableObjects/{Chassis,LogicCores,Appendages}/`.
+4. Enter Play mode and confirm the panel renders in the top-left, chassis/
+   logic-core swaps and appendage add/remove buttons work, and capacity
+   rejections show the status message.
+5. Save the scene and commit the resulting `.unity` changes.
+
+### Testing
+- EditMode: chassis/appendage capacity enforcement —
+  `Tests/EditMode/Golems/GolemProgramAssemblyTests.cs` (assign succeeds/fails
+  on slot count, add succeeds up to capacity and fails beyond it, add fails
+  with no chassis, remove frees a slot, out-of-range remove is a no-op).
+- Manual: `GolemProgrammingPanel` layout/readability and the in-Editor
+  drag-and-drop of roster assets — verified per the setup checklist above
+  (not automatable from this environment).
