@@ -194,8 +194,12 @@ Key scene-resident managers: `SimulationClock`, `GridMap`, `ConveyorSystem`,
   enforced `GolemProgram.TryAssignChassis`/`TryAddAppendage`/`RemoveAppendageAt`, and
   `UI/GolemProgrammingPanel` (`OnGUI`-based list UI wired to that roster). List-based
   UI only at this stage; the full Workbench/Card Vault visual treatment lands in M8.
-- **M4** — Belts: `BeltSegment`/`ConveyorSystem`, connect golem→belt→golem/storage,
-  visualize flow.
+- **M4 (done)** — Belts: `BeltSegment`/`ConveyorSystem`, connect golem→belt→golem/storage,
+  visualize flow. `GolemEntity.TryExecute`'s `ExtractFromNode`/`LoadIntoBuffer` stubs
+  became real (belt-backed) behavior; `Haul`/`Refine` stay no-op stubs (locomotion and
+  the M5 recipe system, respectively, don't exist yet). Only straight-line segment
+  chaining and a hand-wired demo scene — no junctions/splitters and no belt placement
+  via `BuildModeController` yet (that's M8/M9's build-UI polish).
 - **M5** — Multiple resource chains: Brass/Aether nodes, a Refine appendage (recipe
   over N ticks), generic `StorageBuffer`, inventory UI.
 - **M6** — Stall handling + status UI: `Stalled` state, stall indicator,
@@ -422,3 +426,101 @@ Ran alongside M1's checklist, using the bootstrap-`MonoBehaviour` option:
   with no chassis, remove frees a slot, out-of-range remove is a no-op).
 - Manual: verified in-Editor — `GolemProgrammingPanel` layout/readability and
   drag-and-drop of roster assets confirmed per the setup checklist above.
+
+## M4 implementation notes (belts)
+
+### Code (done)
+- `Belts/ItemStack.cs` — mutable struct (`ItemType` string id, `Progress` float).
+  Held in `BeltSegment`'s `List<ItemStack>` and mutated via read-copy/write-back
+  through the indexer, since `List<T>`'s indexer isn't addressable and `foreach`
+  yields readonly copies.
+- `Belts/BeltSegment.cs` — fixed-capacity lane (`Capacity = Length + 1`,
+  `MinSpacing = 1`), items ordered head-first. `Advance(step)` walks head→tail so
+  each item's cap comes from the already-updated item ahead of it, enforcing
+  no-overlap/no-passing every tick. `TryEnqueue`/`TryPeekHead`/`TryRemoveHead`
+  gate on capacity/spacing and on the head having reached `Length`. `Next` is a
+  plain reference for chaining two segments.
+- `Belts/ConveyorSystem.cs` — plain C# `ITickable`, segments keyed by string id.
+  `Tick` runs two full passes: (1) `Advance(1f)` every segment, (2) hand off any
+  head that reached `Length` onto `Next` (or leave it parked as backpressure if
+  `Next` is full). Splitting into two passes means a handed-off item — reset to
+  `Progress = 0` in its new segment — can never be advanced twice in the same
+  tick, so dictionary iteration order doesn't affect correctness. Exposes
+  `TryEnqueue`/`TryPeekHead`/`TryDequeueHead` by segment id for golem code to
+  call directly (pull-based; `Belts/` has no reverse reference to `Golems/`).
+  `TryGetSegment` guards against a `null` id (an unset `sourceId`/`destinationId`)
+  so callers get `false` instead of the `ArgumentNullException` a raw
+  `Dictionary<string,_>` lookup would throw. Only 1:1 `Next` chaining is
+  implemented — junctions/splitters/mergers are not.
+- `Belts/ConveyorSystemHolder.cs` — thin scene-resident owner for one
+  `ConveyorSystem`, mirroring `GridMapHolder`/`SimulationClockRunner`.
+- `Belts/DemoBuffer.cs` — static in-memory counter keyed by buffer id. An M4
+  placeholder sink for `LoadIntoBuffer`, explicitly **not** the real
+  `StorageBuffer` (M5) — not serialized, not shown in any UI.
+- `Belts/BeltSegmentVisual.cs` — "visualize flow" without a GameObject per item:
+  pools a fixed number of `SpriteRenderer`s sized to `BeltSegment.Capacity`
+  (never grows/shrinks at runtime) and each `LateUpdate` positions/enables up to
+  `Items.Count` of them via `Lerp(startPoint, endPoint, progress/Length)`.
+- `Golems/GolemEntity.cs` — gains a `[SerializeField] ConveyorSystemHolder
+  conveyorHolder` field and a `Configure(id, holder)` method (mirrors
+  `BuildModeController.Configure`, used by tests and available for runtime
+  bootstrapping). `TryExecute`'s unconditional `return true;` stub is replaced
+  with a switch on `actionType`: `ExtractFromNode` builds an `ItemStack` from
+  `sourceId` and pushes it onto the belt named by `destinationId` (every node is
+  treated as an infinite M4 placeholder source — no `ResourceNode` exists yet);
+  `LoadIntoBuffer` pulls the head item off the belt named by `sourceId` and
+  calls `DemoBuffer.Deposit(destinationId, item.ItemType)`. Both fail (→
+  `Stalled`) on a full/not-yet-arrived belt, or if `conveyorHolder` is unassigned.
+  `Haul` and `Refine` fall through to the same no-op-success stub as before —
+  Haul needs a locomotion system that doesn't exist, Refine is explicitly M5's
+  recipe-over-N-ticks appendage. This also preserves every pre-M4 test's
+  behavior unchanged, since `AppendageActionType.Haul` is the enum default (0)
+  and every existing test constructs `AppendageActionDefinition` instances
+  without setting `actionType`.
+- `Golems/HardcodedDemoProgram.cs` gains `ExtractOntoBelt(beltSegmentId)` and
+  `LoadFromBelt(beltSegmentId, bufferId)` alongside the existing
+  `ExtractAndDeposit()` (left untouched).
+- `Golems/BeltDemoBootstrap.cs` — the M4 playable demo, additive alongside (not
+  replacing) M2/M3's `GolemDemoBootstrap`: builds two chained `BeltSegment`s in
+  code, assigns Golem A `ExtractOntoBelt("ScrapBeltA")` and Golem B
+  `LoadFromBelt("ScrapBeltB", "ScrapBuffer")`, registers the `ConveyorSystem`
+  and both golems with the clock, calls `Play()`. Two golems are required
+  because a single golem doing extract-then-load never needs a belt at all.
+
+### M4 manual editor setup (done)
+1. Disabled the existing M2/M3 `GolemDemoBootstrap` GameObject in `Main.unity`
+   — otherwise it double-assigns "Golem" and double-registers it with the
+   clock alongside `BeltDemoBootstrap`. (`HardcodedDemoProgram.ExtractAndDeposit()`
+   also never set `ExtractFromNode.destinationId`/`LoadIntoBuffer.sourceId`, so
+   running it with a `conveyorHolder` now assigned would immediately stall
+   rather than silently succeed like the old stub did.)
+2. Created a `ConveyorSystem` GameObject with `ConveyorSystemHolder`.
+3. Created a `GolemB` GameObject with `GolemEntity` (`Golem Id` = `"GolemB"`).
+4. Assigned the new `Conveyor Holder` field on both `Golem` and `GolemB` to the
+   GameObject from step 2.
+5. Added empty child transforms marking belt endpoints in world space (via
+   `GridCoordinateConverter.CellToWorldCenter`); segment A's end and segment
+   B's start point coincide so the handoff doesn't visually pop.
+6. Created two `BeltSegmentVisual` GameObjects (`ScrapBeltAVisual`,
+   `ScrapBeltBVisual`) wired to the matching `Segment Id`s, endpoint
+   transforms, and a placeholder sprite.
+7. Created a `BeltDemoBootstrap` GameObject, assigned Golem A/B, the conveyor
+   holder, and the existing `SimulationClockRunner`.
+8. Play mode confirmed the sprite advances smoothly along segment A, hands off
+   to B without popping, and `DemoBuffer.GetCount("ScrapBuffer")` increases.
+9. Scene/prefab/sprite changes are committed to `main`.
+
+### Testing
+- EditMode: belt item-advancement/capacity/spacing math and head peek/remove
+  gating — `Tests/EditMode/Belts/BeltSegmentTests.cs`. Multi-segment tick
+  ordering (advance-then-handoff, no double-advance in one tick, backpressure
+  when `Next` is full) — `Tests/EditMode/Belts/ConveyorSystemTests.cs`.
+- PlayMode: golem↔belt handoff across real GameObjects (extract stalls on a
+  full belt, load stalls before the head arrives, an end-to-end run across two
+  chained segments reaches `DemoBuffer`) —
+  `Tests/PlayMode/Golems/BeltGolemHandoffTests.cs`.
+- Manual: verified in-Editor — belt motion reads smooth with no popping at the
+  segment boundary; pausing/disabling Golem B fills the belt to capacity and
+  stalls Golem A (observable via `GolemStalledEvent`/state — no stall UI until
+  M6). Full perf profiling against the "500 belt items / 100 golems" budget
+  starts in earnest at M5, per the Verification section above.
