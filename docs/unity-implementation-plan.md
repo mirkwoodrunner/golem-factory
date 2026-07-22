@@ -402,24 +402,23 @@ Ran alongside M1's checklist, using the bootstrap-`MonoBehaviour` option:
   action is rejected (chassis-swap-too-small, appendage-add-at-capacity).
   Full drag-and-drop Card Vault styling is explicitly deferred to M8.
 
-### M3 manual editor setup (can't be authored from git alone)
-1. Create a `GolemProgrammingPanel` GameObject in `Main.unity`, add the
+### M3 manual editor setup (done)
+1. `Main.unity` has a `GolemProgrammingPanel` GameObject with the
    `GolemProgrammingPanel` component.
-2. Assign its `Target Golem` field to the scene's `Golem` GameObject (from
-   the M2 setup).
-3. Populate `Available Chassis`/`Available Logic Cores`/`Available
-   Appendages` by dragging the `.asset` files under
+2. Its `Target Golem` field is assigned to the scene's `Golem` GameObject
+   (from the M2 setup).
+3. `Available Chassis`/`Available Logic Cores`/`Available Appendages` are
+   populated with the `.asset` files under
    `Assets/_Project/ScriptableObjects/{Chassis,LogicCores,Appendages}/`.
-4. Enter Play mode and confirm the panel renders in the top-left, chassis/
-   logic-core swaps and appendage add/remove buttons work, and capacity
-   rejections show the status message.
-5. Save the scene and commit the resulting `.unity` changes.
+4. Play mode confirmed the panel renders in the top-left, chassis/logic-core
+   swaps and appendage add/remove buttons work, and capacity rejections show
+   the status message.
+5. Scene changes are committed to `main`.
 
 ### Testing
 - EditMode: chassis/appendage capacity enforcement —
   `Tests/EditMode/Golems/GolemProgramAssemblyTests.cs` (assign succeeds/fails
   on slot count, add succeeds up to capacity and fails beyond it, add fails
   with no chassis, remove frees a slot, out-of-range remove is a no-op).
-- Manual: `GolemProgrammingPanel` layout/readability and the in-Editor
-  drag-and-drop of roster assets — verified per the setup checklist above
-  (not automatable from this environment).
+- Manual: verified in-Editor — `GolemProgrammingPanel` layout/readability and
+  drag-and-drop of roster assets confirmed per the setup checklist above.
