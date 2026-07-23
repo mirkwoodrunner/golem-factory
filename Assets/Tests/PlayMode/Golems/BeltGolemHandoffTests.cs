@@ -4,15 +4,18 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 using GolemFactory.Belts;
+using GolemFactory.Economy;
 using GolemFactory.Events;
 using GolemFactory.Golems;
 using GolemFactory.PunchCards;
+using GolemFactory.World;
 
 namespace GolemFactory.Tests.PlayMode
 {
     public class BeltGolemHandoffTests
     {
         private GameObject _root;
+        private StorageBufferRegistryHolder _bufferRegistry;
 
         [TearDown]
         public void TearDown()
@@ -21,8 +24,6 @@ namespace GolemFactory.Tests.PlayMode
             {
                 Object.DestroyImmediate(_root);
             }
-
-            DemoBuffer.ResetAll();
         }
 
         [UnityTest]
@@ -72,6 +73,20 @@ namespace GolemFactory.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator ExtractFromNode_UnknownNodeId_GolemStalls()
+        {
+            (GolemEntity golem, ConveyorSystemHolder holder) = Build();
+            holder.System.Register(new BeltSegment("Belt", 5));
+            golem.Program.logicCore = AlwaysOnCore();
+            golem.Program.appendages.Add(ExtractStep("NoSuchNode", "Belt"));
+
+            golem.Tick(1);
+            yield return null;
+
+            Assert.AreEqual(GolemState.Stalled, golem.Program.State);
+        }
+
+        [UnityTest]
         public IEnumerator LoadIntoBuffer_BeltEmptyOrHeadNotYetAtEnd_GolemStalls()
         {
             (GolemEntity golem, ConveyorSystemHolder holder) = Build();
@@ -83,15 +98,20 @@ namespace GolemFactory.Tests.PlayMode
             yield return null;
 
             Assert.AreEqual(GolemState.Stalled, golem.Program.State);
-            Assert.AreEqual(0, DemoBuffer.GetCount("Buffer"));
+            Assert.IsFalse(_bufferRegistry.Registry.TryGetBuffer("Buffer", out _));
         }
 
         [UnityTest]
-        public IEnumerator EndToEnd_TwoGolemsAcrossTwoChainedSegments_ItemReachesDemoBuffer()
+        public IEnumerator EndToEnd_TwoGolemsAcrossTwoChainedSegments_ItemReachesStorageBuffer()
         {
             _root = new GameObject("Root");
             var holder = new GameObject("Conveyor").AddComponent<ConveyorSystemHolder>();
             holder.transform.SetParent(_root.transform);
+            var nodeRegistry = new GameObject("Nodes").AddComponent<ResourceNodeRegistryHolder>();
+            nodeRegistry.transform.SetParent(_root.transform);
+            nodeRegistry.Registry.Register(new ResourceNode("Node", "Node"));
+            _bufferRegistry = new GameObject("Buffers").AddComponent<StorageBufferRegistryHolder>();
+            _bufferRegistry.transform.SetParent(_root.transform);
 
             var beltA = new BeltSegment("BeltA", 2);
             var beltB = new BeltSegment("BeltB", 2);
@@ -102,12 +122,14 @@ namespace GolemFactory.Tests.PlayMode
             var golemA = new GameObject("GolemA").AddComponent<GolemEntity>();
             golemA.transform.SetParent(_root.transform);
             golemA.Configure("GolemA", holder);
+            golemA.ConfigureEconomy(nodeRegistry, _bufferRegistry);
             golemA.Program.logicCore = AlwaysOnCore();
             golemA.Program.appendages.Add(ExtractStep("Node", "BeltA"));
 
             var golemB = new GameObject("GolemB").AddComponent<GolemEntity>();
             golemB.transform.SetParent(_root.transform);
             golemB.Configure("GolemB", holder);
+            golemB.ConfigureEconomy(nodeRegistry, _bufferRegistry);
             golemB.Program.logicCore = AlwaysOnCore();
             golemB.Program.appendages.Add(LoadStep("BeltB", "Buffer"));
 
@@ -125,7 +147,7 @@ namespace GolemFactory.Tests.PlayMode
             // Multiple items may have crossed by tick 10 (both golems keep re-triggering
             // AlwaysOn); the flow-reaches-the-far-end behavior is what's under test here,
             // not an exact throughput count.
-            Assert.GreaterOrEqual(DemoBuffer.GetCount("Buffer"), 1);
+            Assert.GreaterOrEqual(_bufferRegistry.Registry.GetOrCreate("Buffer").GetQuantity("Node"), 1);
         }
 
         private (GolemEntity golem, ConveyorSystemHolder holder) Build()
@@ -135,9 +157,17 @@ namespace GolemFactory.Tests.PlayMode
             var holder = new GameObject("Conveyor").AddComponent<ConveyorSystemHolder>();
             holder.transform.SetParent(_root.transform);
 
+            var nodeRegistry = new GameObject("Nodes").AddComponent<ResourceNodeRegistryHolder>();
+            nodeRegistry.transform.SetParent(_root.transform);
+            nodeRegistry.Registry.Register(new ResourceNode("Node", "Node"));
+
+            _bufferRegistry = new GameObject("Buffers").AddComponent<StorageBufferRegistryHolder>();
+            _bufferRegistry.transform.SetParent(_root.transform);
+
             var golem = new GameObject("Golem").AddComponent<GolemEntity>();
             golem.transform.SetParent(_root.transform);
             golem.Configure("Golem", holder);
+            golem.ConfigureEconomy(nodeRegistry, _bufferRegistry);
 
             return (golem, holder);
         }

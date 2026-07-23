@@ -16,3 +16,5 @@ MonoBehaviour:
   durationTicks: 3
   sourceId: ScrapBuffer
   destinationId: BrassBuffer
+  inputItemType: Scrap
+  outputItemType: Brass

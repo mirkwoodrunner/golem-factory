@@ -32,8 +32,9 @@ namespace GolemFactory.Golems
             return program;
         }
 
-        // M4 demo: a golem that extracts from an (infinite, placeholder) node and pushes
-        // the item onto a named belt segment instead of depositing directly.
+        // A golem that extracts from the "ScrapNode" ResourceNode (registered as infinite
+        // by the bootstrap, since M5) and pushes the item onto a named belt segment
+        // instead of depositing directly.
         public static GolemProgram ExtractOntoBelt(string beltSegmentId)
         {
             var logicCore = ScriptableObject.CreateInstance<LogicCoreDefinition>();
@@ -53,9 +54,9 @@ namespace GolemFactory.Golems
             return program;
         }
 
-        // M4 demo: a golem that pulls the head item off a named belt segment once it
-        // arrives, and deposits it into the M4 placeholder DemoBuffer (not the real M5
-        // StorageBuffer).
+        // A golem that pulls the head item off a named belt segment once it arrives, and
+        // deposits it (by its real ItemType, supplied by the ResourceNode it came from)
+        // into the named StorageBuffer.
         public static GolemProgram LoadFromBelt(string beltSegmentId, string bufferId)
         {
             var logicCore = ScriptableObject.CreateInstance<LogicCoreDefinition>();
@@ -70,6 +71,62 @@ namespace GolemFactory.Golems
             {
                 logicCore = logicCore
             };
+            program.appendages.Add(load);
+
+            return program;
+        }
+
+        // M5 demo: a golem that runs the Refine appendage alone -- withdraws
+        // inputItemType from the sourceId buffer, waits durationTicks while "processing",
+        // then deposits outputItemType into the destinationId buffer.
+        public static GolemProgram Refine(
+            string sourceBufferId, string destinationBufferId,
+            string inputItemType, string outputItemType, int durationTicks)
+        {
+            var logicCore = ScriptableObject.CreateInstance<LogicCoreDefinition>();
+            logicCore.triggerType = TriggerType.AlwaysOn;
+
+            var refine = ScriptableObject.CreateInstance<AppendageActionDefinition>();
+            refine.actionType = AppendageActionType.Refine;
+            refine.sourceId = sourceBufferId;
+            refine.destinationId = destinationBufferId;
+            refine.inputItemType = inputItemType;
+            refine.outputItemType = outputItemType;
+            refine.durationTicks = durationTicks;
+
+            var program = new GolemProgram
+            {
+                logicCore = logicCore
+            };
+            program.appendages.Add(refine);
+
+            return program;
+        }
+
+        // M5 demo: a single golem chaining ExtractFromNode -> LoadIntoBuffer itself
+        // (rather than two golems handing off across a belt, as the Scrap chain does) --
+        // demonstrates that a multi-step program self-stalls on step 2 until the belt
+        // carries the item from step 1 all the way to the far end.
+        public static GolemProgram ExtractThenLoad(string nodeId, string beltSegmentId, string bufferId)
+        {
+            var logicCore = ScriptableObject.CreateInstance<LogicCoreDefinition>();
+            logicCore.triggerType = TriggerType.AlwaysOn;
+
+            var extract = ScriptableObject.CreateInstance<AppendageActionDefinition>();
+            extract.actionType = AppendageActionType.ExtractFromNode;
+            extract.sourceId = nodeId;
+            extract.destinationId = beltSegmentId;
+
+            var load = ScriptableObject.CreateInstance<AppendageActionDefinition>();
+            load.actionType = AppendageActionType.LoadIntoBuffer;
+            load.sourceId = beltSegmentId;
+            load.destinationId = bufferId;
+
+            var program = new GolemProgram
+            {
+                logicCore = logicCore
+            };
+            program.appendages.Add(extract);
             program.appendages.Add(load);
 
             return program;
