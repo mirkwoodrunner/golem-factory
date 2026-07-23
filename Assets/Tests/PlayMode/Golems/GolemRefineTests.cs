@@ -91,18 +91,60 @@ namespace GolemFactory.Tests.PlayMode
             GolemEntity golem = Build();
             golem.Program.appendages.Add(RefineStep("ScrapBuffer", "BrassBuffer", "Scrap", "Brass", 2));
 
-            golem.Tick(1);
-            Assert.AreEqual(GolemState.Stalled, golem.Program.State);
+            int resumedCount = 0;
+            string resumedGolemId = null;
+            void OnResumed(GolemResumedEvent e) { resumedCount++; resumedGolemId = e.GolemId; }
+            EventBus.GolemResumed += OnResumed;
+            try
+            {
+                golem.Tick(1);
+                Assert.AreEqual(GolemState.Stalled, golem.Program.State);
+                Assert.AreEqual(0, resumedCount);
 
-            _bufferRegistry.Registry.Deposit("ScrapBuffer", "Scrap", 1);
-            golem.Tick(2);
-            Assert.AreEqual(GolemState.Running, golem.Program.State);
+                _bufferRegistry.Registry.Deposit("ScrapBuffer", "Scrap", 1);
+                golem.Tick(2);
+                Assert.AreEqual(GolemState.Running, golem.Program.State);
+                Assert.AreEqual(1, resumedCount);
+                Assert.AreEqual(golem.GolemId, resumedGolemId);
 
-            golem.Tick(3);
-            yield return null;
+                golem.Tick(3);
+                yield return null;
+
+                // Resumed fires exactly once, at the stalled->unstalled transition -- not
+                // again on the tick that completes the (already-resumed) cycle.
+                Assert.AreEqual(1, resumedCount);
+            }
+            finally
+            {
+                EventBus.GolemResumed -= OnResumed;
+            }
 
             Assert.AreEqual(1, _bufferRegistry.Registry.GetOrCreate("BrassBuffer").GetQuantity("Brass"));
             Assert.AreEqual(GolemState.Idle, golem.Program.State);
+        }
+
+        [UnityTest]
+        public IEnumerator Refine_NeverStalled_DoesNotPublishGolemResumedEvent()
+        {
+            GolemEntity golem = Build();
+            _bufferRegistry.Registry.Deposit("ScrapBuffer", "Scrap", 1);
+            golem.Program.appendages.Add(RefineStep("ScrapBuffer", "BrassBuffer", "Scrap", "Brass", 2));
+
+            bool resumedFired = false;
+            void OnResumed(GolemResumedEvent e) => resumedFired = true;
+            EventBus.GolemResumed += OnResumed;
+            try
+            {
+                golem.Tick(1);
+                golem.Tick(2);
+                yield return null;
+            }
+            finally
+            {
+                EventBus.GolemResumed -= OnResumed;
+            }
+
+            Assert.IsFalse(resumedFired);
         }
 
         private GolemEntity Build()
