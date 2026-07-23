@@ -26,6 +26,20 @@ namespace GolemFactory.Golems
         // to gate the once-only TryBeginStep call. Reset whenever the step changes.
         public int StepProgressTicks { get; set; }
 
+        // M7 Threshold trigger: true means "ready to fire on the next at-or-above-
+        // threshold check." Starts armed so an already-above-threshold buffer can still
+        // fire once. Disarmed immediately after firing; re-armed only once the watched
+        // quantity dips back below the threshold -- edge-triggered, not level-triggered,
+        // so a continuously-full buffer doesn't refire every tick.
+        public bool ThresholdArmed { get; set; } = true;
+
+        // M7 Signal trigger: latched true by GolemEntity's GolemCompleted subscription
+        // when the watched golem finishes a cycle, consumed (and reset) the next time
+        // this golem is Idle and checks its trigger. Queues a signal that arrives while
+        // this golem is busy rather than dropping it; multiple signals while busy coalesce
+        // into one pending fire (not queued individually).
+        public bool PendingSignal { get; set; }
+
         public AppendageActionDefinition CurrentStep =>
             CurrentStepIndex >= 0 && CurrentStepIndex < appendages.Count ? appendages[CurrentStepIndex] : null;
 

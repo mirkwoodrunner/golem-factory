@@ -36,6 +36,28 @@ namespace GolemFactory.Golems
             bufferRegistryHolder = buffers;
         }
 
+        // M7: Signal trigger is inherently event-driven (there's no already-held state to
+        // poll, unlike Threshold's buffer query), so subscribe/unsubscribe on the
+        // MonoBehaviour lifecycle -- same idiom M6's UI listeners established.
+        private void OnEnable()
+        {
+            EventBus.GolemCompleted += OnGolemCompletedForSignal;
+        }
+
+        private void OnDisable()
+        {
+            EventBus.GolemCompleted -= OnGolemCompletedForSignal;
+        }
+
+        private void OnGolemCompletedForSignal(GolemCompletedEvent e)
+        {
+            LogicCoreDefinition logicCore = program.logicCore;
+            if (logicCore != null && logicCore.triggerType == TriggerType.Signal && e.GolemId == logicCore.signalGolemId)
+            {
+                program.PendingSignal = true;
+            }
+        }
+
         public void Tick(long tick)
         {
             bool wasStalled = program.State == GolemState.Stalled;
@@ -111,10 +133,50 @@ namespace GolemFactory.Golems
                     return true;
                 case TriggerType.Interval:
                     return logicCore.intervalTicks > 0 && tick % logicCore.intervalTicks == 0;
+                case TriggerType.Threshold:
+                    return ShouldTriggerThreshold(logicCore);
+                case TriggerType.Signal:
+                    if (!program.PendingSignal)
+                    {
+                        return false;
+                    }
+                    program.PendingSignal = false;
+                    return true;
                 default:
-                    // Threshold / Signal evaluation moves into a standalone GolemTriggerSystem at M7.
                     return false;
             }
+        }
+
+        // Edge-triggered, not level-triggered: fires once when the watched quantity
+        // reaches/crosses thresholdQuantity, then stays disarmed (won't refire every tick
+        // just because the level is still at/above threshold) until it dips back below and
+        // crosses again. Directly polls the already-held bufferRegistryHolder rather than
+        // going through a separate trigger-watching system -- no event subscription needed
+        // since the state to check is already available every tick.
+        private bool ShouldTriggerThreshold(LogicCoreDefinition logicCore)
+        {
+            int quantity = 0;
+            if (bufferRegistryHolder != null &&
+                bufferRegistryHolder.Registry.TryGetBuffer(logicCore.thresholdBufferId, out StorageBuffer buffer))
+            {
+                quantity = buffer.GetQuantity(logicCore.thresholdItemType);
+            }
+
+            bool atOrAboveThreshold = quantity >= logicCore.thresholdQuantity;
+            if (!atOrAboveThreshold)
+            {
+                program.ThresholdArmed = true;
+                return false;
+            }
+
+            if (!program.ThresholdArmed)
+            {
+                return false;
+            }
+
+            program.ThresholdArmed = false;
+            EventBus.Publish(new ThresholdCrossedEvent(logicCore.thresholdBufferId, quantity));
+            return true;
         }
 
         private bool TryBeginStep(AppendageActionDefinition step)

@@ -131,5 +131,64 @@ namespace GolemFactory.Golems
 
             return program;
         }
+
+        // M7 demo: a single-step Refine golem gated by a Threshold trigger instead of
+        // AlwaysOn -- fires once sourceBufferId's inputItemType quantity reaches
+        // thresholdQuantity (edge-triggered; see GolemEntity.ShouldTriggerThreshold).
+        public static GolemProgram ThresholdRefine(
+            string sourceBufferId, string destinationBufferId,
+            string inputItemType, string outputItemType, int durationTicks, int thresholdQuantity)
+        {
+            var logicCore = ScriptableObject.CreateInstance<LogicCoreDefinition>();
+            logicCore.triggerType = TriggerType.Threshold;
+            logicCore.thresholdBufferId = sourceBufferId;
+            logicCore.thresholdItemType = inputItemType;
+            logicCore.thresholdQuantity = thresholdQuantity;
+
+            var refine = ScriptableObject.CreateInstance<AppendageActionDefinition>();
+            refine.actionType = AppendageActionType.Refine;
+            refine.sourceId = sourceBufferId;
+            refine.destinationId = destinationBufferId;
+            refine.inputItemType = inputItemType;
+            refine.outputItemType = outputItemType;
+            refine.durationTicks = durationTicks;
+
+            var program = new GolemProgram
+            {
+                logicCore = logicCore
+            };
+            program.appendages.Add(refine);
+
+            return program;
+        }
+
+        // M7 demo: a single-step "ship into storage" golem gated by a Signal trigger --
+        // fires once when the named golem completes its cycle. The step itself is a
+        // same-item-type Refine (a plain buffer-to-buffer move): there's no dedicated
+        // buffer-to-buffer appendage type, and a 1:1 recipe is a legitimate degenerate
+        // case of Refine rather than a new action type just for this.
+        public static GolemProgram SignalShip(
+            string signalGolemId, string sourceBufferId, string destinationBufferId, string itemType)
+        {
+            var logicCore = ScriptableObject.CreateInstance<LogicCoreDefinition>();
+            logicCore.triggerType = TriggerType.Signal;
+            logicCore.signalGolemId = signalGolemId;
+
+            var ship = ScriptableObject.CreateInstance<AppendageActionDefinition>();
+            ship.actionType = AppendageActionType.Refine;
+            ship.sourceId = sourceBufferId;
+            ship.destinationId = destinationBufferId;
+            ship.inputItemType = itemType;
+            ship.outputItemType = itemType;
+            ship.durationTicks = 1;
+
+            var program = new GolemProgram
+            {
+                logicCore = logicCore
+            };
+            program.appendages.Add(ship);
+
+            return program;
+        }
     }
 }

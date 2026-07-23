@@ -18,6 +18,12 @@ namespace GolemFactory.PunchCards
         [Tooltip("Interval trigger: fires every N ticks.")]
         public int intervalTicks = 10;
 
+        [Tooltip("Threshold trigger: the StorageBuffer id to watch.")]
+        public string thresholdBufferId;
+
+        [Tooltip("Threshold trigger: the item type within that buffer to watch.")]
+        public string thresholdItemType;
+
         [Tooltip("Threshold trigger: fires when the linked inventory crosses this quantity.")]
         public int thresholdQuantity = 100;
 

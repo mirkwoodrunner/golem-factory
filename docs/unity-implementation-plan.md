@@ -213,10 +213,14 @@ Key scene-resident managers: `SimulationClock`, `GridMap`, `ConveyorSystem`,
   already existed since M2; this milestone added the missing counterpart
   `GolemResumedEvent`, a world-space `GolemStallIndicator` per golem, and a simple
   `AlertsPanel` listing every currently-stalled golem.
-- **M7** — First real Cog-style trigger / vertical slice: Threshold + Signal trigger
-  types; demo scenario — Golem A hauls scrap until Brass hits a threshold → triggers
-  Golem B to refine → triggers Golem C to load into a sell/ship building. *Demoable
-  vertical-slice checkpoint.*
+- **M7 (done)** — First real Cog-style trigger / vertical slice: Threshold + Signal
+  trigger types, implemented directly in `GolemEntity` (Threshold as an edge-triggered
+  poll of the already-held `StorageBufferRegistry`; Signal via a `GolemCompleted`
+  subscription) rather than the standalone `GolemTriggerSystem` an M2-era code comment
+  had proposed -- see the implementation notes below for why. Demo scenario adapted to
+  this project's buffer economy: Golem E hauls Scrap until a buffer hits a threshold →
+  triggers Golem F to refine into Brass → Golem F completing triggers (Signal) Golem G
+  to ship it into a final buffer. *Demoable vertical-slice checkpoint.*
 - **M8** — Artificer Focus meter + build UI polish: reprogramming/patenting resource
   cost, Assembly Bay structures with tiers/capacity, and the full Workbench UI —
   blueprint viewport, drag-and-drop Card Vault with teal (Logic Core) / copper
@@ -699,3 +703,91 @@ Editor state, not a checklist):
   fires for a golem that was never stalled.
 - Manual: verified in-Editor via live MCP calls and a real screenshot,
   described above.
+
+## M7 implementation notes (Threshold + Signal triggers, vertical slice)
+
+### Design deviation from the M2-era plan
+`GolemEntity.ShouldTrigger`'s M2/M4 comment said Threshold/Signal evaluation would
+"move into a standalone GolemTriggerSystem at M7." That didn't happen -- both are
+implemented directly in `GolemEntity` instead, for different reasons each:
+- **Threshold** just polls `bufferRegistryHolder` (already held since M5) each tick --
+  there's no state to watch that GolemEntity doesn't already have a reference to, so a
+  separate polling system would only add indirection.
+- **Signal** is genuinely event-driven, but subscribing directly to
+  `EventBus.GolemCompleted` on `GolemEntity`'s own `OnEnable`/`OnDisable` (the idiom M6
+  established for UI listeners) is simpler than a separate system that would need its
+  own golem-id → GolemEntity registry just to dispatch to the right instance.
+
+### Code (done)
+- `PunchCards/LogicCoreDefinition.cs` gains `thresholdBufferId`/`thresholdItemType` --
+  the M2-era `thresholdQuantity` field had no way to say *which* buffer/item to watch.
+- `Golems/GolemProgram.cs` gains `ThresholdArmed` (bool, starts `true`) and
+  `PendingSignal` (bool, starts `false`) -- the latched state each trigger type needs.
+- `Golems/GolemEntity.cs`:
+  - `ShouldTriggerThreshold` -- edge-triggered, not level-triggered: fires once when the
+    watched quantity reaches/crosses `thresholdQuantity`, publishes
+    `ThresholdCrossedEvent` (declared since M2, never published until now), then stays
+    disarmed until the quantity dips back below and re-crosses. A level-triggered
+    version (fire every tick while at/above threshold) was considered and rejected --
+    it would just degenerate into `AlwaysOn` once supply exceeds consumption.
+  - `OnEnable`/`OnDisable`/`OnGolemCompletedForSignal` -- subscribes to
+    `EventBus.GolemCompleted`, and when the event's `GolemId` matches this golem's
+    `logicCore.signalGolemId`, latches `PendingSignal = true`. `ShouldTrigger`'s Signal
+    case consumes and resets it. A signal arriving while this golem is mid-cycle (not
+    Idle) is queued rather than dropped -- but multiple signals arriving while busy
+    coalesce into a single pending fire, they don't queue individually.
+  - **Important gotcha this uncovered**: `GolemEntity` has no `[ExecuteAlways]`, so
+    Unity does not invoke `OnEnable`/`OnDisable` for it in EditMode (only in Play
+    Mode) -- meaning Signal-trigger tests must run as PlayMode tests, not EditMode.
+    Threshold has no such requirement since it doesn't depend on a lifecycle callback.
+    See Testing below.
+- `Golems/HardcodedDemoProgram.cs` gains `ThresholdRefine(...)` and `SignalShip(...)`.
+  `SignalShip`'s step is a same-item-type `Refine` (a degenerate 1:1 recipe) rather than
+  a new appendage type -- there's no dedicated buffer-to-buffer "move" action, and
+  inventing one just for a "ship into storage" demo step wasn't worth it.
+- `Golems/TriggerDemoBootstrap.cs` -- new, additive alongside `BeltDemoBootstrap` (this
+  is a new mechanic, not a continuation of the M4/M5 Scrap/Aether chains, so it gets its
+  own bootstrap the way M4's did relative to M2/M3's). Golem E continuously hauls Scrap
+  (`ExtractThenLoad`) into a dedicated `TriggerScrapBuffer` (kept separate from M4/M5's
+  shared `ScrapBuffer` so this demo's threshold-crossing pace isn't drowned out by that
+  chain's much larger throughput); reuses the shared `Conveyor`/`Nodes`/`Buffers`
+  GameObjects (in particular the infinite `ScrapNode` M5's bootstrap already registers)
+  rather than duplicating that infrastructure. In practice the threshold fires
+  repeatedly, not just once: Golem F's refine always consumes exactly 1 Scrap per
+  firing, which reliably dips `TriggerScrapBuffer` one unit below the threshold every
+  time, guaranteeing re-arming regardless of Golem E's supply rate -- a live run showed
+  300+ full Extract→Threshold→Refine→Signal→Ship cycles with zero errors.
+
+### M7 manual editor setup (done, via live Unity MCP)
+1. Created `GolemE`/`GolemF`/`GolemG` (`GolemEntity`) and `TriggerDemoBootstrap`,
+   wired `golemE`/`golemF`/`golemG` and the shared `Conveyor`/`Nodes`/`Buffers`/
+   `SimulationClockRunner` references.
+2. First live run revealed a real bug: `TriggerDemoBootstrap` called
+   `golemE.ConfigureEconomy(...)` but never `golemE.Configure(...)`, so Golem E's
+   `conveyorHolder` stayed null and it stalled forever on step 0 (`ExtractFromNode`
+   silently fails without a conveyor holder). Fixed by adding the missing `Configure`
+   call; re-verified live afterward.
+3. Also hit a genuine Unity Editor hang mid-session: entering Play mode got stuck with
+   `play_mode.is_changing: true` for 100+ seconds (nothing ticking, `SimulationClock`
+   frozen at tick 0). Exiting Play mode (`manage_editor` stop) and re-entering cleared
+   it. Not a code issue -- flagged here in case it recurs.
+4. Saved, entered Play mode, and confirmed via
+   `mcpforunity://scene/gameobject/{id}/components` that after ~15s,
+   `TriggerScrapBuffer`/`TriggerBrassBuffer`/`ShippedBuffer` all existed with sane,
+   internally-consistent values (e.g. `ShippedBuffer` growing continuously), plus a
+   `manage_camera` screenshot confirming the inventory/alerts panels rendered correctly
+   -- including the M6 `AlertsPanel` picking up Golem E's stalls automatically, with no
+   changes needed on the M6 side, since it's driven purely by `EventBus`.
+5. Exited Play mode and re-saved.
+
+### Testing
+- EditMode (`Tests/EditMode/Golems/GolemTriggerTests.cs`, Threshold only): below-
+  threshold doesn't fire; at/above fires once and publishes `ThresholdCrossedEvent`;
+  staying above doesn't refire every tick; dipping below then re-crossing fires again.
+- PlayMode (`Tests/PlayMode/Golems/GolemSignalTriggerTests.cs`, Signal only -- needs
+  Play Mode for `OnEnable` to actually subscribe, see the gotcha above): an unrelated
+  golem completing doesn't fire; the watched golem completing does; the pending signal
+  is consumed and doesn't refire without a new event; a signal arriving mid-cycle is
+  queued and fires on the next Idle check.
+- Manual: verified in-Editor via live MCP calls and a screenshot, described above --
+  a genuine end-to-end run of the full trigger chain, not a simulated/rigged one.
