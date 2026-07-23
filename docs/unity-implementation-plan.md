@@ -221,10 +221,14 @@ Key scene-resident managers: `SimulationClock`, `GridMap`, `ConveyorSystem`,
   this project's buffer economy: Golem E hauls Scrap until a buffer hits a threshold →
   triggers Golem F to refine into Brass → Golem F completing triggers (Signal) Golem G
   to ship it into a final buffer. *Demoable vertical-slice checkpoint.*
-- **M8** — Artificer Focus meter + build UI polish: reprogramming/patenting resource
-  cost, Assembly Bay structures with tiers/capacity, and the full Workbench UI —
-  blueprint viewport, drag-and-drop Card Vault with teal (Logic Core) / copper
-  (Appendage) card coloring, diagnostic tape ticker, "Engage Gears" activation lever.
+- **M8 (done)** — Artificer Focus meter + build UI polish: reprogramming/patenting
+  resource cost, `AssemblyBayStructure` with tiers/capacity, and the full Workbench UI
+  — real UGUI drag-and-drop (first Canvas/EventSystem work in the project; every prior
+  milestone's UI was OnGUI), blueprint viewport, teal/copper Card Vault, diagnostic tape
+  ticker, "Engage Gears" lever. Supersedes M3's `GolemProgrammingPanel` (now disabled).
+  Headless `Blueprint`/`PatentRegistry` exist and are Focus-gated via the Workbench's
+  "Patent" button, but there's no browse/reuse UI for saved blueprints yet -- that
+  remains M9's explicit scope ("Blueprint/Patent Registry UI").
 - **M9 (stretch)** — Solo Assembly Line drafting loop, Blueprint/Patent Registry UI,
   save/load, polish.
 
@@ -791,3 +795,121 @@ implemented directly in `GolemEntity` instead, for different reasons each:
   queued and fires on the next Idle check.
 - Manual: verified in-Editor via live MCP calls and a screenshot, described above --
   a genuine end-to-end run of the full trigger chain, not a simulated/rigged one.
+
+## M8 implementation notes (Artificer Focus meter + full Workbench UI)
+
+This is the largest milestone so far and the first to touch real UGUI (Canvas +
+EventSystem + drag-and-drop) -- every prior milestone's UI was `OnGUI` immediate mode.
+
+### Code (done)
+- `Player/ArtificerFocusMeter.cs`/`ArtificerFocusMeterHolder.cs` -- a resource
+  distinct from `SimulationClock`, regenerating on wall-clock time (`Update`, not
+  ticks) per the design doc. `TryConsume`/`Refund` (the latter added after a real bug:
+  the first draft tried to "refund" via `TryConsume(-amount)`, which `TryConsume`'s own
+  non-negative guard silently rejects -- caught by a dedicated `Refund` method plus
+  tests, not by manual inspection).
+- `Blueprints/Blueprint.cs`/`PatentRegistry.cs`/`PatentRegistryHolder.cs` -- headless,
+  per the "multiplayer-compatible seams" section: `Blueprint` carries `OwnerId` from
+  day one, `TryUseBlueprint` already has the royalty-charge branch (a documented no-op
+  in solo v1, since there's no other player's wallet to pay into). No browse/reuse UI
+  -- that's M9's explicit scope.
+- `Buildings/AssemblyBayStructure.cs` -- `TryAssignGolem`/`ReleaseGolem` capacity
+  bookkeeping, `TryUpgrade` (withdraws Scrap then Brass from a `StorageBufferRegistry`
+  buffer, refunding the Scrap if the Brass withdrawal fails so a failed upgrade never
+  partially charges). Capacity/upgrade data model only, not the Assembly Line drafting
+  loop (M9 stretch scope).
+- `UI/WorkbenchDropZone.cs` -- marks a slot GameObject (the Logic Core slot, or one of
+  N appendage slots) as a valid drop target.
+- `UI/WorkbenchCard.cs` -- `IBeginDragHandler`/`IDragHandler`/`IEndDragHandler`. Purely
+  reports "this card, dropped on this zone (or null)" to the controller; doesn't touch
+  program state itself.
+- `UI/WorkbenchController.cs` -- the orchestrator, and the biggest design decision in
+  this milestone: dragging cards only edits a local **draft** copy of the program
+  (`_draftChassis`/`_draftLogicCore`/`_draftAppendages`), never the real
+  `GolemEntity.Program`, until `EngageGears()` commits it -- matching the design doc's
+  "pulling it locks in the current card configuration and boots the golem into the
+  game world." `HandleDrop` only ever mutates draft data, then calls `RebuildUI()`,
+  which destroys and recreates every card GameObject from that data -- deliberately
+  choosing "always re-render from data" over choreographing GameObject reparenting
+  per-drag, matching the plain-data-first idiom the rest of the project already
+  follows (`BeltSegmentVisual` redrawing from `BeltSegment.Items` rather than
+  persistent per-item GameObjects). Chassis selection stays button-based (not a
+  draggable card), since the design doc's card color coding only covers Logic
+  Cores/Appendages. `ConfigureGolem`/`ConfigureSystems`/`ConfigureRoster`/`ConfigureUI`
+  are test/bootstrap-friendly setters mirroring `GolemEntity.Configure` -- necessary
+  here specifically because the component has far too many `[SerializeField]`s to wire
+  any other way from a test or a bootstrap script.
+- `UI/InventoryPanel.cs` (M5) relocated from the top-right to the top-left corner and
+  capped to a fixed height (was full-screen) -- see "Bug found live" below.
+- `docs/digital-design.md`'s "sell/ship building" and "reprogramming"/"patenting"
+  language doesn't map onto a dedicated appendage type for buffer-to-buffer transfer
+  (M7's `SignalShip` degenerate-Refine trick handled that one already); nothing new
+  needed here.
+
+### Bugs found via live verification (not caught by unit tests alone)
+1. **OnGUI always draws over Canvas UGUI, regardless of sort order.** M5's
+   `InventoryPanel` (top-right, full height) visually collided with M8's new Card
+   Vault (also right-anchored). Moving it to the top-left (freed up by
+   `GolemProgrammingPanel` being disabled) just exposed the *same* problem against the
+   Blueprint Viewport's left column instead, since the new Workbench's three columns
+   are all full-height. Final fix: cap `InventoryPanel` to a small fixed-height box
+   (250x220) in the top-left, accepting a small remaining corner overlap as a known
+   cosmetic trim rather than a full HUD layout redesign -- OnGUI and UGUI use
+   completely separate input pipelines, so this is purely visual, not a functional
+   blocker (dragging/clicking still works underneath).
+2. `ArtificerFocusMeter.Refund` via `TryConsume(-amount)` silently no-ops (see Code
+   above) -- caught before it ever reached the scene, while writing
+   `WorkbenchController.EngageGears`'s defensive chassis-rejection path.
+
+### M8 manual editor setup (done, via live Unity MCP + `execute_code`)
+Given the sheer number of `RectTransform`-positioned GameObjects a real UGUI layout
+needs (Canvas, EventSystem, ~20 child elements with anchors/sizes), building this one
+`manage_gameobject`/`manage_components` call at a time would have been slow and
+error-prone with no visual feedback until the end. Instead, the whole hierarchy was
+built in a single `execute_code` call -- a C# script run directly in the Editor
+(Canvas + `CanvasScaler` + `GraphicRaycaster`, `EventSystem` +
+`InputSystemUIInputModule` -- the project's `activeInputHandler` is New-Input-System-
+only, so the legacy `StandaloneInputModule` would not have worked -- three anchored
+columns, `VerticalLayoutGroup`s for the vault/chassis row, a `DragLayer` added last so
+dragged cards render on top). Notably, `execute_code` fell back to the CodeDom (C# 6)
+compiler rather than Roslyn, so the script avoided local functions/lambda-heavy
+patterns that wouldn't compile under C# 6.
+1. Loaded the M3-authored Chassis/LogicCore/Appendage roster assets, found the
+   existing `Golem` GameObject (M3's `GolemProgrammingPanel` target) to reuse as the
+   Workbench's target -- same reasoning as disabling `GolemDemoBootstrap` for
+   `BeltDemoBootstrap` at M4: don't run two systems that both drive the same golem.
+2. Built the Canvas hierarchy and `WorkbenchController`, wired everything via the
+   `Configure*` methods (called directly in code, not via `manage_components`'
+   property-setting, which is far more reliable for arrays/object references).
+   Created `AssemblyBay`, `FocusMeter`, `Patents` holders; disabled
+   `GolemProgrammingPanel`.
+3. Saved, entered Play mode, screenshotted -- confirmed the panel renders and found
+   bug #1 above.
+4. Used a second `execute_code` call to *drive the actual UI live*: clicked a chassis
+   button, called `WorkbenchController.HandleDrop` directly on the real vault cards
+   found by name, clicked Engage Gears and Patent, then read back `GolemEntity.Program`
+   and `PatentRegistry.Blueprints` -- confirming a genuine end-to-end commit
+   (`chassis=ClockworkScavenger logicCore=AlwaysOnCore appendages=ExtractScrap,
+   blueprintCount=1`), not just that the UI renders. Re-verified after the
+   `InventoryPanel` fix with a final screenshot and a clean console.
+5. Exited Play mode and re-saved.
+
+### Testing
+- EditMode: `ArtificerFocusMeterTests.cs` (consume/refund/regen, including the
+  negative-amount edge cases from bug #2), `PatentRegistryTests.cs` (patent/duplicate-
+  id/unknown-id/royalty-no-op), `AssemblyBayStructureTests.cs` (assign/release/
+  capacity, upgrade success/insufficient-Scrap/insufficient-Brass-with-refund).
+- PlayMode (`Tests/PlayMode/UI/WorkbenchControllerTests.cs` -- needs Play Mode since
+  `WorkbenchController.Start()`, like `GolemEntity.OnEnable` in M7, doesn't run in
+  EditMode): exercises `HandleDrop`/`EngageGears`/`Patent`/`SelectChassis` directly
+  with constructed `WorkbenchCard`/`WorkbenchDropZone` instances rather than
+  simulating real pointer drags through the `EventSystem`/`GraphicRaycaster` -- that
+  plumbing is thin, low-risk Unity event wiring; the logic worth testing is what
+  `HandleDrop` decides to do with a `(card, zone)` pair, which doesn't require an
+  actual drag. Covers: commit-on-engage, insufficient-Focus rejection (both for
+  reprogramming and patenting), moving a card between appendage slots, clearing a
+  slot by dropping in empty space, rejecting a drop onto a slot beyond the current
+  chassis's capacity, and rejecting a chassis swap that wouldn't fit the current
+  draft's appendage count.
+- Manual: verified in-Editor via live MCP calls (including a scripted live drive of
+  the actual UI, not just the underlying logic) and screenshots, described above.
