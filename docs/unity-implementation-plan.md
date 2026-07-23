@@ -200,8 +200,15 @@ Key scene-resident managers: `SimulationClock`, `GridMap`, `ConveyorSystem`,
   the M5 recipe system, respectively, don't exist yet). Only straight-line segment
   chaining and a hand-wired demo scene — no junctions/splitters and no belt placement
   via `BuildModeController` yet (that's M8/M9's build-UI polish).
-- **M5** — Multiple resource chains: Brass/Aether nodes, a Refine appendage (recipe
-  over N ticks), generic `StorageBuffer`, inventory UI.
+- **M5 (done)** — Multiple resource chains: a real `ResourceNode`/`ResourceNodeRegistry`
+  (replacing M4's infinite-placeholder hack) and `StorageBuffer`/`StorageBufferRegistry`
+  (replacing M4's `DemoBuffer`), a Refine appendage with genuine recipe-over-N-ticks
+  processing (`GolemProgram.StepProgressTicks`), and an `InventoryPanel` UI. Deposit
+  wasn't an Aether-node-and-Brass-node pair as the milestone summary literally reads --
+  Brass stayed a Refine output (`ScrapBuffer` → `BrassBuffer`, per the M3-authored
+  `RefineBrass` asset) and Aether became the second raw node, since that matches
+  `digital-design.md`'s Aether-Hauler fluff and gives a genuinely independent second
+  chain rather than two node types feeding the same appendage.
 - **M6** — Stall handling + status UI: `Stalled` state, stall indicator,
   `GolemStalledEvent`, simple alerts panel.
 - **M7** — First real Cog-style trigger / vertical slice: Threshold + Signal trigger
@@ -487,28 +494,36 @@ Ran alongside M1's checklist, using the bootstrap-`MonoBehaviour` option:
   and both golems with the clock, calls `Play()`. Two golems are required
   because a single golem doing extract-then-load never needs a belt at all.
 
-### M4 manual editor setup (done)
-1. Disabled the existing M2/M3 `GolemDemoBootstrap` GameObject in `Main.unity`
-   — otherwise it double-assigns "Golem" and double-registers it with the
-   clock alongside `BeltDemoBootstrap`. (`HardcodedDemoProgram.ExtractAndDeposit()`
-   also never set `ExtractFromNode.destinationId`/`LoadIntoBuffer.sourceId`, so
-   running it with a `conveyorHolder` now assigned would immediately stall
-   rather than silently succeed like the old stub did.)
-2. Created a `ConveyorSystem` GameObject with `ConveyorSystemHolder`.
-3. Created a `GolemB` GameObject with `GolemEntity` (`Golem Id` = `"GolemB"`).
-4. Assigned the new `Conveyor Holder` field on both `Golem` and `GolemB` to the
-   GameObject from step 2.
-5. Added empty child transforms marking belt endpoints in world space (via
-   `GridCoordinateConverter.CellToWorldCenter`); segment A's end and segment
-   B's start point coincide so the handoff doesn't visually pop.
-6. Created two `BeltSegmentVisual` GameObjects (`ScrapBeltAVisual`,
-   `ScrapBeltBVisual`) wired to the matching `Segment Id`s, endpoint
-   transforms, and a placeholder sprite.
-7. Created a `BeltDemoBootstrap` GameObject, assigned Golem A/B, the conveyor
-   holder, and the existing `SimulationClockRunner`.
-8. Play mode confirmed the sprite advances smoothly along segment A, hands off
-   to B without popping, and `DemoBuffer.GetCount("ScrapBuffer")` increases.
-9. Scene/prefab/sprite changes are committed to `main`.
+### M4 manual editor setup (was documented as done; actually landed at M5)
+This checklist was written and marked done when M4's code was authored, but no
+Unity Editor was attached to verify it at the time. When a live Unity MCP
+connection became available during M5, `Main.unity`'s hierarchy was inspected
+directly and none of the steps below had actually been applied — `GolemB`,
+`ConveyorSystem`, and `BeltDemoBootstrap` didn't exist, and the M2/M3
+`GolemDemoBootstrap` GameObject was still active. The scene wiring (for both M4
+and M5) was done for real during the M5 session, via live `manage_gameobject`/
+`manage_components` MCP calls followed by an actual Play-mode run, not by
+authoring YAML blind:
+1. Disabled the existing M2/M3 `GolemDemoBootstrap` GameObject.
+2. Created `Conveyor` (`ConveyorSystemHolder`), `Nodes`
+   (`ResourceNodeRegistryHolder`, M5), and `Buffers`
+   (`StorageBufferRegistryHolder`, M5).
+3. Created `GolemB` (plus M5's `GolemC`/`GolemD`), each with `GolemEntity`.
+4. Assigned `Conveyor Holder`/`Node Registry Holder`/`Buffer Registry Holder`
+   on `Golem`, `GolemB`, `GolemC`, `GolemD`.
+5. Created `BeltDemoBootstrap`, assigned Golem A–D, the conveyor/node/buffer
+   holders, and the existing `SimulationClockRunner`.
+6. Play mode confirmed Scrap flows Golem A → belt → Golem B → `ScrapBuffer`,
+   Golem C refines it into `BrassBuffer`, and Golem D independently drains the
+   finite `AetherNode` into `AetherBuffer` — all with zero console errors.
+7. Scene changes saved to `main`.
+
+Skipped, deliberately, as out of scope for either milestone's mechanic: the
+`BeltSegmentVisual`/endpoint-transform sprite setup from the original M4
+checklist. Belt flow correctness is already covered by
+`Tests/PlayMode/Golems/BeltGolemHandoffTests.cs`; wiring cosmetic sprites for a
+demo bootstrap that M8/M9 will eventually replace wasn't worth the manual
+Editor time.
 
 ### Testing
 - EditMode: belt item-advancement/capacity/spacing math and head peek/remove
@@ -517,10 +532,111 @@ Ran alongside M1's checklist, using the bootstrap-`MonoBehaviour` option:
   when `Next` is full) — `Tests/EditMode/Belts/ConveyorSystemTests.cs`.
 - PlayMode: golem↔belt handoff across real GameObjects (extract stalls on a
   full belt, load stalls before the head arrives, an end-to-end run across two
-  chained segments reaches `DemoBuffer`) —
-  `Tests/PlayMode/Golems/BeltGolemHandoffTests.cs`.
-- Manual: verified in-Editor — belt motion reads smooth with no popping at the
-  segment boundary; pausing/disabling Golem B fills the belt to capacity and
-  stalls Golem A (observable via `GolemStalledEvent`/state — no stall UI until
-  M6). Full perf profiling against the "500 belt items / 100 golems" budget
-  starts in earnest at M5, per the Verification section above.
+  chained segments reaches the destination `StorageBuffer` -- updated at M5 when
+  `DemoBuffer` was retired) — `Tests/PlayMode/Golems/BeltGolemHandoffTests.cs`.
+- Manual: verified in-Editor at M5 (see the corrected manual-setup note above) —
+  belt flow works end-to-end with zero console errors. Stall-on-full-belt and a
+  stall UI are still M6 scope. Full perf profiling against the "500 belt items /
+  100 golems" budget starts in earnest once M5's economy is in place, per the
+  Verification section above.
+
+## M5 implementation notes (multiple resource chains)
+
+### Code (done)
+- `Economy/ItemType.cs` — canonical item type id constants (`Scrap`, `Brass`,
+  `Aether`), matching the bare-string-id convention used for node/buffer/belt
+  ids elsewhere (`Belts/ItemStack.cs`), so recipes don't restate raw literals.
+- `Economy/StorageBuffer.cs`/`StorageBufferRegistry.cs`/
+  `StorageBufferRegistryHolder.cs` — the real replacement for M4's
+  `Belts/DemoBuffer.cs` (deleted this milestone): a buffer now holds
+  per-item-type quantities (`Dictionary<string,int>`), not one opaque count, so
+  the inventory UI can list what's actually inside. `StorageBufferRegistry`
+  mirrors `ConveyorSystem`'s segment dictionary (null-id guard included);
+  buffers are created on first deposit rather than requiring pre-registration.
+- `World/ResourceNode.cs`/`ResourceNodeRegistry.cs`/
+  `ResourceNodeRegistryHolder.cs` — the real replacement for M4's "every
+  `ExtractFromNode.sourceId` is treated as an infinite source, and doubles as
+  the extracted item's type" hack. A node now has a real `ItemType` (separate
+  from its node id) and a finite `RemainingQuantity` (`ResourceNode.Infinite`
+  opts out, e.g. for the demo's `ScrapNode`).
+- `PunchCards/AppendageActionDefinition.cs` gains `inputItemType`/
+  `outputItemType`, used only by Refine: the item type withdrawn from the
+  `sourceId` buffer and the item type deposited into the `destinationId`
+  buffer. `ExtractFromNode`/`LoadIntoBuffer` don't need these — their item type
+  now flows through `ItemStack.ItemType`, sourced from the real `ResourceNode`.
+- `Golems/GolemProgram.cs` gains `StepProgressTicks` (reset inside
+  `AdvanceStep`) — the recipe-over-N-ticks counter.
+- `Golems/GolemEntity.cs`'s execution loop is restructured around
+  `durationTicks` generically (not just for Refine): `TryBeginStep` runs once,
+  when `StepProgressTicks == 0` (this is where a step's precondition is
+  checked and its side effect happens); once it succeeds, `Tick` just counts
+  `StepProgressTicks` up to `Max(1, step.durationTicks)` without re-checking
+  anything, then calls `CompleteStep` (a no-op except for Refine, where the
+  recipe output is deposited only now, not at Begin) and advances. Since
+  `ExtractFromNode`/`LoadIntoBuffer` still default to `durationTicks = 1`, they
+  complete in the same single tick as before — M4's behavior for those two is
+  unchanged. Refine's `TryBeginRefine` withdraws the recipe input up front
+  (mirrors a real refinery: once started, nothing can drain the input back out
+  from under it), so a multi-tick refine can't be interrupted mid-cycle by the
+  source buffer running dry. Also fixes a latent M4 gap: recovering from
+  `Stalled` (or finishing a step mid-program) never explicitly reset `State`
+  back to `Running`/`Idle` in the old single-tick-only code — harmless when
+  every step resolved in one tick, but would have left a resumed multi-tick
+  step reading "Stalled" forever. `GolemEntity` also gains
+  `nodeRegistryHolder`/`bufferRegistryHolder` fields and a `ConfigureEconomy`
+  method (separate from M4's `Configure`, so existing two-arg call sites are
+  untouched) for wiring them programmatically.
+- `Golems/HardcodedDemoProgram.cs` gains `Refine(...)` and
+  `ExtractThenLoad(...)` builders alongside the M2–M4 ones.
+- `Golems/BeltDemoBootstrap.cs` extends the same class/file from M4 (not a new
+  additive bootstrap, since M5's chain is a direct continuation of M4's Scrap
+  flow, not an independent demo) with Golem C (Refine: `ScrapBuffer` →
+  `BrassBuffer`, 3 ticks) and Golem D (a single-golem `ExtractThenLoad` chain:
+  `AetherNode` → `AetherBelt` → `AetherBuffer`, demonstrating a second,
+  independent, *finite* resource chain). Registers `ScrapNode` (infinite) and
+  `AetherNode` (`aetherNodeQuantity`, default 20) at `Start()`.
+- `UI/InventoryPanel.cs` — minimal `OnGUI` readout (mirrors
+  `GolemProgrammingPanel`'s style) listing every registered `StorageBuffer`'s
+  contents by item type. No per-resource icons/visual treatment — that's a
+  later UI pass.
+- `ScriptableObjects/Appendages/RefineBrass.asset` (M3-authored) gains
+  `inputItemType: Scrap`/`outputItemType: Brass` now that those fields exist
+  and are load-bearing.
+
+### M5 manual editor setup (done, via live Unity MCP)
+A live Unity Editor connection was available this session, so rather than
+writing a checklist for a human to run later, the scene was wired directly
+through `manage_gameobject`/`manage_components` MCP calls and verified with an
+actual Play-mode run (see the corrected M4 manual-setup note above for why
+this also had to cover M4's never-applied steps):
+1. Created `Nodes` (`ResourceNodeRegistryHolder`) and `Buffers`
+   (`StorageBufferRegistryHolder`).
+2. Created `GolemC`/`GolemD` (`GolemEntity`), set their `Golem Id`s, and
+   assigned `Conveyor Holder`/`Node Registry Holder`/`Buffer Registry Holder`
+   on all four golems (`Golem`, `GolemB`, `GolemC`, `GolemD`).
+3. Created `BeltDemoBootstrap` (see the M4 note) with `golemA`–`golemD` and the
+   conveyor/node/buffer holders assigned.
+4. Created `InventoryPanel`, assigned its `Buffer Registry Holder` to
+   `Buffers`.
+5. Saved the scene, entered Play mode, and read the live component state back
+   via the `mcpforunity://scene/gameobject/{id}/components` resource: after a
+   few seconds, `Buffers` held `ScrapBuffer{Scrap: 58}`,
+   `BrassBuffer{Brass: 29}`, `AetherBuffer{Aether: 16}` — confirming both
+   chains run correctly end-to-end — with zero console errors or warnings.
+6. Exited Play mode and re-saved.
+
+### Testing
+- EditMode: `StorageBuffer`/`StorageBufferRegistry` deposit/withdraw/
+  independent-item-type-tracking — `Tests/EditMode/Economy/
+  StorageBufferTests.cs`. `ResourceNode`/`ResourceNodeRegistry` infinite vs.
+  finite depletion, null-id handling — `Tests/EditMode/World/
+  ResourceNodeTests.cs`.
+- PlayMode: Refine's multi-tick progress (no stall while processing, input
+  withdrawn at Begin, output deposited only at completion, `StepProgressTicks`
+  resets, stall-then-resume) — `Tests/PlayMode/Golems/GolemRefineTests.cs`.
+  `Tests/PlayMode/Golems/BeltGolemHandoffTests.cs` (M4) was updated to route
+  through the real `ResourceNodeRegistry`/`StorageBufferRegistry` instead of
+  the retired sourceId-as-itemType hack and `DemoBuffer`, plus a new
+  unknown-node-id-stalls case.
+- Manual: verified in-Editor via live MCP calls, described above — not just a
+  written checklist this time.

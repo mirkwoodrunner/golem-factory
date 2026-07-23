@@ -21,11 +21,17 @@ namespace GolemFactory.Golems
         public int CurrentStepIndex { get; set; }
         public GolemState State { get; set; } = GolemState.Idle;
 
+        // Ticks the current step has been processing for (M5: recipe-over-N-ticks
+        // support, e.g. Refine). Zero means "not yet begun" -- GolemEntity.Tick uses that
+        // to gate the once-only TryBeginStep call. Reset whenever the step changes.
+        public int StepProgressTicks { get; set; }
+
         public AppendageActionDefinition CurrentStep =>
             CurrentStepIndex >= 0 && CurrentStepIndex < appendages.Count ? appendages[CurrentStepIndex] : null;
 
         public void AdvanceStep()
         {
+            StepProgressTicks = 0;
             CurrentStepIndex++;
             if (CurrentStepIndex >= appendages.Count)
             {
