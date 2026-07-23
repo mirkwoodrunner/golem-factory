@@ -913,3 +913,77 @@ patterns that wouldn't compile under C# 6.
   draft's appendage count.
 - Manual: verified in-Editor via live MCP calls (including a scripted live drive of
   the actual UI, not just the underlying logic) and screenshots, described above.
+
+## Graphics demo implementation notes
+
+Through M8 the simulation, golem programming, belts, economy, triggers, and Workbench
+UI all work, but almost none of it is visible: `GolemEntity` has no renderer,
+`PlaceableBuilding`/`AssemblyBayStructure` use Unity's built-in default sprite, and
+`Assets/_Project/Art`/`Tilemaps` are empty except for `.gitkeep`. This pass gives the
+already-working M2/M4/M5/M7 demo scenarios (all of which run simultaneously in
+`Main.unity` via `GolemDemoBootstrap`/`BeltDemoBootstrap`/`TriggerDemoBootstrap`) an
+actual visual presentation, without touching any simulation code.
+
+Authored from a session with **no Unity Editor and no image-generation tool
+available** (unlike M8, there was no live MCP bridge this time) — see the two
+constraints below, which shaped the split between what's committed as code/assets vs.
+what needs one manual pass in the Editor.
+
+- **No source of bespoke pixel art.** `ConceptArt/`'s `golem lineup.png`/
+  `workshop.png` are polished reference illustrations, not usable game assets — no
+  transparent backgrounds, not tile-aligned, not isolated per-unit. Instead,
+  `Tools/Art/generate_placeholder_art.py` (Python + Pillow) generates simple,
+  intentional placeholder sprites in the warm brass/copper palette from
+  `docs/digital-design.md`, committed to `Assets/_Project/Art/`: `floor_tile.png` /
+  `floor_tile_accent.png` (128×64 isometric diamonds matching
+  `GridCoordinateConverter`'s `1 × 0.5` cell size), `golem_generic_{copper,brass,
+  steel}.png` (generic robot silhouette, palette-swapped so six simultaneous golem
+  instances don't look identical), `building_block.png`, `item_scrap.png` /
+  `item_brass.png`, and `ghost_placeholder.png`. These are explicitly placeholders —
+  swapping in real pixel art later is a pure asset replacement; no script here
+  references a specific file by anything other than its role.
+- **No Unity Editor in this session**, so no way to generate the `.meta`/GUID a PNG
+  needs before anything can reference it as a `Sprite`. This is the same constraint
+  M1 hit first (see "Manual Editor setup" above) and the same fix applies: pure C#
+  is committed directly, all sprite-reference wiring becomes a one-time manual
+  checklist.
+
+### Code (committed, testable without Unity where possible)
+- `World/YSortUtility.cs` — pure static `ComputeSortingOrder(float worldY)`,
+  extracted the same way `GridCoordinateConverter` separates math from the
+  MonoBehaviour that applies it, so it's covered by
+  `Tests/EditMode/World/YSortUtilityTests.cs` without needing a scene.
+- `World/YSortSpriteRenderer.cs` — sets `SpriteRenderer.sortingOrder` from
+  `YSortUtility` every `LateUpdate`; same visual-only, simulation-untouched idiom
+  `Belts/BeltSegmentVisual.cs` already uses. Drop onto any golem/building/item
+  sprite so isometric depth looks right without hand-tuning sort order per object.
+- `Golems/GolemVisual.cs` — assigns a golem's placeholder sprite once and tints it
+  red while `Stalled`/back to white on resume, via the same
+  `EventBus.GolemStalled`/`GolemResumed` subscription `UI/GolemStallIndicator.cs`
+  already uses. Reads `GolemEntity` only for its id; never writes to it.
+
+### Manual Editor setup (can't be authored from git alone)
+1. Pull the branch, open `Main.unity` in Unity 6, let the new
+   `Assets/_Project/Art/*.png` import; confirm no Console errors.
+2. For each new PNG: Texture Type = Sprite (2D and UI), Pixels Per Unit = 64, Filter
+   Mode = Point, Compression = None; Apply.
+3. `Window > 2D > Tile Palette`: create Tile assets from `floor_tile.png`/
+   `floor_tile_accent.png`, paint the scene's existing `Grid`/`Tilemap` GameObject
+   under the golems/buildings.
+4. On GolemB/C/D/E/F/G: add `SpriteRenderer` + `GolemVisual` (assign a
+   `golem_generic_*` variant + the `GolemEntity` reference) + `YSortSpriteRenderer`.
+5. On `PlaceholderBuilding.prefab` and any `AssemblyBayStructure` instances: assign
+   `building_block.png` to the existing `SpriteRenderer`; add `YSortSpriteRenderer`.
+6. On each `BeltSegmentVisual` instance (M4/M5/M7 belts): assign `item_scrap.png`/
+   `item_brass.png` to `Item Sprite`.
+7. On the `BuildMode` ghost object: assign `ghost_placeholder.png`.
+8. Frame `Main Camera`/`CameraRig`'s starting position + `orthographicSize` so the
+   painted floor and golems are in view on load.
+9. Save scene + prefabs; commit `Assets/_Project/Art/**` (now with generated
+   `.meta`s), `Main.unity`, and any changed prefabs.
+
+### Testing
+- EditMode: `Tests/EditMode/World/YSortUtilityTests.cs` — sign/zero/ordering of
+  `ComputeSortingOrder`.
+- Manual: everything in the checklist above, run once in-Editor by whoever picks
+  this branch up next — not automatable from a session with no Unity install.
