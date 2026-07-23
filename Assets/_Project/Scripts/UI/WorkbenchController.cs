@@ -233,6 +233,29 @@ namespace GolemFactory.UI
             SetStatus($"Patented as {blueprintId}.");
         }
 
+        // M9: the other half of Patent() -- loads a previously-patented blueprint back
+        // into the draft (called by UI/PatentBrowserPanel's "Load" button). Like every
+        // other draft mutation, this doesn't touch the real GolemEntity.Program; the
+        // loaded config still has to go through Engage Gears (and its Focus cost) to
+        // take effect, same as a manually-dragged configuration would.
+        public void LoadBlueprintIntoDraft(Blueprint blueprint)
+        {
+            if (blueprint == null)
+            {
+                return;
+            }
+
+            _draftChassis = blueprint.Chassis;
+            _draftLogicCore = blueprint.LogicCore;
+            for (int i = 0; i < _draftAppendages.Length; i++)
+            {
+                _draftAppendages[i] = i < blueprint.Appendages.Count ? blueprint.Appendages[i] : null;
+            }
+
+            SetStatus($"Loaded {blueprint.BlueprintId} into the draft.");
+            RebuildUI();
+        }
+
         private void SelectChassis(ChassisDefinition chassis)
         {
             int assignedAppendages = _draftAppendages.Count(a => a != null);

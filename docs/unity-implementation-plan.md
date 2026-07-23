@@ -229,8 +229,12 @@ Key scene-resident managers: `SimulationClock`, `GridMap`, `ConveyorSystem`,
   Headless `Blueprint`/`PatentRegistry` exist and are Focus-gated via the Workbench's
   "Patent" button, but there's no browse/reuse UI for saved blueprints yet -- that
   remains M9's explicit scope ("Blueprint/Patent Registry UI").
-- **M9 (stretch)** — Solo Assembly Line drafting loop, Blueprint/Patent Registry UI,
-  save/load, polish.
+- **M9 (stretch, done)** — Solo Assembly Line drafting loop (`AssemblyLineState`:
+  slots with decaying Scrap cost, claim, drip-feed refill from a cycling pool),
+  Blueprint/Patent Registry UI (browse + load a patented blueprint back into the
+  Workbench's draft), and JSON save/load (buffers, Focus, patents, every golem's
+  program). The Assembly Line doesn't gate the Workbench's card roster yet -- see its
+  implementation notes below for why that integration was deliberately deferred.
 
 Run M0–M2 first to validate feel quickly; treat M7 as the demoable checkpoint to show
 the user.
@@ -1020,3 +1024,131 @@ wiring is much more reliable as one C# script than as many small tool round-trip
   saves without errors), catching the `Awake()`-in-EditMode gotcha along the way.
 - Full regression: 132/132 tests still pass (105 EditMode + 27 PlayMode) after this
   pass, confirming the wiring didn't disturb any simulation logic.
+
+## M9 implementation notes (Assembly Line, Patent Registry UI, save/load)
+
+Stretch scope per the plan, so trimmed more freely than M5-M8: the Assembly Line ships
+as a genuine, tested, playable economy loop, but doesn't (yet) gate what the Workbench
+shows -- see the deferred-integration note below.
+
+### Code (done)
+- `AssemblyLine/DraftableCardDefinition.cs` (SO) -- wraps exactly one of Chassis/
+  LogicCore/Appendage (extends `UI/WorkbenchCard`'s one-of-two pattern to three,
+  since the Assembly Line drafts chassis too, unlike the Workbench's cards) plus a
+  `baseCost`/`decayPerSecond`/`minCost`.
+- `AssemblyLine/AssemblyLineState.cs` -- a fixed number of slots, each holding a card
+  whose Scrap cost decays the longer it sits (`GetCurrentCost`), `TryClaimSlot`
+  (keyed by `userId` from day one, same convention as `PatentRegistry`) withdraws the
+  *current* decayed cost, then refills that slot from a candidate pool that cycles
+  forever rather than depleting -- matches the sandbox's "no forced end condition"
+  design (same infinite-resource precedent as the demo's `ScrapNode`).
+- `AssemblyLine/AssemblyLineStateHolder.cs` -- built its `State` via a field
+  initializer, not `Awake()`, on purpose: `Awake` doesn't run outside Play Mode for a
+  plain `MonoBehaviour` (the same gotcha M7's `GolemEntity.OnEnable` and the
+  graphics-wiring pass's `GolemVisual.Awake` both hit), and EditMode tests need a
+  working `State` immediately after `AddComponent`.
+- `AssemblyLine/AssemblyLineDemoBootstrap.cs` -- seeds the line with a
+  `DraftableCardDefinition` for every M3-authored roster asset, built at runtime the
+  same way `HardcodedDemoProgram` builds its programs (no pre-authored `.asset`
+  files needed for wrappers this mechanical).
+- `UI/AssemblyLinePanel.cs` -- `OnGUI` browse-and-claim panel, same style as
+  `AlertsPanel`/`InventoryPanel`.
+- `WorkbenchController.LoadBlueprintIntoDraft(Blueprint)` -- the other half of M8's
+  `Patent()`: loads a patented blueprint's chassis/logic core/appendages into the
+  *draft*, not the real `GolemEntity.Program` -- still has to go through Engage Gears
+  (and its Focus cost) to take effect, same as a manually-dragged configuration.
+- `UI/PatentBrowserPanel.cs` -- `OnGUI` list of patented blueprints with a Load
+  button per entry, calling the method above.
+- `Save/SaveData.cs`/`DefinitionCatalog.cs`/`SaveLoadService.cs`/`SaveFileIO.cs` --
+  `JsonUtility` can't serialize `Dictionary` or a polymorphic `ScriptableObject`
+  reference, so buffer contents are parallel lists and every asset reference is
+  stored as its name, resolved back via `DefinitionCatalog` (built from whatever
+  roster the caller already has, not an `AssetDatabase` search, so it works
+  identically in a build). `SaveLoadService.CaptureState`/`RestoreState` are pure
+  logic with no file I/O and no `MonoBehaviour` dependency, so they're fully
+  EditMode-testable; `SaveFileIO` is a thin `JsonUtility` + `File` wrapper kept
+  separate specifically so the logic above stays disk-free and testable.
+  Deliberately excludes belt contents/positions and tick count -- a "continue where
+  you left off" save of the economy/golem-programs, not a byte-for-byte simulation
+  snapshot. Golems no longer present in the scene at load time are silently skipped
+  (there's no "spawn a new one" concept for a save file to invent).
+- `UI/SaveLoadPanel.cs` -- `OnGUI` Save/Load buttons, bottom-right.
+- `ArtificerFocusMeter.SetCurrent(float)` -- added because restoring an exact saved
+  Focus value needs it: `Refund` only ever *increases* `CurrentFocus` (by design, for
+  the M8 chassis-rejection rollback path), which can't express "the save says 10 but
+  we're currently at 100."
+- `Economy/StorageBufferRegistry.Clear()` -- added mid-verification; see the bug
+  below.
+
+### Deferred: Assembly Line doesn't gate the Workbench (yet)
+The tabletop mechanic (`docs/game-design.md`) is a competitive draft; "claim a card"
+should plausibly mean "now it's available in your Workbench roster," not just "now
+it's available" (everything already is, via the M3-authored roster passed straight
+into `WorkbenchController.ConfigureRoster`). Wiring that properly -- the vault
+showing only claimed cards, refreshing live as new ones are claimed -- would touch
+already-tested M8 behavior for a stretch-scope milestone, so this pass keeps the
+Assembly Line as a standalone, fully-functional economy loop (real cost decay, real
+claiming, real drip-feed) without yet rewiring what it unlocks. A natural follow-up,
+not done here.
+
+### Bugs found via live verification
+1. **The Assembly Line/save-load itself uncovered a real Unity Editor hang**, not a
+   code bug: entering Play mode got stuck with `play_mode.is_changing: true` for 50+
+   seconds multiple times in a row (same class of hang M7 hit once). Stop/re-enter
+   didn't reliably clear it this time; needed the user to bring the Editor window to
+   OS focus before a subsequent Play attempt actually ran. `PlayerSettings
+   .runInBackground` was also enabled while investigating (a reasonable permanent
+   setting for a project that gets driven headlessly like this, even though it
+   turned out not to be the actual fix for this particular hang).
+2. **`SaveLoadService.RestoreState` merged instead of replaced buffer state** --
+   found by mutating a buffer between Save and Load and confirming Load didn't
+   actually restore the pre-mutation value (`scrapAfterLoad` came out as
+   `scrapAfterMutate + scrapBeforeSave`, not `scrapBeforeSave`). `StorageBufferRegistry
+   .Deposit` is additive by design (matches golems continuously depositing during
+   normal play), so replaying every saved deposit on top of live state double-counts
+   anything already there. Fixed by adding `StorageBufferRegistry.Clear()` and
+   calling it before restoring buffer entries; both the unit test
+   (`RestoreState_ReplacesExistingBufferState_DoesNotMergeWithIt`) and a live
+   before/mutate/load/after check confirm the fix.
+3. Two tests (`TryClaimSlot_RefillsSlot_FromCyclingPool`,
+   `TryClaimSlot_RefilledSlot_DecayTimerResets`) never funded the test wallet buffer,
+   so `TryClaimSlot` silently failed and the assertions passed for the wrong reason
+   (checking state that would've looked identical whether the claim succeeded or
+   not) -- caught by an actual EditMode test run flagging a *third*, unrelated test
+   with the same root cause, not by inspection.
+
+### M9 manual editor setup (done, via live Unity MCP + `execute_code`)
+1. Loaded the same M3-authored roster assets M8's script did, created
+   `AssemblyLine` (`AssemblyLineStateHolder`) and `AssemblyLineDemoBootstrap` (wired
+   to the roster), `AssemblyLinePanel` (wired to the line + `Buffers`, wallet =
+   `ScrapBuffer`), `PatentBrowserPanel` (wired to `Patents` + `WorkbenchController`),
+   and `SaveLoadPanel` (wired via its `Configure(...)` method, mirroring
+   `GolemEntity.Configure`/`ConfigureEconomy` and M8's `WorkbenchController
+   .Configure*` methods -- necessary here too since the panel has several
+   `[SerializeField]`s no test or bootstrap can reach any other way).
+2. Saved, entered Play mode, and live-drove the actual UI via `execute_code` end to
+   end: claimed a card off the Assembly Line (confirmed Scrap withdrawn at the
+   correctly-decayed cost), dropped cards onto the Workbench and clicked Patent
+   (confirmed a blueprint appeared in `PatentRegistry`), called
+   `LoadBlueprintIntoDraft` on it and clicked Engage Gears (confirmed the golem's
+   `Program` matched the patented config), then Saved, mutated a buffer, and Loaded
+   (confirmed the mutation was discarded and the saved value restored exactly) --
+   see the bugs found above, both caught this way rather than by inspection.
+3. Exited Play mode, re-saved.
+
+### Testing
+- EditMode: `Tests/EditMode/AssemblyLine/AssemblyLineStateTests.cs` (seed/decay/
+  claim success+insufficient-funds/refill-cycles/decay-timer-resets/unknown-user),
+  `Tests/EditMode/Save/SaveLoadServiceTests.cs` (capture, restore, the
+  merge-vs-replace regression, Focus restoring both up and down, blueprint and
+  golem-program round-trips via `DefinitionCatalog`, a since-removed golem being
+  skipped without error), `Tests/EditMode/Save/SaveFileIOTests.cs` (file round-trip,
+  missing-file returns null), plus a new `Clear()` case in
+  `Tests/EditMode/Economy/StorageBufferTests.cs`.
+- PlayMode: extended `Tests/PlayMode/UI/WorkbenchControllerTests.cs` with
+  `LoadBlueprintIntoDraft` commit and null-blueprint-is-a-no-op cases.
+- Manual: verified in-Editor via live MCP calls and a screenshot, described above --
+  a genuine scripted drive of the real UI (button clicks, `HandleDrop` calls,
+  reflection-invoked `SaveLoadPanel.Save`/`Load`), not just the underlying logic in
+  isolation.
+- Full regression: 152/152 tests pass (123 EditMode + 29 PlayMode).

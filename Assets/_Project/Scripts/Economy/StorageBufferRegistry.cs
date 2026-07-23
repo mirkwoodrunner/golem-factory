@@ -47,5 +47,10 @@ namespace GolemFactory.Economy
 
         public bool TryWithdraw(string bufferId, string itemType, int amount = 1) =>
             TryGetBuffer(bufferId, out StorageBuffer buffer) && buffer.TryWithdraw(itemType, amount);
+
+        // For Save/SaveLoadService.RestoreState: a loaded save should *replace* buffer
+        // state, not merge into whatever's currently there (Deposit is additive, which
+        // would double-count anything already in a buffer at load time).
+        public void Clear() => _buffers.Clear();
     }
 }

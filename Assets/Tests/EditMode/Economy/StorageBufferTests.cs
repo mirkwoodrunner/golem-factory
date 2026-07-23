@@ -116,5 +116,18 @@ namespace GolemFactory.Tests.EditMode
 
             Assert.IsTrue(registry.TryWithdraw("ScrapBuffer", "Scrap"));
         }
+
+        [Test]
+        public void Clear_RemovesAllBuffers()
+        {
+            var registry = new StorageBufferRegistry();
+            registry.Deposit("ScrapBuffer", "Scrap", 5);
+            registry.Deposit("BrassBuffer", "Brass", 3);
+
+            registry.Clear();
+
+            Assert.IsFalse(registry.TryGetBuffer("ScrapBuffer", out _));
+            Assert.IsFalse(registry.TryGetBuffer("BrassBuffer", out _));
+        }
     }
 }
