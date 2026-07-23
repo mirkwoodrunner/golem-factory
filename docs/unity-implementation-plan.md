@@ -962,28 +962,61 @@ what needs one manual pass in the Editor.
   `EventBus.GolemStalled`/`GolemResumed` subscription `UI/GolemStallIndicator.cs`
   already uses. Reads `GolemEntity` only for its id; never writes to it.
 
-### Manual Editor setup (can't be authored from git alone)
-1. Pull the branch, open `Main.unity` in Unity 6, let the new
-   `Assets/_Project/Art/*.png` import; confirm no Console errors.
-2. For each new PNG: Texture Type = Sprite (2D and UI), Pixels Per Unit = 64, Filter
-   Mode = Point, Compression = None; Apply.
-3. `Window > 2D > Tile Palette`: create Tile assets from `floor_tile.png`/
-   `floor_tile_accent.png`, paint the scene's existing `Grid`/`Tilemap` GameObject
-   under the golems/buildings.
-4. On GolemB/C/D/E/F/G: add `SpriteRenderer` + `GolemVisual` (assign a
-   `golem_generic_*` variant + the `GolemEntity` reference) + `YSortSpriteRenderer`.
-5. On `PlaceholderBuilding.prefab` and any `AssemblyBayStructure` instances: assign
-   `building_block.png` to the existing `SpriteRenderer`; add `YSortSpriteRenderer`.
-6. On each `BeltSegmentVisual` instance (M4/M5/M7 belts): assign `item_scrap.png`/
-   `item_brass.png` to `Item Sprite`.
-7. On the `BuildMode` ghost object: assign `ghost_placeholder.png`.
-8. Frame `Main Camera`/`CameraRig`'s starting position + `orthographicSize` so the
-   painted floor and golems are in view on load.
-9. Save scene + prefabs; commit `Assets/_Project/Art/**` (now with generated
-   `.meta`s), `Main.unity`, and any changed prefabs.
+### Manual Editor setup (done, via live Unity MCP + `execute_code`)
+Run for real in a later session that had a live Editor connection (unlike the one
+that authored the code/art above), the same way M8's Workbench UI hierarchy was
+built -- via `execute_code` rather than dozens of individual `manage_gameobject`/
+`manage_components` calls, since precise `TextureImporter`/`Tilemap`/`SpriteRenderer`
+wiring is much more reliable as one C# script than as many small tool round-trips.
+1. Pulled the branch; Unity imported the 9 new PNGs automatically (confirmed via
+   `.meta` files appearing and a clean console).
+2. Set import settings (`TextureImporterType.Sprite`, PPU 64, `FilterMode.Point`,
+   `TextureImporterCompression.Uncompressed`, mipmaps off, alpha-is-transparency)
+   on all 9 via a script driving `TextureImporter` directly -- the
+   `manage_texture(set_import_settings)` MCP tool itself didn't accept its own
+   `import_settings` parameter correctly (silently dropped to an empty object),
+   so this used `execute_code` instead rather than fighting that tool further.
+3. Created `Tile` assets (`Assets/_Project/Tilemaps/FloorTile.asset`/
+   `FloorTileAccent.asset`) from the two floor sprites and painted a 13×13 diamond
+   onto the existing `Grid/Tilemap` (accent tiles scattered on an `(x+y) % 4 == 0`
+   pattern for visual variety) -- done via `Tilemap.SetTile` in code rather than the
+   Tile Palette window, which has no MCP equivalent.
+4. Wired all seven golems (`Golem`/`GolemB`–`GolemG`, not just B–G as originally
+   scoped -- the original `Golem` needed the same treatment): added
+   `SpriteRenderer`/`GolemVisual`/`YSortSpriteRenderer`, assigned a palette-swapped
+   `golem_generic_*` sprite + the `GolemEntity` reference (via `SerializedObject`,
+   since those are private `[SerializeField]`s), and moved each to a distinct
+   `GridCoordinateConverter` cell so they don't all render stacked at the origin
+   (their bootstraps never assigned world positions -- purely a simulation-logic
+   demo through M8, positions didn't matter until now).
+5. Same treatment for the single live `AssemblyBay` instance (no
+   `PlaceholderBuilding.prefab` exists in this project -- M1's placeholder is a
+   plain `PlaceableBuilding` GameObject, not a prefab -- so this wired the scene
+   instance directly instead).
+6. **Skipped deliberately**: no `BeltSegmentVisual` instances exist anywhere in this
+   project -- M4 and M5 both explicitly deferred creating them (see their own
+   implementation notes above), so this step in the original checklist assumed
+   objects that were never built. Belts remain invisible; only golems/buildings/
+   floor/ghost got sprites this pass. A future pass can add `BeltSegmentVisual`
+   GameObjects with `Item Sprite` set to `item_scrap.png`/`item_brass.png` once
+   someone actually wants belt items to render.
+7. Assigned `ghost_placeholder.png` to the `BuildMode` ghost's existing
+   `SpriteRenderer`.
+8. Framed `Main Camera`/`CameraRig` on the golem cluster's centroid at
+   `orthographicSize = 5`.
+9. Saved the scene. A real gotcha hit here: the first Edit-mode screenshot showed
+   the tilemap, ghost, and building sprite rendering correctly but **no golem
+   sprites at all** -- `GolemVisual.Awake()` (which copies its serialized `sprite`
+   field onto the `SpriteRenderer`) doesn't run outside Play Mode, same
+   `[ExecuteAlways]` gotcha M7 hit with `GolemEntity.OnEnable`. Confirmed by
+   entering Play mode and re-screenshotting: all seven golems render correctly,
+   "Alerts: All golems running" with zero stalls, zero console errors.
 
 ### Testing
 - EditMode: `Tests/EditMode/World/YSortUtilityTests.cs` — sign/zero/ordering of
   `ComputeSortingOrder`.
-- Manual: everything in the checklist above, run once in-Editor by whoever picks
-  this branch up next — not automatable from a session with no Unity install.
+- Manual: verified in-Editor via live MCP calls and Play-mode screenshots,
+  described above — confirmed the golems actually render (not just that the scene
+  saves without errors), catching the `Awake()`-in-EditMode gotcha along the way.
+- Full regression: 132/132 tests still pass (105 EditMode + 27 PlayMode) after this
+  pass, confirming the wiring didn't disturb any simulation logic.
