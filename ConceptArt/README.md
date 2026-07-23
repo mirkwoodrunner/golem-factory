@@ -17,6 +17,12 @@ Inspirational/reference art for golem-factory. Not final game assets.
   4. Mainspring Overclocker (Utility)
   5. Zeppelin Freight Loader (Late Game Wealth)
 
+- **`workshop.png`** (1408x768) - Isometric pixel-art scene of the golem
+  workshop floor: an artificer channeling aether energy at a central
+  workbench, conveyor belts feeding scrap and resources between forges and
+  crafting stations, a scavenger golem sorting rubble, and a hauler golem
+  crane loading crates onto airships over the clockwork city skyline outside.
+
 ## Adding new art
 
 Drop the file in this folder and add a matching entry above.
