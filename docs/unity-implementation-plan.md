@@ -203,14 +203,16 @@ Key scene-resident managers: `SimulationClock`, `GridMap`, `ConveyorSystem`,
 - **M5 (done)** — Multiple resource chains: a real `ResourceNode`/`ResourceNodeRegistry`
   (replacing M4's infinite-placeholder hack) and `StorageBuffer`/`StorageBufferRegistry`
   (replacing M4's `DemoBuffer`), a Refine appendage with genuine recipe-over-N-ticks
-  processing (`GolemProgram.StepProgressTicks`), and an `InventoryPanel` UI. Deposit
-  wasn't an Aether-node-and-Brass-node pair as the milestone summary literally reads --
-  Brass stayed a Refine output (`ScrapBuffer` → `BrassBuffer`, per the M3-authored
-  `RefineBrass` asset) and Aether became the second raw node, since that matches
-  `digital-design.md`'s Aether-Hauler fluff and gives a genuinely independent second
-  chain rather than two node types feeding the same appendage.
-- **M6** — Stall handling + status UI: `Stalled` state, stall indicator,
-  `GolemStalledEvent`, simple alerts panel.
+  processing (`GolemProgram.StepProgressTicks`), and an `InventoryPanel` UI. The node
+  roster wasn't an Aether-node-and-Brass-node pair as the milestone summary literally
+  reads -- Brass stayed a Refine output (`ScrapBuffer` → `BrassBuffer`, per the
+  M3-authored `RefineBrass` asset) and Aether became the second raw node, since that
+  matches `digital-design.md`'s Aether-Hauler fluff and gives a genuinely independent
+  second chain rather than two node types feeding the same appendage.
+- **M6 (done)** — Stall handling + status UI: `Stalled` state and `GolemStalledEvent`
+  already existed since M2; this milestone added the missing counterpart
+  `GolemResumedEvent`, a world-space `GolemStallIndicator` per golem, and a simple
+  `AlertsPanel` listing every currently-stalled golem.
 - **M7** — First real Cog-style trigger / vertical slice: Threshold + Signal trigger
   types; demo scenario — Golem A hauls scrap until Brass hits a threshold → triggers
   Golem B to refine → triggers Golem C to load into a sell/ship building. *Demoable
@@ -640,3 +642,60 @@ this also had to cover M4's never-applied steps):
   unknown-node-id-stalls case.
 - Manual: verified in-Editor via live MCP calls, described above — not just a
   written checklist this time.
+
+## M6 implementation notes (stall handling + status UI)
+
+`GolemState.Stalled` and `Events/EventBus.cs`'s `GolemStalledEvent` have existed since
+M2/M4 and needed no changes; M6's actual gap was that nothing *consumed* them yet.
+
+### Code (done)
+- `Events/EventBus.cs` gains `GolemResumedEvent` -- the counterpart
+  `GolemStalledEvent` never had. Published exactly once, from
+  `Golems/GolemEntity.cs`'s `Tick`, at the specific transition where a step's
+  `TryBeginStep` succeeds after the golem was `Stalled` (captured via a
+  `wasStalled` flag read at the top of `Tick`, before the Idle-trigger check
+  can overwrite `State`). Without this, a UI element would have to poll
+  `Program.State` every frame to know when to turn itself off; with it,
+  listeners are purely event-driven.
+- `UI/StallTracker.cs` — plain C# (no `MonoBehaviour`) set of currently-stalled
+  golem ids, add-on-`GolemStalled`/remove-on-`GolemResumed`. Factored out so
+  the bookkeeping is unit-testable without a GameObject or `OnGUI`.
+- `UI/GolemStallIndicator.cs` — one per golem, world-space: projects an `OnGUI`
+  label above the golem's transform (via `Camera.main.WorldToScreenPoint`)
+  while stalled. Event-filtered by `golemId` rather than driving off
+  `StallTracker`, since each instance only cares about one golem. No
+  sprite/art asset -- that's later visual polish, not M6's job.
+- `UI/AlertsPanel.cs` — one global `OnGUI` panel (mirrors
+  `GolemProgrammingPanel`/`InventoryPanel`'s style) owning a `StallTracker`
+  and listing every currently-stalled golem id. A live "current status" view,
+  not a history log — a full alert log/timestamps is UI polish for a later
+  milestone, not M6's "simple" scope.
+
+### M6 manual editor setup (done, via live Unity MCP)
+Same live-wiring approach as M5 (see its note above for why this is real
+Editor state, not a checklist):
+1. Created `AlertsPanel` (`AlertsPanel` component) — no references to wire,
+   it's purely event-driven.
+2. Created `StallIndicator_Golem`/`_GolemB`/`_GolemC`/`_GolemD`
+   (`GolemStallIndicator` component each), assigned each one's `Golem` field
+   to the matching `GolemEntity`.
+3. Saved, entered Play mode, and let the demo run ~15s -- the finite
+   `AetherNode` (20 units, from M5) depleted naturally and stalled Golem D on
+   its `ExtractFromNode` step with zero rigging required. Confirmed via both
+   `mcpforunity://scene/gameobject/{id}/components` (`GolemD.Program.State`
+   read back as `2`/Stalled) and a `manage_camera` screenshot showing "⚠
+   GolemD is stalled" in the alerts panel and a floating "⚠ GolemD" label at
+   the world-space indicator position, with zero console errors/warnings.
+4. Exited Play mode and re-saved.
+
+### Testing
+- EditMode: `StallTracker` add-on-stall/remove-on-resume, repeated-stall
+  dedup, resume-for-untracked-golem no-op, multiple golems tracked
+  independently, unsubscribe stops reacting — `Tests/EditMode/UI/
+  StallTrackerTests.cs`.
+- PlayMode: extended `Tests/PlayMode/Golems/GolemRefineTests.cs` --
+  `GolemResumedEvent` fires exactly once at the stalled→running transition
+  (not again on the tick that completes an already-resumed cycle), and never
+  fires for a golem that was never stalled.
+- Manual: verified in-Editor via live MCP calls and a real screenshot,
+  described above.

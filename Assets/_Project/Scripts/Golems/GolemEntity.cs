@@ -38,6 +38,8 @@ namespace GolemFactory.Golems
 
         public void Tick(long tick)
         {
+            bool wasStalled = program.State == GolemState.Stalled;
+
             if (program.State == GolemState.Idle)
             {
                 if (!ShouldTrigger(tick))
@@ -64,6 +66,15 @@ namespace GolemFactory.Golems
                 program.State = GolemState.Stalled;
                 EventBus.Publish(new GolemStalledEvent(golemId));
                 return;
+            }
+
+            // wasStalled can only be true here if StepProgressTicks was 0 (Stalled is only
+            // ever set in the guard clause above, which requires StepProgressTicks == 0),
+            // so reaching this point means TryBeginStep just succeeded -- a genuine recovery,
+            // not a continuation of an already-running multi-tick step.
+            if (wasStalled)
+            {
+                EventBus.Publish(new GolemResumedEvent(golemId));
             }
 
             // Recovers a golem from Stalled/mid-cycle back to Running -- the M4 code never
