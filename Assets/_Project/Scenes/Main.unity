@@ -119,6 +119,53 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &28997510
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 28997512}
+  - component: {fileID: 28997511}
+  m_Layer: 0
+  m_Name: AssemblyLinePanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &28997511
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 28997510}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: beb603f7ed251544fba1f2aed5c92132, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.AssemblyLinePanel
+  lineHolder: {fileID: 1595760787}
+  bufferRegistryHolder: {fileID: 950305960}
+  walletBufferId: ScrapBuffer
+--- !u!4 &28997512
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 28997510}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &33504558
 GameObject:
   m_ObjectHideFlags: 0
@@ -299,6 +346,52 @@ MonoBehaviour:
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.WorkbenchDropZone
   kind: 1
   appendageIndex: 1
+--- !u!1 &61480642
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 61480644}
+  - component: {fileID: 61480643}
+  m_Layer: 0
+  m_Name: PatentBrowserPanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &61480643
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 61480642}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 88361fbbebad9f647924dbfd4eff2e13, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.PatentBrowserPanel
+  patentRegistryHolder: {fileID: 462142431}
+  workbenchController: {fileID: 1853893475}
+--- !u!4 &61480644
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 61480642}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &64937902
 GameObject:
   m_ObjectHideFlags: 0
@@ -1319,6 +1412,65 @@ SpriteRenderer:
   m_WasSpriteAssigned: 0
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &520946157
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 520946159}
+  - component: {fileID: 520946158}
+  m_Layer: 0
+  m_Name: AssemblyLineDemoBootstrap
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &520946158
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 520946157}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 154c566d98a08724d8137df61ede7542, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.AssemblyLine.AssemblyLineDemoBootstrap
+  lineHolder: {fileID: 1595760787}
+  chassisRoster:
+  - {fileID: 11400000, guid: 7dbe7f4449714ed5ab6ae98bf3b01d14, type: 2}
+  - {fileID: 11400000, guid: ca4f64f9f89c4383a22c49162706b4bd, type: 2}
+  - {fileID: 11400000, guid: 4368471bb1f14254aa36b7d226c7b5c2, type: 2}
+  - {fileID: 11400000, guid: f5feaab57fab486fad5c9eb3295a4524, type: 2}
+  - {fileID: 11400000, guid: 10d38008910e4a44acacb5390fe17dc4, type: 2}
+  logicCoreRoster:
+  - {fileID: 11400000, guid: e85c817f57464b1289fd3d9a5cf2a6ab, type: 2}
+  - {fileID: 11400000, guid: 7c0ad2ad706d435e865d52edd1ea66e2, type: 2}
+  appendageRoster:
+  - {fileID: 11400000, guid: 63cf7d84bfec4609bb6f91aea4970411, type: 2}
+  - {fileID: 11400000, guid: 693839c047db44f4a7353cf13bb09cbe, type: 2}
+  - {fileID: 11400000, guid: eb555807b24640a8a8ad58db02eb1f49, type: 2}
+  - {fileID: 11400000, guid: 4505ee4552b64cdb94e8dff3678ea7cf, type: 2}
+--- !u!4 &520946159
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 520946157}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &640773966
 GameObject:
   m_ObjectHideFlags: 0
@@ -4719,6 +4871,50 @@ SpriteRenderer:
   m_WasSpriteAssigned: 0
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &1595760786
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1595760788}
+  - component: {fileID: 1595760787}
+  m_Layer: 0
+  m_Name: AssemblyLine
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1595760787
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1595760786}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a68969f402065a944a2d80342fe14414, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.AssemblyLine.AssemblyLineStateHolder
+--- !u!4 &1595760788
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1595760786}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1610419240
 GameObject:
   m_ObjectHideFlags: 0
@@ -5387,6 +5583,67 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1850065596
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1850065598}
+  - component: {fileID: 1850065597}
+  m_Layer: 0
+  m_Name: SaveLoadPanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1850065597
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1850065596}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f95d7b1dffd31f44ba82ed1dda1fb519, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.SaveLoadPanel
+  bufferRegistryHolder: {fileID: 950305960}
+  focusMeterHolder: {fileID: 33504559}
+  patentRegistryHolder: {fileID: 462142431}
+  chassisRoster:
+  - {fileID: 11400000, guid: 7dbe7f4449714ed5ab6ae98bf3b01d14, type: 2}
+  - {fileID: 11400000, guid: ca4f64f9f89c4383a22c49162706b4bd, type: 2}
+  - {fileID: 11400000, guid: 4368471bb1f14254aa36b7d226c7b5c2, type: 2}
+  - {fileID: 11400000, guid: f5feaab57fab486fad5c9eb3295a4524, type: 2}
+  - {fileID: 11400000, guid: 10d38008910e4a44acacb5390fe17dc4, type: 2}
+  logicCoreRoster:
+  - {fileID: 11400000, guid: e85c817f57464b1289fd3d9a5cf2a6ab, type: 2}
+  - {fileID: 11400000, guid: 7c0ad2ad706d435e865d52edd1ea66e2, type: 2}
+  appendageRoster:
+  - {fileID: 11400000, guid: 63cf7d84bfec4609bb6f91aea4970411, type: 2}
+  - {fileID: 11400000, guid: 693839c047db44f4a7353cf13bb09cbe, type: 2}
+  - {fileID: 11400000, guid: eb555807b24640a8a8ad58db02eb1f49, type: 2}
+  - {fileID: 11400000, guid: 4505ee4552b64cdb94e8dff3678ea7cf, type: 2}
+--- !u!4 &1850065598
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1850065596}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1853893474
 GameObject:
   m_ObjectHideFlags: 0
@@ -6011,3 +6268,8 @@ SceneRoots:
   - {fileID: 462142432}
   - {fileID: 1853893476}
   - {fileID: 1610419242}
+  - {fileID: 1595760788}
+  - {fileID: 520946159}
+  - {fileID: 28997512}
+  - {fileID: 61480644}
+  - {fileID: 1850065598}

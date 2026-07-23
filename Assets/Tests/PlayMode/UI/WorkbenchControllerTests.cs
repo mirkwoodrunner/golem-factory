@@ -279,6 +279,38 @@ namespace GolemFactory.Tests.PlayMode
             Assert.AreEqual(2, golem.Program.appendages.Count);
         }
 
+        [UnityTest]
+        public IEnumerator LoadBlueprintIntoDraft_ThenEngage_CommitsBlueprintOntoGolem()
+        {
+            ChassisDefinition chassis = MakeChassis(3);
+            LogicCoreDefinition logicCore = MakeLogicCore();
+            AppendageActionDefinition appendage = MakeAppendage();
+            var (controller, golem, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            yield return null;
+            var blueprint = new Blueprint("BP-001", "LocalPlayer", chassis, logicCore, new System.Collections.Generic.List<AppendageActionDefinition> { appendage });
+
+            controller.LoadBlueprintIntoDraft(blueprint);
+            EngageViaButton(controller);
+
+            Assert.AreEqual(chassis, golem.Program.chassis);
+            Assert.AreEqual(logicCore, golem.Program.logicCore);
+            Assert.AreEqual(1, golem.Program.appendages.Count);
+            Assert.AreEqual(appendage, golem.Program.appendages[0]);
+        }
+
+        [UnityTest]
+        public IEnumerator LoadBlueprintIntoDraft_NullBlueprint_IsNoOp()
+        {
+            var (controller, golem, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            yield return null;
+
+            controller.LoadBlueprintIntoDraft(null);
+            EngageViaButton(controller);
+
+            Assert.IsNull(golem.Program.chassis);
+            Assert.AreEqual(0, golem.Program.appendages.Count);
+        }
+
         private static void EngageViaButton(WorkbenchController controller) =>
             FindSibling(controller, "Engage").GetComponent<Button>().onClick.Invoke();
 
