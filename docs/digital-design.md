@@ -73,6 +73,10 @@ without physical-layout puzzles competing with the factory-floor puzzle.
 
 - Isometric art means the Unity plan's `GridMap`/Tilemap setup needs an isometric
   tilemap + Y-sort layering, not an orthographic top-down grid — implementation
-  details tracked in `unity-implementation-plan.md`.
+  details tracked in `unity-implementation-plan.md`. **First pass landed** (see
+  "Graphics demo implementation notes" there): placeholder floor tiles, generic
+  golem/building sprites, and `YSortSpriteRenderer` for Y-sort depth. Still real
+  placeholder art, not the bespoke per-chassis pixel art this doc describes — no
+  image-generation tool was available to produce that yet.
 - Not yet decided: whether all five roster golems ship by the M7 vertical-slice
   milestone, or are introduced progressively across later milestones.
