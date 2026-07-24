@@ -47,5 +47,36 @@ namespace GolemFactory.Economy
 
         public bool TryWithdraw(string bufferId, string itemType, int amount = 1) =>
             TryGetBuffer(bufferId, out StorageBuffer buffer) && buffer.TryWithdraw(itemType, amount);
+
+        // Withdraws Scrap then Brass, refunding the Scrap portion if the Brass withdrawal
+        // fails partway through, so a failed combined-cost purchase never leaves the
+        // buffer partially charged. Centralizes the pattern Buildings/AssemblyBayStructure
+        // .TryUpgrade already implemented once inline -- building placement and golem
+        // construction both need the same "pay in Scrap and Brass together" check, so a
+        // third copy wasn't worth pasting.
+        public bool TryWithdrawScrapAndBrass(string bufferId, int scrapCost, int brassCost)
+        {
+            // A zero cost must trivially succeed even if that item type was never
+            // deposited into this buffer -- StorageBuffer.TryWithdraw looks the item type
+            // up first and fails on a miss regardless of the requested amount, so a
+            // literal `TryWithdraw(id, Scrap, 0)` against an untouched buffer would
+            // otherwise incorrectly reject a genuinely free purchase (e.g. the default
+            // zero-cost PlaceableBuilding).
+            if (scrapCost > 0 && !TryWithdraw(bufferId, ItemType.Scrap, scrapCost))
+            {
+                return false;
+            }
+
+            if (brassCost > 0 && !TryWithdraw(bufferId, ItemType.Brass, brassCost))
+            {
+                if (scrapCost > 0)
+                {
+                    Deposit(bufferId, ItemType.Scrap, scrapCost);
+                }
+                return false;
+            }
+
+            return true;
+        }
     }
 }

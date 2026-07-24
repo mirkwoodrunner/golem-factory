@@ -171,6 +171,16 @@ namespace GolemFactory.UI
 
         public void RemoveFromSlot(WorkbenchCard card) => HandleDrop(card, null);
 
+        // Lets a PlayerInteractor point this already-built Workbench at a different golem at
+        // runtime -- e.g. a freshly constructed one, or reprogramming an earlier one -- without
+        // re-running Start()'s one-time setup (BuildChassisButtons, button listener wiring).
+        public void RetargetGolem(GolemEntity golem)
+        {
+            targetGolem = golem;
+            LoadDraftFromGolem();
+            RebuildUI();
+        }
+
         private void EngageGears()
         {
             if (targetGolem == null)

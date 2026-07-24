@@ -14,9 +14,15 @@ namespace GolemFactory.Player
         [SerializeField] private float _zoomSpeed = 5f;
         [SerializeField] private float _minOrthographicSize = 3f;
         [SerializeField] private float _maxOrthographicSize = 15f;
+        [SerializeField] private float _followLerpSpeed = 5f;
 
         private InputAction _panAction;
         private InputAction _zoomAction;
+        private Transform _followTarget;
+
+        // Sandbox.unity calls this to follow the player instead of reading Pan -- Main.unity
+        // never calls it, so its manual-pan behavior is completely unaffected.
+        public void SetFollowTarget(Transform target) => _followTarget = target;
 
         private void Awake()
         {
@@ -49,7 +55,12 @@ namespace GolemFactory.Player
                 return;
             }
 
-            if (_panAction != null)
+            if (_followTarget != null)
+            {
+                Vector3 targetPos = new Vector3(_followTarget.position.x, _followTarget.position.y, _camera.transform.position.z);
+                _camera.transform.position = Vector3.Lerp(_camera.transform.position, targetPos, _followLerpSpeed * Time.deltaTime);
+            }
+            else if (_panAction != null)
             {
                 Vector2 pan = _panAction.ReadValue<Vector2>();
                 if (pan != Vector2.zero)
