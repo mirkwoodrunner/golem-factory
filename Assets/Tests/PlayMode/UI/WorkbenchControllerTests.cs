@@ -279,6 +279,46 @@ namespace GolemFactory.Tests.PlayMode
             Assert.AreEqual(2, golem.Program.appendages.Count);
         }
 
+        [UnityTest]
+        public IEnumerator RetargetGolem_SwitchesTargetSoEngageGearsCommitsOntoTheNewGolem()
+        {
+            ChassisDefinition chassis = MakeChassis(3);
+            AppendageActionDefinition appendage = MakeAppendage();
+            var (controller, golemA, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
+            yield return null;
+
+            var golemB = new GameObject("GolemB").AddComponent<GolemEntity>();
+            golemB.transform.SetParent(_root.transform);
+            golemB.Configure("GolemB", null);
+
+            controller.RetargetGolem(golemB);
+            SelectChassisViaButton(controller, 0);
+            controller.HandleDrop(VaultCard(null, appendage), MakeZone(DropZoneKind.Appendage, 0));
+            EngageViaButton(controller);
+
+            Assert.AreEqual(chassis, golemB.Program.chassis);
+            Assert.AreEqual(1, golemB.Program.appendages.Count);
+            Assert.AreEqual(0, golemA.Program.appendages.Count);
+        }
+
+        [UnityTest]
+        public IEnumerator RetargetGolem_NewGolemAlreadyHasAProgram_ReloadsDraftFromIt()
+        {
+            ChassisDefinition chassis = MakeChassis(3);
+            var (controller, _, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            yield return null;
+
+            var golemB = new GameObject("GolemB").AddComponent<GolemEntity>();
+            golemB.transform.SetParent(_root.transform);
+            golemB.Configure("GolemB", null);
+            golemB.Program.TryAssignChassis(chassis);
+
+            controller.RetargetGolem(golemB);
+            EngageViaButton(controller);
+
+            Assert.AreEqual(chassis, golemB.Program.chassis);
+        }
+
         private static void EngageViaButton(WorkbenchController controller) =>
             FindSibling(controller, "Engage").GetComponent<Button>().onClick.Invoke();
 

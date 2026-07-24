@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using GolemFactory.Buildings;
+using GolemFactory.Economy;
 using GolemFactory.World;
 
 namespace GolemFactory.Player
@@ -19,9 +21,20 @@ namespace GolemFactory.Player
         [SerializeField] private Color _validColor = new Color(0.4f, 1f, 0.4f, 0.6f);
         [SerializeField] private Color _blockedColor = new Color(1f, 0.4f, 0.4f, 0.6f);
 
+        // Left null in Main.unity today (Inspector default) -- placement there stays exactly
+        // as free as it always was. Sandbox.unity wires this to the shared stockpile buffer,
+        // which is what actually turns scrapCost/brassCost on.
+        [SerializeField] private StorageBufferRegistryHolder _stockpileHolder;
+        [SerializeField] private string _stockpileBufferId = "FactoryStockpile";
+        [SerializeField] private PlaceableBuilding[] _availablePrefabs;
+
         private GridCoordinateConverter _converter;
         private InputAction _clickAction;
         private Vector2Int _hoveredCell;
+
+        // Set by PlaceOrRemove on a failed cost check, for a BuildMenuPanel (or a test) to
+        // surface -- mirrors UI/GolemProgrammingPanel's own _statusMessage field.
+        public string LastStatusMessage { get; private set; } = "";
 
         // Programmatic setup used by tests (and available for runtime bootstrapping) so this
         // component doesn't strictly require Inspector-assigned references to be exercised.
@@ -33,6 +46,21 @@ namespace GolemFactory.Player
             _cellSize = cellSize;
             _converter = new GridCoordinateConverter(_cellSize);
         }
+
+        // Wires the economy side separately from Configure above so existing callers (and
+        // Main.unity, which never calls this) are unaffected -- placement there stays free.
+        public void ConfigureEconomy(StorageBufferRegistryHolder stockpileHolder, string stockpileBufferId, PlaceableBuilding[] availablePrefabs)
+        {
+            _stockpileHolder = stockpileHolder;
+            _stockpileBufferId = stockpileBufferId;
+            _availablePrefabs = availablePrefabs;
+        }
+
+        // Called by UI/BuildMenuPanel when the player picks a different placeable type.
+        public void SetActivePrefab(PlaceableBuilding prefab) => _buildingPrefab = prefab;
+
+        public PlaceableBuilding ActivePrefab => _buildingPrefab;
+        public IReadOnlyList<PlaceableBuilding> AvailablePrefabs => _availablePrefabs;
 
         private void Awake()
         {
@@ -112,6 +140,15 @@ namespace GolemFactory.Player
                 return;
             }
 
+            if (_stockpileHolder != null &&
+                !_stockpileHolder.Registry.TryWithdrawScrapAndBrass(_stockpileBufferId, _buildingPrefab.ScrapCost, _buildingPrefab.BrassCost))
+            {
+                LastStatusMessage = $"Not enough resources to build {_buildingPrefab.name} " +
+                                     $"(needs {_buildingPrefab.ScrapCost} Scrap, {_buildingPrefab.BrassCost} Brass).";
+                return;
+            }
+
+            LastStatusMessage = "";
             PlaceableBuilding instance = Instantiate(_buildingPrefab, _converter.CellToWorldCenter(cell), Quaternion.identity);
             instance.Cell = cell;
             map.TryOccupy(cell, instance);

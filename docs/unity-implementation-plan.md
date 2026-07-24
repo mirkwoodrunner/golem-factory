@@ -1020,3 +1020,146 @@ wiring is much more reliable as one C# script than as many small tool round-trip
   saves without errors), catching the `Awake()`-in-EditMode gotcha along the way.
 - Full regression: 132/132 tests still pass (105 EditMode + 27 PlayMode) after this
   pass, confirming the wiring didn't disturb any simulation logic.
+
+## Player-driven starting scenario implementation notes
+
+Through M8/the graphics pass, `Main.unity` has a fully working simulation but **no
+player** — every demo golem is hand-wired and runs automatically the instant Play mode
+starts. This pass adds an actual playable front door: a character that walks around,
+harvests resources by hand, spends them on buildings, and constructs+programs its own
+golems, in a new `Sandbox.unity` scene that reuses `Main.unity`'s systems unchanged.
+
+### Code (done)
+- `Player/PlayerMovement.cs`/`PlayerController.cs` — pure-math `ComputeDisplacement`
+  (same "extract the math" idiom as `GridCoordinateConverter`) plus a thin
+  MonoBehaviour that applies it directly to `transform.position` — analog movement,
+  not grid-locked (only golems are grid-locked per `game-design.md`).
+- `World/ResourceNodeMarker.cs` — spatial proxy for one `ResourceNode`; `TryHarvest`
+  forwards to the same `ResourceNodeRegistry.TryExtract` a golem's `ExtractFromNode`
+  step already calls, so a player harvesting and a golem extracting from the same node
+  genuinely compete for `RemainingQuantity` — an emergent property, not a conflict to
+  resolve.
+- `Player/PlayerInteractor.cs` — finds the nearest interactable (node marker, golem
+  construction station, or existing golem) within range and acts on it via a new
+  `Interact` action: harvest-and-deposit, open the construction panel, or
+  `WorkbenchController.RetargetGolem`. The three kinds don't share an interface, so
+  they're three separately-cached arrays rather than an artificial abstraction.
+- `Buildings/GolemConstructionStation.cs` — a sibling component (`PlaceableBuilding`
+  is `sealed`) that spends a chassis's `scrapCost`/`brassCost` — populated on every
+  chassis asset since M3 but read by zero code until now — via a new
+  `StorageBufferRegistry.TryWithdrawScrapAndBrass` (centralizes the withdraw-then-
+  refund pattern `AssemblyBayStructure.TryUpgrade` already had once), instantiates a
+  bare-chassis `GolemEntity`, registers it with the clock, and retargets the Workbench
+  onto it. **Real bug caught while writing the shared withdraw method**: a literal
+  zero-cost withdrawal (`TryWithdraw(id, Scrap, 0)`) against a buffer that never
+  received a Scrap deposit incorrectly failed, because `StorageBuffer.TryWithdraw`
+  rejects on a dictionary miss regardless of the requested amount — fixed by skipping
+  the withdraw call entirely when a cost is `<= 0`, locked in with a dedicated test.
+- `UI/GolemConstructionPanel.cs`/`UI/BuildMenuPanel.cs` — `OnGUI` panels (same style as
+  `GolemProgrammingPanel`, no UGUI needed) listing chassis-with-cost and
+  placeable-prefabs-with-cost respectively; the latter just calls the new
+  `BuildModeController.SetActivePrefab`.
+- `World/SandboxBootstrap.cs` — the scene's only front-door script: registers the
+  starting `ResourceNode`s (ids matched by hand-placed markers) and starts the clock.
+  Also wires `CameraRigController.SetFollowTarget(player)` once at `Start()`, since
+  that method isn't a `[SerializeField]` (same `Configure(...)`-not-Inspector idiom as
+  everywhere else) and something has to call it.
+- `WorkbenchController.RetargetGolem` — reloads the draft from a different golem and
+  rebuilds the UI, without re-running `Start()`'s one-time button/listener wiring.
+- `BuildModeController` — gained an optional `StorageBufferRegistryHolder` +
+  `SetActivePrefab`; when unconfigured (as in `Main.unity` today) placement stays
+  exactly as free as it always was — zero regression risk, confirmed live (below).
+- `CameraRigController` — gained `SetFollowTarget(Transform)`; when unset (as in
+  `Main.unity`) it reads `Pan` exactly as before.
+- `Tools/Art/generate_placeholder_art.py` — added `make_player()`, a human silhouette
+  (round head, hat brim, cloak) deliberately distinct from `make_golem()`'s boxy
+  tripod-and-eye shape, producing `Assets/_Project/Art/player.png`.
+
+### Manual Editor setup (done, via live Unity MCP + `execute_code`)
+1. Extracted `Main.unity`'s Workbench UI (Canvas/EventSystem/`WorkbenchController`)
+   and manager holders (`StorageBufferRegistryHolder`, `ResourceNodeRegistryHolder`,
+   `ConveyorSystemHolder`, `ArtificerFocusMeterHolder`, `PatentRegistryHolder`,
+   `GridMapHolder`, `SimulationClockRunner`) into two prefabs
+   (`WorkbenchCanvas.prefab`/`ManagerHolders.prefab`) by reparenting the existing
+   scene objects under two new wrapper GameObjects and converting each to a prefab —
+   `Main.unity`'s own GameObjects/components keep their identity throughout, so every
+   existing serialized reference into them stays valid; confirmed via a full test run
+   and a live Play-mode screenshot immediately after (Workbench, inventory, and all
+   seven golems rendering identically to before).
+2. Created `GolemPrefab.prefab` (`GolemEntity`/`SpriteRenderer`/`GolemVisual`/
+   `YSortSpriteRenderer`) by duplicating `Main.unity`'s existing `Golem` GameObject,
+   clearing its scene-specific `golemId`/holder references (a fresh prefab shouldn't
+   carry a stale link to `Main.unity`'s specific `Nodes`/`Buffers`/`Conveyor`), saving
+   it as a prefab, then deleting the staging duplicate from `Main.unity`.
+3. **Gotcha confirmed**: a prefab asset cannot hold a field reference to an object in
+   a *different* prefab — so `WorkbenchController.focusMeterHolder`/
+   `patentRegistryHolder`, which pointed at `Main.unity`'s specific `FocusMeter`/
+   `Patents` GameObjects when `WorkbenchCanvas.prefab` was created (before those
+   objects were themselves wrapped into `ManagerHolders.prefab`), came back `null` on
+   a fresh instantiation into `Sandbox.unity` and had to be re-wired there explicitly.
+   `Main.unity` itself was unaffected, since Unity preserves same-scene cross-prefab
+   references as an instance-level override, not something baked into either asset.
+4. Assembled `Sandbox.unity`: instantiated both prefabs, hand-painted a 13×13 isometric
+   floor (`Tilemap.SetTile` in a loop, reusing M8/graphics-pass's `FloorTile.asset`),
+   built `Player`/`CameraRig`/`BuildMode`/`Ghost`, created two more small template
+   prefabs (`DepotPrefab.prefab` — a paid placeholder building — and
+   `GolemConstructionStationPrefab.prefab`, one instance of which is the scene's free
+   starter station), three `ResourceNodeMarker`s (Scrap/Brass/Aether — Brass is
+   directly harvestable here rather than requiring the refining chain first, so a
+   fresh save can afford every chassis without an extra bootstrapping step), and
+   wired every cross-reference (chassis roster, golem prefab, stockpile buffer,
+   Workbench, camera follow target) via `execute_code` rather than dozens of
+   individual property-set calls, then read every wired component back to confirm
+   nothing silently resolved to `null`.
+5. Live-verified the entire loop in Play mode via `execute_code`, driving the real
+   public methods (not simulated input): walked the player to each node and called
+   `PlayerInteractor.Interact()` in a loop — confirmed the shared stockpile
+   incremented per harvest; interacted with the starter station, opened the
+   construction panel, and called `TryConstructGolem` — confirmed the exact chassis
+   cost was withdrawn and a real `GolemEntity` was spawned; called
+   `BuildModeController.PlaceOrRemove` with insufficient funds (correctly rejected,
+   no withdrawal) and then with sufficient funds (correctly withdrew the exact Depot
+   cost and occupied the cell); retargeted the Workbench onto the new golem, assigned
+   a logic core and appendage directly, advanced the `SimulationClock`, and confirmed
+   the golem actually extracted Scrap onto a belt — the same `ResourceNode` the player
+   themselves had just harvested from. One benign console message ("PlayerLoop called
+   recursively") appeared, traced to invoking gameplay code via `execute_code` while
+   Play Mode's own loop was concurrently running — an artifact of that testing
+   shortcut, not a bug in the shipped code (it does not appear during normal Play
+   Mode entry/exit or anywhere in the automated test suite).
+6. Re-ran the full suite and a live Play-mode pass against `Main.unity` unchanged
+   afterward (see regression count below).
+
+### Testing
+- EditMode: `PlayerMovementTests.cs`, `ResourceNodeMarkerTests.cs`,
+  `GolemConstructionStationTests.cs` (construct success/insufficient-Scrap/
+  insufficient-Brass-refunds-Scrap — runs fine in EditMode, unlike the
+  `Awake`/`OnEnable`-dependent components elsewhere in this project, since
+  `Instantiate`/`SimulationClockRunner.Register` don't depend on either), extended
+  `StorageBufferTests.cs` (`TryWithdrawScrapAndBrass`, including the zero-cost bug
+  above) and `AssemblyBayStructureTests.cs` (unchanged after its `TryUpgrade` refactor
+  — doubles as a regression check).
+- PlayMode: `PlayerControllerTests.cs`, `PlayerInteractorTests.cs`, extended
+  `BuildModeControllerTests.cs` (insufficient/sufficient funds, and an explicit
+  unconfigured-stockpile-stays-free regression guard) and `WorkbenchControllerTests.cs`
+  (`RetargetGolem` switches the commit target and reloads the draft from the new
+  golem's existing program).
+- Full regression: 162/162 tests pass (122 EditMode + 40 PlayMode) after this pass,
+  and a live Play-mode pass against `Main.unity` (unchanged: same Workbench, inventory,
+  alerts, and seven golems rendering and running identically, zero console errors).
+
+### Deliberate scope cuts
+1. No player collision/grid-snapping — the player can walk through buildings/golems.
+2. No refund on removing a placed building.
+3. `AssemblyBayStructure`'s capacity/tier upgrade isn't wired into the Sandbox loop.
+4. `BuildMenuPanel` ships with exactly two placeable types (a paid Depot placeholder
+   and the Golem Construction Station) — no general building catalog, and no
+   "auto-extracting machine" building, since in this game's fiction a programmed golem
+   *is* automated collection.
+5. No node-depletion visual feedback on `ResourceNodeMarker` — harvesting a depleted
+   node just fails with a status message.
+6. **Known gap, not fixed here**: `SaveLoadService.RestoreState` can only restore
+   programs onto `GolemEntity`s already present in the scene at Load time — it can't
+   re-spawn a player's dynamically-constructed golem roster from scratch. Low-stakes
+   in `Main.unity` (golems are always scene-resident there) but more visible now that
+   `Sandbox.unity` spawns golems at runtime.

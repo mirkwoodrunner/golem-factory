@@ -116,5 +116,66 @@ namespace GolemFactory.Tests.EditMode
 
             Assert.IsTrue(registry.TryWithdraw("ScrapBuffer", "Scrap"));
         }
+
+        [Test]
+        public void TryWithdrawScrapAndBrass_SufficientOfBoth_WithdrawsBoth()
+        {
+            var registry = new StorageBufferRegistry();
+            registry.Deposit("Wallet", "Scrap", 20);
+            registry.Deposit("Wallet", "Brass", 5);
+
+            bool result = registry.TryWithdrawScrapAndBrass("Wallet", 15, 3);
+
+            Assert.IsTrue(result);
+            Assert.AreEqual(5, registry.GetOrCreate("Wallet").GetQuantity("Scrap"));
+            Assert.AreEqual(2, registry.GetOrCreate("Wallet").GetQuantity("Brass"));
+        }
+
+        [Test]
+        public void TryWithdrawScrapAndBrass_InsufficientScrap_Fails_BrassUntouched()
+        {
+            var registry = new StorageBufferRegistry();
+            registry.Deposit("Wallet", "Brass", 5);
+
+            bool result = registry.TryWithdrawScrapAndBrass("Wallet", 15, 3);
+
+            Assert.IsFalse(result);
+            Assert.AreEqual(5, registry.GetOrCreate("Wallet").GetQuantity("Brass"));
+        }
+
+        [Test]
+        public void TryWithdrawScrapAndBrass_InsufficientBrass_Fails_RefundsScrap()
+        {
+            var registry = new StorageBufferRegistry();
+            registry.Deposit("Wallet", "Scrap", 20);
+
+            bool result = registry.TryWithdrawScrapAndBrass("Wallet", 15, 3);
+
+            Assert.IsFalse(result);
+            Assert.AreEqual(20, registry.GetOrCreate("Wallet").GetQuantity("Scrap"));
+        }
+
+        [Test]
+        public void TryWithdrawScrapAndBrass_ZeroCostForBoth_SucceedsOnUntouchedBuffer()
+        {
+            // A zero-cost purchase must succeed even if the buffer has never seen a
+            // deposit of either item type -- see the method's own comment for why a naive
+            // TryWithdraw(id, type, 0) against an untouched buffer would otherwise fail.
+            var registry = new StorageBufferRegistry();
+
+            Assert.IsTrue(registry.TryWithdrawScrapAndBrass("NeverTouchedBuffer", 0, 0));
+        }
+
+        [Test]
+        public void TryWithdrawScrapAndBrass_ZeroBrassCost_OnlyChecksScrap()
+        {
+            var registry = new StorageBufferRegistry();
+            registry.Deposit("Wallet", "Scrap", 10);
+
+            bool result = registry.TryWithdrawScrapAndBrass("Wallet", 10, 0);
+
+            Assert.IsTrue(result);
+            Assert.AreEqual(0, registry.GetOrCreate("Wallet").GetQuantity("Scrap"));
+        }
     }
 }
