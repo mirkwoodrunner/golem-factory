@@ -1295,3 +1295,154 @@ golems, in a new `Sandbox.unity` scene that reuses `Main.unity`'s systems unchan
    re-spawn a player's dynamically-constructed golem roster from scratch. Low-stakes
    in `Main.unity` (golems are always scene-resident there) but more visible now that
    `Sandbox.unity` spawns golems at runtime.
+
+## Walkable Main.unity demo + UGUI HUD redesign implementation notes
+
+`Main.unity` (the 7-golem assembly-line demo) had no player or movement at all — only
+free camera pan/zoom — and its screen was badly cluttered: `WorkbenchCanvas` was a
+full-screen UGUI canvas with no show/hide concept, always on top of five overlapping
+`OnGUI` corner panels (`InventoryPanel`/`AssemblyLinePanel`/`PatentBrowserPanel`/
+`AlertsPanel`/`SaveLoadPanel`) — the exact clutter the "Bugs found via live
+verification" note under M8 already flagged as deferred "cosmetic trim." This pass
+makes the demo walkable and gives it a real, uncluttered HUD.
+
+### Code (done)
+- `World/MainSceneBootstrap.cs` — `Main.unity`'s only player-facing bootstrap, mirrors
+  `SandboxBootstrap.cs` trimmed to its one actual job here: wiring
+  `CameraRigController.SetFollowTarget(player)` once at `Start()` (everything else the
+  scene needs is already seeded by the existing `BeltDemoBootstrap`/
+  `TriggerDemoBootstrap`/`AssemblyLineDemoBootstrap`).
+- `UI/WorkbenchController.cs` — gained `IsOpen`/`Open()`/`Close()` plus
+  `canvasRoot`/`closeButton`/`managementPanel`/`constructionPanel` fields
+  (`ConfigureVisibility(...)` sets them programmatically, same idiom as every other
+  `Configure*` method on this class). `Open()` closes the other two HUD screens for
+  mutual exclusion; `Start()` now always calls `Close()` — a no-op on `IsOpen`
+  bookkeeping only when `canvasRoot` is unset, so every pre-existing caller/test that
+  never wires it (including `WorkbenchControllerTests.Build()`) is unaffected.
+- `UI/GolemConstructionPanel.cs` — gained the same `workbenchController`/
+  `managementPanel` cross-refs so its own `Open()` closes them too; stays `OnGUI` (it
+  was already correctly `IsOpen`-gated, so there's no overlap risk to solve by
+  converting it).
+- `Player/PlayerInteractor.cs` — `TryProgram` now calls `_workbenchController.Open()`
+  immediately before `RetargetGolem`, so walking up to a golem actually reveals the
+  Workbench instead of silently retargeting an already-visible one.
+- `UI/ManagementPanel.cs` (new) — consolidates the four small always-on panels into
+  one tabbed, toggleable UGUI screen (`Tab` key, new `ToggleMenu` input action).
+  Lives on its own always-active `ManagementController` GameObject separate from the
+  `ManagementScreen` it shows/hides, for the same reason `WorkbenchController` lives
+  off its own toggled canvas root: the key listener has to keep running while the
+  screen is hidden. Refreshes only the currently active tab, once per frame while
+  open — same "clear children, rebuild from data" idiom as
+  `WorkbenchController.RebuildUI()`.
+- `UI/InventoryPanel.cs`/`AssemblyLinePanel.cs`/`PatentBrowserPanel.cs`/
+  `SaveLoadPanel.cs` — converted from self-drawing `OnGUI` panels to `Refresh()`-driven
+  UGUI components living inside `ManagementPanel`'s tabs. `PatentBrowserPanel`'s Load
+  button now also calls `workbenchController.Open()` (so a loaded blueprint visibly
+  lands in the Workbench, now that the Workbench isn't always on-screen already).
+- `UI/AlertsPanel.cs` — converted to `AlertsStrip`, a small always-active top-center
+  UGUI strip (was the one panel that never overlapped anything as `OnGUI`, converted
+  anyway for a single consistent rendering technology rather than one lingering IMGUI
+  seam).
+- `Input/GolemFactoryInputActions.inputactions` — added `ToggleMenu` (`<Keyboard>/tab`,
+  previously unbound) to the `Gameplay` map.
+
+### Manual Editor setup (done, via live Unity MCP + `execute_code`)
+1. Restructured the shared `WorkbenchCanvas.prefab` (via
+   `PrefabUtility.LoadPrefabContents`/`SaveAsPrefabAsset`, in staged `execute_code`
+   passes rather than one large script, verifying the hierarchy after each stage):
+   wrapped the existing four Workbench columns under a new `WorkbenchScreen` (capturing
+   and reapplying each column's exact anchors/position/size across the reparent, since
+   both old and new parents are full-stretch anyway but nothing was left to chance),
+   added a `CloseButton`, then built `ManagementScreen` (`Background`/`TabBar` with
+   four tab buttons + its own `CloseButton`/`TabContent` with the four tab
+   GameObjects — `InventoryTab`/`PatentsTab` use a real `ScrollRect`+`Viewport`+
+   `Content`+`VerticalLayoutGroup`+`ContentSizeFitter`, `AssemblyLineTab`/`SaveLoadTab`
+   don't need scrolling) and the always-active `AlertsStrip`, all as one shared
+   `Canvas`/`EventSystem` rather than a second prefab (Unity expects exactly one active
+   `EventSystem`; a second would risk real input-focus conflicts). `SaveLoadPanel`'s
+   `chassisRoster`/`logicCoreRoster`/`appendageRoster` were baked directly into the
+   prefab using the same asset GUIDs already baked into
+   `WorkbenchController.availableChassis/availableLogicCores/availableAppendages` —
+   safe since these are asset refs, not scene refs.
+2. **Real bug caught via a Play-mode read-back, not by inspection**: reflection
+   (`FieldInfo.SetValue`) on a private `[SerializeField]` of a component that's part of
+   a scene's *prefab instance* takes effect immediately in memory, but silently reverts
+   to the prefab's default on the next scene save/domain reload unless the change is
+   also registered as an instance override via
+   `PrefabUtility.RecordPrefabInstancePropertyModifications(component)` (plus
+   `EditorUtility.SetDirty(component)`). First pass wired `InventoryPanel`/
+   `AssemblyLinePanel`/`PatentBrowserPanel`/`SaveLoadPanel`'s per-scene data-source
+   holders and `WorkbenchController`/`ManagementPanel`'s `constructionPanel` refs this
+   way, saved, and they read back fine *in the same Editor session* — but came back
+   `null` after actually entering Play mode (which the running scene doesn't reload
+   from disk by default, so this was doubly surprising until re-checking in Edit mode
+   confirmed the save itself hadn't captured them). Re-wired with
+   `RecordPrefabInstancePropertyModifications`, confirmed present in the raw scene
+   YAML (`m_Modifications`/`propertyPath` entries) this time, then re-verified in Play
+   mode.
+3. Added a plain (non-prefab) `Player` GameObject to `Main.unity`, mirroring
+   `Sandbox.unity`'s `Player` exactly: `SpriteRenderer` (`player.png`, already built for
+   `Sandbox.unity`), `PlayerController`, `PlayerInteractor` (wired to the scene's
+   `ManagerHolders` stockpile, the Workbench's `WorkbenchController`, and a new bare
+   `GolemConstructionPanel` added purely for parity — `Main.unity` has no
+   `GolemConstructionStation` yet, so that path is a harmless no-op today but needs no
+   extra wiring the moment one is added). Added `MainSceneBootstrap`, wired to
+   `CameraRig` and the new `Player`.
+4. Spread the 7 golems + `AssemblyBay` from their original ~4×2-unit cluster near the
+   origin out across the 13×13 floor's full ~12×6-unit footprint (no belt visuals
+   exist in the scene, so repositioning is purely cosmetic — zero effect on the
+   assembly-line simulation logic).
+5. Deleted the five old standalone OnGUI panel GameObjects (superseded by the
+   Workbench instance's new `ManagementScreen` tabs) and wired the tabs' per-scene data
+   sources (`StorageBufferRegistryHolder`, `AssemblyLineStateHolder`,
+   `PatentRegistryHolder`, `ArtificerFocusMeterHolder` — the latter two reused directly
+   off `WorkbenchController`'s own already-correct references rather than re-resolved
+   independently, to guarantee the same instances).
+6. Live-verified end to end in Play mode via `execute_code`: drove
+   `PlayerController.MoveBy` directly and confirmed the camera followed; walked next to
+   a golem and called `PlayerInteractor.Interact()` — confirmed `WorkbenchController
+   .IsOpen` flipped true and it targeted the right golem; toggled `ManagementPanel` and
+   confirmed it force-closed the Workbench and vice versa; exercised every
+   `ManagementPanel` tab (`Refresh()` populated real inventory/assembly-line rows) and
+   the Patents tab's full round-trip (`Patent()` → tab lists it → clicking its real
+   `Load` button called `LoadBlueprintIntoDraft` *and* opened the Workbench *and*
+   closed Management); clicked the real Save/Load buttons and confirmed the status
+   text updated correctly. Took screenshots confirming the default (nothing open),
+   Workbench-open, and Management-open states never overlap. Re-verified
+   `Sandbox.unity` afterward (harvest → open construction panel → construct attempt),
+   confirming the shared prefab's now-hidden-by-default Workbench doesn't regress its
+   existing flow there.
+
+### Testing
+- New `Tests/PlayMode/UI/ManagementPanelTests.cs`, `InventoryPanelTests.cs`,
+  `AssemblyLinePanelTests.cs` (seeds a `DraftableCardDefinition` via
+  `AssemblyLineState.SeedCandidates` since the state starts with empty slots by
+  default — production seeds it via `AssemblyLineDemoBootstrap`, which the test
+  doesn't otherwise need), `PatentBrowserPanelTests.cs`, `SaveLoadPanelTests.cs`
+  (writes/cleans up `SaveFileIO.DefaultPath`, same as `SaveFileIOTests`, since the
+  panel has no path-injection hook).
+- Extended `WorkbenchControllerTests.cs` (`Open`/`Close`/`IsOpen`, mutual exclusion
+  with `ManagementPanel`/`GolemConstructionPanel`) and `PlayerInteractorTests.cs`
+  (`Interact_GolemInRange_RetargetsWorkbench` now also asserts `workbench.IsOpen`).
+- **Gotcha hit writing the new UGUI tests**: `ClearChildren`'s `Destroy()` defers
+  actual removal to end-of-frame, so a test that calls `Refresh()` twice back-to-back
+  without a `yield return null` in between sees a doubled `childCount` (both the
+  about-to-be-destroyed old rows and the new ones coexist for that instant) — fixed by
+  yielding once after the second `Refresh()` before asserting, matching how
+  `ManagementPanel.Update()` actually calls `Refresh()` once per frame in real usage
+  rather than twice synchronously.
+- Full regression: 199/199 tests pass (140 EditMode + 59 PlayMode).
+
+### Deliberate scope cuts
+1. `Sandbox.unity`'s `ManagementScreen` tabs inherit the shared prefab's shape but
+   aren't re-wired with Sandbox-specific data sources here (it has no
+   `AssemblyLineStateHolder` at all, and the Inventory/Patents/SaveLoad tabs would need
+   their own per-instance holder wiring, same as `Main.unity` just got) — only the
+   Workbench's now-hidden-by-default behavior was confirmed to carry over cleanly;
+   fully wiring Sandbox's Management HUD is a natural follow-up, not done here.
+2. `GolemConstructionPanel` stays `OnGUI` rather than converting to UGUI — no clutter
+   problem to fix there today, since it's already interaction-gated and mutually
+   exclusive with the UGUI screens.
+3. No changes to player movement bounds/collision, camera zoom limits, or the floor's
+   painted tile count — "room to move" came entirely from spreading out existing
+   objects across the already-painted 13×13 floor, not from enlarging the world.

@@ -351,6 +351,61 @@ namespace GolemFactory.Tests.PlayMode
             Assert.AreEqual(0, golem.Program.appendages.Count);
         }
 
+        [UnityTest]
+        public IEnumerator Start_WithNoCanvasRootConfigured_StaysUsableAsBefore()
+        {
+            // Build() (used by every other test in this file) never wires canvasRoot --
+            // Open()/Close() must stay pure IsOpen bookkeeping with no visual side effects
+            // there, so every pre-existing test above keeps passing unmodified.
+            var (controller, _, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            yield return null;
+
+            Assert.IsFalse(controller.IsOpen);
+            controller.Open();
+            Assert.IsTrue(controller.IsOpen);
+        }
+
+        [UnityTest]
+        public IEnumerator Open_ActivatesCanvasRoot_Close_Deactivates()
+        {
+            var root = new GameObject("VisRoot");
+            var controller = root.AddComponent<WorkbenchController>();
+            var canvasRoot = new GameObject("CanvasRoot");
+            canvasRoot.transform.SetParent(root.transform);
+            controller.ConfigureVisibility(canvasRoot, null, null, null);
+
+            controller.Open();
+            Assert.IsTrue(controller.IsOpen);
+            Assert.IsTrue(canvasRoot.activeSelf);
+
+            controller.Close();
+            Assert.IsFalse(controller.IsOpen);
+            Assert.IsFalse(canvasRoot.activeSelf);
+
+            Object.DestroyImmediate(root);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator Open_ClosesManagementPanelAndConstructionPanel()
+        {
+            var root = new GameObject("MutexRoot");
+            var controller = root.AddComponent<WorkbenchController>();
+            var management = root.AddComponent<ManagementPanel>();
+            var construction = root.AddComponent<GolemConstructionPanel>();
+            controller.ConfigureVisibility(null, null, management, construction);
+            management.Open();
+            construction.Open(null);
+
+            controller.Open();
+
+            Assert.IsFalse(management.IsOpen);
+            Assert.IsFalse(construction.IsOpen);
+
+            Object.DestroyImmediate(root);
+            yield return null;
+        }
+
         private static void EngageViaButton(WorkbenchController controller) =>
             FindSibling(controller, "Engage").GetComponent<Button>().onClick.Invoke();
 
