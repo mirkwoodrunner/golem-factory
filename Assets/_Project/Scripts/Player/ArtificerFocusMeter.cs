@@ -46,5 +46,13 @@ namespace GolemFactory.Player
         {
             CurrentFocus = Mathf.Min(MaxFocus, CurrentFocus + Mathf.Max(0f, amount));
         }
+
+        // For restoring an exact saved value (Save/SaveLoadService) -- unlike Refund,
+        // which only ever increases CurrentFocus, a loaded save might be lower than
+        // whatever's live right now.
+        public void SetCurrent(float value)
+        {
+            CurrentFocus = Mathf.Clamp(value, 0f, MaxFocus);
+        }
     }
 }

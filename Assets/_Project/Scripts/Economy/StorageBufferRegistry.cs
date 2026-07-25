@@ -78,5 +78,10 @@ namespace GolemFactory.Economy
 
             return true;
         }
+
+        // For Save/SaveLoadService.RestoreState: a loaded save should *replace* buffer
+        // state, not merge into whatever's currently there (Deposit is additive, which
+        // would double-count anything already in a buffer at load time).
+        public void Clear() => _buffers.Clear();
     }
 }
