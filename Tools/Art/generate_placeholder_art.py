@@ -81,6 +81,30 @@ def make_golem(body, body_dark, accent) -> Image.Image:
     return upscale(img, 4)  # -> 64x96
 
 
+def make_player(body, body_dark, accent) -> Image.Image:
+    # 16x24 canvas, human silhouette (round head, cloak, hat brim) -- deliberately
+    # distinct from make_golem's boxy tripod-and-eye shape so player and golem read
+    # apart at a glance even sharing the same warm wood-and-brass palette.
+    w, h = 16, 24
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    draw = ImageDraw.Draw(img)
+
+    # Legs.
+    draw.rectangle([5, 18, 7, 23], fill=body_dark, outline=OUTLINE)
+    draw.rectangle([9, 18, 11, 23], fill=body_dark, outline=OUTLINE)
+    # Cloak/torso, wider at the hem than the shoulders.
+    draw.polygon([(6, 9), (10, 9), (13, 18), (3, 18)], fill=body, outline=OUTLINE)
+    # Arms.
+    draw.rectangle([2, 10, 3, 15], fill=body_dark, outline=OUTLINE)
+    draw.rectangle([13, 10, 14, 15], fill=body_dark, outline=OUTLINE)
+    # Head.
+    draw.ellipse([5, 2, 11, 9], fill=STONE_LIGHT, outline=OUTLINE)
+    # Hat brim -- the accent color, standing in for a golem's glowing eye.
+    draw.rectangle([3, 3, 13, 4], fill=accent, outline=OUTLINE)
+
+    return upscale(img, 4)  # -> 64x96
+
+
 def make_building_block(fill, fill_dark) -> Image.Image:
     w, h = 16, 16
     img = Image.new("RGBA", (w, h), TRANSPARENT)
@@ -114,6 +138,8 @@ def main() -> None:
     save(make_golem(COPPER, COPPER_DARK, TEAL_GLOW), "golem_generic_copper.png")
     save(make_golem(BRASS, BRASS_DARK, TEAL_GLOW), "golem_generic_brass.png")
     save(make_golem(STEEL, STEEL_DARK, TEAL_GLOW), "golem_generic_steel.png")
+
+    save(make_player(WOOD_MID, WOOD_DARK, BRASS), "player.png")
 
     save(make_building_block(WOOD_DARK, WOOD_MID), "building_block.png")
 

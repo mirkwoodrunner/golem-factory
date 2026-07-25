@@ -37,17 +37,13 @@ namespace GolemFactory.Buildings
 
         // Withdraws the upgrade cost from the given buffer; refunds the Scrap portion if
         // the Brass withdrawal fails partway through, so a failed upgrade never leaves the
-        // buffer partially charged.
+        // buffer partially charged. Delegates to StorageBufferRegistry.TryWithdrawScrapAndBrass,
+        // which centralizes this exact pattern for the other call sites that need it too
+        // (building placement, golem construction).
         public bool TryUpgrade(StorageBufferRegistry buffers, string resourceBufferId)
         {
-            if (buffers == null || !buffers.TryWithdraw(resourceBufferId, ItemType.Scrap, upgradeScrapCost))
+            if (buffers == null || !buffers.TryWithdrawScrapAndBrass(resourceBufferId, upgradeScrapCost, upgradeBrassCost))
             {
-                return false;
-            }
-
-            if (!buffers.TryWithdraw(resourceBufferId, ItemType.Brass, upgradeBrassCost))
-            {
-                buffers.Deposit(resourceBufferId, ItemType.Scrap, upgradeScrapCost);
                 return false;
             }
 

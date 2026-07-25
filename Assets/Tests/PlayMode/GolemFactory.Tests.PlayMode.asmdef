@@ -4,6 +4,7 @@
     "references": [
         "GolemFactory.Simulation",
         "GolemFactory.Runtime",
+        "Unity.InputSystem",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],
