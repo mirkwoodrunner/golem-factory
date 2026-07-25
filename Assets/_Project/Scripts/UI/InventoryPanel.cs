@@ -46,7 +46,12 @@ namespace GolemFactory.UI
         {
             var go = new GameObject("Row", typeof(RectTransform), typeof(LayoutElement), typeof(Text));
             go.transform.SetParent(content, false);
-            go.GetComponent<LayoutElement>().preferredHeight = 20f;
+            LayoutElement rowElement = go.GetComponent<LayoutElement>();
+            rowElement.preferredHeight = 20f;
+            // flexibleHeight must be explicit 0 -- otherwise the parent VerticalLayoutGroup
+            // hands out leftover space to these rows even with childForceExpandHeight
+            // false, stretching each row and spacing the whole list out.
+            rowElement.flexibleHeight = 0f;
 
             Text label = go.GetComponent<Text>();
             label.text = text;

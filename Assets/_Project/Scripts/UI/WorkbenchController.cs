@@ -57,6 +57,22 @@ namespace GolemFactory.UI
         [SerializeField] private float reprogramFocusCost = 10f;
         [SerializeField] private float patentFocusCost = 20f;
 
+        // Reskin sprites for GameObjects built at runtime (chassis buttons/vault cards
+        // are instantiated per-entry, not baked into the prefab, so they can't just get a
+        // sprite assigned in the Inspector the way the static Workbench chrome can).
+        // Left unset, BuildChassisButtons()/CreateCard() fall back to their original flat
+        // Image.color-only look -- no behavior change for anything that doesn't wire these.
+        [SerializeField] private Sprite chassisButtonSprite;
+        [SerializeField] private Sprite vaultCardSprite;
+
+        // Test/bootstrap-friendly setup for the two runtime-instantiated sprite skins,
+        // same Configure* idiom as the rest of this class.
+        public void ConfigureSprites(Sprite chassisButton, Sprite vaultCard)
+        {
+            chassisButtonSprite = chassisButton;
+            vaultCardSprite = vaultCard;
+        }
+
         private ChassisDefinition _draftChassis;
         private LogicCoreDefinition _draftLogicCore;
         private AppendageActionDefinition[] _draftAppendages = new AppendageActionDefinition[0];
@@ -367,6 +383,11 @@ namespace GolemFactory.UI
                 go.GetComponent<RectTransform>().sizeDelta = new Vector2(170f, 28f);
 
                 Image image = go.GetComponent<Image>();
+                if (chassisButtonSprite != null)
+                {
+                    image.sprite = chassisButtonSprite;
+                    image.type = Image.Type.Sliced;
+                }
                 _chassisButtonImages[chassis] = image;
 
                 ChassisDefinition captured = chassis;
@@ -439,7 +460,13 @@ namespace GolemFactory.UI
             var go = new GameObject(cardName, typeof(RectTransform), typeof(Image), typeof(WorkbenchCard));
             go.transform.SetParent(parent, false);
             go.GetComponent<RectTransform>().sizeDelta = new Vector2(150f, 36f);
-            go.GetComponent<Image>().color = logicCore != null ? TealColor : CopperColor;
+            Image cardImage = go.GetComponent<Image>();
+            cardImage.color = logicCore != null ? TealColor : CopperColor;
+            if (vaultCardSprite != null)
+            {
+                cardImage.sprite = vaultCardSprite;
+                cardImage.type = Image.Type.Sliced;
+            }
 
             CreateLabel(go.transform, cardName);
 
