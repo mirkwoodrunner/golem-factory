@@ -1,51 +1,69 @@
 using UnityEngine;
+using UnityEngine.UI;
 using GolemFactory.Economy;
 
 namespace GolemFactory.UI
 {
-    // Minimal M5 inventory readout: lists every StorageBuffer's contents by item type.
-    // OnGUI-based like GolemProgrammingPanel -- no Canvas/UGUI scene wiring required.
-    // Full visual treatment (per-resource icons, etc.) is a later UI pass, not M5's job.
-    // M8 note: relocated from the top-right to the top-left corner. OnGUI (IMGUI) always
-    // renders on top of Canvas-based UGUI regardless of sort order, so the original
-    // top-right position collided with M8's new Card Vault panel, which also anchors to
-    // the right side. The top-left corner was freed up by M3's GolemProgrammingPanel
-    // being disabled (superseded by the Workbench) this same milestone.
+    // Minimal inventory readout: lists every StorageBuffer's contents by item type.
+    // UGUI-based (converted from the original OnGUI panel as part of the Management HUD
+    // consolidation) -- content lives under a ScrollRect's Content RectTransform, owned
+    // by ManagementPanel's InventoryTab. Rebuilds every row from scratch on Refresh(),
+    // same "clear children, rebuild from data" idiom as WorkbenchController.RebuildUI().
     public sealed class InventoryPanel : MonoBehaviour
     {
         [SerializeField] private StorageBufferRegistryHolder bufferRegistryHolder;
+        [SerializeField] private RectTransform content;
 
-        private Vector2 _scroll;
+        public void Configure(StorageBufferRegistryHolder holder) => bufferRegistryHolder = holder;
 
-        private void OnGUI()
+        public void ConfigureUI(RectTransform contentRoot) => content = contentRoot;
+
+        public void Refresh()
         {
+            if (content == null)
+            {
+                return;
+            }
+
+            ClearChildren(content);
+
             if (bufferRegistryHolder == null)
             {
                 return;
             }
 
-            var boldLabel = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold };
-
-            // Capped height (not full screen) so it doesn't blanket the Workbench's
-            // Blueprint Viewport slots below it -- see the class comment. A scroll view
-            // still handles overflow if the buffer list grows past this box.
-            GUILayout.BeginArea(new Rect(10, 10, 250, 220), GUI.skin.box);
-            _scroll = GUILayout.BeginScrollView(_scroll);
-
-            GUILayout.Label("Inventory", boldLabel);
-
             foreach (StorageBuffer buffer in bufferRegistryHolder.Registry.Buffers.Values)
             {
-                GUILayout.Space(6);
-                GUILayout.Label(buffer.BufferId, boldLabel);
+                CreateRow(buffer.BufferId, bold: true);
                 foreach (var entry in buffer.Quantities)
                 {
-                    GUILayout.Label($"  {entry.Key}: {entry.Value}");
+                    CreateRow($"  {entry.Key}: {entry.Value}", bold: false);
                 }
             }
+        }
 
-            GUILayout.EndScrollView();
-            GUILayout.EndArea();
+        private void CreateRow(string text, bool bold)
+        {
+            var go = new GameObject("Row", typeof(RectTransform), typeof(LayoutElement), typeof(Text));
+            go.transform.SetParent(content, false);
+            go.GetComponent<LayoutElement>().preferredHeight = 20f;
+
+            Text label = go.GetComponent<Text>();
+            label.text = text;
+            label.alignment = TextAnchor.MiddleLeft;
+            label.color = Color.black;
+            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.fontSize = 13;
+            label.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
+            label.raycastTarget = false;
+        }
+
+        private static void ClearChildren(Transform parent)
+        {
+            for (int i = parent.childCount - 1; i >= 0; i--)
+            {
+                Destroy(parent.GetChild(i).gameObject);
+            }
         }
     }
 }

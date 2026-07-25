@@ -144,6 +144,7 @@ namespace GolemFactory.Tests.PlayMode
             bool result = interactor.Interact();
 
             Assert.IsTrue(result);
+            Assert.IsTrue(workbench.IsOpen);
         }
     }
 }

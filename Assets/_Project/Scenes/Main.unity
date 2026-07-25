@@ -119,53 +119,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &28997510
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 28997512}
-  - component: {fileID: 28997511}
-  m_Layer: 0
-  m_Name: AssemblyLinePanel
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &28997511
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 28997510}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: beb603f7ed251544fba1f2aed5c92132, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.AssemblyLinePanel
-  lineHolder: {fileID: 1595760787}
-  bufferRegistryHolder: {fileID: 950305960}
-  walletBufferId: ScrapBuffer
---- !u!4 &28997512
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 28997510}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &33504559 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 747199131115056301, guid: d9a69809c839d0741a1698e2d0f22ae3, type: 3}
@@ -223,52 +176,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &61480642
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 61480644}
-  - component: {fileID: 61480643}
-  m_Layer: 0
-  m_Name: PatentBrowserPanel
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &61480643
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 61480642}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 88361fbbebad9f647924dbfd4eff2e13, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.PatentBrowserPanel
-  patentRegistryHolder: {fileID: 462142431}
-  workbenchController: {fileID: 7964327291599893249}
---- !u!4 &61480644
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 61480642}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &64937902
 GameObject:
   m_ObjectHideFlags: 0
@@ -318,7 +225,7 @@ Transform:
   m_GameObject: {fileID: 64937902}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: 0}
+  m_LocalPosition: {x: -1, y: -2.1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -527,7 +434,7 @@ Transform:
   m_GameObject: {fileID: 278421400}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2, y: 0, z: 0}
+  m_LocalPosition: {x: 2.8, y: -1.7, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -826,7 +733,7 @@ Transform:
   m_GameObject: {fileID: 512723679}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2, y: 1, z: 0}
+  m_LocalPosition: {x: -1, y: 2.1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1082,7 +989,7 @@ Transform:
   m_GameObject: {fileID: 782237004}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1, y: -0.5, z: 0}
+  m_LocalPosition: {x: -4, y: 0.9, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3187,6 +3094,178 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1150547538
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1150547540}
+  - component: {fileID: 1150547539}
+  m_Layer: 0
+  m_Name: GolemConstructionPanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1150547539
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1150547538}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a933a5d5a6c63940910ebcfaaa273df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.GolemConstructionPanel
+  workbenchController: {fileID: 7964327291599893249}
+  managementPanel: {fileID: 7964327291599893250}
+--- !u!4 &1150547540
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1150547538}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1150574015
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1150574016}
+  - component: {fileID: 1150574019}
+  - component: {fileID: 1150574018}
+  - component: {fileID: 1150574017}
+  m_Layer: 0
+  m_Name: Player
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1150574016
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1150574015}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -1, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1150574017
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1150574015}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 544daa5c406beac469bd0bf2aebe454a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Player.PlayerInteractor
+  _actions: {fileID: -944628639613478452, guid: 4461f6f8937ddb244b5a50564eb86331, type: 3}
+  _interactRange: 1.5
+  _stockpileHolder: {fileID: 950305960}
+  _stockpileBufferId: FactoryStockpile
+  _constructionPanel: {fileID: 1150547539}
+  _workbenchController: {fileID: 7964327291599893249}
+--- !u!114 &1150574018
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1150574015}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09be6321819f20744a61ffe69b10a353, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Player.PlayerController
+  _actions: {fileID: -944628639613478452, guid: 4461f6f8937ddb244b5a50564eb86331, type: 3}
+  _moveSpeed: 4
+--- !u!212 &1150574019
+SpriteRenderer:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1150574015}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_Sprite: {fileID: 4334783836991956000, guid: 9bcf82c35c90a2d4ca46c5ce078c689d, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 0.54, y: 0.89}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
 --- !u!1 &1281273648
 GameObject:
   m_ObjectHideFlags: 0
@@ -3282,7 +3361,7 @@ Transform:
   m_GameObject: {fileID: 1512167614}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1, y: 0.5, z: 0}
+  m_LocalPosition: {x: 2.8, y: 1.7, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3462,7 +3541,7 @@ Transform:
   m_GameObject: {fileID: 1610419240}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1, y: 1.5, z: 0}
+  m_LocalPosition: {x: 0, y: 0.3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3647,6 +3726,52 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1693064101
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1693064103}
+  - component: {fileID: 1693064102}
+  m_Layer: 0
+  m_Name: MainSceneBootstrap
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1693064102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1693064101}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa58d28cd14bcf54f8a849cd80c0a4da, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.World.MainSceneBootstrap
+  cameraRig: {fileID: 1718240496}
+  playerTransform: {fileID: 1150574016}
+--- !u!4 &1693064103
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1693064101}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1718240495
 GameObject:
   m_ObjectHideFlags: 0
@@ -3693,50 +3818,6 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0.5, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1733339004
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1733339006}
-  - component: {fileID: 1733339005}
-  m_Layer: 0
-  m_Name: AlertsPanel
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1733339005
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1733339004}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fa4ad93aa1e4cd840b408003cdea78fc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.AlertsPanel
---- !u!4 &1733339006
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1733339004}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3791,7 +3872,7 @@ Transform:
   m_GameObject: {fileID: 1763190200}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1, y: 0.5, z: 0}
+  m_LocalPosition: {x: -4, y: -0.9, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3894,112 +3975,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 60202f9a48a059e4ead89dbd898ea9f7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.World.ResourceNodeRegistryHolder
---- !u!1 &1850065596
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1850065598}
-  - component: {fileID: 1850065597}
-  m_Layer: 0
-  m_Name: SaveLoadPanel
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1850065597
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1850065596}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f95d7b1dffd31f44ba82ed1dda1fb519, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.SaveLoadPanel
-  bufferRegistryHolder: {fileID: 950305960}
-  focusMeterHolder: {fileID: 33504559}
-  patentRegistryHolder: {fileID: 462142431}
-  chassisRoster:
-  - {fileID: 11400000, guid: 7dbe7f4449714ed5ab6ae98bf3b01d14, type: 2}
-  - {fileID: 11400000, guid: ca4f64f9f89c4383a22c49162706b4bd, type: 2}
-  - {fileID: 11400000, guid: 4368471bb1f14254aa36b7d226c7b5c2, type: 2}
-  - {fileID: 11400000, guid: f5feaab57fab486fad5c9eb3295a4524, type: 2}
-  - {fileID: 11400000, guid: 10d38008910e4a44acacb5390fe17dc4, type: 2}
-  logicCoreRoster:
-  - {fileID: 11400000, guid: e85c817f57464b1289fd3d9a5cf2a6ab, type: 2}
-  - {fileID: 11400000, guid: 7c0ad2ad706d435e865d52edd1ea66e2, type: 2}
-  appendageRoster:
-  - {fileID: 11400000, guid: 63cf7d84bfec4609bb6f91aea4970411, type: 2}
-  - {fileID: 11400000, guid: 693839c047db44f4a7353cf13bb09cbe, type: 2}
-  - {fileID: 11400000, guid: eb555807b24640a8a8ad58db02eb1f49, type: 2}
-  - {fileID: 11400000, guid: 4505ee4552b64cdb94e8dff3678ea7cf, type: 2}
---- !u!4 &1850065598
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1850065596}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &2004247435
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2004247437}
-  - component: {fileID: 2004247436}
-  m_Layer: 0
-  m_Name: InventoryPanel
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &2004247436
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2004247435}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0598e3e722a79bd41bb4e3fff7db1653, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.InventoryPanel
-  bufferRegistryHolder: {fileID: 950305960}
---- !u!4 &2004247437
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2004247435}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2004279216
 GameObject:
   m_ObjectHideFlags: 0
@@ -4049,7 +4024,7 @@ Transform:
   m_GameObject: {fileID: 2004279216}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 4.5, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4302,6 +4277,22 @@ PrefabInstance:
       propertyPath: m_Name
       value: Workbench
       objectReference: {fileID: 0}
+    - target: {fileID: 1064005812922187451, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1064005812922187451, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1064005812922187451, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1064005812922187451, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: targetGolem
       value: 
@@ -4311,9 +4302,53 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 33504559}
     - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: constructionPanel
+      value: 
+      objectReference: {fileID: 1150547539}
+    - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: patentRegistryHolder
       value: 
       objectReference: {fileID: 462142431}
+    - target: {fileID: 1640658674806083352, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: focusMeterHolder
+      value: 
+      objectReference: {fileID: 33504559}
+    - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: bufferRegistryHolder
+      value: 
+      objectReference: {fileID: 950305960}
+    - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: patentRegistryHolder
+      value: 
+      objectReference: {fileID: 462142431}
+    - target: {fileID: 2424833788007748116, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: bufferRegistryHolder
+      value: 
+      objectReference: {fileID: 950305960}
+    - target: {fileID: 2599952353278810458, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2599952353278810458, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2599952353278810458, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2599952353278810458, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2864754824701892479, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3244329373114552435, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -4354,10 +4389,90 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3720244374268002655, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3720244374268002655, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3720244374268002655, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3720244374268002655, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4418852221668688372, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4418852221668688372, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4418852221668688372, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4418852221668688372, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4481754425096634612, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_SizeDelta.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4669823503670471034, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4669823503670471034, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4669823503670471034, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4669823503670471034, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5560101203539426231, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5560101203539426231, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5560101203539426231, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5560101203539426231, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7076758433116003756, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: lineHolder
+      value: 
+      objectReference: {fileID: 1595760787}
+    - target: {fileID: 7076758433116003756, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: bufferRegistryHolder
+      value: 
+      objectReference: {fileID: 950305960}
+    - target: {fileID: 7786623487855400834, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: constructionPanel
+      value: 
+      objectReference: {fileID: 1150547539}
+    - target: {fileID: 8656817306492245135, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: patentRegistryHolder
+      value: 
+      objectReference: {fileID: 462142431}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -4374,6 +4489,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef92d37f882f5584ba1808fd399f5958, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.WorkbenchController
+--- !u!114 &7964327291599893250 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7786623487855400834, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+  m_PrefabInstance: {fileID: 7964327291599893248}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6bc54b5815c62ed428fe29022a6927e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.ManagementPanel
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -4390,8 +4516,6 @@ SceneRoots:
   - {fileID: 512723681}
   - {fileID: 782237006}
   - {fileID: 1621117183}
-  - {fileID: 2004247437}
-  - {fileID: 1733339006}
   - {fileID: 1281273650}
   - {fileID: 38076541}
   - {fileID: 489112572}
@@ -4405,6 +4529,6 @@ SceneRoots:
   - {fileID: 520693690433335007}
   - {fileID: 1595760788}
   - {fileID: 520946159}
-  - {fileID: 28997512}
-  - {fileID: 61480644}
-  - {fileID: 1850065598}
+  - {fileID: 1150574016}
+  - {fileID: 1150547540}
+  - {fileID: 1693064103}

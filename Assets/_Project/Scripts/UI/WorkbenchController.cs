@@ -44,6 +44,16 @@ namespace GolemFactory.UI
         [SerializeField] private Button engageGearsButton;
         [SerializeField] private Button patentButton;
 
+        // Player-driven HUD wiring: canvasRoot is the WorkbenchScreen wrapper this
+        // controller shows/hides on Open()/Close(). Left unset, Open()/Close() only
+        // toggle IsOpen's bookkeeping -- existing scenes/tests that never wire this
+        // (e.g. WorkbenchControllerTests.Build()) keep the Workbench always-visible,
+        // exactly as before this change.
+        [SerializeField] private GameObject canvasRoot;
+        [SerializeField] private Button closeButton;
+        [SerializeField] private ManagementPanel managementPanel;
+        [SerializeField] private GolemConstructionPanel constructionPanel;
+
         [SerializeField] private float reprogramFocusCost = 10f;
         [SerializeField] private float patentFocusCost = 20f;
 
@@ -88,6 +98,40 @@ namespace GolemFactory.UI
             patentButton = patentBtn;
         }
 
+        // Test/bootstrap-friendly setup for the show/hide wiring, same Configure*
+        // idiom as the rest of this class.
+        public void ConfigureVisibility(GameObject canvas, Button close, ManagementPanel management, GolemConstructionPanel construction)
+        {
+            canvasRoot = canvas;
+            closeButton = close;
+            managementPanel = management;
+            constructionPanel = construction;
+        }
+
+        public bool IsOpen { get; private set; }
+
+        // Opened by PlayerInteractor.TryProgram when the player interacts with a golem.
+        // Closes the other mutually-exclusive HUD screens so only one is ever showing.
+        public void Open()
+        {
+            IsOpen = true;
+            if (canvasRoot != null)
+            {
+                canvasRoot.SetActive(true);
+            }
+            managementPanel?.Close();
+            constructionPanel?.Close();
+        }
+
+        public void Close()
+        {
+            IsOpen = false;
+            if (canvasRoot != null)
+            {
+                canvasRoot.SetActive(false);
+            }
+        }
+
         private void Start()
         {
             _draftAppendages = new AppendageActionDefinition[appendageSlotZones.Length];
@@ -102,7 +146,12 @@ namespace GolemFactory.UI
             {
                 patentButton.onClick.AddListener(Patent);
             }
+            if (closeButton != null)
+            {
+                closeButton.onClick.AddListener(Close);
+            }
 
+            Close();
             RebuildUI();
         }
 

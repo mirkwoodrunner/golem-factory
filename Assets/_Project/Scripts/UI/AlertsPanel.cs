@@ -1,42 +1,35 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace GolemFactory.UI
 {
-    // Simple M6 alerts panel: lists every golem currently Stalled, live, via StallTracker
-    // (driven by GolemStalledEvent/GolemResumedEvent). A "current status" view, not a
-    // history log -- OnGUI-based like GolemProgrammingPanel/InventoryPanel, no Canvas/
-    // UGUI scene wiring required.
+    // Always-on alerts strip: reports every golem currently Stalled, live, via
+    // StallTracker (driven by GolemStalledEvent/GolemResumedEvent). A "current status"
+    // view, not a history log. UGUI-based (converted from the original OnGUI panel as
+    // part of the Management HUD consolidation) -- lives as an always-active sibling
+    // (AlertsStrip) in the shared Workbench canvas, top-center, never hidden.
     public sealed class AlertsPanel : MonoBehaviour
     {
+        [SerializeField] private Text statusText;
+
         private readonly StallTracker _tracker = new StallTracker();
-        private Vector2 _scroll;
+
+        public void ConfigureUI(Text status) => statusText = status;
 
         private void OnEnable() => _tracker.Subscribe();
 
         private void OnDisable() => _tracker.Unsubscribe();
 
-        private void OnGUI()
+        private void Update()
         {
-            var boldLabel = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold };
-
-            GUILayout.BeginArea(new Rect(10f, Screen.height - 150f, 320f, 140f), GUI.skin.box);
-            _scroll = GUILayout.BeginScrollView(_scroll);
-
-            GUILayout.Label("Alerts", boldLabel);
-            if (_tracker.StalledGolemIds.Count == 0)
+            if (statusText == null)
             {
-                GUILayout.Label("All golems running.");
-            }
-            else
-            {
-                foreach (string golemId in _tracker.StalledGolemIds)
-                {
-                    GUILayout.Label($"⚠ {golemId} is stalled");
-                }
+                return;
             }
 
-            GUILayout.EndScrollView();
-            GUILayout.EndArea();
+            statusText.text = _tracker.StalledGolemIds.Count == 0
+                ? "All golems running."
+                : $"⚠ {_tracker.StalledGolemIds.Count} golem(s) stalled";
         }
     }
 }

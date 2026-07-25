@@ -11,16 +11,29 @@ namespace GolemFactory.UI
     // resources and hands the new golem straight to the already-open Workbench.
     public sealed class GolemConstructionPanel : MonoBehaviour
     {
+        [SerializeField] private WorkbenchController workbenchController;
+        [SerializeField] private ManagementPanel managementPanel;
+
         private GolemConstructionStation _station;
         private string _statusMessage = "";
 
         public bool IsOpen { get; private set; }
+
+        // Test/bootstrap-friendly setup for the mutual-exclusion wiring, same Configure*
+        // idiom as WorkbenchController/PlayerInteractor.
+        public void ConfigureVisibility(WorkbenchController workbench, ManagementPanel management)
+        {
+            workbenchController = workbench;
+            managementPanel = management;
+        }
 
         public void Open(GolemConstructionStation station)
         {
             _station = station;
             _statusMessage = "";
             IsOpen = true;
+            workbenchController?.Close();
+            managementPanel?.Close();
         }
 
         public void Close()

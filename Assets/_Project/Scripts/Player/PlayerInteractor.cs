@@ -156,6 +156,7 @@ namespace GolemFactory.Player
                 return false;
             }
 
+            _workbenchController.Open();
             _workbenchController.RetargetGolem(golem);
             LastStatusMessage = $"Programming {golem.GolemId}.";
             return true;

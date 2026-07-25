@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 using GolemFactory.Blueprints;
 using GolemFactory.Economy;
 using GolemFactory.Golems;
@@ -8,10 +9,8 @@ using GolemFactory.Save;
 
 namespace GolemFactory.UI
 {
-    // Minimal Save/Load buttons -- OnGUI like the rest of the HUD panels. Bottom-right
-    // corner, clear of the Workbench's Card Vault (right column, but full-height at
-    // 0.68-1 width) -- see InventoryPanel's M8 note on OnGUI-over-UGUI layering; this
-    // panel is small enough that a little corner overlap there is a non-issue.
+    // Minimal Save/Load buttons. UGUI-based (converted from the original OnGUI panel as
+    // part of the Management HUD consolidation) -- lives in ManagementPanel's SaveLoadTab.
     public sealed class SaveLoadPanel : MonoBehaviour
     {
         [SerializeField] private StorageBufferRegistryHolder bufferRegistryHolder;
@@ -20,6 +19,10 @@ namespace GolemFactory.UI
         [SerializeField] private ChassisDefinition[] chassisRoster = new ChassisDefinition[0];
         [SerializeField] private LogicCoreDefinition[] logicCoreRoster = new LogicCoreDefinition[0];
         [SerializeField] private AppendageActionDefinition[] appendageRoster = new AppendageActionDefinition[0];
+
+        [SerializeField] private Button saveButton;
+        [SerializeField] private Button loadButton;
+        [SerializeField] private Text statusText;
 
         private string _statusMessage = "";
 
@@ -35,25 +38,27 @@ namespace GolemFactory.UI
             appendageRoster = appendages ?? new AppendageActionDefinition[0];
         }
 
-        private void OnGUI()
+        public void ConfigureUI(Button save, Button load, Text status)
         {
-            GUILayout.BeginArea(new Rect(Screen.width - 260, Screen.height - 90, 250, 80), GUI.skin.box);
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Save"))
-            {
-                Save();
-            }
-            if (GUILayout.Button("Load"))
-            {
-                Load();
-            }
-            GUILayout.EndHorizontal();
+            saveButton = save;
+            loadButton = load;
+            statusText = status;
+        }
 
-            if (!string.IsNullOrEmpty(_statusMessage))
+        private void Start()
+        {
+            saveButton?.onClick.AddListener(Save);
+            loadButton?.onClick.AddListener(Load);
+        }
+
+        // No dynamic list content to rebuild -- exists so ManagementPanel can treat every
+        // tab uniformly (Refresh() on whichever tab is active).
+        public void Refresh()
+        {
+            if (statusText != null)
             {
-                GUILayout.Label(_statusMessage);
+                statusText.text = _statusMessage;
             }
-            GUILayout.EndArea();
         }
 
         private void Save()
@@ -63,6 +68,7 @@ namespace GolemFactory.UI
                 bufferRegistryHolder.Registry, focusMeterHolder.Meter, patentRegistryHolder.Registry, golems);
             SaveFileIO.WriteToFile(data, SaveFileIO.DefaultPath);
             _statusMessage = $"Saved {golems.Length} golems.";
+            Refresh();
         }
 
         private void Load()
@@ -71,6 +77,7 @@ namespace GolemFactory.UI
             if (data == null)
             {
                 _statusMessage = "No save file found.";
+                Refresh();
                 return;
             }
 
@@ -79,6 +86,7 @@ namespace GolemFactory.UI
             SaveLoadService.RestoreState(
                 data, bufferRegistryHolder.Registry, focusMeterHolder.Meter, patentRegistryHolder.Registry, golems, catalog);
             _statusMessage = $"Loaded {data.golems.Count} golem programs.";
+            Refresh();
         }
     }
 }
