@@ -146,7 +146,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: beb603f7ed251544fba1f2aed5c92132, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.AssemblyLinePanel
   lineHolder: {fileID: 1595760787}
   bufferRegistryHolder: {fileID: 950305960}
@@ -253,7 +253,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.PatentBrowserPanel
   patentRegistryHolder: {fileID: 462142431}
-  workbenchController: {fileID: 0}
+  workbenchController: {fileID: 7964327291599893249}
 --- !u!4 &61480644
 Transform:
   m_ObjectHideFlags: 0
@@ -986,7 +986,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dbb48ffddaa036546beee61f7db64daa, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.World.GridMapHolder
 --- !u!1 &743208955
 GameObject:
@@ -4363,6 +4363,17 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+--- !u!114 &7964327291599893249 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+  m_PrefabInstance: {fileID: 7964327291599893248}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef92d37f882f5584ba1808fd399f5958, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.WorkbenchController
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
