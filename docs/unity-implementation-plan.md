@@ -1446,3 +1446,65 @@ makes the demo walkable and gives it a real, uncluttered HUD.
 3. No changes to player movement bounds/collision, camera zoom limits, or the floor's
    painted tile count — "room to move" came entirely from spreading out existing
    objects across the already-painted 13×13 floor, not from enlarging the world.
+
+## Steampunk & Fantasy UI Pack reskin implementation notes
+
+The user dropped a "Steampunk & Fantasy UI Pack" (free-use, by Scott Jenkins) into a
+`temp/` folder for review. Renamed that folder to `_incoming/` first — `temp/` collides
+with Unity's own auto-generated `Temp/` engine scratch folder (Burst cache, lockfiles)
+under Windows' case-insensitive filesystem, and is covered by `.gitignore`'s `[Tt]emp/`
+pattern, so anything dropped there was both gitignored locally and at risk of being
+clobbered by the Editor. Then reskinned the flat-colored HUD built in the previous pass
+with curated sprites from the pack.
+
+### Code (done)
+- Cherry-picked ~21 sprites into `Assets/_Project/Art/UI/Steampunk/` (steampunk button
+  accept/cancel/exit/blank in iron/gold/normal finishes with pressed/highlight states,
+  iron/bolted panel textures, gears, gauge) — imported fresh with this project's own
+  Sprite (2D and UI) conventions rather than the pack's own `.unitypackage` metadata,
+  with a 9-slice `spriteBorder` on panel/button textures. Skipped the pack's parallel
+  non-steampunk "fantasy" set and its Tilemap-oriented `Tile` assets/prefab (built for a
+  workflow this project doesn't use). The `.psd` source and `ReadMe.txt` moved to
+  `docs/source-assets/SteampunkFantasyUIPack/` for future recoloring reference, kept out
+  of `Assets/` since Unity would otherwise import the layered PSD as a flat texture.
+- `WorkbenchController.cs` — new `chassisButtonSprite`/`vaultCardSprite` fields (via a
+  `ConfigureSprites(...)` setter, same idiom as every other `Configure*` method),
+  applied in `BuildChassisButtons()`/`CreateCard()` under the existing
+  Selected/Unselected and Teal/Copper tints (so the color-coding semantics are
+  unchanged, just textured now).
+- `AssemblyLinePanel.cs`/`PatentBrowserPanel.cs` — same pattern for their per-row Claim/
+  Load buttons (`claimButtonSprite`/`loadButtonSprite`).
+- Both Close buttons, `EngageGearsButton`/`PatentButton`, the three Workbench column
+  backgrounds, `AlertsStrip`, `TabBar`'s 4 buttons, and `SaveLoadTab`'s Save/Load buttons
+  were reskinned directly in the shared `WorkbenchCanvas.prefab` (no C# needed — they're
+  baked into the prefab, not runtime-instantiated).
+
+### Bug found via live verification (not by inspection)
+Assigning a sprite to a dynamically-instantiated row's button (`AssemblyLinePanel`'s
+Claim, `PatentBrowserPanel`'s Load) made each list row balloon to ~230px tall instead of
+its intended 28px, once actually screenshotted in Play mode — invisible before because a
+flat-color `Image` with no sprite reports no meaningful size to Unity's layout system,
+so `LayoutElement.preferredHeight` being otherwise-inert (the parent
+`VerticalLayoutGroup`'s `childControlHeight`/`childControlWidth` default to `false` on a
+freshly `AddComponent`'d group) never mattered until the `Image` had a real sprite
+competing for layout space. Root-cause fix, at both the outer row-stacking level (prefab
+`Content` groups) and the inner per-row `HorizontalLayoutGroup` (label + button): enable
+`childControlWidth`/`childControlHeight`, and — the actual missing piece — set each
+row's `LayoutElement.flexibleHeight = 0` explicitly (`-1`/unset still lets a
+`VerticalLayoutGroup` hand out leftover space even with `childForceExpandHeight`
+false). A secondary, purely cosmetic follow-up: `childForceExpandWidth`'s `true` default
+was stretching the 60f-wide Claim/Load buttons across the whole row; disabled that and
+gave the row's label an explicit `flexibleWidth = 1` so it absorbs the leftover width
+instead. Also applied the same `flexibleHeight = 0` fix to `InventoryPanel.cs`'s rows
+(same latent issue, just not visually obvious without a sprite revealing the true
+bounds — rows were quietly 100px tall instead of 20px, over-spacing the list).
+
+### Testing
+No new tests — this is a purely visual change; existing components only gained new
+`Sprite`/layout-flag fields that default harmlessly (a `null` sprite keeps the original
+flat-color look, and every existing test's hand-built rigs never wire these fields).
+Full regression: 199/199 tests pass (140 EditMode + 59 PlayMode), unchanged from before
+this pass. Verified live in Play mode via screenshots: default/Workbench-open/
+Management-open (all 4 tabs) in `Main.unity`, and the Workbench in `Sandbox.unity`
+(confirming the shared-prefab reskin and hide-until-opened behavior both carry over
+cleanly there too).
