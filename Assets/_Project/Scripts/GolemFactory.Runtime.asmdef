@@ -3,7 +3,8 @@
     "rootNamespace": "GolemFactory",
     "references": [
         "GolemFactory.Simulation",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

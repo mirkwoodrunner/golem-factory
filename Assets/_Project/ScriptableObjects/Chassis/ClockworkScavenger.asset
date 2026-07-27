@@ -11,8 +11,9 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 75512732ede031b44988744dd6384fdb, type: 3}
   m_Name: ClockworkScavenger
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   maxAppendageSlots: 2
   tier: 1
   scrapCost: 20
   brassCost: 0
+  chassisSprite: {fileID: 21300000, guid: ba868b41f7961f44a95e0e49d8a86c71, type: 3}

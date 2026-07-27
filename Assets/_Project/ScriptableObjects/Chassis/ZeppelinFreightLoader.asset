@@ -11,8 +11,9 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 75512732ede031b44988744dd6384fdb, type: 3}
   m_Name: ZeppelinFreightLoader
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   maxAppendageSlots: 5
   tier: 3
   scrapCost: 80
   brassCost: 50
+  chassisSprite: {fileID: 21300000, guid: 9d4bb39bd41777843afac2209c8242c1, type: 3}

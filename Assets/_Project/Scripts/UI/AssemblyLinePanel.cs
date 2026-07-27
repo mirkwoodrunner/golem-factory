@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using GolemFactory.AssemblyLine;
 using GolemFactory.Buildings;
 using GolemFactory.Economy;
@@ -17,7 +18,7 @@ namespace GolemFactory.UI
         [SerializeField] private StorageBufferRegistryHolder bufferRegistryHolder;
         [SerializeField] private string walletBufferId = "ScrapBuffer";
         [SerializeField] private RectTransform content;
-        [SerializeField] private Text statusText;
+        [SerializeField] private TextMeshProUGUI statusText;
 
         // Claim button skin, applied per-row since rows are rebuilt from scratch on every
         // Refresh() -- left unset, the button falls back to its default flat Image color.
@@ -32,7 +33,7 @@ namespace GolemFactory.UI
             walletBufferId = walletBuffer;
         }
 
-        public void ConfigureUI(RectTransform contentRoot, Text status)
+        public void ConfigureUI(RectTransform contentRoot, TextMeshProUGUI status)
         {
             content = contentRoot;
             statusText = status;
@@ -129,7 +130,7 @@ namespace GolemFactory.UI
 
         private static void CreateLabel(Transform parent, string text)
         {
-            var go = new GameObject("Label", typeof(RectTransform), typeof(LayoutElement), typeof(Text));
+            var go = new GameObject("Label", typeof(RectTransform), typeof(LayoutElement), typeof(TextMeshProUGUI));
             go.transform.SetParent(parent, false);
             // flexibleWidth so a row's HorizontalLayoutGroup gives this label the leftover
             // space instead of the Claim button's own fixed 60f overlapping it -- inert
@@ -137,11 +138,10 @@ namespace GolemFactory.UI
             // nothing there reads LayoutElement.
             go.GetComponent<LayoutElement>().flexibleWidth = 1f;
 
-            Text label = go.GetComponent<Text>();
+            TextMeshProUGUI label = go.GetComponent<TextMeshProUGUI>();
             label.text = text;
-            label.alignment = TextAnchor.MiddleLeft;
+            label.alignment = TextAlignmentOptions.MidlineLeft;
             label.color = Color.black;
-            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             label.fontSize = 13;
             label.raycastTarget = false;
         }

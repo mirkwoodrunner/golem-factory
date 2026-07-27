@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using GolemFactory.Blueprints;
 
 namespace GolemFactory.UI
@@ -72,16 +73,15 @@ namespace GolemFactory.UI
             // intended compact size.
             rowLayout.childForceExpandWidth = false;
 
-            var labelGo = new GameObject("Label", typeof(RectTransform), typeof(LayoutElement), typeof(Text));
+            var labelGo = new GameObject("Label", typeof(RectTransform), typeof(LayoutElement), typeof(TextMeshProUGUI));
             labelGo.transform.SetParent(row.transform, false);
             // flexibleWidth so the row's HorizontalLayoutGroup gives this label the
             // leftover space instead of the Load button's own fixed 60f overlapping it.
             labelGo.GetComponent<LayoutElement>().flexibleWidth = 1f;
-            Text label = labelGo.GetComponent<Text>();
+            TextMeshProUGUI label = labelGo.GetComponent<TextMeshProUGUI>();
             label.text = blueprint.BlueprintId;
-            label.alignment = TextAnchor.MiddleLeft;
+            label.alignment = TextAlignmentOptions.MidlineLeft;
             label.color = Color.black;
-            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             label.fontSize = 13;
             label.raycastTarget = false;
 
@@ -101,13 +101,12 @@ namespace GolemFactory.UI
             }
             buttonGo.GetComponent<Button>().onClick.AddListener(() => LoadBlueprint(blueprint));
 
-            var buttonLabelGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            var buttonLabelGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
             buttonLabelGo.transform.SetParent(buttonGo.transform, false);
-            Text buttonLabel = buttonLabelGo.GetComponent<Text>();
+            TextMeshProUGUI buttonLabel = buttonLabelGo.GetComponent<TextMeshProUGUI>();
             buttonLabel.text = "Load";
-            buttonLabel.alignment = TextAnchor.MiddleCenter;
+            buttonLabel.alignment = TextAlignmentOptions.Center;
             buttonLabel.color = Color.black;
-            buttonLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             buttonLabel.fontSize = 13;
             buttonLabel.raycastTarget = false;
         }

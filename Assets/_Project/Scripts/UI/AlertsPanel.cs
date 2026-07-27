@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.UI;
+using TMPro;
 
 namespace GolemFactory.UI
 {
@@ -10,11 +10,11 @@ namespace GolemFactory.UI
     // (AlertsStrip) in the shared Workbench canvas, top-center, never hidden.
     public sealed class AlertsPanel : MonoBehaviour
     {
-        [SerializeField] private Text statusText;
+        [SerializeField] private TextMeshProUGUI statusTextMeshProUGUI;
 
         private readonly StallTracker _tracker = new StallTracker();
 
-        public void ConfigureUI(Text status) => statusText = status;
+        public void ConfigureUI(TextMeshProUGUI status) => statusTextMeshProUGUI = status;
 
         private void OnEnable() => _tracker.Subscribe();
 
@@ -22,14 +22,17 @@ namespace GolemFactory.UI
 
         private void Update()
         {
-            if (statusText == null)
+            if (statusTextMeshProUGUI == null)
             {
                 return;
             }
 
-            statusText.text = _tracker.StalledGolemIds.Count == 0
+            statusTextMeshProUGUI.text = _tracker.StalledGolemIds.Count == 0
                 ? "All golems running."
-                : $"⚠ {_tracker.StalledGolemIds.Count} golem(s) stalled";
+                // Plain ASCII, not the ⚠ glyph -- TMP's default SDF font atlas
+                // (LiberationSans SDF) doesn't include U+26A0, unlike legacy Text's
+                // dynamic OS font fallback, so it would render as a missing-glyph box.
+                : $"[!] {_tracker.StalledGolemIds.Count} golem(s) stalled";
         }
     }
 }

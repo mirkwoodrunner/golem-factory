@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using GolemFactory.Blueprints;
 using GolemFactory.Economy;
 using GolemFactory.Golems;
@@ -22,7 +23,7 @@ namespace GolemFactory.UI
 
         [SerializeField] private Button saveButton;
         [SerializeField] private Button loadButton;
-        [SerializeField] private Text statusText;
+        [SerializeField] private TextMeshProUGUI statusTextMeshProUGUI;
 
         private string _statusMessage = "";
 
@@ -38,11 +39,11 @@ namespace GolemFactory.UI
             appendageRoster = appendages ?? new AppendageActionDefinition[0];
         }
 
-        public void ConfigureUI(Button save, Button load, Text status)
+        public void ConfigureUI(Button save, Button load, TextMeshProUGUI status)
         {
             saveButton = save;
             loadButton = load;
-            statusText = status;
+            statusTextMeshProUGUI = status;
         }
 
         private void Start()
@@ -55,9 +56,9 @@ namespace GolemFactory.UI
         // tab uniformly (Refresh() on whichever tab is active).
         public void Refresh()
         {
-            if (statusText != null)
+            if (statusTextMeshProUGUI != null)
             {
-                statusText.text = _statusMessage;
+                statusTextMeshProUGUI.text = _statusMessage;
             }
         }
 

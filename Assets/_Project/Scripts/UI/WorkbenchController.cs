@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using GolemFactory.Blueprints;
 using GolemFactory.Buildings;
 using GolemFactory.Golems;
@@ -39,8 +40,8 @@ namespace GolemFactory.UI
         [SerializeField] private RectTransform dragLayer;
         [SerializeField] private WorkbenchDropZone logicCoreSlotZone;
         [SerializeField] private WorkbenchDropZone[] appendageSlotZones = new WorkbenchDropZone[0];
-        [SerializeField] private Text tapeTickerText;
-        [SerializeField] private Text statusText;
+        [SerializeField] private TextMeshProUGUI tapeTickerText;
+        [SerializeField] private TextMeshProUGUI statusText;
         [SerializeField] private Button engageGearsButton;
         [SerializeField] private Button patentButton;
 
@@ -101,7 +102,7 @@ namespace GolemFactory.UI
         public void ConfigureUI(
             RectTransform vault, RectTransform chassisRow, RectTransform drag,
             WorkbenchDropZone logicSlot, WorkbenchDropZone[] appendageSlots,
-            Text tapeTicker, Text status, Button engageButton, Button patentBtn)
+            TextMeshProUGUI tapeTicker, TextMeshProUGUI status, Button engageButton, Button patentBtn)
         {
             vaultContent = vault;
             chassisButtonRow = chassisRow;
@@ -480,7 +481,7 @@ namespace GolemFactory.UI
 
         private static void CreateLabel(Transform parent, string text)
         {
-            var go = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            var go = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
             go.transform.SetParent(parent, false);
             RectTransform rect = go.GetComponent<RectTransform>();
             rect.anchorMin = Vector2.zero;
@@ -488,11 +489,10 @@ namespace GolemFactory.UI
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
 
-            Text label = go.GetComponent<Text>();
+            TextMeshProUGUI label = go.GetComponent<TextMeshProUGUI>();
             label.text = text;
-            label.alignment = TextAnchor.MiddleCenter;
+            label.alignment = TextAlignmentOptions.Center;
             label.color = Color.black;
-            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             label.fontSize = 13;
             label.raycastTarget = false;
         }

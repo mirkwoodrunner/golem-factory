@@ -4,6 +4,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
+using TMPro;
 using GolemFactory.Blueprints;
 using GolemFactory.Golems;
 using GolemFactory.Player;
@@ -67,9 +68,9 @@ namespace GolemFactory.Tests.PlayMode
                 appendageZones[i] = zone;
             }
 
-            var tapeTicker = new GameObject("Ticker", typeof(RectTransform), typeof(Text)).GetComponent<Text>();
+            var tapeTicker = new GameObject("Ticker", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
             tapeTicker.transform.SetParent(_root.transform, false);
-            var status = new GameObject("Status", typeof(RectTransform), typeof(Text)).GetComponent<Text>();
+            var status = new GameObject("Status", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
             status.transform.SetParent(_root.transform, false);
             var engageButton = new GameObject("Engage", typeof(RectTransform), typeof(Image), typeof(Button)).GetComponent<Button>();
             engageButton.transform.SetParent(_root.transform, false);
