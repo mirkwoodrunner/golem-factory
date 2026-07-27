@@ -4,6 +4,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.TestTools;
+using TMPro;
 using GolemFactory.Blueprints;
 using GolemFactory.Economy;
 using GolemFactory.Golems;
@@ -36,7 +37,7 @@ namespace GolemFactory.Tests.PlayMode
             }
         }
 
-        private (SaveLoadPanel panel, Text status) Build()
+        private (SaveLoadPanel panel, TextMeshProUGUI status) Build()
         {
             _root = new GameObject("Root");
             var buffers = _root.AddComponent<StorageBufferRegistryHolder>();
@@ -47,7 +48,7 @@ namespace GolemFactory.Tests.PlayMode
             saveButton.transform.SetParent(_root.transform);
             var loadButton = new GameObject("Load", typeof(RectTransform), typeof(Image), typeof(Button)).GetComponent<Button>();
             loadButton.transform.SetParent(_root.transform);
-            var status = new GameObject("Status", typeof(RectTransform), typeof(Text)).GetComponent<Text>();
+            var status = new GameObject("Status", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
             status.transform.SetParent(_root.transform);
 
             var panel = _root.AddComponent<SaveLoadPanel>();
@@ -59,7 +60,7 @@ namespace GolemFactory.Tests.PlayMode
         [UnityTest]
         public IEnumerator SaveButton_CapturesState()
         {
-            (SaveLoadPanel panel, Text status) = Build();
+            (SaveLoadPanel panel, TextMeshProUGUI status) = Build();
             var golem = new GameObject("Golem").AddComponent<GolemEntity>();
             golem.transform.SetParent(_root.transform);
             golem.Configure("Golem", null);
@@ -75,7 +76,7 @@ namespace GolemFactory.Tests.PlayMode
         [UnityTest]
         public IEnumerator LoadButton_MissingFile_ShowsStatusMessage()
         {
-            (SaveLoadPanel panel, Text status) = Build();
+            (SaveLoadPanel panel, TextMeshProUGUI status) = Build();
             if (File.Exists(SaveFileIO.DefaultPath))
             {
                 File.Delete(SaveFileIO.DefaultPath);
@@ -91,7 +92,7 @@ namespace GolemFactory.Tests.PlayMode
         [UnityTest]
         public IEnumerator LoadButton_RestoresState()
         {
-            (SaveLoadPanel panel, Text status) = Build();
+            (SaveLoadPanel panel, TextMeshProUGUI status) = Build();
             var golem = new GameObject("Golem").AddComponent<GolemEntity>();
             golem.transform.SetParent(_root.transform);
             golem.Configure("Golem", null);

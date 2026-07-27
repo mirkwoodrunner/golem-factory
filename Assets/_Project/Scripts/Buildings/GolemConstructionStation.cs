@@ -68,6 +68,12 @@ namespace GolemFactory.Buildings
             golem.ConfigureEconomy(nodeRegistryHolder, bufferRegistryHolder);
             golem.Program.TryAssignChassis(chassis);
 
+            GolemVisual visual = golem.GetComponent<GolemVisual>();
+            if (visual != null)
+            {
+                visual.RefreshSpriteFromChassis();
+            }
+
             if (clockRunner != null)
             {
                 clockRunner.Register(golem);

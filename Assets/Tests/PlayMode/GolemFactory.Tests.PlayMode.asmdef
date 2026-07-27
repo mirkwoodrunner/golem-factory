@@ -5,6 +5,7 @@
         "GolemFactory.Simulation",
         "GolemFactory.Runtime",
         "Unity.InputSystem",
+        "Unity.TextMeshPro",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

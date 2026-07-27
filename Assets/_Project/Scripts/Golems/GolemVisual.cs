@@ -15,14 +15,68 @@ namespace GolemFactory.Golems
         [SerializeField] private GolemEntity golem;
         [SerializeField] private Sprite sprite;
 
+        [SerializeField] private float bobAmplitude = 0.04f;
+        [SerializeField] private float bobFrequency = 2.2f;
+        [SerializeField] private float shakeAmplitude = 0.08f;
+        [SerializeField] private float shakeFrequency = 45f;
+        [SerializeField] private float shakeDuration = 0.35f;
+
         private SpriteRenderer _spriteRenderer;
+        private Vector3 _basePosition;
+        private float _shakeTimeRemaining;
+        private bool _isStalled;
 
         private void Awake()
         {
             _spriteRenderer = GetComponent<SpriteRenderer>();
-            if (sprite != null)
+            _basePosition = transform.position;
+            ApplySprite();
+        }
+
+        // Idle bob while running, a decaying shake jolt right when a stall lands, then a
+        // held-still pose while stalled -- reuses the same GolemStalled/GolemResumed
+        // subscription as the tint below rather than polling Program.State every frame.
+        private void Update()
+        {
+            if (_shakeTimeRemaining > 0f)
             {
-                _spriteRenderer.sprite = sprite;
+                _shakeTimeRemaining -= Time.deltaTime;
+                float shakeX = GolemAnimationUtility.ComputeShakeOffset(
+                    Time.time, _shakeTimeRemaining, shakeDuration, shakeAmplitude, shakeFrequency);
+                transform.position = _basePosition + new Vector3(shakeX, 0f, 0f);
+            }
+            else if (!_isStalled)
+            {
+                float bobY = GolemAnimationUtility.ComputeIdleBobOffset(Time.time, bobAmplitude, bobFrequency);
+                transform.position = _basePosition + new Vector3(0f, bobY, 0f);
+            }
+            else
+            {
+                transform.position = _basePosition;
+            }
+        }
+
+        // Called by GolemConstructionStation right after TryAssignChassis, since chassis
+        // assignment happens after Instantiate -- this component's Awake already ran with
+        // no chassis yet. Falls back to the Inspector-set sprite field when the chassis has
+        // no chassisSprite of its own, so hand-wired demo golems are unaffected.
+        public void RefreshSpriteFromChassis()
+        {
+            if (_spriteRenderer == null)
+            {
+                _spriteRenderer = GetComponent<SpriteRenderer>();
+            }
+            ApplySprite();
+        }
+
+        private void ApplySprite()
+        {
+            Sprite resolved = golem != null && golem.Program?.chassis?.chassisSprite != null
+                ? golem.Program.chassis.chassisSprite
+                : sprite;
+            if (resolved != null)
+            {
+                _spriteRenderer.sprite = resolved;
             }
         }
 
@@ -43,6 +97,8 @@ namespace GolemFactory.Golems
             if (golem != null && e.GolemId == golem.GolemId)
             {
                 _spriteRenderer.color = StalledTint;
+                _isStalled = true;
+                _shakeTimeRemaining = shakeDuration;
             }
         }
 
@@ -51,6 +107,7 @@ namespace GolemFactory.Golems
             if (golem != null && e.GolemId == golem.GolemId)
             {
                 _spriteRenderer.color = Color.white;
+                _isStalled = false;
             }
         }
     }

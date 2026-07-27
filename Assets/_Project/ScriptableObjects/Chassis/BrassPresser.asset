@@ -11,8 +11,9 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 75512732ede031b44988744dd6384fdb, type: 3}
   m_Name: BrassPresser
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   maxAppendageSlots: 3
   tier: 1
   scrapCost: 30
   brassCost: 10
+  chassisSprite: {fileID: 21300000, guid: 6d37216bf6dea754b9e6d1a416a92816, type: 3}

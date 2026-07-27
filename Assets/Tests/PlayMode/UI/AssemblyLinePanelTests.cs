@@ -3,6 +3,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.TestTools;
+using TMPro;
 using GolemFactory.AssemblyLine;
 using GolemFactory.Economy;
 using GolemFactory.PunchCards;
@@ -64,7 +65,7 @@ namespace GolemFactory.Tests.PlayMode
         public IEnumerator ClaimButton_InsufficientFunds_ShowsStatusMessage()
         {
             (AssemblyLinePanel panel, _, _, RectTransform content) = Build();
-            var status = new GameObject("Status", typeof(RectTransform), typeof(Text)).GetComponent<Text>();
+            var status = new GameObject("Status", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
             status.transform.SetParent(_root.transform);
             panel.ConfigureUI(content, status);
             yield return null;
@@ -81,7 +82,7 @@ namespace GolemFactory.Tests.PlayMode
         public IEnumerator ClaimButton_SufficientFunds_WithdrawsAndRefillsSlot()
         {
             (AssemblyLinePanel panel, AssemblyLineStateHolder line, StorageBufferRegistryHolder buffers, RectTransform content) = Build();
-            var status = new GameObject("Status", typeof(RectTransform), typeof(Text)).GetComponent<Text>();
+            var status = new GameObject("Status", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
             status.transform.SetParent(_root.transform);
             panel.ConfigureUI(content, status);
             yield return null;

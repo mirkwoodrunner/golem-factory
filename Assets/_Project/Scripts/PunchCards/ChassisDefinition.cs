@@ -9,5 +9,6 @@ namespace GolemFactory.PunchCards
         public int tier = 1;
         public int scrapCost;
         public int brassCost;
+        public Sprite chassisSprite;
     }
 }

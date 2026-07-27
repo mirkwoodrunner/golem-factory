@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using GolemFactory.Economy;
 
 namespace GolemFactory.UI
@@ -44,7 +45,7 @@ namespace GolemFactory.UI
 
         private void CreateRow(string text, bool bold)
         {
-            var go = new GameObject("Row", typeof(RectTransform), typeof(LayoutElement), typeof(Text));
+            var go = new GameObject("Row", typeof(RectTransform), typeof(LayoutElement), typeof(TextMeshProUGUI));
             go.transform.SetParent(content, false);
             LayoutElement rowElement = go.GetComponent<LayoutElement>();
             rowElement.preferredHeight = 20f;
@@ -53,13 +54,12 @@ namespace GolemFactory.UI
             // false, stretching each row and spacing the whole list out.
             rowElement.flexibleHeight = 0f;
 
-            Text label = go.GetComponent<Text>();
+            TextMeshProUGUI label = go.GetComponent<TextMeshProUGUI>();
             label.text = text;
-            label.alignment = TextAnchor.MiddleLeft;
+            label.alignment = TextAlignmentOptions.MidlineLeft;
             label.color = Color.black;
-            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             label.fontSize = 13;
-            label.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
+            label.fontStyle = bold ? FontStyles.Bold : FontStyles.Normal;
             label.raycastTarget = false;
         }
 
