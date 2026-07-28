@@ -1508,3 +1508,105 @@ this pass. Verified live in Play mode via screenshots: default/Workbench-open/
 Management-open (all 4 tabs) in `Main.unity`, and the Workbench in `Sandbox.unity`
 (confirming the shared-prefab reskin and hide-until-opened behavior both carry over
 cleanly there too).
+
+## Graphics & presentation quality pass implementation notes
+
+Four-phase engine/art/UI polish pass (PR #23, merged to `main`), run per an approved plan.
+
+### Phase 1: engine polish (done)
+- The project had **no URP render pipeline asset at all** — `GraphicsSettings.asset`/every
+  `QualitySettings.asset` tier's `customRenderPipeline` referenced a guid
+  (`681886c5eb7344803b6206f758bf0b1c`) that didn't exist anywhere in the repo, so rendering
+  had silently been running on whatever fallback Unity picks rather than an intentional
+  pipeline. Created a real `UniversalRenderPipelineAsset`
+  (`Assets/Settings/URP-GolemFactory.asset`) with a 2D Renderer
+  (`Assets/Settings/Renderer2D.asset`) and repointed `GraphicsSettings` and all six quality
+  tiers at its new guid.
+- Added `Light2D` ambient (warm-white) + accent lighting to `Main.unity`/`Sandbox.unity`, and
+  a `GlobalVolume` GameObject referencing a new
+  `Assets/Settings/PostProcessing/GolemFactoryVolumeProfile.asset` with conservative Bloom/
+  Color Adjustments/Vignette. Added `Assets/Settings/SpriteLit2D.mat`, the lit material
+  `BeltSegmentVisual`'s new optional `itemMaterial` field opts pooled item slots into (falls
+  back to Unity's default unlit sprite material when left unset, same fallback idiom as
+  `WorkbenchController`'s reskin sprite fields).
+- Installed `com.unity.2d.pixel-perfect` but did **not** enable a `PixelPerfectCamera`
+  component — it conflicts with the existing free-zoom `CameraRigController`; left available
+  for a future deliberate camera-mode decision rather than wired in now.
+- Fixed Steampunk UI Pack import settings left over from the previous reskin pass (Bilinear→
+  Point filtering, a few sprites missing their 9-slice `spriteBorder`) plus a mismatch where
+  the Engage Gears/Patent buttons had icon sprites stretched into full button backgrounds.
+
+### Phase 2: UI completion (done)
+- Converted the last two `OnGUI` panels to UGUI, closing out the "two eras coexist" gap:
+  `BuildMenuPanel` (button-per-placeable row rebuilt from
+  `BuildModeController.AvailablePrefabs` once in `Start()`, since that list is set once via
+  `ConfigureEconomy` and never changes at runtime) and `GolemStallIndicator` (now a
+  runtime-built World Space `Canvas` child that tracks the golem's transform in
+  `LateUpdate()`, replacing `OnGUI` + manual `WorldToScreenPoint`). Both follow
+  `WorkbenchController`'s established "always re-render from data" idiom.
+- `GolemConstructionPanel` remains `OnGUI` (unchanged from the Steampunk pass' call — see its
+  scope cuts above).
+
+### Phase 3: real art content (done)
+- `ChassisDefinition` gained a `chassisSprite` field so golem art is data-driven instead of
+  hand-wired per scene instance. `GolemVisual.RefreshSpriteFromChassis()` — called by
+  `GolemConstructionStation` right after `TryAssignChassis`, since chassis assignment happens
+  after `Instantiate` and `GolemVisual.Awake()` already ran with no chassis yet — prefers
+  `Program.chassis.chassisSprite` over the Inspector-set fallback `sprite` field, so
+  pre-existing hand-wired demo golems are unaffected.
+- Replaced the "3 palette-swapped generic silhouettes standing in for 5 named chassis"
+  placeholder-art gap: extended `Tools/Art/generate_placeholder_art.py` with 5 distinct
+  hand-coded pixel silhouettes (`make_clockwork_scavenger`, `make_brass_presser`,
+  `make_aether_hauler`, `make_mainspring_overclocker`, `make_zeppelin_freight_loader`) keyed
+  to each chassis's stated role — rickety tripod laborer, bolted stationary press, treaded
+  armored hauler, tall clockwork butler, bulky late-game behemoth — rather than paid AI image
+  generation; the cost tradeoff was surfaced mid-session and the call was to stay free.
+
+### Phase 4: stretch polish (done)
+- New `GolemAnimationUtility` (engine-free static class in `Golems/`, same "extract math into
+  pure functions" idiom as `GridCoordinateConverter`/`YSortUtility`): `ComputeIdleBobOffset`
+  (sine bob) and `ComputeShakeOffset` (sine shake, linearly decaying to zero over
+  `shakeDuration` so a stall reads as one jolt, not a sustained wobble). `GolemVisual.Update()`
+  applies the idle bob while `Running`, fires the shake on the frame a stall lands (reusing
+  the same `GolemStalled`/`GolemResumed` subscriptions already driving the stall tint), then
+  holds the base position while `Stalled`.
+- **Bug found via live verification, not by inspection**: `BeltSegmentVisual` had never
+  actually worked in any scene — its `Awake()` resolved its segment via
+  `conveyorHolder.System.TryGetSegment` before the relevant demo bootstrap script registered
+  that segment in its own `Start()` (Unity runs all `Awake()`s before any `Start()`, but
+  registration order *across* independent bootstrap scripts was never guaranteed), so the
+  sprite pool silently never got built and belts had rendered invisibly since the belt system
+  was first written. Fixed by retrying resolution from `LateUpdate()` until it succeeds once,
+  making the wiring order-independent instead of requiring bootstrap scripts to register
+  earlier than `Start()`.
+- Added a one-shot `ParticleSystem` handoff sparkle per belt segment, triggered by the head
+  item's `Progress` crossing the segment's end between frames
+  (`_previousHeadProgress`/`_previousItemCount`) rather than tracking per-pool-slot, since
+  pool slot assignment reshuffles as other items advance/leave.
+- Migrated legacy uGUI `Text` to TextMeshPro across every UI script (`AlertsPanel`,
+  `AssemblyLinePanel`, `PatentBrowserPanel`, `SaveLoadPanel`, `WorkbenchController`, plus the
+  two newly-UGUI'd panels above) and `WorkbenchCanvas.prefab`; added `Unity.TextMeshPro` to
+  `GolemFactory.Runtime.asmdef` and imported the TMP Essentials package
+  (`Assets/TextMesh Pro/`), which wasn't previously in the repo.
+
+### Testing
+- New `Assets/Tests/EditMode/Golems/GolemAnimationUtilityTests.cs` (6 tests: idle bob at zero
+  time, amplitude scaling, shake at full/zero/half remaining duration, zero-duration shake).
+- Minor mechanical updates to `AssemblyLinePanelTests.cs`, `SaveLoadPanelTests.cs`,
+  `WorkbenchControllerTests.cs` for the `Text`→`TextMeshProUGUI` component-type migration.
+- Full regression: 205/205 tests pass (146 EditMode, incl. the 6 new, + 59 PlayMode).
+- Verified live in the Editor via the Unity MCP bridge at each phase: URP pipeline renders
+  correctly, Light2D warmth visible in both `Main.unity` and `Sandbox.unity`, Workbench/
+  Management UI text renders crisp with TMP, belt items visibly flow with the handoff
+  sparkle, and golems constructed via `GolemConstructionStation` pick up their correct
+  distinct chassis sprite.
+
+### Deliberate scope cuts
+1. Pixel Perfect Camera package installed but not enabled — conflicts with the existing
+   free-zoom `CameraRigController`; a future camera-mode decision, not made here.
+2. `GolemConstructionPanel` still not converted to UGUI — carried over from the Steampunk
+   pass' scope cut, still true: already interaction-gated and mutually exclusive with the
+   UGUI screens, no clutter problem to justify it.
+3. `Sandbox.unity`'s Management HUD tabs (Inventory/Patents/SaveLoad) still aren't wired with
+   their own per-instance data-source holders — flagged as a follow-up in the Steampunk pass
+   and still open after this pass; only `Main.unity` has that wiring.
