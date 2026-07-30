@@ -257,7 +257,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Golems.GolemVisual
   golem: {fileID: 64937903}
-  sprite: {fileID: 21300000, guid: 9c961d0af9d8572418dc708ad4c07144, type: 3}
+  sprite: {fileID: 21300000, guid: 9d4bb39bd41777843afac2209c8242c1, type: 3}
   bobAmplitude: 0.04
   bobFrequency: 2.2
   shakeAmplitude: 0.08
@@ -471,7 +471,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Golems.GolemVisual
   golem: {fileID: 278421401}
-  sprite: {fileID: 21300000, guid: a399d7284f92714408c8e256033b5d39, type: 3}
+  sprite: {fileID: 21300000, guid: ba868b41f7961f44a95e0e49d8a86c71, type: 3}
   bobAmplitude: 0.04
   bobFrequency: 2.2
   shakeAmplitude: 0.08
@@ -777,7 +777,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Golems.GolemVisual
   golem: {fileID: 512723680}
-  sprite: {fileID: 21300000, guid: 9c961d0af9d8572418dc708ad4c07144, type: 3}
+  sprite: {fileID: 21300000, guid: 6d37216bf6dea754b9e6d1a416a92816, type: 3}
   bobAmplitude: 0.04
   bobFrequency: 2.2
   shakeAmplitude: 0.08
@@ -1183,7 +1183,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Golems.GolemVisual
   golem: {fileID: 782237005}
-  sprite: {fileID: 21300000, guid: a399d7284f92714408c8e256033b5d39, type: 3}
+  sprite: {fileID: 21300000, guid: e708142ede14d6f4db352208a709cd79, type: 3}
   bobAmplitude: 0.04
   bobFrequency: 2.2
   shakeAmplitude: 0.08
@@ -3852,7 +3852,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Golems.GolemVisual
   golem: {fileID: 1512167615}
-  sprite: {fileID: 21300000, guid: e823a2169bbe3c044a61d2e191cb90c8, type: 3}
+  sprite: {fileID: 21300000, guid: ba868b41f7961f44a95e0e49d8a86c71, type: 3}
   bobAmplitude: 0.04
   bobFrequency: 2.2
   shakeAmplitude: 0.08
@@ -4454,7 +4454,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Golems.GolemVisual
   golem: {fileID: 1763190201}
-  sprite: {fileID: 21300000, guid: e823a2169bbe3c044a61d2e191cb90c8, type: 3}
+  sprite: {fileID: 21300000, guid: 13c4598b2c492e4448f7773550309d13, type: 3}
   bobAmplitude: 0.04
   bobFrequency: 2.2
   shakeAmplitude: 0.08
@@ -4764,7 +4764,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Golems.GolemVisual
   golem: {fileID: 2004279217}
-  sprite: {fileID: 21300000, guid: a399d7284f92714408c8e256033b5d39, type: 3}
+  sprite: {fileID: 21300000, guid: 6d37216bf6dea754b9e6d1a416a92816, type: 3}
   bobAmplitude: 0.04
   bobFrequency: 2.2
   shakeAmplitude: 0.08
@@ -5018,6 +5018,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 46579717721619768, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
+    - target: {fileID: 118445849262687279, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 343100406379994810, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_Name
       value: Workbench
@@ -5070,6 +5078,10 @@ PrefabInstance:
       propertyPath: patentRegistryHolder
       value: 
       objectReference: {fileID: 462142431}
+    - target: {fileID: 1739638850736082168, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 2424833788007748116, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: bufferRegistryHolder
       value: 
@@ -5168,7 +5180,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4481754425096634612, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 0
+      value: -926.5381
       objectReference: {fileID: 0}
     - target: {fileID: 4669823503670471034, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_AnchorMax.x
@@ -5185,6 +5197,10 @@ PrefabInstance:
     - target: {fileID: 4669823503670471034, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_AnchorMin.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5328569722019788056, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
       objectReference: {fileID: 0}
     - target: {fileID: 5560101203539426231, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_AnchorMax.x
@@ -5206,6 +5222,10 @@ PrefabInstance:
       propertyPath: m_AdditionalShaderChannelsFlag
       value: 25
       objectReference: {fileID: 0}
+    - target: {fileID: 6703903570003446627, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 7076758433116003756, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: lineHolder
       value: 
@@ -5218,6 +5238,10 @@ PrefabInstance:
       propertyPath: constructionPanel
       value: 
       objectReference: {fileID: 1150547539}
+    - target: {fileID: 8515045029510062974, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 8656817306492245135, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: patentRegistryHolder
       value: 
