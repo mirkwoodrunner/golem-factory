@@ -27,6 +27,57 @@ TEAL_GLOW = (94, 214, 200, 255)
 OUTLINE = (40, 28, 20, 255)
 TRANSPARENT = (0, 0, 0, 0)
 
+# --- Environment palette -----------------------------------------------------------------
+# The environment pass (floor/walls/edges) deliberately uses a *warmer, lower-contrast*
+# extension of the palette above: the floor is background, so it must not fight the golem
+# sprites, but it still has to read as varnished wood rather than the grey stone-noise it
+# used to be. Plank tones stay inside a narrow warm-brown band; brass appears only on
+# sparse accent tiles and wall rails so it stays an accent, not a texture.
+PLANK_TONES = (
+    (126, 82, 48, 255),
+    (133, 88, 52, 255),
+    (120, 78, 45, 255),
+    (129, 85, 50, 255),
+)
+PLATE_FIELD = (78, 57, 35, 255)
+PLANK_SEAM = (66, 41, 25, 255)
+PLANK_JOINT = (84, 53, 32, 255)
+PLANK_GRAIN = (104, 66, 38, 255)
+PLASTER_BRICK = (124, 76, 54, 255)
+PLASTER_MORTAR = (82, 58, 44, 255)
+SHADOW_INK = (24, 15, 10, 255)
+
+
+def _shade(color, amount):
+    """Lighten (amount > 0) / darken (amount < 0) an RGBA tuple by a 0..1 fraction."""
+    r, g, b, a = color
+    if amount >= 0:
+        return (
+            int(r + (255 - r) * amount),
+            int(g + (255 - g) * amount),
+            int(b + (255 - b) * amount),
+            a,
+        )
+    k = 1.0 + amount
+    return (int(r * k), int(g * k), int(b * k), a)
+
+
+def _hash2(x, y, salt=0):
+    """Small deterministic integer hash -- keeps generated texture stable across runs
+    (a random seed would make every regeneration a spurious diff)."""
+    h = (x * 374761393) ^ (y * 668265263) ^ (salt * 2246822519)
+    h = (h ^ (h >> 13)) * 1274126177
+    return (h ^ (h >> 16)) & 0x7FFFFFFF
+
+
+def _iso_cell_fraction(px, py, w):
+    """Pixel center -> (u, v) cell fraction in [-0.5, 0.5], matching
+    GridCoordinateConverter.WorldToCellFraction for a 1 x 0.5 cell drawn `w` px wide.
+    +u is the +cellX (screen up-right) axis, +v is the +cellY (screen up-left) axis."""
+    dx = (px + 0.5 - w * 0.5) / float(w)
+    dy = -(py + 0.5 - w * 0.25) / float(w)
+    return dx + 2.0 * dy, 2.0 * dy - dx
+
 
 def save(img: Image.Image, name: str) -> None:
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -229,7 +280,515 @@ def make_ghost_placeholder() -> Image.Image:
     return Image.merge("RGBA", (r, g, b, a))
 
 
-def main() -> None:
+# =========================================================================================
+# Environment: warm wood-and-brass workshop floor, perimeter walls, slab edges, shadows.
+#
+# ONE art-pixel scale for the whole environment: 32 art pixels per world unit, authored at
+# native size and nearest-upscaled x4, imported at PPU 128. So:
+#   art pixel   = 4 image px = 1/32 world unit
+#   floor cell  = 1 x 0.5 world = 32 x 16 native = 128 x 64 image px
+#   wall segment (one cell edge) = 0.5 world wide = 16 native = 64 image px
+# That last line is the important one. The floor tiles previously imported at PPU 64, which
+# made each 128x64 tile 2 x 1 world units -- twice its own cell -- so the painted diamonds
+# never lined up with the grid at all. PPU 128 is what makes sprite size == cell size.
+#
+# 32 art px/world is chosen for the *look*: at the default orthographicSize of 5 that is
+# roughly 3-4 screen pixels per art pixel, which reads as deliberate pixel art. Authoring
+# finer would have produced exactly the high-frequency visual noise the old stone floor was
+# criticised for.
+# =========================================================================================
+
+ENV_UPSCALE = 4
+FLOOR_NATIVE_W = 32  # -> 128 px wide after the x4 upscale
+FLOOR_NATIVE_H = 16  # -> 64 px tall
+PLANKS_PER_CELL = 2  # boards 0.25 world units wide; 4 made the floor read as hatching
+
+
+def make_wood_floor_tile(variant: int) -> Image.Image:
+    """A varnished-plank isometric floor diamond. Planks run along the +cellX axis, so plank
+    seams fall on constant-cellY lines and stay continuous across neighbouring cells -- that
+    is what keeps the floor reading as a floor instead of a grid of separate tiles. `variant`
+    shifts the board joints, the per-plank tone assignment, and the grain, so a handful of
+    variants sprinkled by FloorTileVariant.Select break up the tiling."""
+    w, h = FLOOR_NATIVE_W, FLOOR_NATIVE_H
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    px = img.load()
+
+    # One native pixel is this far in u/v units (|grad u| == |grad v| == sqrt(5)/w), so every
+    # line width below stays exactly one pixel wide whatever the canvas size.
+    px_uv = 5.0 ** 0.5 / w
+    joint_spacing = 1.0  # one board end per cell along the plank -- boards are long
+
+    for iy in range(h):
+        for ix in range(w):
+            u, v = _iso_cell_fraction(ix, iy, w)
+            if abs(u) > 0.5 or abs(v) > 0.5:
+                continue
+
+            strip = int((v + 0.5) * PLANKS_PER_CELL)
+            if strip >= PLANKS_PER_CELL:
+                strip = PLANKS_PER_CELL - 1
+            tone = PLANK_TONES[(strip + variant) % len(PLANK_TONES)]
+
+            # Board joints: staggered per plank strip *and* per variant so no single joint
+            # line ever runs unbroken across the whole floor.
+            stagger = ((strip * 7 + variant * 5) % 12) / 12.0 * joint_spacing
+            joint_phase = (u + 0.5 + stagger) % joint_spacing
+            board = int((u + 0.5 + stagger) / joint_spacing)
+
+            color = _shade(tone, ((_hash2(board, strip, variant) % 7) - 3) * 0.016)
+
+            # Seams between planks (constant-cellY lines) -- the strongest cue, and the one
+            # that gives the floor its isometric direction.
+            phase = (v + 0.5) * PLANKS_PER_CELL % 1.0
+            seam_dist = min(phase, 1.0 - phase) / PLANKS_PER_CELL
+            if seam_dist < px_uv * 0.5:
+                color = PLANK_SEAM
+            elif seam_dist < px_uv * 1.45 and phase > 0.5:
+                color = _shade(tone, 0.16)   # lit lip on the up-left side of each plank
+            elif (strip + variant) % 2 == 0 and abs(seam_dist - px_uv * 1.6) < px_uv * 0.5:
+                color = _shade(PLANK_GRAIN, -0.04)  # one grain line on every other plank
+
+            # Board ends.
+            if min(joint_phase, joint_spacing - joint_phase) < px_uv * 0.5:
+                color = PLANK_JOINT
+
+            px[ix, iy] = color
+
+    return upscale(img, ENV_UPSCALE)
+
+
+def make_brass_plate_tile() -> Image.Image:
+    """Sparse accent tile: a riveted brass inspection plate set into the planks. Placed on a
+    lattice by FloorTileVariant so the floor has landmarks and the eye can still read the
+    isometric grid without a per-tile bevel on every plank tile."""
+    w, h = FLOOR_NATIVE_W, FLOOR_NATIVE_H
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    px = img.load()
+    p = 5.0 ** 0.5 / w   # one native pixel, in u/v units
+
+    for iy in range(h):
+        for ix in range(w):
+            u, v = _iso_cell_fraction(ix, iy, w)
+            if abs(u) > 0.5 or abs(v) > 0.5:
+                continue
+            inset = 0.5 - max(abs(u), abs(v))
+            upper = v > 0 or u > 0                  # the two edges facing the light
+            if inset < p:
+                color = (36, 24, 16, 255)                            # recess in the planks
+            elif inset < p * 1.2:
+                # Brass rim, lit on the two up-facing edges and in shadow on the others. Kept
+                # to a single pixel and to a *darkened* brass: the rim wraps the whole tile, so
+                # at full BRASS and two pixels wide it swamped the field and the plate read as
+                # a pale blob rather than a dark plate with a metallic edge.
+                color = _shade(BRASS_DARK, -0.20) if upper else (24, 16, 10, 255)
+            else:
+                color = PLATE_FIELD
+                if int((u - v) * (w / 4.0)) % 2 == 0:                # diagonal tread ribs
+                    color = _shade(BRASS_DARK, -0.28)
+            px[ix, iy] = color
+
+    draw = ImageDraw.Draw(img)
+    cx, cy = w // 2, h // 2
+    for rx, ry in ((cx - 6, cy), (cx + 5, cy), (cx - 1, cy - 3), (cx - 1, cy + 3)):
+        draw.point([(rx, ry)], fill=BRASS_DARK)
+        draw.point([(rx, ry + 1)], fill=(30, 20, 13, 255))
+    return upscale(img, ENV_UPSCALE)
+
+
+def make_grate_tile() -> Image.Image:
+    """Rarer accent: a dark steam grate. Reads as depth in the floor, and the warm glow line
+    hints at the boiler works under the workshop."""
+    w, h = FLOOR_NATIVE_W, FLOOR_NATIVE_H
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    px = img.load()
+
+    for iy in range(h):
+        for ix in range(w):
+            u, v = _iso_cell_fraction(ix, iy, w)
+            if abs(u) > 0.5 or abs(v) > 0.5:
+                continue
+            edge = max(abs(u), abs(v))
+            if edge > 0.44:
+                color = _shade(WOOD_DARK, -0.15)
+            elif edge > 0.39:
+                color = _shade(BRASS_DARK, -0.35)
+            else:
+                bar = int((v + 0.5) * 9) % 2 == 0
+                if bar:
+                    color = _shade(BRASS_DARK, -0.05)
+                else:
+                    color = (34, 24, 18, 255)
+                    if abs(u) < 0.18 and abs(v) < 0.26:
+                        color = (74, 40, 24, 255)  # faint furnace glow down the shaft
+            px[ix, iy] = color
+
+    return upscale(img, ENV_UPSCALE)
+
+
+# --- Perimeter walls ---------------------------------------------------------------------
+# A wall segment covers exactly ONE cell edge. In world units that edge is 0.5 wide and
+# 0.25 tall (the 2:1 isometric run), so the sprite must be 32 x (16 + height) px at PPU 64
+# with a base line that rises 16 px across its width. The previous wall art was 88x109 with
+# a FLAT bottom edge placed one per perimeter *cell* (0.5 world apart) -- 2.75x too wide,
+# with a silhouette that never matched the isometric run, which is exactly why the run read
+# as a staircase of stacked blocks rather than a wall.
+WALL_NATIVE_W = 16    # -> 32 px  == 0.5 world units
+WALL_NATIVE_RISE = 8  # -> 16 px  == 0.25 world units
+WALL_NATIVE_H = 60    # -> 120 px; 52 native px of wall face above the base line
+WALL_FACE_H = 52      # 1.625 world units -- deliberately taller than a 1.5-unit golem so
+                      # the back edges read as an enclosing room, not a balustrade.
+
+
+def _wall_base_row(x, mirror):
+    """Row (native, y-down) of the base line at column x. Non-mirrored rises to the LEFT,
+    which is the +cellX boundary (screen up-right wall); mirrored rises to the RIGHT, the
+    +cellY boundary. The //2 staircase is the exact 2:1 isometric step, so consecutive
+    segments placed 16 native px apart join seamlessly."""
+    step = (x // 2) if mirror else ((WALL_NATIVE_W - 1 - x) // 2)
+    return (WALL_NATIVE_H - 1) - step
+
+
+def wall_pivot(mirror: bool):
+    """Normalized sprite pivot: the midpoint of the base line, i.e. the point that must land
+    on the boundary anchor FloorLayout.GetNorthEastWallAnchor / ...NorthWest returns."""
+    final_h = WALL_NATIVE_H * ENV_UPSCALE
+    base_final_row = _wall_base_row(WALL_NATIVE_W // 2, mirror) * ENV_UPSCALE
+    return (0.5, (final_h - base_final_row) / float(final_h))
+
+
+def make_wall_segment(mirror: bool = False, lamp: bool = False) -> Image.Image:
+    w, h = WALL_NATIVE_W, WALL_NATIVE_H
+    face_h = WALL_FACE_H
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    px = img.load()
+
+    for x in range(w):
+        base = _wall_base_row(x, mirror)
+        for b in range(face_h):          # b = height above the base line, in native px
+            y = base - b
+            if y < 0:
+                continue
+            # Mirror the *detail* phase too, so the flipped wall's panels/bricks stay in
+            # register with the un-flipped one where the two runs meet at the corner.
+            xm = (w - 1 - x) if mirror else x
+
+            if b <= 1:                                                 # contact shadow
+                color = _shade(SHADOW_INK, 0.10)
+            elif b <= 8:                                               # skirting board
+                color = _shade(WOOD_DARK, -0.12 + (b - 2) * 0.03)
+                if b == 8:
+                    color = _shade(WOOD_LIGHT, -0.18)
+            elif b <= 24:                                              # panelled dado
+                # One raised panel per wall segment (period == WALL_NATIVE_W), not a picket
+                # of narrow stripes -- at 32 art px per world unit narrow stripes alias into
+                # a fence.
+                inset = xm % WALL_NATIVE_W
+                color = _shade(WOOD_MID, -0.20 + (b - 9) * 0.008)
+                if inset <= 1 or inset >= WALL_NATIVE_W - 2 or b <= 10 or b >= 23:
+                    color = _shade(WOOD_DARK, -0.08)                   # stile / rail frame
+                elif inset == 2 or b == 11:
+                    color = _shade(WOOD_MID, 0.14)                     # lit inner bevel
+                elif inset == WALL_NATIVE_W - 3 or b == 22:
+                    color = _shade(WOOD_DARK, -0.26)                   # shaded inner bevel
+            elif b <= 27:                                              # brass chair rail
+                # Deliberately BRASS_DARK, not BRASS. This rail runs the entire length of both
+                # back walls; at full brass (plus bloom) it was the brightest thing on screen
+                # and pulled the eye to the edge of the room instead of the factory floor.
+                # The periodic brackets carry the glint instead.
+                color = (_shade(BRASS_DARK, -0.45) if b == 25
+                         else (_shade(BRASS_DARK, -0.12) if b == 26 else BRASS_DARK))
+                if xm % 8 == 0:
+                    color = _shade(BRASS, 0.10) if b == 27 else _shade(BRASS_DARK, -0.5)
+            else:                                                      # warm brickwork
+                row = (b - 28) // 3
+                if (b - 28) % 3 == 0 or (xm + 4 * (row % 2)) % 8 == 0:
+                    color = PLASTER_MORTAR
+                else:
+                    brick = (xm + 4 * (row % 2)) // 8
+                    color = _shade(PLASTER_BRICK, ((_hash2(brick, row) % 5) - 2) * 0.05)
+                # Ambient occlusion: darkest just above the rail, opening up toward the top.
+                color = _shade(color, -0.30 + (b - 28) * 0.013)
+                if b >= face_h - 3:                                    # wood coping
+                    color = _shade(WOOD_DARK, 0.08 if b == face_h - 2 else -0.25)
+
+            px[x, y] = color
+
+    if lamp:
+        # A brass sconce bracket + burning mantle, baked into the sprite rather than parented
+        # as a separate object: a child sprite would need its own sort order relative to the
+        # wall, and there is nothing to gain from that. The matching warm Light2D IS a child
+        # object (lights do not sort), placed by SandboxFloorGenerator.
+        cx = w // 2
+        base = _wall_base_row(cx, mirror)
+
+        def put(dx, b, color):
+            gx, gy = cx + dx, base - b
+            if 0 <= gx < w and 0 <= gy < h:
+                px[gx, gy] = color
+
+        # Warm spill on the brickwork behind the flame, drawn first so the fixture sits on it.
+        for b in range(29, 47):
+            for dx in range(-4, 5):
+                gx, gy = cx + dx, base - b
+                if not (0 <= gx < w and 0 <= gy < h) or px[gx, gy][3] == 0:
+                    continue
+                fall = 1.0 - (abs(dx) / 5.0) - abs(b - 40) / 14.0
+                if fall > 0:
+                    px[gx, gy] = _shade(px[gx, gy], 0.45 * fall)
+
+        for b in (34, 35):                                    # bracket arm
+            for dx in (-1, 0, 1):
+                put(dx, b, BRASS_DARK)
+        put(0, 36, BRASS)
+        put(-1, 37, BRASS_DARK)
+        put(1, 37, BRASS_DARK)
+        put(0, 37, _shade(BRASS, 0.35))
+        for dx in (-2, -1, 0, 1, 2):                          # lamp bowl
+            put(dx, 38, _shade(BRASS, 0.15))
+        for dx in (-1, 0, 1):
+            put(dx, 39, (255, 206, 128, 255))
+        put(0, 40, (255, 232, 176, 255))
+        put(0, 41, (255, 248, 214, 255))
+
+    return upscale(img, ENV_UPSCALE)
+
+
+# --- Near-edge slab skirting -------------------------------------------------------------
+# The two camera-facing edges stay open (classic isometric room), but the floor used to just
+# stop dead against the background. A short slab side under the near edges gives the
+# workshop a thickness so it reads as a raised platform in a dark room instead of a diamond
+# floating in a void.
+EDGE_NATIVE_H = 20  # 8 px of isometric rise + 12 px of slab thickness -> 32x40 final
+
+
+def _edge_top_row(x, mirror):
+    step = (x // 2) if mirror else ((WALL_NATIVE_W - 1 - x) // 2)
+    return (WALL_NATIVE_RISE - 1) - step
+
+
+def edge_pivot(mirror: bool):
+    final_h = EDGE_NATIVE_H * ENV_UPSCALE
+    top_final_row = _edge_top_row(WALL_NATIVE_W // 2, mirror) * ENV_UPSCALE
+    return (0.5, (final_h - top_final_row) / float(final_h))
+
+
+def make_floor_edge(mirror: bool = False) -> Image.Image:
+    w, h = WALL_NATIVE_W, EDGE_NATIVE_H
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    px = img.load()
+    thickness = 12
+
+    for x in range(w):
+        top = _edge_top_row(x, mirror)
+        xm = (w - 1 - x) if mirror else x
+        for d in range(thickness):
+            y = top + d
+            if y >= h:
+                continue
+            if d == 0:
+                color = _shade(WOOD_LIGHT, 0.14)                 # lit lip of the slab
+            elif d <= 5:
+                color = _shade(WOOD_MID, -0.10 - d * 0.05)       # facing board
+                if xm % 8 == 0:
+                    color = _shade(color, -0.22)                 # board joint, not a picket
+            elif d <= 8:
+                color = _shade(WOOD_DARK, -0.45)                 # joist / underside shadow
+                if xm % 8 in (2, 3):
+                    color = _shade(WOOD_DARK, -0.28)             # exposed joist end
+            else:
+                color = _shade(SHADOW_INK, 0.14 - (d - 9) * 0.05)
+            px[x, y] = color
+
+    return upscale(img, ENV_UPSCALE)
+
+
+# --- Corner post -------------------------------------------------------------------------
+POST_NATIVE_W = 12
+POST_NATIVE_H = 64
+POST_BASE_ROW = 60
+
+
+def post_pivot():
+    final_h = POST_NATIVE_H * ENV_UPSCALE
+    return (0.5, (final_h - POST_BASE_ROW * ENV_UPSCALE) / float(final_h))
+
+
+def make_corner_post() -> Image.Image:
+    w, h = POST_NATIVE_W, POST_NATIVE_H
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    px = img.load()
+
+    for x in range(w):
+        for b in range(POST_BASE_ROW + 1):
+            y = POST_BASE_ROW - b
+            if y < 0:
+                continue
+            if b <= 1:
+                color = _shade(SHADOW_INK, 0.10)
+            elif b in (9, 10, 27, 28, 45, 46, 55, 56):
+                color = BRASS if b % 2 == 1 else BRASS_DARK      # brass banding
+                if x in (0, w - 1):
+                    color = _shade(color, -0.3)
+            else:
+                color = _shade(WOOD_DARK, 0.16 - abs(x - (w - 1) / 2.0) * 0.05)
+            px[x, y] = color
+
+    return upscale(img, ENV_UPSCALE)
+
+
+def make_ground_shadow() -> Image.Image:
+    """Soft isometric contact shadow. Alpha-only ramp so it multiplies into whatever floor
+    variant it lands on rather than tinting toward one plank tone."""
+    w, h = 24, 12
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    px = img.load()
+    r, g, b, _ = SHADOW_INK
+    for iy in range(h):
+        for ix in range(w):
+            nx = (ix + 0.5 - w / 2.0) / (w / 2.0)
+            ny = (iy + 0.5 - h / 2.0) / (h / 2.0)
+            d = nx * nx + ny * ny
+            if d >= 1.0:
+                continue
+            px[ix, iy] = (r, g, b, int(225 * (1.0 - d) ** 0.95))
+    return upscale(img, ENV_UPSCALE)
+
+
+# --- Workshop props ----------------------------------------------------------------------
+# Without these the room is a well-lit empty wooden box; "cozy, detailed" needs clutter.
+# Both are ground-anchored: the sprite pivot is the CENTRE of the base diamond, i.e. the
+# cell centre, so the same CellToWorldCenter placement golems use works unchanged.
+
+def _iso_box_bounds(x, cx0, half_w, half_h):
+    """Lower boundary row of an isometric diamond of the given half-extents at column x."""
+    dx = abs(x - cx0)
+    if dx > half_w:
+        return None
+    return half_h * (1.0 - dx / float(half_w))
+
+
+def prop_pivot(native_h, base_center_row):
+    return (0.5, (native_h - base_center_row) / float(native_h))
+
+
+CRATE_NATIVE_W, CRATE_NATIVE_H, CRATE_BASE_ROW = 24, 30, 23
+
+
+def make_crate() -> Image.Image:
+    w, h = CRATE_NATIVE_W, CRATE_NATIVE_H
+    box_h = 16
+    half_w, half_h = 11.5, 5.75
+    cx0 = (w - 1) / 2.0
+    top_c = CRATE_BASE_ROW - box_h
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    px = img.load()
+
+    for x in range(w):
+        span = _iso_box_bounds(x, cx0, half_w, half_h)
+        if span is None:
+            continue
+        # Top face.
+        for y in range(int(round(top_c - span)), int(round(top_c + span)) + 1):
+            if 0 <= y < h:
+                color = _shade(WOOD_LIGHT, 0.06 if (y - top_c) < 0 else -0.04)
+                if int(x + (y - top_c) * 2) % 6 == 0:
+                    color = _shade(WOOD_DARK, 0.02)     # plank lines across the lid
+                px[x, y] = color
+        # Side faces.
+        y0 = int(round(top_c + span))
+        for y in range(y0, y0 + box_h):
+            if not (0 <= y < h):
+                continue
+            left = x < cx0
+            color = _shade(WOOD_MID, -0.34 if left else -0.14)
+            d = y - y0
+            if d in (0, box_h - 1) or x in (0, w - 1):
+                color = _shade(WOOD_DARK, -0.30)         # frame edge
+            elif d in (box_h // 2 - 1, box_h // 2):
+                color = BRASS_DARK if left else BRASS    # brass strapping band
+            elif int(x + d) % 7 == 0:
+                color = _shade(color, -0.16)             # board seam
+            px[x, y] = color
+
+    return upscale(img, ENV_UPSCALE)
+
+
+BARREL_NATIVE_W, BARREL_NATIVE_H, BARREL_BASE_ROW = 18, 30, 24
+
+
+def make_barrel() -> Image.Image:
+    w, h = BARREL_NATIVE_W, BARREL_NATIVE_H
+    body_h = 17
+    half_w, half_h = 8.0, 4.0
+    cx0 = (w - 1) / 2.0
+    top_c = BARREL_BASE_ROW - body_h
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    px = img.load()
+
+    for x in range(w):
+        span = _iso_box_bounds(x, cx0, half_w, half_h)
+        if span is None:
+            continue
+        for y in range(int(round(top_c - span)), int(round(top_c + span)) + 1):
+            if 0 <= y < h:
+                px[x, y] = _shade(WOOD_DARK, 0.24 if y < top_c else 0.12)
+        y0 = int(round(top_c + span))
+        for y in range(y0, y0 + body_h):
+            if not (0 <= y < h):
+                continue
+            d = y - y0
+            lit = 0.18 - abs(x - cx0) / half_w * 0.34
+            color = _shade(WOOD_MID, lit)
+            if x % 4 == 0:
+                color = _shade(color, -0.22)             # stave seams
+            if d in (2, 3, body_h - 4, body_h - 3):
+                color = _shade(BRASS if lit > 0 else BRASS_DARK, lit * 0.5)  # hoops
+            if d >= body_h - 1:
+                color = _shade(SHADOW_INK, 0.12)
+            px[x, y] = color
+
+    return upscale(img, ENV_UPSCALE)
+
+
+def generate_environment() -> None:
+    # Floor: warm plank variants (floor_tile.png / floor_tile_accent.png keep their original
+    # names so the existing Tile assets and their GUIDs survive the reskin).
+    save(make_wood_floor_tile(0), "floor_tile.png")
+    save(make_brass_plate_tile(), "floor_tile_accent.png")
+    save(make_wood_floor_tile(1), "floor_tile_wood_b.png")
+    save(make_wood_floor_tile(2), "floor_tile_wood_c.png")
+    save(make_wood_floor_tile(3), "floor_tile_wood_d.png")
+    save(make_grate_tile(), "floor_tile_grate.png")
+
+    # Perimeter walls / slab edges / posts. Pivots are printed because they are not the
+    # sprite centre -- they are the midpoint of the base line, and the Editor import step
+    # has to set them as custom pivots for the segments to land on the boundary anchors.
+    save(make_wall_segment(mirror=False), "wall_segment_ne.png")
+    save(make_wall_segment(mirror=True), "wall_segment_nw.png")
+    save(make_wall_segment(mirror=False, lamp=True), "wall_segment_ne_lamp.png")
+    save(make_wall_segment(mirror=True, lamp=True), "wall_segment_nw_lamp.png")
+    save(make_floor_edge(mirror=False), "floor_edge_se.png")
+    save(make_floor_edge(mirror=True), "floor_edge_sw.png")
+    save(make_corner_post(), "wall_corner_post.png")
+    save(make_ground_shadow(), "ground_shadow.png")
+    save(make_crate(), "prop_crate.png")
+    save(make_barrel(), "prop_barrel.png")
+    print("pivot wall_ne   =", wall_pivot(False))
+    print("pivot wall_nw   =", wall_pivot(True))
+    print("pivot edge_se   =", edge_pivot(False))
+    print("pivot edge_sw   =", edge_pivot(True))
+    print("pivot post      =", post_pivot())
+    print("pivot crate     =", prop_pivot(CRATE_NATIVE_H, CRATE_BASE_ROW))
+    print("pivot barrel    =", prop_pivot(BARREL_NATIVE_H, BARREL_BASE_ROW))
+
+
+def generate_legacy_placeholders() -> None:
+    """The original placeholder character/item sprites. NOT run by default any more: the
+    golem chassis, player, and item sprites in Assets/_Project/Art/ have since been replaced
+    with better art at different resolutions (see git history), and regenerating these would
+    silently clobber it. Opt in with `--legacy` only if you actually want the placeholders
+    back."""
     save(make_floor_tile(STONE, STONE_LIGHT), "floor_tile.png")
     save(make_floor_tile(WOOD_MID, WOOD_LIGHT, accent=BRASS), "floor_tile_accent.png")
 
@@ -252,6 +811,14 @@ def main() -> None:
     save(make_item_icon(TEAL_GLOW, STEEL_DARK), "item_aether.png")
 
     save(make_ghost_placeholder(), "ghost_placeholder.png")
+
+
+def main() -> None:
+    import sys
+
+    generate_environment()
+    if "--legacy" in sys.argv:
+        generate_legacy_placeholders()
 
 
 if __name__ == "__main__":

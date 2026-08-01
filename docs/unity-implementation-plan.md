@@ -1708,3 +1708,115 @@ written with `PrefabUtility.RecordPrefabInstancePropertyModifications`.
    header ornament; both would need new assets/systems this pass didn't take on.
 3. `AlertsStrip` still overlaps the very top of the screen; the header bar was moved down
    to clear it rather than relocating shared HUD chrome another pass owns.
+
+## World/environment production-quality pass implementation notes
+
+Presentation-only pass over the isometric floor, perimeter walls, lighting and camera
+framing of both `Main.unity` and `Sandbox.unity`. No simulation logic changed; `GridMap`
+remains the truth and the Tilemap remains purely visual.
+
+### The floor tiles were never the size of their own cell
+Before anything else: `floor_tile.png` (128x64) imported at **PPU 64**, which made every
+tile **2 x 1 world units** — exactly twice the `1 x 0.5` cell the isometric `Grid` uses. The
+painted diamonds therefore never lined up with the grid at all; the floor was a 2x-oversized
+overlapping mat that only *looked* like a tiled floor. Every environment sprite now imports
+at **PPU 128**, which is what makes sprite size == cell size.
+
+That fixed the scale, and it fixed the pixel budget too. The whole environment is now
+authored at one art-pixel scale — **32 art pixels per world unit**, native canvas upscaled
+x4, imported at PPU 128 — chosen so that at the default `orthographicSize` of 5 an art pixel
+is 3-4 screen pixels. Authoring finer produced exactly the high-frequency visual noise the
+old grey stone floor was criticised for.
+
+### Root cause of the "staircase" walls
+The in-flight wall art was 88x109 px at PPU 64 (**1.375 x 1.703 world units**) with a
+**flat** bottom edge, placed one instance per *perimeter ring cell* via
+`FloorLayout.GetNorthEastEdgeCells`. Consecutive perimeter cells are only **0.5 x 0.25**
+world units apart (the 2:1 isometric run), so each sprite was 2.75x wider than its own
+spacing *and* its silhouette slope never matched the run it was supposed to trace. The
+result is a row of flat-bottomed blocks each stepped up a quarter unit from the last — a
+literal staircase. No offset or scale nudge can fix that; the footprint geometry is wrong.
+
+The fix is geometric, not cosmetic:
+- A wall segment covers exactly **one cell edge**: 0.5 world wide with a base line that
+  rises 0.25 world across that width (`_wall_base_row`'s `//2` staircase in the generator
+  script is the exact 2:1 step, so neighbours butt together seamlessly).
+- Its sprite pivot is a **custom pivot at the midpoint of that base line**, not the sprite
+  centre or bottom-centre.
+- It is anchored on the boundary **line** at `halfExtent + 0.5`, not a ring cell at
+  `halfExtent + 1` — `FloorLayout.GetEdgeAnchor(Edge, index)`, which replaces
+  `GetNorthEastEdgeCells`/`GetNorthWestEdgeCells`.
+
+### Code
+- `World/FloorLayout.cs` — new `Edge` enum plus `GetEdgeAnchor` / `GetEdgeIndices` /
+  `GetWallPostAnchors`, all pure cell-fraction math (the `GridCoordinateConverter` idiom).
+  Replaces the two ring-cell edge enumerations, which encoded the wrong placement model.
+- `World/FloorTileVariant.cs` — pure deterministic tile selection (4 plank variants + two
+  rare accent tiles). Deterministic on purpose: a random scatter would rewrite the scene
+  file on every regeneration.
+- `World/GroundShadow.cs` — creates its own child `SpriteRenderer` and drives its
+  `sortingOrder` from the **owner's** Y minus one. A `YSortSpriteRenderer` on the child
+  could not do this: the shadow's own Y is lower, so it would compute a higher order and
+  draw *in front of* the thing casting it. `anchorToSpriteBottom` derives the drop point
+  from the owner sprite's pivot every frame, because this project's pivots are inconsistent
+  (player = bottom-centre, chassis = centre) and `GolemVisual` assigns the chassis sprite
+  after `Awake`.
+- `Scripts/Editor/SandboxFloorGenerator.cs` — rewritten. Paints the floor from
+  `FloorTileVariant`, builds both wall runs (with sconce variants + child `Light2D`s), both
+  near-edge slab skirtings, three corner posts, and deterministic crate/barrel clutter along
+  all four edges. Also gained a `Tools > Golem Factory > Reimport Environment Art` menu item
+  that applies PPU 128 + the custom pivots, so the pivots live in source rather than in a
+  throwaway console script. `GolemFactory.Editor.asmdef` now references
+  `Unity.RenderPipelines.Universal.2D.Runtime` for `Light2D`.
+- Sorting order on walls/props is **baked at generation** rather than adding a
+  `YSortSpriteRenderer` to ~130 static objects: the value is identical to what that
+  component computes, it costs no per-frame work, and it also sorts correctly in EditMode
+  (no `[ExecuteAlways]`).
+
+### Art (`Tools/Art/generate_placeholder_art.py`, Pillow only — no paid generation)
+Warm wood plank floor with 4 variants, a riveted brass inspection plate and a steam grate as
+sparse accents; panelled-dado/brass-rail/warm-brick wall segments plus lit sconce variants;
+mirrored near-edge slab skirting; a brass-banded corner post; crate and barrel props; and a
+soft contact shadow. `main()` now runs **only** the environment set — the character/item
+sprites have since been replaced with better art at different resolutions, and re-running
+the script used to silently clobber them. `--legacy` opts back in.
+
+### Lighting / framing
+- `Assets/Settings/PostProcessing/GolemFactoryVolumeProfile.asset` was **empty**. The
+  Bloom/ColorAdjustments/Vignette recorded in the graphics pass had been created but never
+  added as sub-assets, so they vanished on the next domain reload and no post-processing was
+  ever running. Rebuilt with `AssetDatabase.AddObjectToAsset` and verified across a reload.
+- `Sandbox.unity` had no `GlobalVolume` at all, and its camera had no
+  `UniversalAdditionalCameraData` (so no post-processing). Both added.
+- Both cameras: `Skybox` (default blue void) -> `SolidColor` warm gloom, so the workshop
+  reads as a lit platform in a dark room instead of a diamond floating in nothing.
+- Global `Light2D` warmed and raised to 1.15; wall sconces every 4th segment at 0.85 /
+  radius 3.6 (every 6th left long stretches of wall in darkness).
+
+### Gotcha worth recording
+`manage_camera(screenshot)`'s inline preview is noticeably **brighter** than the PNG it
+writes to disk. Two rounds of lighting were graded against the preview and were far too dark
+in reality. Always verify the file, not the inline image.
+
+### Testing
+- `Tests/EditMode/World/FloorTileVariantTests.cs` (6) and 5 new `FloorLayoutTests` cases,
+  including the staircase regression test itself: consecutive edge anchors must be exactly
+  one cell edge (0.5 x 0.25) apart on all four edges, back walls must sort behind the cell
+  they border and front skirtings in front of it, and each run must end exactly on its
+  corner post.
+- Full regression: **308/308 pass (229 EditMode + 79 PlayMode)**, up from 296; zero
+  failures, console clean.
+- Verified live in Play mode in both scenes at 1920x1080, including the Y-sort case: the
+  player parked at the far corner is correctly occluded from the knees down by the wall
+  segments nearer the camera while the corner post draws behind her.
+
+### Deliberate scope cuts
+1. `WallSegmentNE.prefab`/`WallSegmentNW.prefab` were deleted. Seven distinct piece types
+   would have meant seven prefabs to keep in sync with the one generator that is the actual
+   source of truth; the generator is idempotent, so nothing is lost.
+2. Golem chassis sprites are pivoted **centre**, so a golem's art sits half a sprite-height
+   below its cell. `GroundShadow` compensates for the shadow, but the sprites themselves
+   still render low. Fixing the pivots shifts every hand-placed golem in `Main.unity` and
+   belongs to whoever owns golem presentation, not this pass.
+3. The interior of the room is still empty floor — clutter is confined to the perimeter so
+   it never competes with build placement. Filling the middle is a level-design decision.

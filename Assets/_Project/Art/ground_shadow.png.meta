@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: a17eccce7a913c841837af35307f86fb
+guid: 49b931f350aa5164896745aeddb9cb16
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -4363867510923050497
-    second: floor_tile_0
+      213: 6524963724184813482
+    second: ground_shadow_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -49,7 +49,7 @@ TextureImporter:
   spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
-  alignment: 0
+  alignment: 9
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 128
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: floor_tile_0
+      name: ground_shadow_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 128
-        height: 64
+        width: 96
+        height: 48
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: ff1409c9e9d6073c0800000000000000
-      internalID: -4363867510923050497
+      spriteID: aaf7858bfe35d8a50800000000000000
+      internalID: 6524963724184813482
       vertices: []
       indices: 
       edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      floor_tile_0: -4363867510923050497
+      ground_shadow_0: 6524963724184813482
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

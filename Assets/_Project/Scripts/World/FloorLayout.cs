@@ -41,28 +41,63 @@ namespace GolemFactory.World
             }
         }
 
-        // Only the two "back" edges get visible walls (classic isometric room convention --
-        // the two "front" edges nearest the camera stay open so the room interior stays
-        // visible; SE/SW are still boundary-clamped via ClampToFloor, just not walled).
-        // NE: TOP corner to RIGHT corner (cellX fixed at the ring, cellY varies).
-        public static IEnumerable<Vector2Int> GetNorthEastEdgeCells(int halfExtent = HalfExtent)
+        // The four boundary lines of the floor diamond, named for where they sit on screen.
+        // NorthEast/NorthWest are the two "back" edges that get full walls; SouthEast/
+        // SouthWest are the two camera-facing edges, which stay open (classic isometric room
+        // convention) but get a short slab skirting so the floor has a visible thickness.
+        public enum Edge
         {
-            int ring = halfExtent + 1;
-            for (int y = -ring; y <= ring; y++)
+            NorthEast,
+            NorthWest,
+            SouthEast,
+            SouthWest,
+        }
+
+        // Anchor for the wall/skirting segment covering ONE cell of the given boundary,
+        // returned in cell-fraction space so it is converter-independent and unit-testable.
+        //
+        // This is the whole fix for the "staircase wall" defect. A wall segment does not live
+        // at a perimeter *cell centre* (halfExtent + 1) -- it lives on the boundary LINE at
+        // halfExtent + 0.5, and its anchor is the MIDPOINT of the one-cell-long piece of that
+        // line, matching the sprite's pivot. Consecutive anchors are exactly one cell-edge
+        // apart (0.5 x 0.25 world units, the 2:1 isometric run), so segments whose sprites are
+        // 0.5 world wide with a base line rising 0.25 across that width butt together into a
+        // continuous wall. Placing 1.375-world-wide, flat-bottomed sprites one per perimeter
+        // cell -- which is what the earlier attempt did -- can never do that: the silhouette
+        // slope does not match the run, so the segments read as stacked blocks, i.e. a
+        // staircase, no matter how they are nudged.
+        public static Vector2 GetEdgeAnchor(Edge edge, int index, int halfExtent = HalfExtent)
+        {
+            float outer = halfExtent + 0.5f;
+            switch (edge)
             {
-                yield return new Vector2Int(ring, y);
+                case Edge.NorthEast: return new Vector2(outer, index);
+                case Edge.NorthWest: return new Vector2(index, outer);
+                case Edge.SouthEast: return new Vector2(-outer, index);
+                default: return new Vector2(index, -outer);
             }
         }
 
-        // NW: TOP corner to LEFT corner (cellY fixed at the ring, cellX varies). Excludes the
-        // shared TOP corner (x == ring) since GetNorthEastEdgeCells already places it there.
-        public static IEnumerable<Vector2Int> GetNorthWestEdgeCells(int halfExtent = HalfExtent)
+        // One segment per floor cell along the edge -- indices run over the floor's own extent,
+        // not the perimeter ring, so the run covers the floor exactly corner to corner.
+        public static IEnumerable<int> GetEdgeIndices(int halfExtent = HalfExtent)
         {
-            int ring = halfExtent + 1;
-            for (int x = -ring; x < ring; x++)
+            for (int i = -halfExtent; i <= halfExtent; i++)
             {
-                yield return new Vector2Int(x, ring);
+                yield return i;
             }
+        }
+
+        // The three diamond corners a wall run terminates at: the far corner where the two
+        // back walls meet, and the left/right corners where each back wall meets an open
+        // front edge. The near (bottom) corner is left bare -- it is the closest point to the
+        // camera and a post there would sit in front of the room.
+        public static IEnumerable<Vector2> GetWallPostAnchors(int halfExtent = HalfExtent)
+        {
+            float outer = halfExtent + 0.5f;
+            yield return new Vector2(outer, outer);
+            yield return new Vector2(outer, -outer);
+            yield return new Vector2(-outer, outer);
         }
 
         // Clamps in cell-fraction space, not world space: CellToWorldCenter maps a square in
