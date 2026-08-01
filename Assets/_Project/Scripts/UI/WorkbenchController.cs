@@ -778,7 +778,10 @@ namespace GolemFactory.UI
             // Long roster names ("Zeppelin Freight Loader") used to wrap out of their own
             // button and collide with the next one; shrink to fit inside the card instead.
             label.textWrappingMode = TextWrappingModes.NoWrap;
-            label.overflowMode = TextOverflowModes.Ellipsis;
+            // Truncate, not Ellipsis: LiberationSans SDF (the TMP default this project
+            // ships) has no "…" glyph, so Ellipsis silently degrades to Truncate anyway
+            // and logs a warning for every label it builds.
+            label.overflowMode = TextOverflowModes.Truncate;
         }
 
         private static void ClearChildren(Transform parent)
