@@ -1610,3 +1610,101 @@ Four-phase engine/art/UI polish pass (PR #23, merged to `main`), run per an appr
 3. `Sandbox.unity`'s Management HUD tabs (Inventory/Patents/SaveLoad) still aren't wired with
    their own per-instance data-source holders — flagged as a follow-up in the Steampunk pass
    and still open after this pass; only `Main.unity` has that wiring.
+
+## Workbench production-quality pass implementation notes
+
+Presentation-only pass over the M8 Workbench screen, bringing it to the
+`docs/digital-design.md` spec ("mahogany-and-brass blueprint viewport… Card Vault…
+diagnostic tape ticker… Engage Gears lever"). No simulation or drag/commit semantics
+changed: dragging still edits only the local draft, and nothing reaches
+`GolemEntity.Program` until `EngageGears()` spends Focus.
+
+### Root cause: the "transparent Workbench panels" bug
+
+The three column backgrounds looked like they had *no* panel behind them — the game world
+showed straight through the whole screen. The obvious hypotheses were all wrong: the
+`Image`s did have their `iron_panel_nobolt` sprite, `fillCenter` was `true`, `type` was
+`Sliced` with a valid 9-slice border, `CanvasRenderer.cull` was `false`, and neither
+`Main.unity` nor `Sandbox.unity` carried an `m_Sprite`/`m_Color` prefab-instance override.
+
+The actual cause is **`m_ActiveColorSpace: 1` (Linear) plus a very dark tint at
+`alpha 0.85`**. Confirmed by an A/B in Play mode, measured off the captured PNGs rather
+than eyeballed: a flat red `Image` at alpha 0.85 rendered as a strong wash (`250,86,74`),
+while the same panel sprite tinted `0.35/0.25/0.15` at the same alpha landed on
+`51,43,37` against a `67,59,52` world — i.e. ~30% effective coverage, not 85%. In linear
+blending the surviving 15% of a mid-bright, high-contrast world carries far more
+perceived luminance than 15% does in gamma space, so an almost-black panel reads as a
+faint dirty film and the stone texture underneath stays legible. Nothing was "missing";
+the panels were authored translucent-and-dark, which is unusable over a lit world.
+
+Fix: the Workbench is a *dedicated management screen*, so it now has a fully opaque tiled
+mahogany backdrop and opaque panels. Nothing in the screen relies on fractional alpha
+over the world any more.
+
+### Code (done)
+- `UI/WorkbenchDiagnostics.cs` — new engine-free static class (GridCoordinateConverter /
+  GolemAnimationUtility idiom): `ComputeCycleTicks`, `ComputeSteamDraw`,
+  `ComputeCyclesPerMinute`, `Humanize` (CamelCase asset id → prose, keeping acronym and
+  digit runs intact), `DisplayName`, and `ComposeTicker`, which returns the exact tape
+  string so it is asserted in tests rather than assembled ad hoc in `Update()`.
+  **Steam is deliberately not a simulated resource** — the psi figure is a derived
+  presentation number over data that already exists (slotted steps × chassis tier), which
+  is what the design doc's "immediate feedback before activation" asks for.
+- `UI/WorkbenchLeverMotion.cs` + `UI/WorkbenchLever.cs` — the "Engage Gears" lever. The
+  throw/hold/spring-back curve is engine-free and testable; the `MonoBehaviour` is a thin
+  applier that only moves a handle `RectTransform`. It never touches program state — the
+  `Button` on the same GameObject still raises `EngageGears` through the normal `onClick`
+  path.
+- `UI/WorkbenchController.cs` — chassis buttons and vault cards rebuilt with a name +
+  subtitle (trigger/action detail read straight off the definitions), `LayoutElement`
+  with `flexibleHeight = 0` pinned explicitly (the Steampunk pass' row-ballooning bug,
+  pre-empted), cream lettering on the chassis rack in both states so no per-state text
+  recolor is needed, and `RefreshBlueprintPane()` driving the viewport portrait from
+  `ChassisDefinition.chassisSprite` — the same data-driven source `GolemVisual` uses.
+  `ClearChildren` split into `ClearCards` for slots so a rebuild sheds only the card and
+  keeps the slot's caption/socket/hint chrome. New `hideWhileOpen` list hides always-on
+  HUD chrome that has no `Close()` of its own (Sandbox's `BuildMenuPanel`) — the modality
+  is the Workbench's concern, not each panel's.
+- **Unnamed definitions**: demo bootstraps build some `LogicCoreDefinition`s /
+  `AppendageActionDefinition`s via `ScriptableObject.CreateInstance`, so `name` is empty
+  and those slot cards had always rendered as a blank strip (and the tape read
+  "TRIGGER -- none --" while a core visibly sat in the slot). `DisplayName` now falls
+  back to the trigger/action type.
+- `Tools/Art/generate_workbench_ui_art.py` — new companion to
+  `generate_placeholder_art.py` (free/Pillow only, no paid image generation): mahogany /
+  iron / blueprint-field 9-slice panels whose centres tile seamlessly for
+  `Image.Type.Tiled`, a brass title plate, a near-white punch-card face (so the teal/copper
+  `Image.color` coding stays the thing carrying the semantics), a slot socket, punched
+  paper tape, and the lever track/handle/gauge pip. Output to
+  `Assets/_Project/Art/UI/Workbench/`.
+
+### Manual Editor setup (done, via live Unity MCP + `execute_code`)
+`WorkbenchScreen`'s children were deleted and rebuilt in one `PrefabUtility
+.LoadPrefabContents` → edit → `SaveAsPrefabAsset` pass (headless, so the
+prefab-instance-override-reverts gotcha never applies), then the controller's serialized
+references re-pointed via `SerializedObject`. Only `WorkbenchScreen` was touched;
+`ManagementScreen`, `AlertsStrip`, `EventSystem` and the controller GameObjects were left
+alone so the scenes' existing overrides (`targetGolem`, `focusMeterHolder`,
+`bufferRegistryHolder`, …) survived. Layout: header plate → blueprint viewport (chassis
+portrait pane + captioned trigger/step sockets) → chassis rack → card vault (now a real
+`ScrollRect` + `RectMask2D`) → bottom bar (tape ticker, status line, lever, patent) →
+`DragLayer` last. The Sandbox `BuildMenuPanel` wiring is a scene-level reference and was
+written with `PrefabUtility.RecordPrefabInstancePropertyModifications`.
+
+### Testing
+- New `Assets/Tests/EditMode/UI/WorkbenchDiagnosticsTests.cs` (16) and
+  `WorkbenchLeverMotionTests.cs` (6).
+- Full regression: **246/246 pass (185 EditMode + 61 PlayMode)**, up from 205; zero
+  failures, console clean.
+- Verified live in Play mode in both `Main.unity` and `Sandbox.unity` (shared prefab),
+  including a scripted end-to-end drive: select a chassis, drop cards into slots, pull the
+  lever, read back `GolemEntity.Program` (`chassis=ZeppelinFreightLoader logicCore=set
+  appendages=3`).
+
+### Deliberate scope cuts
+1. No hover/press states on vault cards or chassis buttons (`Button` colour tint only) —
+   the cards are runtime-instantiated and would need per-instance `SpriteState` wiring.
+2. The lever animates on click but there is no audio and no gear-turn animation on the
+   header ornament; both would need new assets/systems this pass didn't take on.
+3. `AlertsStrip` still overlaps the very top of the screen; the header bar was moved down
+   to clear it rather than relocating shared HUD chrome another pass owns.

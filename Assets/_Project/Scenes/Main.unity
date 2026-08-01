@@ -9734,7 +9734,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4481754425096634612, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 0
+      value: -926.5381
       objectReference: {fileID: 0}
     - target: {fileID: 4669823503670471034, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_AnchorMax.x
@@ -9788,6 +9788,10 @@ PrefabInstance:
       propertyPath: bufferRegistryHolder
       value: 
       objectReference: {fileID: 950305960}
+    - target: {fileID: 7168274968137791308, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 7786623487855400834, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: constructionPanel
       value: 
