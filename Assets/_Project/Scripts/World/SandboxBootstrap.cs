@@ -27,6 +27,12 @@ namespace GolemFactory.World
         [SerializeField] private CameraRigController cameraRig;
         [SerializeField] private Transform playerTransform;
 
+        // Same "no editor-only serialized field on the shared component" reasoning as
+        // cameraRig above -- PlayerController.SetFloorBounds isn't a [SerializeField] so
+        // Main.unity's player (which never calls this) is provably unaffected.
+        [SerializeField] private GolemFactory.Player.PlayerController player;
+        [SerializeField] private Grid grid;
+
         private void Start()
         {
             // ScrapNode/BrassNode are directly harvestable (both by the player's own
@@ -44,6 +50,11 @@ namespace GolemFactory.World
             if (cameraRig != null && playerTransform != null)
             {
                 cameraRig.SetFollowTarget(playerTransform);
+            }
+
+            if (player != null && grid != null)
+            {
+                player.SetFloorBounds(new GridCoordinateConverter(grid.cellSize), FloorLayout.HalfExtent);
             }
         }
     }

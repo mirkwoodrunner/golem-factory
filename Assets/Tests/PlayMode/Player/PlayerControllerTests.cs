@@ -64,5 +64,37 @@ namespace GolemFactory.Tests.PlayMode
 
             Assert.IsNotNull(controller.GetComponent<YSortSpriteRenderer>());
         }
+
+        [UnityTest]
+        public IEnumerator MoveBy_WithoutFloorBounds_LargeDisplacementIsUnclamped()
+        {
+            PlayerController controller = Build();
+            yield return null;
+
+            controller.MoveBy(Vector2.right, 100f);
+
+            // Main.unity's player never calls SetFloorBounds -- confirms it stays unaffected.
+            Assert.AreEqual(400f, controller.transform.position.x, 0.01f);
+        }
+
+        [UnityTest]
+        public IEnumerator MoveBy_WithFloorBounds_ClampsToFloorEdge()
+        {
+            PlayerController controller = Build();
+            var converter = new GridCoordinateConverter(new Vector2(1f, 0.5f));
+            controller.SetFloorBounds(converter, 12);
+            yield return null;
+
+            // Set the position directly (rather than driving MoveBy with a huge world-space
+            // displacement) since a pure world-X move actually traces a diagonal in cell space
+            // -- isometric transforms mix axes -- and would hit a corner clamp instead of the
+            // single-axis edge this test targets. Same setup FloorLayoutTests uses in EditMode.
+            controller.transform.position = converter.CellToWorldCenter(new Vector2Int(20, 0));
+            controller.MoveBy(Vector2.zero, 0f);
+
+            Vector3 expectedEdge = converter.CellToWorldCenter(new Vector2Int(12, 0));
+            Assert.AreEqual(expectedEdge.x, controller.transform.position.x, 0.01f);
+            Assert.AreEqual(expectedEdge.y, controller.transform.position.y, 0.01f);
+        }
     }
 }

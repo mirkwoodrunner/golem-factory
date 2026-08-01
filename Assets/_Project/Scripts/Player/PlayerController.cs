@@ -14,6 +14,9 @@ namespace GolemFactory.Player
         [SerializeField] private float _moveSpeed = 4f;
 
         private InputAction _moveAction;
+        private GridCoordinateConverter _floorBoundsConverter;
+        private int _floorBoundsHalfExtent;
+        private bool _hasFloorBounds;
 
         // Programmatic setup used by tests (and available for runtime bootstrapping),
         // mirroring BuildModeController.Configure -- avoids requiring Inspector-assigned
@@ -22,6 +25,16 @@ namespace GolemFactory.Player
         {
             _actions = actions;
             _moveSpeed = moveSpeed;
+        }
+
+        // Separate from Configure (not a required param there) since this is a Sandbox-only
+        // concern -- SandboxBootstrap calls this once; Main.unity's player never does, so its
+        // movement and every existing test/call site are unaffected.
+        public void SetFloorBounds(GridCoordinateConverter converter, int halfExtent)
+        {
+            _floorBoundsConverter = converter;
+            _floorBoundsHalfExtent = halfExtent;
+            _hasFloorBounds = true;
         }
 
         private void Awake()
@@ -62,6 +75,10 @@ namespace GolemFactory.Player
         public void MoveBy(Vector2 moveInput, float deltaTime)
         {
             transform.position += PlayerMovement.ComputeDisplacement(moveInput, _moveSpeed, deltaTime);
+            if (_hasFloorBounds)
+            {
+                transform.position = FloorLayout.ClampToFloor(transform.position, _floorBoundsConverter, _floorBoundsHalfExtent);
+            }
         }
     }
 }
