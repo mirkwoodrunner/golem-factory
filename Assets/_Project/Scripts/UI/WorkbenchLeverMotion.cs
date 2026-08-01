@@ -44,5 +44,24 @@ namespace GolemFactory.UI
 
             return 0f;
         }
+
+        // The *refusal* curve, used when a pull was rejected (no target golem, not enough
+        // Focus). The lever used to run the full satisfying throw above on every failure
+        // path, which is positive feedback for a no-op; this is a short shallow judder
+        // that visibly catches and springs back without ever reaching the bottom stop.
+        public const float RefuseSeconds = 0.20f;
+        public const float RefuseDepth = 0.16f;
+
+        public static float ComputeRefusedNormalized(float elapsedSeconds)
+        {
+            if (elapsedSeconds <= 0f || elapsedSeconds >= RefuseSeconds)
+            {
+                return 0f;
+            }
+
+            // One half-sine: down to RefuseDepth and straight back, never latching.
+            float t = elapsedSeconds / RefuseSeconds;
+            return RefuseDepth * (float)System.Math.Sin(t * System.Math.PI);
+        }
     }
 }

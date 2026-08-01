@@ -41,6 +41,18 @@ namespace GolemFactory.UI
         private static readonly Color ChassisInkColor = new Color(0.98f, 0.94f, 0.86f);
         private static readonly Color ChassisSubInkColor = new Color(0.84f, 0.77f, 0.65f);
         private static readonly Color VaultHeadingColor = new Color(0.86f, 0.70f, 0.40f);
+        // The rejected-chassis flash (see WorkbenchRejectFlash): feedback at the click
+        // point, not only on a status line at the other end of the screen.
+        private static readonly Color RejectedChassisColor = new Color(0.78f, 0.22f, 0.16f);
+        // Status-line inks. The old line was dark orange on a dark grille and read as
+        // decoration; these are picked to sit on the BottomBar plate at real contrast.
+        private static readonly Color StatusErrorColor = new Color(1f, 0.55f, 0.42f);
+        private static readonly Color StatusInfoColor = new Color(0.72f, 0.94f, 0.72f);
+        // Cost readouts on the lever / patent button: the *persistent* affordability
+        // signal, so unaffordability is visible before clicking rather than discovered by
+        // clicking and hunting for a message.
+        private static readonly Color AffordableCostColor = new Color(0.86f, 0.70f, 0.40f);
+        private static readonly Color UnaffordableCostColor = new Color(0.95f, 0.36f, 0.30f);
 
         private const float CardHeight = 44f;
         private const float CardWidth = 250f;
@@ -115,11 +127,39 @@ namespace GolemFactory.UI
             vaultCardSprite = vaultCard;
         }
 
+        // The "Engage Gears" lever's presentation half. Driven from the commit *result*
+        // below rather than from Button.onClick, so a rejected pull can no longer animate
+        // a full satisfying throw (see WorkbenchLever's class comment).
+        [SerializeField] private WorkbenchLever engageLever;
+
+        // Persistent cost readouts recolored by affordability each frame.
+        [SerializeField] private TextMeshProUGUI engageCostText;
+        [SerializeField] private TextMeshProUGUI patentCostText;
+
+        public void ConfigureLever(WorkbenchLever lever) => engageLever = lever;
+
+        public void ConfigureCostLabels(TextMeshProUGUI engageCost, TextMeshProUGUI patentCost)
+        {
+            engageCostText = engageCost;
+            patentCostText = patentCost;
+        }
+
         private ChassisDefinition _draftChassis;
         private LogicCoreDefinition _draftLogicCore;
         private AppendageActionDefinition[] _draftAppendages = new AppendageActionDefinition[0];
         private readonly Dictionary<ChassisDefinition, Image> _chassisButtonImages = new Dictionary<ChassisDefinition, Image>();
         private int _nextBlueprintNumber = 1;
+
+        // Status-line bookkeeping. The line used to be write-only, so every message it
+        // ever showed stayed on screen for the rest of the session; it now carries why it
+        // is up and retires itself once WorkbenchStatusPolicy says the condition resolved.
+        private WorkbenchStatusReason _statusReason = WorkbenchStatusReason.None;
+        private float _statusShownSeconds;
+        private int _statusChassisSlotLimit;
+
+        // The rejected-chassis flash, driven from Update against WorkbenchRejectFlash.
+        private ChassisDefinition _flashChassis;
+        private float _flashElapsed = -1f;
 
         // Test/bootstrap-friendly setup, split into logical groups mirroring
         // GolemEntity.Configure/ConfigureEconomy -- avoids requiring Inspector-assigned
@@ -196,6 +236,15 @@ namespace GolemFactory.UI
             managementPanel?.Close();
             constructionPanel?.Close();
             SetHiddenChromeActive(false);
+
+            // Re-read the target's committed program every time the screen is shown.
+            // Start()'s one-shot load raced the demo bootstraps that populate a golem's
+            // program in their own Start(), so Main.unity's Workbench could open showing a
+            // draft that had nothing to do with the golem it was pointed at. Uncommitted
+            // draft edits are meant to be lost when the screen closes anyway -- that is
+            // what "nothing reaches GolemEntity.Program until EngageGears" means.
+            LoadDraftFromGolem();
+            RebuildUI();
         }
 
         public void Close()
@@ -245,6 +294,9 @@ namespace GolemFactory.UI
         private void Update()
         {
             UpdateTapeTicker();
+            UpdateStatusLifetime();
+            UpdateAffordability();
+            UpdateChassisFlash();
         }
 
         private void LoadDraftFromGolem()
@@ -257,14 +309,83 @@ namespace GolemFactory.UI
             GolemProgram program = targetGolem.Program;
             _draftChassis = program.chassis;
             _draftLogicCore = program.logicCore;
+            // Blank first: this only ever overwrote the indices the incoming program
+            // happened to fill, so retargeting from a 3-appendage golem to a 1-appendage
+            // one used to leave the previous golem's steps 2 and 3 sitting in the draft.
+            for (int i = 0; i < _draftAppendages.Length; i++)
+            {
+                _draftAppendages[i] = null;
+            }
             for (int i = 0; i < program.appendages.Count && i < _draftAppendages.Length; i++)
             {
                 _draftAppendages[i] = program.appendages[i];
             }
         }
 
+        private int DraftMaxSlots => _draftChassis != null ? _draftChassis.maxAppendageSlots : 0;
+
+        // Whether a drop onto this slot may be committed. Deliberately distinct from
+        // SlotVisible below -- see WorkbenchDropRules.
         private bool SlotActive(int appendageIndex) =>
-            _draftChassis != null && appendageIndex >= 0 && appendageIndex < _draftChassis.maxAppendageSlots;
+            WorkbenchDropRules.SlotWithinChassis(appendageIndex, DraftMaxSlots);
+
+        // Called by WorkbenchCard.OnBeginDrag: light up every socket that would accept the
+        // card now in hand, and visibly dim the ones that would reject it. Without this,
+        // all five appendage sockets looked identical while an appendage was held and
+        // nothing signalled that the logic-core socket would refuse it -- the screen's
+        // core verb had no affordance at all.
+        //
+        // Uses the same WorkbenchDropRules.AcceptsCard that HandleDrop commits against, so
+        // a socket can never glow green and then reject the drop.
+        public void BeginCardDrag(WorkbenchCard card)
+        {
+            if (card == null)
+            {
+                return;
+            }
+
+            bool cardIsLogicCore = card.LogicCore != null;
+            int maxSlots = DraftMaxSlots;
+
+            if (logicCoreSlotZone != null)
+            {
+                logicCoreSlotZone.SetHighlight(
+                    WorkbenchDropRules.AcceptsCard(DropZoneKind.LogicCore, -1, cardIsLogicCore, maxSlots)
+                        ? DropZoneHighlight.Valid
+                        : DropZoneHighlight.Invalid);
+            }
+
+            for (int i = 0; i < appendageSlotZones.Length; i++)
+            {
+                WorkbenchDropZone zone = appendageSlotZones[i];
+                if (zone == null)
+                {
+                    continue;
+                }
+
+                zone.SetHighlight(
+                    WorkbenchDropRules.AcceptsCard(DropZoneKind.Appendage, zone.AppendageIndex, cardIsLogicCore, maxSlots)
+                        ? DropZoneHighlight.Valid
+                        : DropZoneHighlight.Invalid);
+            }
+        }
+
+        // Called by WorkbenchCard.OnEndDrag before the drop is resolved.
+        public void EndCardDrag()
+        {
+            if (logicCoreSlotZone != null)
+            {
+                logicCoreSlotZone.SetHighlight(DropZoneHighlight.Neutral);
+            }
+
+            for (int i = 0; i < appendageSlotZones.Length; i++)
+            {
+                if (appendageSlotZones[i] != null)
+                {
+                    appendageSlotZones[i].SetHighlight(DropZoneHighlight.Neutral);
+                }
+            }
+        }
 
         // Called by WorkbenchCard.OnEndDrag. zone is null when the card was dropped
         // somewhere that isn't a valid drop zone.
@@ -283,7 +404,10 @@ namespace GolemFactory.UI
                         _draftAppendages[card.SourceAppendageIndex] = null;
                     }
                 }
-                // Vault-origin card dropped nowhere valid: cancel, nothing to undo.
+                // Vault-origin card dropped nowhere valid: cancel, nothing to undo. The
+                // card GameObject itself is cleaned up by RebuildUI's DragLayer sweep
+                // below (and by WorkbenchCard.OnEndDrag's own guard) -- leaving it alive
+                // under DragLayer is what used to orphan a GameObject per failed drag.
             }
             else if (zone.Kind == DropZoneKind.LogicCore && card.LogicCore != null)
             {
@@ -317,16 +441,28 @@ namespace GolemFactory.UI
             RebuildUI();
         }
 
+        // Every exit path is now reported, and the lever animation is driven from the
+        // result rather than from Button.onClick. Previously WorkbenchLever.Pull was
+        // registered on the same onClick as this method, so the handle ran its full
+        // throw/hold/spring-back on failure too -- and the targetGolem == null path
+        // (Sandbox's default state) returned without setting any status at all, so the
+        // lever pulled and absolutely nothing happened.
         private void EngageGears()
         {
             if (targetGolem == null)
             {
+                SetStatus("No golem selected. Walk up to a golem and interact to program it.", WorkbenchStatusReason.NoTarget);
+                RefuseLever();
                 return;
             }
 
-            if (!focusMeterHolder.Meter.TryConsume(reprogramFocusCost))
+            ArtificerFocusMeter meter = focusMeterHolder != null ? focusMeterHolder.Meter : null;
+            if (meter == null || !meter.TryConsume(reprogramFocusCost))
             {
-                SetStatus($"Not enough Focus to reprogram (need {reprogramFocusCost:F0}).");
+                SetStatus(
+                    $"Not enough Focus to reprogram (need {reprogramFocusCost:F0}).",
+                    WorkbenchStatusReason.InsufficientFocusEngage);
+                RefuseLever();
                 return;
             }
 
@@ -340,8 +476,9 @@ namespace GolemFactory.UI
             {
                 // Shouldn't happen -- the draft's own appendage count is already gated to
                 // fit _draftChassis via SlotActive -- but refund and report if it does.
-                focusMeterHolder.Meter.Refund(reprogramFocusCost);
-                SetStatus("Cannot engage: chassis rejected the current appendage count.");
+                meter.Refund(reprogramFocusCost);
+                SetStatus("Cannot engage: chassis rejected the current appendage count.", WorkbenchStatusReason.Info);
+                RefuseLever();
                 return;
             }
 
@@ -358,14 +495,29 @@ namespace GolemFactory.UI
             program.StepProgressTicks = 0;
             program.State = GolemState.Idle;
 
-            SetStatus("Gears engaged. New configuration is live.");
+            SetStatus("Gears engaged. New configuration is live.", WorkbenchStatusReason.Info);
+            if (engageLever != null)
+            {
+                engageLever.Pull();
+            }
+        }
+
+        private void RefuseLever()
+        {
+            if (engageLever != null)
+            {
+                engageLever.Refuse();
+            }
         }
 
         private void Patent()
         {
-            if (!focusMeterHolder.Meter.TryConsume(patentFocusCost))
+            ArtificerFocusMeter meter = focusMeterHolder != null ? focusMeterHolder.Meter : null;
+            if (meter == null || !meter.TryConsume(patentFocusCost))
             {
-                SetStatus($"Not enough Focus to patent (need {patentFocusCost:F0}).");
+                SetStatus(
+                    $"Not enough Focus to patent (need {patentFocusCost:F0}).",
+                    WorkbenchStatusReason.InsufficientFocusPatent);
                 return;
             }
 
@@ -376,7 +528,7 @@ namespace GolemFactory.UI
             var blueprint = new Blueprint(blueprintId, PlaceableBuilding.LocalPlayerOwnerId, _draftChassis, _draftLogicCore, appendages);
             patentRegistryHolder.Registry.TryPatent(blueprint);
 
-            SetStatus($"Patented as {blueprintId}.");
+            SetStatus($"Patented as {blueprintId}.", WorkbenchStatusReason.Info);
         }
 
         // M9: the other half of Patent() -- loads a previously-patented blueprint back
@@ -398,7 +550,7 @@ namespace GolemFactory.UI
                 _draftAppendages[i] = i < blueprint.Appendages.Count ? blueprint.Appendages[i] : null;
             }
 
-            SetStatus($"Loaded {blueprint.BlueprintId} into the draft.");
+            SetStatus($"Loaded {blueprint.BlueprintId} into the draft.", WorkbenchStatusReason.Info);
             RebuildUI();
         }
 
@@ -407,21 +559,146 @@ namespace GolemFactory.UI
             int assignedAppendages = _draftAppendages.Count(a => a != null);
             if (chassis != null && assignedAppendages > chassis.maxAppendageSlots)
             {
-                SetStatus("Cannot switch chassis: remove appendages to fit its slot count first.");
+                // Feedback at the interaction point as well as on the status line: the
+                // plate the player actually clicked flashes red. A status message alone,
+                // at the far corner of the screen, read as the click not registering.
+                FlashRejectedChassis(chassis);
+                SetStatus(
+                    $"Cannot switch chassis: {WorkbenchDiagnostics.Humanize(chassis.name)} has {chassis.maxAppendageSlots} slots, the draft uses {assignedAppendages}.",
+                    WorkbenchStatusReason.ChassisTooSmall,
+                    chassis.maxAppendageSlots);
                 return;
             }
 
             _draftChassis = chassis;
-            SetStatus(string.Empty);
+            ClearStatus();
             RebuildUI();
         }
 
-        private void SetStatus(string message)
+        private void FlashRejectedChassis(ChassisDefinition chassis)
         {
+            _flashChassis = chassis;
+            _flashElapsed = 0f;
+        }
+
+        private void SetStatus(string message, WorkbenchStatusReason reason, int chassisSlotLimit = 0)
+        {
+            _statusReason = string.IsNullOrEmpty(message) ? WorkbenchStatusReason.None : reason;
+            _statusShownSeconds = 0f;
+            _statusChassisSlotLimit = chassisSlotLimit;
+
             if (statusText != null)
             {
                 statusText.text = message;
+                statusText.color = reason == WorkbenchStatusReason.Info ? StatusInfoColor : StatusErrorColor;
             }
+        }
+
+        private void ClearStatus() => SetStatus(string.Empty, WorkbenchStatusReason.None);
+
+        // Exposed so tests can assert *why* the line says what it says (and that it
+        // retires itself) rather than string-matching the message.
+        public WorkbenchStatusReason StatusReason => _statusReason;
+
+        private float CurrentFocus() =>
+            focusMeterHolder != null && focusMeterHolder.Meter != null ? focusMeterHolder.Meter.CurrentFocus : 0f;
+
+        // The status line was previously write-only: nothing ever cleared it, so a stale
+        // "Not enough Focus (need 10)" sat on screen while the tape ticker read FOCUS
+        // 42/100, and "remove appendages to fit its slot count first" survived removing
+        // every appendage. The staleness rule itself is the engine-free
+        // WorkbenchStatusPolicy; this is the applier that feeds it live numbers.
+        private void UpdateStatusLifetime()
+        {
+            if (_statusReason == WorkbenchStatusReason.None)
+            {
+                return;
+            }
+
+            _statusShownSeconds += Time.unscaledDeltaTime;
+            if (WorkbenchStatusPolicy.ShouldClear(
+                    _statusReason,
+                    _statusShownSeconds,
+                    CurrentFocus(),
+                    reprogramFocusCost,
+                    patentFocusCost,
+                    CountAssignedAppendages(),
+                    _statusChassisSlotLimit,
+                    targetGolem != null))
+            {
+                ClearStatus();
+            }
+        }
+
+        // Affordability is a *persistent* readout, not something to discover by clicking:
+        // the lever and Patent button go non-interactable and their cost labels turn red
+        // the moment the action can't be paid for.
+        private void UpdateAffordability()
+        {
+            float focus = CurrentFocus();
+            bool canEngage = targetGolem != null && focus >= reprogramFocusCost;
+            bool canPatent = focus >= patentFocusCost;
+
+            if (engageGearsButton != null)
+            {
+                engageGearsButton.interactable = canEngage;
+            }
+            if (patentButton != null)
+            {
+                patentButton.interactable = canPatent;
+            }
+            // Spell out the shortfall rather than just recoloring: a disabled lever that
+            // only turns its cost label red still leaves the player guessing by how much.
+            if (engageCostText != null)
+            {
+                engageCostText.color = canEngage ? AffordableCostColor : UnaffordableCostColor;
+                engageCostText.text = focus >= reprogramFocusCost
+                    ? $"{reprogramFocusCost:F0} focus"
+                    : $"{reprogramFocusCost:F0} focus · have {focus:F0}";
+            }
+            if (patentCostText != null)
+            {
+                patentCostText.color = canPatent ? AffordableCostColor : UnaffordableCostColor;
+                patentCostText.text = canPatent
+                    ? $"{patentFocusCost:F0} focus"
+                    : $"{patentFocusCost:F0} focus · have {focus:F0}";
+            }
+
+            // A disabled lever with no explanation is its own dead end, so say why once
+            // there is nothing to program. NoTarget retires itself as soon as a golem is
+            // targeted (WorkbenchStatusPolicy.ShouldClear).
+            if (targetGolem == null && _statusReason == WorkbenchStatusReason.None)
+            {
+                SetStatus("No golem selected. Walk up to a golem and interact to program it.", WorkbenchStatusReason.NoTarget);
+            }
+        }
+
+        private void UpdateChassisFlash()
+        {
+            if (_flashElapsed < 0f || _flashChassis == null)
+            {
+                return;
+            }
+
+            Image plate;
+            if (!_chassisButtonImages.TryGetValue(_flashChassis, out plate) || plate == null)
+            {
+                _flashElapsed = -1f;
+                _flashChassis = null;
+                return;
+            }
+
+            _flashElapsed += Time.unscaledDeltaTime;
+            if (_flashElapsed >= WorkbenchRejectFlash.TotalSeconds)
+            {
+                _flashElapsed = -1f;
+                plate.color = _flashChassis == _draftChassis ? SelectedChassisColor : UnselectedChassisColor;
+                _flashChassis = null;
+                return;
+            }
+
+            Color restColor = _flashChassis == _draftChassis ? SelectedChassisColor : UnselectedChassisColor;
+            plate.color = Color.Lerp(restColor, RejectedChassisColor, WorkbenchRejectFlash.ComputeStrength(_flashElapsed));
         }
 
         private int CountAssignedAppendages()
@@ -537,6 +814,14 @@ namespace GolemFactory.UI
 
         private void RebuildUI()
         {
+            // First, always: a card reparented onto the DragLayer is outside everything
+            // else this method knows how to clear, so a drag released over the mahogany
+            // background/chassis rack/title bar used to strand it there permanently --
+            // one leaked GameObject per failed drag, surviving Close()/Open() and
+            // RetargetGolem() for the whole session. This is the sweep that fixes it;
+            // WorkbenchCard.OnEndDrag carries an independent second guard.
+            ClearChildren(dragLayer);
+
             ClearChildren(vaultContent);
             ClearCards(logicCoreSlotZone != null ? logicCoreSlotZone.transform : null);
             foreach (WorkbenchDropZone zone in appendageSlotZones)
@@ -571,9 +856,16 @@ namespace GolemFactory.UI
                     continue;
                 }
 
-                bool active = SlotActive(i);
-                zone.gameObject.SetActive(active);
-                if (active && _draftAppendages[i] != null)
+                // Render rule, not the drop rule: an occupied slot stays on screen even
+                // when it sits beyond the fitted chassis's capacity, so the viewport can
+                // never refuse to draw a step the tape ticker is counting (the
+                // "SLOTS 1/0 over an empty viewport" incoherence). New drops onto it are
+                // still refused -- see WorkbenchDropRules.
+                bool occupied = _draftAppendages[i] != null;
+                bool visible = WorkbenchDropRules.SlotVisible(i, DraftMaxSlots, occupied);
+                zone.gameObject.SetActive(visible);
+                zone.SetHighlight(DropZoneHighlight.Neutral);
+                if (visible && occupied)
                 {
                     CreateCard(zone.transform, null, _draftAppendages[i], isVaultOrigin: false, sourceAppendageIndex: i);
                 }
@@ -581,6 +873,11 @@ namespace GolemFactory.UI
 
             foreach (var entry in _chassisButtonImages)
             {
+                // Leave the plate mid-flash alone; UpdateChassisFlash restores it.
+                if (_flashElapsed >= 0f && entry.Key == _flashChassis)
+                {
+                    continue;
+                }
                 entry.Value.color = entry.Key == _draftChassis ? SelectedChassisColor : UnselectedChassisColor;
             }
 
@@ -800,7 +1097,8 @@ namespace GolemFactory.UI
         // Slots keep their static chrome (caption, socket art, "empty" hint) between
         // rebuilds and only shed the card currently sitting in them -- otherwise the
         // rebuild would strip a slot down to a bare rectangle the first time anything
-        // was dropped into it.
+        // was dropped into it. Drag placeholders go too: a ghost has no WorkbenchCard, so
+        // an interrupted drag would otherwise leave a permanent translucent stripe.
         private static void ClearCards(Transform parent)
         {
             if (parent == null)
@@ -811,7 +1109,7 @@ namespace GolemFactory.UI
             for (int i = parent.childCount - 1; i >= 0; i--)
             {
                 Transform child = parent.GetChild(i);
-                if (child.GetComponent<WorkbenchCard>() != null)
+                if (child.GetComponent<WorkbenchCard>() != null || child.GetComponent<WorkbenchCardGhost>() != null)
                 {
                     Destroy(child.gameObject);
                 }

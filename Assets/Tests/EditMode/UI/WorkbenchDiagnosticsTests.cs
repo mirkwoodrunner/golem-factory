@@ -124,6 +124,20 @@ namespace GolemFactory.Tests.EditMode
             StringAssert.Contains("CHASSIS -- none --", tape);
             StringAssert.Contains("TRIGGER -- none --", tape);
             StringAssert.Contains("CYCLE --", tape);
+            StringAssert.Contains("SLOTS --", tape);
+        }
+
+        [Test]
+        public void ComposeTicker_StepsButNoChassis_DoesNotClaimANonsenseSlotRatio()
+        {
+            // Main.unity's demo golem shipped in exactly this state (steps appended past
+            // GolemProgram.TryAddAppendage's no-chassis guard), and the tape read
+            // "SLOTS 1/0" while the blueprint viewport -- which has no sockets without a
+            // chassis -- drew nothing at all.
+            string tape = WorkbenchDiagnostics.ComposeTicker(null, 1, 0, "AlwaysOnCore", 2, 4, 60f, 100f, 100f);
+
+            StringAssert.DoesNotContain("SLOTS 1/0", tape);
+            StringAssert.Contains("no chassis", tape);
         }
     }
 }

@@ -129,7 +129,23 @@ namespace GolemFactory.UI
         {
             var sb = new StringBuilder(160);
             sb.Append("CHASSIS ").Append(string.IsNullOrEmpty(chassisName) ? "-- none --" : Humanize(chassisName));
-            sb.Append("   SLOTS ").Append(usedSlots).Append('/').Append(maxSlots);
+            // "SLOTS 1/0" is nonsense, and it used to be exactly what an unfitted chassis
+            // produced -- the tape claimed a slotted step while the blueprint viewport
+            // refused to draw any, since no chassis means no sockets. With no chassis
+            // there is no denominator to report, so say so instead of inventing one.
+            sb.Append("   SLOTS ");
+            if (maxSlots > 0)
+            {
+                sb.Append(usedSlots).Append('/').Append(maxSlots);
+            }
+            else if (usedSlots > 0)
+            {
+                sb.Append(usedSlots).Append(" unfitted (no chassis)");
+            }
+            else
+            {
+                sb.Append("--");
+            }
             sb.Append("   TRIGGER ").Append(string.IsNullOrEmpty(triggerName) ? "-- none --" : Humanize(triggerName));
             sb.Append("   CYCLE ");
             if (cycleTicks > 0)

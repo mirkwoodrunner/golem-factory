@@ -62,5 +62,45 @@ namespace GolemFactory.Tests.EditMode
         {
             Assert.Greater(WorkbenchLeverMotion.ReturnSeconds, WorkbenchLeverMotion.ThrowSeconds);
         }
+
+        // The refusal curve. The lever used to run the full committed throw above on
+        // every failure path, because Pull() was registered on the same Button.onClick as
+        // EngageGears regardless of outcome -- a satisfying pull as feedback for a no-op.
+
+        [Test]
+        public void Refused_NeverReachesTheBottomStop()
+        {
+            for (float t = 0f; t <= WorkbenchLeverMotion.RefuseSeconds; t += 0.005f)
+            {
+                float n = WorkbenchLeverMotion.ComputeRefusedNormalized(t);
+                Assert.LessOrEqual(n, WorkbenchLeverMotion.RefuseDepth + 0.0001f,
+                    "a refused pull must visibly catch, not latch at the bottom like a committed one");
+            }
+        }
+
+        [Test]
+        public void Refused_IsShallowerAndShorterThanACommittedPull()
+        {
+            Assert.Less(WorkbenchLeverMotion.RefuseDepth, 1f);
+            Assert.Less(WorkbenchLeverMotion.RefuseSeconds, WorkbenchLeverMotion.TotalSeconds);
+        }
+
+        [Test]
+        public void Refused_StartsAndEndsAtRest()
+        {
+            Assert.AreEqual(0f, WorkbenchLeverMotion.ComputeRefusedNormalized(0f), 0.0001f);
+            Assert.AreEqual(0f, WorkbenchLeverMotion.ComputeRefusedNormalized(-1f), 0.0001f);
+            Assert.AreEqual(0f, WorkbenchLeverMotion.ComputeRefusedNormalized(WorkbenchLeverMotion.RefuseSeconds), 0.0001f);
+            Assert.AreEqual(0f, WorkbenchLeverMotion.ComputeRefusedNormalized(WorkbenchLeverMotion.RefuseSeconds + 3f), 0.0001f);
+        }
+
+        [Test]
+        public void Refused_PeaksInTheMiddleSoTheJudderIsVisible()
+        {
+            float peak = WorkbenchLeverMotion.ComputeRefusedNormalized(WorkbenchLeverMotion.RefuseSeconds * 0.5f);
+
+            Assert.AreEqual(WorkbenchLeverMotion.RefuseDepth, peak, 0.001f);
+            Assert.Greater(peak, 0.05f, "the judder must be big enough to actually see");
+        }
     }
 }

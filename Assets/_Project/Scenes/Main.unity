@@ -365,6 +365,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Golems.GolemDemoBootstrap
   golem: {fileID: 2004279217}
   clockRunner: {fileID: 107768106}
+  chassis: {fileID: 11400000, guid: 7dbe7f4449714ed5ab6ae98bf3b01d14, type: 2}
 --- !u!4 &115128627
 Transform:
   m_ObjectHideFlags: 0
@@ -8729,6 +8730,7 @@ MonoBehaviour:
   clockRunner: {fileID: 107768106}
   segmentLengthTicks: 5
   aetherNodeQuantity: 20
+  demoChassis: {fileID: 11400000, guid: 7dbe7f4449714ed5ab6ae98bf3b01d14, type: 2}
 --- !u!4 &1621117183
 Transform:
   m_ObjectHideFlags: 0
@@ -8816,6 +8818,7 @@ MonoBehaviour:
   clockRunner: {fileID: 107768106}
   segmentLengthTicks: 3
   thresholdQuantity: 10
+  demoChassis: {fileID: 11400000, guid: 7dbe7f4449714ed5ab6ae98bf3b01d14, type: 2}
 --- !u!4 &1671115046
 Transform:
   m_ObjectHideFlags: 0
