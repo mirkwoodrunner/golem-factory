@@ -25,6 +25,9 @@ namespace GolemFactory.Belts
             return _segments.TryGetValue(segmentId, out segment);
         }
 
+        public bool CanEnqueue(string segmentId) =>
+            TryGetSegment(segmentId, out BeltSegment segment) && segment.CanEnqueue();
+
         public bool TryEnqueue(string segmentId, ItemStack item) =>
             TryGetSegment(segmentId, out BeltSegment segment) && segment.TryEnqueue(item);
 

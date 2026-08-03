@@ -4155,7 +4155,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa4ad93aa1e4cd840b408003cdea78fc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.AlertsPanel
-  statusTextMeshProUGUI: {fileID: 0}
+  statusTextMeshProUGUI: {fileID: 118445849262687279}
+  reconcileIntervalSeconds: 0.5
 --- !u!1 &3181642426557853962
 GameObject:
   m_ObjectHideFlags: 0

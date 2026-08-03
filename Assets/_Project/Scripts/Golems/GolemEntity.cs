@@ -19,6 +19,16 @@ namespace GolemFactory.Golems
         public string GolemId => golemId;
         public GolemProgram Program => program;
 
+        // Runtime-only diagnostics (deliberately not on GolemProgram, which is savable state):
+        // why the current step is blocked and which belt/node/buffer id blocked it. Read by the
+        // stall badge and the alerts strip so the player is told *why*, and by
+        // UI/StallTracker.Reconcile so "who is stalled" can be re-derived from truth rather
+        // than trusted to an event stream the listener may have joined late.
+        private StallReason _stallReason;
+        private string _stallResourceId;
+        public StallReason StallReason => program.State == GolemState.Stalled ? _stallReason : StallReason.None;
+        public string StallResourceId => program.State == GolemState.Stalled ? _stallResourceId : null;
+
         // Programmatic setup used by tests (and available for runtime bootstrapping), mirroring
         // BuildModeController.Configure -- avoids requiring Inspector-assigned references.
         public void Configure(string id, ConveyorSystemHolder holder)
@@ -83,11 +93,32 @@ namespace GolemFactory.Golems
             // a step's precondition is checked and its side effect (withdraw/enqueue/dequeue)
             // happens. A step that stalls here never touched StepProgressTicks, so retrying
             // next tick re-attempts Begin rather than resuming mid-processing.
-            if (program.StepProgressTicks == 0 && !TryBeginStep(step))
+            if (program.StepProgressTicks == 0)
             {
-                program.State = GolemState.Stalled;
-                EventBus.Publish(new GolemStalledEvent(golemId));
-                return;
+                string blockedResourceId;
+                StallReason reason = BeginStep(step, out blockedResourceId);
+                if (reason != StallReason.None)
+                {
+                    // Edge-triggered: publish only when entering Stalled, or when the *reason*
+                    // changes while already stalled (e.g. the belt drains and the node turns
+                    // out to be empty too). Republishing every tick re-armed GolemVisual's
+                    // stall shake 10x/second so the "single jolt" never decayed, and buried
+                    // any listener that wanted to react once per incident.
+                    bool isNewIncident = !wasStalled ||
+                        reason != _stallReason ||
+                        blockedResourceId != _stallResourceId;
+
+                    program.State = GolemState.Stalled;
+                    _stallReason = reason;
+                    _stallResourceId = blockedResourceId;
+
+                    if (isNewIncident)
+                    {
+                        EventBus.Publish(new GolemStalledEvent(
+                            golemId, reason, blockedResourceId, program.CurrentStepIndex));
+                    }
+                    return;
+                }
             }
 
             // wasStalled can only be true here if StepProgressTicks was 0 (Stalled is only
@@ -179,20 +210,24 @@ namespace GolemFactory.Golems
             return true;
         }
 
-        private bool TryBeginStep(AppendageActionDefinition step)
+        // Returns StallReason.None on success, otherwise why the step is blocked and (via
+        // blockedResourceId) which belt/node/buffer id blocked it, so the badge and alerts
+        // strip can name the actual culprit instead of only reporting that something failed.
+        private StallReason BeginStep(AppendageActionDefinition step, out string blockedResourceId)
         {
+            blockedResourceId = null;
             switch (step.actionType)
             {
                 case AppendageActionType.ExtractFromNode:
-                    return TryExtractFromNode(step);
+                    return BeginExtractFromNode(step, out blockedResourceId);
                 case AppendageActionType.LoadIntoBuffer:
-                    return TryLoadIntoBuffer(step);
+                    return BeginLoadIntoBuffer(step, out blockedResourceId);
                 case AppendageActionType.Refine:
-                    return TryBeginRefine(step);
+                    return BeginRefine(step, out blockedResourceId);
                 default:
                     // Haul (golem locomotion) needs a locomotion system that doesn't exist
                     // yet; stays a no-op success stub.
-                    return true;
+                    return StallReason.None;
             }
         }
 
@@ -207,11 +242,23 @@ namespace GolemFactory.Golems
             }
         }
 
-        private bool TryExtractFromNode(AppendageActionDefinition step)
+        private StallReason BeginExtractFromNode(AppendageActionDefinition step, out string blockedResourceId)
         {
+            blockedResourceId = null;
             if (conveyorHolder == null || nodeRegistryHolder == null)
             {
-                return false;
+                return StallReason.Unconfigured;
+            }
+
+            // Check for belt room *before* extracting. TryExtract decrements a finite
+            // ResourceNode irreversibly, so extracting first and enqueuing second silently
+            // destroyed one unit every time the destination belt was full -- a real leak out
+            // of a finite node, not just a stall. CanEnqueue is the side-effect-free half of
+            // TryEnqueue's guard, added for exactly this ordering.
+            if (!conveyorHolder.System.CanEnqueue(step.destinationId))
+            {
+                blockedResourceId = step.destinationId;
+                return StallReason.BeltFull;
             }
 
             // M5: sourceId is a real ResourceNode id; the node supplies the item's actual
@@ -219,40 +266,52 @@ namespace GolemFactory.Golems
             // own sourceId" hack) and enforces finite depletion.
             if (!nodeRegistryHolder.Registry.TryExtract(step.sourceId, out ItemStack item))
             {
-                return false;
+                blockedResourceId = step.sourceId;
+                return StallReason.NodeEmpty;
             }
 
-            return conveyorHolder.System.TryEnqueue(step.destinationId, item);
+            // Guarded by CanEnqueue above, so this cannot drop the item we just extracted.
+            conveyorHolder.System.TryEnqueue(step.destinationId, item);
+            return StallReason.None;
         }
 
-        private bool TryLoadIntoBuffer(AppendageActionDefinition step)
+        private StallReason BeginLoadIntoBuffer(AppendageActionDefinition step, out string blockedResourceId)
         {
+            blockedResourceId = null;
             if (conveyorHolder == null || bufferRegistryHolder == null)
             {
-                return false;
+                return StallReason.Unconfigured;
             }
 
             if (!conveyorHolder.System.TryDequeueHead(step.sourceId, out ItemStack item))
             {
-                return false;
+                blockedResourceId = step.sourceId;
+                return StallReason.BeltEmpty;
             }
 
             bufferRegistryHolder.Registry.Deposit(step.destinationId, item.ItemType);
-            return true;
+            return StallReason.None;
         }
 
         // Withdraws the recipe input up front so processing time is real "committed" work
         // (matches a physical refinery: once started, it can't be interrupted by the source
         // buffer running dry mid-cycle since nothing else can drain it back out). The
         // output is deposited later, in CompleteStep, once durationTicks have elapsed.
-        private bool TryBeginRefine(AppendageActionDefinition step)
+        private StallReason BeginRefine(AppendageActionDefinition step, out string blockedResourceId)
         {
+            blockedResourceId = null;
             if (bufferRegistryHolder == null)
             {
-                return false;
+                return StallReason.Unconfigured;
             }
 
-            return bufferRegistryHolder.Registry.TryWithdraw(step.sourceId, step.inputItemType);
+            if (!bufferRegistryHolder.Registry.TryWithdraw(step.sourceId, step.inputItemType))
+            {
+                blockedResourceId = step.sourceId;
+                return StallReason.BufferEmpty;
+            }
+
+            return StallReason.None;
         }
     }
 }

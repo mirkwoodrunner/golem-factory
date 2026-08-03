@@ -23,14 +23,17 @@ namespace GolemFactory.Belts
             Length = Mathf.Max(1, length);
         }
 
+        // Side-effect-free version of TryEnqueue's guard. Exists so a producer that has to
+        // consume something irreversible to make an item (GolemEntity's ExtractFromNode, which
+        // decrements a finite ResourceNode) can check for room *before* consuming, instead of
+        // extracting and then dropping the item on a failed enqueue.
+        public bool CanEnqueue() =>
+            _items.Count < Capacity &&
+            (_items.Count == 0 || _items[_items.Count - 1].Progress >= MinSpacing);
+
         public bool TryEnqueue(ItemStack item)
         {
-            if (_items.Count >= Capacity)
-            {
-                return false;
-            }
-
-            if (_items.Count > 0 && _items[_items.Count - 1].Progress < MinSpacing)
+            if (!CanEnqueue())
             {
                 return false;
             }
