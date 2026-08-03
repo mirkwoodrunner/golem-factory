@@ -1,27 +1,96 @@
 using System.Collections.Generic;
 using UnityEngine;
+using GolemFactory.World;
 
 namespace GolemFactory.Belts
 {
-    // Cheapest "visualize flow" option that isn't a GameObject-per-item: one pooled
-    // SpriteRenderer per segment SLOT, bounded by the fixed BeltSegment.Capacity, positioned
-    // each frame from BeltSegment.Items. Pool size never grows/shrinks with item throughput.
+    // Renders one BeltSegment as a *directed lane*, not just its cargo. Everything here is
+    // pooled and fixed-size: one stretched lane sprite, two end rollers, N scrolling arrows
+    // (N fixed by lane length at resolve time) and one SpriteRenderer per segment SLOT bounded
+    // by BeltSegment.Capacity. Nothing is instantiated per item -- see the architecture note in
+    // CLAUDE.md; that rule is what this whole class is shaped around.
+    //
+    // Four things a player must be able to read at a glance, and where each comes from:
+    //   WHERE it is      -> the lane sprite, which is drawn whether or not anything is on it.
+    //   WHICH WAY        -> arrows scrolling start -> end, always, even on an empty belt.
+    //   HOW FAST         -> arrow scroll speed is derived from the clock, so it literally
+    //                       matches the speed an unobstructed item travels (and stops when
+    //                       the clock is paused).
+    //   BACKED UP        -> items interpolate toward BeltFlowUtility's predicted next-tick
+    //                       progress, so a blocked item visibly stops; queued items tint hot,
+    //                       and the arrows desaturate to jam-red and slow as congestion rises.
     public sealed class BeltSegmentVisual : MonoBehaviour
     {
+        [System.Serializable]
+        public struct ItemSpriteBinding
+        {
+            public string itemType;
+            public Sprite sprite;
+        }
+
         [SerializeField] private ConveyorSystemHolder conveyorHolder;
         [SerializeField] private string segmentId;
         [SerializeField] private Transform startPoint;
         [SerializeField] private Transform endPoint;
         [SerializeField] private Sprite itemSprite;
 
+        // Per-item-type sprite table so a mixed belt is readable. Deliberately a string->Sprite
+        // binding rather than a reference to Economy.ItemType, keeping Belts/ free of a
+        // compile-time dependency on another gameplay namespace (same reasoning as the
+        // no-reverse-reference-to-Golems/ rule). Falls back to itemSprite when unmatched.
+        [SerializeField] private ItemSpriteBinding[] itemSprites;
+
         // Left unset, pooled item slots keep Unity's default (unlit) sprite material, same
         // fallback idiom as WorkbenchController's reskin sprite fields -- wired to the
         // project's lit material where the scene already has Light2D lighting.
         [SerializeField] private Material itemMaterial;
 
+        [Header("Lane")]
+        [SerializeField] private Sprite laneSprite;
+        [SerializeField] private Sprite arrowSprite;
+        [SerializeField] private Sprite rollerSprite;
+        [SerializeField] private float arrowSpacing = 0.5f;
+        [SerializeField] private float arrowEndFade = 0.2f;
+
+        // Multiplied by the fitted item scale, so items always sit the same fraction of their
+        // own height above the lane's centre line no matter how tight the segment is.
+        [SerializeField] private float itemHeightOffset = 0.14f;
+
+        [Header("Cargo fit")]
+        [SerializeField] private float itemFitRatio = 1.25f;
+        [SerializeField] private float minItemScale = 0.45f;
+        [SerializeField] private float maxItemScale = 1f;
+
+        // Optional. Without it the arrows fall back to assumedTicksPerSecond and keep scrolling
+        // while the clock is paused; with it they track SimulationClock exactly.
+        [SerializeField] private SimulationClockRunner clockRunner;
+        [SerializeField] private float assumedTicksPerSecond = 10f;
+
+        [Header("Flow colours")]
+        [SerializeField] private Color flowColor = new Color(1f, 0.74f, 0.32f, 1f);
+        [SerializeField] private Color jamColor = new Color(0.93f, 0.31f, 0.22f, 1f);
+        // Deliberately a gentle flush rather than a hard red: the arrows going red and freezing
+        // is the loud half of the jam readout, and tinting the cargo hard enough to match it
+        // made a queued Brass ingot read as a different item entirely.
+        [SerializeField] private Color itemJamTint = new Color(1f, 0.8f, 0.72f, 1f);
+
         private BeltSegment _segment;
         private SpriteRenderer[] _pool;
+        private SpriteRenderer[] _arrows;
+        private SpriteRenderer _lane;
+        private SpriteRenderer _rollerStart;
+        private SpriteRenderer _rollerEnd;
         private ParticleSystem _handoffSparkle;
+        private Dictionary<string, Sprite> _spriteByItemType;
+
+        private Vector3 _laneStart;
+        private Vector3 _laneEnd;
+        private Vector3 _laneDirection;
+        private float _laneLength;
+        private int _laneSortingOrder;
+        private float _scrollPhase;
+        private float _itemScale = 1f;
+
         private float _previousHeadProgress = -1f;
         private int _previousItemCount;
 
@@ -49,21 +118,92 @@ namespace GolemFactory.Belts
             }
 
             IReadOnlyList<ItemStack> items = _segment.Items;
-            for (int i = 0; i < _pool.Length; i++)
+            float congestion = BeltFlowUtility.ComputeCongestion(items, _segment.Capacity, _segment.Length, 1f);
+
+            UpdateLane(congestion);
+            UpdateItems(items);
+            UpdateHandoffSparkle(items);
+        }
+
+        private void UpdateLane(float congestion)
+        {
+            if (_arrows == null)
             {
-                if (i < items.Count)
-                {
-                    float t = Mathf.Clamp01(items[i].Progress / _segment.Length);
-                    _pool[i].transform.position = Vector3.Lerp(startPoint.position, endPoint.position, t);
-                    _pool[i].enabled = true;
-                }
-                else
-                {
-                    _pool[i].enabled = false;
-                }
+                return;
             }
 
-            UpdateHandoffSparkle(items);
+            float ticksPerSecond = assumedTicksPerSecond;
+            float clockSpeed = 1f;
+            if (clockRunner != null)
+            {
+                ticksPerSecond = clockRunner.Clock.TicksPerSecond;
+                clockSpeed = clockRunner.Clock.State == Simulation.ClockState.Running ? clockRunner.Clock.Speed : 0f;
+            }
+
+            // Arrows slow as the lane jams so "slow + red" and "fast + amber" are the two ends
+            // of one continuous readout rather than a binary light.
+            float speed = BeltFlowUtility.ComputeTreadSpeed(_laneLength, _segment.Length, ticksPerSecond, clockSpeed)
+                          * (1f - congestion);
+            _scrollPhase = BeltFlowUtility.AdvanceScrollPhase(_scrollPhase, Time.deltaTime, speed, arrowSpacing);
+
+            Color arrowColor = Color.Lerp(flowColor, jamColor, congestion);
+            for (int i = 0; i < _arrows.Length; i++)
+            {
+                float distance = _scrollPhase + i * arrowSpacing;
+                float fade = BeltFlowUtility.ComputeArrowFade(distance, _laneLength, arrowEndFade);
+                if (fade <= 0f)
+                {
+                    _arrows[i].enabled = false;
+                    continue;
+                }
+
+                _arrows[i].enabled = true;
+                _arrows[i].transform.position = _laneStart + _laneDirection * distance;
+                _arrows[i].color = new Color(arrowColor.r, arrowColor.g, arrowColor.b, fade);
+            }
+        }
+
+        private void UpdateItems(IReadOnlyList<ItemStack> items)
+        {
+            float tickFraction = clockRunner != null ? clockRunner.Clock.TickFraction : 0f;
+
+            for (int i = 0; i < _pool.Length; i++)
+            {
+                if (i >= items.Count)
+                {
+                    _pool[i].enabled = false;
+                    continue;
+                }
+
+                float predicted = BeltFlowUtility.PredictProgressAfterAdvance(items, i, _segment.Length, 1f);
+                float display = BeltFlowUtility.ComputeDisplayProgress(items[i].Progress, predicted, tickFraction);
+                float t = Mathf.Clamp01(display / _segment.Length);
+
+                Vector3 groundPoint = Vector3.Lerp(_laneStart, _laneEnd, t);
+                _pool[i].transform.position = groundPoint + new Vector3(0f, itemHeightOffset * _itemScale, 0f);
+
+                // Sorted from the point ON the lane, not the raised sprite position, so the
+                // cosmetic "sits on top of the belt" offset can't reorder anything. Per item,
+                // never per segment: a diagonal lane spans a whole range of world Y, so one
+                // constant order for the whole belt is guaranteed wrong at one end or the other.
+                _pool[i].sortingOrder = YSortUtility.ComputeSortingOrder(groundPoint.y);
+
+                _pool[i].sprite = ResolveSprite(items[i].ItemType);
+                bool queued = BeltFlowUtility.IsQueuedBehindAnother(items, i, _segment.Length, 1f);
+                _pool[i].color = queued ? itemJamTint : Color.white;
+                _pool[i].enabled = true;
+            }
+        }
+
+        private Sprite ResolveSprite(string itemType)
+        {
+            Sprite resolved;
+            if (itemType != null && _spriteByItemType != null && _spriteByItemType.TryGetValue(itemType, out resolved) && resolved != null)
+            {
+                return resolved;
+            }
+
+            return itemSprite;
         }
 
         // Items are ordered head-first (index 0 = closest to exit) per BeltSegment's own
@@ -75,7 +215,7 @@ namespace GolemFactory.Belts
             int currentCount = items.Count;
             if (currentCount < _previousItemCount && _previousHeadProgress >= _segment.Length - 0.01f && _handoffSparkle != null)
             {
-                _handoffSparkle.transform.position = endPoint.position;
+                _handoffSparkle.transform.position = _laneEnd;
                 _handoffSparkle.Emit(8);
             }
 
@@ -113,25 +253,133 @@ namespace GolemFactory.Belts
 
         private void TryResolveSegment()
         {
-            if (conveyorHolder == null || !conveyorHolder.System.TryGetSegment(segmentId, out _segment))
+            if (conveyorHolder == null || startPoint == null || endPoint == null
+                || !conveyorHolder.System.TryGetSegment(segmentId, out _segment))
             {
                 return;
             }
 
+            _laneStart = startPoint.position;
+            _laneEnd = endPoint.position;
+            Vector3 delta = _laneEnd - _laneStart;
+            _laneLength = delta.magnitude;
+            _laneDirection = _laneLength > 0f ? delta / _laneLength : Vector3.right;
+
+            // The lane is a flat ground decal spanning a range of world Y. Sorting it from its
+            // FURTHEST-BACK end (and biasing it behind) is what keeps it under every object
+            // standing on or beside it: any such object has Y <= that maximum, hence a strictly
+            // larger sorting order. Sorting from the lane's centre instead would put the lane in
+            // front of items riding its far half.
+            float backmostY = Mathf.Max(_laneStart.y, _laneEnd.y);
+            _laneSortingOrder = YSortUtility.ComputeSortingOrder(backmostY) - 4;
+
+            BuildSpriteLookup();
+            BuildLane();
+            BuildArrows();
+            BuildItemPool();
+        }
+
+        private void BuildSpriteLookup()
+        {
+            _spriteByItemType = new Dictionary<string, Sprite>();
+            if (itemSprites == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < itemSprites.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(itemSprites[i].itemType))
+                {
+                    _spriteByItemType[itemSprites[i].itemType] = itemSprites[i].sprite;
+                }
+            }
+        }
+
+        private void BuildLane()
+        {
+            if (laneSprite == null)
+            {
+                return;
+            }
+
+            _lane = NewChild("Lane", laneSprite, itemMaterial, _laneSortingOrder);
+            _lane.transform.position = (_laneStart + _laneEnd) * 0.5f;
+            _lane.transform.rotation = Quaternion.Euler(0f, 0f,
+                BeltFlowUtility.ComputeLaneAngleDegrees(_laneStart, _laneEnd));
+
+            // The lane art is deliberately uniform along its length, so stretching X to fit an
+            // arbitrary segment is invisible -- no repeated rivets to smear.
+            float spriteLength = laneSprite.bounds.size.x;
+            if (spriteLength > 0f)
+            {
+                _lane.transform.localScale = new Vector3(_laneLength / spriteLength, 1f, 1f);
+            }
+
+            _lane.enabled = true;
+
+            if (rollerSprite != null)
+            {
+                _rollerStart = NewChild("RollerStart", rollerSprite, itemMaterial,
+                    YSortUtility.ComputeSortingOrder(_laneStart.y) - 1);
+                _rollerStart.transform.position = _laneStart;
+                _rollerStart.enabled = true;
+
+                _rollerEnd = NewChild("RollerEnd", rollerSprite, itemMaterial,
+                    YSortUtility.ComputeSortingOrder(_laneEnd.y) - 1);
+                _rollerEnd.transform.position = _laneEnd;
+                _rollerEnd.enabled = true;
+            }
+        }
+
+        private void BuildArrows()
+        {
+            if (arrowSprite == null)
+            {
+                _arrows = new SpriteRenderer[0];
+                return;
+            }
+
+            float angle = BeltFlowUtility.ComputeLaneAngleDegrees(_laneStart, _laneEnd);
+            int count = BeltFlowUtility.ComputeArrowCount(_laneLength, arrowSpacing);
+            _arrows = new SpriteRenderer[count];
+            for (int i = 0; i < count; i++)
+            {
+                // Unlit (no itemMaterial) on purpose: the direction arrows are a HUD element
+                // painted on the world, and must stay legible in the workshop's dim corners.
+                _arrows[i] = NewChild("Arrow" + i, arrowSprite, null, _laneSortingOrder + 1);
+                _arrows[i].transform.rotation = Quaternion.Euler(0f, 0f, angle);
+            }
+        }
+
+        private void BuildItemPool()
+        {
+            float spriteWorldSize = itemSprite != null ? itemSprite.bounds.size.x : 0.5f;
+            _itemScale = BeltFlowUtility.ComputeItemScale(
+                _laneLength, _segment.Length, spriteWorldSize, itemFitRatio, minItemScale, maxItemScale);
+
             _pool = new SpriteRenderer[_segment.Capacity];
             for (int i = 0; i < _pool.Length; i++)
             {
-                var slot = new GameObject($"ItemSlot{i}");
-                slot.transform.SetParent(transform);
-                var renderer = slot.AddComponent<SpriteRenderer>();
-                renderer.sprite = itemSprite;
-                if (itemMaterial != null)
-                {
-                    renderer.sharedMaterial = itemMaterial;
-                }
-                renderer.enabled = false;
-                _pool[i] = renderer;
+                _pool[i] = NewChild("ItemSlot" + i, itemSprite, itemMaterial, 0);
+                _pool[i].transform.localScale = Vector3.one * _itemScale;
             }
+        }
+
+        private SpriteRenderer NewChild(string childName, Sprite sprite, Material material, int sortingOrder)
+        {
+            var go = new GameObject(childName);
+            go.transform.SetParent(transform, false);
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            if (material != null)
+            {
+                renderer.sharedMaterial = material;
+            }
+
+            renderer.sortingOrder = sortingOrder;
+            renderer.enabled = false;
+            return renderer;
         }
     }
 }

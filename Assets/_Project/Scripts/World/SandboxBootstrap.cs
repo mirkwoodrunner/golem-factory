@@ -19,6 +19,14 @@ namespace GolemFactory.World
         [SerializeField] private SimulationClockRunner clockRunner;
         [SerializeField] private int startingAetherQuantity = 40;
 
+        // Sandbox registered a ConveyorSystem but never registered a single BeltSegment, so
+        // every belt-facing appendage the Workbench offers (ExtractScrap -> a belt,
+        // LoadIntoScrapBuffer <- a belt) could only ever stall: TryEnqueue/TryDequeueHead on an
+        // unknown segment id returns false. The ids deliberately match the ones
+        // Golems/BeltDemoBootstrap registers in Main.unity so ONE set of authored
+        // AppendageActionDefinition assets drives both scenes.
+        [SerializeField] private int beltSegmentLengthTicks = 5;
+
         // Wires the camera to follow the player -- CameraRigController.SetFollowTarget isn't
         // a [SerializeField] (it's set programmatically, same as every other Configure(...)
         // method in this project), so something has to call it once at scene start. This is
@@ -43,6 +51,12 @@ namespace GolemFactory.World
             nodeRegistryHolder.Registry.Register(new ResourceNode("ScrapNode", ItemType.Scrap));
             nodeRegistryHolder.Registry.Register(new ResourceNode("BrassNode", ItemType.Brass));
             nodeRegistryHolder.Registry.Register(new ResourceNode("AetherNode", ItemType.Aether, startingAetherQuantity));
+
+            var scrapBeltA = new BeltSegment("ScrapBeltA", beltSegmentLengthTicks);
+            var scrapBeltB = new BeltSegment("ScrapBeltB", beltSegmentLengthTicks);
+            scrapBeltA.Next = scrapBeltB;
+            conveyorHolder.System.Register(scrapBeltA);
+            conveyorHolder.System.Register(scrapBeltB);
 
             clockRunner.Register(conveyorHolder.System);
             clockRunner.Play();

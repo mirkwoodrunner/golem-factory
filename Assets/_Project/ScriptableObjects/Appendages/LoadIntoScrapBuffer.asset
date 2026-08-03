@@ -11,8 +11,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ad37bcaef4662d54a9dfb92eedee706a, type: 3}
   m_Name: LoadIntoScrapBuffer
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   actionType: 3
   durationTicks: 1
-  sourceId:
+  sourceId: ScrapBeltB
   destinationId: ScrapBuffer
+  inputItemType: 
+  outputItemType: 

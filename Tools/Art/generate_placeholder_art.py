@@ -783,6 +783,168 @@ def generate_environment() -> None:
     print("pivot barrel    =", prop_pivot(BARREL_NATIVE_H, BARREL_BASE_ROW))
 
 
+# =========================================================================================
+# Belts: the lane itself, its scrolling direction arrows, the end rollers, and the three
+# cargo items that ride on it.
+#
+# Same art scale as the environment above -- 32 art px per world unit, x4 upscale, PPU 128 --
+# so a belt lane is exactly as chunky as the floor planks under it. The ONE hard constraint
+# here: make_belt_lane must be uniform along X. BeltSegmentVisual stretches a single lane
+# sprite to fit whatever length the segment is, so any per-column detail (rivets, seams,
+# tread cleats) would smear by an arbitrary factor. All the "moving parts" of the belt are
+# therefore in the scrolling arrow sprite, not baked into the lane.
+#
+# The arrow is authored WHITE with only a dark rim, because BeltSegmentVisual tints it at
+# runtime (warm amber when flowing -> jam red when backed up). Tinting a pre-coloured sprite
+# would multiply the two hues together and mud both ends of that readout.
+# =========================================================================================
+
+BELT_UPSCALE = 4
+BELT_LANE_NATIVE = (32, 14)  # -> 1.0 x 0.4375 world at PPU 128
+
+BELT_RAIL_LIGHT = (206, 163, 88, 255)
+BELT_RAIL = (168, 126, 60, 255)
+BELT_RAIL_DARK = (112, 80, 38, 255)
+BELT_TREAD = (68, 51, 40, 255)
+BELT_TREAD_LIGHT = (88, 67, 52, 255)
+BELT_TREAD_DARK = (44, 33, 26, 255)
+
+# Item palette: all three sit in the warm workshop range, separated by hue AND silhouette so
+# they stay tellable apart at 3-4 screen px per art px (and for colour-blind players).
+RUST = (150, 88, 52, 255)
+RUST_LIGHT = (182, 116, 72, 255)
+RUST_DARK = (96, 54, 32, 255)
+INGOT = (214, 168, 76, 255)
+INGOT_LIGHT = (243, 210, 132, 255)
+INGOT_DARK = (146, 104, 42, 255)
+AETHER = (96, 214, 200, 255)
+AETHER_LIGHT = (186, 245, 238, 255)
+AETHER_DARK = (36, 116, 118, 255)
+
+
+def make_belt_lane() -> Image.Image:
+    """A cross-section extruded along X: dark rim, brass side rails, dark leather tread with a
+    single sheen row. Every column is identical -- see the module note above."""
+    w, h = BELT_LANE_NATIVE
+    rows = [
+        OUTLINE,
+        BELT_RAIL_LIGHT,
+        BELT_RAIL,
+        BELT_RAIL_DARK,
+        BELT_TREAD_DARK,
+        BELT_TREAD,
+        BELT_TREAD,
+        BELT_TREAD_LIGHT,
+        BELT_TREAD,
+        BELT_TREAD,
+        BELT_TREAD_DARK,
+        BELT_RAIL,
+        BELT_RAIL_DARK,
+        OUTLINE,
+    ]
+    assert len(rows) == h
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    draw = ImageDraw.Draw(img)
+    for y, color in enumerate(rows):
+        draw.line([(0, y), (w - 1, y)], fill=color)
+    return upscale(img, BELT_UPSCALE)  # -> 128x56
+
+
+def make_belt_arrow() -> Image.Image:
+    """A right-pointing chevron, white body + dark rim, so the runtime tint owns its colour."""
+    # 6 x 8 art px -> 0.1875 x 0.25 world, i.e. a bit over half the lane's height. Bigger than
+    # this and the arrows tile into a solid amber stripe that hides the tread they sit on.
+    w, h, stroke = 6, 8, 2
+    body = set()
+    for r in range(h):
+        # Mirror the stroke about the vertical midline so the apex lands on the right.
+        run = r if r < h // 2 else (h - 1 - r)
+        for k in range(stroke):
+            body.add((run + k, r))
+
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    px = img.load()
+    rim = (26, 18, 12, 235)
+    for (x, y) in body:
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in body:
+                    px[nx, ny] = rim
+    for (x, y) in body:
+        px[x, y] = (255, 255, 255, 255)
+    return upscale(img, BELT_UPSCALE)  # -> 24x32
+
+
+def make_belt_roller() -> Image.Image:
+    """Brass drum capping each end of a lane, so a belt terminates in machinery rather than
+    just stopping mid-air."""
+    w, h = 10, 12
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    draw = ImageDraw.Draw(img)
+    draw.ellipse([0, 1, w - 1, h - 2], fill=BELT_RAIL, outline=OUTLINE)
+    draw.ellipse([2, 3, w - 3, h - 4], fill=BELT_RAIL_DARK)
+    draw.line([(2, 3), (2, h - 4)], fill=BELT_RAIL_LIGHT)
+    draw.line([(0, h - 3), (w - 1, h - 3)], fill=OUTLINE)
+    return upscale(img, BELT_UPSCALE)  # -> 40x48
+
+
+def _item_canvas():
+    # 16 art px upscaled x2 -> a 32x32 file at PPU 64, i.e. 0.5 x 0.5 world. Same file size and
+    # world size as the sprites these replace (so nothing needs rewiring), but authored at the
+    # environment's 32-art-px-per-world density instead of 64, so item pixels are finally the
+    # same size as floor pixels.
+    return Image.new("RGBA", (16, 16), TRANSPARENT)
+
+
+def make_scrap_item() -> Image.Image:
+    """Jagged offcut of rusted plate -- irregular silhouette, warm rust, not cold grey."""
+    img = _item_canvas()
+    draw = ImageDraw.Draw(img)
+    # Two overlapping angular offcuts rather than one blob: the stepped silhouette is what
+    # separates Scrap from Brass's clean trapezoid at a glance, before colour is even read.
+    draw.polygon([(6, 2), (13, 3), (13, 8), (7, 8)], fill=RUST_DARK, outline=OUTLINE)
+    draw.polygon([(1, 8), (8, 6), (12, 9), (9, 13), (3, 13)], fill=RUST, outline=OUTLINE)
+    draw.line([(2, 8), (8, 7)], fill=RUST_LIGHT)
+    draw.line([(9, 4), (12, 4)], fill=RUST)
+    # Bolt holes read as "salvaged hardware".
+    draw.point([(5, 10), (9, 10)], fill=BELT_TREAD_DARK)
+    return upscale(img, 2)  # -> 32x32
+
+
+def make_brass_item() -> Image.Image:
+    """Poured brass ingot -- a clean trapezoid, the most 'manufactured' of the three."""
+    img = _item_canvas()
+    draw = ImageDraw.Draw(img)
+    draw.polygon([(3, 6), (12, 6), (14, 12), (1, 12)], fill=INGOT, outline=OUTLINE)
+    draw.polygon([(4, 4), (11, 4), (12, 6), (3, 6)], fill=INGOT_LIGHT, outline=OUTLINE)
+    draw.line([(3, 10), (13, 10)], fill=INGOT_DARK)
+    draw.line([(5, 8), (9, 8)], fill=INGOT_LIGHT)
+    return upscale(img, 2)  # -> 32x32
+
+
+def make_aether_item() -> Image.Image:
+    """Aether shard -- tall, pointed, and the only cool-hued item, so it never reads as metal."""
+    img = _item_canvas()
+    draw = ImageDraw.Draw(img)
+    draw.polygon([(7, 1), (11, 6), (10, 14), (5, 14), (4, 6)], fill=AETHER, outline=OUTLINE)
+    draw.polygon([(7, 1), (11, 6), (8, 6)], fill=AETHER_LIGHT)
+    draw.polygon([(8, 7), (10, 7), (10, 13), (8, 13)], fill=AETHER_DARK)
+    draw.line([(6, 4), (6, 12)], fill=AETHER_LIGHT)
+    return upscale(img, 2)  # -> 32x32
+
+
+def generate_belts() -> None:
+    save(make_belt_lane(), "belt_lane.png")
+    save(make_belt_arrow(), "belt_arrow.png")
+    save(make_belt_roller(), "belt_roller.png")
+    # These three keep their original file names (and therefore their GUIDs and every existing
+    # scene reference) -- they are a reskin, not new assets.
+    save(make_scrap_item(), "item_scrap.png")
+    save(make_brass_item(), "item_brass.png")
+    save(make_aether_item(), "item_aether.png")
+
+
 def generate_legacy_placeholders() -> None:
     """The original placeholder character/item sprites. NOT run by default any more: the
     golem chassis, player, and item sprites in Assets/_Project/Art/ have since been replaced
@@ -806,9 +968,10 @@ def generate_legacy_placeholders() -> None:
 
     save(make_building_block(WOOD_DARK, WOOD_MID), "building_block.png")
 
-    save(make_item_icon(STONE_LIGHT, STONE), "item_scrap.png")
-    save(make_item_icon(BRASS, BRASS_DARK), "item_brass.png")
-    save(make_item_icon(TEAL_GLOW, STEEL_DARK), "item_aether.png")
+    # NOTE: item_scrap/item_brass/item_aether used to be regenerated here from
+    # make_item_icon. They now live in generate_belts() (the belt readability pass reskinned
+    # them warm and gave each a distinct silhouette); regenerating the flat 8x8 icons from
+    # here would silently undo that, exactly the way --legacy would clobber the chassis art.
 
     save(make_ghost_placeholder(), "ghost_placeholder.png")
 
@@ -816,7 +979,11 @@ def generate_legacy_placeholders() -> None:
 def main() -> None:
     import sys
 
-    generate_environment()
+    only = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if not only or "environment" in only:
+        generate_environment()
+    if not only or "belts" in only:
+        generate_belts()
     if "--legacy" in sys.argv:
         generate_legacy_placeholders()
 

@@ -1820,3 +1820,140 @@ in reality. Always verify the file, not the inline image.
    belongs to whoever owns golem presentation, not this pass.
 3. The interior of the room is still empty floor — clutter is confined to the perimeter so
    it never competes with build placement. Filling the middle is a level-design decision.
+
+## Belt readability production-quality pass implementation notes
+
+Belts previously rendered as nothing but a row of grey `item_scrap` sprites strung along a bare
+diagonal. Reviewed live, that line read as scattered debris or a staircase, not a conveyor. Three
+defects, all fixed here.
+
+### 1. Pooled belt items were never Y-sorted
+
+Every pooled `ItemSlot` sat at `sortingOrder = 0` while the golems around them were at -174 and
++166, so belt cargo punched through the isometric depth order everywhere on the map. The project
+already had `World/YSortUtility.ComputeSortingOrder(worldY)`; the pool simply never called it.
+
+**One sorting order for the whole segment would also have been wrong** — a diagonal lane spans a
+range of world Y, so the order has to be per item, recomputed each frame from that item's own
+point *on the lane* (not from the raised sprite position, so the cosmetic "sits on top of the
+belt" offset can't reorder anything).
+
+Measured in Play mode on `Main.unity`'s `ScrapBeltA` (lane from `(4.50, 0.00)` to `(3.65, 0.85)`,
+feeder golem standing at `(4.50, 0.03)`, `sortingOrder -3`):
+
+| slot | ground Y | sortingOrder | vs. feeder golem (-3) |
+|------|----------|--------------|-----------------------|
+| 4    | 0.03     | -3           | tie — item at the mouth |
+| 3    | 0.20     | -20          | behind the golem        |
+| 2    | 0.37     | -37          | behind the golem        |
+| 1    | 0.54     | -54          | behind the golem        |
+| 0    | 0.71     | -71          | behind the golem        |
+
+Under the old code all five were `0`, i.e. permanently *in front of* a golem they are standing
+behind. `ScrapBeltB` (which ends at `GolemB`, `sortingOrder -173`) shows the opposite half: its
+slots run -156...-88, all greater than -173, so cargo correctly draws **over** the golem behind
+it. Same component, same frame, both directions — see
+`Assets/Screenshots/belt_main_occlusion_feeder.png` and `belt_main_occlusion_receiver.png`.
+
+The lane/arrow/roller decals sort from the lane's **furthest-back** end minus a small bias, not
+from its centre: anything standing on or beside a flat ground decal has `Y <= thatMaximum` and
+therefore a strictly larger sorting order, so it always draws on top. Sorting the decal from its
+centre instead put the lane in front of the cargo riding its far half.
+
+### 2. There was no belt to look at
+
+`Belts/BeltSegmentVisual.cs` now draws the lane itself, not just its cargo, and everything it
+draws stays inside the "no GameObject per belt item" rule — every renderer is pooled at resolve
+time and never grows:
+
+- one stretched `belt_lane` sprite rotated onto the start-to-end vector (the art is uniform along
+  its length precisely so an arbitrary X stretch is invisible — no rivets to smear),
+- two `belt_roller` end drums,
+- N `belt_arrow` chevrons, N fixed by lane length, scrolled along the lane every frame and faded
+  out at both mouths so pooled arrows recycle without popping,
+- the existing `Capacity`-sized item-slot pool, now also picking its sprite per
+  `ItemStack.ItemType` from a serialized `string -> Sprite` table (so a mixed belt is readable),
+  and scaled to fit the segment's own item spacing.
+
+Arrow scroll speed comes from the clock (`laneLength / segmentLength * TicksPerSecond * Speed`),
+so it matches the speed an unobstructed item actually travels and stops dead when the sim is
+paused. That is the "how fast" readout, and it works on an empty belt.
+
+### 3. Items teleported once per tick
+
+`BeltSegment.Progress` is integer-stepped, so rendering straight from it made cargo blink from
+cell to cell. `BeltFlowUtility.PredictProgressAfterAdvance` replays `BeltSegment.Advance`'s
+head-first cap propagation **without writing anything back**, and the visual interpolates between
+current and predicted progress using a new read-only `SimulationClock.TickFraction`.
+
+That is also what makes backpressure legible for free: a blocked item predicts to its own current
+progress, so it visibly *stops* while its unobstructed neighbours keep gliding. On top of that,
+`ComputeCongestion` counts items queued *behind another item* — deliberately **not** counting a
+head parked at the end of a terminal segment, which is normal operation and would otherwise leave
+the jam signal permanently on — and drives the arrows from amber to red while slowing them to a
+halt. Queued items also take a gentle warm flush (a hard red tint made a jammed Brass ingot read
+as a different item).
+
+`SimulationClock.TickFraction` is the only simulation-side change: a read-only property over the
+existing accumulator. `Advance()` is untouched, and nothing in the simulation may read it — doing
+so would make behaviour frame-rate dependent.
+
+### `Sandbox.unity` had no belts at all
+
+Sandbox registered a `ConveyorSystem` but never a single `BeltSegment`, and the two authored
+belt-facing appendage cards had empty ids (`ExtractScrap.destinationId`,
+`LoadIntoScrapBuffer.sourceId`), so every belt program a player could build was guaranteed to
+stall on `TryEnqueue`/`TryDequeueHead` returning `false` for an unknown segment.
+`SandboxBootstrap` now registers a chained `ScrapBeltA -> ScrapBeltB` pair, both with visuals in
+the scene, and the two cards point at them. The ids intentionally match the ones
+`BeltDemoBootstrap` registers in `Main.unity`, so one set of authored `AppendageActionDefinition`
+assets drives both scenes.
+
+`Main.unity` also gained the missing `TriggerScrapBeltVisual` — `TriggerDemoBootstrap` had always
+registered that segment, but nothing ever drew it. The `AetherBelt`/`TriggerScrapBelt` anchors
+were nudged off their golems, since a lane rendered *under* a golem's feet reads as a bug.
+
+### Art (`Tools/Art/generate_placeholder_art.py belts`, Pillow only — no paid generation)
+
+New `generate_belts()` section; `main()` now takes an optional section name so belt art can be
+regenerated without touching the environment. Same convention as the environment pass: 32 art px
+per world unit, x4 upscale, PPU 128 (`belt_lane` is 1.0 x 0.4375 world, plus `belt_arrow` and
+`belt_roller`). The arrow is authored **white with only a dark rim**, because the runtime tints it
+amber-to-red; tinting a pre-coloured sprite would multiply the two hues and mud both ends of the
+readout.
+
+`item_scrap` / `item_brass` / `item_aether` were reskinned from cold grey into the warm workshop
+palette with three distinct silhouettes (stepped rust offcuts / clean brass trapezoid / tall teal
+shard), so they separate by shape before colour is even read. They keep their 32x32 file size and
+PPU 64 — same GUIDs, same world size, no rewiring — but are authored at 16 art px upscaled x2, so
+their pixel density finally matches the floor's. Their generation moved OUT of
+`generate_legacy_placeholders()`, which would otherwise silently clobber the reskin the same way
+`--legacy` clobbers the chassis art.
+
+`Assets/_Project/Scripts/Editor/BeltArtImporter.cs`
+(`Tools > Golem Factory > Reimport Belt Art`) mirrors
+`SandboxFloorGenerator.ReimportEnvironmentArt`, for the same reason it exists there:
+`manage_texture`'s import-settings path silently drops its payload, and freshly written PNGs
+otherwise land at PPU 100, bilinear, compressed.
+
+### Testing
+
+- New `Assets/Tests/EditMode/Belts/BeltFlowUtilityTests.cs` (26 tests). The load-bearing one is
+  `PredictProgressAfterAdvance_MatchesBeltSegmentAdvance`, which drives a real `BeltSegment`,
+  predicts every item's next progress, then calls `Advance` and asserts the prediction was exact —
+  if those two ever diverge, interpolated cargo drifts away from the simulation.
+- 4 new `SimulationClockTests` for `TickFraction` (zero before any time accumulates, mid-tick
+  value, wrap back after a tick fires, zero at `TicksPerSecond == 0`).
+- Full regression: **341/341 pass (262 EditMode + 79 PlayMode), zero failures.**
+
+### Deliberate scope cuts
+
+1. `Main.unity`'s golems are placed on a ring, not on the isometric grid, so `ScrapBeltA/B` run at
+   a 45-degree screen angle rather than along a `1 x 0.5` cell axis. The lane renders correctly at
+   any angle, but a belt on a true iso axis would look more at home. Fixing it means moving
+   golems, which belongs to whoever owns golem placement.
+2. Belt junctions still render as two coincident end rollers rather than a purpose-built junction
+   piece. `ConveyorSystem` only supports 1:1 `Next` chaining, so there are no real splitters or
+   mergers to draw yet.
+3. No belt *sound*, and no per-item squash/motion blur on handoff. The one-shot handoff sparkle
+   from the previous pass is unchanged and still fires.
