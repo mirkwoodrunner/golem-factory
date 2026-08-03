@@ -56,8 +56,8 @@ Editor (or a live MCP-for-Unity bridge, if connected):
   Editor pass (texture import settings, Tile assets, `SpriteRenderer` assignment) — see the
   "Graphics demo implementation notes" section of the implementation plan for the exact steps.
 
-As of the last recorded full run (graphics/presentation quality pass): **205/205 tests
-passing** (146 EditMode + 59 PlayMode).
+As of the last recorded full run (economy/Management-HUD production-quality pass):
+**410/410 tests passing** (324 EditMode + 86 PlayMode).
 
 ## Architecture
 

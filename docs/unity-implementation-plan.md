@@ -2086,3 +2086,152 @@ different item. Both the old failure and the new threshold are unit-tested.
 3. The lane still reads as a flat girder with no isometric thickness on `Main`'s 45-degree
    diagonal, and belt junctions still draw two coincident rollers at identical position *and*
    `sortingOrder`.
+## Economy / storage readout + Management HUD production-quality pass
+
+`ManagementPanel`'s four tabs shipped functional but unreadable and, in `Sandbox.unity`,
+inert. This pass fixes the wiring gap the M9/HUD notes recorded as an open scope cut,
+makes the inventory scannable, and adds the one economic signal the game had no way to
+show: whether a buffer is filling or draining.
+
+### What was actually wired vs. what the docs claimed
+
+Verified live in both scenes before changing anything (`execute_code` reflection dump of
+every serialized `UnityEngine.Object` field on all four panels). The "Deliberate scope
+cuts" note under *Walkable Main.unity demo + UGUI HUD redesign* was accurate and still
+open:
+
+- `Sandbox.unity` had **no `AssemblyLineStateHolder` at all**, and all four tabs' per-scene
+  data sources were `null` (`InventoryPanel.bufferRegistryHolder`,
+  `PatentBrowserPanel.patentRegistryHolder`, `AssemblyLinePanel.lineHolder`/
+  `bufferRegistryHolder`, all three of `SaveLoadPanel`'s holders,
+  `ManagementPanel.constructionPanel`). Every tab there rendered empty, and
+  `SaveLoadPanel.Save()` would have thrown a `NullReferenceException` on the first click.
+- **Undocumented, present in BOTH scenes**: `AssemblyLinePanel.statusText` and
+  `SaveLoadPanel.statusTextMeshProUGUI` were `null` even though the `StatusText`
+  GameObjects existed in the prefab. Every status message this pass's predecessors
+  "verified" ("Claimed X", "Saved N golems") was being written to a field nobody had
+  connected -- the M9/HUD verification had read `_statusMessage` back by reflection, not
+  looked at the screen.
+- **Undocumented**: every dynamically-created row in `InventoryPanel`/`AssemblyLinePanel`/
+  `PatentBrowserPanel` used `Color.black` text on `ManagementScreen`'s 0.08-grey iron
+  panel. Effectively invisible.
+
+### Code (done)
+
+- `Economy/BufferTrendUtility.cs` (new) -- engine-free static math: least-squares slope of
+  quantity against time scaled to per-minute, a three-valued `StockTrend` with a deadband,
+  signed rate formatting, ASCII trend glyphs, and the canonical item-type display order.
+  Least squares rather than a first-to-last delta **because buffer quantities are integers
+  that step at tick boundaries** -- an endpoint delta over a short window quantizes hard
+  (`TryComputeRatePerMinute_IsALeastSquaresFit_NotAnEndpointDelta` pins the difference).
+  Glyphs are `^`/`v`/`-`, not Unicode triangles: TMP renders a missing-glyph box for
+  anything outside its default atlas, which would put a literal box next to every number.
+- `Economy/BufferRateTracker.cs` (new) -- plain-C# rolling sample history per
+  (bufferId, itemType) over an 8s window. Pruned **strictly** by age with no "keep the last
+  two anyway" floor: retaining a point from outside the window anchors the fit to a stale
+  quantity, which `Sample_StaleWindowDoesNotAnchorTheRate_AfterATrendReverses` guards.
+- `Economy/BufferThroughputMonitor.cs` (new) -- the Holder-pattern `MonoBehaviour` that owns
+  the tracker and feeds it `Time.time` every 0.25s. Lives on the **same GameObject as
+  `StorageBufferRegistryHolder`** and resolves it via `GetComponent` when unset, so (a) it
+  needs zero cross-object scene wiring in either scene and (b) it keeps sampling while the
+  HUD is closed or on another tab -- a rate that only starts accumulating when you open the
+  panel is useless. `Tracker` is built lazily, not in `Awake()`, for the same reason
+  `AssemblyLineStateHolder` uses a field initializer.
+- **Nothing was added to the simulation.** `StorageBuffer`/`StorageBufferRegistry` are
+  untouched; the rate is derived entirely presentation-side from sampled quantities.
+- `UI/InventoryPanel.cs` -- rebuilt rows: item icon, name, relative-magnitude bar, quantity,
+  and a signed rate with a trend glyph. Grouped under a brass per-buffer header plate with
+  buffers sorted (a `Dictionary` iteration order is not contractual, and a list that
+  reorders itself between frames is unscannable) and item types in production order
+  (Scrap -> Brass -> Aether). Bars are normalized against the **largest stock on screen**,
+  not a capacity -- a `StorageBuffer` has no capacity concept in the simulation, so there is
+  no "full" to draw a percentage against and inventing one would be a lie. Rows with no
+  rate history print `--`, not `0/min`: "no reading yet" and "genuinely flat" are different
+  claims. Real empty/unwired states instead of a silently blank panel.
+- `UI/AssemblyLinePanel.cs` -- wallet-balance header row, cost in its own fixed-width
+  right-aligned column, affordability carried by brightness *and* by disabling the Claim
+  button (`TryClaimSlot` already refused; the click was only a way to produce an error
+  message the player could have been shown up front).
+- `UI/PatentBrowserPanel.cs` -- readable row colour, row plates, and a real empty state
+  naming the action that fills the list.
+- `UI/SaveLoadPanel.cs` -- `HasDataSources` guard so an unwired scene reports itself in the
+  status line instead of throwing.
+- `UI/ManagementPanel.cs` -- `ApplyTabHighlight()`. Every tab button shares the same brass
+  sprite, so before this **nothing on screen indicated which tab was open**. Plate and
+  caption invert together (dark ink on lit brass, parchment on dim).
+
+### Layout landmine, hit exactly as predicted
+
+Adding sprited item icons re-triggered the "a flat-color `Image` reports no useful size to
+the layout system" bug. Fixed once, in `InventoryPanel.CreateRowRoot`, with the recorded
+recipe: `childControlWidth`/`childControlHeight` **true**, `childForceExpandWidth` **false**,
+and an explicit `LayoutElement.flexibleHeight = 0` (`-1`/unset still lets the parent
+`VerticalLayoutGroup` hand out leftover space). Icons additionally need explicit
+`flexibleWidth = 0` **and** `preferredWidth`/`preferredHeight`, or a 32x32 sprite reports its
+native size and drags the row's height with it. Verified at 54 rows: rows held 28px.
+
+### Manual Editor setup (done, via live Unity MCP + `execute_code`)
+
+1. `ManagerHolders.prefab` -- added `BufferThroughputMonitor` to `Buffers`. Shared by both
+   scenes, so one edit covers both with no per-scene wiring.
+2. `WorkbenchCanvas.prefab` (shared, headless `LoadPrefabContents`/`SaveAsPrefabAsset`) --
+   wired the two never-connected `StatusText` refs; baked the three item-icon sprites and a
+   header plate onto `InventoryPanel` (asset refs, safe in a prefab); added an **opaque
+   `Backdrop`** under `ManagementScreen` (the iron-panel sprite is largely translucent, so
+   the screen read as a faint overlay on the world -- unusable for a data screen); sized the
+   tab buttons (they kept a native 100x100 rect and spilled into the first rows of content)
+   and moved `TabBar`/`TabContent` down clear of the always-on `AlertsStrip`, which is a
+   sibling that draws over this screen; sized and re-skinned `SaveLoadTab`'s buttons.
+3. `Sandbox.unity` -- created `AssemblyLine` (`AssemblyLineStateHolder`) +
+   `AssemblyLineDemoBootstrap` (same roster assets `Main.unity` uses), then wired all four
+   tabs' data sources and `ManagementPanel.constructionPanel`, each followed by
+   `PrefabUtility.RecordPrefabInstancePropertyModifications` + `EditorUtility.SetDirty`.
+   **Confirmed the overrides survived** a full save -> Play-mode entry -> exit -> disk
+   reload, which is the exact failure mode recorded under the HUD redesign notes.
+
+### Proving the rate readout is correct (measurement, not "looks right")
+
+- Unit tests assert the **exact** slope on hand-computed series (2 items/s over 4s => exactly
+  120/min; -1/s => exactly -60/min; a flat series => exactly 0).
+- Live in Play mode on `Main.unity`, against an independent endpoint measurement taken over
+  15.2s of real simulation: Scrap ground truth **401.4/min** vs. displayed **+400/min**;
+  Brass ground truth **200.7/min** vs. displayed **+200/min** (0.2% and 0.5% error). A
+  genuinely static buffer (`TriggerBrassBuffer`, quantity 0) read exactly `0/min`/Steady, not
+  noise. Draining a buffer flipped it to teal `v -1750/min` within the window and it
+  recovered to `+400/min` once the drain aged out.
+
+### Testing
+
+- New `Tests/EditMode/Economy/BufferTrendUtilityTests.cs` (13) and
+  `BufferRateTrackerTests.cs` (9).
+- Extended `Tests/PlayMode/UI/InventoryPanelTests.cs` (empty states, icon slot, quantity,
+  `--` vs. a signed rate), `AssemblyLinePanelTests.cs` (wallet row, affordability gating),
+  `PatentBrowserPanelTests.cs` (empty state), `ManagementPanelTests.cs` (exactly one tab
+  highlighted, caption inverts).
+- **Gotcha**: a PlayMode test that seeds `BufferRateTracker` with a synthetic series must
+  disable `BufferThroughputMonitor` first. The test-runner clock is already many seconds in,
+  so one real `Time.time` sample ages every synthetic point straight out of the window and
+  the readout correctly reports "no reading" -- which looked like a bug and was not.
+- Full regression: **410/410 pass (324 EditMode + 86 PlayMode), zero failures**, up from
+  381; console clean.
+- Verified in Play mode with screenshots in **both** scenes, every tab, including empty
+  states, plus a 54-row scroll test. In `Sandbox.unity` the Assembly Line's Claim button was
+  driven for real: wallet 40 -> 38 Scrap with "Claimed ClockworkScavenger." on the status
+  line -- an economy loop that could not run in that scene at all before this pass.
+
+### Deliberate scope cuts (still open)
+
+1. There is still **no capacity concept** for a `StorageBuffer`, so the magnitude bars are
+   relative-to-largest-on-screen only. A real fill gauge needs a simulation change.
+2. The rate is **net stock change**, not gross throughput -- a buffer being filled at 60/min
+   and drained at 60/min reads Steady, which is true but hides the traffic. Separating
+   in/out needs deposit/withdraw instrumentation the registry does not expose.
+3. `Sandbox.unity`'s `BuildMenuPanel` and `GolemConstructionPanel` are still `OnGUI`, and
+   OnGUI always draws over UGUI -- the Build menu overlaps the bottom-left of the open
+   Management screen. That belongs to the Sandbox/build-system pass.
+4. `GolemConstructionPanel.workbenchController`/`.managementPanel` and
+   `WorkbenchController.constructionPanel` are `null` in `Sandbox.unity`, so the
+   construction panel does not force-close the other two HUD screens there. Noted, not
+   fixed -- it is the player-interaction pass's half of the mutual-exclusion wiring.
+5. The Assembly Line tab still has no `ScrollRect` (3 slots + a wallet row fit), and the
+   Patents tab's rows carry no chassis/appendage summary, only the blueprint id.

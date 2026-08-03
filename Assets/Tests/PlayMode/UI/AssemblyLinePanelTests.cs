@@ -51,14 +51,35 @@ namespace GolemFactory.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator Refresh_BuildsOneRowPerSlot()
+        public IEnumerator Refresh_BuildsOneRowPerSlot_PlusTheWalletHeader()
         {
             (AssemblyLinePanel panel, AssemblyLineStateHolder line, _, RectTransform content) = Build();
             yield return null;
 
             panel.Refresh();
 
-            Assert.AreEqual(line.State.SlotCount, content.childCount);
+            // Row 0 is the wallet balance -- the cost columns below are meaningless without
+            // it, and the player should not have to switch tabs to find out what they can
+            // afford.
+            Assert.AreEqual(line.State.SlotCount + 1, content.childCount);
+        }
+
+        [UnityTest]
+        public IEnumerator Refresh_UnaffordableSlot_DisablesItsClaimButton()
+        {
+            (AssemblyLinePanel panel, _, StorageBufferRegistryHolder buffers, RectTransform content) = Build();
+            yield return null;
+
+            panel.Refresh();
+            Button broke = FindClaimButton(content);
+            Assume.That(broke, Is.Not.Null);
+            Assert.IsFalse(broke.interactable, "An unaffordable card should say so before the click, not after");
+
+            buffers.Registry.Deposit("ScrapBuffer", ItemType.Scrap, 1000);
+            panel.Refresh();
+            yield return null;
+
+            Assert.IsTrue(FindClaimButton(content).interactable);
         }
 
         [UnityTest]

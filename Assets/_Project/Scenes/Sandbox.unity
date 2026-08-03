@@ -5528,6 +5528,65 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &629458229
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 629458231}
+  - component: {fileID: 629458230}
+  m_Layer: 0
+  m_Name: AssemblyLineDemoBootstrap
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &629458230
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 629458229}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 154c566d98a08724d8137df61ede7542, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.AssemblyLine.AssemblyLineDemoBootstrap
+  lineHolder: {fileID: 1354695015}
+  chassisRoster:
+  - {fileID: 11400000, guid: 7dbe7f4449714ed5ab6ae98bf3b01d14, type: 2}
+  - {fileID: 11400000, guid: ca4f64f9f89c4383a22c49162706b4bd, type: 2}
+  - {fileID: 11400000, guid: 4368471bb1f14254aa36b7d226c7b5c2, type: 2}
+  - {fileID: 11400000, guid: f5feaab57fab486fad5c9eb3295a4524, type: 2}
+  - {fileID: 11400000, guid: 10d38008910e4a44acacb5390fe17dc4, type: 2}
+  logicCoreRoster:
+  - {fileID: 11400000, guid: e85c817f57464b1289fd3d9a5cf2a6ab, type: 2}
+  - {fileID: 11400000, guid: 7c0ad2ad706d435e865d52edd1ea66e2, type: 2}
+  appendageRoster:
+  - {fileID: 11400000, guid: 63cf7d84bfec4609bb6f91aea4970411, type: 2}
+  - {fileID: 11400000, guid: 693839c047db44f4a7353cf13bb09cbe, type: 2}
+  - {fileID: 11400000, guid: eb555807b24640a8a8ad58db02eb1f49, type: 2}
+  - {fileID: 11400000, guid: 4505ee4552b64cdb94e8dff3678ea7cf, type: 2}
+--- !u!4 &629458231
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 629458229}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &631922145
 GameObject:
   m_ObjectHideFlags: 0
@@ -11308,6 +11367,50 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &1354695014
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1354695016}
+  - component: {fileID: 1354695015}
+  m_Layer: 0
+  m_Name: AssemblyLine
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1354695015
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1354695014}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a68969f402065a944a2d80342fe14414, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.AssemblyLine.AssemblyLineStateHolder
+--- !u!4 &1354695016
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1354695014}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1384711532
 GameObject:
   m_ObjectHideFlags: 0
@@ -13495,6 +13598,18 @@ PrefabInstance:
       propertyPath: 'hideWhileOpen.Array.data[0]'
       value: 
       objectReference: {fileID: 1007991168}
+    - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: focusMeterHolder
+      value: 
+      objectReference: {fileID: 2049142408}
+    - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: bufferRegistryHolder
+      value: 
+      objectReference: {fileID: 2049142409}
+    - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: patentRegistryHolder
+      value: 
+      objectReference: {fileID: 2049142407}
     - target: {fileID: 1739638850736082168, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_TextStyleHashCode
       value: -1183493901
@@ -13515,6 +13630,10 @@ PrefabInstance:
       propertyPath: m_TextStyleHashCode
       value: -1183493901
       objectReference: {fileID: 0}
+    - target: {fileID: 2424833788007748116, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: bufferRegistryHolder
+      value: 
+      objectReference: {fileID: 2049142409}
     - target: {fileID: 3085159353666561722, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_fontColor32.rgba
       value: 4279047969
@@ -13715,6 +13834,14 @@ PrefabInstance:
       propertyPath: m_TextStyleHashCode
       value: -1183493901
       objectReference: {fileID: 0}
+    - target: {fileID: 7076758433116003756, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: lineHolder
+      value: 
+      objectReference: {fileID: 1354695015}
+    - target: {fileID: 7076758433116003756, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: bufferRegistryHolder
+      value: 
+      objectReference: {fileID: 2049142409}
     - target: {fileID: 7168274968137791308, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_SizeDelta.y
       value: 0
@@ -13727,6 +13854,10 @@ PrefabInstance:
       propertyPath: m_TextStyleHashCode
       value: -1183493901
       objectReference: {fileID: 0}
+    - target: {fileID: 7786623487855400834, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: constructionPanel
+      value: 
+      objectReference: {fileID: 953676649}
     - target: {fileID: 8169366228380846086, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_fontColor32.rgba
       value: 4284905612
@@ -13747,6 +13878,10 @@ PrefabInstance:
       propertyPath: m_TextStyleHashCode
       value: -1183493901
       objectReference: {fileID: 0}
+    - target: {fileID: 8656817306492245135, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: patentRegistryHolder
+      value: 
+      objectReference: {fileID: 2049142407}
     - target: {fileID: 8703793863221226414, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_TextStyleHashCode
       value: -1183493901
@@ -25738,3 +25873,5 @@ SceneRoots:
   - {fileID: 1120530076}
   - {fileID: 390155636}
   - {fileID: 2068483906}
+  - {fileID: 1354695016}
+  - {fileID: 629458231}
