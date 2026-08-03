@@ -1838,22 +1838,30 @@ range of world Y, so the order has to be per item, recomputed each frame from th
 point *on the lane* (not from the raised sprite position, so the cosmetic "sits on top of the
 belt" offset can't reorder anything).
 
-Measured in Play mode on `Main.unity`'s `ScrapBeltA` (lane from `(4.50, 0.00)` to `(3.65, 0.85)`,
-feeder golem standing at `(4.50, 0.03)`, `sortingOrder -3`):
+Measured in Play mode on `Main.unity`'s `ScrapBeltA` (lane from `(4.50, 0.00)` to `(3.65, 0.85)`).
+**Corrected against a live re-measurement during the follow-up fix pass** — the numbers first
+recorded here (`-3` for the feeder golem, `-173` for `GolemB`) were wrong; the conclusions and the
+size of the margins were not. The real anchors, read straight off the `SpriteRenderer`s:
 
-| slot | ground Y | sortingOrder | vs. feeder golem (-3) |
-|------|----------|--------------|-----------------------|
-| 4    | 0.03     | -3           | tie — item at the mouth |
-| 3    | 0.20     | -20          | behind the golem        |
-| 2    | 0.37     | -37          | behind the golem        |
-| 1    | 0.54     | -54          | behind the golem        |
-| 0    | 0.71     | -71          | behind the golem        |
+| renderer                          | world Y | sortingOrder |
+|-----------------------------------|---------|--------------|
+| feeder golem `Golem` (chassis)    | -0.037  | **4**        |
+| feeder golem `Golem` GroundShadow | -0.787  | 3            |
+| `GolemB` (chassis)                | 1.663   | **-166**     |
+| `GolemB` GroundShadow             | 0.913   | -167         |
 
-Under the old code all five were `0`, i.e. permanently *in front of* a golem they are standing
-behind. `ScrapBeltB` (which ends at `GolemB`, `sortingOrder -173`) shows the opposite half: its
-slots run -156...-88, all greater than -173, so cargo correctly draws **over** the golem behind
-it. Same component, same frame, both directions — see
+Note the feeder golem's Y **oscillates** (it has an idle bob), so its order drifts around 0-4
+frame to frame; do not expect a single fixed number when re-measuring.
+
+`ScrapBeltA`'s six cargo slots, by progress, are `1, -16, -33, -50, -67, -84` (the `+1` is the
+cargo tiebreak added in the fix pass, below). All are below the feeder golem's 4, i.e. cargo at
+the mouth correctly draws *behind* the golem standing in front of it. `ScrapBeltB`
+(`(3.65, 0.85) -> (2.80, 1.70)`, ending at `GolemB`) shows the opposite half: its slots run
+`-84 ... -169`, and its first five are all greater than `GolemB`'s `-166`, so cargo correctly
+draws **over** the golem behind it. Same component, same frame, both directions — see
 `Assets/Screenshots/belt_main_occlusion_feeder.png` and `belt_main_occlusion_receiver.png`.
+
+Under the old code all six slots were `0`, i.e. permanently in front of everything.
 
 The lane/arrow/roller decals sort from the lane's **furthest-back** end minus a small bias, not
 from its centre: anything standing on or beside a flat ground decal has `Y <= thatMaximum` and
@@ -1919,8 +1927,9 @@ New `generate_belts()` section; `main()` now takes an optional section name so b
 regenerated without touching the environment. Same convention as the environment pass: 32 art px
 per world unit, x4 upscale, PPU 128 (`belt_lane` is 1.0 x 0.4375 world, plus `belt_arrow` and
 `belt_roller`). The arrow is authored **white with only a dark rim**, because the runtime tints it
-amber-to-red; tinting a pre-coloured sprite would multiply the two hues and mud both ends of the
-readout.
+(amber when flowing, flashing hot when jammed); tinting a pre-coloured sprite would multiply the
+two hues and mud both ends of the readout. No belt art needed regenerating in the follow-up fix
+pass below — the whole fix is layering and runtime tint/scale.
 
 `item_scrap` / `item_brass` / `item_aether` were reskinned from cold grey into the warm workshop
 palette with three distinct silhouettes (stepped rust offcuts / clean brass trapezoid / tall teal
@@ -1957,3 +1966,123 @@ otherwise land at PPU 100, bilinear, compressed.
    mergers to draw yet.
 3. No belt *sound*, and no per-item squash/motion blur on handoff. The one-shot handoff sparkle
    from the previous pass is unchanged and still fires.
+
+## Belt readability follow-up fix pass
+
+The pass above was reviewed live in Play mode and returned **FAIL** on three counts. The
+foundation (per-item Y-sort, clock-matched arrow speed, sub-tick interpolation, the item art, the
+Sandbox belt registration, the no-GameObject-per-item pool) all verified TRUE and is untouched
+here. Everything below is presentation-only; `ConveyorSystem.Tick` and `BeltSegment` are not
+touched, and `Belts/` still has no reference to `Golems/`.
+
+All three fixes are expressed as pure functions in new
+`Assets/_Project/Scripts/Belts/BeltSignalUtility.cs`, unit-tested by
+`Assets/Tests/EditMode/Belts/BeltSignalUtilityTests.cs` (21 tests), following the
+`BeltFlowUtility` / `YSortUtility` / `WorkbenchDropRules` idiom.
+
+### 1. The direction arrows were drawn UNDER the cargo
+
+Not a tuning issue — a logic flaw. Cargo sorted at `YSort(groundY)`; arrows sorted at
+`laneSortingOrder + 1`, i.e. `YSort(BACKMOST laneY) - 3`. Since every cargo Y on a lane is at most
+the backmost Y, and `ComputeSortingOrder` decreases in Y, **the cargo order was strictly larger on
+every belt in the project, always.** On `ScrapBeltA` that was arrows at `-88` against cargo at
+`0 ... -84`. Direction was therefore absent in a belt's normal *loaded* state, and the failure
+compounds: a jam means the belt is full, a full belt is wall-to-wall cargo, so the jam readout was
+hidden exactly when it fired.
+
+The bug was invisible from either constant alone, so the rule is now one function with one
+property a test can assert. `ComputeFlowSignalSortingOrder` anchors on the lane's **frontmost**
+(smallest-Y, therefore largest-order) end rather than the lane decal, and
+`FlowSignal_OutranksCargoAtEveryPointOnEveryLane` walks 200 samples along five lane geometries
+(including both real `Main` lanes and a degenerate horizontal one) asserting the signal wins at
+every one. A companion test pins the old `laneSortingOrder + 1` rule as losing, so nobody re-derives
+the arrows from the lane decal again.
+
+Measured live on `Main.unity`, fully jammed `ScrapBeltA`: arrows `3`, max enabled cargo slot `1`.
+On `ScrapBeltB`: arrows `-82`, max cargo `-84`. Lane decal still behind everything at `-89` / `-174`.
+
+**Feed-point tie.** An item at progress 0 tied `sortingOrder` with the feeder golem standing at
+the same Y, and that golem's idle bob makes its order drift through the tie every second or so —
+i.e. real flicker. Cargo now takes `+1` (`CargoSortingBias`), 0.01 world units of Y, enough to
+settle exact ties and far too small to reorder anything real. Clearing the cargo then puts the
+flow signal on `3`, which can itself collide exactly with a character at the mouth. No integer
+bias can rule that out in general, so the remainder is broken in the only other channel available:
+with an orthographic camera and `Default` transparency sorting, equal `sortingOrder` resolves by
+view-axis distance, and `ComputeFlowSignalPosition` pushes the chevrons `+0.01` in Z so they
+**lose** those ties — correct, since anything standing level with the lane mouth should occlude a
+decal painted on the lane.
+
+### 2. The jam state was LESS visible than the healthy state
+
+The workshop floor is warm brown planks (`PLANK_TONES[3]`, relative luminance **0.360**). The
+alarm shifted the arrows from amber (luminance 0.765, contrast **0.405**) to a dark signal red
+(luminance 0.435, contrast **0.075**). The alarm state had **5.4x less contrast against its own
+background than the healthy state** — it read as "the belt dimmed", not "something is wrong".
+Red-on-brown is simply a bad alarm channel here.
+
+The deeper problem: against warm brown, *no* red out-luminates that amber, so hue and brightness
+alone can never make the alarm louder at all times. **Area is the channel that wins.** The jam
+signal now:
+
+- keeps a red base (`jamBaseColor` 1.00/0.34/0.28) for semantics, but **pulses toward hot white**
+  (`jamPulseColor` 1.00/0.95/0.90) at 2.4 Hz, with a floor of 0.5 so even a still frame caught at
+  the bottom of the pulse is well clear of the floor;
+- **swells the chevrons** with the pulse (`JamSignalScaleGain` 0.6, so 1.30x at the trough and
+  1.60x at the peak — 1.7x and 2.6x the pixels);
+- still freezes the scroll as congestion rises, and now also tints the two end rollers, which sit
+  outside the cargo's footprint.
+
+`ComputeSignalSalience` = `scale² × luminanceContrast`, and
+`JamSignal_IsLouderThanTheHealthySignalAtEVERYPhaseOfThePulse` asserts the quietest phase still
+beats the healthy state (and the loudest beats it 3x). The old red is pinned by
+`OldJamSignal_WasFiveTimesQUIETERThanTheHealthyState`.
+
+Verified on rendered pixels, not on theory. Belt-region crops at gameplay framing (ortho 5),
+counting chevron pixels and summing their luminance contrast against the plank floor:
+
+| state (Sandbox / Main)     | chevron px       | contrast energy   |
+|----------------------------|------------------|-------------------|
+| flowing, fully loaded      | 1.00x / 1.00x    | 1.00x / 1.00x     |
+| jammed, dimmest pulse phase| 1.33x / 1.21x    | 1.26x / 1.14x     |
+| jammed, peak pulse phase   | 1.65x / 1.54x    | 2.58x / 2.42x     |
+
+See `Assets/Screenshots/belt_fix_sandbox_compare_crop.png` and `belt_fix_main_compare_crop.png`
+(flowing / jam-trough / jam-peak at identical framing).
+
+`arrowSpacing` also dropped 0.5 -> 0.36 and `arrowEndFade` 0.2 -> 0.14 on all six
+`BeltSegmentVisual` instances across both scenes: pooled chevrons went 4 -> 5 on `Main`'s
+1.202-unit lanes and 5 -> 6 on `Sandbox`'s 1.600-unit lanes, and the narrower end fade keeps more
+of them at full alpha (3 visible on `Main`, 5 on `Sandbox`). 0.36 is the tightest spacing a
+1.6x-swollen chevron (0.30 world wide) still fits into without touching its neighbour.
+
+### 3. The cargo "warm flush" was imperceptible
+
+`itemJamTint` (1.00/0.80/0.72) multiplied into already brown/orange scrap. Measured on the three
+authored item colours it moved luminance by **13.8% / 14.9% / 18.4%** — and in the same warm
+direction the art already occupies, which is why it produced no detectable difference in
+side-by-side crops. Replaced (field renamed to `itemQueuedTint`, so the stale value baked into
+every scene is dropped rather than overriding the new default) with a **cold dim**
+(0.58/0.62/0.78): **38.7% / 38.5% / 37.2%** luminance drop with the hue swung off the warm axis.
+Queued cargo now reads as cold dead metal under bright flashing chevrons, without becoming a
+different item. Both the old failure and the new threshold are unit-tested.
+
+### Testing
+
+- New `BeltSignalUtilityTests.cs` (21). The load-bearing one is
+  `FlowSignal_OutranksCargoAtEveryPointOnEveryLane` — a standing regression test that cargo can
+  never occlude the flow signal.
+- Full regression: **362/362 pass (283 EditMode + 79 PlayMode), zero failures**, up from 341;
+  console clean.
+- Verified in Play mode at gameplay framing (`orthographicSize` 5) in **both** scenes, on a
+  **fully loaded** belt, flowing vs. jammed at identical framing.
+
+### Deliberate scope cuts (still open)
+
+1. `ComputeItemScale` clamps at `maxItemScale = 1.0`, so on Sandbox's 0.32-world item spacing the
+   auto-fit never engages and cargo overflows the lane silhouette. Raising the clamp is a one-line
+   change but re-tunes every belt's cargo size, which wants its own verification pass.
+2. Arrow scroll speed is scaled by `(1 - congestion)`, which under-reports throughput at partial
+   congestion (the head is still moving). Correct fix is to derive it from actual head throughput.
+3. The lane still reads as a flat girder with no isometric thickness on `Main`'s 45-degree
+   diagonal, and belt junctions still draw two coincident rollers at identical position *and*
+   `sortingOrder`.

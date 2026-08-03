@@ -3721,8 +3721,8 @@ MonoBehaviour:
   laneSprite: {fileID: 21300000, guid: 79bef4dd202e8544eba106c8bbcc4c6c, type: 3}
   arrowSprite: {fileID: 21300000, guid: f5fc21dcaf70c7549bd6782a099eb24c, type: 3}
   rollerSprite: {fileID: 21300000, guid: 589525f54dabd124889159eb74a91156, type: 3}
-  arrowSpacing: 0.5
-  arrowEndFade: 0.2
+  arrowSpacing: 0.36
+  arrowEndFade: 0.14
   itemHeightOffset: 0.14
   itemFitRatio: 1.25
   minItemScale: 0.45
@@ -3730,8 +3730,9 @@ MonoBehaviour:
   clockRunner: {fileID: 107768106}
   assumedTicksPerSecond: 10
   flowColor: {r: 1, g: 0.74, b: 0.32, a: 1}
-  jamColor: {r: 0.93, g: 0.31, b: 0.22, a: 1}
-  itemJamTint: {r: 1, g: 0.8, b: 0.72, a: 1}
+  jamBaseColor: {r: 1, g: 0.34, b: 0.28, a: 1}
+  jamPulseColor: {r: 1, g: 0.95, b: 0.9, a: 1}
+  itemQueuedTint: {r: 0.58, g: 0.62, b: 0.78, a: 1}
 --- !u!1 &398118237
 GameObject:
   m_ObjectHideFlags: 0
@@ -5849,8 +5850,8 @@ MonoBehaviour:
   laneSprite: {fileID: 21300000, guid: 79bef4dd202e8544eba106c8bbcc4c6c, type: 3}
   arrowSprite: {fileID: 21300000, guid: f5fc21dcaf70c7549bd6782a099eb24c, type: 3}
   rollerSprite: {fileID: 21300000, guid: 589525f54dabd124889159eb74a91156, type: 3}
-  arrowSpacing: 0.5
-  arrowEndFade: 0.2
+  arrowSpacing: 0.36
+  arrowEndFade: 0.14
   itemHeightOffset: 0.14
   itemFitRatio: 1.25
   minItemScale: 0.45
@@ -5858,8 +5859,9 @@ MonoBehaviour:
   clockRunner: {fileID: 107768106}
   assumedTicksPerSecond: 10
   flowColor: {r: 1, g: 0.74, b: 0.32, a: 1}
-  jamColor: {r: 0.93, g: 0.31, b: 0.22, a: 1}
-  itemJamTint: {r: 1, g: 0.8, b: 0.72, a: 1}
+  jamBaseColor: {r: 1, g: 0.34, b: 0.28, a: 1}
+  jamPulseColor: {r: 1, g: 0.95, b: 0.9, a: 1}
+  itemQueuedTint: {r: 0.58, g: 0.62, b: 0.78, a: 1}
 --- !u!1 &654352757
 GameObject:
   m_ObjectHideFlags: 0
@@ -20934,8 +20936,8 @@ MonoBehaviour:
   laneSprite: {fileID: 21300000, guid: 79bef4dd202e8544eba106c8bbcc4c6c, type: 3}
   arrowSprite: {fileID: 21300000, guid: f5fc21dcaf70c7549bd6782a099eb24c, type: 3}
   rollerSprite: {fileID: 21300000, guid: 589525f54dabd124889159eb74a91156, type: 3}
-  arrowSpacing: 0.5
-  arrowEndFade: 0.2
+  arrowSpacing: 0.36
+  arrowEndFade: 0.14
   itemHeightOffset: 0.14
   itemFitRatio: 1.25
   minItemScale: 0.45
@@ -20943,8 +20945,9 @@ MonoBehaviour:
   clockRunner: {fileID: 107768106}
   assumedTicksPerSecond: 10
   flowColor: {r: 1, g: 0.74, b: 0.32, a: 1}
-  jamColor: {r: 0.93, g: 0.31, b: 0.22, a: 1}
-  itemJamTint: {r: 1, g: 0.8, b: 0.72, a: 1}
+  jamBaseColor: {r: 1, g: 0.34, b: 0.28, a: 1}
+  jamPulseColor: {r: 1, g: 0.95, b: 0.9, a: 1}
+  itemQueuedTint: {r: 0.58, g: 0.62, b: 0.78, a: 1}
 --- !u!1 &1566442179
 GameObject:
   m_ObjectHideFlags: 0
@@ -24205,8 +24208,8 @@ MonoBehaviour:
   laneSprite: {fileID: 21300000, guid: 79bef4dd202e8544eba106c8bbcc4c6c, type: 3}
   arrowSprite: {fileID: 21300000, guid: f5fc21dcaf70c7549bd6782a099eb24c, type: 3}
   rollerSprite: {fileID: 21300000, guid: 589525f54dabd124889159eb74a91156, type: 3}
-  arrowSpacing: 0.5
-  arrowEndFade: 0.2
+  arrowSpacing: 0.36
+  arrowEndFade: 0.14
   itemHeightOffset: 0.14
   itemFitRatio: 1.25
   minItemScale: 0.45
@@ -24214,8 +24217,9 @@ MonoBehaviour:
   clockRunner: {fileID: 107768106}
   assumedTicksPerSecond: 10
   flowColor: {r: 1, g: 0.74, b: 0.32, a: 1}
-  jamColor: {r: 0.93, g: 0.31, b: 0.22, a: 1}
-  itemJamTint: {r: 1, g: 0.8, b: 0.72, a: 1}
+  jamBaseColor: {r: 1, g: 0.34, b: 0.28, a: 1}
+  jamPulseColor: {r: 1, g: 0.95, b: 0.9, a: 1}
+  itemQueuedTint: {r: 0.58, g: 0.62, b: 0.78, a: 1}
 --- !u!1 &1887116248
 GameObject:
   m_ObjectHideFlags: 0

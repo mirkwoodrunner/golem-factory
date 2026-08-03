@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using GolemFactory.World;
 
 namespace GolemFactory.Belts
 {
@@ -17,8 +16,12 @@ namespace GolemFactory.Belts
     //                       matches the speed an unobstructed item travels (and stops when
     //                       the clock is paused).
     //   BACKED UP        -> items interpolate toward BeltFlowUtility's predicted next-tick
-    //                       progress, so a blocked item visibly stops; queued items tint hot,
-    //                       and the arrows desaturate to jam-red and slow as congestion rises.
+    //                       progress, so a blocked item visibly stops; queued items go dark and
+    //                       cool while the arrows slow to a halt and flash hot. See
+    //                       BeltSignalUtility for why the jam alarm is brightness+motion rather
+    //                       than a red hue, and for the rule that keeps the arrows on TOP of the
+    //                       cargo (a jam fills the belt, so a signal under the cargo is hidden
+    //                       exactly when it matters).
     public sealed class BeltSegmentVisual : MonoBehaviour
     {
         [System.Serializable]
@@ -67,12 +70,22 @@ namespace GolemFactory.Belts
         [SerializeField] private float assumedTicksPerSecond = 10f;
 
         [Header("Flow colours")]
+        // Field names deliberately differ from the previous pass's (jamColor/itemJamTint): the
+        // old values are baked into every scene, and renaming is what lets the corrected defaults
+        // below actually reach them instead of being overridden by stale serialized data.
         [SerializeField] private Color flowColor = new Color(1f, 0.74f, 0.32f, 1f);
-        [SerializeField] private Color jamColor = new Color(0.93f, 0.31f, 0.22f, 1f);
-        // Deliberately a gentle flush rather than a hard red: the arrows going red and freezing
-        // is the loud half of the jam readout, and tinting the cargo hard enough to match it
-        // made a queued Brass ingot read as a different item entirely.
-        [SerializeField] private Color itemJamTint = new Color(1f, 0.8f, 0.72f, 1f);
+
+        // Alarm red for semantics, flashed toward hot white for salience -- see the palette
+        // argument in BeltSignalUtility. A steady dark red on this warm-brown floor measured at
+        // 1/5 the healthy amber's contrast, i.e. the alarm was quieter than the healthy state.
+        [SerializeField] private Color jamBaseColor = new Color(1f, 0.34f, 0.28f, 1f);
+        [SerializeField] private Color jamPulseColor = new Color(1f, 0.95f, 0.9f, 1f);
+
+        // Queued cargo goes cold and dim, not warm. The previous warm flush multiplied into
+        // already-brown scrap for a luminance change too small to see; this drops ~38% of every
+        // authored item colour's luminance AND swings it off the warm axis the art occupies, so
+        // stalled cargo reads as cold dead metal without becoming a different item.
+        [SerializeField] private Color itemQueuedTint = new Color(0.58f, 0.62f, 0.78f, 1f);
 
         private BeltSegment _segment;
         private SpriteRenderer[] _pool;
@@ -88,7 +101,9 @@ namespace GolemFactory.Belts
         private Vector3 _laneDirection;
         private float _laneLength;
         private int _laneSortingOrder;
+        private int _flowSignalSortingOrder;
         private float _scrollPhase;
+        private float _pulsePhase;
         private float _itemScale = 1f;
 
         private float _previousHeadProgress = -1f;
@@ -140,13 +155,34 @@ namespace GolemFactory.Belts
                 clockSpeed = clockRunner.Clock.State == Simulation.ClockState.Running ? clockRunner.Clock.Speed : 0f;
             }
 
-            // Arrows slow as the lane jams so "slow + red" and "fast + amber" are the two ends
-            // of one continuous readout rather than a binary light.
+            // Arrows slow as the lane jams so "slow + flashing" and "fast + amber" are the two
+            // ends of one continuous readout rather than a binary light.
             float speed = BeltFlowUtility.ComputeTreadSpeed(_laneLength, _segment.Length, ticksPerSecond, clockSpeed)
                           * (1f - congestion);
             _scrollPhase = BeltFlowUtility.AdvanceScrollPhase(_scrollPhase, Time.deltaTime, speed, arrowSpacing);
+            _pulsePhase = BeltSignalUtility.AdvancePulsePhase(
+                _pulsePhase, Time.deltaTime, BeltSignalUtility.JamPulseHz, clockSpeed);
 
-            Color arrowColor = Color.Lerp(flowColor, jamColor, congestion);
+            float pulse = BeltSignalUtility.ComputeJamPulse(congestion, _pulsePhase);
+            Color arrowColor = BeltSignalUtility.ComputeFlowSignalColor(
+                flowColor, jamBaseColor, jamPulseColor, congestion, pulse);
+
+            // Area, not just hue: no red is as luminous as the healthy amber against this warm
+            // plank floor, so the chevrons swell to carry the alarm. See BeltSignalUtility.
+            float signalScale = BeltSignalUtility.ComputeSignalScale(pulse);
+
+            // The end drums double as flow lamps: extra alarm mass at the two points of the lane
+            // that cargo never fully covers, for free (they are already pooled renderers).
+            if (_rollerStart != null)
+            {
+                _rollerStart.color = Color.Lerp(Color.white, arrowColor, congestion);
+            }
+
+            if (_rollerEnd != null)
+            {
+                _rollerEnd.color = Color.Lerp(Color.white, arrowColor, congestion);
+            }
+
             for (int i = 0; i < _arrows.Length; i++)
             {
                 float distance = _scrollPhase + i * arrowSpacing;
@@ -158,7 +194,9 @@ namespace GolemFactory.Belts
                 }
 
                 _arrows[i].enabled = true;
-                _arrows[i].transform.position = _laneStart + _laneDirection * distance;
+                _arrows[i].transform.position =
+                    BeltSignalUtility.ComputeFlowSignalPosition(_laneStart, _laneDirection, distance);
+                _arrows[i].transform.localScale = Vector3.one * signalScale;
                 _arrows[i].color = new Color(arrowColor.r, arrowColor.g, arrowColor.b, fade);
             }
         }
@@ -186,11 +224,11 @@ namespace GolemFactory.Belts
                 // cosmetic "sits on top of the belt" offset can't reorder anything. Per item,
                 // never per segment: a diagonal lane spans a whole range of world Y, so one
                 // constant order for the whole belt is guaranteed wrong at one end or the other.
-                _pool[i].sortingOrder = YSortUtility.ComputeSortingOrder(groundPoint.y);
+                _pool[i].sortingOrder = BeltSignalUtility.ComputeCargoSortingOrder(groundPoint.y);
 
                 _pool[i].sprite = ResolveSprite(items[i].ItemType);
                 bool queued = BeltFlowUtility.IsQueuedBehindAnother(items, i, _segment.Length, 1f);
-                _pool[i].color = queued ? itemJamTint : Color.white;
+                _pool[i].color = BeltSignalUtility.ComputeCargoRenderColor(queued, itemQueuedTint);
                 _pool[i].enabled = true;
             }
         }
@@ -265,13 +303,12 @@ namespace GolemFactory.Belts
             _laneLength = delta.magnitude;
             _laneDirection = _laneLength > 0f ? delta / _laneLength : Vector3.right;
 
-            // The lane is a flat ground decal spanning a range of world Y. Sorting it from its
-            // FURTHEST-BACK end (and biasing it behind) is what keeps it under every object
-            // standing on or beside it: any such object has Y <= that maximum, hence a strictly
-            // larger sorting order. Sorting from the lane's centre instead would put the lane in
-            // front of items riding its far half.
-            float backmostY = Mathf.Max(_laneStart.y, _laneEnd.y);
-            _laneSortingOrder = YSortUtility.ComputeSortingOrder(backmostY) - 4;
+            // Layering rules live in BeltSignalUtility so the "flow signal always outranks cargo"
+            // contract is one testable property rather than two constants a reader has to
+            // mentally subtract -- getting that wrong is exactly how the arrows ended up buried
+            // under the cargo in the first pass.
+            _laneSortingOrder = BeltSignalUtility.ComputeLaneSortingOrder(_laneStart.y, _laneEnd.y);
+            _flowSignalSortingOrder = BeltSignalUtility.ComputeFlowSignalSortingOrder(_laneStart.y, _laneEnd.y);
 
             BuildSpriteLookup();
             BuildLane();
@@ -321,12 +358,12 @@ namespace GolemFactory.Belts
             if (rollerSprite != null)
             {
                 _rollerStart = NewChild("RollerStart", rollerSprite, itemMaterial,
-                    YSortUtility.ComputeSortingOrder(_laneStart.y) - 1);
+                    BeltSignalUtility.ComputeRollerSortingOrder(_laneStart.y));
                 _rollerStart.transform.position = _laneStart;
                 _rollerStart.enabled = true;
 
                 _rollerEnd = NewChild("RollerEnd", rollerSprite, itemMaterial,
-                    YSortUtility.ComputeSortingOrder(_laneEnd.y) - 1);
+                    BeltSignalUtility.ComputeRollerSortingOrder(_laneEnd.y));
                 _rollerEnd.transform.position = _laneEnd;
                 _rollerEnd.enabled = true;
             }
@@ -345,9 +382,11 @@ namespace GolemFactory.Belts
             _arrows = new SpriteRenderer[count];
             for (int i = 0; i < count; i++)
             {
-                // Unlit (no itemMaterial) on purpose: the direction arrows are a HUD element
-                // painted on the world, and must stay legible in the workshop's dim corners.
-                _arrows[i] = NewChild("Arrow" + i, arrowSprite, null, _laneSortingOrder + 1);
+                // Unlit (no itemMaterial) on purpose, and sorted ABOVE every item on this lane:
+                // the direction arrows are a HUD element painted on the world, and "which way /
+                // is it jammed" has to survive a wall-to-wall loaded belt, which is both the
+                // normal working state and the jam state.
+                _arrows[i] = NewChild("Arrow" + i, arrowSprite, null, _flowSignalSortingOrder);
                 _arrows[i].transform.rotation = Quaternion.Euler(0f, 0f, angle);
             }
         }
