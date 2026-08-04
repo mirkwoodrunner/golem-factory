@@ -105,8 +105,12 @@ namespace GolemFactory.UI
 
             var canvas = canvasGO.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            // Under the Workbench/Management screens, which are modal when open.
-            canvas.sortingOrder = 50;
+            // Genuinely under the modal screens: WorkbenchCanvas sorts at 0 and the
+            // construction canvas at 40, so a positive order here would draw the bar over
+            // every modal and win raycasts inside its rect. Negative keeps it beneath them and
+            // still visible whenever they're closed, since those screens deactivate rather
+            // than merely sorting behind.
+            canvas.sortingOrder = -10;
 
             var scaler = canvasGO.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;

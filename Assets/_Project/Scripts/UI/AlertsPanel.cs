@@ -59,16 +59,19 @@ namespace GolemFactory.UI
         }
 
         // Golems can be constructed at runtime (GolemConstructionStation), so the cache is
-        // rebuilt whenever a destroyed entry shows up or the count looks stale.
+        // rebuilt on every reconcile rather than only when an entry turns out to be destroyed.
+        // An earlier version tried to detect staleness and only rebuild then; it could not see
+        // *additions* at all, so in Sandbox -- which starts with zero golems -- the cache stayed
+        // empty forever and Reconcile's wholesale clear actively erased stalls the event path
+        // had correctly recorded, leaving the strip permanently claiming all golems were fine.
+        // This runs on a 0.5s interval over a handful of golems, so the scan is not worth
+        // optimising into a correctness hazard.
         private void RefreshGolemCache() =>
             _golems = Object.FindObjectsByType<GolemEntity>(FindObjectsSortMode.None);
 
         private void Reconcile()
         {
-            if (_golems == null || HasStaleEntry())
-            {
-                RefreshGolemCache();
-            }
+            RefreshGolemCache();
 
             _snapshotBuffer.Clear();
             for (int i = 0; i < _golems.Length; i++)
@@ -87,19 +90,6 @@ namespace GolemFactory.UI
             }
 
             _tracker.Reconcile(_snapshotBuffer);
-        }
-
-        private bool HasStaleEntry()
-        {
-            for (int i = 0; i < _golems.Length; i++)
-            {
-                if (_golems[i] == null)
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
     }
 }

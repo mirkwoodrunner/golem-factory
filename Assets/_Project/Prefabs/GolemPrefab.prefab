@@ -106,6 +106,7 @@ GameObject:
   - component: {fileID: 894909861478881955}
   - component: {fileID: 3128127491369936579}
   - component: {fileID: 937857164811603705}
+  - component: {fileID: 4396446190094375246}
   m_Layer: 0
   m_Name: GolemPrefab
   m_TagString: Untagged
@@ -257,3 +258,18 @@ MonoBehaviour:
   scale: 1
   opacity: 1
   anchorToSpriteBottom: 1
+--- !u!114 &4396446190094375246
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5216248440463280512}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0929c6e42336c1a45b2bf77785d1278d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.GolemStallIndicator
+  golem: {fileID: 1171764598665550320}
+  worldOffset: {x: 0, y: 1, z: 0}
+  badgeSprite: {fileID: 0}
