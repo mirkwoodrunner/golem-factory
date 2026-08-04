@@ -34,11 +34,51 @@ namespace GolemFactory.World
         private int _peakQuantity;
         private float _pulseElapsed = -1f;
         private bool _wasDepleted;
+        private Vector2Int _spatialCell;
+        private bool _hasSpatialCell;
 
         private const float HarvestPulseDuration = 0.22f;
         private const float HarvestPulseAmount = 0.16f;
 
         public string NodeId => nodeId;
+
+        /// <summary>
+        /// Grid cell this marker occupies, derived from its world position. The marker is the
+        /// only thing that knows where a logical ResourceNode physically *is* -- ResourceNode
+        /// and ResourceNodeRegistry still have no Transform at all -- so it is also the natural
+        /// place to answer "which tile is this node on" for facing-based routing.
+        /// </summary>
+        public Vector2Int CellOn(GridCoordinateConverter converter) =>
+            converter.WorldToCell(transform.position);
+
+        /// <summary>
+        /// Publishes this node to the spatial endpoint registry so a golem facing this tile can
+        /// pull from it without naming it by id. Driven from SandboxBootstrap rather than Awake
+        /// because the backing ResourceNode has to be registered first, and because a node with
+        /// no spatial registry in the scene must stay purely id-routed (see GolemEntity's
+        /// fallback -- Main.unity depends on it).
+        /// </summary>
+        public bool RegisterAsSpatialEndpoint(
+            SpatialEndpointRegistryHolder endpointHolder, GridCoordinateConverter converter)
+        {
+            ResourceNode node;
+            if (endpointHolder == null ||
+                nodeRegistryHolder == null ||
+                !nodeRegistryHolder.Registry.TryGetNode(nodeId, out node))
+            {
+                return false;
+            }
+
+            _spatialCell = CellOn(converter);
+            _hasSpatialCell = true;
+            endpointHolder.Registry.Register(_spatialCell, new ResourceNodeEndpoint(node));
+            return true;
+        }
+
+        /// <summary>Cell this marker last registered itself on, for diagnostics and tests.</summary>
+        public Vector2Int SpatialCell => _spatialCell;
+
+        public bool IsSpatiallyRegistered => _hasSpatialCell;
 
         public void Configure(ResourceNodeRegistryHolder registryHolder, string id)
         {

@@ -151,7 +151,8 @@ namespace GolemFactory.Tests.EditMode
             StallReason[] reasons =
             {
                 StallReason.NodeEmpty, StallReason.BeltFull, StallReason.BeltEmpty,
-                StallReason.BufferEmpty, StallReason.Unconfigured
+                StallReason.BufferEmpty, StallReason.Unconfigured,
+                StallReason.NoSourceAtTile, StallReason.NoTargetAtTile
             };
 
             foreach (StallReason reason in reasons)
@@ -177,6 +178,73 @@ namespace GolemFactory.Tests.EditMode
 
             StringAssert.Contains("AetherNode", text);
             StringAssert.DoesNotContain("GolemD", text);
+        }
+
+        // --- Spatial stalls ------------------------------------------------------------------
+        // A facing-routed golem that is blocked is blocked because of *where it is pointing*.
+        // Naming a resource id would be misleading -- there is no resource; the actionable fact
+        // is the empty tile, so the text has to say which side is empty.
+
+        [Test]
+        public void DescribeShort_NoSourceAtTile_SaysNothingIsBehindIt()
+        {
+            string text = StallDiagnostics.DescribeShort(StallReason.NoSourceAtTile, "(-1, 1)");
+
+            StringAssert.Contains("behind", text);
+            StringAssert.Contains("(-1, 1)", text);
+        }
+
+        [Test]
+        public void DescribeShort_NoTargetAtTile_SaysNothingIsInFrontOfIt()
+        {
+            string text = StallDiagnostics.DescribeShort(StallReason.NoTargetAtTile, "(0, 2)");
+
+            StringAssert.Contains("front", text);
+            StringAssert.Contains("(0, 2)", text);
+        }
+
+        [Test]
+        public void Describe_SpatialReasons_DistinguishBehindFromInFront()
+        {
+            string behind = StallDiagnostics.Describe("GolemD", StallReason.NoSourceAtTile, "(0, 0)");
+            string front = StallDiagnostics.Describe("GolemD", StallReason.NoTargetAtTile, "(0, 2)");
+
+            StringAssert.Contains("GolemD", behind);
+            StringAssert.Contains("GolemD", front);
+            Assert.AreNotEqual(behind, front);
+        }
+
+        [Test]
+        public void Describe_SpatialReasonsWithoutACell_StillReadAsSentences()
+        {
+            foreach (StallReason reason in new[] { StallReason.NoSourceAtTile, StallReason.NoTargetAtTile })
+            {
+                string text = StallDiagnostics.Describe("GolemD", reason, null);
+                StringAssert.Contains("GolemD", text);
+                Assert.IsFalse(text.Contains("  "), "collapsed placeholder left a double space");
+                StringAssert.DoesNotContain("tile ", text, "named a tile it does not have");
+            }
+        }
+
+        [Test]
+        public void SpatialStallText_IsPlainAscii()
+        {
+            // Same LiberationSans SDF constraint as ComposeStripText: no arrow/warning glyphs.
+            string[] texts =
+            {
+                StallDiagnostics.DescribeShort(StallReason.NoSourceAtTile, "(0, 0)"),
+                StallDiagnostics.DescribeShort(StallReason.NoTargetAtTile, "(0, 2)"),
+                StallDiagnostics.Describe("GolemD", StallReason.NoSourceAtTile, "(0, 0)"),
+                StallDiagnostics.Describe("GolemD", StallReason.NoTargetAtTile, "(0, 2)")
+            };
+
+            foreach (string text in texts)
+            {
+                foreach (char c in text)
+                {
+                    Assert.Less((int)c, 128, "non-ASCII '" + c + "' has no glyph in LiberationSans SDF");
+                }
+            }
         }
     }
 }

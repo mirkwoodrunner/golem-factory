@@ -43,7 +43,13 @@ namespace GolemFactory.Events
         // LoadIntoBuffer: nothing has reached the end of the source belt segment yet.
         BeltEmpty,
         // Refine: the source storage buffer doesn't hold the recipe's input item.
-        BufferEmpty
+        BufferEmpty,
+        // Spatial routing: nothing that can supply an item sits on the tile behind the golem.
+        // Distinct from NodeEmpty (a source exists but is spent) because the player's fix is
+        // different: rotate/reposition the golem, don't wait for the node to refill.
+        NoSourceAtTile,
+        // Spatial routing: nothing that can accept an item sits on the tile in front.
+        NoTargetAtTile
     }
 
     // Which kind of trigger fired. Mirrors PunchCards.TriggerType minus AlwaysOn, which is

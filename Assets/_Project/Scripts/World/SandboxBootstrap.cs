@@ -41,6 +41,11 @@ namespace GolemFactory.World
         [SerializeField] private GolemFactory.Player.PlayerController player;
         [SerializeField] private Grid grid;
 
+        // Facing-based spatial routing (docs/digital-design.md, "Grid & Movement Mechanics").
+        // Optional on purpose: leave it unassigned and every golem falls back to the bare-string
+        // id routing that Main.unity's demos use, which is exactly what makes this additive.
+        [SerializeField] private SpatialEndpointRegistryHolder spatialEndpointHolder;
+
         private void Start()
         {
             // ScrapNode/BrassNode are directly harvestable (both by the player's own
@@ -69,6 +74,48 @@ namespace GolemFactory.World
             if (player != null && grid != null)
             {
                 player.SetFloorBounds(new GridCoordinateConverter(grid.cellSize), FloorLayout.HalfExtent);
+            }
+
+            RegisterSpatialEndpoints(scrapBeltA);
+        }
+
+        // Publishes the world's item-bearing things onto the cells they physically occupy, so a
+        // golem can route by facing instead of by the bare-string ids baked into its appendage
+        // cards. Everything here is additive: with spatialEndpointHolder unassigned this method
+        // does nothing at all and the scene behaves exactly as it did before.
+        private void RegisterSpatialEndpoints(BeltSegment scrapBeltA)
+        {
+            if (spatialEndpointHolder == null || grid == null)
+            {
+                return;
+            }
+
+            var converter = new GridCoordinateConverter(grid.cellSize);
+
+            // The three hand-placed ResourceNodeMarkers already carry both a nodeId and a world
+            // position; each one resolves its own cell (it owns the Transform) and publishes its
+            // backing ResourceNode there.
+            ResourceNodeMarker[] markers = FindObjectsByType<ResourceNodeMarker>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            ResourceNodeMarker scrapMarker = null;
+            for (int i = 0; i < markers.Length; i++)
+            {
+                markers[i].RegisterAsSpatialEndpoint(spatialEndpointHolder, converter);
+                if (markers[i].NodeId == "ScrapNode")
+                {
+                    scrapMarker = markers[i];
+                }
+            }
+
+            // Belts have no scene presence yet -- BeltSegmentVisual exists but nothing in either
+            // scene instantiates one, and player-placeable belts are a separate pass. So the
+            // demonstration chain is anchored off the scrap node rather than authored by hand:
+            // ScrapBeltA is published two tiles north of ScrapNode, leaving exactly one tile
+            // between them for a north-facing golem to stand on and pull node -> belt.
+            // Provisional: replace with the belt's own placed cell once belts are placeable.
+            if (scrapMarker != null && scrapMarker.IsSpatiallyRegistered && scrapBeltA != null)
+            {
+                Vector2Int beltCell = scrapMarker.SpatialCell + new Vector2Int(0, 2);
+                spatialEndpointHolder.Registry.Register(beltCell, new BeltSegmentEndpoint(scrapBeltA));
             }
         }
     }

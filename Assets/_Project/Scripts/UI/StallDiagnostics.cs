@@ -26,6 +26,19 @@ namespace GolemFactory.UI
                     return "waiting on " + target;
                 case StallReason.BufferEmpty:
                     return "no input in " + target;
+                // Spatial stalls name the *tile*, not a resource id, because the id is not the
+                // actionable fact -- the golem is facing the wrong way or standing in the wrong
+                // place, and "nothing behind me" is the sentence that tells the player to rotate
+                // or move it. Plain ASCII only (no arrow glyphs): TMP's LiberationSans SDF atlas
+                // has no entry for them, same constraint as ComposeStripText's "[!]".
+                case StallReason.NoSourceAtTile:
+                    return string.IsNullOrEmpty(resourceId)
+                        ? "nothing behind me"
+                        : "nothing behind me at " + resourceId;
+                case StallReason.NoTargetAtTile:
+                    return string.IsNullOrEmpty(resourceId)
+                        ? "nothing in front of me"
+                        : "nothing in front of me at " + resourceId;
                 case StallReason.Unconfigured:
                     return "not wired up";
                 default:
@@ -48,6 +61,14 @@ namespace GolemFactory.UI
                     return who + " stalled: waiting for items on " + target;
                 case StallReason.BufferEmpty:
                     return who + " stalled: " + target + " has no input";
+                case StallReason.NoSourceAtTile:
+                    return string.IsNullOrEmpty(resourceId)
+                        ? who + " stalled: nothing to pull from behind it"
+                        : who + " stalled: nothing to pull from on tile " + resourceId;
+                case StallReason.NoTargetAtTile:
+                    return string.IsNullOrEmpty(resourceId)
+                        ? who + " stalled: nothing to push to in front of it"
+                        : who + " stalled: nothing to push to on tile " + resourceId;
                 case StallReason.Unconfigured:
                     return who + " stalled: not wired up";
                 default:
