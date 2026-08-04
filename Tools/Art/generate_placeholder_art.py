@@ -945,6 +945,105 @@ def generate_belts() -> None:
     save(make_aether_item(), "item_aether.png")
 
 
+# =========================================================================================
+# Interaction affordances: the ring that marks the currently-targeted interactable, and the
+# cell footprint the build ghost uses.
+#
+# Both are authored PURE WHITE with only alpha shaping them, for the same reason
+# make_belt_arrow is: they are tinted at runtime (amber = ready / dim steel = out of range /
+# red = blocked). Tinting pre-coloured art multiplies the two hues and muds both ends.
+#
+# They are also authored BRIGHT on purpose. The build ghost previously reused
+# building_block.png, whose mean colour is (63, 42, 28) -- darker than the warm plank floor
+# it sits on -- so multiplying it by a green or red tint could only ever produce something
+# *darker* than the floor. Measured, the old valid/blocked pair differed by a contrast ratio
+# of 1.06:1 against each other: effectively invisible. A near-white source is the only way a
+# runtime tint can move the composite both above and below the floor's luminance.
+#
+# Same art scale as the environment: 32 art px per world unit, x4 upscale, PPU 128, so both
+# are exactly one isometric cell (1.0 x 0.5 world units).
+# =========================================================================================
+
+INTERACTION_UPSCALE = 4
+INTERACTION_NATIVE_W = 32
+INTERACTION_NATIVE_H = 16
+
+
+def _diamond_half_width(y: int) -> float:
+    """Half-width in native px of the isometric cell diamond at row y."""
+    cy = (INTERACTION_NATIVE_H - 1) / 2.0
+    return (INTERACTION_NATIVE_W / 2.0) * (1.0 - abs(y - cy) / (INTERACTION_NATIVE_H / 2.0))
+
+
+def make_interaction_ring() -> Image.Image:
+    """A 2:1 isometric ring that sits under the currently-targeted interactable. Drawn as an
+    ellipse inscribed in the cell diamond, with four cardinal ticks so it reads as a
+    deliberate targeting reticle rather than a shadow."""
+    img = Image.new("RGBA", (INTERACTION_NATIVE_W, INTERACTION_NATIVE_H), TRANSPARENT)
+    draw = ImageDraw.Draw(img)
+    white = (255, 255, 255, 255)
+    soft = (255, 255, 255, 110)
+
+    # Outer ring, then a dimmer inner ring one pixel in: two concentric strokes read as a
+    # ring at 3-4 screen px per art px, where a single 1px stroke reads as a smudge.
+    draw.ellipse([1, 0, 30, 15], outline=white)
+    draw.ellipse([3, 1, 28, 14], outline=soft)
+
+    # Cardinal ticks (E/W on the long axis, N/S on the short) -- the ring's silhouette alone
+    # is nearly identical to GroundShadow's ellipse, and these are what separate them.
+    draw.line([(0, 7), (2, 7)], fill=white)
+    draw.line([(0, 8), (2, 8)], fill=white)
+    draw.line([(29, 7), (31, 7)], fill=white)
+    draw.line([(29, 8), (31, 8)], fill=white)
+    draw.point((15, 0), fill=white)
+    draw.point((16, 0), fill=white)
+    draw.point((15, 15), fill=white)
+    draw.point((16, 15), fill=white)
+    return upscale(img, INTERACTION_UPSCALE)
+
+
+def make_build_ghost_tile() -> Image.Image:
+    """The build-mode cell footprint: a bright diamond outline with a translucent interior and
+    solid corner brackets. Replaces building_block.png as the ghost sprite -- the question the
+    ghost has to answer is "which cell", and a building silhouette answers "which building",
+    which the build menu already says in words."""
+    img = Image.new("RGBA", (INTERACTION_NATIVE_W, INTERACTION_NATIVE_H), TRANSPARENT)
+    px = img.load()
+    edge = (255, 255, 255, 255)
+    fill = (255, 255, 255, 64)
+    cx = INTERACTION_NATIVE_W / 2.0
+
+    for y in range(INTERACTION_NATIVE_H):
+        half = _diamond_half_width(y)
+        if half < 0.5:
+            continue
+        left = int(round(cx - half))
+        right = int(round(cx + half)) - 1
+        for x in range(max(0, left), min(INTERACTION_NATIVE_W, right + 1)):
+            px[x, y] = fill
+        for x in (left, left + 1, right - 1, right):
+            if 0 <= x < INTERACTION_NATIVE_W:
+                px[x, y] = edge
+
+    # Solid brackets at the four diamond vertices: the corners are where the eye checks
+    # alignment against the floor's plank seams.
+    draw = ImageDraw.Draw(img)
+    draw.line([(0, 7), (4, 7)], fill=edge)
+    draw.line([(0, 8), (4, 8)], fill=edge)
+    draw.line([(27, 7), (31, 7)], fill=edge)
+    draw.line([(27, 8), (31, 8)], fill=edge)
+    draw.line([(13, 0), (18, 0)], fill=edge)
+    draw.line([(14, 1), (17, 1)], fill=edge)
+    draw.line([(13, 15), (18, 15)], fill=edge)
+    draw.line([(14, 14), (17, 14)], fill=edge)
+    return upscale(img, INTERACTION_UPSCALE)
+
+
+def generate_interaction() -> None:
+    save(make_interaction_ring(), "interaction_ring.png")
+    save(make_build_ghost_tile(), "build_ghost_tile.png")
+
+
 def generate_legacy_placeholders() -> None:
     """The original placeholder character/item sprites. NOT run by default any more: the
     golem chassis, player, and item sprites in Assets/_Project/Art/ have since been replaced
@@ -984,6 +1083,8 @@ def main() -> None:
         generate_environment()
     if not only or "belts" in only:
         generate_belts()
+    if not only or "interaction" in only:
+        generate_interaction()
     if "--legacy" in sys.argv:
         generate_legacy_placeholders()
 

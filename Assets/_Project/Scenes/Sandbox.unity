@@ -1335,7 +1335,7 @@ MonoBehaviour:
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 0
   m_ChildControlWidth: 1
-  m_ChildControlHeight: 0
+  m_ChildControlHeight: 1
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
@@ -7690,8 +7690,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3a933a5d5a6c63940910ebcfaaa273df, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.GolemConstructionPanel
-  workbenchController: {fileID: 0}
-  managementPanel: {fileID: 0}
+  workbenchController: {fileID: 1555994597}
+  managementPanel: {fileID: 1555994598}
+  panelSprite: {fileID: 21300000, guid: 769b9161b42321b4ba912b513b99fe75, type: 3}
+  rowSprite: {fileID: 0}
+  buttonSprite: {fileID: 21300000, guid: 6a818d166770ab7428a591655fade9f5, type: 3}
+  sortingOrder: 40
 --- !u!4 &953676650
 Transform:
   m_ObjectHideFlags: 0
@@ -8019,6 +8023,10 @@ MonoBehaviour:
   _rowContainer: {fileID: 119144198}
   _rowSprite: {fileID: 21300000, guid: 6a818d166770ab7428a591655fade9f5, type: 3}
   _rowActiveSprite: {fileID: 21300000, guid: 9d4b492d1e10bf9468b8790d0d650cd5, type: 3}
+  _panelRoot: {fileID: 1518134817}
+  _workbenchController: {fileID: 1555994597}
+  _managementPanel: {fileID: 1555994598}
+  _constructionPanel: {fileID: 953676649}
 --- !u!224 &1007991170
 RectTransform:
   m_ObjectHideFlags: 0
@@ -13587,6 +13595,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 2049142408}
     - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: constructionPanel
+      value: 
+      objectReference: {fileID: 953676649}
+    - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: patentRegistryHolder
       value: 
       objectReference: {fileID: 2049142407}
@@ -13902,6 +13914,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef92d37f882f5584ba1808fd399f5958, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.WorkbenchController
+--- !u!114 &1555994598 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7786623487855400834, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+  m_PrefabInstance: {fileID: 1555994596}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6bc54b5815c62ed428fe29022a6927e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.ManagementPanel
 --- !u!1 &1566442179
 GameObject:
   m_ObjectHideFlags: 0
@@ -15023,6 +15046,7 @@ GameObject:
   - component: {fileID: 1683579197}
   - component: {fileID: 1683579196}
   - component: {fileID: 1683579199}
+  - component: {fileID: 1683579200}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -15064,6 +15088,9 @@ MonoBehaviour:
   _stockpileBufferId: FactoryStockpile
   _constructionPanel: {fileID: 953676649}
   _workbenchController: {fileID: 1555994597}
+  _promptView: {fileID: 1683579200}
+  _managementPanel: {fileID: 1555994598}
+  _interactKeyLabel: E
 --- !u!114 &1683579197
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15155,6 +15182,22 @@ MonoBehaviour:
   scale: 1
   opacity: 1
   anchorToSpriteBottom: 1
+--- !u!114 &1683579200
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1683579194}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ded9dca168a4c654fa4b38b43b21769f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Player.InteractionPromptView
+  ringSprite: {fileID: 21300000, guid: 4c1ac1ed5bccc164298514710f346882, type: 3}
+  ringOffset: {x: 0, y: -0.12, z: 0}
+  captionOffset: {x: 0, y: 0.95, z: 0}
+  sortingLayerName: Default
 --- !u!1 &1688604067
 GameObject:
   m_ObjectHideFlags: 0
@@ -15852,8 +15895,6 @@ MonoBehaviour:
   _ghost: {fileID: 1896499462}
   _actions: {fileID: -944628639613478452, guid: 4461f6f8937ddb244b5a50564eb86331, type: 3}
   _cellSize: {x: 1, y: 0.5}
-  _validColor: {r: 0.4, g: 1, b: 0.4, a: 0.6}
-  _blockedColor: {r: 1, g: 0.4, b: 0.4, a: 0.6}
   _stockpileHolder: {fileID: 2049142409}
   _stockpileBufferId: FactoryStockpile
   _availablePrefabs:
@@ -16509,10 +16550,10 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: -19900
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: d1f49fca51be48f4d8aac2d6bece25bf, type: 3}
-  m_Color: {r: 0.4, g: 1, b: 0.4, a: 0.6}
+  m_Sprite: {fileID: 21300000, guid: 20cc9822bf7a4f348a44442b915ca66a, type: 3}
+  m_Color: {r: 1, g: 0.8, b: 0.36, a: 0.85}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0

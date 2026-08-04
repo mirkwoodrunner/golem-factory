@@ -18,8 +18,6 @@ namespace GolemFactory.Player
         [SerializeField] private SpriteRenderer _ghost;
         [SerializeField] private InputActionAsset _actions;
         [SerializeField] private Vector2 _cellSize = new Vector2(1f, 0.5f);
-        [SerializeField] private Color _validColor = new Color(0.4f, 1f, 0.4f, 0.6f);
-        [SerializeField] private Color _blockedColor = new Color(1f, 0.4f, 0.4f, 0.6f);
 
         // Left null in Main.unity today (Inspector default) -- placement there stays exactly
         // as free as it always was. Sandbox.unity wires this to the shared stockpile buffer,
@@ -31,6 +29,32 @@ namespace GolemFactory.Player
         private GridCoordinateConverter _converter;
         private InputAction _clickAction;
         private Vector2Int _hoveredCell;
+
+        private static readonly Color RefusedPopupColor = new Color(1f, 0.52f, 0.40f, 1f);
+        private static readonly Color SpentPopupColor = new Color(0.72f, 0.75f, 0.78f, 1f);
+
+        private int ReadStock(string itemType)
+        {
+            if (_stockpileHolder == null ||
+                !_stockpileHolder.Registry.TryGetBuffer(_stockpileBufferId, out StorageBuffer buffer))
+            {
+                return 0;
+            }
+
+            return buffer.GetQuantity(itemType);
+        }
+
+        // Skipped outside Play mode: FloatingPopup drives itself from Update, so in an EditMode
+        // test it would never tick and never be destroyed.
+        private static void SpawnPopup(Vector3 worldPosition, string text, Color color)
+        {
+            if (!Application.isPlaying || string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            GolemFactory.UI.FloatingPopup.Spawn(worldPosition + new Vector3(0f, 0.3f, 0f), text, color);
+        }
 
         // Set by PlaceOrRemove on a failed cost check, for a BuildMenuPanel (or a test) to
         // surface -- mirrors UI/GolemProgrammingPanel's own _statusMessage field.
@@ -102,6 +126,12 @@ namespace GolemFactory.Player
             UpdateGhost();
         }
 
+        /// <summary>
+        /// State the ghost is currently showing. Exposed so a test can assert what the player
+        /// is being told without reading a Color off a SpriteRenderer.
+        /// </summary>
+        public BuildGhostState GhostState { get; private set; } = BuildGhostState.Valid;
+
         private void UpdateGhost()
         {
             if (_ghost == null)
@@ -111,7 +141,37 @@ namespace GolemFactory.Player
 
             _ghost.transform.position = _converter.CellToWorldCenter(_hoveredCell);
             bool occupied = _gridMapHolder != null && _gridMapHolder.Map.IsOccupied(_hoveredCell);
-            _ghost.color = occupied ? _blockedColor : _validColor;
+            GhostState = BuildGhostVisuals.Classify(occupied, CanAffordActivePrefab());
+            // Colours and the blocked pulse come from BuildGhostVisuals, which documents the
+            // measurements behind them -- the old inline green/red pair was tuned against the
+            // pre-reskin cold grey floor and composited to a 1.06:1 contrast ratio against
+            // each other on the warm plank floor that replaced it.
+            _ghost.color = BuildGhostVisuals.Evaluate(GhostState, Time.time);
+            _ghost.gameObject.SetActive(_buildingPrefab != null);
+        }
+
+        /// <summary>
+        /// Whether the active prefab's cost is currently payable. With no stockpile wired (as
+        /// in Main.unity) placement is free, so this is always true there -- exactly matching
+        /// PlaceOrRemove's own cost check, so the ghost can never promise something placement
+        /// will then refuse.
+        /// </summary>
+        public bool CanAffordActivePrefab()
+        {
+            if (_buildingPrefab == null || _stockpileHolder == null)
+            {
+                return true;
+            }
+
+            if (!_stockpileHolder.Registry.TryGetBuffer(_stockpileBufferId, out StorageBuffer buffer))
+            {
+                return GolemFactory.UI.ConstructionCostPolicy.CanAfford(
+                    0, 0, _buildingPrefab.ScrapCost, _buildingPrefab.BrassCost);
+            }
+
+            return GolemFactory.UI.ConstructionCostPolicy.CanAfford(
+                buffer.GetQuantity(ItemType.Scrap), buffer.GetQuantity(ItemType.Brass),
+                _buildingPrefab.ScrapCost, _buildingPrefab.BrassCost);
         }
 
         private void OnClickPerformed(InputAction.CallbackContext context) => PlaceOrRemove(_hoveredCell);
@@ -145,6 +205,14 @@ namespace GolemFactory.Player
             {
                 LastStatusMessage = $"Not enough resources to build {_buildingPrefab.name} " +
                                      $"(needs {_buildingPrefab.ScrapCost} Scrap, {_buildingPrefab.BrassCost} Brass).";
+                // The refusal has to appear at the cursor. Until now this string was set and
+                // never rendered anywhere, so a click that could not be paid for was
+                // indistinguishable from a click that did not register.
+                SpawnPopup(_converter.CellToWorldCenter(cell),
+                    GolemFactory.UI.ConstructionCostPolicy.FormatShortfall(
+                        ReadStock(ItemType.Scrap), ReadStock(ItemType.Brass),
+                        _buildingPrefab.ScrapCost, _buildingPrefab.BrassCost),
+                    RefusedPopupColor);
                 return;
             }
 
@@ -152,6 +220,13 @@ namespace GolemFactory.Player
             PlaceableBuilding instance = Instantiate(_buildingPrefab, _converter.CellToWorldCenter(cell), Quaternion.identity);
             instance.Cell = cell;
             map.TryOccupy(cell, instance);
+            if (_stockpileHolder != null && (_buildingPrefab.ScrapCost > 0 || _buildingPrefab.BrassCost > 0))
+            {
+                SpawnPopup(_converter.CellToWorldCenter(cell),
+                    "-" + GolemFactory.UI.ConstructionCostPolicy.FormatCost(
+                        _buildingPrefab.ScrapCost, _buildingPrefab.BrassCost),
+                    SpentPopupColor);
+            }
         }
     }
 }

@@ -4174,8 +4174,6 @@ MonoBehaviour:
   _ghost: {fileID: 2051475004}
   _actions: {fileID: -944628639613478452, guid: 4461f6f8937ddb244b5a50564eb86331, type: 3}
   _cellSize: {x: 1, y: 0.5}
-  _validColor: {r: 0.4, g: 1, b: 0.4, a: 0.6}
-  _blockedColor: {r: 1, g: 0.4, b: 0.4, a: 0.6}
   _stockpileHolder: {fileID: 0}
   _stockpileBufferId: FactoryStockpile
   _availablePrefabs: []
@@ -16605,6 +16603,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.GolemConstructionPanel
   workbenchController: {fileID: 7964327291599893249}
   managementPanel: {fileID: 7964327291599893250}
+  panelSprite: {fileID: 21300000, guid: 769b9161b42321b4ba912b513b99fe75, type: 3}
+  rowSprite: {fileID: 0}
+  buttonSprite: {fileID: 21300000, guid: 6a818d166770ab7428a591655fade9f5, type: 3}
+  sortingOrder: 40
 --- !u!4 &1150547540
 Transform:
   m_ObjectHideFlags: 0
@@ -16633,6 +16635,7 @@ GameObject:
   - component: {fileID: 1150574018}
   - component: {fileID: 1150574017}
   - component: {fileID: 1150574020}
+  - component: {fileID: 1150574021}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -16674,6 +16677,9 @@ MonoBehaviour:
   _stockpileBufferId: FactoryStockpile
   _constructionPanel: {fileID: 1150547539}
   _workbenchController: {fileID: 7964327291599893249}
+  _promptView: {fileID: 1150574021}
+  _managementPanel: {fileID: 7964327291599893250}
+  _interactKeyLabel: E
 --- !u!114 &1150574018
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -16765,6 +16771,22 @@ MonoBehaviour:
   scale: 1
   opacity: 1
   anchorToSpriteBottom: 1
+--- !u!114 &1150574021
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1150574015}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ded9dca168a4c654fa4b38b43b21769f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Player.InteractionPromptView
+  ringSprite: {fileID: 21300000, guid: 4c1ac1ed5bccc164298514710f346882, type: 3}
+  ringOffset: {x: 0, y: -0.12, z: 0}
+  captionOffset: {x: 0, y: 0.95, z: 0}
+  sortingLayerName: Default
 --- !u!1 &1166950121
 GameObject:
   m_ObjectHideFlags: 0
@@ -26366,10 +26388,10 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: -19900
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 48d093216e65a264d9c5a1ee99a1cac7, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.49803922}
+  m_Sprite: {fileID: 21300000, guid: 20cc9822bf7a4f348a44442b915ca66a, type: 3}
+  m_Color: {r: 1, g: 0.8, b: 0.36, a: 0.85}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
