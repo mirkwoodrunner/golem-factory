@@ -57,7 +57,7 @@ Editor (or a live MCP-for-Unity bridge, if connected):
   "Graphics demo implementation notes" section of the implementation plan for the exact steps.
 
 As of the last recorded full run (economy/Management-HUD production-quality pass):
-**410/410 tests passing** (324 EditMode + 86 PlayMode).
+**494/494 tests passing** (393 EditMode + 101 PlayMode).
 
 ## Architecture
 
