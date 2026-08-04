@@ -115,6 +115,36 @@ namespace GolemFactory.Belts
             BuildHandoffSparkle();
         }
 
+        /// <summary>
+        /// Wires this visual to render a segment's CARGO only, leaving the lane strip, scrolling
+        /// arrows and end rollers switched off (each of those is independently null-guarded).
+        /// </summary>
+        /// <remarks>
+        /// Added for player-placed belts, which are one cell long and already draw their own
+        /// plate and their own static direction arrow -- stretching a lane strip and scrolling a
+        /// second set of arrows across a single tile would stack three direction cues on one
+        /// cell. What they cannot draw themselves is the cargo: items on a belt have no
+        /// GameObject of their own by design, so without this a working belt looks empty.
+        ///
+        /// Follows the Configure(...) idiom used across the project rather than requiring the
+        /// Inspector, which is what lets a belt created at runtime wire itself.
+        /// </remarks>
+        public void ConfigureCargoOnly(
+            ConveyorSystemHolder conveyor, string id, Transform start, Transform end,
+            ItemSpriteBinding[] sprites, Material material)
+        {
+            conveyorHolder = conveyor;
+            segmentId = id;
+            startPoint = start;
+            endPoint = end;
+            itemSprites = sprites;
+            itemMaterial = material;
+            laneSprite = null;
+            arrowSprite = null;
+            rollerSprite = null;
+            TryResolveSegment();
+        }
+
         // Bootstrap scripts (e.g. BeltDemoBootstrap) register segments in their own Start(),
         // which always runs after every Awake() -- so resolving only in Awake() means this
         // component silently never finds its segment. Keep retrying in LateUpdate until it

@@ -116,17 +116,28 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(StallReason.None, golem.StallReason);
         }
 
+        // --- Strictness: the branch is on the GOLEM, not on the individual tile -------------
+        // These are the tests that pin the actual fix. The first version of spatial routing
+        // decided the fallback per-endpoint, so a spatially placed golem with an empty source
+        // tile silently reverted to its authored sourceId and kept working -- which meant
+        // rotating a golem away from its node did nothing, and facing was decorative for
+        // exactly the two actions players use most.
+
         [Test]
-        public void SpatiallyPlacedButWithEmptyTiles_ExtractFallsBackToTheAuthoredIds()
+        public void SpatiallyPlaced_WithAnEmptySourceTile_StallsInsteadOfFallingBackToTheAuthoredId()
         {
-            // A registry is wired but neither adjacent tile holds an endpoint: id routing
-            // must still carry the step, exactly as before.
+            // Both authored ids are live and would happily carry the step. A spatially placed
+            // golem must ignore them entirely and report the tile.
             ConveyorSystemHolder conveyor = AddHolder<ConveyorSystemHolder>();
             ResourceNodeRegistryHolder nodes = AddHolder<ResourceNodeRegistryHolder>();
             SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
             var belt = new BeltSegment("ScrapBeltA", 4);
             conveyor.System.Register(belt);
             nodes.Registry.Register(new ResourceNode("ScrapNode", ItemType.Scrap, 3));
+
+            // Give it a valid *target* tile so the stall can only be about the source.
+            var tileBelt = new BeltSegment("TileBelt", 4);
+            endpoints.Registry.Register(new Vector2Int(9, 10), new BeltSegmentEndpoint(tileBelt));
 
             GolemEntity golem = CreateGolem(Step(AppendageActionType.ExtractFromNode, "ScrapNode", "ScrapBeltA"));
             golem.Configure("Spatial", conveyor);
@@ -135,8 +146,135 @@ namespace GolemFactory.Tests.EditMode
 
             golem.Tick(0);
 
-            Assert.AreEqual(1, belt.Items.Count, "empty tiles should fall back to id routing");
-            Assert.AreEqual(StallReason.None, golem.StallReason);
+            Assert.AreEqual(GolemState.Stalled, golem.Program.State);
+            Assert.AreEqual(StallReason.NoSourceAtTile, golem.StallReason);
+            Assert.AreEqual(new Vector2Int(9, 8).ToString(), golem.StallResourceId);
+            Assert.AreEqual(0, belt.Items.Count, "the authored destinationId was used anyway");
+            ResourceNode idNode;
+            Assert.IsTrue(nodes.Registry.TryGetNode("ScrapNode", out idNode));
+            Assert.AreEqual(3, idNode.RemainingQuantity, "the authored sourceId was drained anyway");
+        }
+
+        [Test]
+        public void SpatiallyPlaced_WithAnEmptyTargetTile_StallsInsteadOfFallingBackToTheAuthoredId()
+        {
+            ConveyorSystemHolder conveyor = AddHolder<ConveyorSystemHolder>();
+            ResourceNodeRegistryHolder nodes = AddHolder<ResourceNodeRegistryHolder>();
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var belt = new BeltSegment("ScrapBeltA", 4);
+            conveyor.System.Register(belt);
+            nodes.Registry.Register(new ResourceNode("ScrapNode", ItemType.Scrap, 3));
+
+            // Valid source tile, nothing in front.
+            var tileNode = new ResourceNode("TileNode", ItemType.Scrap, 5);
+            endpoints.Registry.Register(new Vector2Int(9, 8), new ResourceNodeEndpoint(tileNode));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.ExtractFromNode, "ScrapNode", "ScrapBeltA"));
+            golem.Configure("Spatial", conveyor);
+            golem.ConfigureEconomy(nodes, null);
+            golem.ConfigureSpatial(endpoints, new Vector2Int(9, 9), Facing.North);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(StallReason.NoTargetAtTile, golem.StallReason);
+            Assert.AreEqual(new Vector2Int(9, 10).ToString(), golem.StallResourceId);
+            Assert.AreEqual(5, tileNode.RemainingQuantity, "a blocked extract consumed from the tile node");
+            Assert.AreEqual(0, belt.Items.Count, "the authored destinationId was used anyway");
+        }
+
+        [Test]
+        public void SpatiallyPlaced_LoadIntoBuffer_WithAnEmptySourceTile_StallsInsteadOfUsingTheAuthoredBelt()
+        {
+            // The other half of the pair players actually use. The id-named belt is loaded and
+            // ready; strictness means it must be ignored.
+            ConveyorSystemHolder conveyor = AddHolder<ConveyorSystemHolder>();
+            StorageBufferRegistryHolder buffers = AddHolder<StorageBufferRegistryHolder>();
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+
+            var idBelt = new BeltSegment("ScrapBeltA", 1);
+            conveyor.System.Register(idBelt);
+            idBelt.TryEnqueue(new ItemStack { ItemType = ItemType.Scrap });
+            idBelt.Advance(idBelt.Length);
+
+            var tileBuffer = new StorageBuffer("TileBuffer");
+            endpoints.Registry.Register(new Vector2Int(0, 1), new StorageBufferEndpoint(tileBuffer));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.LoadIntoBuffer, "ScrapBeltA", "ScrapBuffer"));
+            golem.Configure("Spatial", conveyor);
+            golem.ConfigureEconomy(null, buffers);
+            golem.ConfigureSpatial(endpoints, Vector2Int.zero, Facing.North);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(StallReason.NoSourceAtTile, golem.StallReason);
+            Assert.AreEqual(new Vector2Int(0, -1).ToString(), golem.StallResourceId);
+            Assert.AreEqual(1, idBelt.Items.Count, "the authored sourceId belt was drained anyway");
+            Assert.AreEqual(0, tileBuffer.GetQuantity(ItemType.Scrap));
+            Assert.IsFalse(buffers.Registry.TryGetBuffer("ScrapBuffer", out _),
+                "the authored destinationId buffer was written to anyway");
+        }
+
+        [Test]
+        public void RotatingAPlacedGolemAwayFromItsNode_StallsItsExtractStep()
+        {
+            // The player-facing statement of the whole feature, on ExtractFromNode rather than
+            // Haul: same golem, same program, one rotation, and the behaviour must change.
+            ConveyorSystemHolder conveyor = AddHolder<ConveyorSystemHolder>();
+            ResourceNodeRegistryHolder nodes = AddHolder<ResourceNodeRegistryHolder>();
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            nodes.Registry.Register(new ResourceNode("ScrapNode", ItemType.Scrap, 9));
+            var idBelt = new BeltSegment("ScrapBeltA", 4);
+            conveyor.System.Register(idBelt);
+
+            var tileNode = new ResourceNode("TileNode", ItemType.Scrap, 9);
+            var tileBelt = new BeltSegment("TileBelt", 4);
+            endpoints.Registry.Register(new Vector2Int(0, 0), new ResourceNodeEndpoint(tileNode));
+            endpoints.Registry.Register(new Vector2Int(0, 2), new BeltSegmentEndpoint(tileBelt));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.ExtractFromNode, "ScrapNode", "ScrapBeltA"));
+            golem.Configure("Spatial", conveyor);
+            golem.ConfigureEconomy(nodes, null);
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+
+            golem.Tick(0);
+            Assert.AreEqual(StallReason.None, golem.StallReason, "precondition: it should work while aimed correctly");
+            Assert.AreEqual(1, tileBelt.Items.Count);
+
+            golem.SetPlacement(new Vector2Int(0, 1), Facing.West);
+            golem.Tick(1);
+
+            Assert.AreEqual(GolemState.Stalled, golem.Program.State,
+                "rotating away from the node did not stall it -- facing is decorative again");
+            Assert.AreEqual(StallReason.NoSourceAtTile, golem.StallReason);
+            Assert.AreEqual(0, idBelt.Items.Count, "it quietly kept working via the authored ids");
+        }
+
+        [Test]
+        public void Refine_StaysIdRoutedEvenWhenSpatiallyPlaced()
+        {
+            // Deliberate exemption: a recipe is defined by item types, and IItemEndpoint is
+            // type-agnostic, so a spatial take could grab the wrong input off a mixed buffer
+            // and silently transmute it.
+            StorageBufferRegistryHolder buffers = AddHolder<StorageBufferRegistryHolder>();
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            buffers.Registry.Deposit("ScrapBuffer", ItemType.Scrap);
+
+            AppendageActionDefinition step = Step(AppendageActionType.Refine, "ScrapBuffer", "PlateBuffer");
+            step.inputItemType = ItemType.Scrap;
+            step.outputItemType = ItemType.Brass;
+
+            GolemEntity golem = CreateGolem(step);
+            golem.ConfigureEconomy(null, buffers);
+            // Spatially placed with two completely empty tiles: a strict spatial Refine would
+            // stall here. It must not -- it routes by the ids its recipe names.
+            golem.ConfigureSpatial(endpoints, new Vector2Int(20, 20), Facing.North);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(StallReason.None, golem.StallReason, "Refine was routed spatially");
+            StorageBuffer output;
+            Assert.IsTrue(buffers.Registry.TryGetBuffer("PlateBuffer", out output));
+            Assert.AreEqual(1, output.GetQuantity(ItemType.Brass));
         }
 
         // --- Spatial wins when a tile is occupied -----------------------------------------

@@ -56,8 +56,8 @@ Editor (or a live MCP-for-Unity bridge, if connected):
   Editor pass (texture import settings, Tile assets, `SpriteRenderer` assignment) — see the
   "Graphics demo implementation notes" section of the implementation plan for the exact steps.
 
-As of the last recorded full run (economy/Management-HUD production-quality pass):
-**494/494 tests passing** (393 EditMode + 101 PlayMode).
+As of the last recorded full run (facing-based spatial routing pass):
+**590/590 tests passing** (489 EditMode + 101 PlayMode).
 
 ## Architecture
 
@@ -165,9 +165,17 @@ an actual playable front door, reusing `Main.unity`'s systems unchanged via two 
 - `Buildings/GolemConstructionStation.cs` — spends a chassis's Scrap/Brass cost via
   `StorageBufferRegistry.TryWithdrawScrapAndBrass`, instantiates `GolemPrefab`, registers it with
   the clock, retargets the Workbench onto it.
-- **Known gap** (see implementation plan, "Deliberate scope cuts"): a `SaveLoadService` concept is
-  referenced there for restoring golem programs on load, but no such save/load code exists yet —
-  `Scripts/Save/` is currently empty (`.gitkeep` only). Don't assume it's implemented.
+- `World/BeltNetwork.cs` (+ `BeltNetworkHolder`) — player-placeable belts. One placed belt is one
+  cell: it registers a `BeltSegment` with the `ConveyorSystem`, publishes a `BeltSegmentEndpoint`
+  on its cell, and auto-chains into the belt it points at (`BeltPlacementRules.ShouldLink`).
+  Wraps `BeltSegment` strictly from the outside, so `Belts/` still references nothing above it.
+  **A belt can only hand off to another belt** — getting items into a buffer needs a golem doing
+  `LoadIntoBuffer` at the end of the run.
+- **Known gap**: `Scripts/Save/` now exists (`SaveLoadService`, `SaveData`, `SaveFileIO`,
+  `DefinitionCatalog`) and persists buffers, blueprints, focus, and golem programs (including
+  each golem's cell/facing). But it only ever restores a program onto an **already-existing**
+  `GolemEntity` — there is no concept of respawning a player-built golem, so golems the player
+  constructed do not survive a fresh session.
 
 ### UI: two eras coexist
 

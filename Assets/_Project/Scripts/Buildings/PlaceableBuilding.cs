@@ -16,6 +16,15 @@ namespace GolemFactory.Buildings
         [SerializeField] private int brassCost;
 
         public Vector2Int Cell { get; set; }
+
+        // Which way this building points, chosen by the player with R at placement time.
+        // Meaningless for a plain decorative building and harmlessly ignored by one; it exists
+        // because two placeables genuinely need it -- a belt (which direction items travel) and
+        // a GolemConstructionStation (which tile its golem steps out onto, and which way that
+        // golem starts facing). Kept on the shared base rather than duplicated on both so
+        // BuildModeController has exactly one thing to write after Instantiate.
+        public GolemFactory.World.Facing Facing { get; set; } = GolemFactory.World.Facing.North;
+
         public string OwnerId { get; set; } = LocalPlayerOwnerId;
         public int ScrapCost => scrapCost;
         public int BrassCost => brassCost;

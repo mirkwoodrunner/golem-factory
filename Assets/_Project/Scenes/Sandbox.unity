@@ -1200,37 +1200,6 @@ MonoBehaviour:
           rid: -2
         m_Provider2DCache:
           rid: -2
---- !u!1 &116622762
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 116622763}
-  m_Layer: 0
-  m_Name: End
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &116622763
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 116622762}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.3, y: -1.55, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1061049284}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &118271418
 GameObject:
   m_ObjectHideFlags: 0
@@ -1385,37 +1354,6 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
---- !u!1 &137321663
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 137321664}
-  m_Layer: 0
-  m_Name: Start
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &137321664
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 137321663}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.3, y: -1.55, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1061049284}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &162495862
 GameObject:
   m_ObjectHideFlags: 0
@@ -1600,37 +1538,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
---- !u!1 &182844041
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 182844042}
-  m_Layer: 0
-  m_Name: Start
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &182844042
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 182844041}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.9, y: -1.55, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2027783631}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &184818885
 GameObject:
   m_ObjectHideFlags: 0
@@ -2699,37 +2606,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
---- !u!1 &279049186
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 279049187}
-  m_Layer: 0
-  m_Name: End
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &279049187
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 279049186}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.3, y: -1.55, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2027783631}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &288519007
 GameObject:
   m_ObjectHideFlags: 0
@@ -3580,12 +3456,18 @@ MonoBehaviour:
   conveyorHolder: {fileID: 2049142410}
   clockRunner: {fileID: 2049142405}
   startingAetherQuantity: 40
-  beltSegmentLengthTicks: 5
   cameraRig: {fileID: 1992407296}
   playerTransform: {fileID: 1683579195}
   player: {fileID: 1683579197}
   grid: {fileID: 1426719258}
   spatialEndpointHolder: {fileID: 476967491}
+  beltNetworkHolder: {fileID: 909043062}
+  gridMapHolder: {fileID: 2049142406}
+  buildModeController: {fileID: 1749759286}
+  playerInteractor: {fileID: 1683579196}
+  routingFocusController: {fileID: 1468581506}
+  facingArrowSprite: {fileID: 21300000, guid: f404903f746380f42a28e27536d77a40, type: 3}
+  routingTileSprite: {fileID: 21300000, guid: 20cc9822bf7a4f348a44442b915ca66a, type: 3}
 --- !u!4 &350276946
 Transform:
   m_ObjectHideFlags: 0
@@ -7079,6 +6961,11 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!4 &864182165 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5232629918149931253, guid: d9a69809c839d0741a1698e2d0f22ae3, type: 3}
+  m_PrefabInstance: {fileID: 2049142403}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &898445453
 GameObject:
   m_ObjectHideFlags: 0
@@ -7171,6 +7058,53 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &909043060
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 909043061}
+  - component: {fileID: 909043062}
+  m_Layer: 0
+  m_Name: BeltNetwork
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &909043061
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 909043060}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 864182165}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &909043062
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 909043060}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c764e7beab62e6148b05426f4b1875e8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.World.BeltNetworkHolder
+  conveyorHolder: {fileID: 2049142410}
+  spatialEndpointHolder: {fileID: 476967491}
+  segmentLengthTicks: 4
 --- !u!1 &909239396
 GameObject:
   m_ObjectHideFlags: 0
@@ -8751,80 +8685,6 @@ MonoBehaviour:
           rid: -2
         m_Provider2DCache:
           rid: -2
---- !u!1 &1061049283
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1061049284}
-  - component: {fileID: 1061049285}
-  m_Layer: 0
-  m_Name: ScrapBeltBVisual
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1061049284
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1061049283}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 137321664}
-  - {fileID: 116622763}
-  m_Father: {fileID: 2068483906}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1061049285
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1061049283}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a66f319542504da89e18cf060a5e9700, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Belts.BeltSegmentVisual
-  conveyorHolder: {fileID: 2049142410}
-  segmentId: ScrapBeltB
-  startPoint: {fileID: 137321664}
-  endPoint: {fileID: 116622763}
-  itemSprite: {fileID: 21300000, guid: 79f5cde8ba4c102479560bb983bac9cc, type: 3}
-  itemSprites:
-  - itemType: Scrap
-    sprite: {fileID: 21300000, guid: 79f5cde8ba4c102479560bb983bac9cc, type: 3}
-  - itemType: Brass
-    sprite: {fileID: 21300000, guid: 30b015b39e42e52469fa9264e05c0a38, type: 3}
-  - itemType: Aether
-    sprite: {fileID: 21300000, guid: e90e0a15d5b9fce4f8dcc00f2ad055eb, type: 3}
-  itemMaterial: {fileID: 2100000, guid: 823c56bbb1725444bbcc3cdafac4f926, type: 2}
-  laneSprite: {fileID: 21300000, guid: 79bef4dd202e8544eba106c8bbcc4c6c, type: 3}
-  arrowSprite: {fileID: 21300000, guid: f5fc21dcaf70c7549bd6782a099eb24c, type: 3}
-  rollerSprite: {fileID: 21300000, guid: 589525f54dabd124889159eb74a91156, type: 3}
-  arrowSpacing: 0.36
-  arrowEndFade: 0.14
-  itemHeightOffset: 0.14
-  itemFitRatio: 1.25
-  minItemScale: 0.45
-  maxItemScale: 1
-  clockRunner: {fileID: 2049142405}
-  assumedTicksPerSecond: 10
-  flowColor: {r: 1, g: 0.74, b: 0.32, a: 1}
-  jamBaseColor: {r: 1, g: 0.34, b: 0.28, a: 1}
-  jamPulseColor: {r: 1, g: 0.95, b: 0.9, a: 1}
-  itemQueuedTint: {r: 0.58, g: 0.62, b: 0.78, a: 1}
 --- !u!1 &1061305704
 GameObject:
   m_ObjectHideFlags: 0
@@ -12432,6 +12292,56 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &1468581505
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1468581507}
+  - component: {fileID: 1468581506}
+  m_Layer: 0
+  m_Name: RoutingFocus
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1468581506
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1468581505}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 856bdfca8cedc9a488adad7520cb3315, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.World.RoutingFocusController
+  focusOrigin: {fileID: 1683579195}
+  arrowSprite: {fileID: 21300000, guid: f404903f746380f42a28e27536d77a40, type: 3}
+  tileSprite: {fileID: 21300000, guid: 20cc9822bf7a4f348a44442b915ca66a, type: 3}
+  cellSize: {x: 1, y: 0.5}
+  focusRange: 3.5
+  rescanInterval: 0.5
+--- !u!4 &1468581507
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1468581505}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1474962838
 GameObject:
   m_ObjectHideFlags: 0
@@ -15182,6 +15092,10 @@ MonoBehaviour:
   _promptView: {fileID: 1683579200}
   _managementPanel: {fileID: 1555994598}
   _interactKeyLabel: E
+  _buildModeController: {fileID: 1749759286}
+  _gridMapHolder: {fileID: 2049142406}
+  _cellSize: {x: 1, y: 0.5}
+  _summonRange: 12
 --- !u!114 &1683579197
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15991,6 +15905,11 @@ MonoBehaviour:
   _availablePrefabs:
   - {fileID: 4814553546785476045, guid: 861a6ad7c5ff82d43aea3bb731ccebcb, type: 3}
   - {fileID: 28909141009986320, guid: 4a3e8b237af720541a2a90e92fb47bba, type: 3}
+  - {fileID: 7281309083505084022, guid: a9ca034275f45ad4ca40f9f381a299c9, type: 3}
+  _beltNetworkHolder: {fileID: 909043062}
+  _spatialEndpointHolder: {fileID: 476967491}
+  _conveyorHolder: {fileID: 2049142410}
+  _facingArrowSprite: {fileID: 21300000, guid: f404903f746380f42a28e27536d77a40, type: 3}
 --- !u!4 &1749759287
 Transform:
   m_ObjectHideFlags: 0
@@ -24627,80 +24546,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
---- !u!1 &2027783630
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2027783631}
-  - component: {fileID: 2027783632}
-  m_Layer: 0
-  m_Name: ScrapBeltAVisual
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2027783631
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2027783630}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 182844042}
-  - {fileID: 279049187}
-  m_Father: {fileID: 2068483906}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2027783632
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2027783630}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a66f319542504da89e18cf060a5e9700, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Belts.BeltSegmentVisual
-  conveyorHolder: {fileID: 2049142410}
-  segmentId: ScrapBeltA
-  startPoint: {fileID: 182844042}
-  endPoint: {fileID: 279049187}
-  itemSprite: {fileID: 21300000, guid: 79f5cde8ba4c102479560bb983bac9cc, type: 3}
-  itemSprites:
-  - itemType: Scrap
-    sprite: {fileID: 21300000, guid: 79f5cde8ba4c102479560bb983bac9cc, type: 3}
-  - itemType: Brass
-    sprite: {fileID: 21300000, guid: 30b015b39e42e52469fa9264e05c0a38, type: 3}
-  - itemType: Aether
-    sprite: {fileID: 21300000, guid: e90e0a15d5b9fce4f8dcc00f2ad055eb, type: 3}
-  itemMaterial: {fileID: 2100000, guid: 823c56bbb1725444bbcc3cdafac4f926, type: 2}
-  laneSprite: {fileID: 21300000, guid: 79bef4dd202e8544eba106c8bbcc4c6c, type: 3}
-  arrowSprite: {fileID: 21300000, guid: f5fc21dcaf70c7549bd6782a099eb24c, type: 3}
-  rollerSprite: {fileID: 21300000, guid: 589525f54dabd124889159eb74a91156, type: 3}
-  arrowSpacing: 0.36
-  arrowEndFade: 0.14
-  itemHeightOffset: 0.14
-  itemFitRatio: 1.25
-  minItemScale: 0.45
-  maxItemScale: 1
-  clockRunner: {fileID: 2049142405}
-  assumedTicksPerSecond: 10
-  flowColor: {r: 1, g: 0.74, b: 0.32, a: 1}
-  jamBaseColor: {r: 1, g: 0.34, b: 0.28, a: 1}
-  jamPulseColor: {r: 1, g: 0.95, b: 0.9, a: 1}
-  itemQueuedTint: {r: 0.58, g: 0.62, b: 0.78, a: 1}
 --- !u!1 &2036636200
 GameObject:
   m_ObjectHideFlags: 0
@@ -25142,7 +24987,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 5232629918149931253, guid: d9a69809c839d0741a1698e2d0f22ae3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 909043061}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d9a69809c839d0741a1698e2d0f22ae3, type: 3}
 --- !u!114 &2049142404 stripped
@@ -25425,39 +25273,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
---- !u!1 &2068483905
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2068483906}
-  m_Layer: 0
-  m_Name: BeltVisuals
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2068483906
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2068483905}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 2027783631}
-  - {fileID: 1061049284}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2075079434
 GameObject:
   m_ObjectHideFlags: 0
@@ -25906,6 +25721,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1171764598665550320, guid: ed6a26a9d693cc14dbe681005a4a968d, type: 3}
     - target: {fileID: 8404141519452679074, guid: 4a3e8b237af720541a2a90e92fb47bba, type: 3}
+      propertyPath: gridMapHolder
+      value: 
+      objectReference: {fileID: 2049142406}
+    - target: {fileID: 8404141519452679074, guid: 4a3e8b237af720541a2a90e92fb47bba, type: 3}
       propertyPath: conveyorHolder
       value: 
       objectReference: {fileID: 2049142410}
@@ -25921,6 +25740,10 @@ PrefabInstance:
       propertyPath: bufferRegistryHolder
       value: 
       objectReference: {fileID: 2049142409}
+    - target: {fileID: 8404141519452679074, guid: 4a3e8b237af720541a2a90e92fb47bba, type: 3}
+      propertyPath: spatialEndpointHolder
+      value: 
+      objectReference: {fileID: 476967491}
     - target: {fileID: 8404141519452679074, guid: 4a3e8b237af720541a2a90e92fb47bba, type: 3}
       propertyPath: chassisRoster.Array.size
       value: 5
@@ -26004,8 +25827,8 @@ SceneRoots:
   - {fileID: 9472739}
   - {fileID: 1120530076}
   - {fileID: 390155636}
-  - {fileID: 2068483906}
   - {fileID: 1354695016}
   - {fileID: 629458231}
   - {fileID: 64146917}
   - {fileID: 476967492}
+  - {fileID: 1468581507}

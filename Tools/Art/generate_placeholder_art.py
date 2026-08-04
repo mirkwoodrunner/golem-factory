@@ -1044,6 +1044,101 @@ def generate_interaction() -> None:
     save(make_build_ghost_tile(), "build_ghost_tile.png")
 
 
+# =========================================================================================
+# Facing-based spatial routing: the player-placeable belt tile, and the chevron used to show
+# which way a golem/belt/ghost points.
+#
+# Only two new sprites, on purpose. The tile highlights that mark a golem's source and target
+# cells reuse build_ghost_tile.png, which is already a pure-white one-cell diamond authored
+# specifically to be tinted at runtime -- exactly what a "pull from here / push to there"
+# overlay needs, in the two colours the palette actually supports.
+#
+# The belt tile is deliberately DIRECTION-NEUTRAL. Proper isometric belt art needs a mirrored
+# NE/NW pair (as the wall segments do) plus per-direction variants; instead the tile is a
+# plain tread platform and the chevron on top carries the direction. That keeps this to one
+# rotatable overlay sprite instead of four hand-authored tiles, and the chevron is the part
+# the player actually reads.
+#
+# Same scale as the rest of the environment: 32 art px per world unit, x4 upscale, PPU 128.
+# =========================================================================================
+
+ROUTING_UPSCALE = 4
+ROUTING_NATIVE_W = 32
+ROUTING_NATIVE_H = 16
+
+
+def make_belt_tile() -> Image.Image:
+    """One isometric cell of conveyor: a dark leather tread diamond inset inside a brass rim,
+    so a run of them reads as continuous machinery laid into the floor."""
+    img = Image.new("RGBA", (ROUTING_NATIVE_W, ROUTING_NATIVE_H), TRANSPARENT)
+    px = img.load()
+    cx = ROUTING_NATIVE_W / 2.0
+
+    for y in range(ROUTING_NATIVE_H):
+        half = _diamond_half_width(y)
+        if half < 0.5:
+            continue
+        left = int(round(cx - half))
+        right = int(round(cx + half)) - 1
+        for x in range(max(0, left), min(ROUTING_NATIVE_W, right + 1)):
+            # Two-row sheen band across the middle of the tread, so the surface reads as
+            # leather catching the light rather than a flat hole in the floor.
+            if y in (7, 8):
+                px[x, y] = BELT_TREAD_LIGHT
+            elif y in (6, 9):
+                px[x, y] = BELT_TREAD
+            else:
+                px[x, y] = BELT_TREAD_DARK
+
+        # Brass rim: the two outermost columns of every row. This is what makes adjacent
+        # tiles read as separate segments instead of one undifferentiated dark mass.
+        for x in (left, left + 1, right - 1, right):
+            if 0 <= x < ROUTING_NATIVE_W:
+                px[x, y] = BELT_RAIL if x in (left + 1, right - 1) else BELT_RAIL_DARK
+
+    return upscale(img, ROUTING_UPSCALE)
+
+
+def make_facing_arrow() -> Image.Image:
+    """A small SOLID right-pointing triangle, pure white so the runtime tint owns its colour.
+
+    Solid, and small, both learned the hard way. The first version was a bold outlined chevron
+    at 9x12 art px: floating beside a golem it was nearly as tall as the tile it pointed off,
+    and because it is rotated to an isometric angle (~27 or ~153 degrees, never a multiple of
+    90) point-filtered sampling tore the two thin diagonal strokes into a jagged W that read as
+    a lightning bolt rather than an arrow.
+
+    A filled triangle has no interior strokes to alias, so it survives rotation to an arbitrary
+    angle, and at 7x7 it reads as a marker on the tile instead of competing with the golem.
+    """
+    n = 7
+    img = Image.new("RGBA", (n, n), TRANSPARENT)
+    px = img.load()
+    mid = (n - 1) / 2.0
+    body = set()
+    for y in range(n):
+        # Width shrinks linearly toward the apex on the right.
+        reach = int(round((1.0 - abs(y - mid) / (mid + 1.0)) * (n - 1)))
+        for x in range(reach + 1):
+            body.add((x, y))
+
+    rim = (26, 18, 12, 235)
+    for (x, y) in body:
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < n and 0 <= ny < n and (nx, ny) not in body:
+                    px[nx, ny] = rim
+    for (x, y) in body:
+        px[x, y] = (255, 255, 255, 255)
+    return upscale(img, ROUTING_UPSCALE)
+
+
+def generate_routing() -> None:
+    save(make_belt_tile(), "belt_tile.png")
+    save(make_facing_arrow(), "facing_arrow.png")
+
+
 def generate_legacy_placeholders() -> None:
     """The original placeholder character/item sprites. NOT run by default any more: the
     golem chassis, player, and item sprites in Assets/_Project/Art/ have since been replaced
@@ -1085,6 +1180,8 @@ def main() -> None:
         generate_belts()
     if not only or "interaction" in only:
         generate_interaction()
+    if not only or "routing" in only:
+        generate_routing()
     if "--legacy" in sys.argv:
         generate_legacy_placeholders()
 

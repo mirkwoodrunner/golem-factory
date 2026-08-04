@@ -2235,3 +2235,125 @@ native size and drags the row's height with it. Verified at 54 rows: rows held 2
    fixed -- it is the player-interaction pass's half of the mutual-exclusion wiring.
 5. The Assembly Line tab still has no `ScrollRect` (3 slots + a wallet row fit), and the
    Patents tab's rows carry no chassis/appendage summary, only the blueprint id.
+
+## Facing-based spatial routing, part 2: made strict, reachable, and visible
+
+Part 1 (commit `10175eb`) built the layer -- `Facing`/`FacingUtility`, `IItemEndpoint` +
+node/belt/buffer adapters, `SpatialEndpointRegistry`, `GolemEntity.Cell`/`.Facing`, and a real
+tile-to-tile `Haul`. This pass is what makes it actually matter in play.
+
+### The bug that mattered: strictness
+
+Part 1 decided the id fallback **per endpoint**: if an individual tile lookup missed, that half
+of the step silently reverted to the appendage card's authored `sourceId`/`destinationId`. So
+rotating a player's golem away from its node did *not* stall it -- it quietly kept working by
+id. Facing was therefore advisory for exactly the two actions players use most
+(`ExtractFromNode`, `LoadIntoBuffer`), which defeats the whole feature.
+
+The branch now keys on **whether the golem is spatially placed at all**:
+
+- `spatialEndpointHolder` wired (only ever via `ConfigureSpatial`) -> **strict spatial**. Tiles
+  are the only routing truth; an empty source tile stalls `NoSourceAtTile`, an empty/full target
+  tile stalls `NoTargetAtTile`, and the authored ids are never consulted.
+- `spatialEndpointHolder` null -> **pure id routing, byte for byte as before**.
+
+`Main.unity`'s seven demo golems and the whole pre-existing suite never call `ConfigureSpatial`,
+so they all take the second branch. Verified in Play mode: all 7 report
+`spatiallyConfigured=False` and their buffers still fill.
+
+Once strict, `ExtractFromNode`/`LoadIntoBuffer`/`Haul` all collapse to one `BeginSpatialTransfer`
+-- which is not a shortcut but the actual claim of the design doc: once position decides routing,
+the difference between those verbs is which endpoints the player parked the golem between.
+`CanGive()` before `TryTake()` is preserved there (finite nodes are irreversible).
+
+**`Refine` is deliberately exempt** and stays id-routed even for a placed golem: a recipe is
+defined by item *types*, `IItemEndpoint` is type-agnostic, so a spatial take could grab the wrong
+input off a mixed buffer and silently transmute it. Documented at the method.
+
+### Reachability
+
+- `GolemConstructionStation.ConfigureSpatial(...)` -- constructed golems are now placed on a real
+  cell facing the way the station faces. `GolemSpawnPlacement.ResolveSpawnCell` (pure, tested)
+  emits onto the tile in front, walking clockwise past blocked neighbours; the golem is spawned
+  *at* that position rather than moved after, because `GolemVisual` caches its bob anchor in
+  `Awake`.
+- `PlaceableBuilding.Facing`, set by build mode at placement.
+- **`R` rotates**; **`G` carries/drops a golem**. Both were forced by playing the loop:
+  - rotation first keyed off the combined `[E]` interaction pick, so standing next to a golem
+    beside its node refused with "no golem in range" (the node won the pick). It now selects the
+    nearest *golem*.
+  - repositioning was first "summon the nearest golem to my tile", which reliably moved the
+    *wrong* golem -- the already-placed one near the destination beat the new one at the station.
+    Replaced with explicit pick-up-at-arm's-length / put-down. A held golem does not tick
+    (`GolemEntity.IsHeld`): its `Cell` is stale by definition while in the player's hands.
+
+### Player-placeable belts
+
+`BeltNetwork` (+ Holder) wraps `BeltSegment` strictly from the **outside** -- `Belts/` gains no
+reference to `World/` or `Golems/`. One placed belt = one cell = one registered `BeltSegment` +
+one `BeltSegmentEndpoint` on that cell. `BeltPlacementRules.ShouldLink` (pure, tested) auto-chains
+a belt into the one it points at, refusing head-on pairs (which would be a two-cycle) and
+parallel neighbours. `Relink()` recomputes the whole network on every place/remove rather than
+patching, which makes a **stale `Next` structurally impossible** -- the real removal hazard, since
+`ConveyorSystem.Tick` would otherwise keep handing items to an unregistered segment that never
+advances, i.e. items vanishing into an invisible lane.
+
+`SandboxBootstrap`'s two hardcoded `ScrapBeltA`/`ScrapBeltB` segments are **removed**; they were
+scaffolding for id routing and nothing else referenced them. The two now-dangling
+`BeltSegmentVisual` objects in `Sandbox.unity` were deleted with them.
+
+`PlaceableDepot` was added because the chain had nowhere to *end*: `DepotPrefab` was pure
+decoration, so a routed run terminated in nothing. It publishes its `StorageBuffer` (the same
+`FactoryStockpile` the station spends from) on its cell, which is what closes the economy.
+
+Note a real consequence of the model: a belt can only hand off to another **belt**. Getting items
+off a belt and into a buffer requires a golem at the end doing `LoadIntoBuffer` -- belts are
+passive transport, golems are the actuators.
+
+### Visibility (the actual fix for "unreadable")
+
+- `GolemFacingIndicator`: a chevron beside each golem, plus a **teal** diamond on its source tile
+  and a **near-white amber** diamond on its target tile. Amber/teal rather than green/red because
+  dark red measured 5.4x quieter than amber on this warm floor; the two ends separate by
+  *temperature*. The target marker is pushed near-white because what it usually lands on is a
+  belt, whose own art is brass -- mid-amber on brass was invisible in-scene.
+- `RoutingFocusController` lights **only the golem nearest the player** (`RoutingFocus`, pure,
+  tested) -- every golem drawing its pair turns a factory into a field of glowing diamonds.
+- Belts render their cargo via `BeltSegmentVisual.ConfigureCargoOnly` (lane/arrows/rollers left
+  null): items on a belt have no GameObject by design, so without it a working belt looks empty.
+- Art: **free methods only**. New `routing` section in `generate_placeholder_art.py` produces
+  `belt_tile.png` and `facing_arrow.png`; the tile highlights reuse the existing
+  `build_ghost_tile.png`. The facing arrow is a small **solid triangle** -- the first version was
+  an outlined chevron at 9x12 and, because it is rotated to an isometric angle (never a multiple
+  of 90), point-filtered sampling tore its thin strokes into a jagged W that read as a lightning
+  bolt.
+
+### Verification
+
+- **590/590 pass (489 EditMode + 101 PlayMode), zero failures**, up from 537. Console clean.
+- Full loop driven in Play mode through the real gameplay APIs: harvest by hand -> lay a belt run
+  -> place a depot -> construct golems -> carry/aim them -> program -> items flow node -> golem ->
+  belt -> belt -> golem -> depot. The player spent down to **3 Scrap** building it all and the
+  chain earned back to **326** unattended.
+- Rotating the extractor away from its node stalls it `NoSourceAtTile at '(-1, -4)'` -- naming the
+  empty tile -- and starves the downstream golem to `BeltEmpty at 'Belt(0,-2)#2'`, even though its
+  card's `sourceId="ScrapNode"` is still a live registered node. That is strictness proven in the
+  running game, not just in a unit test.
+
+### Still open
+
+1. **HUD overlap**: the world-space stall badges (`GolemStallIndicator`) and the interaction
+   caption both anchor near the golem and overlap when two golems are close. Reduced (the run
+   state was dropped from the caption, since the badge already says it) but not solved; it needs
+   a real world-space HUD layout pass.
+2. `SaveData` now persists `cellX/cellY/facing`, but `SaveLoadService` still only restores
+   programs onto **existing** `GolemEntity` instances -- it has no concept of respawning a
+   player-built golem, so player golems still do not survive a fresh session.
+3. Belts are **one cell per segment** with no capacity/merge/splitter model; two belts pointing
+   into the same cell simply cannot both link (one cell holds one endpoint).
+4. The Workbench was not used to program the golems in the verification run -- its drag-and-drop
+   commits to the same `GolemProgram` the run set directly, so the routing proof holds, but the
+   full UI path was exercised only in earlier passes.
+5. `BeltSegmentVisual`'s jam/flow signalling (arrow scroll, queued-cargo tint) is switched off on
+   placed belts, since a one-cell lane has no room for it. A backed-up player belt therefore looks
+   the same as a flowing one apart from the items sitting still.

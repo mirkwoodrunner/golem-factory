@@ -44,5 +44,15 @@ namespace GolemFactory.Save
         public List<string> appendageNames = new List<string>();
         public int currentStepIndex;
         public int state;
+
+        // Where the golem stands and which way it points. Saved because facing is now
+        // load-bearing routing, not decoration: a spatially placed golem restored with its
+        // program but not its facing would come back pointing North at empty ground and stall
+        // for reasons the player has no way to connect to loading. Defaults (0,0)/North are
+        // harmless for a golem that was never placed spatially, since such a golem ignores
+        // cell and facing entirely.
+        public int cellX;
+        public int cellY;
+        public int facing;
     }
 }

@@ -109,8 +109,23 @@ namespace GolemFactory.Golems
             }
         }
 
+        /// <summary>
+        /// True while the player is carrying this golem to a new tile. A held golem does not
+        /// run: its Cell is stale by definition (it is in the player's hands, not on the tile
+        /// its routing still names), so letting it keep pulling and pushing would move items
+        /// between two tiles it is no longer standing between.
+        /// </summary>
+        public bool IsHeld { get; private set; }
+
+        public void SetHeld(bool held) => IsHeld = held;
+
         public void Tick(long tick)
         {
+            if (IsHeld)
+            {
+                return;
+            }
+
             bool wasStalled = program.State == GolemState.Stalled;
 
             if (program.State == GolemState.Idle)
@@ -273,12 +288,24 @@ namespace GolemFactory.Golems
         }
 
         // --- Spatial resolution -----------------------------------------------------------
-        // Routing is resolved spatially *first*, then falls back to the authored id. The
-        // fallback is load-bearing, not a nicety: Main.unity's seven hand-wired demo golems
-        // and the entire existing test suite never call ConfigureSpatial, so
-        // spatialEndpointHolder is null for them and every path below collapses to exactly
-        // the id-routed code that shipped before.
-
+        // The fallback keys on whether this golem is spatially placed AT ALL -- not on whether
+        // an individual tile lookup happened to succeed. That distinction is the whole point.
+        //
+        // The first version of this decided per-endpoint: an empty tile silently reverted that
+        // half of the step to the authored sourceId/destinationId. Which meant rotating a
+        // player's golem away from its node did not stall it -- it quietly kept working by id,
+        // making facing advisory for exactly the two actions players use most
+        // (ExtractFromNode/LoadIntoBuffer) and defeating the entire purpose of the feature.
+        //
+        // So it is now a hard branch on the golem, decided once:
+        //   * spatialEndpointHolder wired  -> STRICT spatial. Tiles are the only routing truth.
+        //     An empty source tile stalls NoSourceAtTile, an empty/full target tile stalls
+        //     NoTargetAtTile. The authored ids are never consulted.
+        //   * spatialEndpointHolder null   -> pure id routing, byte for byte as it always was.
+        //
+        // Main.unity's seven hand-wired demo golems and the entire pre-existing test suite
+        // never call ConfigureSpatial, so they all take the second branch and cannot be
+        // affected by anything on the first one.
         private bool IsSpatiallyPlaced => spatialEndpointHolder != null;
 
         private IItemEndpoint ResolveSpatialSource()
@@ -333,10 +360,59 @@ namespace GolemFactory.Golems
             }
         }
 
-        private StallReason BeginExtractFromNode(AppendageActionDefinition step, out string blockedResourceId)
+        // --- The one spatial step ---------------------------------------------------------
+        // Every spatially routed action reduces to the same physical verb: take one item off
+        // the tile behind, put it on the tile in front. That is not a shortcut, it is what
+        // docs/digital-design.md actually specifies -- once position decides routing, the
+        // difference between "extract", "load" and "haul" is entirely which endpoints the
+        // player parked the golem between, not a different code path.
+        //
+        // Ordering is fixed and load-bearing: CanGive() on the target is checked BEFORE
+        // TryTake() on the source. Taking from a finite ResourceNode is irreversible, so
+        // discovering a full destination afterwards silently destroys the unit -- a real leak,
+        // which is the bug that put CanGive/CanEnqueue on the interface in the first place.
+        private StallReason BeginSpatialTransfer(out string blockedResourceId)
         {
             blockedResourceId = null;
 
+            IItemEndpoint source = ResolveSpatialSource();
+            IItemEndpoint target = ResolveSpatialTarget();
+
+            // Missing-endpoint checks run source-first because that is the order the player
+            // reads the chain in, and neither check has a side effect. No id fallback: for a
+            // spatially placed golem the tile IS the actionable fact -- "rotate me", not
+            // "something somewhere named in a card you cannot see is empty".
+            if (source == null)
+            {
+                blockedResourceId = SourceCell.ToString();
+                return StallReason.NoSourceAtTile;
+            }
+
+            if (target == null)
+            {
+                blockedResourceId = TargetCell.ToString();
+                return StallReason.NoTargetAtTile;
+            }
+
+            if (!target.CanGive())
+            {
+                blockedResourceId = target.DisplayName;
+                return StallReason.BeltFull;
+            }
+
+            ItemStack item;
+            if (!source.TryTake(out item))
+            {
+                blockedResourceId = source.DisplayName;
+                return EmptyReasonFor(source);
+            }
+
+            target.TryGive(item);
+            return StallReason.None;
+        }
+
+        private StallReason BeginExtractFromNode(AppendageActionDefinition step, out string blockedResourceId)
+        {
             // Nothing spatial configured at all -> the original id-routed implementation,
             // untouched. This is the branch every Main.unity demo golem and every pre-existing
             // test takes.
@@ -345,68 +421,7 @@ namespace GolemFactory.Golems
                 return BeginExtractFromNodeById(step, out blockedResourceId);
             }
 
-            IItemEndpoint spatialSource = ResolveSpatialSource();
-            IItemEndpoint spatialTarget = ResolveSpatialTarget();
-
-            // --- destination half: resolve spatially, else fall back to the authored id ---
-            BeltSegment idSegment = null;
-            bool hasIdTarget = spatialTarget == null &&
-                conveyorHolder != null &&
-                conveyorHolder.System.TryGetSegment(step.destinationId, out idSegment);
-
-            if (spatialTarget == null && !hasIdTarget)
-            {
-                blockedResourceId = TargetCell.ToString();
-                return StallReason.NoTargetAtTile;
-            }
-
-            // Room check BEFORE consuming, for the same reason spelled out in
-            // BeginExtractFromNodeById: taking from a finite node is irreversible, so a full
-            // destination discovered afterwards silently destroys the unit. CanGive is the
-            // spatial-path equivalent of BeltSegment.CanEnqueue.
-            bool hasRoom = spatialTarget != null ? spatialTarget.CanGive() : idSegment.CanEnqueue();
-            if (!hasRoom)
-            {
-                blockedResourceId = spatialTarget != null ? spatialTarget.DisplayName : step.destinationId;
-                return StallReason.BeltFull;
-            }
-
-            // --- source half ---
-            ItemStack item;
-            if (spatialSource != null)
-            {
-                if (!spatialSource.TryTake(out item))
-                {
-                    blockedResourceId = spatialSource.DisplayName;
-                    return EmptyReasonFor(spatialSource);
-                }
-            }
-            else if (nodeRegistryHolder != null && nodeRegistryHolder.Registry.TryGetNode(step.sourceId, out _))
-            {
-                if (!nodeRegistryHolder.Registry.TryExtract(step.sourceId, out item))
-                {
-                    blockedResourceId = step.sourceId;
-                    return StallReason.NodeEmpty;
-                }
-            }
-            else
-            {
-                // Neither the tile behind nor the authored id yields anything. For a spatially
-                // placed golem the tile is the actionable fact -- "rotate me", not "wait".
-                blockedResourceId = SourceCell.ToString();
-                return StallReason.NoSourceAtTile;
-            }
-
-            if (spatialTarget != null)
-            {
-                spatialTarget.TryGive(item);
-            }
-            else
-            {
-                idSegment.TryEnqueue(item);
-            }
-
-            return StallReason.None;
+            return BeginSpatialTransfer(out blockedResourceId);
         }
 
         private StallReason BeginExtractFromNodeById(AppendageActionDefinition step, out string blockedResourceId)
@@ -444,64 +459,12 @@ namespace GolemFactory.Golems
 
         private StallReason BeginLoadIntoBuffer(AppendageActionDefinition step, out string blockedResourceId)
         {
-            blockedResourceId = null;
-
             if (!IsSpatiallyPlaced)
             {
                 return BeginLoadIntoBufferById(step, out blockedResourceId);
             }
 
-            IItemEndpoint spatialSource = ResolveSpatialSource();
-            IItemEndpoint spatialTarget = ResolveSpatialTarget();
-
-            // --- destination half ---
-            bool hasIdBuffer = spatialTarget == null && bufferRegistryHolder != null && step.destinationId != null;
-            if (spatialTarget == null && !hasIdBuffer)
-            {
-                blockedResourceId = TargetCell.ToString();
-                return StallReason.NoTargetAtTile;
-            }
-
-            if (spatialTarget != null && !spatialTarget.CanGive())
-            {
-                blockedResourceId = spatialTarget.DisplayName;
-                return StallReason.BeltFull;
-            }
-
-            // --- source half ---
-            ItemStack item;
-            if (spatialSource != null)
-            {
-                if (!spatialSource.TryTake(out item))
-                {
-                    blockedResourceId = spatialSource.DisplayName;
-                    return EmptyReasonFor(spatialSource);
-                }
-            }
-            else if (conveyorHolder != null && conveyorHolder.System.TryGetSegment(step.sourceId, out BeltSegment idSegment))
-            {
-                if (!idSegment.TryRemoveHead(out item))
-                {
-                    blockedResourceId = step.sourceId;
-                    return StallReason.BeltEmpty;
-                }
-            }
-            else
-            {
-                blockedResourceId = SourceCell.ToString();
-                return StallReason.NoSourceAtTile;
-            }
-
-            if (spatialTarget != null)
-            {
-                spatialTarget.TryGive(item);
-            }
-            else
-            {
-                bufferRegistryHolder.Registry.Deposit(step.destinationId, item.ItemType);
-            }
-
-            return StallReason.None;
+            return BeginSpatialTransfer(out blockedResourceId);
         }
 
         private StallReason BeginLoadIntoBufferById(AppendageActionDefinition step, out string blockedResourceId)
@@ -546,45 +509,21 @@ namespace GolemFactory.Golems
                 return StallReason.None;
             }
 
-            IItemEndpoint source = ResolveSpatialSource();
-            IItemEndpoint target = ResolveSpatialTarget();
-
-            // Missing-endpoint checks run source-first because that is the order the player
-            // reads the chain in, and neither check has a side effect. The consume-safety
-            // ordering that actually matters -- CanGive before TryTake -- is preserved below.
-            if (source == null)
-            {
-                blockedResourceId = SourceCell.ToString();
-                return StallReason.NoSourceAtTile;
-            }
-
-            if (target == null)
-            {
-                blockedResourceId = TargetCell.ToString();
-                return StallReason.NoTargetAtTile;
-            }
-
-            if (!target.CanGive())
-            {
-                blockedResourceId = target.DisplayName;
-                return StallReason.BeltFull;
-            }
-
-            ItemStack item;
-            if (!source.TryTake(out item))
-            {
-                blockedResourceId = source.DisplayName;
-                return EmptyReasonFor(source);
-            }
-
-            target.TryGive(item);
-            return StallReason.None;
+            return BeginSpatialTransfer(out blockedResourceId);
         }
 
         // Withdraws the recipe input up front so processing time is real "committed" work
         // (matches a physical refinery: once started, it can't be interrupted by the source
         // buffer running dry mid-cycle since nothing else can drain it back out). The
         // output is deposited later, in CompleteStep, once durationTicks have elapsed.
+        //
+        // DELIBERATELY EXEMPT FROM SPATIAL ROUTING, even for a spatially placed golem.
+        // A recipe is defined by its item *types* (inputItemType -> outputItemType), but
+        // IItemEndpoint is deliberately type-agnostic -- TryTake hands over "whatever this
+        // endpoint had", with no way to ask for a specific type. Routing Refine spatially
+        // would therefore let it grab the wrong input off a mixed buffer and silently
+        // transmute it, which is worse than an honest stall. Refine stays keyed to the
+        // buffer ids its recipe names until IItemEndpoint grows a typed take.
         private StallReason BeginRefine(AppendageActionDefinition step, out string blockedResourceId)
         {
             blockedResourceId = null;
