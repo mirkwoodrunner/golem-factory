@@ -53,6 +53,19 @@ namespace GolemFactory.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator Refresh_NoPatentsYet_ExplainsHowToFileOne()
+        {
+            (PatentBrowserPanel panel, _, _, RectTransform content) = Build();
+            yield return null;
+
+            panel.Refresh();
+
+            // A blank tab is indistinguishable from a broken one.
+            Assert.AreEqual(1, content.childCount);
+            StringAssert.Contains("No patents", content.GetChild(0).GetComponent<TMPro.TextMeshProUGUI>().text);
+        }
+
+        [UnityTest]
         public IEnumerator LoadButton_LoadsBlueprintIntoDraft_AndOpensWorkbench()
         {
             var chassis = ScriptableObject.CreateInstance<GolemFactory.PunchCards.ChassisDefinition>();

@@ -9,6 +9,46 @@ namespace GolemFactory.Golems
     // authored .asset files into the Inspector) is the M3 concern.
     public static class HardcodedDemoProgram
     {
+        // Copies a built demo program onto a live golem, fitting a chassis first.
+        //
+        // Every demo bootstrap used to do this inline as
+        //   golem.Program.logicCore = source.logicCore;
+        //   golem.Program.appendages.AddRange(source.appendages);
+        // which appends straight past GolemProgram.TryAddAppendage's "no chassis means no
+        // capacity" guard. That left every demo golem in a state the game's own rules say
+        // is impossible -- steps with no chassis to hold them -- and the Workbench,
+        // pointed at one of them, opened reading "CHASSIS -- none --  SLOTS 1/0" over a
+        // viewport that (correctly, since no chassis means no sockets) drew nothing at
+        // all. That was the first thing a player ever saw on that screen.
+        public static void ApplyTo(GolemEntity golem, ChassisDefinition chassis, GolemProgram source)
+        {
+            if (golem == null || source == null)
+            {
+                return;
+            }
+
+            golem.Program.logicCore = source.logicCore;
+
+            if (chassis == null)
+            {
+                // Unwired scene reference: keep the pre-existing behaviour rather than
+                // silently dropping every step, but make the authoring mistake visible.
+                Debug.LogWarning($"{golem.name}: no demo chassis assigned; its program will have no chassis fitted.");
+                golem.Program.appendages.AddRange(source.appendages);
+                return;
+            }
+
+            golem.Program.TryAssignChassis(chassis);
+            foreach (AppendageActionDefinition appendage in source.appendages)
+            {
+                if (!golem.Program.TryAddAppendage(appendage))
+                {
+                    Debug.LogWarning(
+                        $"{golem.name}: {chassis.name} has only {chassis.maxAppendageSlots} slots; a demo step was dropped.");
+                }
+            }
+        }
+
         public static GolemProgram ExtractAndDeposit()
         {
             var logicCore = ScriptableObject.CreateInstance<LogicCoreDefinition>();

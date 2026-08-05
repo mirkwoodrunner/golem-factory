@@ -1610,3 +1610,750 @@ Four-phase engine/art/UI polish pass (PR #23, merged to `main`), run per an appr
 3. `Sandbox.unity`'s Management HUD tabs (Inventory/Patents/SaveLoad) still aren't wired with
    their own per-instance data-source holders — flagged as a follow-up in the Steampunk pass
    and still open after this pass; only `Main.unity` has that wiring.
+
+## Workbench production-quality pass implementation notes
+
+Presentation-only pass over the M8 Workbench screen, bringing it to the
+`docs/digital-design.md` spec ("mahogany-and-brass blueprint viewport… Card Vault…
+diagnostic tape ticker… Engage Gears lever"). No simulation or drag/commit semantics
+changed: dragging still edits only the local draft, and nothing reaches
+`GolemEntity.Program` until `EngageGears()` spends Focus.
+
+### Root cause: the "transparent Workbench panels" bug
+
+The three column backgrounds looked like they had *no* panel behind them — the game world
+showed straight through the whole screen. The obvious hypotheses were all wrong: the
+`Image`s did have their `iron_panel_nobolt` sprite, `fillCenter` was `true`, `type` was
+`Sliced` with a valid 9-slice border, `CanvasRenderer.cull` was `false`, and neither
+`Main.unity` nor `Sandbox.unity` carried an `m_Sprite`/`m_Color` prefab-instance override.
+
+The actual cause is **`m_ActiveColorSpace: 1` (Linear) plus a very dark tint at
+`alpha 0.85`**. Confirmed by an A/B in Play mode, measured off the captured PNGs rather
+than eyeballed: a flat red `Image` at alpha 0.85 rendered as a strong wash (`250,86,74`),
+while the same panel sprite tinted `0.35/0.25/0.15` at the same alpha landed on
+`51,43,37` against a `67,59,52` world — i.e. ~30% effective coverage, not 85%. In linear
+blending the surviving 15% of a mid-bright, high-contrast world carries far more
+perceived luminance than 15% does in gamma space, so an almost-black panel reads as a
+faint dirty film and the stone texture underneath stays legible. Nothing was "missing";
+the panels were authored translucent-and-dark, which is unusable over a lit world.
+
+Fix: the Workbench is a *dedicated management screen*, so it now has a fully opaque tiled
+mahogany backdrop and opaque panels. Nothing in the screen relies on fractional alpha
+over the world any more.
+
+### Code (done)
+- `UI/WorkbenchDiagnostics.cs` — new engine-free static class (GridCoordinateConverter /
+  GolemAnimationUtility idiom): `ComputeCycleTicks`, `ComputeSteamDraw`,
+  `ComputeCyclesPerMinute`, `Humanize` (CamelCase asset id → prose, keeping acronym and
+  digit runs intact), `DisplayName`, and `ComposeTicker`, which returns the exact tape
+  string so it is asserted in tests rather than assembled ad hoc in `Update()`.
+  **Steam is deliberately not a simulated resource** — the psi figure is a derived
+  presentation number over data that already exists (slotted steps × chassis tier), which
+  is what the design doc's "immediate feedback before activation" asks for.
+- `UI/WorkbenchLeverMotion.cs` + `UI/WorkbenchLever.cs` — the "Engage Gears" lever. The
+  throw/hold/spring-back curve is engine-free and testable; the `MonoBehaviour` is a thin
+  applier that only moves a handle `RectTransform`. It never touches program state — the
+  `Button` on the same GameObject still raises `EngageGears` through the normal `onClick`
+  path.
+- `UI/WorkbenchController.cs` — chassis buttons and vault cards rebuilt with a name +
+  subtitle (trigger/action detail read straight off the definitions), `LayoutElement`
+  with `flexibleHeight = 0` pinned explicitly (the Steampunk pass' row-ballooning bug,
+  pre-empted), cream lettering on the chassis rack in both states so no per-state text
+  recolor is needed, and `RefreshBlueprintPane()` driving the viewport portrait from
+  `ChassisDefinition.chassisSprite` — the same data-driven source `GolemVisual` uses.
+  `ClearChildren` split into `ClearCards` for slots so a rebuild sheds only the card and
+  keeps the slot's caption/socket/hint chrome. New `hideWhileOpen` list hides always-on
+  HUD chrome that has no `Close()` of its own (Sandbox's `BuildMenuPanel`) — the modality
+  is the Workbench's concern, not each panel's.
+- **Unnamed definitions**: demo bootstraps build some `LogicCoreDefinition`s /
+  `AppendageActionDefinition`s via `ScriptableObject.CreateInstance`, so `name` is empty
+  and those slot cards had always rendered as a blank strip (and the tape read
+  "TRIGGER -- none --" while a core visibly sat in the slot). `DisplayName` now falls
+  back to the trigger/action type.
+- `Tools/Art/generate_workbench_ui_art.py` — new companion to
+  `generate_placeholder_art.py` (free/Pillow only, no paid image generation): mahogany /
+  iron / blueprint-field 9-slice panels whose centres tile seamlessly for
+  `Image.Type.Tiled`, a brass title plate, a near-white punch-card face (so the teal/copper
+  `Image.color` coding stays the thing carrying the semantics), a slot socket, punched
+  paper tape, and the lever track/handle/gauge pip. Output to
+  `Assets/_Project/Art/UI/Workbench/`.
+
+### Manual Editor setup (done, via live Unity MCP + `execute_code`)
+`WorkbenchScreen`'s children were deleted and rebuilt in one `PrefabUtility
+.LoadPrefabContents` → edit → `SaveAsPrefabAsset` pass (headless, so the
+prefab-instance-override-reverts gotcha never applies), then the controller's serialized
+references re-pointed via `SerializedObject`. Only `WorkbenchScreen` was touched;
+`ManagementScreen`, `AlertsStrip`, `EventSystem` and the controller GameObjects were left
+alone so the scenes' existing overrides (`targetGolem`, `focusMeterHolder`,
+`bufferRegistryHolder`, …) survived. Layout: header plate → blueprint viewport (chassis
+portrait pane + captioned trigger/step sockets) → chassis rack → card vault (now a real
+`ScrollRect` + `RectMask2D`) → bottom bar (tape ticker, status line, lever, patent) →
+`DragLayer` last. The Sandbox `BuildMenuPanel` wiring is a scene-level reference and was
+written with `PrefabUtility.RecordPrefabInstancePropertyModifications`.
+
+### Testing
+- New `Assets/Tests/EditMode/UI/WorkbenchDiagnosticsTests.cs` (16) and
+  `WorkbenchLeverMotionTests.cs` (6).
+- Full regression: **246/246 pass (185 EditMode + 61 PlayMode)**, up from 205; zero
+  failures, console clean.
+- Verified live in Play mode in both `Main.unity` and `Sandbox.unity` (shared prefab),
+  including a scripted end-to-end drive: select a chassis, drop cards into slots, pull the
+  lever, read back `GolemEntity.Program` (`chassis=ZeppelinFreightLoader logicCore=set
+  appendages=3`).
+
+### Deliberate scope cuts
+1. No hover/press states on vault cards or chassis buttons (`Button` colour tint only) —
+   the cards are runtime-instantiated and would need per-instance `SpriteState` wiring.
+2. The lever animates on click but there is no audio and no gear-turn animation on the
+   header ornament; both would need new assets/systems this pass didn't take on.
+3. `AlertsStrip` still overlaps the very top of the screen; the header bar was moved down
+   to clear it rather than relocating shared HUD chrome another pass owns.
+
+## World/environment production-quality pass implementation notes
+
+Presentation-only pass over the isometric floor, perimeter walls, lighting and camera
+framing of both `Main.unity` and `Sandbox.unity`. No simulation logic changed; `GridMap`
+remains the truth and the Tilemap remains purely visual.
+
+### The floor tiles were never the size of their own cell
+Before anything else: `floor_tile.png` (128x64) imported at **PPU 64**, which made every
+tile **2 x 1 world units** — exactly twice the `1 x 0.5` cell the isometric `Grid` uses. The
+painted diamonds therefore never lined up with the grid at all; the floor was a 2x-oversized
+overlapping mat that only *looked* like a tiled floor. Every environment sprite now imports
+at **PPU 128**, which is what makes sprite size == cell size.
+
+That fixed the scale, and it fixed the pixel budget too. The whole environment is now
+authored at one art-pixel scale — **32 art pixels per world unit**, native canvas upscaled
+x4, imported at PPU 128 — chosen so that at the default `orthographicSize` of 5 an art pixel
+is 3-4 screen pixels. Authoring finer produced exactly the high-frequency visual noise the
+old grey stone floor was criticised for.
+
+### Root cause of the "staircase" walls
+The in-flight wall art was 88x109 px at PPU 64 (**1.375 x 1.703 world units**) with a
+**flat** bottom edge, placed one instance per *perimeter ring cell* via
+`FloorLayout.GetNorthEastEdgeCells`. Consecutive perimeter cells are only **0.5 x 0.25**
+world units apart (the 2:1 isometric run), so each sprite was 2.75x wider than its own
+spacing *and* its silhouette slope never matched the run it was supposed to trace. The
+result is a row of flat-bottomed blocks each stepped up a quarter unit from the last — a
+literal staircase. No offset or scale nudge can fix that; the footprint geometry is wrong.
+
+The fix is geometric, not cosmetic:
+- A wall segment covers exactly **one cell edge**: 0.5 world wide with a base line that
+  rises 0.25 world across that width (`_wall_base_row`'s `//2` staircase in the generator
+  script is the exact 2:1 step, so neighbours butt together seamlessly).
+- Its sprite pivot is a **custom pivot at the midpoint of that base line**, not the sprite
+  centre or bottom-centre.
+- It is anchored on the boundary **line** at `halfExtent + 0.5`, not a ring cell at
+  `halfExtent + 1` — `FloorLayout.GetEdgeAnchor(Edge, index)`, which replaces
+  `GetNorthEastEdgeCells`/`GetNorthWestEdgeCells`.
+
+### Code
+- `World/FloorLayout.cs` — new `Edge` enum plus `GetEdgeAnchor` / `GetEdgeIndices` /
+  `GetWallPostAnchors`, all pure cell-fraction math (the `GridCoordinateConverter` idiom).
+  Replaces the two ring-cell edge enumerations, which encoded the wrong placement model.
+- `World/FloorTileVariant.cs` — pure deterministic tile selection (4 plank variants + two
+  rare accent tiles). Deterministic on purpose: a random scatter would rewrite the scene
+  file on every regeneration.
+- `World/GroundShadow.cs` — creates its own child `SpriteRenderer` and drives its
+  `sortingOrder` from the **owner's** Y minus one. A `YSortSpriteRenderer` on the child
+  could not do this: the shadow's own Y is lower, so it would compute a higher order and
+  draw *in front of* the thing casting it. `anchorToSpriteBottom` derives the drop point
+  from the owner sprite's pivot every frame, because this project's pivots are inconsistent
+  (player = bottom-centre, chassis = centre) and `GolemVisual` assigns the chassis sprite
+  after `Awake`.
+- `Scripts/Editor/SandboxFloorGenerator.cs` — rewritten. Paints the floor from
+  `FloorTileVariant`, builds both wall runs (with sconce variants + child `Light2D`s), both
+  near-edge slab skirtings, three corner posts, and deterministic crate/barrel clutter along
+  all four edges. Also gained a `Tools > Golem Factory > Reimport Environment Art` menu item
+  that applies PPU 128 + the custom pivots, so the pivots live in source rather than in a
+  throwaway console script. `GolemFactory.Editor.asmdef` now references
+  `Unity.RenderPipelines.Universal.2D.Runtime` for `Light2D`.
+- Sorting order on walls/props is **baked at generation** rather than adding a
+  `YSortSpriteRenderer` to ~130 static objects: the value is identical to what that
+  component computes, it costs no per-frame work, and it also sorts correctly in EditMode
+  (no `[ExecuteAlways]`).
+
+### Art (`Tools/Art/generate_placeholder_art.py`, Pillow only — no paid generation)
+Warm wood plank floor with 4 variants, a riveted brass inspection plate and a steam grate as
+sparse accents; panelled-dado/brass-rail/warm-brick wall segments plus lit sconce variants;
+mirrored near-edge slab skirting; a brass-banded corner post; crate and barrel props; and a
+soft contact shadow. `main()` now runs **only** the environment set — the character/item
+sprites have since been replaced with better art at different resolutions, and re-running
+the script used to silently clobber them. `--legacy` opts back in.
+
+### Lighting / framing
+- `Assets/Settings/PostProcessing/GolemFactoryVolumeProfile.asset` was **empty**. The
+  Bloom/ColorAdjustments/Vignette recorded in the graphics pass had been created but never
+  added as sub-assets, so they vanished on the next domain reload and no post-processing was
+  ever running. Rebuilt with `AssetDatabase.AddObjectToAsset` and verified across a reload.
+- `Sandbox.unity` had no `GlobalVolume` at all, and its camera had no
+  `UniversalAdditionalCameraData` (so no post-processing). Both added.
+- Both cameras: `Skybox` (default blue void) -> `SolidColor` warm gloom, so the workshop
+  reads as a lit platform in a dark room instead of a diamond floating in nothing.
+- Global `Light2D` warmed and raised to 1.15; wall sconces every 4th segment at 0.85 /
+  radius 3.6 (every 6th left long stretches of wall in darkness).
+
+### Gotcha worth recording
+`manage_camera(screenshot)`'s inline preview is noticeably **brighter** than the PNG it
+writes to disk. Two rounds of lighting were graded against the preview and were far too dark
+in reality. Always verify the file, not the inline image.
+
+### Testing
+- `Tests/EditMode/World/FloorTileVariantTests.cs` (6) and 5 new `FloorLayoutTests` cases,
+  including the staircase regression test itself: consecutive edge anchors must be exactly
+  one cell edge (0.5 x 0.25) apart on all four edges, back walls must sort behind the cell
+  they border and front skirtings in front of it, and each run must end exactly on its
+  corner post.
+- Full regression: **308/308 pass (229 EditMode + 79 PlayMode)**, up from 296; zero
+  failures, console clean.
+- Verified live in Play mode in both scenes at 1920x1080, including the Y-sort case: the
+  player parked at the far corner is correctly occluded from the knees down by the wall
+  segments nearer the camera while the corner post draws behind her.
+
+### Deliberate scope cuts
+1. `WallSegmentNE.prefab`/`WallSegmentNW.prefab` were deleted. Seven distinct piece types
+   would have meant seven prefabs to keep in sync with the one generator that is the actual
+   source of truth; the generator is idempotent, so nothing is lost.
+2. Golem chassis sprites are pivoted **centre**, so a golem's art sits half a sprite-height
+   below its cell. `GroundShadow` compensates for the shadow, but the sprites themselves
+   still render low. Fixing the pivots shifts every hand-placed golem in `Main.unity` and
+   belongs to whoever owns golem presentation, not this pass.
+3. The interior of the room is still empty floor — clutter is confined to the perimeter so
+   it never competes with build placement. Filling the middle is a level-design decision.
+
+## Belt readability production-quality pass implementation notes
+
+Belts previously rendered as nothing but a row of grey `item_scrap` sprites strung along a bare
+diagonal. Reviewed live, that line read as scattered debris or a staircase, not a conveyor. Three
+defects, all fixed here.
+
+### 1. Pooled belt items were never Y-sorted
+
+Every pooled `ItemSlot` sat at `sortingOrder = 0` while the golems around them were at -174 and
++166, so belt cargo punched through the isometric depth order everywhere on the map. The project
+already had `World/YSortUtility.ComputeSortingOrder(worldY)`; the pool simply never called it.
+
+**One sorting order for the whole segment would also have been wrong** — a diagonal lane spans a
+range of world Y, so the order has to be per item, recomputed each frame from that item's own
+point *on the lane* (not from the raised sprite position, so the cosmetic "sits on top of the
+belt" offset can't reorder anything).
+
+Measured in Play mode on `Main.unity`'s `ScrapBeltA` (lane from `(4.50, 0.00)` to `(3.65, 0.85)`).
+**Corrected against a live re-measurement during the follow-up fix pass** — the numbers first
+recorded here (`-3` for the feeder golem, `-173` for `GolemB`) were wrong; the conclusions and the
+size of the margins were not. The real anchors, read straight off the `SpriteRenderer`s:
+
+| renderer                          | world Y | sortingOrder |
+|-----------------------------------|---------|--------------|
+| feeder golem `Golem` (chassis)    | -0.037  | **4**        |
+| feeder golem `Golem` GroundShadow | -0.787  | 3            |
+| `GolemB` (chassis)                | 1.663   | **-166**     |
+| `GolemB` GroundShadow             | 0.913   | -167         |
+
+Note the feeder golem's Y **oscillates** (it has an idle bob), so its order drifts around 0-4
+frame to frame; do not expect a single fixed number when re-measuring.
+
+`ScrapBeltA`'s six cargo slots, by progress, are `1, -16, -33, -50, -67, -84` (the `+1` is the
+cargo tiebreak added in the fix pass, below). All are below the feeder golem's 4, i.e. cargo at
+the mouth correctly draws *behind* the golem standing in front of it. `ScrapBeltB`
+(`(3.65, 0.85) -> (2.80, 1.70)`, ending at `GolemB`) shows the opposite half: its slots run
+`-84 ... -169`, and its first five are all greater than `GolemB`'s `-166`, so cargo correctly
+draws **over** the golem behind it. Same component, same frame, both directions — see
+`Assets/Screenshots/belt_main_occlusion_feeder.png` and `belt_main_occlusion_receiver.png`.
+
+Under the old code all six slots were `0`, i.e. permanently in front of everything.
+
+The lane/arrow/roller decals sort from the lane's **furthest-back** end minus a small bias, not
+from its centre: anything standing on or beside a flat ground decal has `Y <= thatMaximum` and
+therefore a strictly larger sorting order, so it always draws on top. Sorting the decal from its
+centre instead put the lane in front of the cargo riding its far half.
+
+### 2. There was no belt to look at
+
+`Belts/BeltSegmentVisual.cs` now draws the lane itself, not just its cargo, and everything it
+draws stays inside the "no GameObject per belt item" rule — every renderer is pooled at resolve
+time and never grows:
+
+- one stretched `belt_lane` sprite rotated onto the start-to-end vector (the art is uniform along
+  its length precisely so an arbitrary X stretch is invisible — no rivets to smear),
+- two `belt_roller` end drums,
+- N `belt_arrow` chevrons, N fixed by lane length, scrolled along the lane every frame and faded
+  out at both mouths so pooled arrows recycle without popping,
+- the existing `Capacity`-sized item-slot pool, now also picking its sprite per
+  `ItemStack.ItemType` from a serialized `string -> Sprite` table (so a mixed belt is readable),
+  and scaled to fit the segment's own item spacing.
+
+Arrow scroll speed comes from the clock (`laneLength / segmentLength * TicksPerSecond * Speed`),
+so it matches the speed an unobstructed item actually travels and stops dead when the sim is
+paused. That is the "how fast" readout, and it works on an empty belt.
+
+### 3. Items teleported once per tick
+
+`BeltSegment.Progress` is integer-stepped, so rendering straight from it made cargo blink from
+cell to cell. `BeltFlowUtility.PredictProgressAfterAdvance` replays `BeltSegment.Advance`'s
+head-first cap propagation **without writing anything back**, and the visual interpolates between
+current and predicted progress using a new read-only `SimulationClock.TickFraction`.
+
+That is also what makes backpressure legible for free: a blocked item predicts to its own current
+progress, so it visibly *stops* while its unobstructed neighbours keep gliding. On top of that,
+`ComputeCongestion` counts items queued *behind another item* — deliberately **not** counting a
+head parked at the end of a terminal segment, which is normal operation and would otherwise leave
+the jam signal permanently on — and drives the arrows from amber to red while slowing them to a
+halt. Queued items also take a gentle warm flush (a hard red tint made a jammed Brass ingot read
+as a different item).
+
+`SimulationClock.TickFraction` is the only simulation-side change: a read-only property over the
+existing accumulator. `Advance()` is untouched, and nothing in the simulation may read it — doing
+so would make behaviour frame-rate dependent.
+
+### `Sandbox.unity` had no belts at all
+
+Sandbox registered a `ConveyorSystem` but never a single `BeltSegment`, and the two authored
+belt-facing appendage cards had empty ids (`ExtractScrap.destinationId`,
+`LoadIntoScrapBuffer.sourceId`), so every belt program a player could build was guaranteed to
+stall on `TryEnqueue`/`TryDequeueHead` returning `false` for an unknown segment.
+`SandboxBootstrap` now registers a chained `ScrapBeltA -> ScrapBeltB` pair, both with visuals in
+the scene, and the two cards point at them. The ids intentionally match the ones
+`BeltDemoBootstrap` registers in `Main.unity`, so one set of authored `AppendageActionDefinition`
+assets drives both scenes.
+
+`Main.unity` also gained the missing `TriggerScrapBeltVisual` — `TriggerDemoBootstrap` had always
+registered that segment, but nothing ever drew it. The `AetherBelt`/`TriggerScrapBelt` anchors
+were nudged off their golems, since a lane rendered *under* a golem's feet reads as a bug.
+
+### Art (`Tools/Art/generate_placeholder_art.py belts`, Pillow only — no paid generation)
+
+New `generate_belts()` section; `main()` now takes an optional section name so belt art can be
+regenerated without touching the environment. Same convention as the environment pass: 32 art px
+per world unit, x4 upscale, PPU 128 (`belt_lane` is 1.0 x 0.4375 world, plus `belt_arrow` and
+`belt_roller`). The arrow is authored **white with only a dark rim**, because the runtime tints it
+(amber when flowing, flashing hot when jammed); tinting a pre-coloured sprite would multiply the
+two hues and mud both ends of the readout. No belt art needed regenerating in the follow-up fix
+pass below — the whole fix is layering and runtime tint/scale.
+
+`item_scrap` / `item_brass` / `item_aether` were reskinned from cold grey into the warm workshop
+palette with three distinct silhouettes (stepped rust offcuts / clean brass trapezoid / tall teal
+shard), so they separate by shape before colour is even read. They keep their 32x32 file size and
+PPU 64 — same GUIDs, same world size, no rewiring — but are authored at 16 art px upscaled x2, so
+their pixel density finally matches the floor's. Their generation moved OUT of
+`generate_legacy_placeholders()`, which would otherwise silently clobber the reskin the same way
+`--legacy` clobbers the chassis art.
+
+`Assets/_Project/Scripts/Editor/BeltArtImporter.cs`
+(`Tools > Golem Factory > Reimport Belt Art`) mirrors
+`SandboxFloorGenerator.ReimportEnvironmentArt`, for the same reason it exists there:
+`manage_texture`'s import-settings path silently drops its payload, and freshly written PNGs
+otherwise land at PPU 100, bilinear, compressed.
+
+### Testing
+
+- New `Assets/Tests/EditMode/Belts/BeltFlowUtilityTests.cs` (26 tests). The load-bearing one is
+  `PredictProgressAfterAdvance_MatchesBeltSegmentAdvance`, which drives a real `BeltSegment`,
+  predicts every item's next progress, then calls `Advance` and asserts the prediction was exact —
+  if those two ever diverge, interpolated cargo drifts away from the simulation.
+- 4 new `SimulationClockTests` for `TickFraction` (zero before any time accumulates, mid-tick
+  value, wrap back after a tick fires, zero at `TicksPerSecond == 0`).
+- Full regression: **341/341 pass (262 EditMode + 79 PlayMode), zero failures.**
+
+### Deliberate scope cuts
+
+1. `Main.unity`'s golems are placed on a ring, not on the isometric grid, so `ScrapBeltA/B` run at
+   a 45-degree screen angle rather than along a `1 x 0.5` cell axis. The lane renders correctly at
+   any angle, but a belt on a true iso axis would look more at home. Fixing it means moving
+   golems, which belongs to whoever owns golem placement.
+2. Belt junctions still render as two coincident end rollers rather than a purpose-built junction
+   piece. `ConveyorSystem` only supports 1:1 `Next` chaining, so there are no real splitters or
+   mergers to draw yet.
+3. No belt *sound*, and no per-item squash/motion blur on handoff. The one-shot handoff sparkle
+   from the previous pass is unchanged and still fires.
+
+## Belt readability follow-up fix pass
+
+The pass above was reviewed live in Play mode and returned **FAIL** on three counts. The
+foundation (per-item Y-sort, clock-matched arrow speed, sub-tick interpolation, the item art, the
+Sandbox belt registration, the no-GameObject-per-item pool) all verified TRUE and is untouched
+here. Everything below is presentation-only; `ConveyorSystem.Tick` and `BeltSegment` are not
+touched, and `Belts/` still has no reference to `Golems/`.
+
+All three fixes are expressed as pure functions in new
+`Assets/_Project/Scripts/Belts/BeltSignalUtility.cs`, unit-tested by
+`Assets/Tests/EditMode/Belts/BeltSignalUtilityTests.cs` (21 tests), following the
+`BeltFlowUtility` / `YSortUtility` / `WorkbenchDropRules` idiom.
+
+### 1. The direction arrows were drawn UNDER the cargo
+
+Not a tuning issue — a logic flaw. Cargo sorted at `YSort(groundY)`; arrows sorted at
+`laneSortingOrder + 1`, i.e. `YSort(BACKMOST laneY) - 3`. Since every cargo Y on a lane is at most
+the backmost Y, and `ComputeSortingOrder` decreases in Y, **the cargo order was strictly larger on
+every belt in the project, always.** On `ScrapBeltA` that was arrows at `-88` against cargo at
+`0 ... -84`. Direction was therefore absent in a belt's normal *loaded* state, and the failure
+compounds: a jam means the belt is full, a full belt is wall-to-wall cargo, so the jam readout was
+hidden exactly when it fired.
+
+The bug was invisible from either constant alone, so the rule is now one function with one
+property a test can assert. `ComputeFlowSignalSortingOrder` anchors on the lane's **frontmost**
+(smallest-Y, therefore largest-order) end rather than the lane decal, and
+`FlowSignal_OutranksCargoAtEveryPointOnEveryLane` walks 200 samples along five lane geometries
+(including both real `Main` lanes and a degenerate horizontal one) asserting the signal wins at
+every one. A companion test pins the old `laneSortingOrder + 1` rule as losing, so nobody re-derives
+the arrows from the lane decal again.
+
+Measured live on `Main.unity`, fully jammed `ScrapBeltA`: arrows `3`, max enabled cargo slot `1`.
+On `ScrapBeltB`: arrows `-82`, max cargo `-84`. Lane decal still behind everything at `-89` / `-174`.
+
+**Feed-point tie.** An item at progress 0 tied `sortingOrder` with the feeder golem standing at
+the same Y, and that golem's idle bob makes its order drift through the tie every second or so —
+i.e. real flicker. Cargo now takes `+1` (`CargoSortingBias`), 0.01 world units of Y, enough to
+settle exact ties and far too small to reorder anything real. Clearing the cargo then puts the
+flow signal on `3`, which can itself collide exactly with a character at the mouth. No integer
+bias can rule that out in general, so the remainder is broken in the only other channel available:
+with an orthographic camera and `Default` transparency sorting, equal `sortingOrder` resolves by
+view-axis distance, and `ComputeFlowSignalPosition` pushes the chevrons `+0.01` in Z so they
+**lose** those ties — correct, since anything standing level with the lane mouth should occlude a
+decal painted on the lane.
+
+### 2. The jam state was LESS visible than the healthy state
+
+The workshop floor is warm brown planks (`PLANK_TONES[3]`, relative luminance **0.360**). The
+alarm shifted the arrows from amber (luminance 0.765, contrast **0.405**) to a dark signal red
+(luminance 0.435, contrast **0.075**). The alarm state had **5.4x less contrast against its own
+background than the healthy state** — it read as "the belt dimmed", not "something is wrong".
+Red-on-brown is simply a bad alarm channel here.
+
+The deeper problem: against warm brown, *no* red out-luminates that amber, so hue and brightness
+alone can never make the alarm louder at all times. **Area is the channel that wins.** The jam
+signal now:
+
+- keeps a red base (`jamBaseColor` 1.00/0.34/0.28) for semantics, but **pulses toward hot white**
+  (`jamPulseColor` 1.00/0.95/0.90) at 2.4 Hz, with a floor of 0.5 so even a still frame caught at
+  the bottom of the pulse is well clear of the floor;
+- **swells the chevrons** with the pulse (`JamSignalScaleGain` 0.6, so 1.30x at the trough and
+  1.60x at the peak — 1.7x and 2.6x the pixels);
+- still freezes the scroll as congestion rises, and now also tints the two end rollers, which sit
+  outside the cargo's footprint.
+
+`ComputeSignalSalience` = `scale² × luminanceContrast`, and
+`JamSignal_IsLouderThanTheHealthySignalAtEVERYPhaseOfThePulse` asserts the quietest phase still
+beats the healthy state (and the loudest beats it 3x). The old red is pinned by
+`OldJamSignal_WasFiveTimesQUIETERThanTheHealthyState`.
+
+Verified on rendered pixels, not on theory. Belt-region crops at gameplay framing (ortho 5),
+counting chevron pixels and summing their luminance contrast against the plank floor:
+
+| state (Sandbox / Main)     | chevron px       | contrast energy   |
+|----------------------------|------------------|-------------------|
+| flowing, fully loaded      | 1.00x / 1.00x    | 1.00x / 1.00x     |
+| jammed, dimmest pulse phase| 1.33x / 1.21x    | 1.26x / 1.14x     |
+| jammed, peak pulse phase   | 1.65x / 1.54x    | 2.58x / 2.42x     |
+
+See `Assets/Screenshots/belt_fix_sandbox_compare_crop.png` and `belt_fix_main_compare_crop.png`
+(flowing / jam-trough / jam-peak at identical framing).
+
+`arrowSpacing` also dropped 0.5 -> 0.36 and `arrowEndFade` 0.2 -> 0.14 on all six
+`BeltSegmentVisual` instances across both scenes: pooled chevrons went 4 -> 5 on `Main`'s
+1.202-unit lanes and 5 -> 6 on `Sandbox`'s 1.600-unit lanes, and the narrower end fade keeps more
+of them at full alpha (3 visible on `Main`, 5 on `Sandbox`). 0.36 is the tightest spacing a
+1.6x-swollen chevron (0.30 world wide) still fits into without touching its neighbour.
+
+### 3. The cargo "warm flush" was imperceptible
+
+`itemJamTint` (1.00/0.80/0.72) multiplied into already brown/orange scrap. Measured on the three
+authored item colours it moved luminance by **13.8% / 14.9% / 18.4%** — and in the same warm
+direction the art already occupies, which is why it produced no detectable difference in
+side-by-side crops. Replaced (field renamed to `itemQueuedTint`, so the stale value baked into
+every scene is dropped rather than overriding the new default) with a **cold dim**
+(0.58/0.62/0.78): **38.7% / 38.5% / 37.2%** luminance drop with the hue swung off the warm axis.
+Queued cargo now reads as cold dead metal under bright flashing chevrons, without becoming a
+different item. Both the old failure and the new threshold are unit-tested.
+
+### Testing
+
+- New `BeltSignalUtilityTests.cs` (21). The load-bearing one is
+  `FlowSignal_OutranksCargoAtEveryPointOnEveryLane` — a standing regression test that cargo can
+  never occlude the flow signal.
+- Full regression: **362/362 pass (283 EditMode + 79 PlayMode), zero failures**, up from 341;
+  console clean.
+- Verified in Play mode at gameplay framing (`orthographicSize` 5) in **both** scenes, on a
+  **fully loaded** belt, flowing vs. jammed at identical framing.
+
+### Deliberate scope cuts (still open)
+
+1. `ComputeItemScale` clamps at `maxItemScale = 1.0`, so on Sandbox's 0.32-world item spacing the
+   auto-fit never engages and cargo overflows the lane silhouette. Raising the clamp is a one-line
+   change but re-tunes every belt's cargo size, which wants its own verification pass.
+2. Arrow scroll speed is scaled by `(1 - congestion)`, which under-reports throughput at partial
+   congestion (the head is still moving). Correct fix is to derive it from actual head throughput.
+3. The lane still reads as a flat girder with no isometric thickness on `Main`'s 45-degree
+   diagonal, and belt junctions still draw two coincident rollers at identical position *and*
+   `sortingOrder`.
+## Economy / storage readout + Management HUD production-quality pass
+
+`ManagementPanel`'s four tabs shipped functional but unreadable and, in `Sandbox.unity`,
+inert. This pass fixes the wiring gap the M9/HUD notes recorded as an open scope cut,
+makes the inventory scannable, and adds the one economic signal the game had no way to
+show: whether a buffer is filling or draining.
+
+### What was actually wired vs. what the docs claimed
+
+Verified live in both scenes before changing anything (`execute_code` reflection dump of
+every serialized `UnityEngine.Object` field on all four panels). The "Deliberate scope
+cuts" note under *Walkable Main.unity demo + UGUI HUD redesign* was accurate and still
+open:
+
+- `Sandbox.unity` had **no `AssemblyLineStateHolder` at all**, and all four tabs' per-scene
+  data sources were `null` (`InventoryPanel.bufferRegistryHolder`,
+  `PatentBrowserPanel.patentRegistryHolder`, `AssemblyLinePanel.lineHolder`/
+  `bufferRegistryHolder`, all three of `SaveLoadPanel`'s holders,
+  `ManagementPanel.constructionPanel`). Every tab there rendered empty, and
+  `SaveLoadPanel.Save()` would have thrown a `NullReferenceException` on the first click.
+- **Undocumented, present in BOTH scenes**: `AssemblyLinePanel.statusText` and
+  `SaveLoadPanel.statusTextMeshProUGUI` were `null` even though the `StatusText`
+  GameObjects existed in the prefab. Every status message this pass's predecessors
+  "verified" ("Claimed X", "Saved N golems") was being written to a field nobody had
+  connected -- the M9/HUD verification had read `_statusMessage` back by reflection, not
+  looked at the screen.
+- **Undocumented**: every dynamically-created row in `InventoryPanel`/`AssemblyLinePanel`/
+  `PatentBrowserPanel` used `Color.black` text on `ManagementScreen`'s 0.08-grey iron
+  panel. Effectively invisible.
+
+### Code (done)
+
+- `Economy/BufferTrendUtility.cs` (new) -- engine-free static math: least-squares slope of
+  quantity against time scaled to per-minute, a three-valued `StockTrend` with a deadband,
+  signed rate formatting, ASCII trend glyphs, and the canonical item-type display order.
+  Least squares rather than a first-to-last delta **because buffer quantities are integers
+  that step at tick boundaries** -- an endpoint delta over a short window quantizes hard
+  (`TryComputeRatePerMinute_IsALeastSquaresFit_NotAnEndpointDelta` pins the difference).
+  Glyphs are `^`/`v`/`-`, not Unicode triangles: TMP renders a missing-glyph box for
+  anything outside its default atlas, which would put a literal box next to every number.
+- `Economy/BufferRateTracker.cs` (new) -- plain-C# rolling sample history per
+  (bufferId, itemType) over an 8s window. Pruned **strictly** by age with no "keep the last
+  two anyway" floor: retaining a point from outside the window anchors the fit to a stale
+  quantity, which `Sample_StaleWindowDoesNotAnchorTheRate_AfterATrendReverses` guards.
+- `Economy/BufferThroughputMonitor.cs` (new) -- the Holder-pattern `MonoBehaviour` that owns
+  the tracker and feeds it `Time.time` every 0.25s. Lives on the **same GameObject as
+  `StorageBufferRegistryHolder`** and resolves it via `GetComponent` when unset, so (a) it
+  needs zero cross-object scene wiring in either scene and (b) it keeps sampling while the
+  HUD is closed or on another tab -- a rate that only starts accumulating when you open the
+  panel is useless. `Tracker` is built lazily, not in `Awake()`, for the same reason
+  `AssemblyLineStateHolder` uses a field initializer.
+- **Nothing was added to the simulation.** `StorageBuffer`/`StorageBufferRegistry` are
+  untouched; the rate is derived entirely presentation-side from sampled quantities.
+- `UI/InventoryPanel.cs` -- rebuilt rows: item icon, name, relative-magnitude bar, quantity,
+  and a signed rate with a trend glyph. Grouped under a brass per-buffer header plate with
+  buffers sorted (a `Dictionary` iteration order is not contractual, and a list that
+  reorders itself between frames is unscannable) and item types in production order
+  (Scrap -> Brass -> Aether). Bars are normalized against the **largest stock on screen**,
+  not a capacity -- a `StorageBuffer` has no capacity concept in the simulation, so there is
+  no "full" to draw a percentage against and inventing one would be a lie. Rows with no
+  rate history print `--`, not `0/min`: "no reading yet" and "genuinely flat" are different
+  claims. Real empty/unwired states instead of a silently blank panel.
+- `UI/AssemblyLinePanel.cs` -- wallet-balance header row, cost in its own fixed-width
+  right-aligned column, affordability carried by brightness *and* by disabling the Claim
+  button (`TryClaimSlot` already refused; the click was only a way to produce an error
+  message the player could have been shown up front).
+- `UI/PatentBrowserPanel.cs` -- readable row colour, row plates, and a real empty state
+  naming the action that fills the list.
+- `UI/SaveLoadPanel.cs` -- `HasDataSources` guard so an unwired scene reports itself in the
+  status line instead of throwing.
+- `UI/ManagementPanel.cs` -- `ApplyTabHighlight()`. Every tab button shares the same brass
+  sprite, so before this **nothing on screen indicated which tab was open**. Plate and
+  caption invert together (dark ink on lit brass, parchment on dim).
+
+### Layout landmine, hit exactly as predicted
+
+Adding sprited item icons re-triggered the "a flat-color `Image` reports no useful size to
+the layout system" bug. Fixed once, in `InventoryPanel.CreateRowRoot`, with the recorded
+recipe: `childControlWidth`/`childControlHeight` **true**, `childForceExpandWidth` **false**,
+and an explicit `LayoutElement.flexibleHeight = 0` (`-1`/unset still lets the parent
+`VerticalLayoutGroup` hand out leftover space). Icons additionally need explicit
+`flexibleWidth = 0` **and** `preferredWidth`/`preferredHeight`, or a 32x32 sprite reports its
+native size and drags the row's height with it. Verified at 54 rows: rows held 28px.
+
+### Manual Editor setup (done, via live Unity MCP + `execute_code`)
+
+1. `ManagerHolders.prefab` -- added `BufferThroughputMonitor` to `Buffers`. Shared by both
+   scenes, so one edit covers both with no per-scene wiring.
+2. `WorkbenchCanvas.prefab` (shared, headless `LoadPrefabContents`/`SaveAsPrefabAsset`) --
+   wired the two never-connected `StatusText` refs; baked the three item-icon sprites and a
+   header plate onto `InventoryPanel` (asset refs, safe in a prefab); added an **opaque
+   `Backdrop`** under `ManagementScreen` (the iron-panel sprite is largely translucent, so
+   the screen read as a faint overlay on the world -- unusable for a data screen); sized the
+   tab buttons (they kept a native 100x100 rect and spilled into the first rows of content)
+   and moved `TabBar`/`TabContent` down clear of the always-on `AlertsStrip`, which is a
+   sibling that draws over this screen; sized and re-skinned `SaveLoadTab`'s buttons.
+3. `Sandbox.unity` -- created `AssemblyLine` (`AssemblyLineStateHolder`) +
+   `AssemblyLineDemoBootstrap` (same roster assets `Main.unity` uses), then wired all four
+   tabs' data sources and `ManagementPanel.constructionPanel`, each followed by
+   `PrefabUtility.RecordPrefabInstancePropertyModifications` + `EditorUtility.SetDirty`.
+   **Confirmed the overrides survived** a full save -> Play-mode entry -> exit -> disk
+   reload, which is the exact failure mode recorded under the HUD redesign notes.
+
+### Proving the rate readout is correct (measurement, not "looks right")
+
+- Unit tests assert the **exact** slope on hand-computed series (2 items/s over 4s => exactly
+  120/min; -1/s => exactly -60/min; a flat series => exactly 0).
+- Live in Play mode on `Main.unity`, against an independent endpoint measurement taken over
+  15.2s of real simulation: Scrap ground truth **401.4/min** vs. displayed **+400/min**;
+  Brass ground truth **200.7/min** vs. displayed **+200/min** (0.2% and 0.5% error). A
+  genuinely static buffer (`TriggerBrassBuffer`, quantity 0) read exactly `0/min`/Steady, not
+  noise. Draining a buffer flipped it to teal `v -1750/min` within the window and it
+  recovered to `+400/min` once the drain aged out.
+
+### Testing
+
+- New `Tests/EditMode/Economy/BufferTrendUtilityTests.cs` (13) and
+  `BufferRateTrackerTests.cs` (9).
+- Extended `Tests/PlayMode/UI/InventoryPanelTests.cs` (empty states, icon slot, quantity,
+  `--` vs. a signed rate), `AssemblyLinePanelTests.cs` (wallet row, affordability gating),
+  `PatentBrowserPanelTests.cs` (empty state), `ManagementPanelTests.cs` (exactly one tab
+  highlighted, caption inverts).
+- **Gotcha**: a PlayMode test that seeds `BufferRateTracker` with a synthetic series must
+  disable `BufferThroughputMonitor` first. The test-runner clock is already many seconds in,
+  so one real `Time.time` sample ages every synthetic point straight out of the window and
+  the readout correctly reports "no reading" -- which looked like a bug and was not.
+- Full regression: **410/410 pass (324 EditMode + 86 PlayMode), zero failures**, up from
+  381; console clean.
+- Verified in Play mode with screenshots in **both** scenes, every tab, including empty
+  states, plus a 54-row scroll test. In `Sandbox.unity` the Assembly Line's Claim button was
+  driven for real: wallet 40 -> 38 Scrap with "Claimed ClockworkScavenger." on the status
+  line -- an economy loop that could not run in that scene at all before this pass.
+
+### Deliberate scope cuts (still open)
+
+1. There is still **no capacity concept** for a `StorageBuffer`, so the magnitude bars are
+   relative-to-largest-on-screen only. A real fill gauge needs a simulation change.
+2. The rate is **net stock change**, not gross throughput -- a buffer being filled at 60/min
+   and drained at 60/min reads Steady, which is true but hides the traffic. Separating
+   in/out needs deposit/withdraw instrumentation the registry does not expose.
+3. `Sandbox.unity`'s `BuildMenuPanel` and `GolemConstructionPanel` are still `OnGUI`, and
+   OnGUI always draws over UGUI -- the Build menu overlaps the bottom-left of the open
+   Management screen. That belongs to the Sandbox/build-system pass.
+4. `GolemConstructionPanel.workbenchController`/`.managementPanel` and
+   `WorkbenchController.constructionPanel` are `null` in `Sandbox.unity`, so the
+   construction panel does not force-close the other two HUD screens there. Noted, not
+   fixed -- it is the player-interaction pass's half of the mutual-exclusion wiring.
+5. The Assembly Line tab still has no `ScrollRect` (3 slots + a wallet row fit), and the
+   Patents tab's rows carry no chassis/appendage summary, only the blueprint id.
+
+## Facing-based spatial routing, part 2: made strict, reachable, and visible
+
+Part 1 (commit `10175eb`) built the layer -- `Facing`/`FacingUtility`, `IItemEndpoint` +
+node/belt/buffer adapters, `SpatialEndpointRegistry`, `GolemEntity.Cell`/`.Facing`, and a real
+tile-to-tile `Haul`. This pass is what makes it actually matter in play.
+
+### The bug that mattered: strictness
+
+Part 1 decided the id fallback **per endpoint**: if an individual tile lookup missed, that half
+of the step silently reverted to the appendage card's authored `sourceId`/`destinationId`. So
+rotating a player's golem away from its node did *not* stall it -- it quietly kept working by
+id. Facing was therefore advisory for exactly the two actions players use most
+(`ExtractFromNode`, `LoadIntoBuffer`), which defeats the whole feature.
+
+The branch now keys on **whether the golem is spatially placed at all**:
+
+- `spatialEndpointHolder` wired (only ever via `ConfigureSpatial`) -> **strict spatial**. Tiles
+  are the only routing truth; an empty source tile stalls `NoSourceAtTile`, an empty/full target
+  tile stalls `NoTargetAtTile`, and the authored ids are never consulted.
+- `spatialEndpointHolder` null -> **pure id routing, byte for byte as before**.
+
+`Main.unity`'s seven demo golems and the whole pre-existing suite never call `ConfigureSpatial`,
+so they all take the second branch. Verified in Play mode: all 7 report
+`spatiallyConfigured=False` and their buffers still fill.
+
+Once strict, `ExtractFromNode`/`LoadIntoBuffer`/`Haul` all collapse to one `BeginSpatialTransfer`
+-- which is not a shortcut but the actual claim of the design doc: once position decides routing,
+the difference between those verbs is which endpoints the player parked the golem between.
+`CanGive()` before `TryTake()` is preserved there (finite nodes are irreversible).
+
+**`Refine` is deliberately exempt** and stays id-routed even for a placed golem: a recipe is
+defined by item *types*, `IItemEndpoint` is type-agnostic, so a spatial take could grab the wrong
+input off a mixed buffer and silently transmute it. Documented at the method.
+
+### Reachability
+
+- `GolemConstructionStation.ConfigureSpatial(...)` -- constructed golems are now placed on a real
+  cell facing the way the station faces. `GolemSpawnPlacement.ResolveSpawnCell` (pure, tested)
+  emits onto the tile in front, walking clockwise past blocked neighbours; the golem is spawned
+  *at* that position rather than moved after, because `GolemVisual` caches its bob anchor in
+  `Awake`.
+- `PlaceableBuilding.Facing`, set by build mode at placement.
+- **`R` rotates**; **`G` carries/drops a golem**. Both were forced by playing the loop:
+  - rotation first keyed off the combined `[E]` interaction pick, so standing next to a golem
+    beside its node refused with "no golem in range" (the node won the pick). It now selects the
+    nearest *golem*.
+  - repositioning was first "summon the nearest golem to my tile", which reliably moved the
+    *wrong* golem -- the already-placed one near the destination beat the new one at the station.
+    Replaced with explicit pick-up-at-arm's-length / put-down. A held golem does not tick
+    (`GolemEntity.IsHeld`): its `Cell` is stale by definition while in the player's hands.
+
+### Player-placeable belts
+
+`BeltNetwork` (+ Holder) wraps `BeltSegment` strictly from the **outside** -- `Belts/` gains no
+reference to `World/` or `Golems/`. One placed belt = one cell = one registered `BeltSegment` +
+one `BeltSegmentEndpoint` on that cell. `BeltPlacementRules.ShouldLink` (pure, tested) auto-chains
+a belt into the one it points at, refusing head-on pairs (which would be a two-cycle) and
+parallel neighbours. `Relink()` recomputes the whole network on every place/remove rather than
+patching, which makes a **stale `Next` structurally impossible** -- the real removal hazard, since
+`ConveyorSystem.Tick` would otherwise keep handing items to an unregistered segment that never
+advances, i.e. items vanishing into an invisible lane.
+
+`SandboxBootstrap`'s two hardcoded `ScrapBeltA`/`ScrapBeltB` segments are **removed**; they were
+scaffolding for id routing and nothing else referenced them. The two now-dangling
+`BeltSegmentVisual` objects in `Sandbox.unity` were deleted with them.
+
+`PlaceableDepot` was added because the chain had nowhere to *end*: `DepotPrefab` was pure
+decoration, so a routed run terminated in nothing. It publishes its `StorageBuffer` (the same
+`FactoryStockpile` the station spends from) on its cell, which is what closes the economy.
+
+Note a real consequence of the model: a belt can only hand off to another **belt**. Getting items
+off a belt and into a buffer requires a golem at the end doing `LoadIntoBuffer` -- belts are
+passive transport, golems are the actuators.
+
+### Visibility (the actual fix for "unreadable")
+
+- `GolemFacingIndicator`: a chevron beside each golem, plus a **teal** diamond on its source tile
+  and a **near-white amber** diamond on its target tile. Amber/teal rather than green/red because
+  dark red measured 5.4x quieter than amber on this warm floor; the two ends separate by
+  *temperature*. The target marker is pushed near-white because what it usually lands on is a
+  belt, whose own art is brass -- mid-amber on brass was invisible in-scene.
+- `RoutingFocusController` lights **only the golem nearest the player** (`RoutingFocus`, pure,
+  tested) -- every golem drawing its pair turns a factory into a field of glowing diamonds.
+- Belts render their cargo via `BeltSegmentVisual.ConfigureCargoOnly` (lane/arrows/rollers left
+  null): items on a belt have no GameObject by design, so without it a working belt looks empty.
+- Art: **free methods only**. New `routing` section in `generate_placeholder_art.py` produces
+  `belt_tile.png` and `facing_arrow.png`; the tile highlights reuse the existing
+  `build_ghost_tile.png`. The facing arrow is a small **solid triangle** -- the first version was
+  an outlined chevron at 9x12 and, because it is rotated to an isometric angle (never a multiple
+  of 90), point-filtered sampling tore its thin strokes into a jagged W that read as a lightning
+  bolt.
+
+### Verification
+
+- **590/590 pass (489 EditMode + 101 PlayMode), zero failures**, up from 537. Console clean.
+- Full loop driven in Play mode through the real gameplay APIs: harvest by hand -> lay a belt run
+  -> place a depot -> construct golems -> carry/aim them -> program -> items flow node -> golem ->
+  belt -> belt -> golem -> depot. The player spent down to **3 Scrap** building it all and the
+  chain earned back to **326** unattended.
+- Rotating the extractor away from its node stalls it `NoSourceAtTile at '(-1, -4)'` -- naming the
+  empty tile -- and starves the downstream golem to `BeltEmpty at 'Belt(0,-2)#2'`, even though its
+  card's `sourceId="ScrapNode"` is still a live registered node. That is strictness proven in the
+  running game, not just in a unit test.
+
+### Still open
+
+1. **HUD overlap**: the world-space stall badges (`GolemStallIndicator`) and the interaction
+   caption both anchor near the golem and overlap when two golems are close. Reduced (the run
+   state was dropped from the caption, since the badge already says it) but not solved; it needs
+   a real world-space HUD layout pass.
+2. `SaveData` now persists `cellX/cellY/facing`, but `SaveLoadService` still only restores
+   programs onto **existing** `GolemEntity` instances -- it has no concept of respawning a
+   player-built golem, so player golems still do not survive a fresh session.
+3. Belts are **one cell per segment** with no capacity/merge/splitter model; two belts pointing
+   into the same cell simply cannot both link (one cell holds one endpoint).
+4. The Workbench was not used to program the golems in the verification run -- its drag-and-drop
+   commits to the same `GolemProgram` the run set directly, so the routing proof holds, but the
+   full UI path was exercised only in earlier passes.
+5. `BeltSegmentVisual`'s jam/flow signalling (arrow scroll, queued-cargo tint) is switched off on
+   placed belts, since a one-cell lane has no room for it. A backed-up player belt therefore looks
+   the same as a flowing one apart from the items sitting still.

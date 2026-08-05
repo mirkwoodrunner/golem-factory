@@ -53,7 +53,10 @@ namespace GolemFactory.Save
                     logicCoreName = program.logicCore != null ? program.logicCore.name : null,
                     appendageNames = program.appendages.Select(a => a.name).ToList(),
                     currentStepIndex = program.CurrentStepIndex,
-                    state = (int)program.State
+                    state = (int)program.State,
+                    cellX = golem.Cell.x,
+                    cellY = golem.Cell.y,
+                    facing = (int)golem.Facing
                 });
             }
 
@@ -130,6 +133,13 @@ namespace GolemFactory.Save
                 program.logicCore = catalog.FindLogicCore(entry.logicCoreName);
                 program.CurrentStepIndex = entry.currentStepIndex;
                 program.State = (GolemState)entry.state;
+
+                // SetPlacement, not ConfigureSpatial: the registry reference is scene wiring
+                // the live GolemEntity already holds (or deliberately does not), and a save
+                // file has no business granting one. This only restores where it stood.
+                golem.SetPlacement(
+                    new UnityEngine.Vector2Int(entry.cellX, entry.cellY),
+                    (GolemFactory.World.Facing)entry.facing);
             }
         }
     }

@@ -29,6 +29,11 @@ namespace GolemFactory.Golems
         [SerializeField] private int segmentLengthTicks = 3;
         [SerializeField] private int thresholdQuantity = 10;
 
+        // See BeltDemoBootstrap.demoChassis / HardcodedDemoProgram.ApplyTo -- these golems
+        // used to be left with no chassis fitted at all. Needs at least 2 slots (golem E's
+        // ExtractThenLoad).
+        [SerializeField] private PunchCards.ChassisDefinition demoChassis;
+
         private void Start()
         {
             conveyorHolder.System.Register(new BeltSegment("TriggerScrapBelt", segmentLengthTicks));
@@ -38,22 +43,17 @@ namespace GolemFactory.Golems
             // ConfigureEconomy but not Configure's conveyorHolder.
             golemE.Configure(golemE.GolemId, conveyorHolder);
             golemE.ConfigureEconomy(nodeRegistry, bufferRegistry);
-            GolemProgram programE = HardcodedDemoProgram.ExtractThenLoad("ScrapNode", "TriggerScrapBelt", "TriggerScrapBuffer");
-            golemE.Program.logicCore = programE.logicCore;
-            golemE.Program.appendages.AddRange(programE.appendages);
+            HardcodedDemoProgram.ApplyTo(golemE, demoChassis,
+                HardcodedDemoProgram.ExtractThenLoad("ScrapNode", "TriggerScrapBelt", "TriggerScrapBuffer"));
 
             golemF.ConfigureEconomy(nodeRegistry, bufferRegistry);
-            GolemProgram programF = HardcodedDemoProgram.ThresholdRefine(
+            HardcodedDemoProgram.ApplyTo(golemF, demoChassis, HardcodedDemoProgram.ThresholdRefine(
                 "TriggerScrapBuffer", "TriggerBrassBuffer", ItemType.Scrap, ItemType.Brass,
-                durationTicks: 3, thresholdQuantity: thresholdQuantity);
-            golemF.Program.logicCore = programF.logicCore;
-            golemF.Program.appendages.AddRange(programF.appendages);
+                durationTicks: 3, thresholdQuantity: thresholdQuantity));
 
             golemG.ConfigureEconomy(nodeRegistry, bufferRegistry);
-            GolemProgram programG = HardcodedDemoProgram.SignalShip(
-                golemF.GolemId, "TriggerBrassBuffer", "ShippedBuffer", ItemType.Brass);
-            golemG.Program.logicCore = programG.logicCore;
-            golemG.Program.appendages.AddRange(programG.appendages);
+            HardcodedDemoProgram.ApplyTo(golemG, demoChassis, HardcodedDemoProgram.SignalShip(
+                golemF.GolemId, "TriggerBrassBuffer", "ShippedBuffer", ItemType.Brass));
 
             // Note: conveyorHolder.System is already registered as an ITickable by
             // BeltDemoBootstrap -- registering it again here would double-tick every

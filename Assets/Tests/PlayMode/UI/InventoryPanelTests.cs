@@ -2,6 +2,7 @@ using System.Collections;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using TMPro;
 using GolemFactory.Economy;
 using GolemFactory.UI;
 
@@ -67,7 +68,7 @@ namespace GolemFactory.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator Refresh_NoBufferRegistryHolder_IsNoOp()
+        public IEnumerator Refresh_NoBufferRegistryHolder_ExplainsItselfInsteadOfRenderingNothing()
         {
             _root = new GameObject("Root");
             var content = new GameObject("Content", typeof(RectTransform)).GetComponent<RectTransform>();
@@ -78,7 +79,83 @@ namespace GolemFactory.Tests.PlayMode
 
             panel.Refresh();
 
-            Assert.AreEqual(0, content.childCount);
+            // An unwired tab used to render as a silently blank panel, which is
+            // indistinguishable from "you own nothing yet". It now says which it is.
+            Assert.AreEqual(1, content.childCount);
+            TextMeshProUGUI message = content.GetChild(0).GetComponentInChildren<TextMeshProUGUI>();
+            StringAssert.Contains("unavailable", message.text);
+        }
+
+        [UnityTest]
+        public IEnumerator Refresh_NoBuffersRegisteredYet_ShowsAnEmptyStateRow()
+        {
+            (InventoryPanel panel, StorageBufferRegistryHolder _, RectTransform content) = Build();
+            yield return null;
+
+            panel.Refresh();
+
+            Assert.AreEqual(1, content.childCount);
+            TextMeshProUGUI message = content.GetChild(0).GetComponentInChildren<TextMeshProUGUI>();
+            StringAssert.Contains("No stockpiles", message.text);
+        }
+
+        [UnityTest]
+        public IEnumerator Refresh_ItemRow_ShowsQuantityAndAnIconSlot()
+        {
+            (InventoryPanel panel, StorageBufferRegistryHolder holder, RectTransform content) = Build();
+            holder.Registry.Deposit("FactoryStockpile", ItemType.Scrap, 17);
+            yield return null;
+
+            panel.Refresh();
+
+            // Row 0 is the buffer header; row 1 is the Scrap entry.
+            Transform itemRow = content.GetChild(1);
+            Assert.IsNotNull(itemRow.Find("Icon"), "Every item row keeps an icon slot so text stays left-aligned");
+            Assert.IsNotNull(itemRow.Find("Bar"));
+            Assert.AreEqual("17", itemRow.Find("Quantity").GetComponent<TextMeshProUGUI>().text);
+        }
+
+        [UnityTest]
+        public IEnumerator Refresh_WithNoRateHistoryYet_ShowsNoReadingRatherThanClaimingZero()
+        {
+            (InventoryPanel panel, StorageBufferRegistryHolder holder, RectTransform content) = Build();
+            holder.Registry.Deposit("FactoryStockpile", ItemType.Scrap, 3);
+            yield return null;
+
+            panel.Refresh();
+
+            // "no reading yet" and "genuinely flat" are different claims; the panel must
+            // not print 0/min for the first.
+            Assert.AreEqual("--", content.GetChild(1).Find("Rate").GetComponent<TextMeshProUGUI>().text);
+        }
+
+        [UnityTest]
+        public IEnumerator Refresh_WithSampledHistory_ShowsASignedRateAndTrendGlyph()
+        {
+            (InventoryPanel panel, StorageBufferRegistryHolder holder, RectTransform content) = Build();
+            var monitor = _root.AddComponent<BufferThroughputMonitor>();
+            monitor.Configure(holder);
+            panel.ConfigureThroughput(monitor);
+            // Disabled so its Update() can't interleave a real Time.time sample with the
+            // synthetic series below -- the test-runner clock is already many seconds in,
+            // which would age every synthetic sample straight out of the 8s window.
+            monitor.enabled = false;
+
+            holder.Registry.Deposit("FactoryStockpile", ItemType.Scrap, 5);
+            yield return null;
+
+            // Drive the tracker directly with a known series: +1 Scrap/second is exactly
+            // +60/min.
+            for (int step = 0; step <= 5; step++)
+            {
+                monitor.Tracker.Sample(step, "FactoryStockpile", ItemType.Scrap, step);
+            }
+
+            panel.Refresh();
+
+            string rateText = content.GetChild(1).Find("Rate").GetComponent<TextMeshProUGUI>().text;
+            StringAssert.Contains("+60/min", rateText);
+            StringAssert.Contains(BufferTrendUtility.TrendGlyph(StockTrend.Rising), rateText);
         }
     }
 }

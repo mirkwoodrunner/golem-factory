@@ -20,6 +20,7 @@ namespace GolemFactory.UI
 
         private bool _isStalled;
         private Canvas _canvas;
+        private TextMeshProUGUI _label;
 
         private void Awake() => BuildIndicator();
 
@@ -28,6 +29,13 @@ namespace GolemFactory.UI
             EventBus.GolemStalled += OnGolemStalled;
             EventBus.GolemResumed += OnGolemResumed;
             _isStalled = golem != null && golem.Program.State == GolemState.Stalled;
+            // Re-derive the caption from live state, not just from the event: enabling after a
+            // golem has already stalled is exactly the case the event stream cannot cover
+            // (the same gap that left the alerts strip reading "All golems running.").
+            if (_isStalled)
+            {
+                RefreshCaption(golem.StallReason, golem.StallResourceId);
+            }
             RefreshVisibility();
         }
 
@@ -52,6 +60,7 @@ namespace GolemFactory.UI
             if (golem != null && e.GolemId == golem.GolemId)
             {
                 _isStalled = true;
+                RefreshCaption(e.Reason, e.ResourceId);
                 RefreshVisibility();
             }
         }
@@ -63,6 +72,21 @@ namespace GolemFactory.UI
                 _isStalled = false;
                 RefreshVisibility();
             }
+        }
+
+        // The badge names the blocking resource, not just the golem. Under a strictly-linear
+        // execution model the golem will retry the same step forever, so "GolemD is stalled"
+        // isn't actionable on its own -- the resource that's blocking it is the only thing the
+        // player can actually go and fix.
+        private void RefreshCaption(StallReason reason, string resourceId)
+        {
+            if (_label == null)
+            {
+                return;
+            }
+
+            string who = golem != null ? golem.GolemId : "Golem";
+            _label.text = "[!] " + who + "\n" + StallDiagnostics.DescribeShort(reason, resourceId);
         }
 
         private void RefreshVisibility()
@@ -84,7 +108,9 @@ namespace GolemFactory.UI
             _canvas.sortingOrder = 5000;
 
             RectTransform canvasRect = canvasGO.GetComponent<RectTransform>();
-            canvasRect.sizeDelta = new Vector2(220f, 60f);
+            // Two lines now (id + reason), so the badge is taller and wider than the
+            // single-line version it replaces.
+            canvasRect.sizeDelta = new Vector2(300f, 84f);
 
             var badgeGO = new GameObject("Badge", typeof(RectTransform), typeof(Image));
             badgeGO.transform.SetParent(canvasGO.transform, false);
@@ -110,16 +136,16 @@ namespace GolemFactory.UI
             labelRect.offsetMin = Vector2.zero;
             labelRect.offsetMax = Vector2.zero;
 
-            TextMeshProUGUI label = labelGO.GetComponent<TextMeshProUGUI>();
+            _label = labelGO.GetComponent<TextMeshProUGUI>();
             // TMP's default SDF font atlas (LiberationSans SDF) doesn't include U+26A0
             // (legacy Text's dynamic OS font fallback rendered it fine, TMP's static atlas
             // renders it as a missing-glyph box) -- plain ASCII avoids the atlas gap.
-            label.text = golem != null ? $"[!] {golem.GolemId}" : "[!]";
-            label.alignment = TextAlignmentOptions.Center;
-            label.color = Color.white;
-            label.fontSize = 28;
-            label.fontStyle = FontStyles.Bold;
-            label.raycastTarget = false;
+            _label.text = golem != null ? $"[!] {golem.GolemId}" : "[!]";
+            _label.alignment = TextAlignmentOptions.Center;
+            _label.color = Color.white;
+            _label.fontSize = 22;
+            _label.fontStyle = FontStyles.Bold;
+            _label.raycastTarget = false;
 
             canvasGO.SetActive(false);
         }

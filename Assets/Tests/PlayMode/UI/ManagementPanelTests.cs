@@ -86,5 +86,49 @@ namespace GolemFactory.Tests.PlayMode
             Assert.IsFalse(saveLoadTab.activeSelf);
             Assert.AreEqual(ManagementTab.Patents, panel.ActiveTab);
         }
+
+        [UnityTest]
+        public IEnumerator SelectTab_HighlightsExactlyOneTabButton()
+        {
+            _root = new GameObject("Root");
+            var panel = _root.AddComponent<ManagementPanel>();
+            UnityEngine.UI.Button inventory = MakeButton("InventoryButton");
+            UnityEngine.UI.Button assemblyLine = MakeButton("AssemblyLineButton");
+            UnityEngine.UI.Button patents = MakeButton("PatentsButton");
+            UnityEngine.UI.Button saveLoad = MakeButton("SaveLoadButton");
+            panel.Configure(
+                null, null, null, null, null, null, null, null, null, null,
+                inventory, assemblyLine, patents, saveLoad, null, null, null);
+            yield return null;
+
+            panel.SelectTab(ManagementTab.AssemblyLine);
+
+            // Every tab button shares the same brass sprite, so the ONLY thing telling the
+            // player which screen they are on is this tint. Assert it is unique rather than
+            // just "the selected one changed".
+            Color selected = assemblyLine.GetComponent<UnityEngine.UI.Image>().color;
+            Assert.AreNotEqual(selected, inventory.GetComponent<UnityEngine.UI.Image>().color);
+            Assert.AreEqual(inventory.GetComponent<UnityEngine.UI.Image>().color, patents.GetComponent<UnityEngine.UI.Image>().color);
+            Assert.AreEqual(inventory.GetComponent<UnityEngine.UI.Image>().color, saveLoad.GetComponent<UnityEngine.UI.Image>().color);
+
+            // The caption inverts with its plate, otherwise one of the two states is
+            // unreadable.
+            Assert.AreNotEqual(
+                assemblyLine.GetComponentInChildren<TMPro.TextMeshProUGUI>().color,
+                inventory.GetComponentInChildren<TMPro.TextMeshProUGUI>().color);
+
+            panel.SelectTab(ManagementTab.SaveLoad);
+            Assert.AreEqual(selected, saveLoad.GetComponent<UnityEngine.UI.Image>().color);
+            Assert.AreNotEqual(selected, assemblyLine.GetComponent<UnityEngine.UI.Image>().color);
+        }
+
+        private UnityEngine.UI.Button MakeButton(string name)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button));
+            go.transform.SetParent(_root.transform);
+            var label = new GameObject("Label", typeof(RectTransform), typeof(TMPro.TextMeshProUGUI));
+            label.transform.SetParent(go.transform);
+            return go.GetComponent<UnityEngine.UI.Button>();
+        }
     }
 }

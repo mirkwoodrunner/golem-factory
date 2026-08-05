@@ -56,6 +56,18 @@ namespace GolemFactory.Golems
             }
         }
 
+        /// <summary>
+        /// Re-reads the golem's transform as the anchor the bob/shake animate around.
+        /// </summary>
+        /// <remarks>
+        /// Required by anything that MOVES a golem after Awake (the player summoning one onto
+        /// their tile). Update rewrites transform.position from _basePosition every frame, so
+        /// without this the golem would visibly snap straight back to where it was built while
+        /// its simulation cell said otherwise -- sprite and routing disagreeing, which is
+        /// exactly the illegibility this pass exists to remove.
+        /// </remarks>
+        public void SyncBasePosition() => _basePosition = transform.position;
+
         // Called by GolemConstructionStation right after TryAssignChassis, since chassis
         // assignment happens after Instantiate -- this component's Awake already ran with
         // no chassis yet. Falls back to the Inspector-set sprite field when the chassis has

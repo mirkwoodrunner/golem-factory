@@ -142,6 +142,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1700130046389400511}
   - component: {fileID: 4483225577306697376}
+  - component: {fileID: 4841733094304074260}
   m_Layer: 0
   m_Name: Buffers
   m_TagString: Untagged
@@ -176,6 +177,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8e56f6f7987846843b2d39100746fc41, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Economy.StorageBufferRegistryHolder
+--- !u!114 &4841733094304074260
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2259634877452264755}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc450a2c38020a142bf46d988b24af3e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Economy.BufferThroughputMonitor
+  bufferRegistryHolder: {fileID: 4483225577306697376}
+  windowSeconds: 8
+  sampleIntervalSeconds: 0.25
 --- !u!1 &3420089761272609204
 GameObject:
   m_ObjectHideFlags: 0

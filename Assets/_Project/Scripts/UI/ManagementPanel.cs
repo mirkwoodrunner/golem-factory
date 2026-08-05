@@ -42,6 +42,18 @@ namespace GolemFactory.UI
         [SerializeField] private WorkbenchController workbenchController;
         [SerializeField] private GolemConstructionPanel constructionPanel;
 
+        // Selected/unselected tab tints. Brightness is the channel that separates them:
+        // the tab sprites are all the same brass button, so the only thing distinguishing
+        // "you are here" is how lit it is. Without this every tab looked identical and the
+        // screen gave no indication of which one was open.
+        private static readonly Color SelectedTabColor = new Color(0.86f, 0.66f, 0.34f, 1f);
+        private static readonly Color UnselectedTabColor = new Color(0.34f, 0.30f, 0.26f, 1f);
+        // The caption has to invert with the plate: dark ink on the lit brass tab, warm
+        // parchment on the dim ones. A single fixed caption colour is unreadable against
+        // one state or the other.
+        private static readonly Color SelectedTabLabelColor = new Color(0.10f, 0.08f, 0.06f, 1f);
+        private static readonly Color UnselectedTabLabelColor = new Color(0.82f, 0.78f, 0.71f, 1f);
+
         private InputAction _toggleMenuAction;
 
         public bool IsOpen { get; private set; }
@@ -162,7 +174,40 @@ namespace GolemFactory.UI
             assemblyLineTab?.SetActive(tab == ManagementTab.AssemblyLine);
             patentsTab?.SetActive(tab == ManagementTab.Patents);
             saveLoadTab?.SetActive(tab == ManagementTab.SaveLoad);
+            ApplyTabHighlight();
             RefreshActiveTab();
+        }
+
+        /// <summary>
+        /// Tints exactly one tab button as selected. Public so a test can assert the
+        /// highlight without reaching through <see cref="SelectTab"/>'s side effects.
+        /// </summary>
+        public void ApplyTabHighlight()
+        {
+            Tint(inventoryTabButton, ActiveTab == ManagementTab.Inventory);
+            Tint(assemblyLineTabButton, ActiveTab == ManagementTab.AssemblyLine);
+            Tint(patentsTabButton, ActiveTab == ManagementTab.Patents);
+            Tint(saveLoadTabButton, ActiveTab == ManagementTab.SaveLoad);
+        }
+
+        private static void Tint(Button button, bool selected)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            Image image = button.GetComponent<Image>();
+            if (image != null)
+            {
+                image.color = selected ? SelectedTabColor : UnselectedTabColor;
+            }
+
+            TMPro.TextMeshProUGUI label = button.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+            if (label != null)
+            {
+                label.color = selected ? SelectedTabLabelColor : UnselectedTabLabelColor;
+            }
         }
 
         private void RefreshActiveTab()

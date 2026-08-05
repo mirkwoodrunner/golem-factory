@@ -62,8 +62,31 @@ namespace GolemFactory.UI
             }
         }
 
+        // A scene that forgot to wire the three holders used to NullReferenceException on
+        // the first click (Sandbox.unity shipped in exactly that state). Reporting the gap
+        // in the panel's own status line is both safe and diagnosable.
+        private bool HasDataSources
+        {
+            get
+            {
+                if (bufferRegistryHolder != null && focusMeterHolder != null && patentRegistryHolder != null)
+                {
+                    return true;
+                }
+
+                _statusMessage = "Save/Load unavailable: this scene's data sources are not wired.";
+                Refresh();
+                return false;
+            }
+        }
+
         private void Save()
         {
+            if (!HasDataSources)
+            {
+                return;
+            }
+
             GolemEntity[] golems = Object.FindObjectsByType<GolemEntity>(FindObjectsSortMode.None);
             SaveData data = SaveLoadService.CaptureState(
                 bufferRegistryHolder.Registry, focusMeterHolder.Meter, patentRegistryHolder.Registry, golems);
@@ -74,6 +97,11 @@ namespace GolemFactory.UI
 
         private void Load()
         {
+            if (!HasDataSources)
+            {
+                return;
+            }
+
             SaveData data = SaveFileIO.ReadFromFile(SaveFileIO.DefaultPath);
             if (data == null)
             {

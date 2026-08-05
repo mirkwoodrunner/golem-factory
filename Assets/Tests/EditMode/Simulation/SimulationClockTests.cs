@@ -107,6 +107,52 @@ namespace GolemFactory.Tests.EditMode
             CollectionAssert.AreEqual(new[] { "first", "second" }, order);
         }
 
+        // TickFraction exists purely so presentation code (Belts/BeltSegmentVisual) can
+        // interpolate between the integer Progress values the simulation emits. It must never
+        // leave [0, 1) or the interpolated item would overshoot the tick it is heading for.
+        [Test]
+        public void TickFraction_IsZeroBeforeAnyTimeAccumulates()
+        {
+            var clock = new SimulationClock { TicksPerSecond = 10f };
+            clock.Play();
+
+            Assert.AreEqual(0f, clock.TickFraction, 0.0001f);
+        }
+
+        [Test]
+        public void TickFraction_ReportsProgressThroughTheCurrentTick()
+        {
+            var clock = new SimulationClock { TicksPerSecond = 10f };
+            clock.Play();
+
+            clock.Advance(0.04f);
+
+            Assert.AreEqual(0.4f, clock.TickFraction, 0.0001f);
+        }
+
+        [Test]
+        public void TickFraction_WrapsBackTowardZeroOnceATickFires()
+        {
+            var clock = new SimulationClock { TicksPerSecond = 10f };
+            clock.Play();
+
+            clock.Advance(0.13f);
+
+            Assert.AreEqual(1L, clock.CurrentTick);
+            Assert.AreEqual(0.3f, clock.TickFraction, 0.0001f);
+            Assert.Less(clock.TickFraction, 1f);
+        }
+
+        [Test]
+        public void TickFraction_IsZeroWhenTicksPerSecondIsZero()
+        {
+            var clock = new SimulationClock { TicksPerSecond = 0f };
+            clock.Play();
+            clock.Advance(1f);
+
+            Assert.AreEqual(0f, clock.TickFraction, 0.0001f);
+        }
+
         private sealed class OrderRecordingTickable : ITickable
         {
             private readonly string _name;

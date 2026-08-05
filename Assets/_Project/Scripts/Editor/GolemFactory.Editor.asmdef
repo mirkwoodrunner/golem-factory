@@ -3,7 +3,9 @@
     "rootNamespace": "GolemFactory.Editor",
     "references": [
         "GolemFactory.Runtime",
-        "GolemFactory.Simulation"
+        "GolemFactory.Simulation",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Universal.2D.Runtime"
     ],
     "includePlatforms": [
         "Editor"

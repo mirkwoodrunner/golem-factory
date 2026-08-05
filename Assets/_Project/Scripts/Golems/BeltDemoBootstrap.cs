@@ -28,6 +28,12 @@ namespace GolemFactory.Golems
         [SerializeField] private int segmentLengthTicks = 5;
         [SerializeField] private int aetherNodeQuantity = 20;
 
+        // The chassis every golem in this demo is fitted with. Previously unassigned
+        // entirely, which left these golems holding steps with no chassis -- see
+        // HardcodedDemoProgram.ApplyTo. Must have at least as many slots as the longest
+        // program below (2, for golem D's ExtractThenLoad).
+        [SerializeField] private PunchCards.ChassisDefinition demoChassis;
+
         private void Start()
         {
             nodeRegistry.Registry.Register(new ResourceNode("ScrapNode", ItemType.Scrap));
@@ -41,25 +47,17 @@ namespace GolemFactory.Golems
             conveyorHolder.System.Register(new BeltSegment("AetherBelt", segmentLengthTicks));
 
             golemA.ConfigureEconomy(nodeRegistry, bufferRegistry);
-            GolemProgram programA = HardcodedDemoProgram.ExtractOntoBelt("ScrapBeltA");
-            golemA.Program.logicCore = programA.logicCore;
-            golemA.Program.appendages.AddRange(programA.appendages);
+            HardcodedDemoProgram.ApplyTo(golemA, demoChassis, HardcodedDemoProgram.ExtractOntoBelt("ScrapBeltA"));
 
             golemB.ConfigureEconomy(nodeRegistry, bufferRegistry);
-            GolemProgram programB = HardcodedDemoProgram.LoadFromBelt("ScrapBeltB", "ScrapBuffer");
-            golemB.Program.logicCore = programB.logicCore;
-            golemB.Program.appendages.AddRange(programB.appendages);
+            HardcodedDemoProgram.ApplyTo(golemB, demoChassis, HardcodedDemoProgram.LoadFromBelt("ScrapBeltB", "ScrapBuffer"));
 
             golemC.ConfigureEconomy(nodeRegistry, bufferRegistry);
-            GolemProgram programC = HardcodedDemoProgram.Refine(
-                "ScrapBuffer", "BrassBuffer", ItemType.Scrap, ItemType.Brass, durationTicks: 3);
-            golemC.Program.logicCore = programC.logicCore;
-            golemC.Program.appendages.AddRange(programC.appendages);
+            HardcodedDemoProgram.ApplyTo(golemC, demoChassis, HardcodedDemoProgram.Refine(
+                "ScrapBuffer", "BrassBuffer", ItemType.Scrap, ItemType.Brass, durationTicks: 3));
 
             golemD.ConfigureEconomy(nodeRegistry, bufferRegistry);
-            GolemProgram programD = HardcodedDemoProgram.ExtractThenLoad("AetherNode", "AetherBelt", "AetherBuffer");
-            golemD.Program.logicCore = programD.logicCore;
-            golemD.Program.appendages.AddRange(programD.appendages);
+            HardcodedDemoProgram.ApplyTo(golemD, demoChassis, HardcodedDemoProgram.ExtractThenLoad("AetherNode", "AetherBelt", "AetherBuffer"));
 
             clockRunner.Register(conveyorHolder.System);
             clockRunner.Register(golemA);
