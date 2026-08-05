@@ -25,6 +25,13 @@ just the code.
 - `docs/unity-mcp-setup-guide.md` — how to wire up the MCP-for-Unity bridge so an AI client can
   drive the Editor directly (scene/GameObject edits, Play mode, screenshots). Relevant background,
   not a task to redo.
+- `docs/progression-design.md` — the gameplay progression: a 4+ tier tech tree, steam-power
+  scarcity, chassis unlock sequencing, and the Clock Tower endgame. Passed a three-round review
+  against a 9-point rubric. **Entirely unimplemented** — it is a spec, not a record of what exists.
+- `docs/open-items.md` — **read this before planning any work.** Consolidated backlog: what the
+  progression pass still needs (in dependency order), the decisions still awaiting a human call,
+  known functional gaps, and deliberate scope cuts. Distinguishes what is built from what is only
+  designed, which the two docs above do not.
 
 There is no `.cursor/rules`, `.github/copilot-instructions.md`, or CI config in this repo.
 
@@ -177,13 +184,16 @@ an actual playable front door, reusing `Main.unity`'s systems unchanged via two 
   `GolemEntity` — there is no concept of respawning a player-built golem, so golems the player
   constructed do not survive a fresh session.
 
-### UI: two eras coexist
+### UI: all UGUI now (the OnGUI era is over)
 
-- Most panels (`GolemProgrammingPanel` [disabled, superseded], `InventoryPanel`, `AlertsPanel`,
-  `GolemConstructionPanel`, `BuildMenuPanel`) are **immediate-mode `OnGUI`** — no Canvas/scene
-  wiring required, but note **OnGUI always draws over Canvas UGUI regardless of sort order** (hit
-  as a real bug during M8 — `InventoryPanel` had to be capped to a fixed-size box in a free
-  corner to avoid visually colliding with the Workbench).
+- Every live panel is **UGUI**. `GolemProgrammingPanel` is the only remaining `OnGUI` script and
+  it has been **disabled since M8**, superseded by the Workbench. `InventoryPanel`/`AlertsPanel`
+  converted during the HUD consolidation; `BuildMenuPanel`/`GolemStallIndicator` during the
+  graphics pass; `GolemConstructionPanel` during the production-quality pass.
+- The reason this mattered is worth keeping: **OnGUI always draws over Canvas UGUI regardless of
+  sort order**, so an IMGUI panel could never be made to respect the other screens. That was the
+  root cause of the Sandbox HUD overlap, not a cosmetic leftover — mutual exclusion is now
+  centralised in `UI/HudScreenPolicy.cs` and covered by a PlayMode exclusivity suite.
 - The Workbench (`UI/WorkbenchController.cs` + `WorkbenchCard.cs`/`WorkbenchDropZone.cs`) is the
   one real **UGUI** system (Canvas + EventSystem + `InputSystemUIInputModule` — the project's
   Input System setting is New-Input-System-only, so the legacy `StandaloneInputModule` won't
