@@ -7,6 +7,11 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 Tests stand at **590/590** (489 EditMode + 101 PlayMode), console clean, both scenes verified in
 Play mode.
 
+> **Where the line is.** Everything through facing-based spatial routing is **built, tested and
+> reviewed**. Everything in the progression design is **spec only — not one line of it is
+> implemented.** Steam power has been approved for inclusion but not written. The next pass starts
+> at §1.1; nothing in §1 has been begun.
+
 ---
 
 ## 1. The progression design is written but entirely unimplemented
@@ -75,13 +80,23 @@ steam adjacency still fits.
 
 ---
 
-## 2. Decisions needing a human call before implementation
+## 2. Decisions
 
-- **Steam power is invented.** It appears in neither `game-design.md` nor `digital-design.md`. The
-  critic ruled it justified and correctly shaped — local, rigid, deterministic, and `NoSteam` is the
-  existing stall rule with a new precondition rather than a departure from it — but it ends up ~41%
-  of the factory. If a power layer isn't wanted, that call is far cheaper now than after it is woven
-  through every phase.
+### Decided
+
+- **Steam power is in.** Confirmed by the project owner. It appears in neither `game-design.md` nor
+  `digital-design.md` — it was invented during the progression design because "nothing in the
+  economy is contended" has no fix that doesn't add a running cost. The critic ruled it justified
+  and correctly shaped: local (orthogonal pipe adjacency), rigid (no falloff, no pathfinding, no
+  adaptation), deterministic, and `NoSteam` is the existing stall rule with a new precondition
+  rather than a departure from it. It ends up ~41% of the factory, so **the boiler fuel ratio is the
+  single most important number to playtest first** — mis-tuned, this becomes a coal simulator.
+  Note the design rejected a flat per-boiler burn: it makes 7 of every 8 golems free, so the
+  marginal cost a player actually optimises against is zero. Consumption must scale per powered
+  golem.
+
+### Still open
+
 - **The opening changes substantially.** Sandbox currently starts with three infinite nodes and a
   construction station. The design starts the player with a hand-crank bench and ~10–15 minutes of
   manual labour before their first automated line. That is the requested arc, but it is a real shift,
