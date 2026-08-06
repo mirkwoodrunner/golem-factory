@@ -38,7 +38,7 @@ namespace GolemFactory.Tests.EditMode
             return go.AddComponent<T>();
         }
 
-        private GolemEntity CreateGolem(AppendageActionDefinition step)
+        private GolemEntity CreateGolem(params AppendageActionDefinition[] steps)
         {
             var go = new GameObject("SpatialGolem");
             _spawned.Add(go);
@@ -47,8 +47,19 @@ namespace GolemFactory.Tests.EditMode
             var logicCore = ScriptableObject.CreateInstance<LogicCoreDefinition>();
             logicCore.triggerType = TriggerType.AlwaysOn;
             entity.Program.logicCore = logicCore;
-            entity.Program.appendages.Add(step);
+            foreach (AppendageActionDefinition step in steps)
+            {
+                entity.Program.appendages.Add(step);
+            }
             return entity;
+        }
+
+        private static void Run(GolemEntity golem, int ticks)
+        {
+            for (int tick = 0; tick < ticks; tick++)
+            {
+                golem.Tick(tick);
+            }
         }
 
         private static AppendageActionDefinition Step(
@@ -158,6 +169,10 @@ namespace GolemFactory.Tests.EditMode
         [Test]
         public void SpatiallyPlaced_WithAnEmptyTargetTile_StallsInsteadOfFallingBackToTheAuthoredId()
         {
+            // Extract no longer looks at the tile in front at all -- it fills the golem's own
+            // input stock (progression-design section 2) -- so the "nothing in front" stall now
+            // belongs to the Push that follows it. Same claim, moved one step down the program:
+            // the authored destinationId must never rescue a golem aimed at empty ground.
             ConveyorSystemHolder conveyor = AddHolder<ConveyorSystemHolder>();
             ResourceNodeRegistryHolder nodes = AddHolder<ResourceNodeRegistryHolder>();
             SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
@@ -169,16 +184,21 @@ namespace GolemFactory.Tests.EditMode
             var tileNode = new ResourceNode("TileNode", ItemType.Scrap, 5);
             endpoints.Registry.Register(new Vector2Int(9, 8), new ResourceNodeEndpoint(tileNode));
 
-            GolemEntity golem = CreateGolem(Step(AppendageActionType.ExtractFromNode, "ScrapNode", "ScrapBeltA"));
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.ExtractFromNode, "ScrapNode", "ScrapBeltA"),
+                Step(AppendageActionType.Push));
             golem.Configure("Spatial", conveyor);
             golem.ConfigureEconomy(nodes, null);
             golem.ConfigureSpatial(endpoints, new Vector2Int(9, 9), Facing.North);
 
-            golem.Tick(0);
+            Run(golem, 12);
 
             Assert.AreEqual(StallReason.NoTargetAtTile, golem.StallReason);
             Assert.AreEqual(new Vector2Int(9, 10).ToString(), golem.StallResourceId);
-            Assert.AreEqual(5, tileNode.RemainingQuantity, "a blocked extract consumed from the tile node");
+            Assert.AreEqual(4, tileNode.RemainingQuantity,
+                "the extract should have run once, into the golem's own stock");
+            Assert.AreEqual(1, golem.Inventory.GetInput(ItemType.Scrap),
+                "the extracted unit vanished rather than staying in the golem's hold");
             Assert.AreEqual(0, belt.Items.Count, "the authored destinationId was used anyway");
         }
 
@@ -186,7 +206,8 @@ namespace GolemFactory.Tests.EditMode
         public void SpatiallyPlaced_LoadIntoBuffer_WithAnEmptySourceTile_StallsInsteadOfUsingTheAuthoredBelt()
         {
             // The other half of the pair players actually use. The id-named belt is loaded and
-            // ready; strictness means it must be ignored.
+            // ready; strictness means it must be ignored. LoadIntoBuffer is Push on the spatial
+            // path now, so the source-side claim is carried by the Haul in front of it.
             ConveyorSystemHolder conveyor = AddHolder<ConveyorSystemHolder>();
             StorageBufferRegistryHolder buffers = AddHolder<StorageBufferRegistryHolder>();
             SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
@@ -199,12 +220,14 @@ namespace GolemFactory.Tests.EditMode
             var tileBuffer = new StorageBuffer("TileBuffer");
             endpoints.Registry.Register(new Vector2Int(0, 1), new StorageBufferEndpoint(tileBuffer));
 
-            GolemEntity golem = CreateGolem(Step(AppendageActionType.LoadIntoBuffer, "ScrapBeltA", "ScrapBuffer"));
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Haul),
+                Step(AppendageActionType.LoadIntoBuffer, "ScrapBeltA", "ScrapBuffer"));
             golem.Configure("Spatial", conveyor);
             golem.ConfigureEconomy(null, buffers);
             golem.ConfigureSpatial(endpoints, Vector2Int.zero, Facing.North);
 
-            golem.Tick(0);
+            Run(golem, 6);
 
             Assert.AreEqual(StallReason.NoSourceAtTile, golem.StallReason);
             Assert.AreEqual(new Vector2Int(0, -1).ToString(), golem.StallResourceId);
@@ -236,16 +259,19 @@ namespace GolemFactory.Tests.EditMode
             golem.ConfigureEconomy(nodes, null);
             golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
 
-            golem.Tick(0);
+            // Extract(1) is 6 + qty = 7 ticks now, and the step's side effect lands at Begin.
+            Run(golem, 7);
             Assert.AreEqual(StallReason.None, golem.StallReason, "precondition: it should work while aimed correctly");
-            Assert.AreEqual(1, tileBelt.Items.Count);
+            Assert.AreEqual(8, tileNode.RemainingQuantity, "precondition: it should have drawn from the tile node");
+            Assert.AreEqual(1, golem.Inventory.GetInput(ItemType.Scrap));
 
             golem.SetPlacement(new Vector2Int(0, 1), Facing.West);
-            golem.Tick(1);
+            golem.Tick(7);
 
             Assert.AreEqual(GolemState.Stalled, golem.Program.State,
                 "rotating away from the node did not stall it -- facing is decorative again");
             Assert.AreEqual(StallReason.NoSourceAtTile, golem.StallReason);
+            Assert.AreEqual(8, tileNode.RemainingQuantity, "it kept draining the tile it no longer faces");
             Assert.AreEqual(0, idBelt.Items.Count, "it quietly kept working via the authored ids");
         }
 
@@ -298,12 +324,15 @@ namespace GolemFactory.Tests.EditMode
             endpoints.Registry.Register(new Vector2Int(0, 0), new ResourceNodeEndpoint(tileNode));
             endpoints.Registry.Register(new Vector2Int(0, 2), new BeltSegmentEndpoint(tileBelt));
 
-            GolemEntity golem = CreateGolem(Step(AppendageActionType.ExtractFromNode, "ScrapNode", "ScrapBeltA"));
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.ExtractFromNode, "ScrapNode", "ScrapBeltA"),
+                Step(AppendageActionType.Push));
             golem.Configure("Spatial", conveyor);
             golem.ConfigureEconomy(nodes, null);
             golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
 
-            golem.Tick(0);
+            // Extract(1) 7 ticks, then Push 2 + 1 unit = 3. The Push's side effect is at Begin.
+            Run(golem, 8);
 
             Assert.AreEqual(1, tileBelt.Items.Count, "the item did not go to the tile in front");
             Assert.AreEqual(ItemType.Brass, tileBelt.Items[0].ItemType,
@@ -322,16 +351,18 @@ namespace GolemFactory.Tests.EditMode
             endpoints.Registry.Register(new Vector2Int(0, 0), new ResourceNodeEndpoint(node));
             endpoints.Registry.Register(new Vector2Int(0, 2), new BeltSegmentEndpoint(belt));
 
-            GolemEntity golem = CreateGolem(Step(AppendageActionType.Haul));
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Haul), Step(AppendageActionType.Push));
             golem.Configure("Hauler", null);
             golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
 
-            golem.Tick(0);
+            // Haul(1) is max(2, qty) = 2 ticks, Push is 2 + 1 unit = 3.
+            Run(golem, 5);
             Assert.AreEqual(1, belt.Items.Count, "facing the node should have moved an item");
             Assert.AreEqual(4, node.RemainingQuantity);
 
             golem.SetPlacement(new Vector2Int(0, 1), Facing.East);
-            golem.Tick(1);
+            golem.Tick(5);
 
             Assert.AreEqual(GolemState.Stalled, golem.Program.State);
             Assert.AreEqual(StallReason.NoSourceAtTile, golem.StallReason);
@@ -348,14 +379,24 @@ namespace GolemFactory.Tests.EditMode
             var node = new ResourceNode("TileNode", ItemType.Scrap, 5);
             endpoints.Registry.Register(new Vector2Int(0, 0), new ResourceNodeEndpoint(node));
 
-            GolemEntity golem = CreateGolem(Step(AppendageActionType.Haul));
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Haul), Step(AppendageActionType.Push));
             golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
 
-            golem.Tick(0);
+            Run(golem, 5);
 
             Assert.AreEqual(StallReason.NoTargetAtTile, golem.StallReason);
             Assert.AreEqual(new Vector2Int(0, 2).ToString(), golem.StallResourceId);
-            Assert.AreEqual(5, node.RemainingQuantity, "a blocked haul consumed from the node");
+
+            // Changed by design. It used to assert the node was untouched, because Haul was one
+            // atomic tile-to-tile transfer that had to check the destination before consuming.
+            // Under the machine model the golem is the destination: the unit is legitimately
+            // drawn into its own hold, and the Push in front of empty ground is what stalls.
+            // Nothing is lost -- the unit sits in stock waiting for a target to appear -- which
+            // is the invariant this now pins.
+            Assert.AreEqual(4, node.RemainingQuantity);
+            Assert.AreEqual(1, golem.Inventory.GetInput(ItemType.Scrap),
+                "the hauled unit went nowhere -- it should be held, not destroyed");
         }
 
         // --- Haul, made real ---------------------------------------------------------------
@@ -370,20 +411,23 @@ namespace GolemFactory.Tests.EditMode
             endpoints.Registry.Register(new Vector2Int(5, 5), new StorageBufferEndpoint(source));
             endpoints.Registry.Register(new Vector2Int(7, 5), new StorageBufferEndpoint(destination));
 
-            GolemEntity golem = CreateGolem(Step(AppendageActionType.Haul));
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Haul), Step(AppendageActionType.Push));
             golem.ConfigureSpatial(endpoints, new Vector2Int(6, 5), Facing.East);
 
-            golem.Tick(0);
+            Run(golem, 5);
 
             Assert.AreEqual(2, source.GetQuantity(ItemType.Scrap));
             Assert.AreEqual(1, destination.GetQuantity(ItemType.Scrap));
         }
 
         [Test]
-        public void Haul_OntoAFullBelt_DoesNotConsumeFromTheFiniteSource()
+        public void Push_OntoAFullBelt_KeepsTheGoodsInStockRatherThanDroppingThem()
         {
-            // The same check-before-consume ordering hazard that caused the original item-loss
-            // bug, on the spatial path: CanGive must be consulted before TryTake.
+            // The same never-destroy-a-unit claim the old Haul-onto-a-full-belt test made, at
+            // the place the hazard actually lives now. Haul into the golem always succeeds
+            // here (its hold is empty), so what has to hold is that a Push with nowhere to go
+            // leaves the hold intact instead of emptying it into the void.
             SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
             var node = new ResourceNode("TileNode", ItemType.Scrap, 5);
             var belt = new BeltSegment("TileBelt", 1);
@@ -391,21 +435,23 @@ namespace GolemFactory.Tests.EditMode
             {
             }
             Assert.IsFalse(belt.CanEnqueue(), "precondition: belt must be full");
+            int beltItemsBefore = belt.Items.Count;
 
             endpoints.Registry.Register(new Vector2Int(0, 0), new ResourceNodeEndpoint(node));
             endpoints.Registry.Register(new Vector2Int(0, 2), new BeltSegmentEndpoint(belt));
 
-            GolemEntity golem = CreateGolem(Step(AppendageActionType.Haul));
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Haul), Step(AppendageActionType.Push));
             golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
 
-            for (int tick = 0; tick < 10; tick++)
-            {
-                golem.Tick(tick);
-            }
+            Run(golem, 20);
 
-            Assert.AreEqual(5, node.RemainingQuantity,
-                "a blocked haul consumed from the node and dropped the item");
             Assert.AreEqual(StallReason.BeltFull, golem.StallReason);
+            Assert.AreEqual(beltItemsBefore, belt.Items.Count, "the full belt somehow took more");
+            Assert.AreEqual(4, node.RemainingQuantity,
+                "the golem should have hauled exactly once and then jammed on the Push");
+            Assert.AreEqual(1, golem.Inventory.GetInput(ItemType.Scrap),
+                "a blocked push destroyed what the golem was carrying");
         }
 
         [Test]
@@ -417,23 +463,22 @@ namespace GolemFactory.Tests.EditMode
             endpoints.Registry.Register(new Vector2Int(0, 0), new ResourceNodeEndpoint(node));
             endpoints.Registry.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(destination));
 
-            GolemEntity golem = CreateGolem(Step(AppendageActionType.Haul));
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Haul), Step(AppendageActionType.Push));
             golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
 
-            for (int tick = 0; tick < 6; tick++)
-            {
-                golem.Tick(tick);
-            }
+            // One cycle is Haul 2 + Push 3 = 5 ticks, so two units take 10.
+            Run(golem, 20);
 
             Assert.AreEqual(2, destination.GetQuantity(ItemType.Scrap), "the node yielded more than it held");
             Assert.AreEqual(StallReason.NodeEmpty, golem.StallReason);
             Assert.AreEqual("TileNode", golem.StallResourceId);
         }
 
-        // --- Spatial LoadIntoBuffer --------------------------------------------------------
+        // --- Spatial LoadIntoBuffer, which now means Push ----------------------------------
 
         [Test]
-        public void LoadIntoBuffer_PullsFromTheBeltOnTheTileBehind()
+        public void LoadIntoBuffer_PushesTheGolemsStockOntoTheTileInFront()
         {
             SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
             var belt = new BeltSegment("TileBelt", 1);
@@ -443,10 +488,14 @@ namespace GolemFactory.Tests.EditMode
             endpoints.Registry.Register(new Vector2Int(0, 1), new BeltSegmentEndpoint(belt));
             endpoints.Registry.Register(new Vector2Int(0, -1), new StorageBufferEndpoint(buffer));
 
-            GolemEntity golem = CreateGolem(Step(AppendageActionType.LoadIntoBuffer, "ScrapBeltA", "ScrapBuffer"));
+            // LoadIntoScrapBuffer.asset is still in the Sandbox roster, so the enum value has to
+            // keep working -- as Push (progression-design section 2, Consequence 2).
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Haul),
+                Step(AppendageActionType.LoadIntoBuffer, "ScrapBeltA", "ScrapBuffer"));
             golem.ConfigureSpatial(endpoints, Vector2Int.zero, Facing.South);
 
-            golem.Tick(0);
+            Run(golem, 5);
 
             Assert.AreEqual(1, buffer.GetQuantity(ItemType.Brass));
             Assert.AreEqual(0, belt.Items.Count);

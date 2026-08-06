@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75512732ede031b44988744dd6384fdb, type: 3}
   m_Name: AetherHauler
   m_EditorClassIdentifier: 
-  maxAppendageSlots: 3
+  maxAppendageSlots: 4
   tier: 2
   scrapCost: 40
   brassCost: 20

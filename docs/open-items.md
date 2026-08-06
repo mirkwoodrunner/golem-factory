@@ -4,13 +4,21 @@ Consolidated backlog as of the progression-design pass, on branch
 `polish/production-quality-pass` (17 commits, **not merged to `main`**).
 
 Everything here is known and deliberate — none of it is a surprise waiting to be discovered.
-Tests stand at **590/590** (489 EditMode + 101 PlayMode), console clean, both scenes verified in
-Play mode.
 
 > **Where the line is.** Everything through facing-based spatial routing is **built, tested and
-> reviewed**. Everything in the progression design is **spec only — not one line of it is
-> implemented.** Steam power has been approved for inclusion but not written. The next pass starts
-> at §1.1; nothing in §1 has been begun.
+> reviewed**. §1.1 (the machine model) is **built and compile-verified but not yet test-run** —
+> see the caveat below. Everything else in the progression design is **spec only**. Steam power
+> has been approved for inclusion but not written. The next pass starts at §1.2.
+
+> **Test-run caveat.** The suite last *ran* green at **590/590** (489 EditMode + 101 PlayMode), at
+> the facing-based spatial routing pass. §1.1 added ~50 tests and changed the assertions of ~10
+> existing ones. All five assemblies compile at 0 errors via `dotnet build <project>.csproj`
+> (which is a usable compile gate outside the Editor, and worth knowing about — it is not
+> mentioned in `CLAUDE.md`'s command list because it type-checks only, and the generated `.csproj`
+> files are git-ignored with explicit `<Compile Include>` lists, so a new `.cs` file has to be
+> added to one by hand or Unity has to regenerate them). **Nothing in §1.1 has been executed.**
+> Every derived tick count in the new tests was hand-traced, not observed. A Test Runner pass
+> (EditMode + PlayMode) is the first thing the next session should do.
 
 ---
 
@@ -23,16 +31,45 @@ only after ~25 recipes had been authored and wired.
 
 Implementation order matters, because each item depends on the one above it.
 
-### 1.1 Golem internal typed stock + typed/quantified `Haul`/`Push`
-Golems gain internal input and output stock. `Haul` pulls one typed quantity in, `Assemble`
-consumes from inside, `Push` empties output. This makes `maxAppendageSlots` the *physical* tier
-gate (`N` inputs = `N + 2` slots), and lets `BeginRefine`'s spatial-routing exemption stay exactly
-as written rather than needing the typed-endpoint work the code currently, deliberately refuses.
+### 1.1 Golem internal typed stock + typed/quantified `Haul`/`Push` — **BUILT** (untested)
 
-> **Critical, do not miss.** A program containing **no `Assemble` step must treat input stock as
-> output stock.** Without that special case, every logistics golem in the game hauls into input,
-> pushes an empty output, fills to the per-type cap and stalls forever — roughly 25 of ~96 golems
-> at stage 4, including the Scavenger, the game's first and most common unit.
+`GolemInventory` gives each golem an input and an output `Stock`, capped at 12 **per item type**.
+`Haul(itemType, qty)` and `ExtractFromNode(qty)` fill input from the tile behind; the new `Push`
+verb empties stock onto the tile in front, mixed types and all; the new `Assemble` verb consumes
+from input stock and deposits to output stock **without ever touching a tile**, which is what lets
+`BeginRefine`'s spatial-routing exemption stay exactly as written. Durations are now derived
+(`max(2,qty)` / `6+qty` / `2+unitCount`) instead of authored. `IItemEndpoint` grew
+`PeekAvailableType()` and `TryTake(itemType, qty, out taken)`. Chassis slots are now **2/3/4/5/6**.
+
+The pure-logistics rule is implemented as an explicit named special case
+(`GolemProgram.HasAssembleStep` → `GolemEntity.PushStock`), **not** by merging the two stocks —
+keeping them separate is what lets one `Push` empty everything at once and makes byproducts free.
+
+**How it coexists with what was already there.** The model rides the *existing* `IsSpatiallyPlaced`
+fork rather than introducing a second axis. A spatially placed golem gets the machine model; an
+id-routed one (`Main.unity`'s seven hand-wired demos, and every pre-existing test) keeps the old
+semantics byte for byte, **including `step.durationTicks` as its duration**. `Sandbox.unity`'s
+golems are spatially placed via `GolemConstructionStation.ConfigureSpatial`, so the new model is
+live in the playable scene. `LoadIntoBuffer` on a spatially placed golem now *means* `Push` — the
+enum member was kept rather than renumbered, because its index is serialized into
+`LoadIntoScrapBuffer.asset`. `Refine` is unchanged on both paths and is superseded by `Assemble`
+in §1.3; nothing new should be built on it.
+
+Per-slot `Haul` batch size lives on `GolemProgram.appendageQuantities`, **not** on
+`AppendageActionDefinition` — that is a shared asset, so a player's batch size written there would
+retune every golem holding the card at once. Saved, along with each golem's held stock.
+
+Three new stall reasons, all appended (the enum is serialized by index): `InputFull`, `OutputFull`
+and `MissingItem`. `MissingItem` exists because a typed `Haul` against a buffer *full of the wrong
+good* previously reported "no input in ScrapBuffer", pointing the player at a buffer they can see
+is full; it splits on `PeekAvailableType()` so genuine emptiness still names the endpoint.
+
+Follow-ups this opened, in dependency order — see §3:
+
+- The Workbench has 5 appendage sockets against the Zeppelin's new 6.
+- There is no UI for setting `Haul` quantity, so the decision §2 hands the player is data-only.
+- There are no `Push`/`Assemble` roster cards authored yet (deliberate — §1.3 replaces `Assemble`'s
+  data model with a `RecipeDefinition`, so authoring one now would be throwaway work).
 
 ### 1.2 Per-*item-type* buffer capacity
 `StorageBuffer.Deposit` always succeeds and `CanGive()` is unconditionally `true`, so there is no
@@ -116,6 +153,27 @@ steam adjacency still fits.
 
 ## 3. Known gaps carried forward
 
+### Opened by the §1.1 machine-model pass
+
+- **The Workbench has 5 appendage sockets; the Zeppelin now has 6.** `WorkbenchCanvas.prefab`
+  contains `AppendageSlot0`–`AppendageSlot4` and `WorkbenchController._draftAppendages` is sized
+  from `appendageSlotZones.Length`, so a 6-slot chassis behaves like a 5-slot one in the UI — and
+  worse, `WorkbenchController.cs:319` silently **truncates** a longer program on load, so opening a
+  6-appendage golem and hitting Engage Gears would commit a 5-appendage one. Not reachable today
+  (no 4-input recipe exists until §1.5), but slot count is *the* tier gate in this design, so this
+  is a **prerequisite for §1.5**, and it is prefab work that cannot be done from a text diff.
+- **No UI for `Haul` batch quantity.** It is stored per slot and saved, but nothing exposes it, so
+  §2's "Consequence 4" — the Workbench's one remaining real decision — is not yet playable. This is
+  what the §2 open decision below is actually waiting on.
+- **A one-card `ExtractFromNode` program now jams.** Extract fills internal stock instead of
+  reaching the tile in front, so a spatially placed golem with no `Push` fills to 12 and stalls
+  `InputFull`. Correct by design (a Scavenger is 2 slots: Extract + Push) and the stall names the
+  blocked good, but it is a live behaviour change for anyone with a saved Sandbox factory.
+- **`Assemble`'s shortfall stall names one ingredient** because the action still carries a single
+  `inputItemType`. §1.3 widens `MissingItem` to name the specific shortfall across 1–4 inputs.
+
+### Carried forward from before
+
 - **Save/load cannot respawn player-built golems.** `SaveLoadService.RestoreState` persists each
   golem's program, cell and facing, but can only restore onto a `GolemEntity` already present in the
   scene. A factory the player constructed does not survive a session. **This is the most significant
@@ -160,9 +218,11 @@ Each of these was reviewed and judged non-blocking:
 
 ## 4. Deliberate scope cuts still standing
 
-- `Refine`/`Assemble` stays id-routed rather than spatial, on purpose: recipes are typed and
-  `IItemEndpoint` is not, so a spatial take could grab the wrong input and silently transmute it.
-  Item 1.1 removes any need to revisit this.
+- `Refine` stays id-routed rather than spatial, on purpose: recipes are typed and the *untyped*
+  `IItemEndpoint.TryTake` is not, so a spatial take could grab the wrong input and silently
+  transmute it. Item 1.1 **resolved this from the other end** rather than by making `Refine`
+  spatial: `Assemble` reads a typed dictionary the golem itself owns, so it needs no spatial take
+  at all. `IItemEndpoint` did grow a typed take — for `Haul` — but the exemption stands as written.
 - Pixel Perfect Camera installed but not enabled — conflicts with the free-zoom `CameraRigController`.
 - No player collision; the player walks through buildings and golems.
 - No refund on removing a placed building.

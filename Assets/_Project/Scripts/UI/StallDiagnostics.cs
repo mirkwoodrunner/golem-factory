@@ -39,6 +39,17 @@ namespace GolemFactory.UI
                     return string.IsNullOrEmpty(resourceId)
                         ? "nothing in front of me"
                         : "nothing in front of me at " + resourceId;
+                // The two internal-stock stalls name an ITEM TYPE rather than a belt/node/
+                // buffer id, so they get their own fallback wording -- "source" would be a
+                // lie here, since the thing that is full is the golem itself.
+                case StallReason.InputFull:
+                    return "hold full of " + ItemOrGoods(resourceId);
+                case StallReason.OutputFull:
+                    return "output full of " + ItemOrGoods(resourceId);
+                // Says the type is missing, not that a place is empty -- the endpoint may be
+                // full of something else entirely. See StallReason.MissingItem.
+                case StallReason.MissingItem:
+                    return "no " + ItemOrGoods(resourceId);
                 case StallReason.Unconfigured:
                     return "not wired up";
                 default:
@@ -69,12 +80,28 @@ namespace GolemFactory.UI
                     return string.IsNullOrEmpty(resourceId)
                         ? who + " stalled: nothing to push to in front of it"
                         : who + " stalled: nothing to push to on tile " + resourceId;
+                case StallReason.InputFull:
+                    return who + " stalled: its hold is full of " + ItemOrGoods(resourceId);
+                case StallReason.OutputFull:
+                    return who + " stalled: its output is full of " + ItemOrGoods(resourceId);
+                // "no Aether available" rather than "ScrapBuffer has no input": the endpoint
+                // may be visibly full of the wrong good, so naming it would send the player to
+                // the one place that clearly is not empty.
+                case StallReason.MissingItem:
+                    return who + " stalled: no " + ItemOrGoods(resourceId) + " available";
                 case StallReason.Unconfigured:
                     return who + " stalled: not wired up";
                 default:
                     return who + " is stalled";
             }
         }
+
+        // Fallback for the two stalls whose resourceId is an item type. Deliberately not the
+        // "source"/"its source" wording the endpoint-id stalls use -- nothing external is
+        // blocking an InputFull/OutputFull golem, so pointing the player outward would send
+        // them looking in the wrong place.
+        private static string ItemOrGoods(string itemType) =>
+            string.IsNullOrEmpty(itemType) ? "goods" : itemType;
 
         // What the strip shows overall. Naming the single blocking resource beats a bare count,
         // and the "+N more" suffix keeps a cascading factory from overflowing one line.

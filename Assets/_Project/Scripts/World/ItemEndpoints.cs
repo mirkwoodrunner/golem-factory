@@ -34,6 +34,38 @@ namespace GolemFactory.World
             return _node.TryExtract(out item);
         }
 
+        // A node holds exactly one type for its whole life, so peeking is just reading it --
+        // but a depleted node must report null, not its type, or a golem would keep committing
+        // to an Extract that can never yield anything.
+        public string PeekAvailableType() =>
+            _node != null && !_node.IsDepleted ? _node.ItemType : null;
+
+        public bool TryTake(string itemType, int quantity, out int taken)
+        {
+            taken = 0;
+            if (_node == null || string.IsNullOrEmpty(itemType) || quantity <= 0)
+            {
+                return false;
+            }
+
+            // A node cannot hand over a type it isn't made of. Checked once up front rather
+            // than per unit because ItemType never changes.
+            if (_node.ItemType != itemType)
+            {
+                return false;
+            }
+
+            // Loops TryExtract rather than decrementing RemainingQuantity directly, so finite
+            // depletion stays the node's business and a partially-drained node yields what it
+            // has instead of all-or-nothing failing.
+            while (taken < quantity && _node.TryExtract(out ItemStack _))
+            {
+                taken++;
+            }
+
+            return taken > 0;
+        }
+
         // A node is a pure source; it never accepts. CanGive is false rather than throwing so
         // a golem facing the wrong way stalls cleanly instead of crashing the tick loop.
         public bool CanGive() => false;
@@ -64,6 +96,44 @@ namespace GolemFactory.World
             }
 
             return _segment.TryRemoveHead(out item);
+        }
+
+        // Goes through TryPeekHead, NOT _segment.Items[0], so the "has actually travelled the
+        // full length" rule (BeltSegment.TryPeekHead: Progress >= Length) is honoured exactly
+        // as TryRemoveHead honours it. Reading Items[0] directly would report an item that is
+        // still in transit as available, and a Haul would then appear to stall for no visible
+        // reason one tick and succeed the next.
+        public string PeekAvailableType()
+        {
+            if (_segment == null || !_segment.TryPeekHead(out ItemStack head))
+            {
+                return null;
+            }
+
+            return head.ItemType;
+        }
+
+        public bool TryTake(string itemType, int quantity, out int taken)
+        {
+            taken = 0;
+            if (_segment == null || string.IsNullOrEmpty(itemType) || quantity <= 0)
+            {
+                return false;
+            }
+
+            // A belt is ordered, so this can only take a contiguous run of matching heads --
+            // it stops at the first head of a different type rather than reaching past it.
+            // That is the correct rigid behaviour: a mixed belt is a player-visible problem,
+            // not something a golem is allowed to reorder its way out of.
+            while (taken < quantity &&
+                   _segment.TryPeekHead(out ItemStack head) &&
+                   head.ItemType == itemType &&
+                   _segment.TryRemoveHead(out ItemStack _))
+            {
+                taken++;
+            }
+
+            return taken > 0;
         }
 
         public bool CanGive() => _segment != null && _segment.CanEnqueue();
@@ -110,6 +180,37 @@ namespace GolemFactory.World
             }
 
             item = new ItemStack { ItemType = type };
+            return true;
+        }
+
+        // Reuses ResolveTakeableType so "what would an untyped take give me" and "what does
+        // this endpoint currently offer" can never disagree.
+        public string PeekAvailableType() => _buffer != null ? ResolveTakeableType() : null;
+
+        public bool TryTake(string itemType, int quantity, out int taken)
+        {
+            taken = 0;
+            if (_buffer == null || string.IsNullOrEmpty(itemType) || quantity <= 0)
+            {
+                return false;
+            }
+
+            int held = _buffer.GetQuantity(itemType);
+            int wanted = quantity < held ? quantity : held;
+            if (wanted <= 0)
+            {
+                return false;
+            }
+
+            // One withdrawal of the clamped amount, not a loop: StorageBuffer.TryWithdraw is
+            // all-or-nothing, and clamping to what's held first is what turns that into the
+            // partial take the contract promises.
+            if (!_buffer.TryWithdraw(itemType, wanted))
+            {
+                return false;
+            }
+
+            taken = wanted;
             return true;
         }
 

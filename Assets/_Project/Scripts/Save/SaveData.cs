@@ -54,5 +54,20 @@ namespace GolemFactory.Save
         public int cellX;
         public int cellY;
         public int facing;
+
+        // Per-slot Haul batch sizes, parallel to appendageNames. Absent in a pre-machine-model
+        // save, which restores fine -- GolemProgram self-heals a short list back to the
+        // authored per-card defaults.
+        public List<int> appendageQuantities = new List<int>();
+
+        // The golem's internal input/output stock. Parallel string/int lists per stock rather
+        // than a dictionary, following BufferEntry exactly, because JsonUtility serializes
+        // neither Dictionary nor a List of KeyValuePair. Saved because a golem mid-cycle can be
+        // holding up to 12 of several types: dropping that on load would quietly delete goods
+        // the player watched it collect, and would also reset a nearly-finished batch.
+        public List<string> inputStockTypes = new List<string>();
+        public List<int> inputStockQuantities = new List<int>();
+        public List<string> outputStockTypes = new List<string>();
+        public List<int> outputStockQuantities = new List<int>();
     }
 }

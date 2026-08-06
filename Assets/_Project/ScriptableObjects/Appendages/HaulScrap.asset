@@ -16,3 +16,4 @@ MonoBehaviour:
   durationTicks: 1
   sourceId: ScrapNode
   destinationId: ScrapBuffer
+  inputItemType: Scrap

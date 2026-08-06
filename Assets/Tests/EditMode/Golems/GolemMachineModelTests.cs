@@ -1,0 +1,690 @@
+using System;
+using System.Collections.Generic;
+using NUnit.Framework;
+using UnityEngine;
+using GolemFactory.Belts;
+using GolemFactory.Economy;
+using GolemFactory.Events;
+using GolemFactory.Golems;
+using GolemFactory.PunchCards;
+using GolemFactory.World;
+
+namespace GolemFactory.Tests.EditMode
+{
+    // The machine model: docs/progression-design.md section 2. A spatially placed golem is a
+    // machine with an internal typed inventory -- Haul/ExtractFromNode fill its input stock from
+    // the tile behind, Assemble converts input to output without touching a tile at all, and
+    // Push empties stock onto the tile in front.
+    //
+    // The model rides on the EXISTING IsSpatiallyPlaced fork. An id-routed golem (Main.unity's
+    // seven hand-wired demos, and every pre-existing test) keeps the old semantics byte for
+    // byte, including step.durationTicks as its duration -- pinned at the bottom of this file.
+    public class GolemMachineModelTests
+    {
+        private readonly List<GameObject> _spawned = new List<GameObject>();
+
+        [TearDown]
+        public void TearDown()
+        {
+            foreach (GameObject go in _spawned)
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+            _spawned.Clear();
+        }
+
+        private T AddHolder<T>() where T : Component
+        {
+            var go = new GameObject(typeof(T).Name);
+            _spawned.Add(go);
+            return go.AddComponent<T>();
+        }
+
+        private static AppendageActionDefinition Step(
+            AppendageActionType type, string inputItemType = null, string outputItemType = null,
+            int durationTicks = 1)
+        {
+            var step = ScriptableObject.CreateInstance<AppendageActionDefinition>();
+            step.actionType = type;
+            step.inputItemType = inputItemType;
+            step.outputItemType = outputItemType;
+            step.durationTicks = durationTicks;
+            return step;
+        }
+
+        private GolemEntity CreateGolem(params AppendageActionDefinition[] steps)
+        {
+            var go = new GameObject("MachineGolem");
+            _spawned.Add(go);
+            GolemEntity entity = go.AddComponent<GolemEntity>();
+            entity.Configure("Machine", null);
+
+            var logicCore = ScriptableObject.CreateInstance<LogicCoreDefinition>();
+            logicCore.triggerType = TriggerType.AlwaysOn;
+            entity.Program.logicCore = logicCore;
+            foreach (AppendageActionDefinition step in steps)
+            {
+                entity.Program.appendages.Add(step);
+            }
+            return entity;
+        }
+
+        private static void Run(GolemEntity golem, int ticks)
+        {
+            for (int tick = 0; tick < ticks; tick++)
+            {
+                golem.Tick(tick);
+            }
+        }
+
+        // Ticks until the program wraps back to its first step, which is what the derived
+        // durations are actually observable as.
+        private static int TicksToFirstCompletion(GolemEntity golem, int maxTicks = 200)
+        {
+            int completions = 0;
+            Action<GolemCompletedEvent> handler = delegate { completions++; };
+            EventBus.GolemCompleted += handler;
+            try
+            {
+                for (int tick = 0; tick < maxTicks; tick++)
+                {
+                    golem.Tick(tick);
+                    if (completions > 0)
+                    {
+                        return tick + 1;
+                    }
+                }
+            }
+            finally
+            {
+                EventBus.GolemCompleted -= handler;
+            }
+
+            return -1;
+        }
+
+        // --- The pure-logistics rule ---------------------------------------------------------
+        // "A program containing no Assemble step treats its input stock as its output stock."
+        // Without it, every logistics golem in the game -- the Scavenger, every node extractor,
+        // every belt-to-buffer golem, roughly a quarter of the endgame factory -- hauls into
+        // input, pushes an empty output, fills to the per-type cap and stalls forever.
+
+        [Test]
+        public void PureLogistics_HaulThenPush_CyclesIndefinitelyWithoutStalling()
+        {
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var source = new StorageBuffer("Source");
+            source.Deposit(ItemType.Scrap, 500);
+            var destination = new StorageBuffer("Dest");
+            endpoints.Registry.Register(new Vector2Int(0, 0), new StorageBufferEndpoint(source));
+            endpoints.Registry.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(destination));
+
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Haul, ItemType.Scrap), Step(AppendageActionType.Push));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Program.SetQuantityAt(0, 4);
+
+            // Far more than the 12-per-type cap: a golem hauling into a stock nothing drains
+            // would jam within four cycles.
+            for (int tick = 0; tick < 400; tick++)
+            {
+                golem.Tick(tick);
+                Assert.AreNotEqual(GolemState.Stalled, golem.Program.State,
+                    "the pure-logistics rule is missing -- it jammed at tick " + tick +
+                    " with " + golem.StallReason);
+            }
+
+            Assert.Greater(destination.GetQuantity(ItemType.Scrap), GolemInventory.CapacityPerType,
+                "it never actually delivered past one hold's worth");
+        }
+
+        [Test]
+        public void PureLogistics_PushDrainsTheInputStock()
+        {
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var destination = new StorageBuffer("Dest");
+            endpoints.Registry.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(destination));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Push));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Inventory.AddInput(ItemType.Scrap, 3);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(3, destination.GetQuantity(ItemType.Scrap));
+            Assert.AreEqual(0, golem.Inventory.GetInput(ItemType.Scrap));
+        }
+
+        [Test]
+        public void WithAnAssembleStep_PushDrainsOutputAndLeavesInputAlone()
+        {
+            // The other half of the rule: as soon as a program has an Assemble, input stock is
+            // working material and only the product may leave.
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var destination = new StorageBuffer("Dest");
+            endpoints.Registry.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(destination));
+
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Assemble, ItemType.Scrap, ItemType.Brass, durationTicks: 1),
+                Step(AppendageActionType.Push));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Inventory.AddInput(ItemType.Scrap, 4);
+
+            Run(golem, 2);
+
+            Assert.AreEqual(1, destination.GetQuantity(ItemType.Brass));
+            Assert.AreEqual(0, destination.GetQuantity(ItemType.Scrap),
+                "Push emptied the input stock on a program that has an Assemble");
+            Assert.AreEqual(3, golem.Inventory.GetInput(ItemType.Scrap));
+        }
+
+        // --- Haul ------------------------------------------------------------------------------
+
+        [Test]
+        public void Haul_TakesTheAuthoredTypeIntoInputStock()
+        {
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var source = new StorageBuffer("Mixed");
+            source.Deposit(ItemType.Scrap, 10);
+            source.Deposit(ItemType.Brass, 10);
+            endpoints.Registry.Register(new Vector2Int(0, 0), new StorageBufferEndpoint(source));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Haul, ItemType.Brass));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Program.SetQuantityAt(0, 3);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(3, golem.Inventory.GetInput(ItemType.Brass));
+            Assert.AreEqual(0, golem.Inventory.GetInput(ItemType.Scrap), "it grabbed the wrong good");
+            Assert.AreEqual(10, source.GetQuantity(ItemType.Scrap));
+        }
+
+        [Test]
+        public void Haul_TakesWhatIsThere_WhenTheTileHoldsLessThanTheBatch()
+        {
+            // Partial takes are deliberate: stalling a golem that can still make progress would
+            // deadlock every under-supplied line in the factory.
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var source = new StorageBuffer("Source");
+            source.Deposit(ItemType.Scrap, 2);
+            endpoints.Registry.Register(new Vector2Int(0, 0), new StorageBufferEndpoint(source));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Haul, ItemType.Scrap));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Program.SetQuantityAt(0, 8);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(StallReason.None, golem.StallReason);
+            Assert.AreEqual(2, golem.Inventory.GetInput(ItemType.Scrap));
+        }
+
+        [Test]
+        public void Haul_OfATypeTheTileDoesNotHold_StallsMissingItemNamingTheType()
+        {
+            // The tile is not empty -- it is full of the wrong good. Reporting BufferEmpty here
+            // would point the player at a buffer they can see is stocked; the actionable fact
+            // is which type is absent, so they look upstream of it instead.
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var source = new StorageBuffer("Source");
+            source.Deposit(ItemType.Scrap, 10);
+            endpoints.Registry.Register(new Vector2Int(0, 0), new StorageBufferEndpoint(source));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Haul, ItemType.Aether));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(GolemState.Stalled, golem.Program.State,
+                "a typed Haul silently took the wrong good");
+            Assert.AreEqual(StallReason.MissingItem, golem.StallReason);
+            Assert.AreEqual(ItemType.Aether, golem.StallResourceId,
+                "the stall named the endpoint rather than the type that is missing");
+            Assert.AreEqual(10, source.GetQuantity(ItemType.Scrap));
+            Assert.AreEqual(0, golem.Inventory.GetInput(ItemType.Scrap));
+        }
+
+        // --- The other side of that split, pinned so nobody collapses it back ----------------
+        // A genuinely empty source is a different problem with a different fix ("wait, or
+        // rotate me"), so it must keep naming the ENDPOINT, not an item type.
+
+        [Test]
+        public void Haul_FromAGenuinelyEmptyBuffer_StillStallsBufferEmptyNamingTheEndpoint()
+        {
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            endpoints.Registry.Register(new Vector2Int(0, 0),
+                new StorageBufferEndpoint(new StorageBuffer("EmptyChest")));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Haul, ItemType.Scrap));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(StallReason.BufferEmpty, golem.StallReason);
+            Assert.AreEqual("EmptyChest", golem.StallResourceId);
+        }
+
+        [Test]
+        public void Haul_FromABeltWhoseItemHasNotArrivedYet_StallsBeltEmptyNamingTheEndpoint()
+        {
+            // An in-transit item is "not there yet", not "the wrong type" -- TryPeekHead
+            // correctly refuses it, so PeekAvailableType is null and the endpoint gets named.
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var belt = new BeltSegment("TileBelt", 3);
+            belt.TryEnqueue(new ItemStack { ItemType = ItemType.Scrap });
+            endpoints.Registry.Register(new Vector2Int(0, 0), new BeltSegmentEndpoint(belt));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Haul, ItemType.Scrap));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(StallReason.BeltEmpty, golem.StallReason);
+            Assert.AreEqual("TileBelt", golem.StallResourceId);
+        }
+
+        [Test]
+        public void Haul_FromADepletedNode_StillStallsNodeEmptyNamingTheEndpoint()
+        {
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            endpoints.Registry.Register(new Vector2Int(0, 0),
+                new ResourceNodeEndpoint(new ResourceNode("SpentNode", ItemType.Scrap, 0)));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Haul, ItemType.Scrap));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(StallReason.NodeEmpty, golem.StallReason);
+            Assert.AreEqual("SpentNode", golem.StallResourceId);
+        }
+
+        [Test]
+        public void Haul_ClampsTheTakeToTheRoomLeftInStock_RatherThanDroppingTheOverflow()
+        {
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var source = new StorageBuffer("Source");
+            source.Deposit(ItemType.Scrap, 100);
+            endpoints.Registry.Register(new Vector2Int(0, 0), new StorageBufferEndpoint(source));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Haul, ItemType.Scrap));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Program.SetQuantityAt(0, GolemInventory.CapacityPerType);
+            golem.Inventory.AddInput(ItemType.Scrap, GolemInventory.CapacityPerType - 2);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(GolemInventory.CapacityPerType, golem.Inventory.GetInput(ItemType.Scrap));
+            Assert.AreEqual(98, source.GetQuantity(ItemType.Scrap),
+                "it pulled more out of the tile than it could hold, and dropped the difference");
+        }
+
+        [Test]
+        public void Haul_WithAFullInputStock_StallsInputFullNamingTheItemType()
+        {
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var source = new StorageBuffer("Source");
+            source.Deposit(ItemType.Scrap, 100);
+            endpoints.Registry.Register(new Vector2Int(0, 0), new StorageBufferEndpoint(source));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Haul, ItemType.Scrap));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Inventory.AddInput(ItemType.Scrap, GolemInventory.CapacityPerType);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(StallReason.InputFull, golem.StallReason);
+            Assert.AreEqual(ItemType.Scrap, golem.StallResourceId,
+                "the stall must name the blocked good, not the tile behind");
+            Assert.AreEqual(100, source.GetQuantity(ItemType.Scrap));
+        }
+
+        [Test]
+        public void Haul_WithNoAuthoredType_TakesWhateverTheTileOffers()
+        {
+            // HaulScrap.asset and every ExtractFromNode card predate typed Haul and carry no
+            // inputItemType. Blank has to keep meaning "whatever is behind me".
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var source = new StorageBuffer("Source");
+            source.Deposit(ItemType.Aether, 5);
+            endpoints.Registry.Register(new Vector2Int(0, 0), new StorageBufferEndpoint(source));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Haul));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(StallReason.None, golem.StallReason);
+            Assert.AreEqual(1, golem.Inventory.GetInput(ItemType.Aether));
+        }
+
+        // --- Derived durations (progression-design section 2's cycle-time table) ---------------
+
+        [Test]
+        public void Haul_TakesMaxOfTwoAndTheBatchSize()
+        {
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var source = new StorageBuffer("Source");
+            source.Deposit(ItemType.Scrap, 500);
+            endpoints.Registry.Register(new Vector2Int(0, 0), new StorageBufferEndpoint(source));
+
+            // durationTicks is deliberately absurd -- the authored value must be ignored here.
+            GolemEntity small = CreateGolem(Step(AppendageActionType.Haul, ItemType.Scrap, durationTicks: 40));
+            small.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            small.Program.SetQuantityAt(0, 1);
+            Assert.AreEqual(2, TicksToFirstCompletion(small), "max(2, 1) should floor at 2");
+
+            GolemEntity large = CreateGolem(Step(AppendageActionType.Haul, ItemType.Scrap, durationTicks: 40));
+            large.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            large.Program.SetQuantityAt(0, 5);
+            Assert.AreEqual(5, TicksToFirstCompletion(large), "max(2, 5) should be 5");
+        }
+
+        [Test]
+        public void ExtractFromNode_TakesSixPlusTheBatchSize()
+        {
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            endpoints.Registry.Register(new Vector2Int(0, 0),
+                new ResourceNodeEndpoint(new ResourceNode("N", ItemType.Scrap, ResourceNode.Infinite)));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.ExtractFromNode, durationTicks: 40));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Program.SetQuantityAt(0, 4);
+
+            Assert.AreEqual(10, TicksToFirstCompletion(golem));
+            Assert.AreEqual(4, golem.Inventory.GetInput(ItemType.Scrap));
+        }
+
+        [Test]
+        public void Push_TakesTwoPlusTheUnitsItActuallyMoved()
+        {
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            endpoints.Registry.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(new StorageBuffer("Dest")));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Push, durationTicks: 40));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Inventory.AddInput(ItemType.Scrap, 2);
+            golem.Inventory.AddInput(ItemType.Brass, 1);
+
+            Assert.AreEqual(5, TicksToFirstCompletion(golem), "2 + 3 units");
+        }
+
+        [Test]
+        public void Push_ChargesForWhatLeft_NotForWhatItHopedToSend()
+        {
+            // A belt that only had room for one must not also bill the golem for the two units
+            // still sitting in its hold.
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var belt = new BeltSegment("TileBelt", 1);
+            endpoints.Registry.Register(new Vector2Int(0, 2), new BeltSegmentEndpoint(belt));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Push, durationTicks: 40));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Inventory.AddInput(ItemType.Scrap, 3);
+
+            Assert.AreEqual(3, TicksToFirstCompletion(golem), "2 + the 1 unit the belt took");
+        }
+
+        // --- Push ------------------------------------------------------------------------------
+
+        [Test]
+        public void Push_EmptiesEveryTypeInOneStep()
+        {
+            // Consequence 3: a smelter emitting Iron Plate *and* Slag costs one Push, not two,
+            // which is what keeps its recipe inside the chassis' slot count.
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var destination = new StorageBuffer("Dest");
+            endpoints.Registry.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(destination));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Push));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Inventory.AddInput(ItemType.Scrap, 2);
+            golem.Inventory.AddInput(ItemType.Brass, 3);
+            golem.Inventory.AddInput(ItemType.Aether, 1);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(2, destination.GetQuantity(ItemType.Scrap));
+            Assert.AreEqual(3, destination.GetQuantity(ItemType.Brass));
+            Assert.AreEqual(1, destination.GetQuantity(ItemType.Aether));
+            Assert.AreEqual(0, golem.Inventory.Input.TotalUnits);
+        }
+
+        [Test]
+        public void Push_WhenTheTargetFillsPartway_KeepsTheRemainderInStock()
+        {
+            // The no-item-loss invariant, at the far end of the golem. A unit is only removed
+            // from stock once the destination has accepted it, so there is no window in which
+            // it exists in neither place.
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var belt = new BeltSegment("TileBelt", 1);
+            endpoints.Registry.Register(new Vector2Int(0, 2), new BeltSegmentEndpoint(belt));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Push));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Inventory.AddInput(ItemType.Scrap, 3);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(1, belt.Items.Count);
+            Assert.AreEqual(2, golem.Inventory.GetInput(ItemType.Scrap),
+                "the units the belt refused were destroyed");
+            Assert.AreEqual(StallReason.None, golem.StallReason,
+                "a partial push is progress, not a stall");
+        }
+
+        [Test]
+        public void Push_WithNowhereToPushTo_StallsWithoutLosingAnything()
+        {
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Push));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Inventory.AddInput(ItemType.Scrap, 3);
+
+            Run(golem, 5);
+
+            Assert.AreEqual(StallReason.NoTargetAtTile, golem.StallReason);
+            Assert.AreEqual(3, golem.Inventory.GetInput(ItemType.Scrap));
+        }
+
+        [Test]
+        public void Push_OnAGolemThatWasNeverPlaced_StallsUnconfigured()
+        {
+            // Push is a brand-new verb with no legacy call sites, so it gets an honest failure
+            // rather than the no-op success Haul had to keep for compatibility.
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Push));
+            golem.Inventory.AddInput(ItemType.Scrap, 3);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(GolemState.Stalled, golem.Program.State);
+            Assert.AreEqual(StallReason.Unconfigured, golem.StallReason);
+            Assert.AreEqual(3, golem.Inventory.GetInput(ItemType.Scrap));
+        }
+
+        // --- Assemble ---------------------------------------------------------------------------
+
+        [Test]
+        public void Assemble_ConsumesInputAtBegin_AndDepositsOutputOnlyAtCompletion()
+        {
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Assemble, ItemType.Scrap, ItemType.Brass, durationTicks: 3));
+            golem.Inventory.AddInput(ItemType.Scrap, 2);
+
+            golem.Tick(0);
+            Assert.AreEqual(1, golem.Inventory.GetInput(ItemType.Scrap),
+                "the precursor should be committed up front");
+            Assert.AreEqual(0, golem.Inventory.GetOutput(ItemType.Brass),
+                "the product appeared before the recipe had finished running");
+
+            golem.Tick(1);
+            Assert.AreEqual(0, golem.Inventory.GetOutput(ItemType.Brass));
+
+            golem.Tick(2);
+            Assert.AreEqual(1, golem.Inventory.GetOutput(ItemType.Brass));
+        }
+
+        [Test]
+        public void Assemble_NeedsNoSpatialPlacementAndTouchesNoTile()
+        {
+            // It reads a typed dictionary the golem owns, which is the whole reason the machine
+            // model was worth adopting -- no tile take can transmute the wrong good.
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var behind = new StorageBuffer("Behind");
+            behind.Deposit(ItemType.Aether, 5);
+            var inFront = new StorageBuffer("InFront");
+            endpoints.Registry.Register(new Vector2Int(0, 0), new StorageBufferEndpoint(behind));
+            endpoints.Registry.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(inFront));
+
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Assemble, ItemType.Scrap, ItemType.Brass, durationTicks: 1));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Inventory.AddInput(ItemType.Scrap, 1);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(1, golem.Inventory.GetOutput(ItemType.Brass));
+            Assert.AreEqual(5, behind.GetQuantity(ItemType.Aether), "it took from the tile behind");
+            Assert.AreEqual(0, inFront.GetQuantity(ItemType.Brass), "it wrote to the tile in front");
+        }
+
+        [Test]
+        public void Assemble_WithoutThePrecursor_StallsMissingItemNamingTheShortfall()
+        {
+            // Three assemblers on one line waiting on three different precursors have to be
+            // distinguishable; "GolemA stalled: GolemA has no input" is not.
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Assemble, ItemType.Scrap, ItemType.Brass, durationTicks: 2));
+
+            golem.Tick(0);
+
+            Assert.AreEqual(GolemState.Stalled, golem.Program.State);
+            Assert.AreEqual(StallReason.MissingItem, golem.StallReason);
+            Assert.AreEqual(ItemType.Scrap, golem.StallResourceId);
+            Assert.AreEqual(0, golem.Inventory.GetOutput(ItemType.Brass));
+        }
+
+        [Test]
+        public void Push_WithAnEmptyHold_StallsWithoutNamingTheGolemOrAnAbsentSource()
+        {
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            endpoints.Registry.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(new StorageBuffer("Dest")));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Push));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(StallReason.MissingItem, golem.StallReason);
+            Assert.IsNull(golem.StallResourceId, "Push names no item type, so it must name none");
+        }
+
+        [Test]
+        public void Assemble_WithAFullOutputStock_StallsOutputFullWithoutEatingThePrecursor()
+        {
+            // Ordering discipline: check there is room for the product BEFORE consuming the
+            // ingredient, or a jammed output silently destroys material every tick.
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Assemble, ItemType.Scrap, ItemType.Brass, durationTicks: 1));
+            golem.Inventory.AddInput(ItemType.Scrap, 4);
+            golem.Inventory.AddOutput(ItemType.Brass, GolemInventory.CapacityPerType);
+
+            Run(golem, 5);
+
+            Assert.AreEqual(StallReason.OutputFull, golem.StallReason);
+            Assert.AreEqual(ItemType.Brass, golem.StallResourceId,
+                "progression-design section 8 requires the blocked item type to be named");
+            Assert.AreEqual(4, golem.Inventory.GetInput(ItemType.Scrap),
+                "a blocked assemble consumed the precursor anyway");
+        }
+
+        [Test]
+        public void Assemble_WithoutAnAuthoredRecipe_StallsUnconfigured()
+        {
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Assemble));
+
+            golem.Tick(0);
+
+            Assert.AreEqual(StallReason.Unconfigured, golem.StallReason);
+        }
+
+        [Test]
+        public void Assemble_UsesItsAuthoredDurationRatherThanADerivedOne()
+        {
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Assemble, ItemType.Scrap, ItemType.Brass, durationTicks: 7));
+            golem.Inventory.AddInput(ItemType.Scrap, 1);
+
+            Assert.AreEqual(7, TicksToFirstCompletion(golem));
+        }
+
+        [Test]
+        public void AFullProcessingProgram_HaulAssemblePush_RunsEndToEnd()
+        {
+            // N x Haul + 1 x Assemble + 1 x Push -- the shape every processing program in the
+            // progression design has.
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var source = new StorageBuffer("Source");
+            source.Deposit(ItemType.Scrap, 50);
+            var destination = new StorageBuffer("Dest");
+            endpoints.Registry.Register(new Vector2Int(0, 0), new StorageBufferEndpoint(source));
+            endpoints.Registry.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(destination));
+
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Haul, ItemType.Scrap),
+                Step(AppendageActionType.Assemble, ItemType.Scrap, ItemType.Brass, durationTicks: 3),
+                Step(AppendageActionType.Push));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Program.SetQuantityAt(0, 1);
+
+            for (int tick = 0; tick < 100; tick++)
+            {
+                golem.Tick(tick);
+                Assert.AreNotEqual(GolemState.Stalled, golem.Program.State,
+                    "jammed at tick " + tick + " with " + golem.StallReason);
+            }
+
+            Assert.Greater(destination.GetQuantity(ItemType.Brass), 5);
+            Assert.AreEqual(0, destination.GetQuantity(ItemType.Scrap),
+                "raw material leaked out through the Push");
+        }
+
+        // --- The id-routed half of the fork, pinned ---------------------------------------------
+        // Main.unity's seven demo golems never call ConfigureSpatial. None of the above may
+        // reach them, including the derived durations.
+
+        [Test]
+        public void IdRouted_HaulKeepsItsAuthoredDurationRatherThanADerivedOne()
+        {
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Haul, durationTicks: 5));
+            golem.Program.SetQuantityAt(0, 1);
+
+            Assert.AreEqual(5, TicksToFirstCompletion(golem),
+                "an id-routed Haul picked up the spatial max(2, qty) duration");
+        }
+
+        [Test]
+        public void IdRouted_ExtractKeepsItsAuthoredDurationAndTouchesNoInternalStock()
+        {
+            ConveyorSystemHolder conveyor = AddHolder<ConveyorSystemHolder>();
+            ResourceNodeRegistryHolder nodes = AddHolder<ResourceNodeRegistryHolder>();
+            conveyor.System.Register(new BeltSegment("ScrapBeltA", 8));
+            nodes.Registry.Register(new ResourceNode("ScrapNode", ItemType.Scrap, ResourceNode.Infinite));
+
+            var step = Step(AppendageActionType.ExtractFromNode, durationTicks: 1);
+            step.sourceId = "ScrapNode";
+            step.destinationId = "ScrapBeltA";
+
+            GolemEntity golem = CreateGolem(step);
+            golem.Configure("Demo", conveyor);
+            golem.ConfigureEconomy(nodes, null);
+
+            Assert.AreEqual(1, TicksToFirstCompletion(golem),
+                "an id-routed extract picked up the spatial 6 + qty duration");
+            Assert.AreEqual(0, golem.Inventory.Input.TotalUnits,
+                "an id-routed extract filled the internal stock instead of the belt");
+        }
+    }
+}

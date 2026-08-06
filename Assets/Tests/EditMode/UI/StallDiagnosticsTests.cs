@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using GolemFactory.Economy;
 using GolemFactory.Events;
 using GolemFactory.UI;
 
@@ -152,7 +153,8 @@ namespace GolemFactory.Tests.EditMode
             {
                 StallReason.NodeEmpty, StallReason.BeltFull, StallReason.BeltEmpty,
                 StallReason.BufferEmpty, StallReason.Unconfigured,
-                StallReason.NoSourceAtTile, StallReason.NoTargetAtTile
+                StallReason.NoSourceAtTile, StallReason.NoTargetAtTile,
+                StallReason.InputFull, StallReason.OutputFull, StallReason.MissingItem
             };
 
             foreach (StallReason reason in reasons)
@@ -224,6 +226,123 @@ namespace GolemFactory.Tests.EditMode
                 Assert.IsFalse(text.Contains("  "), "collapsed placeholder left a double space");
                 StringAssert.DoesNotContain("tile ", text, "named a tile it does not have");
             }
+        }
+
+        // --- Internal-stock stalls ----------------------------------------------------------
+        // These two carry an ITEM TYPE as their resource id rather than a belt/node/buffer id,
+        // because nothing external is blocking the golem -- its own hold is full. progression
+        // -design section 8 requires OutputFull specifically to name the blocked type: a
+        // smelter jammed on Slag rather than on Iron Plate is the whole Slag economy, and the
+        // player cannot tell those apart from "GolemD is stalled".
+
+        [Test]
+        public void DescribeShort_InputFull_NamesTheBlockedItemType()
+        {
+            string text = StallDiagnostics.DescribeShort(StallReason.InputFull, ItemType.Scrap);
+
+            StringAssert.Contains(ItemType.Scrap, text);
+            StringAssert.DoesNotContain("source", text, "pointed the player at an external source");
+        }
+
+        [Test]
+        public void DescribeShort_OutputFull_NamesTheBlockedItemType()
+        {
+            string text = StallDiagnostics.DescribeShort(StallReason.OutputFull, "Slag");
+
+            StringAssert.Contains("Slag", text);
+            StringAssert.Contains("output", text);
+        }
+
+        [Test]
+        public void Describe_OutputFull_NamesBothTheGolemAndTheBlockedItemType()
+        {
+            string text = StallDiagnostics.Describe("GolemD", StallReason.OutputFull, "Slag");
+
+            StringAssert.Contains("GolemD", text);
+            StringAssert.Contains("Slag", text);
+        }
+
+        [Test]
+        public void Describe_InputAndOutputFull_AreDistinguishable()
+        {
+            string input = StallDiagnostics.Describe("GolemD", StallReason.InputFull, ItemType.Scrap);
+            string output = StallDiagnostics.Describe("GolemD", StallReason.OutputFull, ItemType.Scrap);
+
+            Assert.AreNotEqual(input, output,
+                "a jammed input and a jammed output need different fixes and must read differently");
+        }
+
+        [Test]
+        public void StockStallText_WithoutAnItemType_StillReadsAsASentence()
+        {
+            StallReason[] reasons =
+            {
+                StallReason.InputFull, StallReason.OutputFull, StallReason.MissingItem
+            };
+
+            foreach (StallReason reason in reasons)
+            {
+                string text = StallDiagnostics.Describe("GolemD", reason, null);
+                StringAssert.Contains("GolemD", text);
+                Assert.IsFalse(text.Contains("  "), "collapsed placeholder left a double space");
+            }
+        }
+
+        // --- MissingItem ---------------------------------------------------------------------
+        // "The type this step named is not available", which is NOT the same claim as "this
+        // place is empty". A typed Haul against a buffer holding 500 of the wrong good used to
+        // report BufferEmpty, sending the player to inspect the one container they can see is
+        // full. This is the file that exists to stop exactly that.
+
+        [Test]
+        public void Describe_MissingItem_NamesTheTypeAndNotTheEndpoint()
+        {
+            string text = StallDiagnostics.Describe("GolemD", StallReason.MissingItem, ItemType.Aether);
+
+            StringAssert.Contains("GolemD", text);
+            StringAssert.Contains(ItemType.Aether, text);
+            StringAssert.DoesNotContain("empty", text, "it still reads as 'the place is empty'");
+        }
+
+        [Test]
+        public void Describe_MissingItem_ReadsDifferentlyFromBufferEmpty()
+        {
+            // Same golem, same blocked step, two different underlying problems with two
+            // different fixes -- look upstream of a stocked buffer, versus wait for an empty one.
+            string missing = StallDiagnostics.Describe("GolemD", StallReason.MissingItem, ItemType.Aether);
+            string empty = StallDiagnostics.Describe("GolemD", StallReason.BufferEmpty, "ScrapBuffer");
+
+            Assert.AreNotEqual(missing, empty);
+        }
+
+        [Test]
+        public void DescribeShort_MissingItem_NamesTheType()
+        {
+            StringAssert.Contains("Slag", StallDiagnostics.DescribeShort(StallReason.MissingItem, "Slag"));
+        }
+
+        [Test]
+        public void MissingItem_WithNoType_DoesNotNameTheGolemTwiceOrInventASource()
+        {
+            // The empty-hold Push case: the step names no type, so the sentence must fall back
+            // to something generic without pointing at a "source" that is not the problem.
+            string text = StallDiagnostics.Describe("GolemD", StallReason.MissingItem, null);
+
+            Assert.AreEqual(1, CountOccurrences(text, "GolemD"), "the golem's name appears twice: " + text);
+            StringAssert.DoesNotContain("source", text);
+        }
+
+        private static int CountOccurrences(string haystack, string needle)
+        {
+            int count = 0;
+            int index = haystack.IndexOf(needle, System.StringComparison.Ordinal);
+            while (index >= 0)
+            {
+                count++;
+                index = haystack.IndexOf(needle, index + needle.Length, System.StringComparison.Ordinal);
+            }
+
+            return count;
         }
 
         [Test]

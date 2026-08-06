@@ -49,7 +49,39 @@ namespace GolemFactory.Events
         // different: rotate/reposition the golem, don't wait for the node to refill.
         NoSourceAtTile,
         // Spatial routing: nothing that can accept an item sits on the tile in front.
-        NoTargetAtTile
+        NoTargetAtTile,
+
+        // APPEND ONLY below this line, for the same reason AppendageActionType is append-only:
+        // StallReason is stored as an int in GolemStalledEvent and read back by the badge and
+        // the alerts strip, and inserting a value would repoint every existing one.
+
+        // Haul/ExtractFromNode: the golem's own INPUT stock is already at the per-type cap for
+        // the type it is trying to pull, so there is nowhere to put another unit. ResourceId
+        // carries the blocked *item type*, not a belt/node/buffer id -- the fix is downstream
+        // (something has to consume it), and the player can't act on that without knowing
+        // which good backed up.
+        InputFull,
+
+        // Assemble: the golem's own OUTPUT stock is at the per-type cap for the type it would
+        // produce, so the recipe cannot deposit. Same convention -- ResourceId is the item
+        // type, which progression-design §8 requires by name for exactly this reason: an
+        // Assemble golem blocked on Slag rather than on its product is the whole Slag economy.
+        OutputFull,
+
+        // The item type a step NAMED is not available where the step needs it. ResourceId
+        // carries the item type, same convention as the two above.
+        //
+        // Distinct from BufferEmpty/BeltEmpty, which mean the place is empty. The split is the
+        // whole point: a typed Haul(Aether) against a buffer holding 500 Scrap used to report
+        // "no input in ScrapBuffer", pointing the player at a buffer that is visibly full. With
+        // §5.3(b)/(c) making mixed buffers the normal case, that misdirection gets worse rather
+        // than better, and naming the wrong culprit is exactly the failure mode
+        // UI/StallDiagnostics exists to prevent. "Nothing here holds Aether" and "this is empty"
+        // have different fixes: look upstream of the buffer, versus wait or rotate the golem.
+        //
+        // Also what Assemble reports when its precursor is short. §1.3 widens this into
+        // multi-input shortfall naming rather than having to undo it.
+        MissingItem
     }
 
     // Which kind of trigger fired. Mirrors PunchCards.TriggerType minus AlwaysOn, which is

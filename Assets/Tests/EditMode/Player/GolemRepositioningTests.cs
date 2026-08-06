@@ -220,13 +220,18 @@ namespace GolemFactory.Tests.EditMode
             {
                 golem.Tick(tick);
             }
-            Assert.AreEqual(0, destination.GetQuantity(GolemFactory.Economy.ItemType.Scrap),
+            // Asserts against the SOURCE, not the destination, because a spatially placed Haul
+            // now pulls into the golem's own input stock rather than straight through to the
+            // tile in front (progression-design section 2) -- the destination would stay empty
+            // for several more ticks even on a golem that is running perfectly.
+            Assert.AreEqual(5, source.GetQuantity(GolemFactory.Economy.ItemType.Scrap),
                 "a golem being carried kept hauling");
 
             golem.SetHeld(false);
             golem.Tick(5);
-            Assert.AreEqual(1, destination.GetQuantity(GolemFactory.Economy.ItemType.Scrap),
+            Assert.AreEqual(4, source.GetQuantity(GolemFactory.Economy.ItemType.Scrap),
                 "it did not resume once set down");
+            Assert.AreEqual(1, golem.Inventory.GetInput(GolemFactory.Economy.ItemType.Scrap));
         }
     }
 }

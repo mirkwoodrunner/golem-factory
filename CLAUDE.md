@@ -64,7 +64,13 @@ Editor (or a live MCP-for-Unity bridge, if connected):
   "Graphics demo implementation notes" section of the implementation plan for the exact steps.
 
 As of the last recorded full run (facing-based spatial routing pass):
-**590/590 tests passing** (489 EditMode + 101 PlayMode).
+**590/590 tests passing** (489 EditMode + 101 PlayMode). **The progression pass's §1.1 landed after
+that run and has not been executed** — see the test-run caveat at the top of `docs/open-items.md`.
+
+There is no CLI test runner, but `dotnet build GolemFactory.<Assembly>.csproj` does work as a
+**compile gate** outside the Editor. Caveats: the `.csproj` files are Unity-generated and
+git-ignored, and they use explicit `<Compile Include>` lists, so a newly added `.cs` file must be
+added to one by hand or Unity has to regenerate them. It type-checks only — it runs nothing.
 
 ## Architecture
 
@@ -116,6 +122,23 @@ This is the mechanical core of the game and the part most milestones touch:
 - `Golems/GolemProgram.cs` — plain, per-instance/savable state: assigned chassis, logic core
   instance, ordered appendage list, plus assembly-time capacity enforcement
   (`TryAssignChassis`/`TryAddAppendage`/`RemoveAppendageAt`).
+- `Golems/GolemInventory.cs` — **the machine model** (`docs/progression-design.md` §2, implemented
+  as open-items §1.1). Each golem holds an input and an output `Stock`, capped at 12 **per item
+  type**. `Haul(itemType, qty)`/`ExtractFromNode(qty)` fill input from the tile behind; `Push`
+  empties stock onto the tile in front, mixed types and all; `Assemble` converts input to output
+  **without ever touching a tile**. Durations for those three are derived, not authored.
+  - **The pure-logistics rule**: a program with **no `Assemble` step treats its input stock as its
+    output stock** (`GolemProgram.HasAssembleStep` → `GolemEntity.PushStock`). Without it every
+    logistics golem in the game fills input to the cap and stalls forever. It is an explicit named
+    special case, deliberately *not* a merging of the two stocks — keeping them separate is what
+    lets one `Push` empty everything at once and makes byproducts free.
+  - **It rides the `IsSpatiallyPlaced` fork** (below), it does not replace it. Id-routed golems
+    keep the pre-machine-model semantics byte for byte, including `step.durationTicks`.
+  - Per-slot `Haul` batch size lives on `GolemProgram.appendageQuantities`, **never** on
+    `AppendageActionDefinition` — that is a shared asset, so writing a player's quantity there
+    would retune every golem holding the card.
+  - `AppendageActionType` and `StallReason` are both **append-only**: they are serialized by
+    integer index into authored `.asset` files and into `GolemStalledEvent` respectively.
 - `Golems/GolemEntity.cs` — the `MonoBehaviour`/`ITickable` that drives a `GolemProgram`:
   `Idle` → `Running` → `Stalled` state machine. **Execution is strictly linear and
   non-adaptive by design**: a precondition failure (empty source, full destination) doesn't

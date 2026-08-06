@@ -48,6 +48,22 @@ namespace GolemFactory.Golems
         public StallReason StallReason => program.State == GolemState.Stalled ? _stallReason : StallReason.None;
         public string StallResourceId => program.State == GolemState.Stalled ? _stallResourceId : null;
 
+        // --- The machine model (docs/progression-design.md §2) -------------------------------
+        // The golem's own typed input/output stock. Runtime state, not [SerializeField]: it is
+        // saved and restored explicitly through SaveLoadService (like StallReason it is derived
+        // working state, and unlike GolemProgram it is not something the Inspector should let
+        // you hand-author into an impossible configuration).
+        private readonly GolemInventory _inventory = new GolemInventory();
+        public GolemInventory Inventory => _inventory;
+
+        // How long the CURRENT step runs for. Captured once, in BeginStep, because three of the
+        // five verbs derive their duration from a quantity that is only known at Begin time --
+        // Push in particular is `2 + unitCount` where unitCount is what actually left the golem,
+        // which cannot be recomputed later once the stock has been emptied. Steps that keep
+        // their authored duration (Refine, Assemble, and everything on the id-routed path) just
+        // set this to step.durationTicks.
+        private int _stepDuration = 1;
+
         // Programmatic setup used by tests (and available for runtime bootstrapping), mirroring
         // BuildModeController.Configure -- avoids requiring Inspector-assigned references.
         public void Configure(string id, ConveyorSystemHolder holder)
@@ -191,7 +207,10 @@ namespace GolemFactory.Golems
             // but would leave a resumed multi-tick step's state reading "Stalled" forever.
             program.State = GolemState.Running;
             program.StepProgressTicks++;
-            int duration = Mathf.Max(1, step.durationTicks);
+            // _stepDuration, not step.durationTicks: see the field comment. It is always set by
+            // the BeginStep above (which runs on the StepProgressTicks == 0 tick), and clamped
+            // here rather than there so a hand-authored 0 can never make a step never finish.
+            int duration = Mathf.Max(1, _stepDuration);
             if (program.StepProgressTicks < duration)
             {
                 return;
@@ -272,6 +291,11 @@ namespace GolemFactory.Golems
         private StallReason BeginStep(AppendageActionDefinition step, out string blockedResourceId)
         {
             blockedResourceId = null;
+
+            // The authored duration is the default; the three quantity-derived verbs overwrite
+            // it inside their own Begin, once they know how much they actually moved.
+            _stepDuration = Mathf.Max(1, step.durationTicks);
+
             switch (step.actionType)
             {
                 case AppendageActionType.ExtractFromNode:
@@ -281,11 +305,18 @@ namespace GolemFactory.Golems
                 case AppendageActionType.Refine:
                     return BeginRefine(step, out blockedResourceId);
                 case AppendageActionType.Haul:
-                    return BeginHaul(out blockedResourceId);
+                    return BeginHaul(step, out blockedResourceId);
+                case AppendageActionType.Push:
+                    return BeginPush(out blockedResourceId);
+                case AppendageActionType.Assemble:
+                    return BeginAssemble(step, out blockedResourceId);
                 default:
                     return StallReason.None;
             }
         }
+
+        /// <summary>Player-set batch size for the step currently executing.</summary>
+        private int CurrentStepQuantity() => program.GetQuantityAt(program.CurrentStepIndex);
 
         // --- Spatial resolution -----------------------------------------------------------
         // The fallback keys on whether this golem is spatially placed AT ALL -- not on whether
@@ -306,7 +337,41 @@ namespace GolemFactory.Golems
         // Main.unity's seven hand-wired demo golems and the entire pre-existing test suite
         // never call ConfigureSpatial, so they all take the second branch and cannot be
         // affected by anything on the first one.
+        //
+        // THE MACHINE MODEL RIDES ON THE SAME FORK (progression-design §2). A spatially placed
+        // golem no longer moves an item straight through from the tile behind to the tile in
+        // front: Haul/ExtractFromNode deposit into its own typed input stock, Assemble converts
+        // input stock to output stock, and Push empties stock onto the tile in front. Durations
+        // become derived (max(2,qty) / 6+qty / 2+units) instead of the authored durationTicks.
+        //
+        // An id-routed golem keeps every one of the old semantics byte for byte, INCLUDING
+        // step.durationTicks as its duration. Putting the new model on both paths was the
+        // obvious alternative and was rejected: Main.unity is a diorama of seven hand-wired
+        // demos whose whole job is to show M2-M7 still working, and a "Haul now fills an
+        // invisible internal stock" change would silently turn all of them into golems that
+        // consume forever and emit nothing. The fork already existed and already had exactly
+        // the right shape, so the new model is layered onto its spatial half rather than
+        // inventing a second axis of configuration to say which era a golem belongs to.
+        //
+        // The one exception is Assemble, which never touches a tile at all and therefore
+        // behaves identically on both paths -- see BeginAssemble.
         private bool IsSpatiallyPlaced => spatialEndpointHolder != null;
+
+        // --- The pure-logistics rule (progression-design §2) --------------------------------
+        // "A program containing no Assemble step treats its input stock as its output stock."
+        //
+        // This is required, not an optimisation. Without it every logistics golem -- the
+        // Scavenger (the first and most common unit), every node extractor, every belt-to-
+        // buffer golem, roughly a quarter of the endgame factory -- hauls into input stock,
+        // pushes an empty output stock, fills input to the 12-per-type cap and stalls forever.
+        //
+        // It is written as an explicit named special case rather than by merging the two
+        // dictionaries when no Assemble is present, because keeping them separate is precisely
+        // what lets Push empty everything at once (mixed types and all) and what makes
+        // byproducts free: a smelter emitting Iron Plate *and* Slag still costs one Push.
+        // Merging would make that a property of one code path instead of a property of Push.
+        private GolemInventory.Stock PushStock =>
+            program.HasAssembleStep ? _inventory.Output : _inventory.Input;
 
         private IItemEndpoint ResolveSpatialSource()
         {
@@ -349,65 +414,110 @@ namespace GolemFactory.Golems
             return StallReason.BeltEmpty;
         }
 
-        // Only Refine needs a completion-time side effect: its output must appear once
-        // durationTicks have elapsed, not when processing began (see TryBeginRefine).
-        // Extract/Load do their entire side effect in Begin, so this is a no-op for them.
+        // Only the two processing verbs need a completion-time side effect: their output must
+        // appear once the duration has elapsed, not when processing began (see BeginRefine /
+        // BeginAssemble). Haul/Extract/Push do their entire side effect in Begin, so this is a
+        // no-op for them.
         private void CompleteStep(AppendageActionDefinition step)
         {
             if (step.actionType == AppendageActionType.Refine && bufferRegistryHolder != null)
             {
                 bufferRegistryHolder.Registry.Deposit(step.destinationId, step.outputItemType);
+                return;
+            }
+
+            if (step.actionType == AppendageActionType.Assemble)
+            {
+                // Unconditional Add, no room re-check: BeginAssemble already confirmed room for
+                // this unit, and a golem's output stock has exactly one writer -- itself, one
+                // step at a time. Nothing can have consumed the room in between.
+                _inventory.AddOutput(step.outputItemType, 1);
             }
         }
 
-        // --- The one spatial step ---------------------------------------------------------
-        // Every spatially routed action reduces to the same physical verb: take one item off
-        // the tile behind, put it on the tile in front. That is not a shortcut, it is what
-        // docs/digital-design.md actually specifies -- once position decides routing, the
-        // difference between "extract", "load" and "haul" is entirely which endpoints the
-        // player parked the golem between, not a different code path.
+        // --- Note on the retired one-step spatial transfer ---------------------------------
+        // Until the machine model landed, every spatially routed action reduced to one physical
+        // verb (BeginSpatialTransfer): take one item off the tile behind, put it on the tile in
+        // front. progression-design §2 "Consequence 2" is a direct answer to that collapse --
+        // if Haul, ExtractFromNode and LoadIntoBuffer are the same code, then the Scavenger's
+        // "2 slots = Extract then Load" is really "do the same transfer twice" and the logistics
+        // cards have no identity. With an internal inventory they sit on two different sides of
+        // the golem: Haul/Extract fill from behind (BeginFillInputStock), Push empties in front
+        // (BeginPush), and no step spans both.
         //
-        // Ordering is fixed and load-bearing: CanGive() on the target is checked BEFORE
-        // TryTake() on the source. Taking from a finite ResourceNode is irreversible, so
-        // discovering a full destination afterwards silently destroys the unit -- a real leak,
-        // which is the bug that put CanGive/CanEnqueue on the interface in the first place.
-        private StallReason BeginSpatialTransfer(out string blockedResourceId)
+        // The ordering rule that method existed to enforce did NOT go away, it split in two and
+        // is restated at each half: never consume from an irreversible source before confirming
+        // the destination has room. See BeginFillInputStock (room in input stock, clamped) and
+        // BeginPush (consume from stock only after the target accepts).
+
+        // --- Filling the golem: Haul and ExtractFromNode ------------------------------------
+        // The shared body of the two "pull from the tile behind into my own input stock" verbs.
+        // They differ only in how the item type is chosen and how long they take, so the
+        // ordering discipline that matters lives here, once.
+        //
+        // Ordering, same reasoning as BeginSpatialTransfer's CanGive-before-TryTake: nothing is
+        // consumed from the source until there is somewhere confirmed to put it. Here the
+        // destination is the golem's own input stock, so the check is InputRoomFor -- and the
+        // take is CLAMPED to that room rather than merely gated by it, because a partial take
+        // that overshot the cap would have to drop the overflow on the floor. Taking from a
+        // finite ResourceNode is irreversible; there is no putting it back.
+        private StallReason BeginFillInputStock(
+            string requestedType, int quantity, out string blockedResourceId)
         {
             blockedResourceId = null;
 
             IItemEndpoint source = ResolveSpatialSource();
-            IItemEndpoint target = ResolveSpatialTarget();
-
-            // Missing-endpoint checks run source-first because that is the order the player
-            // reads the chain in, and neither check has a side effect. No id fallback: for a
-            // spatially placed golem the tile IS the actionable fact -- "rotate me", not
-            // "something somewhere named in a card you cannot see is empty".
             if (source == null)
             {
                 blockedResourceId = SourceCell.ToString();
                 return StallReason.NoSourceAtTile;
             }
 
-            if (target == null)
-            {
-                blockedResourceId = TargetCell.ToString();
-                return StallReason.NoTargetAtTile;
-            }
-
-            if (!target.CanGive())
-            {
-                blockedResourceId = target.DisplayName;
-                return StallReason.BeltFull;
-            }
-
-            ItemStack item;
-            if (!source.TryTake(out item))
+            // An authored inputItemType makes the step strictly typed -- a Haul(Iron Plate)
+            // against a tile holding Scrap stalls rather than hauling the wrong good, which is
+            // the entire point of typing Haul. Blank means "whatever this tile offers", which
+            // is what the pre-typed cards (HaulScrap.asset, and every ExtractFromNode, whose
+            // node has exactly one type anyway) mean and must keep meaning.
+            string itemType = string.IsNullOrEmpty(requestedType) ? source.PeekAvailableType() : requestedType;
+            if (string.IsNullOrEmpty(itemType))
             {
                 blockedResourceId = source.DisplayName;
                 return EmptyReasonFor(source);
             }
 
-            target.TryGive(item);
+            int room = _inventory.InputRoomFor(itemType);
+            if (room <= 0)
+            {
+                // Names the item type, not the endpoint: the tile behind is fine, the golem is
+                // the thing that is full, and the fix is downstream of it.
+                blockedResourceId = itemType;
+                return StallReason.InputFull;
+            }
+
+            int wanted = Mathf.Min(quantity, room);
+            int taken;
+            if (!source.TryTake(itemType, wanted, out taken) || taken <= 0)
+            {
+                // Two very different failures land here, and the player's fix differs, so they
+                // must not share a message. PeekAvailableType is the discriminator:
+                //   * non-null -> the tile HAS goods, just not this type. Naming the endpoint
+                //     ("no input in ScrapBuffer") would point at a buffer the player can see is
+                //     full; the actionable fact is the missing type, so look upstream of it.
+                //   * null -> the source really is empty (including a belt item still in
+                //     transit, which TryPeekHead correctly refuses). Naming the endpoint is
+                //     right there: wait for it, or rotate the golem.
+                if (!string.IsNullOrEmpty(source.PeekAvailableType()))
+                {
+                    blockedResourceId = itemType;
+                    return StallReason.MissingItem;
+                }
+
+                blockedResourceId = source.DisplayName;
+                return EmptyReasonFor(source);
+            }
+
+            // Cannot lose anything: taken <= wanted <= room, so AddInput accepts all of it.
+            _inventory.AddInput(itemType, taken);
             return StallReason.None;
         }
 
@@ -421,7 +531,16 @@ namespace GolemFactory.Golems
                 return BeginExtractFromNodeById(step, out blockedResourceId);
             }
 
-            return BeginSpatialTransfer(out blockedResourceId);
+            // 6 + qty (progression-design §2): a fixed setup cost plus one tick per unit, which
+            // is what makes a 4-unit extractor 10 ticks and worth batching. Set before the
+            // precondition checks so a stalled step doesn't carry a stale duration into its
+            // eventual successful retry.
+            int quantity = CurrentStepQuantity();
+            _stepDuration = 6 + quantity;
+
+            // A node holds exactly one type, so there is no ambiguity to resolve and no reason
+            // to require the card to name it -- PeekAvailableType is the node's own answer.
+            return BeginFillInputStock(null, quantity, out blockedResourceId);
         }
 
         private StallReason BeginExtractFromNodeById(AppendageActionDefinition step, out string blockedResourceId)
@@ -464,7 +583,12 @@ namespace GolemFactory.Golems
                 return BeginLoadIntoBufferById(step, out blockedResourceId);
             }
 
-            return BeginSpatialTransfer(out blockedResourceId);
+            // progression-design §2 "Consequence 2" renames this verb: on a spatially placed
+            // golem LoadIntoBuffer IS Push. The enum name is kept rather than migrated because
+            // the value is serialized by index into LoadIntoScrapBuffer.asset, which the
+            // Sandbox scene's Workbench roster hands the player -- renaming the enum member
+            // would be free, renumbering it would silently repoint that card at Refine.
+            return BeginPush(out blockedResourceId);
         }
 
         private StallReason BeginLoadIntoBufferById(AppendageActionDefinition step, out string blockedResourceId)
@@ -488,15 +612,16 @@ namespace GolemFactory.Golems
         // --- Haul -------------------------------------------------------------------------
         // Haul used to be a no-op success stub: locomotion was never built, so a player who
         // slotted the HaulScrap card got a golem that ran happily and moved nothing, which is
-        // actively misleading. Facing-based routing gives Haul an obvious correct meaning that
-        // needs no locomotion at all -- take one item from the tile behind, give it to the tile
-        // in front. That is precisely the "Source tile / Target tile" verb the design doc
-        // describes, and it makes Haul the one action that is purely spatial.
+        // actively misleading. Facing-based routing gave it a meaning that needs no locomotion
+        // at all -- take from the tile behind -- and the machine model finishes the job: it
+        // takes a NAMED type in a PLAYER-SET QUANTITY into the golem's own input stock, which
+        // is what separates it from Push and gives the Workbench its one remaining decision
+        // (progression-design §2, Consequences 2 and 4).
         //
         // Haul carries no meaningful sourceId/destinationId (it never routed by id), so there
         // is nothing to fall back to: when no spatial endpoints exist it keeps the historical
         // no-op success, leaving every existing Haul demo and test unaffected.
-        private StallReason BeginHaul(out string blockedResourceId)
+        private StallReason BeginHaul(AppendageActionDefinition step, out string blockedResourceId)
         {
             blockedResourceId = null;
 
@@ -509,7 +634,150 @@ namespace GolemFactory.Golems
                 return StallReason.None;
             }
 
-            return BeginSpatialTransfer(out blockedResourceId);
+            // max(2, qty): a floor of 2 ticks of fixed overhead, then one tick per unit, so a
+            // big batch amortises the fixed cost of the Push at the end of the cycle. That
+            // trade -- throughput against holding N units hostage inside one golem and pulling
+            // N at a time out of a shared buffer -- is the decision §2 hands the player.
+            int quantity = CurrentStepQuantity();
+            _stepDuration = Mathf.Max(2, quantity);
+
+            return BeginFillInputStock(step.inputItemType, quantity, out blockedResourceId);
+        }
+
+        // --- Push ---------------------------------------------------------------------------
+        // Empties the golem's ENTIRE resolved stock onto the tile in front -- mixed types and
+        // all, in one step. That is what makes byproducts free (progression-design §2,
+        // Consequence 3): a smelter emitting Iron Plate and Slag pushes both in a single slot
+        // and stays a 4-slot recipe. Which stock it drains is the pure-logistics rule; see
+        // PushStock.
+        //
+        // Push is a brand-new verb with no legacy call sites, so an unplaced golem gets an
+        // honest Unconfigured stall rather than the no-op success Haul had to keep for
+        // compatibility. There is no id-routed meaning of "the tile in front" to fall back to,
+        // and inventing one would be a worse lie than the one Haul's stub used to tell.
+        private StallReason BeginPush(out string blockedResourceId)
+        {
+            blockedResourceId = null;
+
+            if (!IsSpatiallyPlaced)
+            {
+                return StallReason.Unconfigured;
+            }
+
+            IItemEndpoint target = ResolveSpatialTarget();
+            if (target == null)
+            {
+                blockedResourceId = TargetCell.ToString();
+                return StallReason.NoTargetAtTile;
+            }
+
+            GolemInventory.Stock stock = PushStock;
+            if (stock.TotalUnits <= 0)
+            {
+                // MissingItem with NO item type, rather than a fourth stall reason for "my own
+                // hold is empty". Push is the one step that names no type -- it needs anything
+                // at all -- so the null-resourceId fallback ("no goods available") is exactly
+                // the sentence. The two rejected alternatives both misdirect: BufferEmpty
+                // against golemId says the golem's name twice, and BufferEmpty against null
+                // says "its source has no input", pointing at a source that is not the problem.
+                // In practice this is nearly unreachable -- the Haul or Assemble ahead of the
+                // Push stalls first -- which is another reason not to spend a reason on it.
+                return StallReason.MissingItem;
+            }
+
+            if (!target.CanGive())
+            {
+                blockedResourceId = target.DisplayName;
+                return StallReason.BeltFull;
+            }
+
+            // Unit at a time, and each unit is removed from stock only AFTER the destination
+            // has accepted it. That ordering is the same invariant CanGive-before-TryTake
+            // protects, applied to the other end of the golem: a destination that fills partway
+            // through a mixed push leaves the remainder sitting in stock for the next cycle
+            // instead of on the floor. Expressing it as consume-after-give rather than
+            // drain-then-return-the-remainder means there is no window in which the items exist
+            // in neither place, so no ordering bug can lose them.
+            int pushed = 0;
+            bool blocked = false;
+
+            // Snapshot the type list: the loop mutates the stock, and a type emptying removes
+            // it from the live ordering. Order is deterministic (see GolemInventory.Stock) so
+            // two identically-programmed golems drain a mixed hold the same way when the
+            // destination only has room for part of it.
+            var types = new System.Collections.Generic.List<string>(stock.TypesInOrder);
+            for (int i = 0; i < types.Count && !blocked; i++)
+            {
+                string itemType = types[i];
+                while (stock.Get(itemType) > 0)
+                {
+                    if (!target.TryGive(new ItemStack { ItemType = itemType }))
+                    {
+                        blocked = true;
+                        break;
+                    }
+
+                    stock.TryConsume(itemType, 1);
+                    pushed++;
+                }
+            }
+
+            if (pushed <= 0)
+            {
+                blockedResourceId = target.DisplayName;
+                return StallReason.BeltFull;
+            }
+
+            // 2 + unitCount, on what actually left the golem rather than on what it hoped to
+            // push -- a partial push must not also be charged for the units still held.
+            _stepDuration = 2 + pushed;
+            return StallReason.None;
+        }
+
+        // --- Assemble -------------------------------------------------------------------------
+        // Consumes one unit of the precursor from input stock at Begin and deposits the product
+        // into output stock at Complete. NEVER TOUCHES A TILE, which is the whole reason the
+        // machine model was worth adopting: a recipe reads a typed dictionary the golem owns, so
+        // it cannot grab the wrong good off a mixed tile and silently transmute it. That also
+        // makes it the one verb with no spatial/id fork -- an unplaced golem assembles exactly
+        // like a placed one, and it needs no ConfigureSpatial to do it.
+        //
+        // §1.3 replaces the single inputItemType/outputItemType pair with a RecipeDefinition
+        // carrying 1-4 typed inputs, an output quantity and a byproduct. The atomic withdraw and
+        // the check-output-room-before-consuming-input ordering below are the parts that survive.
+        private StallReason BeginAssemble(AppendageActionDefinition step, out string blockedResourceId)
+        {
+            blockedResourceId = null;
+
+            if (string.IsNullOrEmpty(step.inputItemType) || string.IsNullOrEmpty(step.outputItemType))
+            {
+                return StallReason.Unconfigured;
+            }
+
+            // Output room first: consuming the precursor and only then discovering there is
+            // nowhere to put the product would destroy it. Same ordering rule as
+            // BeginSpatialTransfer, with the golem's own stocks on both ends this time.
+            if (_inventory.OutputRoomFor(step.outputItemType) <= 0)
+            {
+                blockedResourceId = step.outputItemType;
+                return StallReason.OutputFull;
+            }
+
+            // All-or-nothing, and taken up front so the processing time is real committed work
+            // -- exactly the reasoning BeginRefine records. The product appears in CompleteStep.
+            if (!_inventory.TryConsumeInput(step.inputItemType, 1))
+            {
+                // Names the missing ingredient, not the golem. The obvious alternative --
+                // BufferEmpty against golemId -- renders as "GolemA stalled: GolemA has no
+                // input": the golem's name twice and no mention of what it is short of, which
+                // is unusable on a line where three assemblers are all waiting on different
+                // precursors. This is also the seam §1.3 widens into multi-input shortfall
+                // naming, rather than something §1.3 would have to undo.
+                blockedResourceId = step.inputItemType;
+                return StallReason.MissingItem;
+            }
+
+            return StallReason.None;
         }
 
         // Withdraws the recipe input up front so processing time is real "committed" work
@@ -518,12 +786,17 @@ namespace GolemFactory.Golems
         // output is deposited later, in CompleteStep, once durationTicks have elapsed.
         //
         // DELIBERATELY EXEMPT FROM SPATIAL ROUTING, even for a spatially placed golem.
-        // A recipe is defined by its item *types* (inputItemType -> outputItemType), but
-        // IItemEndpoint is deliberately type-agnostic -- TryTake hands over "whatever this
-        // endpoint had", with no way to ask for a specific type. Routing Refine spatially
-        // would therefore let it grab the wrong input off a mixed buffer and silently
-        // transmute it, which is worse than an honest stall. Refine stays keyed to the
-        // buffer ids its recipe names until IItemEndpoint grows a typed take.
+        // A recipe is defined by its item *types* (inputItemType -> outputItemType), but the
+        // untyped IItemEndpoint.TryTake hands over "whatever this endpoint had", with no way to
+        // ask for a specific type. Routing Refine spatially would therefore let it grab the
+        // wrong input off a mixed buffer and silently transmute it, which is worse than an
+        // honest stall.
+        //
+        // IItemEndpoint has since grown the typed take this comment used to wait for -- but the
+        // exemption STAYS, because §1.1 answered the problem from the other end instead:
+        // Assemble reads a typed dictionary the golem itself owns, so it needs no spatial take
+        // at all. Refine is the pre-machine-model verb, superseded by Assemble in §1.3 and left
+        // keyed to the buffer ids its recipe names until then. Nothing new should be built on it.
         private StallReason BeginRefine(AppendageActionDefinition step, out string blockedResourceId)
         {
             blockedResourceId = null;

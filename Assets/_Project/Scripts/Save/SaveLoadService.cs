@@ -46,7 +46,7 @@ namespace GolemFactory.Save
             foreach (GolemEntity golem in golems)
             {
                 GolemProgram program = golem.Program;
-                data.golems.Add(new GolemEntry
+                var entry = new GolemEntry
                 {
                     golemId = golem.GolemId,
                     chassisName = program.chassis != null ? program.chassis.name : null,
@@ -57,10 +57,52 @@ namespace GolemFactory.Save
                     cellX = golem.Cell.x,
                     cellY = golem.Cell.y,
                     facing = (int)golem.Facing
-                });
+                };
+
+                // Read through GetQuantityAt rather than copying appendageQuantities directly,
+                // so a desynced parallel list is normalised on the way out instead of being
+                // persisted and reloaded still broken.
+                for (int i = 0; i < program.appendages.Count; i++)
+                {
+                    entry.appendageQuantities.Add(program.GetQuantityAt(i));
+                }
+
+                CaptureStock(golem.Inventory.Input, entry.inputStockTypes, entry.inputStockQuantities);
+                CaptureStock(golem.Inventory.Output, entry.outputStockTypes, entry.outputStockQuantities);
+
+                data.golems.Add(entry);
             }
 
             return data;
+        }
+
+        private static void CaptureStock(
+            GolemInventory.Stock stock, List<string> types, List<int> quantities)
+        {
+            // Iterates TypesInOrder, not the raw dictionary, so a save round-trip preserves the
+            // order Push drains a mixed hold in.
+            foreach (string itemType in stock.TypesInOrder)
+            {
+                types.Add(itemType);
+                quantities.Add(stock.Get(itemType));
+            }
+        }
+
+        // Tolerates lists of mismatched length, and an entirely absent pair (a save written
+        // before golems had internal stock), by taking only the prefix both lists cover.
+        private static void RestoreStock(
+            GolemInventory.Stock stock, List<string> types, List<int> quantities)
+        {
+            if (types == null || quantities == null)
+            {
+                return;
+            }
+
+            int count = types.Count < quantities.Count ? types.Count : quantities.Count;
+            for (int i = 0; i < count; i++)
+            {
+                stock.Add(types[i], quantities[i]);
+            }
         }
 
         // Golems not present in `golems` (e.g. removed since the save was made) are
@@ -129,6 +171,29 @@ namespace GolemFactory.Save
                         program.TryAddAppendage(appendage);
                     }
                 }
+
+                // After TryAddAppendage, which has already seeded each slot with its card's
+                // authored default -- this overwrites those with the player's chosen batch
+                // sizes. Bounded by both lists: an appendage the catalog could not resolve was
+                // skipped above, so the program can legitimately be shorter than the save's
+                // quantity list, and an older save has no list at all.
+                if (entry.appendageQuantities != null)
+                {
+                    int quantityCount = entry.appendageQuantities.Count < program.appendages.Count
+                        ? entry.appendageQuantities.Count
+                        : program.appendages.Count;
+                    for (int i = 0; i < quantityCount; i++)
+                    {
+                        program.SetQuantityAt(i, entry.appendageQuantities[i]);
+                    }
+                }
+
+                // Clear before restoring, for the same reason buffers.Clear() exists above:
+                // Stock.Add is additive, so replaying a save onto a golem that is already
+                // holding goods would merge rather than replace.
+                golem.Inventory.Clear();
+                RestoreStock(golem.Inventory.Input, entry.inputStockTypes, entry.inputStockQuantities);
+                RestoreStock(golem.Inventory.Output, entry.outputStockTypes, entry.outputStockQuantities);
 
                 program.logicCore = catalog.FindLogicCore(entry.logicCoreName);
                 program.CurrentStepIndex = entry.currentStepIndex;

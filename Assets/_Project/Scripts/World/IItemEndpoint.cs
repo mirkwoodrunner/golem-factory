@@ -7,9 +7,25 @@ namespace GolemFactory.World
     // destinationId baked into its appendage asset: the golem asks "what is on the tile
     // behind me" rather than "what is the id my card names".
     //
-    // Kept deliberately narrow (one item at a time, no ids, no capacity introspection) --
-    // ResourceNode, BeltSegment and StorageBuffer have nothing else in common, and a wider
-    // interface would just push their differences into every adapter.
+    // Was kept deliberately narrow (one item at a time, no ids, no type, no capacity
+    // introspection) -- ResourceNode, BeltSegment and StorageBuffer have nothing else in
+    // common, and a wider interface would just push their differences into every adapter.
+    //
+    // It widened by exactly one concept: a TYPED, QUANTIFIED take. That is not a drift back
+    // toward a fat interface, it is the specific ask docs/progression-design.md §2 makes, and
+    // the reason it is worth it is written down in two places already:
+    //
+    //   * §2 ("A golem is a machine with an internal inventory"): Haul must pull one named
+    //     item type into the golem's own typed input stock so Assemble reads a dictionary the
+    //     golem owns and can never transmute the wrong thing.
+    //   * GolemEntity.BeginRefine's exemption comment, which says Refine stays keyed to buffer
+    //     ids "until IItemEndpoint grows a typed take". This is that growth. §1.3 replaces
+    //     Refine with a recipe-driven Assemble that reads internal stock, so the exemption gets
+    //     to stay exactly as written rather than needing a spatial rewrite.
+    //
+    // Everything else about the contract is unchanged, including the untyped TryTake below:
+    // the id-routed path (Main.unity's demo golems) and the legacy one-item spatial transfer
+    // still use it.
     public interface IItemEndpoint
     {
         /// <summary>Human-readable label for stall text and Inspector debugging.</summary>
@@ -17,6 +33,24 @@ namespace GolemFactory.World
 
         /// <summary>Removes one item from this endpoint. False if it has nothing to give.</summary>
         bool TryTake(out ItemStack item);
+
+        /// <summary>
+        /// Item type this endpoint would dispense right now, or null if it has nothing.
+        /// Side-effect-free. Lets ExtractFromNode name the node's single type without having
+        /// to consume a unit to find out what it is.
+        /// </summary>
+        string PeekAvailableType();
+
+        /// <summary>
+        /// Removes up to <paramref name="quantity"/> of exactly <paramref name="itemType"/>.
+        /// Returns true if <paramref name="taken"/> ended up greater than zero.
+        ///
+        /// Partial takes are deliberate and normal -- a Haul(Scrap, 8) against a tile holding
+        /// 3 Scrap takes 3 and succeeds, because stalling a golem that CAN make progress would
+        /// deadlock every under-supplied line in the factory. Callers must therefore read
+        /// <paramref name="taken"/> rather than assuming they got what they asked for.
+        /// </summary>
+        bool TryTake(string itemType, int quantity, out int taken);
 
         /// <summary>
         /// Side-effect-free half of <see cref="TryGive"/>'s guard. Exists for exactly the

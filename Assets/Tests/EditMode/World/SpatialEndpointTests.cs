@@ -229,4 +229,189 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsFalse(endpoint.TryTake(out item));
         }
     }
+
+    // The typed, quantified take progression-design section 2 requires so a golem's Haul can
+    // name what it is pulling. Partial takes are the normal case, not an error case.
+    public class ItemEndpointTypedTakeTests
+    {
+        // --- ResourceNode ------------------------------------------------------------------
+
+        [Test]
+        public void NodeEndpoint_PeekNamesItsTypeUntilItIsDepleted()
+        {
+            var node = new ResourceNode("ScrapNode", ItemType.Scrap, 1);
+            var endpoint = new ResourceNodeEndpoint(node);
+
+            Assert.AreEqual(ItemType.Scrap, endpoint.PeekAvailableType());
+            Assert.IsTrue(endpoint.TryTake(out ItemStack _));
+            Assert.IsNull(endpoint.PeekAvailableType(), "a spent node kept advertising its type");
+        }
+
+        [Test]
+        public void NodeEndpoint_TypedTakeRefusesAnotherType()
+        {
+            var node = new ResourceNode("ScrapNode", ItemType.Scrap, 5);
+            var endpoint = new ResourceNodeEndpoint(node);
+
+            Assert.IsFalse(endpoint.TryTake(ItemType.Brass, 2, out int taken));
+            Assert.AreEqual(0, taken);
+            Assert.AreEqual(5, node.RemainingQuantity, "a mismatched take drained the node anyway");
+        }
+
+        [Test]
+        public void NodeEndpoint_TypedTakeStopsAtDepletionRatherThanFailingOutright()
+        {
+            var node = new ResourceNode("ScrapNode", ItemType.Scrap, 3);
+            var endpoint = new ResourceNodeEndpoint(node);
+
+            Assert.IsTrue(endpoint.TryTake(ItemType.Scrap, 8, out int taken));
+            Assert.AreEqual(3, taken, "a partial take should yield what the node had");
+            Assert.IsTrue(node.IsDepleted);
+        }
+
+        [Test]
+        public void NodeEndpoint_TypedTakeFromAnInfiniteNode_YieldsExactlyWhatWasAsked()
+        {
+            var endpoint = new ResourceNodeEndpoint(
+                new ResourceNode("ScrapNode", ItemType.Scrap, ResourceNode.Infinite));
+
+            Assert.IsTrue(endpoint.TryTake(ItemType.Scrap, 4, out int taken));
+            Assert.AreEqual(4, taken, "an infinite node must not over- or under-deliver");
+        }
+
+        // --- BeltSegment -------------------------------------------------------------------
+
+        [Test]
+        public void BeltEndpoint_PeekRespectsTheHasTravelledTheFullLengthRule()
+        {
+            // The same condition TryPeekHead/TryRemoveHead use. Reporting an in-transit item as
+            // available would make a Haul appear to stall for no reason one tick and work the
+            // next -- see BeltSegment.TryPeekHead.
+            var segment = new BeltSegment("ScrapBeltA", 3);
+            var endpoint = new BeltSegmentEndpoint(segment);
+            segment.TryEnqueue(new ItemStack { ItemType = ItemType.Scrap });
+
+            Assert.IsNull(endpoint.PeekAvailableType(), "an item still in transit was offered");
+
+            segment.Advance(segment.Length);
+            Assert.AreEqual(ItemType.Scrap, endpoint.PeekAvailableType());
+        }
+
+        [Test]
+        public void BeltEndpoint_TypedTakeWillNotPullAnItemThatHasNotArrived()
+        {
+            var segment = new BeltSegment("ScrapBeltA", 3);
+            var endpoint = new BeltSegmentEndpoint(segment);
+            segment.TryEnqueue(new ItemStack { ItemType = ItemType.Scrap });
+
+            Assert.IsFalse(endpoint.TryTake(ItemType.Scrap, 1, out int taken));
+            Assert.AreEqual(0, taken);
+            Assert.AreEqual(1, segment.Items.Count);
+        }
+
+        [Test]
+        public void BeltEndpoint_TypedTakeStopsAtTheFirstHeadOfAnotherType()
+        {
+            // A rigid golem may not reach past a wrong-typed head to find a matching one --
+            // a mixed belt is a player-visible problem, not something to reorder around.
+            var segment = new BeltSegment("Mixed", 1);
+            var endpoint = new BeltSegmentEndpoint(segment);
+            segment.TryEnqueue(new ItemStack { ItemType = ItemType.Scrap });
+            segment.Advance(segment.Length);
+            segment.TryEnqueue(new ItemStack { ItemType = ItemType.Brass });
+            segment.Advance(segment.Length);
+
+            Assert.IsTrue(endpoint.TryTake(ItemType.Scrap, 4, out int taken));
+            Assert.AreEqual(1, taken);
+            Assert.AreEqual(1, segment.Items.Count, "it reached past the Brass");
+            Assert.AreEqual(ItemType.Brass, segment.Items[0].ItemType);
+        }
+
+        [Test]
+        public void BeltEndpoint_TypedTakeOfTheWrongType_TakesNothing()
+        {
+            var segment = new BeltSegment("ScrapBeltA", 1);
+            var endpoint = new BeltSegmentEndpoint(segment);
+            segment.TryEnqueue(new ItemStack { ItemType = ItemType.Scrap });
+            segment.Advance(segment.Length);
+
+            Assert.IsFalse(endpoint.TryTake(ItemType.Aether, 1, out int taken));
+            Assert.AreEqual(0, taken);
+            Assert.AreEqual(1, segment.Items.Count);
+        }
+
+        // --- StorageBuffer -----------------------------------------------------------------
+
+        [Test]
+        public void BufferEndpoint_PeekPrefersThePreferredTypeThenFallsBack()
+        {
+            var buffer = new StorageBuffer("Mixed");
+            buffer.Deposit(ItemType.Scrap);
+            var endpoint = new StorageBufferEndpoint(buffer) { PreferredItemType = ItemType.Brass };
+
+            Assert.AreEqual(ItemType.Scrap, endpoint.PeekAvailableType());
+
+            buffer.Deposit(ItemType.Brass);
+            Assert.AreEqual(ItemType.Brass, endpoint.PeekAvailableType());
+        }
+
+        [Test]
+        public void BufferEndpoint_PeekOnAnEmptyBufferIsNull()
+        {
+            Assert.IsNull(new StorageBufferEndpoint(new StorageBuffer("Empty")).PeekAvailableType());
+        }
+
+        [Test]
+        public void BufferEndpoint_TypedTakeClampsToWhatIsHeld()
+        {
+            var buffer = new StorageBuffer("Mixed");
+            buffer.Deposit(ItemType.Scrap, 3);
+            buffer.Deposit(ItemType.Brass, 7);
+            var endpoint = new StorageBufferEndpoint(buffer);
+
+            Assert.IsTrue(endpoint.TryTake(ItemType.Scrap, 10, out int taken));
+            Assert.AreEqual(3, taken);
+            Assert.AreEqual(0, buffer.GetQuantity(ItemType.Scrap));
+            Assert.AreEqual(7, buffer.GetQuantity(ItemType.Brass), "it took a type it was not asked for");
+        }
+
+        [Test]
+        public void BufferEndpoint_TypedTakeOfAnAbsentType_TakesNothing()
+        {
+            var buffer = new StorageBuffer("Mixed");
+            buffer.Deposit(ItemType.Brass, 4);
+            var endpoint = new StorageBufferEndpoint(buffer);
+
+            Assert.IsFalse(endpoint.TryTake(ItemType.Scrap, 2, out int taken));
+            Assert.AreEqual(0, taken);
+            Assert.AreEqual(4, buffer.GetQuantity(ItemType.Brass));
+        }
+
+        // --- Shared contract ---------------------------------------------------------------
+
+        [Test]
+        public void EveryEndpoint_TreatsANullTypeOrNonPositiveQuantityAsARefusal()
+        {
+            var buffer = new StorageBuffer("B");
+            buffer.Deposit(ItemType.Scrap, 5);
+            var segment = new BeltSegment("S", 1);
+            segment.TryEnqueue(new ItemStack { ItemType = ItemType.Scrap });
+            segment.Advance(segment.Length);
+
+            IItemEndpoint[] endpoints =
+            {
+                new ResourceNodeEndpoint(new ResourceNode("N", ItemType.Scrap, 5)),
+                new BeltSegmentEndpoint(segment),
+                new StorageBufferEndpoint(buffer)
+            };
+
+            foreach (IItemEndpoint endpoint in endpoints)
+            {
+                Assert.IsFalse(endpoint.TryTake(null, 1, out int taken), endpoint.DisplayName);
+                Assert.AreEqual(0, taken);
+                Assert.IsFalse(endpoint.TryTake(ItemType.Scrap, 0, out taken), endpoint.DisplayName);
+                Assert.AreEqual(0, taken);
+            }
+        }
+    }
 }

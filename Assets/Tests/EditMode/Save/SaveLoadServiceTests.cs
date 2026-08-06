@@ -172,6 +172,154 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(GolemState.Running, destGolem.Program.State);
         }
 
+        // --- The machine model's state (progression-design section 2) -------------------------
+
+        [Test]
+        public void CaptureThenRestore_PerSlotHaulQuantities_RoundTrip()
+        {
+            var chassis = ScriptableObject.CreateInstance<ChassisDefinition>();
+            chassis.name = "TestChassis";
+            chassis.maxAppendageSlots = 2;
+            var appendage = ScriptableObject.CreateInstance<AppendageActionDefinition>();
+            appendage.name = "TestAppendage";
+            appendage.haulQuantity = 1;
+
+            GolemEntity sourceGolem = MakeGolem("Golem1");
+            sourceGolem.Program.TryAssignChassis(chassis);
+            sourceGolem.Program.TryAddAppendage(appendage);
+            sourceGolem.Program.TryAddAppendage(appendage);
+            sourceGolem.Program.SetQuantityAt(0, 8);
+            sourceGolem.Program.SetQuantityAt(1, 3);
+
+            SaveData data = SaveLoadService.CaptureState(
+                new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                new List<GolemEntity> { sourceGolem });
+
+            GolemEntity destGolem = MakeGolem("Golem1");
+            SaveLoadService.RestoreState(
+                data, new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                new List<GolemEntity> { destGolem },
+                new DefinitionCatalog(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage }));
+
+            Assert.AreEqual(8, destGolem.Program.GetQuantityAt(0),
+                "the player's batch size did not survive the save");
+            Assert.AreEqual(3, destGolem.Program.GetQuantityAt(1));
+        }
+
+        [Test]
+        public void CaptureThenRestore_InternalStock_RoundTrips()
+        {
+            GolemEntity sourceGolem = MakeGolem("Golem1");
+            sourceGolem.Inventory.AddInput(ItemType.Scrap, 7);
+            sourceGolem.Inventory.AddInput(ItemType.Brass, 2);
+            sourceGolem.Inventory.AddOutput(ItemType.Aether, 4);
+
+            SaveData data = SaveLoadService.CaptureState(
+                new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                new List<GolemEntity> { sourceGolem });
+
+            GolemEntity destGolem = MakeGolem("Golem1");
+            SaveLoadService.RestoreState(
+                data, new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                new List<GolemEntity> { destGolem },
+                new DefinitionCatalog(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]));
+
+            Assert.AreEqual(7, destGolem.Inventory.GetInput(ItemType.Scrap));
+            Assert.AreEqual(2, destGolem.Inventory.GetInput(ItemType.Brass));
+            Assert.AreEqual(4, destGolem.Inventory.GetOutput(ItemType.Aether));
+            // Push drains in this order, so it has to survive a round trip too.
+            CollectionAssert.AreEqual(
+                new[] { ItemType.Scrap, ItemType.Brass }, destGolem.Inventory.Input.TypesInOrder);
+        }
+
+        [Test]
+        public void RestoreState_ReplacesInternalStock_DoesNotMergeIntoIt()
+        {
+            // Stock.Add is additive, the same hazard buffers.Clear() exists for.
+            GolemEntity sourceGolem = MakeGolem("Golem1");
+            sourceGolem.Inventory.AddInput(ItemType.Scrap, 3);
+            SaveData data = SaveLoadService.CaptureState(
+                new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                new List<GolemEntity> { sourceGolem });
+
+            GolemEntity destGolem = MakeGolem("Golem1");
+            destGolem.Inventory.AddInput(ItemType.Scrap, 9);
+            destGolem.Inventory.AddOutput(ItemType.Brass, 5);
+
+            SaveLoadService.RestoreState(
+                data, new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                new List<GolemEntity> { destGolem },
+                new DefinitionCatalog(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]));
+
+            Assert.AreEqual(3, destGolem.Inventory.GetInput(ItemType.Scrap));
+            Assert.AreEqual(0, destGolem.Inventory.GetOutput(ItemType.Brass), "stale output stock survived a load");
+        }
+
+        [Test]
+        public void RestoreState_ASaveWrittenBeforeTheMachineModel_LoadsWithoutError()
+        {
+            // Older saves have no quantity or stock lists at all. They must restore to the
+            // authored defaults and an empty hold rather than throwing.
+            var chassis = ScriptableObject.CreateInstance<ChassisDefinition>();
+            chassis.name = "TestChassis";
+            chassis.maxAppendageSlots = 2;
+            var appendage = ScriptableObject.CreateInstance<AppendageActionDefinition>();
+            appendage.name = "TestAppendage";
+            appendage.haulQuantity = 4;
+
+            var data = new SaveData
+            {
+                golems = new List<GolemEntry>
+                {
+                    new GolemEntry
+                    {
+                        golemId = "Golem1",
+                        chassisName = "TestChassis",
+                        appendageNames = new List<string> { "TestAppendage" }
+                    }
+                }
+            };
+            data.golems[0].appendageQuantities = null;
+            data.golems[0].inputStockTypes = null;
+
+            GolemEntity destGolem = MakeGolem("Golem1");
+
+            Assert.DoesNotThrow(() => SaveLoadService.RestoreState(
+                data, new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                new List<GolemEntity> { destGolem },
+                new DefinitionCatalog(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage })));
+
+            Assert.AreEqual(4, destGolem.Program.GetQuantityAt(0), "it lost the card's authored default");
+            Assert.AreEqual(0, destGolem.Inventory.Input.TotalUnits);
+        }
+
+        [Test]
+        public void RestoreState_MismatchedStockLists_TakeOnlyTheOverlapRatherThanThrowing()
+        {
+            var data = new SaveData
+            {
+                golems = new List<GolemEntry>
+                {
+                    new GolemEntry
+                    {
+                        golemId = "Golem1",
+                        inputStockTypes = new List<string> { ItemType.Scrap, ItemType.Brass },
+                        inputStockQuantities = new List<int> { 2 }
+                    }
+                }
+            };
+
+            GolemEntity destGolem = MakeGolem("Golem1");
+
+            Assert.DoesNotThrow(() => SaveLoadService.RestoreState(
+                data, new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                new List<GolemEntity> { destGolem },
+                new DefinitionCatalog(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0])));
+
+            Assert.AreEqual(2, destGolem.Inventory.GetInput(ItemType.Scrap));
+            Assert.AreEqual(0, destGolem.Inventory.GetInput(ItemType.Brass));
+        }
+
         [Test]
         public void RestoreState_GolemNoLongerInScene_IsSkippedWithoutError()
         {
