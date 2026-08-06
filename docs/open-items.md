@@ -5,36 +5,33 @@ Consolidated backlog as of the progression-design pass, on branch
 
 Everything here is known and deliberate — none of it is a surprise waiting to be discovered.
 
-> **Where the line is.** Everything through facing-based spatial routing is **built, tested and
-> reviewed**. §1.1 (the machine model) and §1.2 (per-item-type buffer capacity) are **built and
-> compile-verified but not yet test-run** — see the caveat below. Everything else in the
-> progression design is **spec only**. Steam power has been approved for inclusion but not
-> written. The next pass starts at §1.3.
+> **Where the line is.** Everything through §1.2 (per-item-type buffer capacity) is **built, tested
+> and reviewed**. Everything from §1.3 on is **spec only**. Steam power has been approved for
+> inclusion but not written. The next pass starts at §1.3.
 
-> **Test-run caveat.** The suite last *ran* green at **590/590** (489 EditMode + 101 PlayMode), at
-> the facing-based spatial routing pass. §1.1 added ~50 tests and changed the assertions of ~10
-> existing ones; §1.2 added ~30 more and rewrote one (`Clear_RemovesAllBuffers`, whose claim is now
-> wrong by design — see §1.2). All five assemblies compile at 0 errors via `dotnet build <project>.csproj`
-> (which is a usable compile gate outside the Editor, and worth knowing about — it is not
-> mentioned in `CLAUDE.md`'s command list because it type-checks only, and the generated `.csproj`
-> files are git-ignored with explicit `<Compile Include>` lists, so a new `.cs` file has to be
-> added to one by hand or Unity has to regenerate them). **Nothing in §1.1 or §1.2 has been
-> executed.**
-> Every derived tick count in the new tests was hand-traced, not observed. A Test Runner pass
-> (EditMode + PlayMode) is the first thing the next session should do.
+Tests stand at **702/702** (601 EditMode + 101 PlayMode), up from 590 before the progression pass
+began. Console clean.
+
+> **Unity batch mode does run the tests, contrary to what the implementation plan says.** It is
+> recorded there as a "nice-to-have, not implemented"; it works, and it is by far the cheapest way
+> to verify a pass. The exact invocation is in `CLAUDE.md`. It needs the Editor **closed** — it
+> fails on the project lock otherwise. `dotnet build GolemFactory.<Assembly>.csproj` remains useful
+> as a fast compile-only gate while the Editor is open, but it type-checks and runs nothing.
 
 ---
 
-## 1. The progression design is written but entirely unimplemented
+## 1. The progression design, and how far it has been implemented
 
 `docs/progression-design.md` passed a three-round review against a 9-point rubric, with an
-independent critic between rounds. **No game code has been written against it.** That was
-deliberate: round 1 failed on five structural counts, all of which would otherwise have surfaced
-only after ~25 recipes had been authored and wired.
+independent critic between rounds, before any code was written against it. That was deliberate:
+round 1 failed on five structural counts, all of which would otherwise have surfaced only after
+~25 recipes had been authored and wired.
 
-Implementation order matters, because each item depends on the one above it.
+**§1.1 and §1.2 are now built and green. §1.3–§1.6 are still spec.** Implementation order matters,
+because each item depends on the one above it — and §1.2 in particular must never ship before
+§1.1, for the reason given under it.
 
-### 1.1 Golem internal typed stock + typed/quantified `Haul`/`Push` — **BUILT** (untested)
+### 1.1 Golem internal typed stock + typed/quantified `Haul`/`Push` — **DONE**
 
 `GolemInventory` gives each golem an input and an output `Stock`, capped at 12 **per item type**.
 `Haul(itemType, qty)` and `ExtractFromNode(qty)` fill input from the tile behind; the new `Push`
@@ -74,7 +71,7 @@ Follow-ups this opened, in dependency order — see §3:
 - There are no `Push`/`Assemble` roster cards authored yet (deliberate — §1.3 replaces `Assemble`'s
   data model with a `RecipeDefinition`, so authoring one now would be throwaway work).
 
-### 1.2 Per-*item-type* buffer capacity — **BUILT** (untested)
+### 1.2 Per-*item-type* buffer capacity — **DONE**
 
 `StorageBuffer` now carries a per-item-type capacity with a `Unlimited = -1` sentinel following
 `ResourceNode.Infinite`'s idiom, and `Deposit` returns the units actually accepted instead of
@@ -111,7 +108,7 @@ because §1.2 reworked exactly that code, and because per-type capacity would ha
 
 **Caveat:** in `Sandbox.unity` as it stands, `FactoryStockpile` is the *only* buffer (every
 `PlaceableDepot` points at it), so the finite default is wired but has nothing to bite on yet. It
-starts biting the moment §1.5 authors per-line buffers. Not test-run — see the caveat at the top.
+starts biting the moment §1.5 authors per-line buffers.
 
 ### 1.3 Multi-input `Assemble`
 `AppendageActionDefinition` carries a single `inputItemType`/`outputItemType`, so no recipe can

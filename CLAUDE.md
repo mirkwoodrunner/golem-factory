@@ -63,14 +63,30 @@ Editor (or a live MCP-for-Unity bridge, if connected):
   Editor pass (texture import settings, Tile assets, `SpriteRenderer` assignment) — see the
   "Graphics demo implementation notes" section of the implementation plan for the exact steps.
 
-As of the last recorded full run (facing-based spatial routing pass):
-**590/590 tests passing** (489 EditMode + 101 PlayMode). **The progression pass's §1.1 landed after
-that run and has not been executed** — see the test-run caveat at the top of `docs/open-items.md`.
+As of the last full run (progression pass §1.2): **702/702 tests passing**
+(601 EditMode + 101 PlayMode).
 
-There is no CLI test runner, but `dotnet build GolemFactory.<Assembly>.csproj` does work as a
-**compile gate** outside the Editor. Caveats: the `.csproj` files are Unity-generated and
-git-ignored, and they use explicit `<Compile Include>` lists, so a newly added `.cs` file must be
-added to one by hand or Unity has to regenerate them. It type-checks only — it runs nothing.
+**Unity batch mode does run the tests.** The implementation plan records this as a "nice-to-have,
+not implemented" — that is out of date. It works, and it is the cheapest way to verify a pass
+without driving the Editor by hand:
+
+```sh
+"G:/Unity/Hub/Editor/6000.5.4f1/Editor/Unity.exe" -runTests -batchmode \
+  -projectPath "G:/GitHub/golem-factory" \
+  -testPlatform EditMode \
+  -testResults "<somewhere>/editmode-results.xml" \
+  -logFile "<somewhere>/editmode.log"
+```
+
+Swap `-testPlatform PlayMode` for the other suite. Exit code 0 means everything passed (2 means
+failures); the result counts and any failure detail are in the `-testResults` XML, not stdout.
+**The Editor must be closed** — it fails on the project lock otherwise. Do not add `-quit`, which
+kills the run before the tests report.
+
+While the Editor is open, `dotnet build GolemFactory.<Assembly>.csproj` still works as a fast
+**compile-only gate**. Caveats: the `.csproj` files are Unity-generated and git-ignored, and they
+use explicit `<Compile Include>` lists, so a newly added `.cs` file must be added to one by hand or
+Unity has to regenerate them. It type-checks only — it runs nothing.
 
 ## Architecture
 
