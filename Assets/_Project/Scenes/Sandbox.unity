@@ -3456,6 +3456,9 @@ MonoBehaviour:
   conveyorHolder: {fileID: 2049142410}
   clockRunner: {fileID: 2049142405}
   startingAetherQuantity: 40
+  bufferRegistryHolder: {fileID: 0}
+  productionBufferCapacityPerType: 100
+  stockpileBufferId: FactoryStockpile
   cameraRig: {fileID: 1992407296}
   playerTransform: {fileID: 1683579195}
   player: {fileID: 1683579197}

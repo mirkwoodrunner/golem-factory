@@ -52,6 +52,32 @@ namespace GolemFactory.Tests.EditMode
             return step;
         }
 
+        // §1.3: Assemble reads a RecipeDefinition and nothing else, so the Assemble steps below
+        // are built from one -- the inputItemType/outputItemType pair they used to borrow was an
+        // explicit §1.1 placeholder. Built with CreateInstance the same way Step builds an
+        // appendage; no .asset is authored for a test.
+        private static AppendageActionDefinition AssembleStep(
+            string inputItemType, string outputItemType, int durationTicks = 1,
+            int inputQuantity = 1, int outputQuantity = 1,
+            string byproductItemType = null, int byproductQuantity = 1)
+        {
+            var step = ScriptableObject.CreateInstance<AppendageActionDefinition>();
+            step.actionType = AppendageActionType.Assemble;
+            // Deliberately absurd, and deliberately present: nothing about an Assemble may be
+            // read off the card any more.
+            step.durationTicks = 999;
+
+            var recipe = ScriptableObject.CreateInstance<RecipeDefinition>();
+            recipe.inputs.Add(new RecipeIngredient(inputItemType, inputQuantity));
+            recipe.outputItemType = outputItemType;
+            recipe.outputQuantity = outputQuantity;
+            recipe.byproductItemType = byproductItemType;
+            recipe.byproductQuantity = byproductQuantity;
+            recipe.durationTicks = durationTicks;
+            step.recipe = recipe;
+            return step;
+        }
+
         private GolemEntity CreateGolem(params AppendageActionDefinition[] steps)
         {
             var go = new GameObject("MachineGolem");
@@ -165,7 +191,7 @@ namespace GolemFactory.Tests.EditMode
             endpoints.Registry.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(destination));
 
             GolemEntity golem = CreateGolem(
-                Step(AppendageActionType.Assemble, ItemType.Scrap, ItemType.Brass, durationTicks: 1),
+                AssembleStep(ItemType.Scrap, ItemType.Brass, durationTicks: 1),
                 Step(AppendageActionType.Push));
             golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
             golem.Inventory.AddInput(ItemType.Scrap, 4);
@@ -510,7 +536,7 @@ namespace GolemFactory.Tests.EditMode
         public void Assemble_ConsumesInputAtBegin_AndDepositsOutputOnlyAtCompletion()
         {
             GolemEntity golem = CreateGolem(
-                Step(AppendageActionType.Assemble, ItemType.Scrap, ItemType.Brass, durationTicks: 3));
+                AssembleStep(ItemType.Scrap, ItemType.Brass, durationTicks: 3));
             golem.Inventory.AddInput(ItemType.Scrap, 2);
 
             golem.Tick(0);
@@ -539,7 +565,7 @@ namespace GolemFactory.Tests.EditMode
             endpoints.Registry.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(inFront));
 
             GolemEntity golem = CreateGolem(
-                Step(AppendageActionType.Assemble, ItemType.Scrap, ItemType.Brass, durationTicks: 1));
+                AssembleStep(ItemType.Scrap, ItemType.Brass, durationTicks: 1));
             golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
             golem.Inventory.AddInput(ItemType.Scrap, 1);
 
@@ -556,13 +582,17 @@ namespace GolemFactory.Tests.EditMode
             // Three assemblers on one line waiting on three different precursors have to be
             // distinguishable; "GolemA stalled: GolemA has no input" is not.
             GolemEntity golem = CreateGolem(
-                Step(AppendageActionType.Assemble, ItemType.Scrap, ItemType.Brass, durationTicks: 2));
+                AssembleStep(ItemType.Scrap, ItemType.Brass, durationTicks: 2, inputQuantity: 2));
 
             golem.Tick(0);
 
             Assert.AreEqual(GolemState.Stalled, golem.Program.State);
             Assert.AreEqual(StallReason.MissingItem, golem.StallReason);
             Assert.AreEqual(ItemType.Scrap, golem.StallResourceId);
+            // §1.3 / progression-design §8: the amount rides alongside the type rather than
+            // being encoded into the resource id, which stays the bare good.
+            Assert.AreEqual(2, golem.StallShortfall,
+                "the stall named the missing type but not how many more are needed");
             Assert.AreEqual(0, golem.Inventory.GetOutput(ItemType.Brass));
         }
 
@@ -587,7 +617,7 @@ namespace GolemFactory.Tests.EditMode
             // Ordering discipline: check there is room for the product BEFORE consuming the
             // ingredient, or a jammed output silently destroys material every tick.
             GolemEntity golem = CreateGolem(
-                Step(AppendageActionType.Assemble, ItemType.Scrap, ItemType.Brass, durationTicks: 1));
+                AssembleStep(ItemType.Scrap, ItemType.Brass, durationTicks: 1));
             golem.Inventory.AddInput(ItemType.Scrap, 4);
             golem.Inventory.AddOutput(ItemType.Brass, GolemInventory.CapacityPerType);
 
@@ -603,6 +633,8 @@ namespace GolemFactory.Tests.EditMode
         [Test]
         public void Assemble_WithoutAnAuthoredRecipe_StallsUnconfigured()
         {
+            // §1.3: "no recipe" is now the only way an Assemble card can be unfinished -- the
+            // card's own inputItemType/outputItemType are no longer part of the answer.
             GolemEntity golem = CreateGolem(Step(AppendageActionType.Assemble));
 
             golem.Tick(0);
@@ -611,10 +643,12 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void Assemble_UsesItsAuthoredDurationRatherThanADerivedOne()
+        public void Assemble_UsesItsRecipesDurationRatherThanADerivedOne()
         {
-            GolemEntity golem = CreateGolem(
-                Step(AppendageActionType.Assemble, ItemType.Scrap, ItemType.Brass, durationTicks: 7));
+            // The duration comes off the RECIPE, not the card: one Assemble card pointed at a
+            // 12-tick recipe and a 90-tick one must not run both at the same speed. AssembleStep
+            // leaves an absurd durationTicks on the card to prove it is not what is read.
+            GolemEntity golem = CreateGolem(AssembleStep(ItemType.Scrap, ItemType.Brass, durationTicks: 7));
             golem.Inventory.AddInput(ItemType.Scrap, 1);
 
             Assert.AreEqual(7, TicksToFirstCompletion(golem));
@@ -634,7 +668,7 @@ namespace GolemFactory.Tests.EditMode
 
             GolemEntity golem = CreateGolem(
                 Step(AppendageActionType.Haul, ItemType.Scrap),
-                Step(AppendageActionType.Assemble, ItemType.Scrap, ItemType.Brass, durationTicks: 3),
+                AssembleStep(ItemType.Scrap, ItemType.Brass, durationTicks: 3),
                 Step(AppendageActionType.Push));
             golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
             golem.Program.SetQuantityAt(0, 1);
@@ -752,9 +786,12 @@ namespace GolemFactory.Tests.EditMode
             // Nothing was added to make this happen; it falls out of Push skipping the refused
             // type plus BeginAssemble's existing check-output-room-before-consuming ordering.
             //
-            // Two Assemble steps stand in for the single two-output recipe §1.3 will introduce:
-            // AppendageActionDefinition still carries one output, and what matters here is that
-            // the golem's hold ends up mixed.
+            // §1.3 UPDATE: this used to run two single-output Assemble steps as a stand-in,
+            // because AppendageActionDefinition carried exactly one output type. It is now the
+            // real thing -- ONE recipe (2 Scrap -> 1 Product + 1 Byproduct) whose byproduct is
+            // what backs up. The cycle is one tick shorter as a result (one Assemble, not two),
+            // which changes nothing the assertions depend on: they are all about the terminal
+            // state, and 150 ticks still reaches it either way.
             SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
             var source = new StorageBuffer("Source");
             source.Deposit(ItemType.Scrap, 500);
@@ -768,16 +805,16 @@ namespace GolemFactory.Tests.EditMode
 
             GolemEntity golem = CreateGolem(
                 Step(AppendageActionType.Haul, ItemType.Scrap),
-                Step(AppendageActionType.Assemble, ItemType.Scrap, ProductGood, durationTicks: 1),
-                Step(AppendageActionType.Assemble, ItemType.Scrap, ByproductGood, durationTicks: 1),
+                AssembleStep(ItemType.Scrap, ProductGood, durationTicks: 1, inputQuantity: 2,
+                    byproductItemType: ByproductGood),
                 Step(AppendageActionType.Push));
             golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
-            golem.Program.SetQuantityAt(0, 2); // one unit for each Assemble
+            golem.Program.SetQuantityAt(0, 2); // the recipe's input quantity
 
             // Long enough to run well past the golem's 12-per-type output cap: each cycle is
-            // Haul(2) + Assemble(1) + Assemble(1) + Push(2 + 1 delivered) = 7 ticks, so the
-            // byproduct hold reaches 12 after 12 cycles (~84 ticks) and the 13th cycle stalls.
-            // The stall is terminal, so the exact tick it happens on does not matter here.
+            // Haul(2) + Assemble(1) + Push(2 + 1 delivered) = 6 ticks, so the byproduct hold
+            // reaches 12 after 12 cycles (~72 ticks) and the 13th cycle stalls. The stall is
+            // terminal, so the exact tick it happens on does not matter here.
             Run(golem, 150);
 
             Assert.AreEqual(GolemState.Stalled, golem.Program.State,

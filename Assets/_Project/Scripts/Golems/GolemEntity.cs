@@ -48,6 +48,31 @@ namespace GolemFactory.Golems
         public StallReason StallReason => program.State == GolemState.Stalled ? _stallReason : StallReason.None;
         public string StallResourceId => program.State == GolemState.Stalled ? _stallResourceId : null;
 
+        // HOW MANY MORE of _stallResourceId the step needed -- progression-design §8's "Why is
+        // this golem stopped?" row requires the specific short ingredient *and amount* for
+        // Assemble. On R15 (10 Casing + 6 Iron Plate + 4 Brass) "no Casing available" does not
+        // tell the player whether they are one short or nine, and those are very different
+        // factories.
+        //
+        // Carried as its own field rather than encoded into _stallResourceId ("3 Scrap"),
+        // because InputFull/OutputFull/MissingItem all established that the resource id is the
+        // BARE item type -- the badge, the alerts strip and a dozen tests read it that way, and
+        // a smuggled quantity would break every one of them.
+        private int _stallShortfall;
+
+        /// <summary>
+        /// Units still needed of <see cref="StallResourceId"/>, or 0 when the stall carries no
+        /// meaningful amount (a Haul type mismatch, an empty Push hold, any non-Assemble stall).
+        /// </summary>
+        public int StallShortfall => program.State == GolemState.Stalled ? _stallShortfall : 0;
+
+        // Written by whichever Begin* method is running, read once in Tick. A second out
+        // parameter threaded through BeginStep and all six Begin* methods was the obvious
+        // alternative; it was rejected because exactly one verb has an amount to report and the
+        // other five would each have had to write `shortfall = 0` in every return path. Reset at
+        // the top of BeginStep, so it can never survive into a later step's stall.
+        private int _pendingShortfall;
+
         // --- The machine model (docs/progression-design.md §2) -------------------------------
         // The golem's own typed input/output stock. Runtime state, not [SerializeField]: it is
         // saved and restored explicitly through SaveLoadService (like StallReason it is derived
@@ -176,18 +201,26 @@ namespace GolemFactory.Golems
                     // out to be empty too). Republishing every tick re-armed GolemVisual's
                     // stall shake 10x/second so the "single jolt" never decayed, and buried
                     // any listener that wanted to react once per incident.
+                    //
+                    // The shortfall amount counts as part of the identity: while stalled the
+                    // golem's input stock is frozen (nothing ahead of the blocked step runs), so
+                    // it can only change if the underlying situation genuinely did -- no risk of
+                    // the per-tick republishing this guard exists to prevent.
                     bool isNewIncident = !wasStalled ||
                         reason != _stallReason ||
-                        blockedResourceId != _stallResourceId;
+                        blockedResourceId != _stallResourceId ||
+                        _pendingShortfall != _stallShortfall;
 
                     program.State = GolemState.Stalled;
                     _stallReason = reason;
                     _stallResourceId = blockedResourceId;
+                    _stallShortfall = _pendingShortfall;
 
                     if (isNewIncident)
                     {
                         EventBus.Publish(new GolemStalledEvent(
-                            golemId, reason, blockedResourceId, program.CurrentStepIndex));
+                            golemId, reason, blockedResourceId, program.CurrentStepIndex,
+                            _stallShortfall));
                     }
                     return;
                 }
@@ -292,8 +325,13 @@ namespace GolemFactory.Golems
         {
             blockedResourceId = null;
 
+            // Cleared every Begin attempt so a stale amount from a previous step can never be
+            // reported against this one; only BeginAssemble ever sets it.
+            _pendingShortfall = 0;
+
             // The authored duration is the default; the three quantity-derived verbs overwrite
-            // it inside their own Begin, once they know how much they actually moved.
+            // it inside their own Begin, once they know how much they actually moved, and
+            // Assemble replaces it with its recipe's.
             _stepDuration = Mathf.Max(1, step.durationTicks);
 
             switch (step.actionType)
@@ -428,10 +466,29 @@ namespace GolemFactory.Golems
 
             if (step.actionType == AppendageActionType.Assemble)
             {
+                RecipeDefinition recipe = step.recipe;
+                if (recipe == null)
+                {
+                    // Unreachable: BeginAssemble stalls Unconfigured on a null recipe, so the
+                    // step never starts counting ticks and never completes. Guarded anyway
+                    // because CompleteStep runs inside Tick, where a throw is not an option.
+                    return;
+                }
+
                 // Unconditional Add, no room re-check: BeginAssemble already confirmed room for
-                // this unit, and a golem's output stock has exactly one writer -- itself, one
-                // step at a time. Nothing can have consumed the room in between.
-                _inventory.AddOutput(step.outputItemType, 1);
+                // the full output quantity AND for the byproduct, and a golem's output stock has
+                // exactly one writer -- itself, one step at a time. Nothing can have consumed
+                // the room in between.
+                //
+                // Both land in OUTPUT stock, at completion rather than at begin, so the
+                // processing time is real: nothing appears until the recipe has actually run.
+                // The byproduct costs no extra slot because Push empties the whole output stock
+                // in one step (progression-design §2, Consequence 3).
+                _inventory.AddOutput(recipe.outputItemType, recipe.outputQuantity);
+                if (recipe.HasByproduct)
+                {
+                    _inventory.AddOutput(recipe.byproductItemType, recipe.byproductQuantity);
+                }
             }
         }
 
@@ -754,47 +811,96 @@ namespace GolemFactory.Golems
             return StallReason.None;
         }
 
-        // --- Assemble -------------------------------------------------------------------------
-        // Consumes one unit of the precursor from input stock at Begin and deposits the product
-        // into output stock at Complete. NEVER TOUCHES A TILE, which is the whole reason the
-        // machine model was worth adopting: a recipe reads a typed dictionary the golem owns, so
-        // it cannot grab the wrong good off a mixed tile and silently transmute it. That also
-        // makes it the one verb with no spatial/id fork -- an unplaced golem assembles exactly
-        // like a placed one, and it needs no ConfigureSpatial to do it.
+        // --- Assemble (docs/progression-design.md §5.2, §11 item 2) ---------------------------
+        // Runs one RecipeDefinition: consumes 1-4 typed inputs from input stock at Begin and
+        // deposits the output (+ optional byproduct) into output stock at Complete.
         //
-        // §1.3 replaces the single inputItemType/outputItemType pair with a RecipeDefinition
-        // carrying 1-4 typed inputs, an output quantity and a byproduct. The atomic withdraw and
-        // the check-output-room-before-consuming-input ordering below are the parts that survive.
+        // NEVER TOUCHES A TILE, which is the whole reason the machine model was worth adopting:
+        // a recipe reads a typed dictionary the golem owns, so it cannot grab the wrong good off
+        // a mixed tile and silently transmute it. That also makes it the one verb with no
+        // spatial/id fork -- an unplaced golem assembles exactly like a placed one, and it needs
+        // no ConfigureSpatial to do it.
+        //
+        // IT READS ONLY step.recipe. The step's own inputItemType/outputItemType were an
+        // explicit §1.1 placeholder for a single-input Assemble and are no longer consulted here
+        // at all; they stay on the asset because Refine and Haul still mean something by them.
         private StallReason BeginAssemble(AppendageActionDefinition step, out string blockedResourceId)
         {
             blockedResourceId = null;
 
-            if (string.IsNullOrEmpty(step.inputItemType) || string.IsNullOrEmpty(step.outputItemType))
+            RecipeDefinition recipe = step.recipe;
+
+            // A missing recipe and a malformed one are the same failure to the player -- this
+            // card was never finished being authored -- and both must be an honest stall rather
+            // than a throw: BeginStep runs inside Tick, where an exception takes the whole
+            // simulation clock down with it. Validation itself lives on RecipeDefinition, at the
+            // authoring edge; this is just the tick loop refusing to half-execute the result.
+            if (recipe == null || !recipe.IsWellFormed())
             {
                 return StallReason.Unconfigured;
             }
 
-            // Output room first: consuming the precursor and only then discovering there is
-            // nowhere to put the product would destroy it. Same ordering rule as
-            // BeginSpatialTransfer, with the golem's own stocks on both ends this time.
-            if (_inventory.OutputRoomFor(step.outputItemType) <= 0)
+            // Authored, not derived (progression-design §2's cycle-time table), and taken from
+            // the recipe rather than the card -- one Assemble card pointed at R1 (12t) and R15
+            // (90t) must not run both at the same speed. Set before the precondition checks so a
+            // stalled step cannot carry a stale duration into its eventual successful retry.
+            _stepDuration = Mathf.Max(1, recipe.durationTicks);
+
+            // ROOM FOR EVERYTHING THIS WILL PRODUCE, BEFORE CONSUMING ANYTHING. Consuming the
+            // ingredients and only then discovering the output stock is full destroys material
+            // every tick. Both the output and the byproduct are checked, because a recipe that
+            // could deposit its Iron Plate but not its Slag must stall with its inputs intact --
+            // that backed-up-byproduct stall is the mechanism behind §5.3(c)'s whole Slag
+            // economy, not an edge case. Output and byproduct are guaranteed different types
+            // (RecipeDefinition.IsWellFormed), so the two checks cannot overlap.
+            if (_inventory.OutputRoomFor(recipe.outputItemType) < recipe.outputQuantity)
             {
-                blockedResourceId = step.outputItemType;
+                blockedResourceId = recipe.outputItemType;
                 return StallReason.OutputFull;
             }
 
-            // All-or-nothing, and taken up front so the processing time is real committed work
-            // -- exactly the reasoning BeginRefine records. The product appears in CompleteStep.
-            if (!_inventory.TryConsumeInput(step.inputItemType, 1))
+            if (recipe.HasByproduct &&
+                _inventory.OutputRoomFor(recipe.byproductItemType) < recipe.byproductQuantity)
             {
-                // Names the missing ingredient, not the golem. The obvious alternative --
-                // BufferEmpty against golemId -- renders as "GolemA stalled: GolemA has no
-                // input": the golem's name twice and no mention of what it is short of, which
-                // is unusable on a line where three assemblers are all waiting on different
-                // precursors. This is also the seam §1.3 widens into multi-input shortfall
-                // naming, rather than something §1.3 would have to undo.
-                blockedResourceId = step.inputItemType;
+                blockedResourceId = recipe.byproductItemType;
+                return StallReason.OutputFull;
+            }
+
+            // ATOMIC: every input is checked before any input is withdrawn. A partial withdrawal
+            // on a recipe that then stalls would strand goods inside the golem forever -- a rigid
+            // program has no step that could ever put them back, and nothing outside the golem
+            // can reach its input stock. This is the single most important line in the verb.
+            System.Collections.Generic.List<RecipeIngredient> ingredients = recipe.inputs;
+            for (int i = 0; i < ingredients.Count; i++)
+            {
+                RecipeIngredient ingredient = ingredients[i];
+                int held = _inventory.GetInput(ingredient.itemType);
+                if (held >= ingredient.quantity)
+                {
+                    continue;
+                }
+
+                // FIRST short input in the recipe's AUTHORED order, deliberately -- not the
+                // largest shortfall, not the scarcest good. Two identically-programmed golems
+                // must always name the same ingredient, or a player comparing two stalled
+                // smelters gets two different diagnoses of one problem. Authored order is the
+                // only ordering both golems provably share.
+                //
+                // Names the missing ingredient, not the golem: "GolemA stalled: GolemA has no
+                // input" is unusable on a line where three assemblers wait on three different
+                // precursors. §8 additionally requires the AMOUNT, which rides alongside in
+                // _pendingShortfall rather than being encoded into the resource id.
+                blockedResourceId = ingredient.itemType;
+                _pendingShortfall = ingredient.quantity - held;
                 return StallReason.MissingItem;
+            }
+
+            // Withdrawn up front, so the processing time is committed work -- exactly the
+            // reasoning BeginRefine records. Every one of these is guaranteed to succeed by the
+            // loop above; the products appear in CompleteStep.
+            for (int i = 0; i < ingredients.Count; i++)
+            {
+                _inventory.TryConsumeInput(ingredients[i].itemType, ingredients[i].quantity);
             }
 
             return StallReason.None;

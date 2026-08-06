@@ -34,7 +34,7 @@ namespace GolemFactory.UI
             // (the same gap that left the alerts strip reading "All golems running.").
             if (_isStalled)
             {
-                RefreshCaption(golem.StallReason, golem.StallResourceId);
+                RefreshCaption(golem.StallReason, golem.StallResourceId, golem.StallShortfall);
             }
             RefreshVisibility();
         }
@@ -60,7 +60,7 @@ namespace GolemFactory.UI
             if (golem != null && e.GolemId == golem.GolemId)
             {
                 _isStalled = true;
-                RefreshCaption(e.Reason, e.ResourceId);
+                RefreshCaption(e.Reason, e.ResourceId, e.Shortfall);
                 RefreshVisibility();
             }
         }
@@ -78,7 +78,7 @@ namespace GolemFactory.UI
         // execution model the golem will retry the same step forever, so "GolemD is stalled"
         // isn't actionable on its own -- the resource that's blocking it is the only thing the
         // player can actually go and fix.
-        private void RefreshCaption(StallReason reason, string resourceId)
+        private void RefreshCaption(StallReason reason, string resourceId, int shortfall)
         {
             if (_label == null)
             {
@@ -86,7 +86,8 @@ namespace GolemFactory.UI
             }
 
             string who = golem != null ? golem.GolemId : "Golem";
-            _label.text = "[!] " + who + "\n" + StallDiagnostics.DescribeShort(reason, resourceId);
+            _label.text = "[!] " + who + "\n" +
+                StallDiagnostics.DescribeShort(reason, resourceId, shortfall);
         }
 
         private void RefreshVisibility()

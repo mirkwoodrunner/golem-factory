@@ -11,11 +11,22 @@ namespace GolemFactory.UI
         public readonly StallReason Reason;
         public readonly string ResourceId;
 
+        /// <summary>
+        /// Units still needed of <see cref="ResourceId"/>, 0 when the stall carries no amount.
+        /// See <see cref="GolemStalledEvent.Shortfall"/>.
+        /// </summary>
+        public readonly int Shortfall;
+
+        // Kept so every existing construction site (and test) that has no amount still compiles.
         public StallSnapshot(string golemId, StallReason reason, string resourceId)
+            : this(golemId, reason, resourceId, 0) { }
+
+        public StallSnapshot(string golemId, StallReason reason, string resourceId, int shortfall)
         {
             GolemId = golemId;
             Reason = reason;
             ResourceId = resourceId;
+            Shortfall = shortfall;
         }
     }
 
@@ -97,7 +108,7 @@ namespace GolemFactory.UI
         }
 
         private void OnGolemStalled(GolemStalledEvent e) =>
-            _stalled[e.GolemId] = new StallSnapshot(e.GolemId, e.Reason, e.ResourceId);
+            _stalled[e.GolemId] = new StallSnapshot(e.GolemId, e.Reason, e.ResourceId, e.Shortfall);
 
         private void OnGolemResumed(GolemResumedEvent e) => _stalled.Remove(e.GolemId);
     }

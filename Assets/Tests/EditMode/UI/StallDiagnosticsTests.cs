@@ -332,6 +332,90 @@ namespace GolemFactory.Tests.EditMode
             StringAssert.DoesNotContain("source", text);
         }
 
+        // --- The shortfall amount (progression-design §8, item §1.3) --------------------------
+        // §8's "Why is this golem stopped?" row asks for "the specific short ingredient AND
+        // amount" for Assemble. On R15 (10 Casing + 6 Iron Plate + 4 Brass), "no Casing
+        // available" cannot tell the player whether they are one short or nine.
+
+        [Test]
+        public void Describe_MissingItem_WithAShortfall_SaysHowManyMoreAreNeeded()
+        {
+            string text = StallDiagnostics.Describe("GolemD", StallReason.MissingItem, "Casing", 9);
+
+            StringAssert.Contains("GolemD", text);
+            StringAssert.Contains("Casing", text);
+            StringAssert.Contains("9", text);
+        }
+
+        [Test]
+        public void DescribeShort_MissingItem_WithAShortfall_SaysHowManyMoreAreNeeded()
+        {
+            string text = StallDiagnostics.DescribeShort(StallReason.MissingItem, "Casing", 9);
+
+            StringAssert.Contains("Casing", text);
+            StringAssert.Contains("9", text);
+        }
+
+        [Test]
+        public void MissingItem_OneShortReadsDifferentlyFromNineShort()
+        {
+            // The whole point of carrying the amount: a hiccup and a dead line must not produce
+            // the same sentence.
+            Assert.AreNotEqual(
+                StallDiagnostics.Describe("GolemD", StallReason.MissingItem, "Casing", 1),
+                StallDiagnostics.Describe("GolemD", StallReason.MissingItem, "Casing", 9));
+        }
+
+        [Test]
+        public void MissingItem_WithNoShortfall_ReadsExactlyAsItDidBeforeShortfallsExisted()
+        {
+            // A Haul type mismatch and an empty Push hold have no meaningful amount, so the
+            // text must fall back to the exact wording those two cases have always had --
+            // pinned literally, because "still contains the item type" would not catch a
+            // regression that quietly started printing "need 0 more".
+            Assert.AreEqual("GolemD stalled: no Aether available",
+                StallDiagnostics.Describe("GolemD", StallReason.MissingItem, ItemType.Aether));
+            Assert.AreEqual("GolemD stalled: no Aether available",
+                StallDiagnostics.Describe("GolemD", StallReason.MissingItem, ItemType.Aether, 0));
+            Assert.AreEqual("no Aether",
+                StallDiagnostics.DescribeShort(StallReason.MissingItem, ItemType.Aether));
+
+            // The empty-hold Push case: no type either, so an amount can never apply.
+            Assert.AreEqual("GolemD stalled: no goods available",
+                StallDiagnostics.Describe("GolemD", StallReason.MissingItem, null, 3));
+            Assert.AreEqual("no goods",
+                StallDiagnostics.DescribeShort(StallReason.MissingItem, null, 3));
+        }
+
+        [Test]
+        public void ShortfallText_IsPlainAscii()
+        {
+            // Same LiberationSans SDF constraint as everything else the badge renders.
+            string[] texts =
+            {
+                StallDiagnostics.DescribeShort(StallReason.MissingItem, "Casing", 9),
+                StallDiagnostics.Describe("GolemD", StallReason.MissingItem, "Casing", 9)
+            };
+
+            foreach (string text in texts)
+            {
+                foreach (char c in text)
+                {
+                    Assert.Less((int)c, 128, "non-ASCII '" + c + "' has no glyph in LiberationSans SDF");
+                }
+            }
+        }
+
+        [Test]
+        public void ComposeStripText_CarriesThePrimaryStallsShortfall()
+        {
+            string text = StallDiagnostics.ComposeStripText(
+                1, new StallSnapshot("GolemD", StallReason.MissingItem, "Casing", 9));
+
+            StringAssert.Contains("Casing", text);
+            StringAssert.Contains("9", text);
+        }
+
         private static int CountOccurrences(string haystack, string needle)
         {
             int count = 0;

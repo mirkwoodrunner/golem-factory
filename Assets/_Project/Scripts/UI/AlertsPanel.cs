@@ -85,7 +85,8 @@ namespace GolemFactory.UI
                 if (golem.Program.State == GolemState.Stalled)
                 {
                     _snapshotBuffer.Add(new StallSnapshot(
-                        golem.GolemId, golem.StallReason, golem.StallResourceId));
+                        golem.GolemId, golem.StallReason, golem.StallResourceId,
+                        golem.StallShortfall));
                 }
             }
 

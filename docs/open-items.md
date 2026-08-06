@@ -5,11 +5,11 @@ Consolidated backlog as of the progression-design pass, on branch
 
 Everything here is known and deliberate — none of it is a surprise waiting to be discovered.
 
-> **Where the line is.** Everything through §1.2 (per-item-type buffer capacity) is **built, tested
-> and reviewed**. Everything from §1.3 on is **spec only**. Steam power has been approved for
-> inclusion but not written. The next pass starts at §1.3.
+> **Where the line is.** Everything through §1.3 (multi-input `Assemble`) is **built, tested
+> and reviewed**. Everything from §1.4 on is **spec only**. Steam power has been approved for
+> inclusion but not written. The next pass starts at §1.4.
 
-Tests stand at **702/702** (601 EditMode + 101 PlayMode), up from 590 before the progression pass
+Tests stand at **736/736** (635 EditMode + 101 PlayMode), up from 590 before the progression pass
 began. Console clean.
 
 > **Unity batch mode does run the tests, contrary to what the implementation plan says.** It is
@@ -27,7 +27,7 @@ independent critic between rounds, before any code was written against it. That 
 round 1 failed on five structural counts, all of which would otherwise have surfaced only after
 ~25 recipes had been authored and wired.
 
-**§1.1 and §1.2 are now built and green. §1.3–§1.6 are still spec.** Implementation order matters,
+**§1.1, §1.2 and §1.3 are now built and green. §1.4–§1.6 are still spec.** Implementation order matters,
 because each item depends on the one above it — and §1.2 in particular must never ship before
 §1.1, for the reason given under it.
 
@@ -110,10 +110,33 @@ because §1.2 reworked exactly that code, and because per-type capacity would ha
 `PlaceableDepot` points at it), so the finite default is wired but has nothing to bite on yet. It
 starts biting the moment §1.5 authors per-line buffers.
 
-### 1.3 Multi-input `Assemble`
-`AppendageActionDefinition` carries a single `inputItemType`/`outputItemType`, so no recipe can
-combine goods. Needs 1–4 typed inputs with quantities, output quantity > 1, and one optional
-byproduct, withdrawn atomically with a shortfall-naming stall.
+### 1.3 Multi-input `Assemble` — **DONE**
+
+`RecipeDefinition` is a new ScriptableObject: 1–4 distinct typed inputs with quantities, an output
+type and quantity (which may exceed 1 — R4 makes 2 Iron Plate, R7 makes 3 Brass), exactly one
+optional byproduct with its own quantity, and `durationTicks`. `AppendageActionDefinition` gained a
+`recipe` reference, and **`Assemble` now reads only that** — the single `inputItemType`/
+`outputItemType` pair it borrowed in §1.1 was an explicit placeholder. Those fields stay on the
+card because `Refine` and `Haul` still use them.
+
+**Atomicity is the load-bearing property.** Every input is checked against input stock before any
+input is withdrawn. A partial withdrawal on a recipe that then stalls would strand goods inside the
+golem forever: a rigid program has no step that could put them back, and nothing outside the golem
+can reach its input stock. Room for the output **and** the byproduct is confirmed before anything is
+consumed — a recipe that could deposit its Iron Plate but not its Slag stalls with its inputs
+intact, which is the mechanism behind §5.3(c)'s entire Slag economy rather than an edge case.
+
+Validation lives on `RecipeDefinition.IsWellFormed()`, at the authoring edge, never as a throw
+inside `Tick`. A malformed or missing recipe stalls `Unconfigured`. The 1–10 authored input range's
+*upper* bound is deliberately not enforced: an over-large quantity is unsatisfiable rather than
+structurally impossible, and the honest shortfall is exactly what §6 relies on to make `Repeat` on
+R15 impossible later.
+
+§8's "the specific short ingredient **and amount**" is now met: `StallResourceId` still carries the
+bare item type (matching `InputFull`/`OutputFull`), and the amount rides alongside as
+`GolemEntity.StallShortfall` → `GolemStalledEvent.Shortfall` → `StallSnapshot`, rendered as "needs
+9 more Casing". When several inputs are short, the **first in the recipe's authored order** is
+named, so two identically-programmed golems always give the player the same diagnosis.
 
 ### 1.4 Steam power
 Boiler burns Coke **proportional to powered golem count** (1 Coke per powered golem per 10s),
@@ -199,8 +222,6 @@ steam adjacency still fits.
   reaching the tile in front, so a spatially placed golem with no `Push` fills to 12 and stalls
   `InputFull`. Correct by design (a Scavenger is 2 slots: Extract + Push) and the stall names the
   blocked good, but it is a live behaviour change for anyone with a saved Sandbox factory.
-- **`Assemble`'s shortfall stall names one ingredient** because the action still carries a single
-  `inputItemType`. §1.3 widens `MissingItem` to name the specific shortfall across 1–4 inputs.
 
 ### Carried forward from before
 

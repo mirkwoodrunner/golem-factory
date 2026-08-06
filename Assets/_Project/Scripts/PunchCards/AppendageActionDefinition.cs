@@ -26,8 +26,9 @@ namespace GolemFactory.PunchCards
     {
         public AppendageActionType actionType;
 
-        [Tooltip("Authored duration. Only Refine and Assemble use it -- Haul, ExtractFromNode " +
-                 "and Push derive their duration from quantity (progression-design section 2).")]
+        [Tooltip("Authored duration. Only Refine uses it -- Haul, ExtractFromNode and Push " +
+                 "derive theirs from quantity, and Assemble takes its recipe's durationTicks " +
+                 "(progression-design section 2).")]
         public int durationTicks = 1;
 
         public string sourceId;
@@ -39,14 +40,24 @@ namespace GolemFactory.PunchCards
                  "change all of them at once.")]
         public int haulQuantity = 1;
 
-        [Tooltip("Refine: item type withdrawn from the sourceId buffer. Assemble: the single " +
-                 "precursor consumed from the golem's input stock (section 1.3 replaces this " +
-                 "with a RecipeDefinition carrying 1-4 typed inputs). Haul: the type to pull " +
-                 "off the tile behind; leave blank to take whatever that tile offers.")]
+        // --- Assemble's recipe (docs/progression-design.md §5.2, §11 item 2) ------------------
+        // Assemble reads THIS AND NOTHING ELSE. The inputItemType/outputItemType pair below was
+        // an explicit placeholder while §1.1 built the machine model against a single-input
+        // Assemble; it is no longer consulted by Assemble at all. The two fields stay because
+        // Refine (and, for inputItemType, Haul) still mean something by them.
+        [Tooltip("Assemble ONLY. The recipe this card runs: 1-4 typed inputs consumed atomically " +
+                 "from the golem's input stock, an output (quantity may exceed 1) and one " +
+                 "optional byproduct deposited into its output stock. An Assemble card with no " +
+                 "recipe stalls 'not wired up'.")]
+        public RecipeDefinition recipe;
+
+        [Tooltip("NOT READ BY ASSEMBLE -- Assemble's inputs come from its recipe. Refine: item " +
+                 "type withdrawn from the sourceId buffer. Haul: the type to pull off the tile " +
+                 "behind; leave blank to take whatever that tile offers.")]
         public string inputItemType;
 
-        [Tooltip("Refine: item type deposited into the destinationId buffer. Assemble: the " +
-                 "type deposited into the golem's own output stock.")]
+        [Tooltip("NOT READ BY ASSEMBLE -- Assemble's output comes from its recipe. Refine: item " +
+                 "type deposited into the destinationId buffer.")]
         public string outputItemType;
     }
 }

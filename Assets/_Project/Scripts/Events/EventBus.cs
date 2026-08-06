@@ -92,8 +92,10 @@ namespace GolemFactory.Events
         // UI/StallDiagnostics exists to prevent. "Nothing here holds Aether" and "this is empty"
         // have different fixes: look upstream of the buffer, versus wait or rotate the golem.
         //
-        // Also what Assemble reports when its precursor is short. §1.3 widens this into
-        // multi-input shortfall naming rather than having to undo it.
+        // Also what Assemble reports when any of its recipe's 1-4 inputs is short. ResourceId
+        // names the FIRST short input in the recipe's authored order (deterministic across two
+        // identically-programmed golems) and GolemStalledEvent.Shortfall carries how many more
+        // of it are needed -- progression-design §8 requires both.
         MissingItem
     }
 
@@ -121,14 +123,31 @@ namespace GolemFactory.Events
         public readonly string ResourceId;
         public readonly int StepIndex;
 
-        public GolemStalledEvent(string golemId) : this(golemId, StallReason.None, null, 0) { }
+        // How many MORE units of ResourceId the step needed, or 0 when the stall carries no
+        // meaningful amount. progression-design §8 requires Assemble to report "the specific
+        // short ingredient AND amount" -- on R15 (10 Casing + 6 Iron Plate + 4 Brass), "no
+        // Casing" leaves the player unable to tell a one-unit hiccup from a dead line.
+        //
+        // Carried beside ResourceId rather than inside it: ResourceId is the BARE item type by
+        // established convention (InputFull/OutputFull/MissingItem), which the badge, the alerts
+        // strip and the test suite all rely on.
+        public readonly int Shortfall;
 
+        public GolemStalledEvent(string golemId) : this(golemId, StallReason.None, null, 0, 0) { }
+
+        // Kept for every publisher and test that has no amount to report -- widening the struct
+        // must not force a rewrite of call sites that were already correct.
         public GolemStalledEvent(string golemId, StallReason reason, string resourceId, int stepIndex)
+            : this(golemId, reason, resourceId, stepIndex, 0) { }
+
+        public GolemStalledEvent(
+            string golemId, StallReason reason, string resourceId, int stepIndex, int shortfall)
         {
             GolemId = golemId;
             Reason = reason;
             ResourceId = resourceId;
             StepIndex = stepIndex;
+            Shortfall = shortfall;
         }
     }
 
