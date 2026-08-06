@@ -32,6 +32,12 @@ namespace GolemFactory.Buildings
         [SerializeField] private GridMapHolder gridMapHolder;
         [SerializeField] private Vector2 cellSize = new Vector2(1f, 0.5f);
 
+        // Steam power (docs/progression-design.md §3.1). Optional in exactly the same way the
+        // spatial holder above is: a station with no steam network builds golems that are
+        // EXEMPT from the NoSteam precondition, which is the state Sandbox.unity ships in today
+        // (SandboxBootstrap.requireSteamPower is off until §1.5 gives Coke a source).
+        [SerializeField] private GolemFactory.Steam.SteamNetworkHolder steamNetworkHolder;
+
         private int _nextGolemNumber = 1;
 
         public ChassisDefinition[] ChassisRoster => chassisRoster;
@@ -65,6 +71,14 @@ namespace GolemFactory.Buildings
             gridMapHolder = gridMap;
             cellSize = gridCellSize;
         }
+
+        /// <summary>
+        /// Steam-gates every golem this station builds from here on. Split out for the same
+        /// reason ConfigureSpatial is -- a station that never gets one keeps producing golems
+        /// that run without a boiler, which is what the whole opt-in fork buys.
+        /// </summary>
+        public void ConfigureSteam(GolemFactory.Steam.SteamNetworkHolder steam) =>
+            steamNetworkHolder = steam;
 
         /// <summary>
         /// Which way this station points, and therefore the tile its golem steps out onto and
@@ -162,6 +176,14 @@ namespace GolemFactory.Buildings
             if (spatialEndpointHolder != null)
             {
                 golem.ConfigureSpatial(spatialEndpointHolder, spawnCell, spawnFacing);
+            }
+
+            // After ConfigureSpatial, deliberately: the steam grid is keyed by cell, and
+            // ConfigureSteam registers the golem at whatever cell it is standing on. Wiring it
+            // first would register the golem at (0,0) and leave it there.
+            if (steamNetworkHolder != null)
+            {
+                golem.ConfigureSteam(steamNetworkHolder);
             }
 
             GolemVisual visual = golem.GetComponent<GolemVisual>();

@@ -63,8 +63,8 @@ Editor (or a live MCP-for-Unity bridge, if connected):
   Editor pass (texture import settings, Tile assets, `SpriteRenderer` assignment) — see the
   "Graphics demo implementation notes" section of the implementation plan for the exact steps.
 
-As of the last full run (progression pass §1.3): **736/736 tests passing**
-(635 EditMode + 101 PlayMode).
+As of the last full run (progression pass §1.4, steam power): **789/789 tests passing**
+(688 EditMode + 101 PlayMode).
 
 **Unity batch mode does run the tests.** The implementation plan records this as a "nice-to-have,
 not implemented" — that is out of date. It works, and it is the cheapest way to verify a pass

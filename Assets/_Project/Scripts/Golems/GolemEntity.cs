@@ -4,6 +4,7 @@ using GolemFactory.Events;
 using GolemFactory.PunchCards;
 using GolemFactory.Belts;
 using GolemFactory.Economy;
+using GolemFactory.Steam;
 using GolemFactory.World;
 
 namespace GolemFactory.Golems
@@ -25,6 +26,24 @@ namespace GolemFactory.Golems
         [SerializeField] private SpatialEndpointRegistryHolder spatialEndpointHolder;
         [SerializeField] private Vector2Int cell;
         [SerializeField] private Facing facing = Facing.North;
+
+        // --- Steam power (docs/progression-design.md §3.1) -----------------------------------
+        // OPT-IN, exactly like spatialEndpointHolder above and bufferRegistryHolder before it.
+        // A golem that is never handed a steam network is EXEMPT and always runs -- which is
+        // what leaves Main.unity's seven hand-wired demos and every pre-existing test untouched
+        // by the single largest addition in the progression design. This is the third use of
+        // this same fork (economy registries, spatial routing, now steam) and it is the reason
+        // none of the three needed a migration pass over existing content.
+        //
+        // Not a [SerializeField]: it is wired by ConfigureSteam from a bootstrap or a
+        // construction station, so an Inspector cannot accidentally steam-gate a demo golem.
+        private SteamNetworkHolder steamNetworkHolder;
+
+        // The tick currently executing, captured at the top of Tick so the precondition check
+        // inside BeginStep can ask the network for THIS tick's powered set. Threading a tick
+        // parameter through BeginStep and all six Begin* methods was the alternative; it was
+        // rejected because exactly one of them would use it.
+        private long _currentTick;
 
         public string GolemId => golemId;
         public GolemProgram Program => program;
@@ -95,6 +114,10 @@ namespace GolemFactory.Golems
         {
             golemId = id;
             conveyorHolder = holder;
+            // No-op unless a steam network was already wired. It is here because the consumer
+            // key IS the golem id, so a ConfigureSteam that ran before the id was set would
+            // otherwise register nothing and leave the golem permanently unpowered.
+            RegisterSteamConsumer();
         }
 
         // M5: separate from Configure so existing two-arg call sites (M4 tests/bootstrap)
@@ -118,6 +141,22 @@ namespace GolemFactory.Golems
         }
 
         /// <summary>
+        /// Puts this golem on the steam grid. Separate again, for exactly the reason
+        /// ConfigureEconomy and ConfigureSpatial are separate: every existing call site keeps
+        /// working untouched by simply never calling it, and a golem with no steam network is
+        /// exempt from the NoSteam precondition entirely.
+        ///
+        /// Registering the consumer here rather than in Awake/OnEnable is deliberate: those do
+        /// not run in EditMode (no [ExecuteAlways] anywhere in this project), so an EditMode
+        /// test would otherwise have a configured golem the network had never heard of.
+        /// </summary>
+        public void ConfigureSteam(SteamNetworkHolder steam)
+        {
+            steamNetworkHolder = steam;
+            RegisterSteamConsumer();
+        }
+
+        /// <summary>
         /// Moves/rotates the golem without re-supplying the registry. "Golems cannot pivot" is a
         /// rule about *runtime execution* -- nothing in a program can turn the golem -- not about
         /// the player repositioning one between runs, which is the core spatial puzzle.
@@ -126,6 +165,32 @@ namespace GolemFactory.Golems
         {
             cell = placedCell;
             facing = placedFacing;
+            // The steam grid is keyed by cell, so moving a golem has to move its registration or
+            // it keeps drawing power from wherever it used to stand. RegisterConsumer is
+            // idempotent and re-sorts only when the cell actually changed.
+            RegisterSteamConsumer();
+        }
+
+        // Re-registration is funnelled through here (ConfigureSteam, SetPlacement, SetHeld,
+        // OnEnable) so "which cell is this golem drawing steam on" has exactly one writer.
+        private void RegisterSteamConsumer()
+        {
+            if (steamNetworkHolder == null || string.IsNullOrEmpty(golemId))
+            {
+                return;
+            }
+
+            steamNetworkHolder.Network.RegisterConsumer(golemId, cell);
+        }
+
+        private void UnregisterSteamConsumer()
+        {
+            if (steamNetworkHolder == null || string.IsNullOrEmpty(golemId))
+            {
+                return;
+            }
+
+            steamNetworkHolder.Network.UnregisterConsumer(golemId);
         }
 
         // M7: Signal trigger is inherently event-driven (there's no already-held state to
@@ -134,11 +199,16 @@ namespace GolemFactory.Golems
         private void OnEnable()
         {
             EventBus.GolemCompleted += OnGolemCompletedForSignal;
+            // Paired with the unregister below, so a disabled/re-enabled golem stops and
+            // resumes drawing steam. Play-mode only (no [ExecuteAlways]), which is exactly why
+            // ConfigureSteam registers directly rather than relying on this.
+            RegisterSteamConsumer();
         }
 
         private void OnDisable()
         {
             EventBus.GolemCompleted -= OnGolemCompletedForSignal;
+            UnregisterSteamConsumer();
         }
 
         private void OnGolemCompletedForSignal(GolemCompletedEvent e)
@@ -158,7 +228,21 @@ namespace GolemFactory.Golems
         /// </summary>
         public bool IsHeld { get; private set; }
 
-        public void SetHeld(bool held) => IsHeld = held;
+        public void SetHeld(bool held)
+        {
+            IsHeld = held;
+            // A held golem stops costing Coke. Its Cell is stale by definition -- it is in the
+            // player's hands, not on the tile its routing names -- so leaving it registered
+            // would have a boiler paying upkeep for a golem that is not standing anywhere, and
+            // worse, holding one of that boiler's 8 slots against a golem that could use it.
+            if (held)
+            {
+                UnregisterSteamConsumer();
+                return;
+            }
+
+            RegisterSteamConsumer();
+        }
 
         public void Tick(long tick)
         {
@@ -166,6 +250,8 @@ namespace GolemFactory.Golems
             {
                 return;
             }
+
+            _currentTick = tick;
 
             bool wasStalled = program.State == GolemState.Stalled;
 
@@ -334,6 +420,28 @@ namespace GolemFactory.Golems
             // Assemble replaces it with its recipe's.
             _stepDuration = Mathf.Max(1, step.durationTicks);
 
+            // --- Steam (docs/progression-design.md §3.1) --------------------------------------
+            // FIRST, ahead of every verb, and therefore ahead of every side effect. This is the
+            // whole reason it lives in BeginStep rather than in Tick: BeginStep is where a
+            // step's precondition is checked and its withdraw/enqueue/dequeue happens, and an
+            // unpowered golem must stall BEFORE any of that -- never half-execute a step, never
+            // silently skip the tick, and never consume from a node it cannot then push from.
+            //
+            // §3.1: "a golem halting on an unmet power precondition is the existing rigidity
+            // rule applied to a new precondition, not a departure from it". So it returns a
+            // StallReason like any other failure and rides the identical publishing, retry and
+            // resume machinery in Tick -- no new state, no new event, no special case.
+            //
+            // Checked at Begin rather than every tick, which means a golem mid-step finishes
+            // that step and stalls at the start of the next. That is the same contract every
+            // other precondition has (a node emptying mid-Extract does not abort it either),
+            // and it keeps a multi-tick step atomic.
+            StallReason steamStall = CheckSteamPower(out blockedResourceId);
+            if (steamStall != StallReason.None)
+            {
+                return steamStall;
+            }
+
             switch (step.actionType)
             {
                 case AppendageActionType.ExtractFromNode:
@@ -355,6 +463,36 @@ namespace GolemFactory.Golems
 
         /// <summary>Player-set batch size for the step currently executing.</summary>
         private int CurrentStepQuantity() => program.GetQuantityAt(program.CurrentStepIndex);
+
+        /// <summary>
+        /// Whether steam reaches this golem, or <see cref="StallReason.NoSteam"/> naming its
+        /// tile if not.
+        ///
+        /// THE EXEMPTION IS THE FIRST LINE, and it is the whole compatibility story: a golem
+        /// with no steam network configured is not "powered by a network with no boilers", it
+        /// is outside the mechanic entirely. Main.unity's seven demos, every pre-existing test,
+        /// and Sandbox.unity until requireSteamPower is turned on all take this branch.
+        /// </summary>
+        private StallReason CheckSteamPower(out string blockedResourceId)
+        {
+            blockedResourceId = null;
+
+            if (steamNetworkHolder == null)
+            {
+                return StallReason.None;
+            }
+
+            if (steamNetworkHolder.Network.IsPowered(golemId, _currentTick))
+            {
+                return StallReason.None;
+            }
+
+            // The golem's OWN cell, matching NoSourceAtTile/NoTargetAtTile's convention of
+            // naming the tile rather than a resource id -- every fix for this stall is spatial
+            // (lay a pipe to here, move the golem to a pipe, build another boiler).
+            blockedResourceId = cell.ToString();
+            return StallReason.NoSteam;
+        }
 
         // --- Spatial resolution -----------------------------------------------------------
         // The fallback keys on whether this golem is spatially placed AT ALL -- not on whether

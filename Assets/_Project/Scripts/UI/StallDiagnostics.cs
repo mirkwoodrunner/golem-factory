@@ -61,6 +61,15 @@ namespace GolemFactory.UI
                     return HasAmount(resourceId, shortfall)
                         ? "need " + shortfall + " more " + resourceId
                         : "no " + ItemOrGoods(resourceId);
+                // Names the TILE, like the two spatial stalls above and for the same reason:
+                // the fix is spatial (lay a pipe, move the golem, or add a boiler because the
+                // one it depends on is at its 8-golem cap), so the cell is the actionable fact.
+                // progression-design §3.1 asks for exactly this -- "stalls with a new
+                // StallReason.NoSteam, naming the tile".
+                case StallReason.NoSteam:
+                    return string.IsNullOrEmpty(resourceId)
+                        ? "no steam"
+                        : "no steam at " + resourceId;
                 case StallReason.Unconfigured:
                     return "not wired up";
                 default:
@@ -104,6 +113,10 @@ namespace GolemFactory.UI
                     return HasAmount(resourceId, shortfall)
                         ? who + " stalled: needs " + shortfall + " more " + resourceId
                         : who + " stalled: no " + ItemOrGoods(resourceId) + " available";
+                case StallReason.NoSteam:
+                    return string.IsNullOrEmpty(resourceId)
+                        ? who + " stalled: no steam reaching it"
+                        : who + " stalled: no steam reaching tile " + resourceId;
                 case StallReason.Unconfigured:
                     return who + " stalled: not wired up";
                 default:

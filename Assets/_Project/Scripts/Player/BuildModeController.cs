@@ -33,6 +33,12 @@ namespace GolemFactory.Player
         [SerializeField] private SpatialEndpointRegistryHolder _spatialEndpointHolder;
         [SerializeField] private GolemFactory.Belts.ConveyorSystemHolder _conveyorHolder;
 
+        // Steam power (docs/progression-design.md §3.1). Optional in exactly the same additive
+        // way belts are: with no network wired, a Boiler or Steam Pipe prefab still places as a
+        // plain building -- it just never publishes itself into the steam grid -- and Main.unity,
+        // which offers neither, is untouched.
+        [SerializeField] private GolemFactory.Steam.SteamNetworkHolder _steamNetworkHolder;
+
         private GridCoordinateConverter _converter;
         private InputAction _clickAction;
         private InputAction _rotateAction;
@@ -117,6 +123,13 @@ namespace GolemFactory.Player
             _spatialEndpointHolder = spatialEndpointHolder;
             _conveyorHolder = conveyorHolder;
         }
+
+        /// <summary>
+        /// Wires steam placement. Separate again, for the same reason ConfigureBelts is: a
+        /// scene that offers no Boiler or Steam Pipe never calls it and nothing changes there.
+        /// </summary>
+        public void ConfigureSteam(GolemFactory.Steam.SteamNetworkHolder steamNetworkHolder) =>
+            _steamNetworkHolder = steamNetworkHolder;
 
         // Called by UI/BuildMenuPanel when the player picks a different placeable type.
         public void SetActivePrefab(PlaceableBuilding prefab) => _buildingPrefab = prefab;
@@ -304,6 +317,26 @@ namespace GolemFactory.Player
                         _spatialEndpointHolder.Registry.Unregister(cell);
                     }
 
+                    // Steam has to come out of the grid before the GameObject goes, for the same
+                    // reason a belt does. A paved-over pipe that stayed registered would keep
+                    // carrying steam through a gap the player can see -- progression-design §9's
+                    // Phase 6 beat is precisely that gap biting, and it cannot bite if the
+                    // network never hears about it.
+                    if (_steamNetworkHolder != null)
+                    {
+                        PlaceableSteamPipe removedPipe = building.GetComponent<PlaceableSteamPipe>();
+                        if (removedPipe != null)
+                        {
+                            removedPipe.UnregisterFromSteamNetwork(_steamNetworkHolder);
+                        }
+
+                        PlaceableBoiler removedBoiler = building.GetComponent<PlaceableBoiler>();
+                        if (removedBoiler != null)
+                        {
+                            removedBoiler.UnregisterFromSteamNetwork(_steamNetworkHolder);
+                        }
+                    }
+
                     map.Free(cell);
                     Destroy(building.gameObject);
                 }
@@ -371,6 +404,25 @@ namespace GolemFactory.Player
             if (depot != null)
             {
                 depot.RegisterAsSpatialEndpoint(_spatialEndpointHolder, _stockpileHolder, cell);
+            }
+
+            //   * a boiler or a steam pipe: publishes itself into the SteamNetwork, which
+            //     re-derives every boiler's reach on the spot. Neither is an IItemEndpoint --
+            //     steam is not a good that travels on tiles -- so they register with their own
+            //     network rather than with the spatial endpoint registry.
+            if (_steamNetworkHolder != null)
+            {
+                PlaceableBoiler boiler = instance.GetComponent<PlaceableBoiler>();
+                if (boiler != null)
+                {
+                    boiler.RegisterWithSteamNetwork(_steamNetworkHolder, cell);
+                }
+
+                PlaceableSteamPipe pipe = instance.GetComponent<PlaceableSteamPipe>();
+                if (pipe != null)
+                {
+                    pipe.RegisterWithSteamNetwork(_steamNetworkHolder, cell);
+                }
             }
         }
     }

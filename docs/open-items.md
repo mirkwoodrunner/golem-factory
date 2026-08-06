@@ -5,11 +5,11 @@ Consolidated backlog as of the progression-design pass, on branch
 
 Everything here is known and deliberate — none of it is a surprise waiting to be discovered.
 
-> **Where the line is.** Everything through §1.3 (multi-input `Assemble`) is **built, tested
-> and reviewed**. Everything from §1.4 on is **spec only**. Steam power has been approved for
-> inclusion but not written. The next pass starts at §1.4.
+> **Where the line is.** Everything through §1.4 (steam power) is **built, tested and
+> reviewed**. Everything from §1.5 on is **spec only**. The next pass starts at §1.5, which is
+> also what §1.4's Sandbox switch is waiting on.
 
-Tests stand at **736/736** (635 EditMode + 101 PlayMode), up from 590 before the progression pass
+Tests stand at **789/789** (688 EditMode + 101 PlayMode), up from 590 before the progression pass
 began. Console clean.
 
 > **Unity batch mode does run the tests, contrary to what the implementation plan says.** It is
@@ -27,7 +27,7 @@ independent critic between rounds, before any code was written against it. That 
 round 1 failed on five structural counts, all of which would otherwise have surfaced only after
 ~25 recipes had been authored and wired.
 
-**§1.1, §1.2 and §1.3 are now built and green. §1.4–§1.6 are still spec.** Implementation order matters,
+**§1.1–§1.4 are now built and green. §1.5–§1.6 are still spec.** Implementation order matters,
 because each item depends on the one above it — and §1.2 in particular must never ship before
 §1.1, for the reason given under it.
 
@@ -138,14 +138,94 @@ bare item type (matching `InputFull`/`OutputFull`), and the amount rides alongsi
 9 more Casing". When several inputs are short, the **first in the recipe's authored order** is
 named, so two identically-programmed golems always give the player the same diagnosis.
 
-### 1.4 Steam power
-Boiler burns Coke **proportional to powered golem count** (1 Coke per powered golem per 10s),
-powering golems by orthogonal pipe adjacency, with `NoSteam` as a new stall precondition.
+### 1.4 Steam power — **DONE**
 
-A flat per-boiler burn was rejected in review: it makes 7 of every 8 golems free, so the marginal
-cost a player actually optimises against is zero. Note steam pipes are **undirected** and need a
-simple flood fill — `BeltPlacementRules.ShouldLink` is directional and rejects head-on pairs, so it
-cannot be reused wholesale.
+A Boiler burns **1 Coke per powered golem per 100 ticks** (`TicksPerSecond = 10`, so per 10 s),
+powers **at most 8** golems, and reaches them by orthogonal adjacency to itself or to a **Steam
+Pipe** chaining back to it. An unpowered golem stalls `NoSteam`, naming its own tile.
+
+`Steam/SteamNetwork` is the plain-C# manager (Holder pattern, `SteamNetworkHolder : ITickable`);
+`Steam/SteamPipeRules` is the engine-free flood fill; `Steam/SteamGaugeUtility` is the pure §8
+gauge arithmetic; `Buildings/PlaceableBoiler` and `PlaceableSteamPipe` are the placeables, both
+published/withdrawn through `BuildModeController` exactly as belts and depots are.
+
+**Consumption is proportional, never flat.** A flat per-boiler burn was rejected in review: it
+makes 7 of every 8 golems free, so the marginal cost a player actually optimises against is zero.
+It also means **an idle boiler burns nothing** — the starting Coke is a budget spent by building,
+not a hidden timer.
+
+**Steam pipes are undirected.** `BeltPlacementRules.ShouldLink` is directional twice over (it
+requires `TargetCell(from, facing) == to` and rejects head-on pairs to avoid two-cycles), so it
+could not be reused: a pipe has no facing and cycles in a steam graph are meaningless rather than
+harmful. `SteamPipeRules` is a plain undirected BFS instead — a much smaller component than
+`BeltNetwork`, as §11 item 4 predicted.
+
+**The three determinism decisions §3.1 leaves open, each pinned by a test:**
+
+- **Which 8**, when more than 8 golems reach one boiler: golems in a **total order by cell**
+  (`x`, then `y`, tie-broken by golem id). Cell order is factory layout, so it is identical
+  between two identically-built factories and does not move unless the player moves something.
+  Rejected: `Dictionary`/`HashSet` iteration order (not contractual, and rehashing reshuffles it,
+  so adding a ninth golem could flip which of the first eight are powered), registration/scene
+  order (identical factories built in a different order would diverge, and a load would repower a
+  different eight), and nearest-first (ties are the common case on a grid and need this tiebreak
+  underneath anyway). An unstable choice here flickers golems between powered and `NoSteam` every
+  tick — unplayable, and untestable.
+- **Two boilers on one pipe network**: boilers walked in the same cell order, each claiming up to
+  8 **not-yet-claimed** golems from its reachable set. So a second boiler picks up the overflow
+  and never re-shuffles what the first was already powering. Rejected: load balancing (moves
+  golems between boilers whenever anything anywhere is built, so every boiler's countdown jumps)
+  and nearest-boiler (needs a tiebreak anyway and can idle one boiler beside an oversubscribed one).
+- **Fractional burn**: **integer accumulator, no floats.** Each tick a boiler adds its powered
+  count to an accumulator and burns one Coke per crossing of 100, carrying the remainder. Exactly
+  proportional, exact in integers, reproducible. 5 golems is 5 Coke in 100 ticks and 50 in 1000;
+  3 golems (which divides into nothing evenly) is 90 Coke in 3000 ticks with no drift.
+
+**§10's convergence check is asserted, not assumed.** A test pins that 7 powered golems consume
+exactly **42 Coke/min**, so a future retune that breaks the design's 3.3 : 1 no-runaway claim
+fails loudly instead of quietly.
+
+Fuel exhaustion is real: a boiler at zero Coke powers nothing, burning can never take the stock
+below zero, and the golems it was powering stall `NoSteam` rather than running on credit.
+
+**Costs are recorded, not charged.** Boiler 30 Scrap + 10 Iron Plate, Steam Pipe 1 Iron Plate, as
+constants on `SteamNetwork`/the two placeables. Iron Plate does not exist until §1.5, and §11
+item 8 replaces the whole `scrapCost`/`brassCost` pair with an item bundle in the same pass, so
+wiring a runtime cost now would mean inventing an item and then re-expressing the cost twice.
+
+**Only one new `ItemType` was added: `Coke`.** Steam is meaningless without the good it burns and
+every burn test names it. The other twenty land with §1.5.
+
+#### The Sandbox switch, and what it waits on
+
+`SandboxBootstrap.requireSteamPower` is **off**, and the reason is a hard dependency rather than
+caution: **Coke has no source until §1.5** authors the coal node and the coking recipe. Turned on
+today the starting boiler would burn down, every golem in the scene would stall `NoSteam`, and
+there would be no way to make more — a soft-lock in the one playable scene, and exactly the
+"total blackout with no golems to recover" row §10 clears only via the Hand-Crank Bench (§11 item
+7, also unbuilt). This is the same "built, wired, tested and not yet biting" state §1.2's buffer
+capacity is in.
+
+The switch gates **one line**: whether `SandboxBootstrap` hands each `GolemConstructionStation` the
+steam network. Everything else is live either way — placing a Boiler or Pipe registers it, the
+burn ticks, and the fuel gauge reads honestly — because a boiler with nothing drawing on it burns
+nothing anyway. Flipping it needs §1.5's coal node + coking recipe, and ideally §11 item 7's
+Hand-Crank Bench as the blackout backstop.
+
+#### One judgement call the design does not cover
+
+§8 asks for "an alert at 25 %" but §3.1 gives a Boiler **no capacity**, so there is no authored
+100 % to take a quarter of. The alert measures against `SteamBoiler.PeakCokeStock`, the most Coke
+that boiler has ever held — derivable from its own history rather than invented, and against §9's
+240-Coke Phase-1 boiler it puts the alert at 60, which is what the design's worked example
+implies. A `CokeCapacity` field was rejected because it would also imply "this boiler is full,
+your Coke has nowhere to go", a refusal rule §3.1 never sanctions and §10's audit has never been
+run against. Worth revisiting if §1.5 gives boilers a real fill limit.
+
+**Still needs an Editor pass** (cannot be done from a text diff): there is no Boiler or Steam Pipe
+prefab, so nothing in `Sandbox.unity` registers with the network yet; `SteamNetworkHolder` is not
+on `ManagerHolders.prefab`; and `UI/SteamFuelGaugeView` has no HUD slot. The C# is finished and
+tested on all three — the missing work is prefab/scene wiring.
 
 ### 1.5 Asset authoring
 24 items, 25 recipes, revised chassis costs paid in manufactured components rather than raw currency.
@@ -174,7 +254,7 @@ steam adjacency still fits.
 
 ### Decided
 
-- **Steam power is in.** Confirmed by the project owner. It appears in neither `game-design.md` nor
+- **Steam power is in, and is now built** (§1.4 above). Confirmed by the project owner. It appears in neither `game-design.md` nor
   `digital-design.md` — it was invented during the progression design because "nothing in the
   economy is contended" has no fix that doesn't add a running cost. The critic ruled it justified
   and correctly shaped: local (orthogonal pipe adjacency), rigid (no falloff, no pathfinding, no

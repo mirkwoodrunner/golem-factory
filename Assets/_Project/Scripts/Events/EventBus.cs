@@ -96,7 +96,18 @@ namespace GolemFactory.Events
         // names the FIRST short input in the recipe's authored order (deterministic across two
         // identically-programmed golems) and GolemStalledEvent.Shortfall carries how many more
         // of it are needed -- progression-design §8 requires both.
-        MissingItem
+        MissingItem,
+
+        // No steam reaches this golem's tile (docs/progression-design.md §3.1). ResourceId
+        // carries the GOLEM'S OWN CELL as a string, matching NoSourceAtTile/NoTargetAtTile --
+        // the actionable fact is a place, not a good: run a pipe to it, move it next to one, or
+        // build a second boiler because the one it depends on is already at its 8-golem cap.
+        //
+        // This is the existing rigidity rule applied to a NEW PRECONDITION, not a departure
+        // from it: an unpowered golem retries the same step every tick until steam returns,
+        // exactly as it does for an empty node or a full belt. It is checked before any step's
+        // side effect runs, so an unpowered golem never half-executes.
+        NoSteam
     }
 
     // Which kind of trigger fired. Mirrors PunchCards.TriggerType minus AlwaysOn, which is

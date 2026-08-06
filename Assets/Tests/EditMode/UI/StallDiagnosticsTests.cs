@@ -429,6 +429,43 @@ namespace GolemFactory.Tests.EditMode
             return count;
         }
 
+        // --- NoSteam (docs/progression-design.md §3.1, §8) ---------------------------------
+
+        [Test]
+        public void NoSteam_NamesTheTile()
+        {
+            // §3.1: "An unpowered golem stalls with a new StallReason.NoSteam, naming the tile."
+            // The tile is the actionable fact -- every fix is spatial (run a pipe to here, move
+            // the golem next to one, or add a boiler because the one it depends on is at its
+            // 8-golem cap) -- so this follows NoSourceAtTile/NoTargetAtTile rather than the
+            // item-type convention InputFull/OutputFull use.
+            Assert.AreEqual("no steam at (7, 9)",
+                StallDiagnostics.DescribeShort(StallReason.NoSteam, "(7, 9)"));
+            Assert.AreEqual("GolemD stalled: no steam reaching tile (7, 9)",
+                StallDiagnostics.Describe("GolemD", StallReason.NoSteam, "(7, 9)"));
+        }
+
+        [Test]
+        public void NoSteam_WithoutATile_StillReadsAsASentence()
+        {
+            // The resource id is never empty in practice (the golem always knows its own cell),
+            // but the fallback must not print "no steam at " with nothing after it.
+            Assert.AreEqual("no steam", StallDiagnostics.DescribeShort(StallReason.NoSteam, null));
+            Assert.AreEqual("A golem stalled: no steam reaching it",
+                StallDiagnostics.Describe(null, StallReason.NoSteam, null));
+        }
+
+        [Test]
+        public void NoSteam_DoesNotBorrowTheSourceWording()
+        {
+            // "no steam at its source" would send the player upstream, which is precisely the
+            // misdirection this class exists to prevent: nothing upstream is the problem.
+            Assert.IsFalse(
+                StallDiagnostics.DescribeShort(StallReason.NoSteam, null).Contains("source"));
+            Assert.IsFalse(
+                StallDiagnostics.Describe("GolemD", StallReason.NoSteam, null).Contains("source"));
+        }
+
         [Test]
         public void SpatialStallText_IsPlainAscii()
         {
@@ -437,8 +474,10 @@ namespace GolemFactory.Tests.EditMode
             {
                 StallDiagnostics.DescribeShort(StallReason.NoSourceAtTile, "(0, 0)"),
                 StallDiagnostics.DescribeShort(StallReason.NoTargetAtTile, "(0, 2)"),
+                StallDiagnostics.DescribeShort(StallReason.NoSteam, "(7, 9)"),
                 StallDiagnostics.Describe("GolemD", StallReason.NoSourceAtTile, "(0, 0)"),
-                StallDiagnostics.Describe("GolemD", StallReason.NoTargetAtTile, "(0, 2)")
+                StallDiagnostics.Describe("GolemD", StallReason.NoTargetAtTile, "(0, 2)"),
+                StallDiagnostics.Describe("GolemD", StallReason.NoSteam, "(7, 9)")
             };
 
             foreach (string text in texts)
