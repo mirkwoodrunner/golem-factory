@@ -651,6 +651,153 @@ namespace GolemFactory.Tests.EditMode
                 "raw material leaked out through the Push");
         }
 
+        // --- Buffer backpressure (progression-design §5.3(c), §10, §11 item 3) -----------------
+        // Buffers gained a PER-ITEM-TYPE capacity, which is what finally makes "destination
+        // full" stalls possible. Everything here is about the one hazard that comes with it:
+        // per-type capacity is only a deadlock fix if a refusal of one good never stops
+        // another good moving.
+        //
+        // The two goods below stand in for the §5.3(c) pair until §1.5 authors the real item
+        // types -- this is about the SHAPE (a wanted product and a forced byproduct sharing one
+        // destination tile), not about the specific goods.
+        private const string ProductGood = ItemType.Brass;   // stands in for Iron Plate
+        private const string ByproductGood = ItemType.Aether; // stands in for Slag
+
+        [Test]
+        public void Push_AFullSlotForOneGood_StillDeliversEveryOtherGoodInTheSameHold()
+        {
+            // THE regression test for the permanent factory deadlock. If a destination refusing
+            // one item type made the golem abandon the rest of its hold, then a backed-up
+            // byproduct would stop the main product moving too -- and because a golem's program
+            // is rigid, nothing the player can build would ever clear it. Per-item-type capacity
+            // is worthless without this: the whole point is that a full slot for one good must
+            // never block another.
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var destination = new StorageBuffer("Dest", 5);
+            destination.Deposit(ByproductGood, 5); // its slot for this good is now full
+            endpoints.Registry.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(destination));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Push));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            // Blocked type FIRST in the drain order, which is the case the old code broke on:
+            // it gave up on the whole push at the first refusal.
+            golem.Inventory.AddInput(ByproductGood, 3);
+            golem.Inventory.AddInput(ItemType.Scrap, 2);
+            golem.Inventory.AddInput(ProductGood, 1);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(2, destination.GetQuantity(ItemType.Scrap),
+                "a refused good aborted the push and the goods behind it never moved");
+            Assert.AreEqual(1, destination.GetQuantity(ProductGood),
+                "a refused good aborted the push and the goods behind it never moved");
+            Assert.AreEqual(5, destination.GetQuantity(ByproductGood),
+                "the full slot was overrun");
+            Assert.AreEqual(3, golem.Inventory.GetInput(ByproductGood),
+                "the refused units must stay in the hold, not be dropped");
+            Assert.AreEqual(0, golem.Inventory.GetInput(ItemType.Scrap));
+            Assert.AreEqual(StallReason.None, golem.StallReason,
+                "a partial push is progress, not a stall");
+        }
+
+        [Test]
+        public void Push_PartiallyRefusedByABuffer_IsChargedOnlyForTheUnitsThatLeft()
+        {
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var destination = new StorageBuffer("Dest", 1);
+            destination.Deposit(ByproductGood, 1);
+            endpoints.Registry.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(destination));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Push, durationTicks: 40));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Inventory.AddInput(ByproductGood, 4); // all refused
+            golem.Inventory.AddInput(ItemType.Scrap, 1); // accepted
+
+            Assert.AreEqual(3, TicksToFirstCompletion(golem), "2 + the 1 unit that actually left");
+        }
+
+        [Test]
+        public void Push_WhenEveryGoodInTheHoldIsAtTheDestinationsCap_StallsNamingTheDestination()
+        {
+            // The other side of the line: a push that can move NOTHING is a real stall, and
+            // "ScrapBuffer full" reads correctly for a buffer even though the reason is still
+            // spelled BeltFull (StallReason is append-only and serialized by index).
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var destination = new StorageBuffer("ScrapBuffer", 5);
+            destination.Deposit(ItemType.Scrap, 5);
+            endpoints.Registry.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(destination));
+
+            GolemEntity golem = CreateGolem(Step(AppendageActionType.Push));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Inventory.AddInput(ItemType.Scrap, 3);
+
+            golem.Tick(0);
+
+            Assert.AreEqual(GolemState.Stalled, golem.Program.State);
+            Assert.AreEqual(StallReason.BeltFull, golem.StallReason);
+            Assert.AreEqual("ScrapBuffer", golem.StallResourceId);
+            Assert.AreEqual(3, golem.Inventory.GetInput(ItemType.Scrap), "the hold leaked");
+            Assert.AreEqual(5, destination.GetQuantity(ItemType.Scrap));
+        }
+
+        [Test]
+        public void ABackedUpByproduct_EventuallyStallsTheSmelterOnOutputFull_RatherThanBeingDropped()
+        {
+            // progression-design §5.3(c), the whole Slag economy, end to end:
+            //   the destination's byproduct slot is full
+            //     -> Push delivers the product and the byproduct stays in the golem's hold
+            //     -> the hold fills to the golem's own per-type cap over successive cycles
+            //     -> the next Assemble of the byproduct stalls OutputFull NAMING IT.
+            // "The smelter stalls -- and with it iron, gears, casings and every branch below."
+            // Nothing was added to make this happen; it falls out of Push skipping the refused
+            // type plus BeginAssemble's existing check-output-room-before-consuming ordering.
+            //
+            // Two Assemble steps stand in for the single two-output recipe §1.3 will introduce:
+            // AppendageActionDefinition still carries one output, and what matters here is that
+            // the golem's hold ends up mixed.
+            SpatialEndpointRegistryHolder endpoints = AddHolder<SpatialEndpointRegistryHolder>();
+            var source = new StorageBuffer("Source");
+            source.Deposit(ItemType.Scrap, 500);
+
+            const int destinationCap = 20;
+            var destination = new StorageBuffer("Dest", destinationCap);
+            destination.Deposit(ByproductGood, destinationCap); // the byproduct slot is full
+
+            endpoints.Registry.Register(new Vector2Int(0, 0), new StorageBufferEndpoint(source));
+            endpoints.Registry.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(destination));
+
+            GolemEntity golem = CreateGolem(
+                Step(AppendageActionType.Haul, ItemType.Scrap),
+                Step(AppendageActionType.Assemble, ItemType.Scrap, ProductGood, durationTicks: 1),
+                Step(AppendageActionType.Assemble, ItemType.Scrap, ByproductGood, durationTicks: 1),
+                Step(AppendageActionType.Push));
+            golem.ConfigureSpatial(endpoints, new Vector2Int(0, 1), Facing.North);
+            golem.Program.SetQuantityAt(0, 2); // one unit for each Assemble
+
+            // Long enough to run well past the golem's 12-per-type output cap: each cycle is
+            // Haul(2) + Assemble(1) + Assemble(1) + Push(2 + 1 delivered) = 7 ticks, so the
+            // byproduct hold reaches 12 after 12 cycles (~84 ticks) and the 13th cycle stalls.
+            // The stall is terminal, so the exact tick it happens on does not matter here.
+            Run(golem, 150);
+
+            Assert.AreEqual(GolemState.Stalled, golem.Program.State,
+                "the smelter kept running with nowhere to put its byproduct");
+            Assert.AreEqual(StallReason.OutputFull, golem.StallReason);
+            Assert.AreEqual(ByproductGood, golem.StallResourceId,
+                "the stall must name the blocked byproduct -- that is the player's only clue " +
+                "that a disposal route is what the whole line is waiting on");
+
+            Assert.AreEqual(GolemInventory.CapacityPerType, golem.Inventory.GetOutput(ByproductGood),
+                "the byproduct was silently dropped instead of backing up");
+            Assert.AreEqual(destinationCap, destination.GetQuantity(ByproductGood),
+                "the destination's full slot was overrun");
+
+            // And the product line genuinely kept flowing until the hold filled -- a full
+            // byproduct slot must not have blocked the product on the way there.
+            Assert.AreEqual(GolemInventory.CapacityPerType, destination.GetQuantity(ProductGood),
+                "the full byproduct slot blocked the product too, which is the §10 deadlock");
+        }
+
         // --- The id-routed half of the fork, pinned ---------------------------------------------
         // Main.unity's seven demo golems never call ConfigureSpatial. None of the above may
         // reach them, including the derived durations.

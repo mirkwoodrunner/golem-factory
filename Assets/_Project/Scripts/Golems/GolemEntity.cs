@@ -699,26 +699,46 @@ namespace GolemFactory.Golems
             // drain-then-return-the-remainder means there is no window in which the items exist
             // in neither place, so no ordering bug can lose them.
             int pushed = 0;
-            bool blocked = false;
 
             // Snapshot the type list: the loop mutates the stock, and a type emptying removes
             // it from the live ordering. Order is deterministic (see GolemInventory.Stock) so
             // two identically-programmed golems drain a mixed hold the same way when the
             // destination only has room for part of it.
             var types = new System.Collections.Generic.List<string>(stock.TypesInOrder);
-            for (int i = 0; i < types.Count && !blocked; i++)
+            for (int i = 0; i < types.Count; i++)
             {
                 string itemType = types[i];
                 while (stock.Get(itemType) > 0)
                 {
                     if (!target.TryGive(new ItemStack { ItemType = itemType }))
                     {
-                        blocked = true;
+                        // A REFUSED TYPE IS SKIPPED, NOT THE WHOLE PUSH ABANDONED. This loop
+                        // used to break out of the outer loop here, which was fine while
+                        // buffers had no capacity and only a belt could ever say no. With
+                        // per-item-type capacity it is precisely the permanent deadlock
+                        // progression-design §10 warns about: a full Slag slot in the
+                        // destination would stop Iron Plate being pushed as well, and no rigid
+                        // golem can ever be programmed to clear it. The entire reason capacity
+                        // is per type is that A FULL SLAG SLOT MUST NEVER BLOCK IRON PLATE.
+                        // The refused units simply stay in stock for the next cycle.
                         break;
                     }
 
                     stock.TryConsume(itemType, 1);
                     pushed++;
+                }
+
+                // Early-out for destinations whose capacity is NOT per type -- a belt with no
+                // free slot refuses every type once it refuses one, so walking the remaining
+                // types is pure waste (each TryGive would just fail). Gated on the untyped
+                // CanGive -- "can you accept anything at all" -- and deliberately NOT on the
+                // TryGive failure above: that failure is the per-type refusal this fix exists
+                // to skip past, and keying the early-out on it would reinstate the deadlock
+                // under a different name. A per-type-capped buffer answers CanGive() true while
+                // any type could still fit, so this never fires for the Slag case.
+                if (!target.CanGive())
+                {
+                    break;
                 }
             }
 

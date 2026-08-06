@@ -387,6 +387,82 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(4, buffer.GetQuantity(ItemType.Brass));
         }
 
+        // --- Typed CanGive: per-item-type backpressure -------------------------------------
+        // CanGive() takes no item type, but buffer capacity is per type, so "do you have room?"
+        // became unanswerable without one. Both overloads stay: the untyped one means "could
+        // you accept ANYTHING at all", which is still the right question on the legacy
+        // id-routed path and for Push's early-out.
+
+        [Test]
+        public void BufferEndpoint_TypedCanGive_FalseForAFullSlotAndTrueForAnotherType_AtTheSameMoment()
+        {
+            // The same buffer, the same instant, two different answers -- that difference IS
+            // the per-type capacity model (progression-design §10).
+            var buffer = new StorageBuffer("SmelterOutput", 3);
+            buffer.Deposit(ItemType.Aether, 3);
+            var endpoint = new StorageBufferEndpoint(buffer);
+
+            Assert.IsFalse(endpoint.CanGive(ItemType.Aether), "the full slot still claimed room");
+            Assert.IsTrue(endpoint.CanGive(ItemType.Scrap),
+                "a full slot for one good locked out another -- that is the §10 deadlock");
+        }
+
+        [Test]
+        public void BufferEndpoint_UntypedCanGive_StaysTrueWhileAnyGoodCouldStillFit()
+        {
+            var buffer = new StorageBuffer("SmelterOutput", 3);
+            buffer.Deposit(ItemType.Aether, 3);
+            var endpoint = new StorageBufferEndpoint(buffer);
+
+            Assert.IsTrue(endpoint.CanGive(),
+                "'can you accept anything at all' must not go false just because one slot filled");
+        }
+
+        [Test]
+        public void BufferEndpoint_TryGive_RefusesRatherThanSwallowingAUnitIntoAFullSlot()
+        {
+            var buffer = new StorageBuffer("Capped", 2);
+            var endpoint = new StorageBufferEndpoint(buffer);
+
+            Assert.IsTrue(endpoint.TryGive(new ItemStack { ItemType = ItemType.Scrap }));
+            Assert.IsTrue(endpoint.TryGive(new ItemStack { ItemType = ItemType.Scrap }));
+            Assert.IsFalse(endpoint.TryGive(new ItemStack { ItemType = ItemType.Scrap }),
+                "a rejected deposit reported success, which would destroy the unit");
+            Assert.AreEqual(2, buffer.GetQuantity(ItemType.Scrap));
+        }
+
+        [Test]
+        public void BufferEndpoint_AnUncappedBufferAlwaysHasRoom()
+        {
+            var endpoint = new StorageBufferEndpoint(new StorageBuffer("Stockpile"));
+
+            Assert.IsTrue(endpoint.CanGive());
+            Assert.IsTrue(endpoint.CanGive(ItemType.Scrap));
+        }
+
+        [Test]
+        public void BeltEndpoint_TypedAndUntypedCanGiveAlwaysAgree()
+        {
+            // A belt's capacity is a slot count, not a per-type allowance: a lane with room
+            // takes any type, a full one takes none.
+            var segment = new BeltSegment("ScrapBeltA", 1);
+            var endpoint = new BeltSegmentEndpoint(segment);
+
+            Assert.AreEqual(endpoint.CanGive(), endpoint.CanGive(ItemType.Scrap));
+            Assert.IsTrue(endpoint.TryGive(new ItemStack { ItemType = ItemType.Scrap }));
+            Assert.AreEqual(endpoint.CanGive(), endpoint.CanGive(ItemType.Brass));
+            Assert.IsFalse(endpoint.CanGive(ItemType.Brass), "a full lane still claimed room");
+        }
+
+        [Test]
+        public void NodeEndpoint_NeverAcceptsAnyType()
+        {
+            var endpoint = new ResourceNodeEndpoint(new ResourceNode("ScrapNode", ItemType.Scrap));
+
+            Assert.IsFalse(endpoint.CanGive(ItemType.Scrap));
+            Assert.IsFalse(endpoint.CanGive(null));
+        }
+
         // --- Shared contract ---------------------------------------------------------------
 
         [Test]

@@ -53,13 +53,34 @@ namespace GolemFactory.World
         bool TryTake(string itemType, int quantity, out int taken);
 
         /// <summary>
+        /// "Could this endpoint accept ANYTHING AT ALL right now?" -- deliberately untyped.
+        ///
         /// Side-effect-free half of <see cref="TryGive"/>'s guard. Exists for exactly the
         /// ordering hazard that caused the extract-onto-a-full-belt item-loss bug: a producer
         /// pulling from an irreversible source (a finite ResourceNode) must confirm the
         /// destination has room *before* it consumes, not after. Mirrors
         /// BeltSegment.CanEnqueue, which was added for the id-routed version of this bug.
+        ///
+        /// THIS IS NOT A DUPLICATE OF <see cref="CanGive(string)"/> AND MUST NOT BE DELETED
+        /// AS ONE. The two answer different questions and diverge on exactly the endpoint the
+        /// Slag economy runs on: a per-item-type-capped StorageBuffer whose Slag slot is full
+        /// still accepts Iron Plate, so the typed answer is false and the untyped one true.
+        /// The untyped question is still the right one in two places -- the legacy id-routed
+        /// path, which has no item type to ask about, and Push's early-out, which needs to
+        /// know whether continuing to the next type could possibly help. A belt's capacity is
+        /// genuinely not per-type, so its adapter answers both identically; that is a property
+        /// of belts, not evidence the two overloads are the same question.
         /// </summary>
         bool CanGive();
+
+        /// <summary>
+        /// "Could this endpoint accept a unit of <paramref name="itemType"/> right now?"
+        ///
+        /// Added because capacity became per item type (docs/progression-design.md §10): with
+        /// a per-type cap, "do you have room?" is unanswerable without naming the type. See
+        /// <see cref="CanGive()"/> for why both overloads exist.
+        /// </summary>
+        bool CanGive(string itemType);
 
         /// <summary>Hands one item to this endpoint. False if it had no room.</summary>
         bool TryGive(ItemStack item);

@@ -6,17 +6,20 @@ Consolidated backlog as of the progression-design pass, on branch
 Everything here is known and deliberate — none of it is a surprise waiting to be discovered.
 
 > **Where the line is.** Everything through facing-based spatial routing is **built, tested and
-> reviewed**. §1.1 (the machine model) is **built and compile-verified but not yet test-run** —
-> see the caveat below. Everything else in the progression design is **spec only**. Steam power
-> has been approved for inclusion but not written. The next pass starts at §1.2.
+> reviewed**. §1.1 (the machine model) and §1.2 (per-item-type buffer capacity) are **built and
+> compile-verified but not yet test-run** — see the caveat below. Everything else in the
+> progression design is **spec only**. Steam power has been approved for inclusion but not
+> written. The next pass starts at §1.3.
 
 > **Test-run caveat.** The suite last *ran* green at **590/590** (489 EditMode + 101 PlayMode), at
 > the facing-based spatial routing pass. §1.1 added ~50 tests and changed the assertions of ~10
-> existing ones. All five assemblies compile at 0 errors via `dotnet build <project>.csproj`
+> existing ones; §1.2 added ~30 more and rewrote one (`Clear_RemovesAllBuffers`, whose claim is now
+> wrong by design — see §1.2). All five assemblies compile at 0 errors via `dotnet build <project>.csproj`
 > (which is a usable compile gate outside the Editor, and worth knowing about — it is not
 > mentioned in `CLAUDE.md`'s command list because it type-checks only, and the generated `.csproj`
 > files are git-ignored with explicit `<Compile Include>` lists, so a new `.cs` file has to be
-> added to one by hand or Unity has to regenerate them). **Nothing in §1.1 has been executed.**
+> added to one by hand or Unity has to regenerate them). **Nothing in §1.1 or §1.2 has been
+> executed.**
 > Every derived tick count in the new tests was hand-traced, not observed. A Test Runner pass
 > (EditMode + PlayMode) is the first thing the next session should do.
 
@@ -71,14 +74,44 @@ Follow-ups this opened, in dependency order — see §3:
 - There are no `Push`/`Assemble` roster cards authored yet (deliberate — §1.3 replaces `Assemble`'s
   data model with a `RecipeDefinition`, so authoring one now would be throwaway work).
 
-### 1.2 Per-*item-type* buffer capacity
-`StorageBuffer.Deposit` always succeeds and `CanGive()` is unconditionally `true`, so there is no
-backpressure anywhere and "destination full" stalls are currently **impossible** — half the drama
-of the rigidity rule is unavailable, and every ratio problem in the progression design is toothless.
+### 1.2 Per-*item-type* buffer capacity — **BUILT** (untested)
 
-Capacity must be **per item type**, not per buffer. A whole-buffer cap combined with untyped takes
-deadlocks permanently: a full plate buffer stalls smelting, which stops slag, which stops glass,
-and no rigid golem can ever drain the wrong type out. Ships **with** 1.1, never before it.
+`StorageBuffer` now carries a per-item-type capacity with a `Unlimited = -1` sentinel following
+`ResourceNode.Infinite`'s idiom, and `Deposit` returns the units actually accepted instead of
+always succeeding. Capacity is **opt-in**: a buffer built without one is `Unlimited` and behaves
+byte for byte as before, so `Main.unity`'s demo economy, the player's stockpile and every
+pre-existing test are untouched — the same fork idiom spatial routing uses.
+
+`IItemEndpoint` grew a **typed** `CanGive(itemType)` alongside the untyped one. Both stay: the
+untyped one means "could you accept *anything at all*", which is still right for the id-routed
+path and for `Push`'s early-out, and only a per-type-capped buffer makes the two disagree.
+
+**The load-bearing change is in `GolemEntity.BeginPush`**: a type the destination refuses is now
+**skipped**, and the remaining types still get pushed. It previously abandoned the whole push at
+the first refusal, which under per-type capacity is exactly the §10 deadlock — a full Slag slot
+would have blocked Iron Plate, and no rigid golem could ever clear it. The belt case (capacity not
+per type) early-outs on the untyped `CanGive()` instead, so it is not walked pointlessly.
+
+`SandboxBootstrap` sets `DefaultCapacityPerType = 100` for ordinary production buffers and
+explicitly leaves `FactoryStockpile` `Unlimited`. **Both numbers are tuning, not derived** — the
+design gives neither. `DefaultCapacityPerType` is scene *policy*, not a factory default: setting it
+re-caps buffers that already exist and have no explicit override, so capacity can't depend on
+whether a buffer happened to be auto-created before or after bootstrap ran. Per-buffer overrides
+survive `StorageBufferRegistry.Clear()`, because that is the save/load path and a load would
+otherwise re-cap the stockpile and clamp away its contents.
+
+**A silent item-loss bug was fixed on the way through.** `StorageBufferRegistry.Clear()` used to
+remove the buffer *objects*, but `PlaceableDepot` publishes a `StorageBufferEndpoint` holding a
+direct reference to the instance. So after a load, every depot's endpoint wrote into a detached
+buffer while the registry and the HUD read a freshly created one — goods pushed into a depot
+vanished, with no stall and no error. `Clear()` now empties the buffers in place and keeps the
+instances, which makes endpoint and registry the same object by construction rather than by
+remembering to re-publish endpoints after every load. The bug predates this item; it is fixed here
+because §1.2 reworked exactly that code, and because per-type capacity would have made it worse.
+
+**Caveat:** in `Sandbox.unity` as it stands, `FactoryStockpile` is the *only* buffer (every
+`PlaceableDepot` points at it), so the finite default is wired but has nothing to bite on yet. It
+starts biting the moment §1.5 authors per-line buffers. Not test-run — see the caveat at the top.
 
 ### 1.3 Multi-input `Assemble`
 `AppendageActionDefinition` carries a single `inputItemType`/`outputItemType`, so no recipe can
@@ -208,9 +241,10 @@ Each of these was reviewed and judged non-blocking:
 - Environment: the floor is monotone at gameplay zoom with no feature larger than one tile; the
   interior is an empty box (no workbenches, shelving, or hearth — the biggest gap against "cozy,
   detailed"); lighting is even rather than dramatic.
-- Economy: stock bars are relative-only because no capacity concept exists (1.2 above fixes this);
-  the rate readout is *net* stock change, not gross throughput, so 60/min in and 60/min out reads
-  as Steady.
+- Economy: stock bars are still relative-only. §1.2 supplied the missing capacity concept
+  (`StorageBuffer.CapacityPerType`/`RoomFor`) but did not touch the UI, so nothing reads it yet —
+  this is now a straightforward wiring job rather than a blocked one. The rate readout is also
+  still *net* stock change, not gross throughput, so 60/min in and 60/min out reads as Steady.
 - Belt art is direction-neutral with a rotated chevron rather than a proper mirrored NE/NW
   isometric pair.
 

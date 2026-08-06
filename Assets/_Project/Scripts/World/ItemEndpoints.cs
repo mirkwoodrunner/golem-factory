@@ -68,7 +68,10 @@ namespace GolemFactory.World
 
         // A node is a pure source; it never accepts. CanGive is false rather than throwing so
         // a golem facing the wrong way stalls cleanly instead of crashing the tick loop.
+        // Untyped and typed agree trivially: there is no type it would take.
         public bool CanGive() => false;
+
+        public bool CanGive(string itemType) => false;
 
         public bool TryGive(ItemStack item) => false;
     }
@@ -137,6 +140,13 @@ namespace GolemFactory.World
         }
 
         public bool CanGive() => _segment != null && _segment.CanEnqueue();
+
+        // A belt's capacity is a slot count, not a per-type allowance -- a lane with room takes
+        // any type and a full one takes none -- so the typed question has the same answer as the
+        // untyped one. Delegating rather than restating it keeps them from ever drifting apart.
+        // This equality is what makes Push's untyped CanGive() early-out correct for belts and
+        // (correctly) inert for per-type-capped buffers.
+        public bool CanGive(string itemType) => CanGive();
 
         public bool TryGive(ItemStack item) => _segment != null && _segment.TryEnqueue(item);
     }
@@ -232,10 +242,21 @@ namespace GolemFactory.World
             return null;
         }
 
-        // StorageBuffer has no capacity model at all (Deposit always succeeds), so a buffer
-        // always has room. Stated explicitly rather than inherited by accident, because the
-        // whole point of CanGive is that callers rely on it before consuming a source.
-        public bool CanGive() => _buffer != null;
+        // "Could this buffer accept anything at all?" -- and for a PER-TYPE-capped buffer the
+        // honest answer is yes unless the cap is literally zero. A buffer whose Slag slot is
+        // full still has a full allowance for every other type, including types it has never
+        // held, so there is no finite set of types to check: it can always accept *something*.
+        //
+        // That is not a fudge, it is the deadlock fix stated at the endpoint boundary. Making
+        // this "is every held type full?" would report false for a smelter's output buffer the
+        // moment Slag backed up, and Push would abandon the Iron Plate it could still deliver
+        // -- exactly the permanent deadlock progression-design §10 warns about. Callers that
+        // need to know about one specific good must ask CanGive(itemType).
+        public bool CanGive() => _buffer != null && _buffer.CapacityPerType != 0;
+
+        // The typed question, and the one that actually carries per-type backpressure:
+        // room for THIS good, right now.
+        public bool CanGive(string itemType) => _buffer != null && _buffer.RoomFor(itemType) > 0;
 
         public bool TryGive(ItemStack item)
         {
@@ -244,8 +265,11 @@ namespace GolemFactory.World
                 return false;
             }
 
-            _buffer.Deposit(item.ItemType);
-            return true;
+            // Deposit returns what it accepted, so a full slot refuses the unit instead of
+            // swallowing it. Reporting success on a rejected deposit would make Push consume
+            // the unit out of the golem's stock and destroy it -- the same no-item-loss
+            // invariant CanGive-before-TryTake protects at the other end of the golem.
+            return _buffer.Deposit(item.ItemType, 1) > 0;
         }
     }
 }

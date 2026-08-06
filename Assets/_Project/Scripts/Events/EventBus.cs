@@ -38,7 +38,20 @@ namespace GolemFactory.Events
         Unconfigured,
         // ExtractFromNode: the resource node is depleted or has no such id.
         NodeEmpty,
-        // ExtractFromNode: the destination belt segment has no room for another item.
+        // The destination has no room for anything this step is carrying.
+        //
+        // Named for the only destination that could be full when it was introduced (a belt,
+        // via ExtractFromNode), and NOT renamed or renumbered since -- StallReason is
+        // append-only and serialized by index, so the member name is the cheap part and the
+        // value is the load-bearing one. It now also covers a Push whose target StorageBuffer
+        // has hit its per-item-type cap for every type in the golem's hold; ResourceId carries
+        // the endpoint's DisplayName either way, so the player reads "ScrapBuffer full", which
+        // is exactly right for a buffer too.
+        //
+        // Only a push that moved NOTHING reports this. A partial push -- some types delivered,
+        // one refused because that slot is full -- is progress and must not stall, or a
+        // smelter would stop dead on a Slag backlog it is still successfully clearing Plate
+        // through. See GolemEntity.BeginPush.
         BeltFull,
         // LoadIntoBuffer: nothing has reached the end of the source belt segment yet.
         BeltEmpty,

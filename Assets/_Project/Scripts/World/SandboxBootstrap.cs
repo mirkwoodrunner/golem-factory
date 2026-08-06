@@ -19,6 +19,31 @@ namespace GolemFactory.World
         [SerializeField] private SimulationClockRunner clockRunner;
         [SerializeField] private int startingAetherQuantity = 40;
 
+        // --- Buffer backpressure (docs/progression-design.md §11 item 3, §5.3(c)) -----------
+        // Optional, like every other holder here: leave it unassigned and this falls back to
+        // finding the scene's single registry, and if there isn't one the capacity policy below
+        // simply never applies. Main.unity never runs this bootstrap, so its demo economy keeps
+        // the Unlimited default and is provably unaffected.
+        [SerializeField] private Economy.StorageBufferRegistryHolder bufferRegistryHolder;
+
+        // BOTH OF THESE ARE TUNING NUMBERS, NOT DERIVED ONES. The progression design gives no
+        // figure for either; these are a first pass to be playtested, not a computed result.
+        //
+        // 100 per item type for ordinary production buffers: at stage 4 iron smelting produces
+        // ~96 Slag/min (§5.3(c)), so a 100-cap Slag slot backs up in roughly a minute. That is
+        // the right order of magnitude for "route it every cycle or the line stalls" without
+        // making the early game fiddly, where a single golem cycle moves a handful of units.
+        [SerializeField] private int productionBufferCapacityPerType = 100;
+
+        // The player's stockpile stays UNLIMITED. It is the player's wallet, not a production
+        // tile -- the construction station and the build menu spend from it, and the player's
+        // own hand-harvesting pays into it. §10's soft-lock audit does not contemplate a capped
+        // stockpile, so capping it would risk a soft-lock the design never sanctioned (a full
+        // Scrap slot that stops the player banking the Scrap they need to build the golem that
+        // would drain it). The id is BuildModeController/PlayerInteractor/GolemConstructionStation
+        // /PlaceableDepot's shared default, taken from the code rather than guessed.
+        [SerializeField] private string stockpileBufferId = "FactoryStockpile";
+
         // The two hardcoded "ScrapBeltA"/"ScrapBeltB" segments this used to register are GONE.
         // They existed only because the Workbench's belt-facing appendage cards named those ids
         // and would otherwise always stall -- a scaffold for id routing. Belts are now placed by
@@ -83,8 +108,41 @@ namespace GolemFactory.World
                 player.SetFloorBounds(new GridCoordinateConverter(grid.cellSize), FloorLayout.HalfExtent);
             }
 
+            ApplyBufferCapacityPolicy();
             RegisterSpatialEndpoints();
             WireSpatialGameplay();
+        }
+
+        /// <summary>
+        /// Turns on real per-item-type backpressure for this scene: ordinary production buffers
+        /// get a finite cap, the player's stockpile stays unlimited.
+        ///
+        /// Runs BEFORE RegisterSpatialEndpoints and before any golem or player deposit, because
+        /// a buffer takes its capacity at creation and the stockpile must be created uncapped
+        /// rather than picking up the default from whichever deposit happens to touch it first.
+        /// </summary>
+        private void ApplyBufferCapacityPolicy()
+        {
+            Economy.StorageBufferRegistryHolder holder = bufferRegistryHolder;
+            if (holder == null)
+            {
+                // Same idiom as the ResourceNodeMarker/GolemConstructionStation sweeps below:
+                // find it in the scene rather than requiring an Inspector pass that a text-only
+                // change cannot perform. An explicit assignment still wins when one is made.
+                holder = FindAnyObjectByType<Economy.StorageBufferRegistryHolder>(FindObjectsInactive.Include);
+            }
+
+            if (holder == null)
+            {
+                return;
+            }
+
+            holder.Registry.DefaultCapacityPerType = productionBufferCapacityPerType;
+
+            if (!string.IsNullOrEmpty(stockpileBufferId))
+            {
+                holder.Registry.SetCapacity(stockpileBufferId, Economy.StorageBuffer.Unlimited);
+            }
         }
 
         // Hands the spatial layer to the systems the player actually drives. Every one of these
