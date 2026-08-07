@@ -357,9 +357,18 @@ steam adjacency still fits.
 
 ### Editor passes still owed — **start here**
 
-Every one of these is finished, tested C# with no prefab or scene slot. None is a code problem, and
-none can be done from a text diff. Together they are what stands between the implemented design and
-actually playing it.
+Every one of these is finished, tested C# with no prefab or scene slot. None is a code problem.
+Together they are what stands between the implemented design and actually playing it.
+
+> **Try scripting these before doing them by hand.** An earlier note here said they "cannot be done
+> from a text diff", which is true but misleading: Unity batch mode runs arbitrary Editor code via
+> `-executeMethod` (that is how §1.5's 19 recipe assets were authored — see
+> `Scripts/Editor/ProgressionAssetAuthoring.cs`). `PrefabUtility.SaveAsPrefabAsset`,
+> `EditorSceneManager.OpenScene`/`MarkSceneDirty`/`SaveScene` and `SerializedObject` can create
+> prefabs, add components and wire serialized references the same way. **This has not been proven
+> for prefabs and scenes in this project yet — only for `.asset` files — so treat it as the first
+> thing to try, not a guarantee.** Anything genuinely needing a human (art, layout judgement) will
+> become obvious quickly.
 
 | What | State | Blocks |
 |---|---|---|
@@ -385,9 +394,10 @@ actually playing it.
   contains `AppendageSlot0`–`AppendageSlot4` and `WorkbenchController._draftAppendages` is sized
   from `appendageSlotZones.Length`, so a 6-slot chassis behaves like a 5-slot one in the UI — and
   worse, `WorkbenchController.cs:319` silently **truncates** a longer program on load, so opening a
-  6-appendage golem and hitting Engage Gears would commit a 5-appendage one. Not reachable today
-  (no 4-input recipe exists until §1.5), but slot count is *the* tier gate in this design, so this
-  is a **prerequisite for §1.5**, and it is prefab work that cannot be done from a text diff.
+  6-appendage golem and hitting Engage Gears would commit a 5-appendage one. **Now reachable**: §1.5
+  authored R14 and R17, the two 4-input recipes, so the Zeppelin's sixth slot is live content the UI
+  silently discards. Listed in the Editor-passes table above; the truncation at `WorkbenchController
+  .cs:319` is a code fix and should land with it.
 - **No UI for `Haul` batch quantity.** It is stored per slot and saved, but nothing exposes it, so
   §2's "Consequence 4" — the Workbench's one remaining real decision — is not yet playable. This is
   what the §2 open decision below is actually waiting on.
