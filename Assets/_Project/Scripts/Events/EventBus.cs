@@ -198,6 +198,78 @@ namespace GolemFactory.Events
         public GolemResumedEvent(string golemId) => GolemId = golemId;
     }
 
+    // FRESH PRODUCTION (docs/progression-design.md §7). Published the moment an Assemble step
+    // actually completes and its product lands in the golem's output stock -- once for the
+    // output and, separately, once for the byproduct, because R4 producing Slag is genuinely
+    // fresh Slag and the Clock Tower has to be able to say so.
+    //
+    // THIS EXISTS FOR EXACTLY ONE REASON: it is the signal that closes the hoard-blitz hole.
+    // The tower's multiplier is min(deliveryRate, freshProductionRate) over 60 s windows, and
+    // without a "something was genuinely made just now" signal a warehouse dump is
+    // indistinguishable from a running factory -- a player could over-produce stage-4 goods
+    // during stages 1-3 and unload at 3x to finish the climax in three minutes.
+    //
+    // ONLY Assemble publishes this. Not Haul, not Push (those move goods that already existed,
+    // which is the very thing being guarded against), and not the legacy id-routed Refine,
+    // which §1.3 superseded and which nothing new is built on.
+    //
+    // Carries the TICK rather than letting the listener stamp its own. The Clock Tower's
+    // windows are tick-keyed for determinism, and a listener that stamped arrivals with
+    // "whatever tick I last saw" would shift a production event by the gap between the golem's
+    // Tick and the tower's -- reproducible, but for no reason when the producer already knows.
+    public readonly struct ItemAssembledEvent
+    {
+        public readonly string GolemId;
+        public readonly string ItemType;
+        public readonly int Quantity;
+        public readonly long Tick;
+
+        /// <summary>
+        /// True for the recipe's optional second output. Purely informational -- a byproduct is
+        /// fresh production of its own type exactly like the main output -- but the two are
+        /// published separately so a listener that cares (a Slag readout, say) does not have to
+        /// re-derive which is which from the recipe.
+        /// </summary>
+        public readonly bool IsByproduct;
+
+        public ItemAssembledEvent(string golemId, string itemType, int quantity, long tick)
+            : this(golemId, itemType, quantity, tick, false) { }
+
+        public ItemAssembledEvent(
+            string golemId, string itemType, int quantity, long tick, bool isByproduct)
+        {
+            GolemId = golemId;
+            ItemType = itemType;
+            Quantity = quantity;
+            Tick = tick;
+            IsByproduct = isByproduct;
+        }
+    }
+
+    // A Clock Tower stage finished (docs/progression-design.md §7). Fired once per stage, on
+    // the tick the stage's progress reaches 100 %.
+    //
+    // IsFinalStage is the WIN, and it is deliberately a flag on the ordinary stage event rather
+    // than a separate "game over" one: §7 is explicit that stage 4 completion "leaves the save
+    // running -- the Clock Tower is a win, not a game-over". Nothing in the simulation stops,
+    // and the only thing listening for the flag is presentation.
+    public readonly struct ClockTowerStageCompletedEvent
+    {
+        public readonly int StageNumber;
+        public readonly string StageName;
+        public readonly bool IsFinalStage;
+        public readonly long Tick;
+
+        public ClockTowerStageCompletedEvent(
+            int stageNumber, string stageName, bool isFinalStage, long tick)
+        {
+            StageNumber = stageNumber;
+            StageName = stageName;
+            IsFinalStage = isFinalStage;
+            Tick = tick;
+        }
+    }
+
     public static class EventBus
     {
         public static event Action<TickAdvancedEvent> TickAdvanced;
@@ -206,6 +278,8 @@ namespace GolemFactory.Events
         public static event Action<GolemStalledEvent> GolemStalled;
         public static event Action<GolemResumedEvent> GolemResumed;
         public static event Action<GolemTriggerFiredEvent> GolemTriggerFired;
+        public static event Action<ItemAssembledEvent> ItemAssembled;
+        public static event Action<ClockTowerStageCompletedEvent> ClockTowerStageCompleted;
 
         public static void Publish(TickAdvancedEvent e) => TickAdvanced?.Invoke(e);
         public static void Publish(ThresholdCrossedEvent e) => ThresholdCrossed?.Invoke(e);
@@ -213,5 +287,7 @@ namespace GolemFactory.Events
         public static void Publish(GolemStalledEvent e) => GolemStalled?.Invoke(e);
         public static void Publish(GolemResumedEvent e) => GolemResumed?.Invoke(e);
         public static void Publish(GolemTriggerFiredEvent e) => GolemTriggerFired?.Invoke(e);
+        public static void Publish(ItemAssembledEvent e) => ItemAssembled?.Invoke(e);
+        public static void Publish(ClockTowerStageCompletedEvent e) => ClockTowerStageCompleted?.Invoke(e);
     }
 }

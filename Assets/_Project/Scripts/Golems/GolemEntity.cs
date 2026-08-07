@@ -674,9 +674,30 @@ namespace GolemFactory.Golems
                 // The byproduct costs no extra slot because Push empties the whole output stock
                 // in one step (progression-design §2, Consequence 3).
                 _inventory.AddOutput(recipe.outputItemType, recipe.outputQuantity);
+
+                // FRESH PRODUCTION (progression-design §7). This is the exact moment a good comes
+                // into existence, and it is the only such moment in the game: Haul and Push move
+                // goods that already existed, which is precisely what the Clock Tower's
+                // hoard-blitz rule has to be able to tell apart from making them. Published here
+                // rather than at Begin because nothing exists until the recipe has actually run
+                // its duration -- crediting at withdrawal would let a stalled 120-tick
+                // Chronometer Core count as production it never completed.
+                //
+                // The tick rides along so the tower's 60 s windows stay keyed to simulation time
+                // rather than to whenever a listener happened to hear about it.
+                EventBus.Publish(new ItemAssembledEvent(
+                    golemId, recipe.outputItemType, recipe.outputQuantity, _currentTick));
+
                 if (recipe.HasByproduct)
                 {
                     _inventory.AddOutput(recipe.byproductItemType, recipe.byproductQuantity);
+
+                    // A byproduct is fresh production of its own type. R4's Slag is genuinely
+                    // new Slag, and §5.3(c)'s whole disposal economy depends on it being counted
+                    // as such rather than treated as a lesser output.
+                    EventBus.Publish(new ItemAssembledEvent(
+                        golemId, recipe.byproductItemType, recipe.byproductQuantity,
+                        _currentTick, true));
                 }
             }
         }

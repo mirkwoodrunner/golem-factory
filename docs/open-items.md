@@ -9,7 +9,7 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 > reviewed**. Everything from §1.5 on is **spec only**. The next pass starts at §1.5, which is
 > also what §1.4's Sandbox switch is waiting on.
 
-Tests stand at **819/819** (718 EditMode + 101 PlayMode), up from 590 before the progression pass
+Tests stand at **885/885** (779 EditMode + 106 PlayMode), up from 590 before the progression pass
 began. Console clean.
 
 > **Unity batch mode does run the tests, contrary to what the implementation plan says.** It is
@@ -274,9 +274,34 @@ as the total-blackout backstop: "the bench must be explicitly unpowered", so the
 hand-crank coke to restart from a dead factory. Until it exists, a live steam requirement has no
 recovery path.
 
-### 1.6 Clock Tower
-Four rate-scaled stages. Progress scales with delivered rate so surplus capacity finishes faster;
-the 60-unit clamp is retained as the anti-hoard cap.
+### 1.6 Clock Tower — **DONE**
+
+Four rate-scaled stages, authored as assets from §7's table. The site is an `IItemEndpoint` on a
+cell, so golems `Push` into it exactly like any other destination rather than through a special case.
+Per demanded item there is a supply-pressure meter (`+1`/unit, `−demandRate/60`/s, clamped `[0, 60]`)
+and two 60-second rolling windows; stage progress per second is
+`min` over demanded items of `clamp(effectiveRate / demandRate, 0, 3)`, so **surplus is rewarded up
+to 3× and the weakest line gates everything**. Progress freezes at zero and never goes negative:
+stages cannot fail, only take longer, which is §12's rubric-5 guarantee.
+
+**The hoard-blitz hole is closed, and it needed a new signal.** The 60-unit meter clamp caps *stock*
+credit, but delivering from a warehouse is still a delivery *rate* — so a player could have
+over-produced stage-4 goods during stages 1–3 and unloaded at 3× to finish the climax in three
+minutes. `effectiveRate = min(deliveryRate, freshProductionRate)`, where fresh production is
+`Assemble` output over the last 60 s, published as a new `ItemAssembledEvent` **at recipe
+completion** (crediting at ingredient withdrawal would let a stalled 120-tick Chronometer Core count
+as production it never finished). A byproduct counts as fresh production of its own type. A
+stockpile can now smooth a dip but can never raise the multiplier.
+
+**The arithmetic is integer end to end**, following §1.4's discipline. Progress accrues in millionths
+of a nominal tick; the per-tick increment is exact at 1× and at the 3× cap, so nominal durations land
+on the tick, and the truncation elsewhere is always a *loss*, never a gain — a stage can run a
+hundredth of a tick long over ten minutes, but can never finish early. The `min` across demanded
+items walks the stage's authored list by index, so two identical factories always name the same
+starved line.
+
+§8's four columns (`Required / Delivered / Fresh / ×multiplier`) and the starved-item alert with its
+items/min deficit are implemented as a pure formatter plus a thin view.
 
 ### Perf is not a blocker
 Measured on the real stack, in Play mode:
@@ -329,6 +354,30 @@ steam adjacency still fits.
 ---
 
 ## 3. Known gaps carried forward
+
+### Editor passes still owed — **start here**
+
+Every one of these is finished, tested C# with no prefab or scene slot. None is a code problem, and
+none can be done from a text diff. Together they are what stands between the implemented design and
+actually playing it.
+
+| What | State | Blocks |
+|---|---|---|
+| **Boiler + Steam Pipe prefabs** | `PlaceableBoiler`/`PlaceableSteamPipe` done | Placing either in-game; turning on `requireSteamPower` |
+| **Clock Tower prefab** | `PlaceableClockTower` + endpoint done | Reaching the win condition at all |
+| **`SteamNetworkHolder` / `ClockTowerSiteHolder` on `ManagerHolders.prefab`** | Both are `ITickable` Holders | Both systems ticking in Sandbox |
+| **HUD slots for `SteamFuelGaugeView` and `ClockTowerPanelView`** | Both computed and unit-tested | §8's fuel gauge and tower columns, which §12 calls load-bearing |
+| **Workbench's 6th appendage socket** | `WorkbenchController` truncates past 5 | Any 4-input recipe (R14, R17) — i.e. stage 4 |
+| **Node markers + sprites for Coal / Copper / Zinc** | Nodes registered; Coal marker borrowed | Copper and zinc being reachable in-world at all |
+
+### Also not yet wired
+
+- **Save/load does not persist Clock Tower progress**, so a reload restarts the current stage.
+- **`requireSteamPower` is still off.** Its last blocker is the Hand-Crank Bench (§11 item 7), which
+  §10 requires as the total-blackout backstop.
+- **The whole arc is unplaytested.** §12 names the boiler fuel ratio as "the single most important
+  number to playtest first" — mis-tuned, the game becomes a coal simulator — and flags every golem
+  count in §7/§9 as ±25 %. Nothing here has been played, only tested.
 
 ### Opened by the §1.1 machine-model pass
 

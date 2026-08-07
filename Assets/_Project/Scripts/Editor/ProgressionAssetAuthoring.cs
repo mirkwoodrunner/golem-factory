@@ -1,14 +1,15 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
+using GolemFactory.ClockTower;
 using GolemFactory.Economy;
 using GolemFactory.PunchCards;
 
 namespace GolemFactory.Editor
 {
-    // Authors every ScriptableObject docs/progression-design.md §5.2 and §6 specify: the 19
+    // Authors every ScriptableObject docs/progression-design.md §5.2, §6 and §7 specify: the 19
     // crafting recipes, one Assemble appendage card per recipe, the Push card §1.1 left
-    // unauthored, and the five chassis cost bundles.
+    // unauthored, the five chassis cost bundles, and the four Clock Tower stages.
     //
     // IDEMPOTENT AND REPEATABLE, which is the whole point of it existing. §12 explicitly expects
     // a tuning pass ("treat every number in §7 and §9 as a target, not a fact", and the first
@@ -35,6 +36,7 @@ namespace GolemFactory.Editor
         private const string RecipeRoot = "Assets/_Project/ScriptableObjects/Recipes/";
         private const string AppendageRoot = "Assets/_Project/ScriptableObjects/Appendages/";
         private const string ChassisRoot = "Assets/_Project/ScriptableObjects/Chassis/";
+        private const string ClockTowerRoot = "Assets/_Project/ScriptableObjects/ClockTower/";
 
         /// <summary>
         /// §5.2 lists R1..R19 -- NINETEEN crafting recipes, not the twenty its own prose claims
@@ -178,6 +180,50 @@ namespace GolemFactory.Editor
             }),
         };
 
+        /// <summary>
+        /// §7's stage table, VERBATIM. Four stages, each demanding one or more items at a
+        /// sustained rate, with a nominal duration that is the time at EXACTLY 1x supply (at 3x
+        /// it is a third of it).
+        ///
+        /// <para>
+        /// DEMAND ORDER IS CONTRACTUAL, not cosmetic -- see the note on
+        /// <c>ClockTowerStageDefinition</c>. §7's table is transcribed left to right, so the
+        /// item the HUD names as the weakest line when two are equally short is the first one
+        /// the design lists.
+        /// </para>
+        ///
+        /// <para>
+        /// Durations are §7's minutes converted to seconds and nothing else: 6, 8, 8 and 10
+        /// minutes. §12 expects a tuning pass over every number in §7, so this is the table it
+        /// edits.
+        /// </para>
+        /// </summary>
+        private static readonly (string AssetName, int Number, string Name, int NominalSeconds,
+            StageDemand[] Demands)[] ClockTowerStages =
+        {
+            ("Stage1_Foundation", 1, "Foundation", 6 * 60, new[]
+            {
+                Demand(ItemType.FrameSection, 6)
+            }),
+            ("Stage2_TheMovement", 2, "The Movement", 8 * 60, new[]
+            {
+                Demand(ItemType.GreatCog, 3), Demand(ItemType.FrameSection, 3)
+            }),
+            ("Stage3_AetherIllumination", 3, "Aether Illumination", 8 * 60, new[]
+            {
+                Demand(ItemType.AetherConduit, 3), Demand(ItemType.Lens, 24),
+                Demand(ItemType.FrameSection, 2)
+            }),
+            ("Stage4_TheChronometer", 4, "The Chronometer", 10 * 60, new[]
+            {
+                Demand(ItemType.ChronometerCore, 2), Demand(ItemType.GreatCog, 2),
+                Demand(ItemType.AetherConduit, 1)
+            }),
+        };
+
+        private static StageDemand Demand(string itemType, int ratePerMinute) =>
+            new StageDemand(itemType, ratePerMinute);
+
         [MenuItem("Tools/Golem Factory/Author Progression Assets")]
         public static void AuthorAll()
         {
@@ -186,12 +232,47 @@ namespace GolemFactory.Editor
             cards += AuthorPushCard();
             cards += RepurposeLegacyRefineCard();
             int chassis = AuthorChassisCosts();
+            int stages = AuthorClockTowerStages();
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
             Debug.Log($"ProgressionAssetAuthoring: {recipes} recipes, {cards} appendage cards, " +
-                      $"{chassis} chassis cost bundles written to disk.");
+                      $"{chassis} chassis cost bundles, {stages} Clock Tower stages written to disk.");
+        }
+
+        private static int AuthorClockTowerStages()
+        {
+            EnsureFolder(ClockTowerRoot);
+
+            int count = 0;
+            foreach ((string assetName, int number, string name, int seconds,
+                      StageDemand[] demands) in ClockTowerStages)
+            {
+                ClockTowerStageDefinition stage =
+                    LoadOrCreate<ClockTowerStageDefinition>(ClockTowerRoot + assetName + ".asset");
+
+                stage.stageNumber = number;
+                stage.stageName = name;
+                stage.nominalSeconds = seconds;
+
+                // Rebuilt rather than mutated in place, exactly as the recipe rows are: a re-run
+                // after a demand was dropped from the table must not leave the old entry behind.
+                stage.demands = new List<StageDemand>(demands);
+
+                // Fails the authoring run, not the player's game -- the same authoring-edge rule
+                // RecipeDefinition.IsWellFormed follows.
+                string problem;
+                if (!stage.IsWellFormed(out problem))
+                {
+                    Debug.LogError($"ProgressionAssetAuthoring: {assetName} is malformed -- {problem}");
+                }
+
+                EditorUtility.SetDirty(stage);
+                count++;
+            }
+
+            return count;
         }
 
         private static int AuthorRecipes()
