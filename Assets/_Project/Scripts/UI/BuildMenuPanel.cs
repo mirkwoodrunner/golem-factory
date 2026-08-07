@@ -187,7 +187,7 @@ namespace GolemFactory.UI
             // player should never see, and ConstructionCostPolicy already words a cost more
             // compactly than the raw fields did.
             CreateLabel(go.transform,
-                StripPrefabSuffix(prefab.name) + "   (" + ConstructionCostPolicy.FormatCost(prefab.ScrapCost, prefab.BrassCost) + ")");
+                StripPrefabSuffix(prefab.name) + "   (" + ConstructionCostPolicy.FormatCost(prefab.Cost) + ")");
 
             _rows.Add((prefab, image));
         }

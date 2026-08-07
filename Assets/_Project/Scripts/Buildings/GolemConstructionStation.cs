@@ -9,10 +9,11 @@ using GolemFactory.World;
 namespace GolemFactory.Buildings
 {
     // Sibling component alongside PlaceableBuilding on its prefab (PlaceableBuilding is
-    // sealed, so this can't subclass it). Spends Scrap/Brass -- finally consuming
-    // ChassisDefinition.scrapCost/brassCost, which every authored chassis asset has carried
-    // since M3 but nothing read until now -- to spawn a bare-chassis GolemEntity and hand it
-    // straight to the Workbench so the player programs it exactly like any other golem.
+    // sealed, so this can't subclass it). Spends ChassisDefinition.cost -- an item bundle
+    // since §1.5 (docs/progression-design.md §6, §11 item 8), replacing the Scrap/Brass pair
+    // that could not express a single §6 cost from the Presser on -- to spawn a bare-chassis
+    // GolemEntity and hand it straight to the Workbench so the player programs it exactly like
+    // any other golem.
     [RequireComponent(typeof(PlaceableBuilding))]
     public sealed class GolemConstructionStation : MonoBehaviour
     {
@@ -37,6 +38,11 @@ namespace GolemFactory.Buildings
         // EXEMPT from the NoSteam precondition, which is the state Sandbox.unity ships in today
         // (SandboxBootstrap.requireSteamPower is off until §1.5 gives Coke a source).
         [SerializeField] private GolemFactory.Steam.SteamNetworkHolder steamNetworkHolder;
+
+        // The 2-extractor-per-node cap (docs/progression-design.md §3.2). Optional in the same
+        // way the steam holder above is: a station with no cap registry builds golems that may
+        // work any node they face, which is the state Main.unity is in permanently.
+        [SerializeField] private NodeExtractorRegistryHolder nodeExtractorHolder;
 
         private int _nextGolemNumber = 1;
 
@@ -81,6 +87,20 @@ namespace GolemFactory.Buildings
             steamNetworkHolder = steam;
 
         /// <summary>
+        /// Subjects every golem this station builds to §3.2's two-extractor-per-node cap.
+        /// Split out for the same reason ConfigureSteam is.
+        ///
+        /// <para>
+        /// UNLIKE steam, this is NOT behind a scene switch. The cap needs no consumable and
+        /// cannot soft-lock: a refused golem stalls naming the seam and is fixed by walking it
+        /// somewhere else, which is a five-second player action rather than a dependency on
+        /// content that does not exist yet.
+        /// </para>
+        /// </summary>
+        public void ConfigureNodeExtractorCap(NodeExtractorRegistryHolder cap) =>
+            nodeExtractorHolder = cap;
+
+        /// <summary>
         /// Which way this station points, and therefore the tile its golem steps out onto and
         /// the direction that golem starts facing. Read from the sibling PlaceableBuilding the
         /// player oriented with R at placement time.
@@ -98,6 +118,13 @@ namespace GolemFactory.Buildings
         /// Current Scrap/Brass in the buffer this station spends from. Returns false when no
         /// buffer registry is wired, so the panel can say "stockpile unavailable" rather than
         /// silently printing a confident zero.
+        ///
+        /// <para>
+        /// Kept on the Scrap/Brass pair even though costs are now bundles: this feeds the
+        /// panel's one-line "what's in the vault" readout, which is a summary of the two goods
+        /// the player hand-harvests, not a cost preview. Affordability goes through
+        /// <see cref="StockOf"/> instead.
+        /// </para>
         /// </summary>
         public bool TryGetStockpile(out int scrapStock, out int brassStock)
         {
@@ -115,6 +142,17 @@ namespace GolemFactory.Buildings
         }
 
         /// <summary>
+        /// How much of one good the station's stockpile holds -- the stock reader
+        /// ConstructionCostPolicy's bundle arithmetic takes. Zero when nothing is wired, which
+        /// makes an unwired station read as "you have none of anything", the same answer the
+        /// withdrawal would give.
+        /// </summary>
+        public int StockOf(string itemType) =>
+            bufferRegistryHolder == null
+                ? 0
+                : bufferRegistryHolder.Registry.GetQuantity(stockpileBufferId, itemType);
+
+        /// <summary>
         /// Whether <see cref="TryConstructGolem"/> would currently succeed on cost grounds.
         /// Routed through ConstructionCostPolicy -- the same arithmetic the panel prints -- so
         /// the preview and the actual withdrawal can never disagree. A missing buffer registry
@@ -122,23 +160,16 @@ namespace GolemFactory.Buildings
         /// </summary>
         public bool CanAfford(ChassisDefinition chassis)
         {
-            if (chassis == null)
+            if (chassis == null || bufferRegistryHolder == null)
             {
                 return false;
             }
 
-            int scrapStock;
-            int brassStock;
-            if (!TryGetStockpile(out scrapStock, out brassStock))
-            {
-                // A buffer that has never been deposited into doesn't exist yet, but a
-                // genuinely free chassis is still affordable against it -- the same
-                // zero-cost case StorageBufferRegistry.TryWithdrawScrapAndBrass guards.
-                return bufferRegistryHolder != null &&
-                       ConstructionCostPolicy.CanAfford(0, 0, chassis.scrapCost, chassis.brassCost);
-            }
-
-            return ConstructionCostPolicy.CanAfford(scrapStock, brassStock, chassis.scrapCost, chassis.brassCost);
+            // A buffer that has never been deposited into doesn't exist yet, but a genuinely
+            // free chassis is still affordable against it -- the same zero-cost case
+            // StorageBufferRegistry.TryWithdrawBundle guards, and StockOf answers 0 for it
+            // rather than failing.
+            return ConstructionCostPolicy.CanAfford(StockOf, chassis.cost);
         }
 
         // Withdraws the chassis's cost, instantiates a bare-chassis golem (no logic core or
@@ -153,7 +184,9 @@ namespace GolemFactory.Buildings
                 return false;
             }
 
-            if (!bufferRegistryHolder.Registry.TryWithdrawScrapAndBrass(stockpileBufferId, chassis.scrapCost, chassis.brassCost))
+            // Atomic with a full refund on shortfall -- a chassis is the most expensive thing
+            // the player buys and a partial charge would take four goods and hand back nothing.
+            if (!bufferRegistryHolder.Registry.TryWithdrawBundle(stockpileBufferId, chassis.cost))
             {
                 return false;
             }
@@ -184,6 +217,13 @@ namespace GolemFactory.Buildings
             if (steamNetworkHolder != null)
             {
                 golem.ConfigureSteam(steamNetworkHolder);
+            }
+
+            // After ConfigureSpatial for the same reason: the cap claim is filed against the
+            // node behind the golem, which is only meaningful once it is standing somewhere.
+            if (nodeExtractorHolder != null)
+            {
+                golem.ConfigureNodeExtractorCap(nodeExtractorHolder);
             }
 
             GolemVisual visual = golem.GetComponent<GolemVisual>();

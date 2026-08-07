@@ -17,7 +17,12 @@ namespace GolemFactory.World
         [SerializeField] private ResourceNodeRegistryHolder nodeRegistryHolder;
         [SerializeField] private ConveyorSystemHolder conveyorHolder;
         [SerializeField] private SimulationClockRunner clockRunner;
-        [SerializeField] private int startingAetherQuantity = 40;
+
+        // The 2-extractor-per-node cap (docs/progression-design.md §3.2). Optional like every
+        // other holder here: leave it unassigned and this falls back to finding the scene's
+        // single registry, and if there isn't one the cap simply never applies -- exactly the
+        // state Main.unity is in, since it never runs this bootstrap.
+        [SerializeField] private NodeExtractorRegistryHolder nodeExtractorHolder;
 
         // --- Buffer backpressure (docs/progression-design.md §11 item 3, §5.3(c)) -----------
         // Optional, like every other holder here: leave it unassigned and this falls back to
@@ -106,14 +111,7 @@ namespace GolemFactory.World
 
         private void Start()
         {
-            // ScrapNode/BrassNode are directly harvestable (both by the player's own
-            // Interact and by a player-programmed golem's ExtractFromNode step) so a fresh
-            // save can afford every chassis's scrapCost/brassCost without first wiring a
-            // refining chain -- AssemblyBayStructure's tier/refine loop stays available for
-            // later, it's just not required to bootstrap the very first golem.
-            nodeRegistryHolder.Registry.Register(new ResourceNode("ScrapNode", ItemType.Scrap));
-            nodeRegistryHolder.Registry.Register(new ResourceNode("BrassNode", ItemType.Brass));
-            nodeRegistryHolder.Registry.Register(new ResourceNode("AetherNode", ItemType.Aether, startingAetherQuantity));
+            RegisterStartingNodes();
 
             clockRunner.Register(conveyorHolder.System);
             clockRunner.Play();
@@ -132,6 +130,56 @@ namespace GolemFactory.World
             RegisterSpatialEndpoints();
             RegisterSteamNetwork();
             WireSpatialGameplay();
+        }
+
+        /// <summary>
+        /// The world's raw deposits (docs/progression-design.md §5.1).
+        ///
+        /// <para>
+        /// EVERY NODE IS INFINITE, including AetherNode, which used to hold a finite
+        /// <c>startingAetherQuantity</c>. §5.1 is explicit: "All nodes are infinite but capped
+        /// at 2 extractors (§3.2), so scarcity is *access*, not depletion -- which cannot
+        /// soft-lock." A finite Aether node is §10's node-depletion row: Aether is the sole
+        /// input of R12, which is the sole route to Aether Cells, Regulators, Conduits and
+        /// therefore the Chronometer Core and the win condition. Draining it would end the run
+        /// with nothing to point at.
+        /// </para>
+        ///
+        /// <para>
+        /// BRASSNODE IS GONE. §5.1: Brass is manufactured (R7, 2 Copper Ingot + 1 Zinc Ingot ->
+        /// 3 Brass) from Phase 4 on and is never dug up. It was the game's one un-earned Tier-2
+        /// good, and leaving it in would have made the entire copper/zinc line -- two node
+        /// types, two smelting recipes and the alloying recipe that is Brass's only source --
+        /// optional content next to a hole in the ground.
+        /// </para>
+        ///
+        /// <para>
+        /// Coal, Copper Ore and Zinc Ore are added: R1 (coking) is what finally gives Coke a
+        /// source, and Coke is what <c>requireSteamPower</c> has been waiting on.
+        /// </para>
+        ///
+        /// <para>
+        /// MISSING ART: there is no sprite for a coal seam, a copper vein or a zinc vein, and
+        /// the ResourceNodeMarkers that would place them in Sandbox.unity are scene objects, not
+        /// code. Registering a node here makes it real to the simulation and reachable by id;
+        /// putting one on the floor where the player can see it is an Editor pass
+        /// (Tools/Art/generate_placeholder_art.py plus a texture import) that a text diff
+        /// cannot do.
+        /// </para>
+        /// </summary>
+        private void RegisterStartingNodes()
+        {
+            ResourceNodeRegistry registry = nodeRegistryHolder.Registry;
+
+            // Scrap is directly harvestable by the player's own Interact as well as by a
+            // golem's ExtractFromNode, so a fresh save can always afford the 12-Scrap
+            // Clockwork Scavenger without first wiring anything -- §10's "all Scrap spent on
+            // belts/floor" row depends on that staying true.
+            registry.Register(new ResourceNode("ScrapNode", ItemType.Scrap));
+            registry.Register(new ResourceNode("CoalNode", ItemType.Coal));
+            registry.Register(new ResourceNode("CopperOreNode", ItemType.CopperOre));
+            registry.Register(new ResourceNode("ZincOreNode", ItemType.ZincOre));
+            registry.Register(new ResourceNode("AetherNode", ItemType.Aether));
         }
 
         /// <summary>
@@ -217,6 +265,13 @@ namespace GolemFactory.World
         {
             var cellSize = grid != null ? (Vector2)grid.cellSize : new Vector2(1f, 0.5f);
 
+            // Same find-it-in-the-scene fallback as ApplyBufferCapacityPolicy, and for the same
+            // reason: adding a holder to ManagerHolders.prefab is an Editor pass, and until one
+            // happens this keeps the cap wired if a holder is present and inert if it isn't.
+            NodeExtractorRegistryHolder cap = nodeExtractorHolder != null
+                ? nodeExtractorHolder
+                : FindAnyObjectByType<NodeExtractorRegistryHolder>(FindObjectsInactive.Include);
+
             if (buildModeController != null && beltNetworkHolder != null)
             {
                 buildModeController.ConfigureBelts(beltNetworkHolder, spatialEndpointHolder, conveyorHolder);
@@ -252,6 +307,14 @@ namespace GolemFactory.World
                 if (requireSteamPower && steamNetworkHolder != null)
                 {
                     stations[i].ConfigureSteam(steamNetworkHolder);
+                }
+
+                // NOT behind the switch. §3.2's cap consumes nothing and cannot soft-lock: a
+                // refused golem stalls naming the seam, and the fix is to walk it to another
+                // node. It is on from the moment there is a registry to hold the claims.
+                if (cap != null)
+                {
+                    stations[i].ConfigureNodeExtractorCap(cap);
                 }
             }
 

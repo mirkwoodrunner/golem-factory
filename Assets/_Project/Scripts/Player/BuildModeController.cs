@@ -276,15 +276,7 @@ namespace GolemFactory.Player
                 return true;
             }
 
-            if (!_stockpileHolder.Registry.TryGetBuffer(_stockpileBufferId, out StorageBuffer buffer))
-            {
-                return GolemFactory.UI.ConstructionCostPolicy.CanAfford(
-                    0, 0, _buildingPrefab.ScrapCost, _buildingPrefab.BrassCost);
-            }
-
-            return GolemFactory.UI.ConstructionCostPolicy.CanAfford(
-                buffer.GetQuantity(ItemType.Scrap), buffer.GetQuantity(ItemType.Brass),
-                _buildingPrefab.ScrapCost, _buildingPrefab.BrassCost);
+            return GolemFactory.UI.ConstructionCostPolicy.CanAfford(ReadStock, _buildingPrefab.Cost);
         }
 
         private void OnClickPerformed(InputAction.CallbackContext context) => PlaceOrRemove(_hoveredCell);
@@ -349,18 +341,19 @@ namespace GolemFactory.Player
                 return;
             }
 
+            // Atomic with a full refund on shortfall (StorageBufferRegistry.TryWithdrawBundle):
+            // a Boiler is 30 Scrap + 10 Iron Plate, and taking the Scrap for a placement that
+            // then refuses would be a straight theft at the cursor.
             if (_stockpileHolder != null &&
-                !_stockpileHolder.Registry.TryWithdrawScrapAndBrass(_stockpileBufferId, _buildingPrefab.ScrapCost, _buildingPrefab.BrassCost))
+                !_stockpileHolder.Registry.TryWithdrawBundle(_stockpileBufferId, _buildingPrefab.Cost))
             {
                 LastStatusMessage = $"Not enough resources to build {_buildingPrefab.name} " +
-                                     $"(needs {_buildingPrefab.ScrapCost} Scrap, {_buildingPrefab.BrassCost} Brass).";
+                                     $"(needs {GolemFactory.UI.ConstructionCostPolicy.FormatCost(_buildingPrefab.Cost)}).";
                 // The refusal has to appear at the cursor. Until now this string was set and
                 // never rendered anywhere, so a click that could not be paid for was
                 // indistinguishable from a click that did not register.
                 SpawnPopup(_converter.CellToWorldCenter(cell),
-                    GolemFactory.UI.ConstructionCostPolicy.FormatShortfall(
-                        ReadStock(ItemType.Scrap), ReadStock(ItemType.Brass),
-                        _buildingPrefab.ScrapCost, _buildingPrefab.BrassCost),
+                    GolemFactory.UI.ConstructionCostPolicy.FormatShortfall(ReadStock, _buildingPrefab.Cost),
                     RefusedPopupColor);
                 return;
             }
@@ -371,11 +364,10 @@ namespace GolemFactory.Player
             instance.Facing = PlacementFacing;
             map.TryOccupy(cell, instance);
             RegisterPlacedEndpoints(instance, cell);
-            if (_stockpileHolder != null && (_buildingPrefab.ScrapCost > 0 || _buildingPrefab.BrassCost > 0))
+            if (_stockpileHolder != null && _buildingPrefab.Cost != null && _buildingPrefab.Cost.Count > 0)
             {
                 SpawnPopup(_converter.CellToWorldCenter(cell),
-                    "-" + GolemFactory.UI.ConstructionCostPolicy.FormatCost(
-                        _buildingPrefab.ScrapCost, _buildingPrefab.BrassCost),
+                    "-" + GolemFactory.UI.ConstructionCostPolicy.FormatCost(_buildingPrefab.Cost),
                     SpentPopupColor);
             }
         }

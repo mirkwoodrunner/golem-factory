@@ -175,7 +175,12 @@ namespace GolemFactory.UI
             // Stock is part of the signature because affordability -- row tint, portrait
             // brightness, button interactability and the shortfall line -- is derived from it,
             // so a deposit landing while the panel is open must re-render.
-            string signature = scrapStock + "|" + brassStock + "|" + (roster == null ? 0 : roster.Length);
+            //
+            // It reads EVERY good the roster's cost bundles name, not just Scrap and Brass.
+            // Since §1.5 a chassis can cost Casings and Mainsprings, and a signature that only
+            // watched the two hand-harvested goods would leave a row greyed out after the
+            // Casing that finally made it affordable arrived.
+            string signature = CostSignature(roster);
             if (signature == _renderedSignature && ReferenceEquals(_renderedStation, _station) && _rows.Count > 0)
             {
                 return;
@@ -195,9 +200,39 @@ namespace GolemFactory.UI
             {
                 if (chassis != null)
                 {
-                    CreateChassisRow(chassis, scrapStock, brassStock);
+                    CreateChassisRow(chassis);
                 }
             }
+        }
+
+        // Every quantity the roster's affordability actually depends on, in roster order.
+        // Deliberately derived from the authored bundles rather than from the whole stockpile:
+        // a Slag delivery landing in the vault must not force a full row rebuild.
+        private string CostSignature(ChassisDefinition[] roster)
+        {
+            var builder = new System.Text.StringBuilder();
+            builder.Append(roster == null ? 0 : roster.Length);
+
+            if (roster == null)
+            {
+                return builder.ToString();
+            }
+
+            foreach (ChassisDefinition chassis in roster)
+            {
+                if (chassis == null || chassis.cost == null)
+                {
+                    continue;
+                }
+
+                foreach (PunchCards.RecipeIngredient entry in chassis.cost)
+                {
+                    builder.Append('|').Append(entry.itemType).Append(':')
+                        .Append(_station.StockOf(entry.itemType));
+                }
+            }
+
+            return builder.ToString();
         }
 
         /// <summary>
@@ -216,13 +251,10 @@ namespace GolemFactory.UI
             GolemEntity golem;
             if (!_station.TryConstructGolem(chassis, out golem))
             {
-                int scrapStock;
-                int brassStock;
-                _station.TryGetStockpile(out scrapStock, out brassStock);
-                // Names the missing resource and the amount, not just "not enough" -- the
-                // shortfall is the only part of the failure the player can act on.
-                string shortfall = ConstructionCostPolicy.FormatShortfall(
-                    scrapStock, brassStock, chassis.scrapCost, chassis.brassCost);
+                // Names the missing resources and the amounts, not just "not enough" -- the
+                // shortfall is the only part of the failure the player can act on, and on a
+                // four-good bundle naming only the first would send them back and forth.
+                string shortfall = ConstructionCostPolicy.FormatShortfall(_station.StockOf, chassis.cost);
                 _statusMessage = string.IsNullOrEmpty(shortfall)
                     ? "Could not build " + chassis.name + "."
                     : shortfall + " to build " + chassis.name + ".";
@@ -290,10 +322,9 @@ namespace GolemFactory.UI
             _rows.Clear();
         }
 
-        private void CreateChassisRow(ChassisDefinition chassis, int scrapStock, int brassStock)
+        private void CreateChassisRow(ChassisDefinition chassis)
         {
-            bool affordable = ConstructionCostPolicy.CanAfford(
-                scrapStock, brassStock, chassis.scrapCost, chassis.brassCost);
+            bool affordable = ConstructionCostPolicy.CanAfford(_station.StockOf, chassis.cost);
 
             GameObject row = CreateRowRoot("Chassis_" + chassis.name, RowHeight,
                 affordable ? RowAffordableTint : RowUnaffordableTint);
@@ -323,8 +354,7 @@ namespace GolemFactory.UI
                 affordable ? NameAffordableColor : NameUnaffordableColor, 16, FontStyles.Bold,
                 TextAlignmentOptions.MidlineLeft, 1f, 0f, 20f);
 
-            string shortfall = ConstructionCostPolicy.FormatShortfall(
-                scrapStock, brassStock, chassis.scrapCost, chassis.brassCost);
+            string shortfall = ConstructionCostPolicy.FormatShortfall(_station.StockOf, chassis.cost);
             string secondLine = affordable
                 ? "Tier " + chassis.tier + "   -   " + chassis.maxAppendageSlots + " appendage slots"
                 : shortfall;
@@ -333,7 +363,7 @@ namespace GolemFactory.UI
                 TextAlignmentOptions.MidlineLeft, 1f, 0f, 16f);
 
             CreateLabel(row.transform, "Cost",
-                ConstructionCostPolicy.FormatCost(chassis.scrapCost, chassis.brassCost),
+                ConstructionCostPolicy.FormatCost(chassis.cost),
                 affordable ? CostAffordableColor : CostUnaffordableColor, 14,
                 affordable ? FontStyles.Bold : FontStyles.Normal,
                 TextAlignmentOptions.MidlineRight, 0f, CostWidth, RowHeight - 8f);

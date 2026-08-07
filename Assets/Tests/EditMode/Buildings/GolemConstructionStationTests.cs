@@ -20,11 +20,24 @@ namespace GolemFactory.Tests.EditMode
             }
         }
 
+        // Costs are item bundles since §1.5 (progression-design §6, §11 item 8). Kept in this
+        // helper's Scrap/Brass shape on purpose: these tests are about the STATION's
+        // charge/refund/spawn behaviour, not about which goods a chassis costs, and two goods
+        // is the smallest bundle that can exercise the partial-charge refund.
         private static ChassisDefinition MakeChassis(int scrapCost, int brassCost)
         {
             var chassis = ScriptableObject.CreateInstance<ChassisDefinition>();
-            chassis.scrapCost = scrapCost;
-            chassis.brassCost = brassCost;
+            chassis.cost = new System.Collections.Generic.List<RecipeIngredient>();
+            if (scrapCost > 0)
+            {
+                chassis.cost.Add(new RecipeIngredient(ItemType.Scrap, scrapCost));
+            }
+
+            if (brassCost > 0)
+            {
+                chassis.cost.Add(new RecipeIngredient(ItemType.Brass, brassCost));
+            }
+
             return chassis;
         }
 

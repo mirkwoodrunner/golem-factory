@@ -14,6 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxAppendageSlots: 4
   tier: 2
-  scrapCost: 40
-  brassCost: 20
+  cost:
+  - itemType: IronPlate
+    quantity: 80
+  - itemType: Gear
+    quantity: 40
+  - itemType: Coke
+    quantity: 30
   chassisSprite: {fileID: 21300000, guid: e708142ede14d6f4db352208a709cd79, type: 3}

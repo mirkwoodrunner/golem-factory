@@ -9,7 +9,7 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 > reviewed**. Everything from §1.5 on is **spec only**. The next pass starts at §1.5, which is
 > also what §1.4's Sandbox switch is waiting on.
 
-Tests stand at **789/789** (688 EditMode + 101 PlayMode), up from 590 before the progression pass
+Tests stand at **819/819** (718 EditMode + 101 PlayMode), up from 590 before the progression pass
 began. Console clean.
 
 > **Unity batch mode does run the tests, contrary to what the implementation plan says.** It is
@@ -227,8 +227,52 @@ prefab, so nothing in `Sandbox.unity` registers with the network yet; `SteamNetw
 on `ManagerHolders.prefab`; and `UI/SteamFuelGaugeView` has no HUD slot. The C# is finished and
 tested on all three — the missing work is prefab/scene wiring.
 
-### 1.5 Asset authoring
-24 items, 25 recipes, revised chassis costs paid in manufactured components rather than raw currency.
+### 1.5 Asset authoring — **DONE**
+
+`Economy/ItemType.cs` now carries all **24** item ids from §5.1. All **19** crafting recipes from
+§5.2 are authored as `RecipeDefinition` assets under `ScriptableObjects/Recipes/`, with matching
+`Assemble` cards, plus the `Push` card §1.1 left unauthored. `RefineBrass.asset` is retired in favour
+of R2 Scrap Reclamation as a proper `Assemble`.
+
+> **A design-doc discrepancy, found and left alone.** §5.2's prose says "20 crafting + 5 extraction
+> = 25 recipes" and §12 repeats it, but the table itself lists R1–R19 with no gaps, and the doc's
+> own ladder tally — Presser 5 + Hauler 8 + Overclocker 4 + Zeppelin 2 — sums to **19**. Nineteen is
+> what is authored. The prose is off by one; the table and the ladder agree with each other and with
+> the assets. `RecipeCatalogTests` pins 19 against a hand-transcribed copy of §5.2 (deliberately
+> *not* against the authoring script's own constant, which would be a tautology), so a future pass
+> that "fixes" the count by inventing a twentieth recipe has to come and argue with a test.
+
+Chassis and building costs are **item bundles** (§11 item 8) instead of the `scrapCost`/`brassCost`
+int pair, which could not express a single one of §6's costs from the Presser on — the Overclocker
+costs 2 Mainspring + 20 Brass + 24 Casing + 12 Gear. `StorageBufferRegistry.TryWithdrawBundle` is
+atomic with a full refund on shortfall, like the `TryWithdrawScrapAndBrass` it sits beside (which
+stays, because §8 keeps bay upgrades priced in Scrap + Iron Plate).
+
+Two of the design's own rubric claims are now **tests** rather than prose: chassis-cost acyclicity
+(§10's first soft-lock row — no chassis may require a good only it can produce) and the no-dead-end
+audit (§12 point 1 — every Tier 0–4 item has a consumer). Both run against the assets on disk, so a
+tuning pass that breaks either fails the suite instead of the player.
+
+Nodes follow §5.1: `BrassNode` is **deleted** (Brass is manufactured from Phase 4 on, never dug up —
+it was the one un-earned Tier-2 good, and leaving it in would have made the whole copper/zinc line
+optional next to a hole in the ground); `AetherNode` is now **infinite** like every other node, so
+scarcity is access rather than depletion and cannot soft-lock; and `CoalNode`, `CopperOreNode` and
+`ZincOreNode` are added. The **2-extractor-per-node cap** (§3.2) is real, in `NodeExtractorRegistry`,
+using the same stable-total-order determinism §1.4 established.
+
+**Missing art, and one interim scene edit.** There is no sprite for a coal seam, a copper vein or a
+zinc vein. Sandbox's `BrassNodeMarker` was left orphaned by deleting `BrassNode` — a prop the player
+could walk up to and get nothing from — so it has been repointed to `CoalNode` and renamed, which
+makes the coal line physically reachable and the coking chain playable. **It still wears the brass
+sprite**, and there are no markers at all for copper or zinc. Placing those is an Editor pass
+(`Tools/Art/generate_placeholder_art.py` plus a texture import and scene composition) that a text
+diff cannot do.
+
+**`requireSteamPower` is still off.** Authoring `CoalNode` and R1 removed one of its two blockers —
+Coke now has a source. The remaining one is the **Hand-Crank Bench** (§11 item 7), which §10 requires
+as the total-blackout backstop: "the bench must be explicitly unpowered", so the player can always
+hand-crank coke to restart from a dead factory. Until it exists, a live steam requirement has no
+recovery path.
 
 ### 1.6 Clock Tower
 Four rate-scaled stages. Progress scales with delivered rate so surplus capacity finishes faster;

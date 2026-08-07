@@ -158,20 +158,14 @@ namespace GolemFactory.Steam
         /// system reproducible. Column-major (x, then y) -- an arbitrary but FIXED choice; what
         /// matters is only that it is a total order derived from the factory's own layout rather
         /// than from a Dictionary bucket, a scene sibling index or the order the player built in.
+        ///
+        /// <para>
+        /// The implementation moved to <see cref="World.CellOrder"/> when §3.2's
+        /// two-extractor-per-node cap needed the identical order. This forwarder stays because
+        /// it is the name every determinism note and every steam test already uses, and because
+        /// two copies of a "total order" is exactly the kind of near-duplicate that drifts.
+        /// </para>
         /// </summary>
-        public static int CompareCells(Vector2Int a, Vector2Int b)
-        {
-            if (a.x != b.x)
-            {
-                return a.x < b.x ? -1 : 1;
-            }
-
-            if (a.y != b.y)
-            {
-                return a.y < b.y ? -1 : 1;
-            }
-
-            return 0;
-        }
+        public static int CompareCells(Vector2Int a, Vector2Int b) => World.CellOrder.Compare(a, b);
     }
 }

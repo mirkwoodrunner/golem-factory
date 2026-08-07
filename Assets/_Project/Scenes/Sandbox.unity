@@ -17177,7 +17177,7 @@ GameObject:
   - component: {fileID: 1963663873}
   - component: {fileID: 1963663876}
   m_Layer: 0
-  m_Name: BrassNodeMarker
+  m_Name: CoalNodeMarker
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -17196,7 +17196,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.World.ResourceNodeMarker
   nodeRegistryHolder: {fileID: 2049142404}
-  nodeId: BrassNode
+  nodeId: CoalNode
 --- !u!212 &1963663874
 SpriteRenderer:
   serializedVersion: 3

@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxAppendageSlots: 2
   tier: 1
-  scrapCost: 20
-  brassCost: 0
+  cost:
+  - itemType: Scrap
+    quantity: 12
   chassisSprite: {fileID: 21300000, guid: ba868b41f7961f44a95e0e49d8a86c71, type: 3}

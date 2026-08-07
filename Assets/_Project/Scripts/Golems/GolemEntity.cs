@@ -39,6 +39,13 @@ namespace GolemFactory.Golems
         // construction station, so an Inspector cannot accidentally steam-gate a demo golem.
         private SteamNetworkHolder steamNetworkHolder;
 
+        // --- The 2-extractor-per-node cap (docs/progression-design.md §3.2) ------------------
+        // OPT-IN on exactly the same fork as steam above, and for the same reason: a golem
+        // never handed a NodeExtractorRegistry is outside the mechanic and may work any node it
+        // faces, which is what leaves Main.unity's demos and every pre-existing extraction test
+        // untouched. Not a [SerializeField], again so an Inspector cannot cap a demo golem.
+        private NodeExtractorRegistryHolder nodeExtractorHolder;
+
         // The tick currently executing, captured at the top of Tick so the precondition check
         // inside BeginStep can ask the network for THIS tick's powered set. Threading a tick
         // parameter through BeginStep and all six Begin* methods was the alternative; it was
@@ -157,6 +164,22 @@ namespace GolemFactory.Golems
         }
 
         /// <summary>
+        /// Subjects this golem to §3.2's two-extractor-per-node cap. Separate from
+        /// ConfigureSteam for the same reason every other Configure* here is separate: a golem
+        /// that never gets one may work any node it faces.
+        ///
+        /// <para>
+        /// Nothing is claimed here, unlike ConfigureSteam. A claim is against a specific NODE,
+        /// and which node this golem works is decided by the tile behind it -- which can change
+        /// when the player rotates or moves it, and which is not knowable until the endpoint
+        /// registry is consulted. So the claim is filed at the moment the golem actually
+        /// attempts an Extract (see <c>BeginExtractFromNode</c>), where the node is in hand.
+        /// </para>
+        /// </summary>
+        public void ConfigureNodeExtractorCap(NodeExtractorRegistryHolder cap) =>
+            nodeExtractorHolder = cap;
+
+        /// <summary>
         /// Moves/rotates the golem without re-supplying the registry. "Golems cannot pivot" is a
         /// rule about *runtime execution* -- nothing in a program can turn the golem -- not about
         /// the player repositioning one between runs, which is the core spatial puzzle.
@@ -169,6 +192,12 @@ namespace GolemFactory.Golems
             // it keeps drawing power from wherever it used to stand. RegisterConsumer is
             // idempotent and re-sorts only when the cell actually changed.
             RegisterSteamConsumer();
+
+            // A node claim is dropped rather than moved: the golem may now face a different
+            // node, or none at all, and holding a slot at the seam it used to work would starve
+            // whichever golem the cap was refusing. It re-files on its next Extract, at its new
+            // cell, against whatever is actually behind it now.
+            ReleaseNodeClaim();
         }
 
         // Re-registration is funnelled through here (ConfigureSteam, SetPlacement, SetHeld,
@@ -193,6 +222,22 @@ namespace GolemFactory.Golems
             steamNetworkHolder.Network.UnregisterConsumer(golemId);
         }
 
+        // Releases this golem's node claim, if it holds one. Called whenever it stops being a
+        // candidate crew member: it is disabled/destroyed, the player picks it up, or it turns
+        // to face something that is not a node. A claim that outlived the golem holding it
+        // would permanently under-crew a seam with nothing on the tile to explain why -- which
+        // is precisely the failure mode NodeExtractorRegistry's re-derive-from-claims design
+        // exists to keep impossible.
+        private void ReleaseNodeClaim()
+        {
+            if (nodeExtractorHolder == null || string.IsNullOrEmpty(golemId))
+            {
+                return;
+            }
+
+            nodeExtractorHolder.Registry.UnregisterExtractor(golemId);
+        }
+
         // M7: Signal trigger is inherently event-driven (there's no already-held state to
         // poll, unlike Threshold's buffer query), so subscribe/unsubscribe on the
         // MonoBehaviour lifecycle -- same idiom M6's UI listeners established.
@@ -209,6 +254,7 @@ namespace GolemFactory.Golems
         {
             EventBus.GolemCompleted -= OnGolemCompletedForSignal;
             UnregisterSteamConsumer();
+            ReleaseNodeClaim();
         }
 
         private void OnGolemCompletedForSignal(GolemCompletedEvent e)
@@ -238,6 +284,11 @@ namespace GolemFactory.Golems
             if (held)
             {
                 UnregisterSteamConsumer();
+                // And it stops crewing whatever seam it was working, for the identical reason:
+                // a golem in the player's hands holding one of a node's two slots against a
+                // golem that is actually standing there would be the same bug in a different
+                // registry. It re-applies on its first Extract after being put down.
+                ReleaseNodeClaim();
                 return;
             }
 
@@ -733,9 +784,74 @@ namespace GolemFactory.Golems
             int quantity = CurrentStepQuantity();
             _stepDuration = 6 + quantity;
 
+            // §3.2's crew cap, checked BEFORE BeginFillInputStock -- i.e. before anything is
+            // taken out of the ground. A refused golem must not extract this tick and then be
+            // told it was over quota, for exactly the reason the steam check sits at the top of
+            // BeginStep: a precondition that runs after the side effect is not a precondition.
+            StallReason crowded = CheckNodeExtractorCap(out blockedResourceId);
+            if (crowded != StallReason.None)
+            {
+                return crowded;
+            }
+
             // A node holds exactly one type, so there is no ambiguity to resolve and no reason
             // to require the card to name it -- PeekAvailableType is the node's own answer.
             return BeginFillInputStock(null, quantity, out blockedResourceId);
+        }
+
+        /// <summary>
+        /// Whether this golem is one of the (at most two) golems allowed to work the node
+        /// behind it, or <see cref="StallReason.NodeCrowded"/> naming that node if not
+        /// (docs/progression-design.md §3.2).
+        ///
+        /// <para>
+        /// THE EXEMPTION IS THE FIRST LINE, exactly as in CheckSteamPower: a golem with no cap
+        /// registry configured is outside the mechanic, not "capped by an empty registry".
+        /// </para>
+        ///
+        /// <para>
+        /// A golem facing something that is not a resource node RELEASES its claim rather than
+        /// keeping one. That is what stops a rotated-away extractor from holding a slot at a
+        /// seam it has stopped working -- and it is why the claim is filed here, per attempt,
+        /// rather than once at configuration time: the node a golem works is a fact about the
+        /// tile behind it, which the player can change with R.
+        /// </para>
+        /// </summary>
+        private StallReason CheckNodeExtractorCap(out string blockedResourceId)
+        {
+            blockedResourceId = null;
+
+            if (nodeExtractorHolder == null || string.IsNullOrEmpty(golemId))
+            {
+                return StallReason.None;
+            }
+
+            var nodeEndpoint = ResolveSpatialSource() as ResourceNodeEndpoint;
+            if (nodeEndpoint == null || nodeEndpoint.Node == null)
+            {
+                // Not facing a node at all. BeginFillInputStock reports what IS wrong (nothing
+                // behind me / an empty belt / a buffer), which is a better sentence than a crew
+                // rule the player is not currently breaking.
+                ReleaseNodeClaim();
+                return StallReason.None;
+            }
+
+            string nodeId = nodeEndpoint.Node.NodeId;
+            NodeExtractorRegistry registry = nodeExtractorHolder.Registry;
+
+            // Filing the claim is how a golem applies. Idempotent, so the repeated attempts a
+            // stalled golem makes every tick cost a dictionary probe and no re-sort.
+            registry.RegisterExtractor(golemId, cell, nodeId);
+
+            if (registry.IsWorking(nodeId, golemId))
+            {
+                return StallReason.None;
+            }
+
+            // Names the node, like NodeEmpty does -- the player has to know WHICH seam is
+            // over-subscribed to work out where to put this golem instead.
+            blockedResourceId = nodeId;
+            return StallReason.NodeCrowded;
         }
 
         private StallReason BeginExtractFromNodeById(AppendageActionDefinition step, out string blockedResourceId)

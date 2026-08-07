@@ -806,8 +806,12 @@ namespace GolemFactory.UI
 
         private static string ChassisSubtitle(ChassisDefinition chassis)
         {
-            string cost = chassis.scrapCost > 0 || chassis.brassCost > 0
-                ? $"  ·  {chassis.scrapCost} scrap / {chassis.brassCost} brass"
+            // §6's costs are item bundles now, and the Zeppelin's is five goods long -- far too
+            // wide for a rack subtitle. The full breakdown is the construction panel's job; this
+            // line only says how many DIFFERENT goods the purchase needs, which is the part that
+            // reads as "how deep into the tree is this chassis".
+            string cost = chassis.cost != null && chassis.cost.Count > 0
+                ? $"  ·  {chassis.cost.Count} goods"
                 : string.Empty;
             return $"{chassis.maxAppendageSlots} slots  ·  tier {chassis.tier}{cost}";
         }

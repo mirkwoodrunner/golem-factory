@@ -107,7 +107,19 @@ namespace GolemFactory.Events
         // from it: an unpowered golem retries the same step every tick until steam returns,
         // exactly as it does for an empty node or a full belt. It is checked before any step's
         // side effect runs, so an unpowered golem never half-executes.
-        NoSteam
+        NoSteam,
+
+        // The node behind this golem is already worked by its maximum crew of two
+        // (docs/progression-design.md §3.2 -- "the seam collapses if over-crewed"). ResourceId
+        // carries the NODE ID, matching NodeEmpty's convention rather than the item-type one:
+        // the fix is to take this golem somewhere else, and the player needs to know which
+        // seam is over-subscribed to work out where.
+        //
+        // Deliberately NOT folded into NodeEmpty. "This seam is spent" and "this seam already
+        // has a full crew" have opposite fixes -- wait/expand versus relocate -- and the node
+        // in question is visibly still full of ore, so reporting it as empty would read as a
+        // bug. Appended, because StallReason is serialized by index (see above).
+        NodeCrowded
     }
 
     // Which kind of trigger fired. Mirrors PunchCards.TriggerType minus AlwaysOn, which is

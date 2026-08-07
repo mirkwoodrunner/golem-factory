@@ -70,6 +70,12 @@ namespace GolemFactory.UI
                     return string.IsNullOrEmpty(resourceId)
                         ? "no steam"
                         : "no steam at " + resourceId;
+                // §3.2's cap. Says the seam is CROWDED, never that it is empty: the node is
+                // visibly still full, and the fix is to walk this golem out to another site.
+                case StallReason.NodeCrowded:
+                    return string.IsNullOrEmpty(resourceId)
+                        ? "seam already crewed"
+                        : resourceId + " already has 2 extractors";
                 case StallReason.Unconfigured:
                     return "not wired up";
                 default:
@@ -117,6 +123,10 @@ namespace GolemFactory.UI
                     return string.IsNullOrEmpty(resourceId)
                         ? who + " stalled: no steam reaching it"
                         : who + " stalled: no steam reaching tile " + resourceId;
+                case StallReason.NodeCrowded:
+                    return string.IsNullOrEmpty(resourceId)
+                        ? who + " stalled: that seam is already fully crewed"
+                        : who + " stalled: " + resourceId + " is already worked by 2 extractors";
                 case StallReason.Unconfigured:
                     return who + " stalled: not wired up";
                 default:

@@ -176,6 +176,78 @@ namespace GolemFactory.Economy
             return true;
         }
 
+        /// <summary>
+        /// Charges a multi-item price atomically: every entry is withdrawn, or none is.
+        /// docs/progression-design.md §11 item 8 -- the Scrap/Brass pair above cannot express
+        /// §6's costs (the Overclocker is 2 Mainspring + 20 Brass + 24 Casing + 12 Gear).
+        ///
+        /// <para>
+        /// THE REFUND IS THE WHOLE POINT, exactly as in
+        /// <see cref="TryWithdrawScrapAndBrass"/>: a partial charge takes the player's goods and
+        /// gives nothing back, and on a four-item bundle costing ~15 minutes of a mature
+        /// factory's output that is not a rounding error. Withdrawals already made are deposited
+        /// back before returning false, in reverse order (immaterial to the arithmetic, but it
+        /// keeps the unwind reading as the inverse of the charge).
+        /// </para>
+        ///
+        /// <para>
+        /// Non-positive quantities are skipped rather than rejected, and a null/empty bundle
+        /// succeeds -- the same "a free thing is always affordable" rule
+        /// <see cref="TryWithdrawScrapAndBrass"/> encodes for its zero costs, which
+        /// M1's default zero-cost <c>PlaceableBuilding</c> still depends on.
+        /// </para>
+        ///
+        /// <para>
+        /// Duplicate item types in one bundle are an authoring error and are NOT summed. They
+        /// are charged as separate withdrawals, which happens to give the right total; the
+        /// authoring script emits each type once.
+        /// </para>
+        /// </summary>
+        public bool TryWithdrawBundle(string bufferId, IReadOnlyList<PunchCards.RecipeIngredient> bundle)
+        {
+            if (bundle == null || bundle.Count == 0)
+            {
+                return true;
+            }
+
+            for (int i = 0; i < bundle.Count; i++)
+            {
+                PunchCards.RecipeIngredient entry = bundle[i];
+                if (entry.quantity <= 0 || string.IsNullOrEmpty(entry.itemType))
+                {
+                    continue;
+                }
+
+                if (TryWithdraw(bufferId, entry.itemType, entry.quantity))
+                {
+                    continue;
+                }
+
+                // Short on entry i. Everything already taken goes straight back, so the player
+                // is exactly where they started.
+                for (int j = i - 1; j >= 0; j--)
+                {
+                    PunchCards.RecipeIngredient refund = bundle[j];
+                    if (refund.quantity > 0 && !string.IsNullOrEmpty(refund.itemType))
+                    {
+                        Deposit(bufferId, refund.itemType, refund.quantity);
+                    }
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// How much of <paramref name="itemType"/> a named buffer holds. Zero for an unknown or
+        /// null buffer id, so an affordability check against a buffer nobody has deposited into
+        /// yet reads as "you have none", not as an exception.
+        /// </summary>
+        public int GetQuantity(string bufferId, string itemType) =>
+            TryGetBuffer(bufferId, out StorageBuffer buffer) ? buffer.GetQuantity(itemType) : 0;
+
         // For Save/SaveLoadService.RestoreState: a loaded save should *replace* buffer
         // state, not merge into whatever's currently there (Deposit is additive, which
         // would double-count anything already in a buffer at load time).
