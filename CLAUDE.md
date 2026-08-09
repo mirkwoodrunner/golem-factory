@@ -66,6 +66,13 @@ Editor (or a live MCP-for-Unity bridge, if connected):
 As of the last full run (progression pass complete, plus open-items §3's Editor passes):
 **897/897 tests passing** (787 EditMode + 110 PlayMode).
 
+**Two ways to run the tests, and which one depends on whether the Editor is open.**
+
+- **Editor open, MCP-for-Unity bridge connected** → use the bridge: `run_tests(mode="EditMode")`
+  then poll `get_test_job(job_id, wait_timeout=120)`. Both suites run in ~15 s total and, unlike
+  batch mode, this works *while the Editor is open*. Use `init_timeout=120000` for PlayMode.
+- **Editor closed** → batch mode, below.
+
 **Unity batch mode does run the tests.** The implementation plan records this as a "nice-to-have,
 not implemented" — that is out of date. It works, and it is the cheapest way to verify a pass
 without driving the Editor by hand:
@@ -299,6 +306,19 @@ future second owner would need a rewrite instead of a parameter.
   these **idempotent** — find-or-create, update in place — so a tuning pass re-runs them without
   duplicating a GameObject. Note that `Configure(...)` calls do **not** survive to disk: a private
   `[SerializeField]` must be written through `SerializedObject`.
+- **`ResourceNodeMarker` owns its `SpriteRenderer.color` at runtime.** `RefreshVisualState()`
+  drives it from `ResourceNodeVisualState` as the depletion readout, and since §5.1 made every
+  node infinite that pins every marker to `FullTint` (white) on the first frame. **A tint authored
+  on a node marker is correct on disk, correct in the Editor, and gone the moment you press Play** —
+  so two nodes sharing a sprite are indistinguishable in game no matter how they are coloured.
+  Node identity must be the *sprite*. This had already bitten once before it was noticed: the
+  Aether marker wore the brass ingot under a teal tint and rendered as plain brass in every play
+  session, while `item_aether.png` sat unused.
+- **Verify a UI change by looking at the game view, not just its serialized properties.** Both §8
+  HUD readouts were once parented to `WorkbenchCanvas.prefab`'s *root* — which is a plain
+  `Transform` that happens to share its name with the `Canvas` child — so they were present,
+  active, correctly positioned, holding the right text, and invisible, because a `RectTransform`
+  with no `Canvas` ancestor never renders. Find a canvas by **component**, never by name.
 - **Verify scene changes by reading the scene back, not by trusting the authoring log.**
   `Sandbox.unity` carries prefab **overrides**, so a value written successfully to a prefab can be
   silently replaced by the scene's own copy (this bit `hideWhileOpen` for real — the authoring pass

@@ -25,6 +25,23 @@ namespace GolemFactory.Buildings
         [SerializeField] private ClockTowerSiteHolder siteHolder;
         [SerializeField] private string displayName = "Clock Tower";
 
+        /// <summary>
+        /// §7's stages, carried by the TOWER rather than by the always-present
+        /// <see cref="ClockTowerSiteHolder"/>, and handed over when the tower is placed.
+        ///
+        /// <para>
+        /// THE STAGES MUST NOT BE LIVE BEFORE THE TOWER IS BUILT. Wired onto the holder they
+        /// start stage 1 in <c>Awake</c>, so a fresh Sandbox opened with the HUD readout showing
+        /// "Stage 1 Foundation - 0%" and an alert reading "Clock Tower starved of FrameSection -
+        /// progress frozen" from the first frame -- for a megaproject that does not exist and
+        /// which §7 does not place until Phase 6. A site with no stages reports
+        /// <c>Dormant()</c>, which is the honest reading and already has its own formatting
+        /// ("Clock Tower dormant") and its own idle colour.
+        /// </para>
+        /// </summary>
+        [SerializeField] private System.Collections.Generic.List<ClockTowerStageDefinition> stages =
+            new System.Collections.Generic.List<ClockTowerStageDefinition>();
+
         /// <summary>The endpoint this component published, or null before/after registration.</summary>
         public ClockTowerInputEndpoint Endpoint { get; private set; }
 
@@ -66,6 +83,15 @@ namespace GolemFactory.Buildings
             if (siteHolder == null)
             {
                 return false;
+            }
+
+            // Building the tower is what starts the megaproject. Guarded so a SECOND tower --
+            // or a reload that re-registers this one -- cannot reset a stage already in
+            // progress: SetStages resets progress, and losing a forty-minute stage to a
+            // re-registration would be the worst bug in the endgame.
+            if (siteHolder.Site.StageCount == 0 && stages != null && stages.Count > 0)
+            {
+                siteHolder.Configure(stages);
             }
 
             Endpoint = new ClockTowerInputEndpoint(siteHolder.Site, displayName);

@@ -405,8 +405,8 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 30b015b39e42e52469fa9264e05c0a38, type: 3}
-  m_Color: {r: 0.4, g: 0.85, b: 0.8, a: 1}
+  m_Sprite: {fileID: 21300000, guid: e90e0a15d5b9fce4f8dcc00f2ad055eb, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -3319,8 +3319,8 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 79f5cde8ba4c102479560bb983bac9cc, type: 3}
-  m_Color: {r: 0.72, g: 0.76, b: 0.8, a: 1}
+  m_Sprite: {fileID: 21300000, guid: 51d4e4a8938bfb6429f4916743e764c8, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -3599,8 +3599,8 @@ MonoBehaviour:
   steamNetworkHolder: {fileID: 2110503010}
   requireSteamPower: 0
   clockTowerSiteHolder: {fileID: 2110503008}
-  steamFuelGaugeView: {fileID: 1555994600}
-  clockTowerPanelView: {fileID: 1555994599}
+  steamFuelGaugeView: {fileID: 1555994602}
+  clockTowerPanelView: {fileID: 1555994600}
 --- !u!4 &350276946
 Transform:
   m_ObjectHideFlags: 0
@@ -8724,8 +8724,8 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 79f5cde8ba4c102479560bb983bac9cc, type: 3}
-  m_Color: {r: 0.8, g: 0.45, b: 0.24, a: 1}
+  m_Sprite: {fileID: 21300000, guid: 356cccd5f63f3f94d9abe6b6018fde2e, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -13189,7 +13189,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 16, y: 16}
-  m_SizeDelta: {x: 280, y: 170}
+  m_SizeDelta: {x: 280, y: 236}
   m_Pivot: {x: 0, y: 0}
 --- !u!114 &1518134819
 MonoBehaviour:
@@ -13872,11 +13872,11 @@ PrefabInstance:
     - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: 'hideWhileOpen.Array.data[1]'
       value: 
-      objectReference: {fileID: 1555994602}
+      objectReference: {fileID: 1555994601}
     - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: 'hideWhileOpen.Array.data[2]'
       value: 
-      objectReference: {fileID: 1555994601}
+      objectReference: {fileID: 1555994599}
     - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: focusMeterHolder
       value: 
@@ -14192,38 +14192,38 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6bc54b5815c62ed428fe29022a6927e9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.ManagementPanel
---- !u!114 &1555994599 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 2543593392884873697, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+--- !u!1 &1555994599 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5533203826751225558, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
   m_PrefabInstance: {fileID: 1555994596}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1555994601}
+--- !u!114 &1555994600 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2281033914993577071, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+  m_PrefabInstance: {fileID: 1555994596}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1555994599}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: eca9e1b44755369499e54195c3fc5841, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.ClockTowerPanelView
---- !u!114 &1555994600 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 556311928627158229, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+--- !u!1 &1555994601 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 9152459107682585568, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
   m_PrefabInstance: {fileID: 1555994596}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1555994602}
+--- !u!114 &1555994602 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2064766873957684434, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+  m_PrefabInstance: {fileID: 1555994596}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1555994601}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7655a6c361864276a192b90e0c309cb1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.SteamFuelGaugeView
---- !u!1 &1555994601 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 5532386051478745040, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
-  m_PrefabInstance: {fileID: 1555994596}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &1555994602 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 3735357607677486234, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
-  m_PrefabInstance: {fileID: 1555994596}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1566442179
 GameObject:
   m_ObjectHideFlags: 0
@@ -17545,8 +17545,8 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 30b015b39e42e52469fa9264e05c0a38, type: 3}
-  m_Color: {r: 0.24, g: 0.23, b: 0.25, a: 1}
+  m_Sprite: {fileID: 21300000, guid: c0faf5c775f7df34b8c9e7b7251147e3, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0

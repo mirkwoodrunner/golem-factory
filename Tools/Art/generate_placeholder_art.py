@@ -934,6 +934,74 @@ def make_aether_item() -> Image.Image:
     return upscale(img, 2)  # -> 32x32
 
 
+COAL = (52, 48, 56, 255)
+COAL_LIGHT = (88, 84, 96, 255)
+COAL_DARK = (28, 26, 32, 255)
+ORE_ROCK = (104, 92, 80, 255)
+ORE_ROCK_DARK = (68, 58, 50, 255)
+ZINC = (176, 190, 200, 255)
+ZINC_LIGHT = (226, 236, 244, 255)
+ZINC_DARK = (108, 124, 136, 255)
+
+
+# --------------------------------------------------------------------------------------------
+# The three §5.1 goods that had no icon. SILHOUETTE FIRST, COLOUR SECOND, and here that is a
+# hard requirement rather than good practice: ResourceNodeMarker OWNS SpriteRenderer.color at
+# runtime -- it is the depletion readout (ResourceNodeVisualState), and since every node is
+# infinite it pins every marker to FullTint = white forever. A tint authored on a node marker is
+# overwritten on the first frame, so two nodes sharing a sprite are INDISTINGUISHABLE in play
+# mode no matter what colour they are authored. Shape is the only channel that survives.
+#
+# So each of these is built to differ from all five existing item icons by outline alone:
+#   Scrap  = stepped angular offcut      Brass = clean trapezoid ingot
+#   Aether = one tall pointed shard      Coal  = low cluster of rounded lumps
+#   CopperOre = fat boulder with veins   ZincOre = short splayed crystal pair
+# --------------------------------------------------------------------------------------------
+
+def make_coal_item() -> Image.Image:
+    """Coal -- a low cluster of rounded lumps. The only near-black item, and the only one whose
+    silhouette is wider than it is tall with no straight edges."""
+    img = _item_canvas()
+    draw = ImageDraw.Draw(img)
+    draw.polygon([(1, 10), (4, 7), (8, 8), (9, 13), (2, 13)], fill=COAL, outline=OUTLINE)
+    draw.polygon([(8, 9), (11, 6), (14, 9), (14, 13), (9, 13)], fill=COAL_DARK, outline=OUTLINE)
+    draw.polygon([(5, 4), (9, 3), (10, 8), (5, 8)], fill=COAL, outline=OUTLINE)
+    # Two specular chips -- coal is glossy, and without them it reads as a hole in the floor.
+    draw.line([(6, 5), (8, 5)], fill=COAL_LIGHT)
+    draw.point([(3, 10), (12, 9)], fill=COAL_LIGHT)
+    return upscale(img, 2)  # -> 32x32
+
+
+def make_copper_ore_item() -> Image.Image:
+    """Copper ore -- a fat unbroken boulder with bright veins running through it. Reads as rock
+    with metal IN it, against Brass's ingot which is metal already poured."""
+    img = _item_canvas()
+    draw = ImageDraw.Draw(img)
+    draw.polygon([(3, 4), (11, 3), (14, 8), (12, 13), (4, 13), (1, 8)], fill=ORE_ROCK, outline=OUTLINE)
+    draw.polygon([(4, 9), (12, 9), (12, 13), (4, 13)], fill=ORE_ROCK_DARK)
+    # The veins are the whole point of the icon, so they are drawn last and unbroken.
+    draw.line([(4, 7), (8, 5)], fill=COPPER)
+    draw.line([(8, 5), (12, 8)], fill=COPPER)
+    draw.line([(5, 11), (9, 10)], fill=COPPER)
+    draw.point([(7, 8), (10, 11)], fill=(214, 142, 96, 255))
+    return upscale(img, 2)  # -> 32x32
+
+
+def make_zinc_ore_item() -> Image.Image:
+    """Zinc ore -- a splayed pair of short blunt crystals. Cool like Aether but deliberately
+    SHORT AND FORKED where the Aether shard is tall and single, so the two never trade at a
+    glance even though both are cold-hued."""
+    img = _item_canvas()
+    draw = ImageDraw.Draw(img)
+    draw.polygon([(2, 13), (4, 5), (7, 6), (7, 13)], fill=ZINC, outline=OUTLINE)
+    draw.polygon([(8, 13), (10, 7), (13, 9), (13, 13)], fill=ZINC_DARK, outline=OUTLINE)
+    draw.polygon([(4, 5), (7, 6), (5, 8)], fill=ZINC_LIGHT)
+    draw.line([(11, 9), (11, 12)], fill=ZINC_LIGHT)
+    # A dark bed so the pair reads as sitting on rock rather than floating.
+    draw.line([(1, 13), (14, 13)], fill=ORE_ROCK_DARK)
+    return upscale(img, 2)  # -> 32x32
+
+
 def generate_belts() -> None:
     save(make_belt_lane(), "belt_lane.png")
     save(make_belt_arrow(), "belt_arrow.png")
@@ -942,6 +1010,10 @@ def generate_belts() -> None:
     # scene reference) -- they are a reskin, not new assets.
     save(make_scrap_item(), "item_scrap.png")
     save(make_brass_item(), "item_brass.png")
+    # New files, so new GUIDs -- nothing references them until the node markers are repointed.
+    save(make_coal_item(), "item_coal.png")
+    save(make_copper_ore_item(), "item_copper_ore.png")
+    save(make_zinc_ore_item(), "item_zinc_ore.png")
     save(make_aether_item(), "item_aether.png")
 
 

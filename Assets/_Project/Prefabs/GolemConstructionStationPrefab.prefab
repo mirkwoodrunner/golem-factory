@@ -107,8 +107,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b2e2205b86cb5541b0d9cc19f414e41, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Buildings.PlaceableBuilding
-  scrapCost: 25
-  brassCost: 5
+  cost:
+  - itemType: Scrap
+    quantity: 25
+  - itemType: Brass
+    quantity: 5
 --- !u!114 &8404141519452679074
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -129,6 +132,11 @@ MonoBehaviour:
   clockRunner: {fileID: 0}
   workbenchController: {fileID: 0}
   stockpileBufferId: FactoryStockpile
+  spatialEndpointHolder: {fileID: 0}
+  gridMapHolder: {fileID: 0}
+  cellSize: {x: 1, y: 0.5}
+  steamNetworkHolder: {fileID: 0}
+  nodeExtractorHolder: {fileID: 0}
 --- !u!114 &6944689890859851846
 MonoBehaviour:
   m_ObjectHideFlags: 0

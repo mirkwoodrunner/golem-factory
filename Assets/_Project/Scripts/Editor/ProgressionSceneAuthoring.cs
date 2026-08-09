@@ -60,17 +60,32 @@ namespace GolemFactory.Editor
         private const string ManagerHoldersPath = PrefabRoot + "ManagerHolders.prefab";
         private const string WorkbenchCanvasPath = PrefabRoot + "WorkbenchCanvas.prefab";
 
-        // Placeholder tints -- see the header note. Replace with real sprites, not new colours.
+        // Placeholder tints for the three BUILDINGS. Tinting works here because nothing owns a
+        // PlaceableBuilding's SpriteRenderer.color at runtime.
+        //
+        // IT DOES NOT WORK FOR NODE MARKERS, and that is worth writing down because the first
+        // pass tried it and shipped three identical icons: ResourceNodeMarker.RefreshVisualState
+        // OWNS SpriteRenderer.color -- it is the depletion readout -- and since §5.1 made every
+        // node infinite it pins every marker to ResourceNodeVisualState.FullTint (white) on the
+        // first frame. An authored tint is correct on disk, correct in the Editor, and gone the
+        // moment you press Play. Node identity therefore has to be SPRITE, which is why
+        // item_coal / item_copper_ore / item_zinc_ore now exist in the art generator.
         private static readonly Color BoilerTint = new Color(0.82f, 0.40f, 0.26f, 1f);
         private static readonly Color SteamPipeTint = new Color(0.60f, 0.67f, 0.72f, 1f);
         private static readonly Color ClockTowerTint = new Color(0.88f, 0.74f, 0.36f, 1f);
-        private static readonly Color CoalTint = new Color(0.24f, 0.23f, 0.25f, 1f);
-        private static readonly Color CopperOreTint = new Color(0.80f, 0.45f, 0.24f, 1f);
-        private static readonly Color ZincOreTint = new Color(0.72f, 0.76f, 0.80f, 1f);
 
-        // Same warm-brass HUD vocabulary SteamFuelGaugeView and ClockTowerPanelView already use.
-        private static readonly Color HudPlateColor = new Color(0.14f, 0.12f, 0.10f, 0.78f);
+        // Near-opaque, not the 0.78 the first pass used. These strips sit over the dark wall at
+        // the top of the frame, and a translucent near-black plate under dim idle-grey text was
+        // legible in the Inspector and invisible in the game view.
+        private static readonly Color HudPlateColor = new Color(0.09f, 0.08f, 0.07f, 0.94f);
         private static readonly Color HudTextColor = new Color(0.85f, 0.66f, 0.32f, 1f);
+
+        // The canvas is authored at 1280x960 and the game view is smaller, so authored points
+        // shrink on screen; 14 measured at roughly 11 real pixels. These are the sizes that
+        // survive that.
+        private const float GaugeFontSize = 18f;
+        private const float TowerHeadlineFontSize = 17f;
+        private const float TowerBodyFontSize = 14f;
 
         private static readonly StringBuilder Log = new StringBuilder();
 
@@ -80,6 +95,7 @@ namespace GolemFactory.Editor
             Log.Clear();
             try
             {
+                ImportItemIcons();
                 AuthorPlaceablePrefabs();
                 AuthorManagerHolders();
                 AuthorWorkbenchCanvas();
@@ -96,6 +112,42 @@ namespace GolemFactory.Editor
         }
 
         private static void Note(string message) => Log.AppendLine("  " + message);
+
+        // ===================================================================================
+        // 0. Import settings for the icons Tools/Art/generate_placeholder_art.py just wrote.
+        // ===================================================================================
+
+        /// <summary>
+        /// Gives the three new node icons the same import settings the existing item icons have.
+        /// A freshly written PNG imports at 100 pixels-per-unit with bilinear filtering and
+        /// normal compression, which in a 32px pixel-art sprite is the difference between a coal
+        /// lump and a brown smudge at the wrong size. Matched to <c>item_scrap.png</c>: PPU 64,
+        /// point filter, uncompressed, alpha-is-transparency.
+        /// </summary>
+        private static void ImportItemIcons()
+        {
+            Log.AppendLine("[item icons]");
+            foreach (string file in new[] { "item_coal.png", "item_copper_ore.png", "item_zinc_ore.png" })
+            {
+                string path = ArtRoot + file;
+                var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+                if (importer == null)
+                {
+                    Note("WARNING: no importer for " + path + " (did the art script run?)");
+                    continue;
+                }
+
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.spritePixelsPerUnit = 64f;
+                importer.filterMode = FilterMode.Point;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.alphaIsTransparency = true;
+                importer.mipmapEnabled = false;
+                importer.SaveAndReimport();
+                Note(file + " imported at PPU 64, point filter");
+            }
+        }
 
         // ===================================================================================
         // 1. The three missing placeable prefabs.
@@ -144,7 +196,62 @@ namespace GolemFactory.Editor
             BuildPlaceable(
                 ClockTowerPrefabPath, "ClockTowerPrefab", ClockTowerTint,
                 Array.Empty<RecipeIngredient>(),
-                go => Ensure<PlaceableClockTower>(go));
+                go =>
+                {
+                    PlaceableClockTower tower = Ensure<PlaceableClockTower>(go);
+                    // §7's stages live on the TOWER, not on the always-present site holder --
+                    // see the long note on PlaceableClockTower.stages. Wired here so that
+                    // placing the tower is what starts the megaproject.
+                    WriteStageList(new SerializedObject(tower), "stages");
+                });
+
+            RestoreOrphanedCosts();
+        }
+
+        /// <summary>
+        /// Re-expresses the three pre-existing placeables' costs as item bundles.
+        ///
+        /// <para>
+        /// §1.5 replaced <c>PlaceableBuilding</c>'s <c>scrapCost</c>/<c>brassCost</c> int pair
+        /// with a <c>RecipeIngredient</c> bundle (§11 item 8) and never migrated the prefabs
+        /// authored against the old pair, so DepotPrefab, GolemConstructionStationPrefab and
+        /// BeltPrefab have all been FREE TO PLACE ever since -- their old values are still in
+        /// the YAML as orphaned keys no field reads. It went unnoticed because everything was
+        /// free, so nothing ever refused; it became obvious the moment a priced Boiler appeared
+        /// in the same menu next to "Depot (Free)".
+        /// </para>
+        ///
+        /// <para>
+        /// THESE ARE THE ORIGINAL NUMBERS, recovered from the orphaned keys, not new tuning:
+        /// Depot 15 Scrap, Station 25 Scrap + 5 Brass, Belt 1 Scrap. §5.1 independently
+        /// corroborates the belt ("Scrap ... belts (1 ea.)").
+        /// </para>
+        /// </summary>
+        private static void RestoreOrphanedCosts()
+        {
+            ApplyCost("DepotPrefab", new[] { new RecipeIngredient(ItemType.Scrap, 15) });
+            ApplyCost("GolemConstructionStationPrefab", new[]
+            {
+                new RecipeIngredient(ItemType.Scrap, 25),
+                new RecipeIngredient(ItemType.Brass, 5),
+            });
+            ApplyCost("BeltPrefab", new[] { new RecipeIngredient(ItemType.Scrap, 1) });
+        }
+
+        private static void ApplyCost(string prefabName, RecipeIngredient[] cost)
+        {
+            string path = PrefabRoot + prefabName + ".prefab";
+            GameObject root = PrefabUtility.LoadPrefabContents(path);
+            try
+            {
+                WriteCost(root.GetComponent<PlaceableBuilding>(), cost);
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+                Note(prefabName + " cost restored -> " + DescribeCost(cost));
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
         }
 
         // Every placeable in this project is the same shape (DepotPrefab is the reference):
@@ -244,7 +351,14 @@ namespace GolemFactory.Editor
                 Ensure<NodeExtractorRegistryHolder>(EnsureChild(root, "NodeExtractors"));
 
                 ClockTowerSiteHolder site = Ensure<ClockTowerSiteHolder>(EnsureChild(root, "ClockTower"));
-                WriteClockTowerStages(site);
+                // DELIBERATELY EMPTY. Stages wired here start stage 1 in Awake, which made a
+                // fresh Sandbox open with "Stage 1 Foundation - 0%" and a starvation alert for a
+                // tower that does not exist. The list lives on ClockTowerPrefab now and arrives
+                // when the tower is placed; until then the site is dormant, which is true.
+                var siteSo = new SerializedObject(site);
+                siteSo.FindProperty("stages").arraySize = 0;
+                siteSo.ApplyModifiedPropertiesWithoutUndo();
+                Note("ClockTowerSiteHolder.stages cleared (stages now ride the tower prefab)");
 
                 PrefabUtility.SaveAsPrefabAsset(root, ManagerHoldersPath);
                 Note("Steam / ClockTower / NodeExtractors holders present");
@@ -258,7 +372,7 @@ namespace GolemFactory.Editor
         // §7's four stages, in authored order. Sorted by asset name so Stage1..Stage4 land in
         // sequence rather than in whatever order the asset database happens to return -- the
         // site advances through this list by index, so the order IS the progression.
-        private static void WriteClockTowerStages(ClockTowerSiteHolder holder)
+        private static void WriteStageList(SerializedObject so, string propertyName)
         {
             var stages = new List<ClockTowerStageDefinition>();
             string[] guids = AssetDatabase.FindAssets(
@@ -275,8 +389,7 @@ namespace GolemFactory.Editor
                 stages.Add(AssetDatabase.LoadAssetAtPath<ClockTowerStageDefinition>(path));
             }
 
-            var so = new SerializedObject(holder);
-            SerializedProperty list = so.FindProperty("stages");
+            SerializedProperty list = so.FindProperty(propertyName);
             list.arraySize = stages.Count;
             for (int i = 0; i < stages.Count; i++)
             {
@@ -284,7 +397,7 @@ namespace GolemFactory.Editor
             }
 
             so.ApplyModifiedPropertiesWithoutUndo();
-            Note("ClockTower stages wired: " + stages.Count);
+            Note("stages wired onto " + so.targetObject.GetType().Name + ": " + stages.Count);
         }
 
         // ===================================================================================
@@ -298,6 +411,7 @@ namespace GolemFactory.Editor
             try
             {
                 AddSixthAppendageSocket(root);
+                RemoveMisparentedHud(root);
                 GameObject gauge = BuildSteamGauge(root);
                 GameObject tower = BuildClockTowerPanel(root);
                 RegisterHudChrome(root, gauge, tower);
@@ -389,29 +503,66 @@ namespace GolemFactory.Editor
                 // Order in the hierarchy has to match order on screen, or a future layout group
                 // (or anyone reading the prefab) sees a different program than the player does.
                 row.SetSiblingIndex(i);
+
+                // Captions are authored FROM THE INDEX, not left as whatever the row happens to
+                // hold. AppendageSlot5 is a clone of slot 4 and arrived carrying its caption, so
+                // the screen showed "STEP 5" twice -- two sockets claiming to be the same step,
+                // in the one UI whose entire job is showing the player the order of their
+                // program. Deriving every caption here means a future seventh socket cannot
+                // reintroduce it.
+                Transform caption = row.Find("Caption");
+                if (caption != null)
+                {
+                    var label = caption.GetComponent<TextMeshProUGUI>();
+                    if (label != null)
+                    {
+                        label.text = i == 0 ? "TRIGGER" : "STEP " + i;
+                    }
+                }
             }
 
-            Note("SlotStack respaced for 7 rows");
+            Note("SlotStack respaced for 7 rows, captions renumbered TRIGGER/STEP 1-6");
+        }
+
+        /// <summary>
+        /// Deletes HUD panels left directly under the prefab ROOT by the earlier name-based
+        /// canvas lookup (see <see cref="FindCanvas"/>). Without this the corrected build makes a
+        /// second, properly parented copy and the broken one stays behind forever -- invisible,
+        /// so nothing would ever draw attention to it, but still carrying a
+        /// SteamFuelGaugeView/ClockTowerPanelView that FindAnyObjectByType could return instead
+        /// of the real one.
+        /// </summary>
+        private static void RemoveMisparentedHud(GameObject root)
+        {
+            foreach (string name in new[] { "SteamGauge", "ClockTowerPanel" })
+            {
+                Transform stray = root.transform.Find(name);
+                if (stray != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(stray.gameObject);
+                    Note("removed misparented " + name + " from the prefab root");
+                }
+            }
         }
 
         // §8's fuel gauge: "240 Coke - 24/min - 10:00 left". Top-left, opposite the alerts
         // strip's top-centre, because it is a standing readout rather than an interruption.
         private static GameObject BuildSteamGauge(GameObject root)
         {
-            Transform canvas = FindDeep(root.transform, "WorkbenchCanvas");
-            GameObject panel = EnsureUiChild(canvas, "SteamGauge");
+            GameObject panel = EnsureUiChild(FindCanvas(root), "SteamGauge");
             var rect = (RectTransform)panel.transform;
             rect.anchorMin = new Vector2(0f, 1f);
             rect.anchorMax = new Vector2(0f, 1f);
             rect.pivot = new Vector2(0f, 1f);
             rect.anchoredPosition = new Vector2(12f, -10f);
-            rect.sizeDelta = new Vector2(268f, 28f);
+            rect.sizeDelta = new Vector2(320f, 34f);
 
             Image plate = Ensure<Image>(panel);
             plate.color = HudPlateColor;
             plate.raycastTarget = false;
 
-            TextMeshProUGUI text = EnsureLabel(panel.transform, "GaugeText", 14f, TextAlignmentOptions.Left);
+            TextMeshProUGUI text = EnsureLabel(
+                panel.transform, "GaugeText", GaugeFontSize, TextAlignmentOptions.Left);
 
             SteamFuelGaugeView view = Ensure<SteamFuelGaugeView>(panel);
             var so = new SerializedObject(view);
@@ -431,8 +582,7 @@ namespace GolemFactory.Editor
         // alert. Top-right, tall enough for a headline, a four-row table and one alert line.
         private static GameObject BuildClockTowerPanel(GameObject root)
         {
-            Transform canvas = FindDeep(root.transform, "WorkbenchCanvas");
-            GameObject panel = EnsureUiChild(canvas, "ClockTowerPanel");
+            GameObject panel = EnsureUiChild(FindCanvas(root), "ClockTowerPanel");
             var rect = (RectTransform)panel.transform;
             rect.anchorMin = new Vector2(1f, 1f);
             rect.anchorMax = new Vector2(1f, 1f);
@@ -444,14 +594,17 @@ namespace GolemFactory.Editor
             plate.color = HudPlateColor;
             plate.raycastTarget = false;
 
-            TextMeshProUGUI headline = EnsureLabel(panel.transform, "Headline", 14f, TextAlignmentOptions.TopLeft);
+            TextMeshProUGUI headline = EnsureLabel(
+                panel.transform, "Headline", TowerHeadlineFontSize, TextAlignmentOptions.TopLeft);
             StretchRow((RectTransform)headline.transform, 0.80f, 0.98f);
 
-            TextMeshProUGUI table = EnsureLabel(panel.transform, "DemandTable", 12f, TextAlignmentOptions.TopLeft);
-            StretchRow((RectTransform)table.transform, 0.20f, 0.78f);
+            TextMeshProUGUI table = EnsureLabel(
+                panel.transform, "DemandTable", TowerBodyFontSize, TextAlignmentOptions.TopLeft);
+            StretchRow((RectTransform)table.transform, 0.26f, 0.78f);
 
-            TextMeshProUGUI alert = EnsureLabel(panel.transform, "Alert", 12f, TextAlignmentOptions.TopLeft);
-            StretchRow((RectTransform)alert.transform, 0.02f, 0.18f);
+            TextMeshProUGUI alert = EnsureLabel(
+                panel.transform, "Alert", TowerBodyFontSize, TextAlignmentOptions.TopLeft);
+            StretchRow((RectTransform)alert.transform, 0.02f, 0.24f);
 
             ClockTowerPanelView view = Ensure<ClockTowerPanelView>(panel);
             var so = new SerializedObject(view);
@@ -506,6 +659,7 @@ namespace GolemFactory.Editor
             Scene scene = EditorSceneManager.OpenScene(SandboxScene, OpenSceneMode.Single);
 
             AddPlaceablesToBuildMenu(scene);
+            ResizeBuildMenu(scene);
             AddNodeMarkers(scene);
             WireBootstrapHolders(scene);
             RegisterSceneHudChrome(scene);
@@ -550,6 +704,48 @@ namespace GolemFactory.Editor
             Note("build menu offers " + prefabs.Count + " placeables");
         }
 
+        /// <summary>
+        /// Grows the build menu's panel to fit however many placeables it now offers.
+        ///
+        /// <para>
+        /// The panel was authored at 280x170 for three entries and the three new placeables took
+        /// it to six, so Steam Pipe and Clock Tower fell off the bottom edge -- placeable in
+        /// principle and unreachable in fact, which would have made the whole Editor pass look
+        /// like it worked while two thirds of the new content stayed unbuildable.
+        /// </para>
+        ///
+        /// <para>
+        /// Derived from the row count rather than typed in, so adding a seventh placeable later
+        /// cannot silently re-break it. The chrome allowance matches the RectTransform offsets
+        /// the panel already uses: a 26px title plus the 48px the RowContainer is inset by.
+        /// </para>
+        /// </summary>
+        private static void ResizeBuildMenu(Scene scene)
+        {
+            BuildMenuPanel menu = FindInScene<BuildMenuPanel>(scene);
+            BuildModeController build = FindInScene<BuildModeController>(scene);
+            if (menu == null || build == null)
+            {
+                Note("WARNING: no build menu to resize");
+                return;
+            }
+
+            var panel = menu.transform.Find("Panel") as RectTransform;
+            if (panel == null)
+            {
+                Note("WARNING: build menu has no Panel child");
+                return;
+            }
+
+            const float rowHeight = 30f;   // BuildMenuPanel.RowHeight
+            const float chromeHeight = 56f; // title plate + container inset + a little slack
+            int rows = build.AvailablePrefabs != null ? build.AvailablePrefabs.Count : 0;
+            float wanted = chromeHeight + rows * rowHeight;
+
+            panel.sizeDelta = new Vector2(panel.sizeDelta.x, wanted);
+            Note("build menu panel resized to fit " + rows + " rows -> height " + wanted);
+        }
+
         // §5.1's copper and zinc veins had nowhere to stand: SandboxBootstrap registers the
         // nodes so a golem can reach them BY ID, but nothing in the world let the player walk up
         // to one -- and a spatially placed golem finds a node by what is on the tile, so an
@@ -562,24 +758,44 @@ namespace GolemFactory.Editor
             ResourceNodeRegistryHolder registry = FindInScene<ResourceNodeRegistryHolder>(scene);
 
             EnsureNodeMarker(scene, registry, "CopperOreNodeMarker", "CopperOreNode",
-                new Vector3(5f, 2.5f, 0f), CopperOreTint);
+                new Vector3(5f, 2.5f, 0f), "item_copper_ore.png");
             EnsureNodeMarker(scene, registry, "ZincOreNodeMarker", "ZincOreNode",
-                new Vector3(-5f, 2.5f, 0f), ZincOreTint);
+                new Vector3(-5f, 2.5f, 0f), "item_zinc_ore.png");
 
-            // The coal marker exists but still wears the brass sprite it inherited when §1.5
-            // repointed the deleted BrassNodeMarker at CoalNode. Retinted here so a coal seam at
-            // least does not read as a brass deposit.
+            // The coal marker still wears the brass INGOT it inherited when §1.5 repointed the
+            // deleted BrassNodeMarker at CoalNode, which made a coal seam and an aether node
+            // read as the same object. Given a marker's colour is not ours to set (see the tint
+            // note above), the sprite is the whole fix.
             GameObject coal = FindRoot(scene, "CoalNodeMarker");
             if (coal != null)
             {
-                coal.GetComponent<SpriteRenderer>().color = CoalTint;
-                Note("CoalNodeMarker retinted off the brass sprite");
+                SpriteRenderer renderer = coal.GetComponent<SpriteRenderer>();
+                renderer.sprite = LoadSprite("item_coal.png");
+                // Reset to white explicitly: the first pass left a coal-black tint here, and
+                // although RefreshVisualState overwrites it every frame in play mode, leaving it
+                // makes the Editor and the game disagree about what the object looks like.
+                renderer.color = Color.white;
+                Note("CoalNodeMarker repointed to item_coal");
+            }
+
+            // Same bug, pre-existing and found by the same read-back: AetherNodeMarker wears the
+            // BRASS INGOT under a teal tint, while item_aether.png -- a tall pointed shard drawn
+            // for exactly this -- sits unused in the art folder. The tint is overwritten white on
+            // the first frame, so in play mode the aether node has always rendered as a second
+            // brass ingot. Pointing it at its own sprite fixes it in the only channel that works.
+            GameObject aether = FindRoot(scene, "AetherNodeMarker");
+            if (aether != null)
+            {
+                SpriteRenderer renderer = aether.GetComponent<SpriteRenderer>();
+                renderer.sprite = LoadSprite("item_aether.png");
+                renderer.color = Color.white;
+                Note("AetherNodeMarker repointed to item_aether (was tinted brass)");
             }
         }
 
         private static void EnsureNodeMarker(
             Scene scene, ResourceNodeRegistryHolder registry, string name, string nodeId,
-            Vector3 position, Color tint)
+            Vector3 position, string spriteFile)
         {
             GameObject go = FindRoot(scene, name);
             if (go == null)
@@ -591,8 +807,9 @@ namespace GolemFactory.Editor
             go.transform.position = position;
 
             SpriteRenderer renderer = Ensure<SpriteRenderer>(go);
-            renderer.sprite = LoadSprite("item_scrap.png");
-            renderer.color = tint;
+            renderer.sprite = LoadSprite(spriteFile);
+            // White, and left white: ResourceNodeMarker owns this channel at runtime.
+            renderer.color = Color.white;
             renderer.size = new Vector2(0.5f, 0.5f);
 
             GroundShadow shadow = Ensure<GroundShadow>(go);
@@ -606,7 +823,7 @@ namespace GolemFactory.Editor
             so.FindProperty("nodeId").stringValue = nodeId;
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            Note(name + " at " + position + " -> " + nodeId);
+            Note(name + " at " + position + " -> " + nodeId + " (" + spriteFile + ")");
         }
 
         // The scene's ManagerHolders is a prefab instance, so the Steam/ClockTower/NodeExtractor
@@ -767,6 +984,30 @@ namespace GolemFactory.Editor
             }
 
             return sprite;
+        }
+
+        /// <summary>
+        /// The prefab's actual <see cref="Canvas"/>, found by COMPONENT rather than by name.
+        ///
+        /// <para>
+        /// This is a scar. WorkbenchCanvas.prefab has a plain-Transform root named
+        /// <c>WorkbenchCanvas</c> whose child -- also named <c>WorkbenchCanvas</c> -- carries the
+        /// Canvas. <see cref="FindDeep"/> tests the node it is given before descending, so
+        /// looking the canvas up by name returned the ROOT, and both HUD readouts were parented
+        /// outside the canvas. They were present, active, correctly positioned and holding the
+        /// right text -- and invisible, because a RectTransform with no Canvas ancestor never
+        /// renders. Every property-level check passed while nothing drew on screen.
+        /// </para>
+        /// </summary>
+        private static Transform FindCanvas(GameObject root)
+        {
+            Canvas canvas = root.GetComponentInChildren<Canvas>(true);
+            if (canvas == null)
+            {
+                throw new InvalidOperationException("No Canvas under " + root.name);
+            }
+
+            return canvas.transform;
         }
 
         private static Transform FindDeep(Transform parent, string name)

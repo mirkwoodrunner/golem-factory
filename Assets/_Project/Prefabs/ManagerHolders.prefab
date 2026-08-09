@@ -44,11 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c34599f9f3382034dab10cfe846d17ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.ClockTower.ClockTowerSiteHolder
-  stages:
-  - {fileID: 11400000, guid: ea1eb459189e1ae40adde516f1ddd0b0, type: 2}
-  - {fileID: 11400000, guid: 7d5f8f743d66a89448c268311fea5da1, type: 2}
-  - {fileID: 11400000, guid: f5488f3f471e53345b353e5b84ff0049, type: 2}
-  - {fileID: 11400000, guid: 6542e99d6a61d4e46b69502fddf309b7, type: 2}
+  stages: []
 --- !u!1 &698301935012801938
 GameObject:
   m_ObjectHideFlags: 0

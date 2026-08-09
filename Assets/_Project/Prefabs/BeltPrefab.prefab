@@ -199,8 +199,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9b2e2205b86cb5541b0d9cc19f414e41, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Buildings.PlaceableBuilding
-  scrapCost: 1
-  brassCost: 0
+  cost:
+  - itemType: Scrap
+    quantity: 1
 --- !u!114 &9018346486813643389
 MonoBehaviour:
   m_ObjectHideFlags: 0

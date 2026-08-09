@@ -260,12 +260,14 @@ scarcity is access rather than depletion and cannot soft-lock; and `CoalNode`, `
 `ZincOreNode` are added. The **2-extractor-per-node cap** (§3.2) is real, in `NodeExtractorRegistry`,
 using the same stable-total-order determinism §1.4 established.
 
-**Missing art.** The markers now exist — copper and zinc are placed and coal no longer wears the
-brass sprite — but **there is still no real sprite for a coal seam, a copper vein or a zinc vein**,
-nor for a Boiler, a Steam Pipe or the Clock Tower. All six reuse an existing sprite under a
-distinguishing tint (the trick `golem_generic_brass/copper/steel` already plays), collected in one
-table at the top of `Scripts/Editor/ProgressionSceneAuthoring.cs` so replacing them is one edit
-rather than a hunt. Enough to tell them apart on the floor; not a substitute for art.
+**Missing art.** The five node markers now each have their own icon (`item_coal`,
+`item_copper_ore`, `item_zinc_ore` were added to `Tools/Art/generate_placeholder_art.py`, and
+Aether was repointed at the `item_aether` that already existed), drawn silhouette-first because
+colour is not an available channel there. **The three buildings are still tinted copies of
+`building_block`** — a Boiler, a Steam Pipe and the Clock Tower are the same box in three colours.
+Tinting does work for buildings (nothing owns their colour at runtime), so this is legibility
+debt rather than a defect, but the Clock Tower in particular is the win condition rendered as a
+crate. Tints live in one table at the top of `Scripts/Editor/ProgressionSceneAuthoring.cs`. Enough to tell them apart on the floor; not a substitute for art.
 
 **`requireSteamPower` is still off.** Authoring `CoalNode` and R1 removed one of its two blockers —
 Coke now has a source. The remaining one is the **Hand-Crank Bench** (§11 item 7), which §10 requires
@@ -372,6 +374,36 @@ in place rather than duplicating.
 | **Workbench's 6th appendage socket** | `AppendageSlot5` cloned from slot 4; `SlotStack` respaced to 7 even rows. The `WorkbenchController.cs:319` truncation is fixed too — see below. |
 | **Node markers for Coal / Copper / Zinc** | `CopperOreNodeMarker` and `ZincOreNodeMarker` placed; `CoalNodeMarker` retinted off the brass sprite it inherited. |
 
+**Then it was played, and that found five more.** Everything above passed a read-back of the saved
+scene, which proves the wiring is *present*; none of it proves anything *draws*. Opening Sandbox in
+the Editor and pressing Play found, in order:
+
+1. **Both §8 readouts were invisible.** They were parented to `WorkbenchCanvas.prefab`'s **root** —
+   a plain `Transform` that shares its name with the `Canvas` child, so a find-by-name returned the
+   wrong one. Present, active, positioned, right text, and never rendered, because a
+   `RectTransform` outside a Canvas does not draw. Every property-level check passed.
+2. **The build menu overflowed.** Its panel was authored at 280×170 for three entries; six pushed
+   Steam Pipe and Clock Tower off the bottom edge — placeable in principle, unreachable in fact.
+   The height is now derived from the row count.
+3. **The Clock Tower alarmed from the first frame.** Stages wired onto the always-present
+   `ClockTowerSiteHolder` start stage 1 in `Awake`, so a fresh game opened reading "Stage 1
+   Foundation · 0%" and "starved of FrameSection · progress frozen" for a megaproject that does not
+   exist. The stage list now rides `ClockTowerPrefab`, so **building the tower is what starts it**
+   and an unbuilt site reports the `Dormant()` it already knew how to format.
+4. **The node tints did nothing** — see the `ResourceNodeMarker` note below.
+5. **The sixth socket said "STEP 5".** It is cloned from slot 5 and arrived carrying its caption,
+   so two sockets claimed to be the same step in the one screen whose job is showing program order.
+   Captions are now derived from the index.
+
+> **Node identity has to be sprite, not colour.** `ResourceNodeMarker.RefreshVisualState()` **owns**
+> `SpriteRenderer.color` — it is the depletion readout — and since §5.1 made every node infinite it
+> pins every marker to `FullTint` (white) on the first frame. An authored tint is correct on disk,
+> correct in the Editor, and gone on Play. So `item_coal`, `item_copper_ore` and `item_zinc_ore` are
+> now real (placeholder) sprites in `Tools/Art/generate_placeholder_art.py`, drawn to differ from
+> each other and from Scrap/Brass/Aether **by silhouette**. This had already bitten unnoticed: the
+> Aether marker wore the brass ingot under a teal tint and rendered as a second brass ingot in every
+> play session, while `item_aether.png` sat unused. It is now pointed at its own sprite.
+
 > **The prefab-override trap, worth remembering.** Writing `hideWhileOpen` on
 > `WorkbenchCanvas.prefab` reported success and did nothing: `Sandbox.unity` carries an override
 > pinning that array to 1 entry, so both new readouts would still have drawn over the full-screen
@@ -393,6 +425,14 @@ in place rather than duplicating.
   `Push`es Coke into it through the same `BeginPush` with the same per-type skip. Pure sink —
   fuel never comes back out, which also stops a boiler being an uncapped Coke warehouse that
   §1.2's per-item-type cap does not apply to.
+- **Every pre-existing placeable had been free to build since §1.5.** That pass replaced
+  `PlaceableBuilding`'s `scrapCost`/`brassCost` int pair with a `RecipeIngredient` bundle (§11
+  item 8) and never migrated the three prefabs authored against the old pair, whose values are
+  still sitting in the YAML as orphaned keys no field reads. Nothing ever refused a placement, so
+  nothing drew attention to it; it became obvious the moment a priced Boiler appeared in the same
+  menu as "Depot (Free)". Restored from those orphaned keys — Depot 15 Scrap, Station 25 Scrap +
+  5 Brass, Belt 1 Scrap — which are the original numbers, not new tuning, and §5.1 independently
+  corroborates the belt ("Scrap … belts (1 ea.)").
 - **`BuildModeController` never registered a placed Clock Tower.** `RegisterPlacedEndpoints`
   handled belts, depots, boilers and pipes but not the tower, so a placed tower published no input
   tile and the win condition could be built and then never delivered to. Both it and the boiler's

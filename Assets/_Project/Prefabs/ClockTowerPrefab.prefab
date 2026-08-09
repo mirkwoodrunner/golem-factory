@@ -134,3 +134,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Buildings.PlaceableClockTower
   siteHolder: {fileID: 0}
   displayName: Clock Tower
+  stages:
+  - {fileID: 11400000, guid: ea1eb459189e1ae40adde516f1ddd0b0, type: 2}
+  - {fileID: 11400000, guid: 7d5f8f743d66a89448c268311fea5da1, type: 2}
+  - {fileID: 11400000, guid: f5488f3f471e53345b353e5b84ff0049, type: 2}
+  - {fileID: 11400000, guid: 6542e99d6a61d4e46b69502fddf309b7, type: 2}
