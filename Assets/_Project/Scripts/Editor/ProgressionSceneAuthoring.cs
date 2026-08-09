@@ -53,6 +53,7 @@ namespace GolemFactory.Editor
         private const string ArtRoot = "Assets/_Project/Art/";
         private const string SandboxScene = "Assets/_Project/Scenes/Sandbox.unity";
         private const string ClockTowerStageRoot = "Assets/_Project/ScriptableObjects/ClockTower/";
+        private const string AppendageRoot = "Assets/_Project/ScriptableObjects/Appendages/";
 
         private const string BoilerPrefabPath = PrefabRoot + "BoilerPrefab.prefab";
         private const string SteamPipePrefabPath = PrefabRoot + "SteamPipePrefab.prefab";
@@ -663,6 +664,7 @@ namespace GolemFactory.Editor
             AddNodeMarkers(scene);
             WireBootstrapHolders(scene);
             RegisterSceneHudChrome(scene);
+            PopulateWorkbenchRoster(scene);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
@@ -893,6 +895,128 @@ namespace GolemFactory.Editor
 
             so.ApplyModifiedPropertiesWithoutUndo();
             Note("scene hideWhileOpen now covers " + kept.Count + " HUD objects");
+        }
+
+        /// <summary>
+        /// Puts every authored punch card in the Workbench's vault.
+        ///
+        /// <para>
+        /// The roster was still M8's hand-wired four (Extract / Haul / LoadIntoBuffer / Refine)
+        /// while §1.5 had authored nineteen <c>Assemble</c> cards and the <c>Push</c> card, none
+        /// of which anything referenced. The consequence was not cosmetic: Iron Plate's only two
+        /// sources are R2 and R4, both <c>Assemble</c>, so **there was no route to Iron Plate in
+        /// the game at all** -- and therefore no Boiler, no Steam Pipe, and nothing for the whole
+        /// steam system to be spent on.
+        /// </para>
+        ///
+        /// <para>
+        /// UNGATED, DELIBERATELY AND TEMPORARILY. §3's standing deferral is "the Assembly Line
+        /// still does not gate the Workbench roster -- every card is available from the start",
+        /// and this keeps that shape rather than inventing a gating rule the progression design
+        /// has not been implemented against yet. Confirmed with the project owner as the
+        /// unblock-now choice; when Assembly Line gating lands it replaces this method.
+        /// </para>
+        ///
+        /// <para>
+        /// ORDERED, because the vault is a scrolling list a player reads top to bottom: the four
+        /// movement verbs first, then the recipes in authored R1..R19 order, which is also
+        /// roughly tier order. Sorted by the recipe's own number rather than by asset name, so
+        /// R2 does not sort between R19 and R3.
+        /// </para>
+        ///
+        /// <para>
+        /// <c>RefineIronPlate</c> is deliberately LEFT OUT. It is the superseded id-routed
+        /// <c>Refine</c> keyed to <c>ScrapBuffer</c>/<c>IronPlateBuffer</c>, and neither buffer
+        /// exists in Sandbox -- every <c>PlaceableDepot</c> is hardcoded to
+        /// <c>FactoryStockpile</c> and nothing in game can change it -- so the card is a
+        /// guaranteed stall wearing the name of the thing the player is trying to make. The
+        /// asset stays on disk; Main.unity's demo golems reference it directly.
+        /// </para>
+        /// </summary>
+        private static void PopulateWorkbenchRoster(Scene scene)
+        {
+            WorkbenchController controller = FindInScene<WorkbenchController>(scene);
+            if (controller == null)
+            {
+                Note("WARNING: no WorkbenchController in the scene");
+                return;
+            }
+
+            var verbs = new List<AppendageActionDefinition>();
+            foreach (string name in new[] { "ExtractScrap", "HaulScrap", "PushOutput", "LoadIntoScrapBuffer" })
+            {
+                AppendageActionDefinition card = LoadAppendage(name);
+                if (card != null)
+                {
+                    verbs.Add(card);
+                }
+            }
+
+            // Every Assemble card, ordered by its recipe's R-number.
+            var assembles = new List<(int number, AppendageActionDefinition card)>();
+            foreach (string guid in AssetDatabase.FindAssets(
+                         "t:AppendageActionDefinition", new[] { AppendageRoot.TrimEnd('/') }))
+            {
+                var card = AssetDatabase.LoadAssetAtPath<AppendageActionDefinition>(
+                    AssetDatabase.GUIDToAssetPath(guid));
+                if (card == null || card.actionType != AppendageActionType.Assemble || card.recipe == null)
+                {
+                    continue;
+                }
+
+                assembles.Add((RecipeNumber(card.recipe.name), card));
+            }
+
+            assembles.Sort((a, b) => a.number.CompareTo(b.number));
+
+            var roster = new List<AppendageActionDefinition>(verbs);
+            foreach (var entry in assembles)
+            {
+                roster.Add(entry.card);
+            }
+
+            var so = new SerializedObject(controller);
+            SerializedProperty list = so.FindProperty("availableAppendages");
+            list.arraySize = roster.Count;
+            for (int i = 0; i < roster.Count; i++)
+            {
+                list.GetArrayElementAtIndex(i).objectReferenceValue = roster[i];
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            Note("Workbench roster = " + roster.Count + " cards (" + verbs.Count + " verbs + " +
+                 assembles.Count + " recipes), Refine omitted");
+        }
+
+        private static AppendageActionDefinition LoadAppendage(string assetName)
+        {
+            var card = AssetDatabase.LoadAssetAtPath<AppendageActionDefinition>(
+                AppendageRoot + assetName + ".asset");
+            if (card == null)
+            {
+                Note("WARNING: missing appendage asset " + assetName);
+            }
+
+            return card;
+        }
+
+        /// <summary>"R14_Regulator" -> 14. Unparseable names sort last rather than throwing.</summary>
+        private static int RecipeNumber(string recipeAssetName)
+        {
+            if (string.IsNullOrEmpty(recipeAssetName) || recipeAssetName[0] != 'R')
+            {
+                return int.MaxValue;
+            }
+
+            int end = 1;
+            while (end < recipeAssetName.Length && char.IsDigit(recipeAssetName[end]))
+            {
+                end++;
+            }
+
+            return end > 1 && int.TryParse(recipeAssetName.Substring(1, end - 1), out int number)
+                ? number
+                : int.MaxValue;
         }
 
         private static void AssignIfPresent(SerializedObject so, string propertyName, UnityEngine.Object value)

@@ -443,6 +443,41 @@ constant is there because §9 Phase 1 hands the player one already holding 240; 
 prefab would mint 240 Coke for 30 Scrap + 10 Iron Plate — cheaper than R1 makes it, and a
 build-a-boiler exploit that voids §3.1 entirely.
 
+### The opening is soft-locked, and the Hand-Crank Bench is the only thing that opens it
+
+Found by trying to answer "how do I build a Boiler?". Two separate problems, one fixed and one not.
+
+**Fixed: the Workbench was still offering M8's four-card tutorial deck.** `availableAppendages` held
+`ExtractScrap` / `HaulScrap` / `LoadIntoScrapBuffer` / `RefineIronPlate` while §1.5 had authored
+nineteen `Assemble` cards and the `Push` card, none of which anything referenced. Since Iron Plate's
+only two sources are R2 and R4 — both `Assemble` — **there was no route to Iron Plate in the game at
+all**, and therefore no Boiler, no Steam Pipe, and nothing for the entire steam system to be spent
+on. The roster is now all 23 usable cards (4 verbs + R1–R19), ungated, which keeps §3's standing
+"every card available from the start" deferral rather than inventing a gating rule. `RefineIronPlate`
+is deliberately omitted: it is keyed to `ScrapBuffer`/`IronPlateBuffer`, neither of which exists in
+Sandbox, so it is a guaranteed stall wearing the name of the thing the player wants.
+
+**Not fixed, and now the critical path: the chassis ladder is circular.**
+
+| Chassis | Slots | Cost |
+|---|---|---|
+| Clockwork Scavenger | 2 | 12 Scrap |
+| Brass Presser | 3 | 60 Scrap + **20 Iron Plate** + 10 Gear |
+
+A production golem needs **three** steps — `Extract`/`Haul` → `Assemble` → `Push`. Two slots cannot
+do it: with an `Assemble` in the program the output stock has no way out, so a 2-slot Scavenger
+running `Extract + Assemble R2` makes twelve Iron Plate, hits the per-type cap and stalls
+`OutputFull` **with the plates sealed inside it** — nothing outside a golem can reach its stocks, by
+the §1.3 atomicity design. So the first usable chassis is the Presser, and the Presser costs Iron
+Plate that only a Presser can make.
+
+This is not a design error. §9 Phase 1 is explicit — *"Hand-gather and hand-crank your way to the
+first Brass Presser… The Presser costs 60 Scrap + 20 Iron Plate + 10 Gear — **all hand-made**"* — so
+the **Hand-Crank Bench (§11 item 7)** is what breaks the cycle, and it is unbuilt. It was already
+the last blocker on `requireSteamPower` (§10 needs it as the total-blackout backstop); it is now
+also the blocker on the game being playable past the first golem. **It is the highest-value item in
+this file.**
+
 ### Also not yet wired
 
 - **Save/load does not persist Clock Tower progress**, so a reload restarts the current stage.
