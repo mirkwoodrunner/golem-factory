@@ -70,6 +70,53 @@ namespace GolemFactory.Buildings
             return Boiler != null;
         }
 
+        /// <summary>The fuel hatch this boiler published, or null before/after registration.</summary>
+        public BoilerFuelEndpoint FuelEndpoint { get; private set; }
+
+        /// <summary>
+        /// Publishes the boiler's fuel hatch onto <paramref name="cell"/> so golems can
+        /// <c>Push</c> Coke into it, exactly as PlaceableDepot and PlaceableClockTower publish
+        /// theirs. Must be called AFTER <see cref="RegisterWithSteamNetwork"/> -- the endpoint
+        /// wraps the <see cref="SteamBoiler"/> that call creates.
+        ///
+        /// <para>
+        /// Separate from the steam registration above rather than folded into it, because the
+        /// two answer to different systems: the SteamNetwork decides who gets powered, and the
+        /// SpatialEndpointRegistry decides what a golem finds on the tile. A scene with no
+        /// spatial routing at all (Main.unity) registers the first and not the second, and a
+        /// boiler there keeps working exactly as it did.
+        /// </para>
+        /// </summary>
+        public bool RegisterAsSpatialEndpoint(
+            GolemFactory.World.SpatialEndpointRegistryHolder endpointHolder, Vector2Int cell)
+        {
+            if (endpointHolder == null || Boiler == null)
+            {
+                return false;
+            }
+
+            FuelEndpoint = new BoilerFuelEndpoint(Boiler);
+            endpointHolder.Registry.Register(cell, FuelEndpoint);
+            return true;
+        }
+
+        /// <summary>
+        /// Withdraws the fuel hatch. A golem still facing the tile stalls NoTargetAtTile on its
+        /// next push, which is the honest outcome of demolishing what it was delivering to.
+        /// </summary>
+        public bool UnregisterFromSpatialEndpoints(
+            GolemFactory.World.SpatialEndpointRegistryHolder endpointHolder, Vector2Int cell)
+        {
+            if (endpointHolder == null)
+            {
+                return false;
+            }
+
+            endpointHolder.Registry.Unregister(cell);
+            FuelEndpoint = null;
+            return true;
+        }
+
         /// <summary>
         /// Withdraws this boiler from the network. Everything it was powering loses steam on the
         /// next evaluation -- there is no grace period, which is the honest outcome of demolishing

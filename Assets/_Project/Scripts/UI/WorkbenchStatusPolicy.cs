@@ -15,7 +15,12 @@ namespace GolemFactory.UI
         InsufficientFocusEngage,
         InsufficientFocusPatent,
         ChassisTooSmall,
-        NoTarget
+        NoTarget,
+        // The targeted golem's program has more appendages than this Workbench has sockets to
+        // show, so the draft cannot represent it. Appended, not inserted -- this enum is not
+        // serialized anywhere today, but the project's two enums that ARE (StallReason,
+        // AppendageActionType) make append-only the house habit rather than a special case.
+        DraftTruncated
     }
 
     // Pure, engine-free staleness policy for the status line -- WorkbenchController is the
@@ -40,7 +45,11 @@ namespace GolemFactory.UI
             float patentCost,
             int assignedAppendages,
             int chassisSlotLimit,
-            bool hasTarget)
+            bool hasTarget,
+            // Optional with a default so every existing caller -- and every existing test --
+            // compiles and behaves unchanged. A message that predates this parameter cannot be
+            // DraftTruncated, so the default is the only value that could apply to one.
+            bool draftTruncated = false)
         {
             switch (reason)
             {
@@ -58,6 +67,12 @@ namespace GolemFactory.UI
                     return assignedAppendages <= chassisSlotLimit;
                 case WorkbenchStatusReason.NoTarget:
                     return hasTarget;
+                case WorkbenchStatusReason.DraftTruncated:
+                    // Un-becomes true only by retargeting onto a golem the sockets can hold.
+                    // Deliberately NOT time-based: the program is still unrepresentable after
+                    // six seconds, and a line that retired itself would leave the lever
+                    // refusing with nothing on screen explaining why.
+                    return !draftTruncated;
                 default:
                     return false;
             }

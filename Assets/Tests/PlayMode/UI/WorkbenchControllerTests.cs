@@ -836,6 +836,135 @@ namespace GolemFactory.Tests.PlayMode
         }
 
         // ---------------------------------------------------------------------------
+        // A program with more appendages than the screen has sockets. Build()'s rig has
+        // three, so a 4-appendage golem here is the same shape as a 6-appendage Zeppelin
+        // in the shipped 5-socket WorkbenchCanvas: the draft physically cannot hold the
+        // program, and EngageGears rebuilds the program FROM the draft.
+        //
+        // This used to commit the visible three and throw the fourth away, with no warning
+        // and no undo. §1.5 made it reachable content by authoring R14 and R17, the two
+        // 4-input recipes the Zeppelin's sixth slot exists for.
+        // ---------------------------------------------------------------------------
+
+        [UnityTest]
+        public IEnumerator EngageGears_ProgramHasMoreAppendagesThanSockets_RefusesInsteadOfTruncating()
+        {
+            ChassisDefinition chassis = MakeChassis(6);
+            var (controller, _, focus, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            yield return null;
+            WorkbenchLever lever = AttachLever(controller);
+
+            GolemEntity wide = NewGolem("WideGolem");
+            wide.Program.TryAssignChassis(chassis);
+            for (int i = 0; i < 4; i++)
+            {
+                wide.Program.TryAddAppendage(MakeAppendage());
+            }
+
+            controller.RetargetGolem(wide);
+            Assert.AreEqual(1, controller.DraftOverflowCount,
+                "the rig has 3 sockets and the program has 4 steps");
+
+            float focusBefore = focus.Meter.CurrentFocus;
+            EngageViaButton(controller);
+
+            Assert.AreEqual(4, wide.Program.appendages.Count,
+                "engaging a truncated draft used to silently discard the steps the UI could not show");
+            Assert.AreEqual(WorkbenchStatusReason.DraftTruncated, controller.StatusReason);
+            Assert.IsTrue(lever.IsRefusing);
+            Assert.AreEqual(focusBefore, focus.Meter.CurrentFocus,
+                "a refusal the player cannot act on must not also cost Focus");
+        }
+
+        [UnityTest]
+        public IEnumerator Patent_TruncatedDraft_DoesNotRegisterAPartialBlueprint()
+        {
+            ChassisDefinition chassis = MakeChassis(6);
+            var (controller, _, _, patents) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            yield return null;
+
+            GolemEntity wide = NewGolem("WideGolem");
+            wide.Program.TryAssignChassis(chassis);
+            for (int i = 0; i < 4; i++)
+            {
+                wide.Program.TryAddAppendage(MakeAppendage());
+            }
+
+            controller.RetargetGolem(wide);
+            PatentViaButton(controller);
+
+            // Worse than the truncation itself: a partial blueprint outlives the golem it
+            // was copied from and can be stamped onto others.
+            Assert.AreEqual(0, patents.Registry.Blueprints.Count);
+            Assert.AreEqual(WorkbenchStatusReason.DraftTruncated, controller.StatusReason);
+        }
+
+        [UnityTest]
+        public IEnumerator Status_DraftTruncated_RetiresOnceRetargetedOntoAGolemThatFits()
+        {
+            ChassisDefinition chassis = MakeChassis(6);
+            var (controller, _, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            yield return null;
+
+            GolemEntity wide = NewGolem("WideGolem");
+            wide.Program.TryAssignChassis(chassis);
+            for (int i = 0; i < 4; i++)
+            {
+                wide.Program.TryAddAppendage(MakeAppendage());
+            }
+
+            controller.RetargetGolem(wide);
+            EngageViaButton(controller);
+            Assert.AreEqual(WorkbenchStatusReason.DraftTruncated, controller.StatusReason);
+            yield return null;
+            Assert.AreEqual(WorkbenchStatusReason.DraftTruncated, controller.StatusReason,
+                "the message must stand while it is still true -- it is not time-based");
+
+            GolemEntity narrow = NewGolem("NarrowGolem");
+            narrow.Program.TryAssignChassis(chassis);
+            narrow.Program.TryAddAppendage(MakeAppendage());
+
+            controller.RetargetGolem(narrow);
+            yield return null;
+
+            Assert.AreEqual(0, controller.DraftOverflowCount);
+            Assert.AreEqual(WorkbenchStatusReason.None, controller.StatusReason);
+        }
+
+        [UnityTest]
+        public IEnumerator EngageGears_ProgramExactlyFillsTheSockets_StillCommits()
+        {
+            // The guard must fire on overflow only. Three steps in three sockets is the
+            // boundary case, and it has to stay a normal commit.
+            ChassisDefinition chassis = MakeChassis(6);
+            var (controller, _, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            yield return null;
+
+            GolemEntity exact = NewGolem("ExactGolem");
+            exact.Program.TryAssignChassis(chassis);
+            for (int i = 0; i < 3; i++)
+            {
+                exact.Program.TryAddAppendage(MakeAppendage());
+            }
+
+            controller.RetargetGolem(exact);
+            Assert.AreEqual(0, controller.DraftOverflowCount);
+
+            EngageViaButton(controller);
+
+            Assert.AreEqual(3, exact.Program.appendages.Count);
+            Assert.AreNotEqual(WorkbenchStatusReason.DraftTruncated, controller.StatusReason);
+        }
+
+        // ---------------------------------------------------------------------------
+
+        private GolemEntity NewGolem(string id)
+        {
+            var golem = new GameObject(id).AddComponent<GolemEntity>();
+            golem.transform.SetParent(_root.transform);
+            golem.Configure(id, null);
+            return golem;
+        }
 
         private static PointerEventData Pointer(Vector2 position, GameObject raycastHit)
         {

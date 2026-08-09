@@ -147,6 +147,7 @@ namespace GolemFactory.UI
         private ChassisDefinition _draftChassis;
         private LogicCoreDefinition _draftLogicCore;
         private AppendageActionDefinition[] _draftAppendages = new AppendageActionDefinition[0];
+        private int _draftOverflowCount;
         private readonly Dictionary<ChassisDefinition, Image> _chassisButtonImages = new Dictionary<ChassisDefinition, Image>();
         private int _nextBlueprintNumber = 1;
 
@@ -303,6 +304,10 @@ namespace GolemFactory.UI
         {
             if (targetGolem == null)
             {
+                // Cleared even on the early-out, or retargeting away from an overflowing golem
+                // to no golem at all would leave the lever refusing for a program that is no
+                // longer loaded.
+                _draftOverflowCount = 0;
                 return;
             }
 
@@ -320,7 +325,28 @@ namespace GolemFactory.UI
             {
                 _draftAppendages[i] = program.appendages[i];
             }
+
+            // THE TRUNCATION IS NOW RECORDED RATHER THAN SILENT. The loop above deliberately
+            // stops at the socket count, because there is nowhere on screen to put step six of
+            // a five-socket Workbench. What used to be missing is the consequence: EngageGears
+            // rebuilds the program from the draft, so opening a 6-appendage Zeppelin in a
+            // 5-socket UI and pulling the lever committed a 5-appendage golem and threw the
+            // sixth step away, with no warning and no undo.
+            //
+            // Refusing to engage (below) is the only honest option. Committing a program the
+            // player cannot see is destructive; committing the visible five is the same thing
+            // with extra steps. With the sixth socket authored this should never fire in
+            // normal play -- it is the guard that makes a future 7-slot chassis a refusal
+            // rather than a data loss.
+            _draftOverflowCount = Mathf.Max(0, program.appendages.Count - _draftAppendages.Length);
         }
+
+        /// <summary>
+        /// How many appendages the targeted golem's program has beyond what this Workbench has
+        /// sockets for. Zero in every normal case. Exposed so a test can assert the condition
+        /// directly rather than inferring it from a status string.
+        /// </summary>
+        public int DraftOverflowCount => _draftOverflowCount;
 
         private int DraftMaxSlots => _draftChassis != null ? _draftChassis.maxAppendageSlots : 0;
 
@@ -456,6 +482,20 @@ namespace GolemFactory.UI
                 return;
             }
 
+            // Checked BEFORE Focus is consumed, like the NoTarget path above and unlike the
+            // chassis-rejection path below, which has already spent and therefore has to
+            // refund. A refusal the player cannot act on must not also cost them anything.
+            if (_draftOverflowCount > 0)
+            {
+                SetStatus(
+                    $"Cannot engage: this golem's program has {_draftOverflowCount} more " +
+                    $"appendage{(_draftOverflowCount == 1 ? "" : "s")} than this Workbench has " +
+                    $"sockets ({_draftAppendages.Length}). Engaging would discard them.",
+                    WorkbenchStatusReason.DraftTruncated);
+                RefuseLever();
+                return;
+            }
+
             ArtificerFocusMeter meter = focusMeterHolder != null ? focusMeterHolder.Meter : null;
             if (meter == null || !meter.TryConsume(reprogramFocusCost))
             {
@@ -512,6 +552,18 @@ namespace GolemFactory.UI
 
         private void Patent()
         {
+            // Same refusal as EngageGears, and for the same reason: a blueprint taken from a
+            // truncated draft is a silently incomplete copy of the golem, which is worse than
+            // the truncation itself -- it outlives the golem and can be stamped onto others.
+            if (_draftOverflowCount > 0)
+            {
+                SetStatus(
+                    $"Cannot patent: the draft is missing {_draftOverflowCount} appendage" +
+                    $"{(_draftOverflowCount == 1 ? "" : "s")} this Workbench has no socket for.",
+                    WorkbenchStatusReason.DraftTruncated);
+                return;
+            }
+
             ArtificerFocusMeter meter = focusMeterHolder != null ? focusMeterHolder.Meter : null;
             if (meter == null || !meter.TryConsume(patentFocusCost))
             {
@@ -549,6 +601,11 @@ namespace GolemFactory.UI
             {
                 _draftAppendages[i] = i < blueprint.Appendages.Count ? blueprint.Appendages[i] : null;
             }
+
+            // A patented 6-appendage blueprint loaded into a 5-socket Workbench overflows
+            // exactly as a 6-appendage golem does, so it is counted the same way rather than
+            // left to look like a clean load that then refuses at the lever.
+            _draftOverflowCount = Mathf.Max(0, blueprint.Appendages.Count - _draftAppendages.Length);
 
             SetStatus($"Loaded {blueprint.BlueprintId} into the draft.", WorkbenchStatusReason.Info);
             RebuildUI();
@@ -624,7 +681,8 @@ namespace GolemFactory.UI
                     patentFocusCost,
                     CountAssignedAppendages(),
                     _statusChassisSlotLimit,
-                    targetGolem != null))
+                    targetGolem != null,
+                    _draftOverflowCount > 0))
             {
                 ClearStatus();
             }

@@ -109,6 +109,20 @@ namespace GolemFactory.World
         // on -- see the §1.4 entry in docs/open-items.md.
         [SerializeField] private bool requireSteamPower;
 
+        // --- The Clock Tower (docs/progression-design.md §7) --------------------------------
+        // Optional like every other holder here. When assigned, any Clock Tower standing in the
+        // scene publishes its input tile and the clock ticks the site, so stage progress accrues.
+        // Unassigned, nothing happens at all -- Main.unity has no tower and never runs this.
+        [SerializeField] private GolemFactory.ClockTower.ClockTowerSiteHolder clockTowerSiteHolder;
+
+        // --- The two §8 readouts ------------------------------------------------------------
+        // Both live on WorkbenchCanvas.prefab and both need a holder that lives on
+        // ManagerHolders.prefab. A PREFAB CANNOT HOLD A REFERENCE INTO ANOTHER PREFAB -- it
+        // resolves to null on instantiation -- so the link is made here at runtime rather than
+        // authored, which is exactly what the Configure(...) idiom exists for.
+        [SerializeField] private GolemFactory.UI.SteamFuelGaugeView steamFuelGaugeView;
+        [SerializeField] private GolemFactory.UI.ClockTowerPanelView clockTowerPanelView;
+
         private void Start()
         {
             RegisterStartingNodes();
@@ -129,7 +143,80 @@ namespace GolemFactory.World
             ApplyBufferCapacityPolicy();
             RegisterSpatialEndpoints();
             RegisterSteamNetwork();
+            RegisterClockTower();
             WireSpatialGameplay();
+            WireHudReadouts();
+        }
+
+        /// <summary>
+        /// Hands the two §8 readouts the holders they report on. Same find-it-in-the-scene
+        /// fallback as everything else here, so the panels work whether or not an Inspector pass
+        /// has assigned them, and a scene with neither view simply does nothing.
+        ///
+        /// <para>
+        /// §12 calls these load-bearing rather than polish: steam upkeep ends up ~41 % of the
+        /// endgame factory, and a running cost the player cannot see is one they cannot plan
+        /// against.
+        /// </para>
+        /// </summary>
+        private void WireHudReadouts()
+        {
+            GolemFactory.UI.SteamFuelGaugeView gauge = steamFuelGaugeView != null
+                ? steamFuelGaugeView
+                : FindAnyObjectByType<GolemFactory.UI.SteamFuelGaugeView>(FindObjectsInactive.Include);
+            if (gauge != null && steamNetworkHolder != null)
+            {
+                gauge.Configure(steamNetworkHolder);
+            }
+
+            GolemFactory.UI.ClockTowerPanelView panel = clockTowerPanelView != null
+                ? clockTowerPanelView
+                : FindAnyObjectByType<GolemFactory.UI.ClockTowerPanelView>(FindObjectsInactive.Include);
+            if (panel != null && clockTowerSiteHolder != null)
+            {
+                panel.Configure(clockTowerSiteHolder);
+            }
+        }
+
+        /// <summary>
+        /// Publishes every Clock Tower already standing in the scene onto its cell and starts
+        /// ticking the site -- the same sweep-the-scene idiom the boiler, node-marker and
+        /// construction-station passes use.
+        ///
+        /// <para>
+        /// Registered with the clock for the reason <c>ClockTowerSiteHolder</c> documents: §7's
+        /// rates are per unit of WORK DONE, so a factory run at 4x must reach a stage's nominal
+        /// duration after the same number of ticks, not the same number of wall seconds.
+        /// </para>
+        /// </summary>
+        private void RegisterClockTower()
+        {
+            if (clockTowerSiteHolder == null)
+            {
+                return;
+            }
+
+            if (grid != null && spatialEndpointHolder != null)
+            {
+                var converter = new GridCoordinateConverter(grid.cellSize);
+                GolemFactory.Buildings.PlaceableClockTower[] towers =
+                    FindObjectsByType<GolemFactory.Buildings.PlaceableClockTower>(FindObjectsInactive.Exclude);
+                for (int i = 0; i < towers.Length; i++)
+                {
+                    towers[i].RegisterAsSpatialEndpoint(
+                        spatialEndpointHolder,
+                        clockTowerSiteHolder,
+                        converter.WorldToCell(towers[i].transform.position));
+                }
+            }
+
+            // Ticked whether or not a tower has been placed yet. An unbuilt tower has no stages
+            // running and accrues nothing, so this is inert until there is something to measure
+            // -- exactly as an idle boiler burns nothing.
+            if (clockRunner != null)
+            {
+                clockRunner.Register(clockTowerSiteHolder);
+            }
         }
 
         /// <summary>
@@ -206,8 +293,13 @@ namespace GolemFactory.World
                 FindObjectsByType<GolemFactory.Buildings.PlaceableBoiler>(FindObjectsInactive.Exclude);
             for (int i = 0; i < boilers.Length; i++)
             {
-                boilers[i].RegisterWithSteamNetwork(
-                    steamNetworkHolder, converter.WorldToCell(boilers[i].transform.position));
+                Vector2Int boilerCell = converter.WorldToCell(boilers[i].transform.position);
+                boilers[i].RegisterWithSteamNetwork(steamNetworkHolder, boilerCell);
+
+                // ...and its fuel hatch, so golems can Push Coke into it. Without this a boiler
+                // is a sealed tank holding whatever it was built with, which makes §9's arc
+                // unreachable past the opening 240 Coke -- see Steam/BoilerFuelEndpoint.
+                boilers[i].RegisterAsSpatialEndpoint(spatialEndpointHolder, boilerCell);
             }
 
             GolemFactory.Buildings.PlaceableSteamPipe[] pipes =

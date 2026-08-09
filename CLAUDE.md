@@ -63,8 +63,8 @@ Editor (or a live MCP-for-Unity bridge, if connected):
   Editor pass (texture import settings, Tile assets, `SpriteRenderer` assignment) — see the
   "Graphics demo implementation notes" section of the implementation plan for the exact steps.
 
-As of the last full run (progression pass complete, §1.1-§1.6): **885/885 tests passing**
-(779 EditMode + 106 PlayMode).
+As of the last full run (progression pass complete, plus open-items §3's Editor passes):
+**897/897 tests passing** (787 EditMode + 110 PlayMode).
 
 **Unity batch mode does run the tests.** The implementation plan records this as a "nice-to-have,
 not implemented" — that is out of date. It works, and it is the cheapest way to verify a pass
@@ -291,10 +291,17 @@ future second owner would need a rewrite instead of a parameter.
 - **Registries guard against `null` ids** (an unset `sourceId`/`destinationId`) by returning
   `false` from `TryGet*` rather than letting a raw `Dictionary<string,_>` lookup throw — keep this
   when adding new registries.
-- Manual Editor/scene work (composing GameObjects, wiring cross-object references, importing
-  textures) generally can't be done blind from a text diff — it's tracked as an explicit checklist
-  per milestone in `docs/unity-implementation-plan.md` and, when a live MCP-for-Unity bridge is
-  available, executed via `execute_code` (a C# script run directly in the Editor) rather than many
-  individual tool calls, since bulk hierarchy/import-setting work is far more reliable that way.
-  If you make source changes that require scene/prefab/asset wiring to actually take effect,
+- **Editor/scene work is scripted, not hand-wired.** Composing GameObjects, adding components and
+  wiring serialized references all work headless via `-executeMethod`: see
+  `Scripts/Editor/ProgressionAssetAuthoring.cs` (`.asset` files) and
+  `ProgressionSceneAuthoring.cs` (prefabs and scenes, via `PrefabUtility.LoadPrefabContents`/
+  `SaveAsPrefabAsset`, `EditorSceneManager.OpenScene`/`SaveScene` and `SerializedObject`). Write
+  these **idempotent** — find-or-create, update in place — so a tuning pass re-runs them without
+  duplicating a GameObject. Note that `Configure(...)` calls do **not** survive to disk: a private
+  `[SerializeField]` must be written through `SerializedObject`.
+- **Verify scene changes by reading the scene back, not by trusting the authoring log.**
+  `Sandbox.unity` carries prefab **overrides**, so a value written successfully to a prefab can be
+  silently replaced by the scene's own copy (this bit `hideWhileOpen` for real — the authoring pass
+  reported success and the HUD still drew over the Workbench modal). `SceneProbe.Verify` is the
+  read-back pass. If you make source changes that require scene/prefab/asset wiring to take effect,
   say so explicitly rather than assuming the change is live.

@@ -3220,6 +3220,131 @@ MonoBehaviour:
   scale: 1
   opacity: 1
   anchorToSpriteBottom: 1
+--- !u!1 &339685698
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 339685702}
+  - component: {fileID: 339685701}
+  - component: {fileID: 339685700}
+  - component: {fileID: 339685699}
+  m_Layer: 0
+  m_Name: ZincOreNodeMarker
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &339685699
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 339685698}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 239b16cf62da3e743963518e2c2b22b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.World.ResourceNodeMarker
+  nodeRegistryHolder: {fileID: 2049142404}
+  nodeId: ZincOreNode
+--- !u!114 &339685700
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 339685698}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8c5a8d3daf73b284ab88d8f526ca2ce5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.World.GroundShadow
+  shadowSprite: {fileID: 21300000, guid: 49b931f350aa5164896745aeddb9cb16, type: 3}
+  groundOffset: {x: 0, y: 0}
+  scale: 1
+  opacity: 0.85
+  anchorToSpriteBottom: 1
+--- !u!212 &339685701
+SpriteRenderer:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 339685698}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_Sprite: {fileID: 21300000, guid: 79f5cde8ba4c102479560bb983bac9cc, type: 3}
+  m_Color: {r: 0.72, g: 0.76, b: 0.8, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 0.5, y: 0.5}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
+--- !u!4 &339685702
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 339685698}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -5, y: 2.5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &342720830
 GameObject:
   m_ObjectHideFlags: 0
@@ -3455,7 +3580,7 @@ MonoBehaviour:
   nodeRegistryHolder: {fileID: 2049142404}
   conveyorHolder: {fileID: 2049142410}
   clockRunner: {fileID: 2049142405}
-  startingAetherQuantity: 40
+  nodeExtractorHolder: {fileID: 2110503009}
   bufferRegistryHolder: {fileID: 0}
   productionBufferCapacityPerType: 100
   stockpileBufferId: FactoryStockpile
@@ -3471,6 +3596,11 @@ MonoBehaviour:
   routingFocusController: {fileID: 1468581506}
   facingArrowSprite: {fileID: 21300000, guid: f404903f746380f42a28e27536d77a40, type: 3}
   routingTileSprite: {fileID: 21300000, guid: 20cc9822bf7a4f348a44442b915ca66a, type: 3}
+  steamNetworkHolder: {fileID: 2110503010}
+  requireSteamPower: 0
+  clockTowerSiteHolder: {fileID: 2110503008}
+  steamFuelGaugeView: {fileID: 1555994600}
+  clockTowerPanelView: {fileID: 1555994599}
 --- !u!4 &350276946
 Transform:
   m_ObjectHideFlags: 0
@@ -8495,6 +8625,131 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &1033156227
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1033156231}
+  - component: {fileID: 1033156230}
+  - component: {fileID: 1033156229}
+  - component: {fileID: 1033156228}
+  m_Layer: 0
+  m_Name: CopperOreNodeMarker
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1033156228
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1033156227}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 239b16cf62da3e743963518e2c2b22b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.World.ResourceNodeMarker
+  nodeRegistryHolder: {fileID: 2049142404}
+  nodeId: CopperOreNode
+--- !u!114 &1033156229
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1033156227}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8c5a8d3daf73b284ab88d8f526ca2ce5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.World.GroundShadow
+  shadowSprite: {fileID: 21300000, guid: 49b931f350aa5164896745aeddb9cb16, type: 3}
+  groundOffset: {x: 0, y: 0}
+  scale: 1
+  opacity: 0.85
+  anchorToSpriteBottom: 1
+--- !u!212 &1033156230
+SpriteRenderer:
+  serializedVersion: 3
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1033156227}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_Sprite: {fileID: 21300000, guid: 79f5cde8ba4c102479560bb983bac9cc, type: 3}
+  m_Color: {r: 0.8, g: 0.45, b: 0.24, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 0.5, y: 0.5}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_SpriteSortPoint: 0
+  m_BlendShapeWeights: []
+--- !u!4 &1033156231
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1033156227}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 5, y: 2.5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1056286620
 GameObject:
   m_ObjectHideFlags: 0
@@ -13608,12 +13863,20 @@ PrefabInstance:
       objectReference: {fileID: 2049142407}
     - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: hideWhileOpen.Array.size
-      value: 1
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: 'hideWhileOpen.Array.data[0]'
       value: 
       objectReference: {fileID: 1007991168}
+    - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: 'hideWhileOpen.Array.data[1]'
+      value: 
+      objectReference: {fileID: 1555994602}
+    - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: 'hideWhileOpen.Array.data[2]'
+      value: 
+      objectReference: {fileID: 1555994601}
     - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: focusMeterHolder
       value: 
@@ -13929,6 +14192,38 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6bc54b5815c62ed428fe29022a6927e9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.ManagementPanel
+--- !u!114 &1555994599 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2543593392884873697, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+  m_PrefabInstance: {fileID: 1555994596}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1555994601}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eca9e1b44755369499e54195c3fc5841, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.ClockTowerPanelView
+--- !u!114 &1555994600 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 556311928627158229, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+  m_PrefabInstance: {fileID: 1555994596}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1555994602}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7655a6c361864276a192b90e0c309cb1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.SteamFuelGaugeView
+--- !u!1 &1555994601 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5532386051478745040, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+  m_PrefabInstance: {fileID: 1555994596}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1555994602 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3735357607677486234, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+  m_PrefabInstance: {fileID: 1555994596}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1566442179
 GameObject:
   m_ObjectHideFlags: 0
@@ -15909,9 +16204,13 @@ MonoBehaviour:
   - {fileID: 4814553546785476045, guid: 861a6ad7c5ff82d43aea3bb731ccebcb, type: 3}
   - {fileID: 28909141009986320, guid: 4a3e8b237af720541a2a90e92fb47bba, type: 3}
   - {fileID: 7281309083505084022, guid: a9ca034275f45ad4ca40f9f381a299c9, type: 3}
+  - {fileID: 8072385613776327011, guid: 0f70ceacba95f1146b7af8aac5183303, type: 3}
+  - {fileID: 8127764119132227910, guid: c1395835c05f4d14f92cc7549b6a0a35, type: 3}
+  - {fileID: 8727834534799143137, guid: 314dd6df90b07cc4a8db35772c3c65ea, type: 3}
   _beltNetworkHolder: {fileID: 909043062}
   _spatialEndpointHolder: {fileID: 476967491}
   _conveyorHolder: {fileID: 2049142410}
+  _steamNetworkHolder: {fileID: 0}
   _facingArrowSprite: {fileID: 21300000, guid: f404903f746380f42a28e27536d77a40, type: 3}
 --- !u!4 &1749759287
 Transform:
@@ -17247,7 +17546,7 @@ SpriteRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: 30b015b39e42e52469fa9264e05c0a38, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.24, g: 0.23, b: 0.25, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -25571,6 +25870,39 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!114 &2110503008 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7742933656483220719, guid: d9a69809c839d0741a1698e2d0f22ae3, type: 3}
+  m_PrefabInstance: {fileID: 2049142403}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c34599f9f3382034dab10cfe846d17ef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.ClockTower.ClockTowerSiteHolder
+--- !u!114 &2110503009 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7274082361793626292, guid: d9a69809c839d0741a1698e2d0f22ae3, type: 3}
+  m_PrefabInstance: {fileID: 2049142403}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 414617ec39fa36c41ac9ecd9784e2e37, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.World.NodeExtractorRegistryHolder
+--- !u!114 &2110503010 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 8806339647906881763, guid: d9a69809c839d0741a1698e2d0f22ae3, type: 3}
+  m_PrefabInstance: {fileID: 2049142403}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c45703fe0e94494a9f32e27234f8e5b4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Steam.SteamNetworkHolder
 --- !u!1 &2111174440
 GameObject:
   m_ObjectHideFlags: 0
@@ -25835,3 +26167,5 @@ SceneRoots:
   - {fileID: 64146917}
   - {fileID: 476967492}
   - {fileID: 1468581507}
+  - {fileID: 1033156231}
+  - {fileID: 339685702}

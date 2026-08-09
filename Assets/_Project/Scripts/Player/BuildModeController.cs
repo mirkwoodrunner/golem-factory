@@ -303,8 +303,14 @@ namespace GolemFactory.Player
                     }
 
                     // A removed depot must stop being an endpoint too, or golems keep pushing
-                    // into a building that is no longer there.
-                    if (_spatialEndpointHolder != null && building.GetComponent<PlaceableDepot>() != null)
+                    // into a building that is no longer there. The same is true of the two
+                    // other things that publish an input tile -- a Clock Tower and a Boiler's
+                    // fuel hatch -- so the test is "did this building publish an endpoint",
+                    // not "was it a depot".
+                    if (_spatialEndpointHolder != null &&
+                        (building.GetComponent<PlaceableDepot>() != null ||
+                         building.GetComponent<PlaceableClockTower>() != null ||
+                         building.GetComponent<PlaceableBoiler>() != null))
                     {
                         _spatialEndpointHolder.Registry.Unregister(cell);
                     }
@@ -398,16 +404,27 @@ namespace GolemFactory.Player
                 depot.RegisterAsSpatialEndpoint(_spatialEndpointHolder, _stockpileHolder, cell);
             }
 
+            //   * a clock tower: publishes its input tile, giving the megaproject somewhere for
+            //     a golem to Push into. Without this a placed tower was inert -- the win
+            //     condition could be built and then never delivered to.
+            PlaceableClockTower tower = instance.GetComponent<PlaceableClockTower>();
+            if (tower != null)
+            {
+                tower.RegisterAsSpatialEndpoint(_spatialEndpointHolder, tower.SiteHolder, cell);
+            }
+
             //   * a boiler or a steam pipe: publishes itself into the SteamNetwork, which
-            //     re-derives every boiler's reach on the spot. Neither is an IItemEndpoint --
-            //     steam is not a good that travels on tiles -- so they register with their own
-            //     network rather than with the spatial endpoint registry.
+            //     re-derives every boiler's reach on the spot. A PIPE is not an IItemEndpoint --
+            //     steam is not a good that travels on tiles -- but a BOILER is, on its fuel
+            //     side: Coke reaches it in a golem's hold like any other good. See
+            //     Steam/BoilerFuelEndpoint for why that had to exist at all.
             if (_steamNetworkHolder != null)
             {
                 PlaceableBoiler boiler = instance.GetComponent<PlaceableBoiler>();
                 if (boiler != null)
                 {
                     boiler.RegisterWithSteamNetwork(_steamNetworkHolder, cell);
+                    boiler.RegisterAsSpatialEndpoint(_spatialEndpointHolder, cell);
                 }
 
                 PlaceableSteamPipe pipe = instance.GetComponent<PlaceableSteamPipe>();

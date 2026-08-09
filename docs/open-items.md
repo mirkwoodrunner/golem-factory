@@ -9,7 +9,7 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 > reviewed**. Everything from §1.5 on is **spec only**. The next pass starts at §1.5, which is
 > also what §1.4's Sandbox switch is waiting on.
 
-Tests stand at **885/885** (779 EditMode + 106 PlayMode), up from 590 before the progression pass
+Tests stand at **897/897** (787 EditMode + 110 PlayMode), up from 590 before the progression pass
 began. Console clean.
 
 > **Unity batch mode does run the tests, contrary to what the implementation plan says.** It is
@@ -222,10 +222,10 @@ implies. A `CokeCapacity` field was rejected because it would also imply "this b
 your Coke has nowhere to go", a refusal rule §3.1 never sanctions and §10's audit has never been
 run against. Worth revisiting if §1.5 gives boilers a real fill limit.
 
-**Still needs an Editor pass** (cannot be done from a text diff): there is no Boiler or Steam Pipe
-prefab, so nothing in `Sandbox.unity` registers with the network yet; `SteamNetworkHolder` is not
-on `ManagerHolders.prefab`; and `UI/SteamFuelGaugeView` has no HUD slot. The C# is finished and
-tested on all three — the missing work is prefab/scene wiring.
+~~**Still needs an Editor pass**~~ — **done**, see §3. Both prefabs exist and are in the build
+menu, `SteamNetworkHolder` is on `ManagerHolders.prefab` and registered with the clock, and
+`SteamFuelGaugeView` has a HUD slot. §3 also records the refuelling gap found on the way through:
+nothing had ever called `SteamBoiler.AddCoke`, so a boiler was a sealed tank.
 
 ### 1.5 Asset authoring — **DONE**
 
@@ -260,13 +260,12 @@ scarcity is access rather than depletion and cannot soft-lock; and `CoalNode`, `
 `ZincOreNode` are added. The **2-extractor-per-node cap** (§3.2) is real, in `NodeExtractorRegistry`,
 using the same stable-total-order determinism §1.4 established.
 
-**Missing art, and one interim scene edit.** There is no sprite for a coal seam, a copper vein or a
-zinc vein. Sandbox's `BrassNodeMarker` was left orphaned by deleting `BrassNode` — a prop the player
-could walk up to and get nothing from — so it has been repointed to `CoalNode` and renamed, which
-makes the coal line physically reachable and the coking chain playable. **It still wears the brass
-sprite**, and there are no markers at all for copper or zinc. Placing those is an Editor pass
-(`Tools/Art/generate_placeholder_art.py` plus a texture import and scene composition) that a text
-diff cannot do.
+**Missing art.** The markers now exist — copper and zinc are placed and coal no longer wears the
+brass sprite — but **there is still no real sprite for a coal seam, a copper vein or a zinc vein**,
+nor for a Boiler, a Steam Pipe or the Clock Tower. All six reuse an existing sprite under a
+distinguishing tint (the trick `golem_generic_brass/copper/steel` already plays), collected in one
+table at the top of `Scripts/Editor/ProgressionSceneAuthoring.cs` so replacing them is one edit
+rather than a hunt. Enough to tell them apart on the floor; not a substitute for art.
 
 **`requireSteamPower` is still off.** Authoring `CoalNode` and R1 removed one of its two blockers —
 Coke now has a source. The remaining one is the **Hand-Crank Bench** (§11 item 7), which §10 requires
@@ -355,29 +354,54 @@ steam adjacency still fits.
 
 ## 3. Known gaps carried forward
 
-### Editor passes still owed — **start here**
+### Editor passes — **DONE**
 
-Every one of these is finished, tested C# with no prefab or scene slot. None is a code problem.
-Together they are what stands between the implemented design and actually playing it.
+All six rows are wired and read back from the saved scene. **Scripting them worked**, which the
+backlog had flagged as unproven: `Scripts/Editor/ProgressionSceneAuthoring.cs` drives
+`PrefabUtility.LoadPrefabContents`/`SaveAsPrefabAsset`, `EditorSceneManager.OpenScene`/`SaveScene`
+and `SerializedObject` from `-executeMethod`, exactly as `ProgressionAssetAuthoring` does for
+`.asset` files, and it is idempotent for the same reason — re-running after a tuning edit updates
+in place rather than duplicating.
 
-> **Try scripting these before doing them by hand.** An earlier note here said they "cannot be done
-> from a text diff", which is true but misleading: Unity batch mode runs arbitrary Editor code via
-> `-executeMethod` (that is how §1.5's 19 recipe assets were authored — see
-> `Scripts/Editor/ProgressionAssetAuthoring.cs`). `PrefabUtility.SaveAsPrefabAsset`,
-> `EditorSceneManager.OpenScene`/`MarkSceneDirty`/`SaveScene` and `SerializedObject` can create
-> prefabs, add components and wire serialized references the same way. **This has not been proven
-> for prefabs and scenes in this project yet — only for `.asset` files — so treat it as the first
-> thing to try, not a guarantee.** Anything genuinely needing a human (art, layout judgement) will
-> become obvious quickly.
+| What | Where it landed |
+|---|---|
+| **Boiler + Steam Pipe prefabs** | `BoilerPrefab` (30 Scrap + 10 Iron Plate), `SteamPipePrefab` (1 Iron Plate). Both in Sandbox's build menu. |
+| **Clock Tower prefab** | `ClockTowerPrefab`, free to place per §7. |
+| **`SteamNetworkHolder` / `ClockTowerSiteHolder` on `ManagerHolders.prefab`** | Plus `NodeExtractorRegistryHolder`, which `SandboxBootstrap` was already looking for and never finding — so §3.2's 2-extractor cap was inert in the playable scene. All three registered with the clock. |
+| **HUD slots for `SteamFuelGaugeView` / `ClockTowerPanelView`** | `SteamGauge` top-left, `ClockTowerPanel` top-right on `WorkbenchCanvas.prefab`; holders handed over at runtime by `SandboxBootstrap`, because **a prefab cannot hold a reference into another prefab**. |
+| **Workbench's 6th appendage socket** | `AppendageSlot5` cloned from slot 4; `SlotStack` respaced to 7 even rows. The `WorkbenchController.cs:319` truncation is fixed too — see below. |
+| **Node markers for Coal / Copper / Zinc** | `CopperOreNodeMarker` and `ZincOreNodeMarker` placed; `CoalNodeMarker` retinted off the brass sprite it inherited. |
 
-| What | State | Blocks |
-|---|---|---|
-| **Boiler + Steam Pipe prefabs** | `PlaceableBoiler`/`PlaceableSteamPipe` done | Placing either in-game; turning on `requireSteamPower` |
-| **Clock Tower prefab** | `PlaceableClockTower` + endpoint done | Reaching the win condition at all |
-| **`SteamNetworkHolder` / `ClockTowerSiteHolder` on `ManagerHolders.prefab`** | Both are `ITickable` Holders | Both systems ticking in Sandbox |
-| **HUD slots for `SteamFuelGaugeView` and `ClockTowerPanelView`** | Both computed and unit-tested | §8's fuel gauge and tower columns, which §12 calls load-bearing |
-| **Workbench's 6th appendage socket** | `WorkbenchController` truncates past 5 | Any 4-input recipe (R14, R17) — i.e. stage 4 |
-| **Node markers + sprites for Coal / Copper / Zinc** | Nodes registered; Coal marker borrowed | Copper and zinc being reachable in-world at all |
+> **The prefab-override trap, worth remembering.** Writing `hideWhileOpen` on
+> `WorkbenchCanvas.prefab` reported success and did nothing: `Sandbox.unity` carries an override
+> pinning that array to 1 entry, so both new readouts would still have drawn over the full-screen
+> Workbench — the exact HUD-overlap class of bug the UGUI conversion was done to kill. **An
+> authoring pass reports what it wrote; only a read-back reports what the game will load.**
+> `SceneProbe.Verify` is that read-back, and it is why this is claimed as done rather than assumed.
+
+### Two functional gaps found while doing it, both fixed
+
+- **Nothing could refuel a Boiler.** `SteamBoiler.AddCoke` was written as "the only way Coke ever
+  goes up" and no caller was ever added, so a boiler was a sealed tank holding whatever it was
+  constructed with. That caps the whole steam economy at §9 Phase 1's opening 240 Coke however
+  much coking capacity is built — §9's "~12 Boilers" and ~23 cokers have nowhere to feed, and
+  §3.1's "Coke becomes the contended throat of the entire game" collapses to a one-off allowance.
+  The design assumes delivery throughout (§5.1 lists Coke's consumers as "every powered golem,
+  **via its Boiler**") but never names a mechanism, because the mechanism is meant to be the
+  ordinary one. `Steam/BoilerFuelEndpoint` is that: an `IItemEndpoint` on the boiler's cell,
+  modelled on `ClockTowerInputEndpoint` down to the shape of the two `CanGive` answers, so a golem
+  `Push`es Coke into it through the same `BeginPush` with the same per-type skip. Pure sink —
+  fuel never comes back out, which also stops a boiler being an uncapped Coke warehouse that
+  §1.2's per-item-type cap does not apply to.
+- **`BuildModeController` never registered a placed Clock Tower.** `RegisterPlacedEndpoints`
+  handled belts, depots, boilers and pipes but not the tower, so a placed tower published no input
+  tile and the win condition could be built and then never delivered to. Both it and the boiler's
+  fuel hatch are now registered on placement and unregistered on removal.
+
+**A player-built Boiler starts at 0 Coke**, not `PlaceableBoiler.DefaultStartingCoke`'s 240. That
+constant is there because §9 Phase 1 hands the player one already holding 240; shipping it on the
+prefab would mint 240 Coke for 30 Scrap + 10 Iron Plate — cheaper than R1 makes it, and a
+build-a-boiler exploit that voids §3.1 entirely.
 
 ### Also not yet wired
 
@@ -390,14 +414,16 @@ Together they are what stands between the implemented design and actually playin
 
 ### Opened by the §1.1 machine-model pass
 
-- **The Workbench has 5 appendage sockets; the Zeppelin now has 6.** `WorkbenchCanvas.prefab`
-  contains `AppendageSlot0`–`AppendageSlot4` and `WorkbenchController._draftAppendages` is sized
-  from `appendageSlotZones.Length`, so a 6-slot chassis behaves like a 5-slot one in the UI — and
-  worse, `WorkbenchController.cs:319` silently **truncates** a longer program on load, so opening a
-  6-appendage golem and hitting Engage Gears would commit a 5-appendage one. **Now reachable**: §1.5
-  authored R14 and R17, the two 4-input recipes, so the Zeppelin's sixth slot is live content the UI
-  silently discards. Listed in the Editor-passes table above; the truncation at `WorkbenchController
-  .cs:319` is a code fix and should land with it.
+- ~~**The Workbench has 5 appendage sockets; the Zeppelin now has 6.**~~ **DONE.** `AppendageSlot5`
+  is authored and `appendageSlotZones` is 6, so the Zeppelin's sixth step is reachable. The
+  silent truncation is fixed at the same time, and **not by widening the array alone**: overflow is
+  now recorded on load (`WorkbenchController.DraftOverflowCount`) and both Engage Gears and Patent
+  *refuse* rather than committing a program the player cannot see. Committing the visible five was
+  data loss with no warning and no undo; committing four of six would be the same thing with extra
+  steps. With the socket authored this should never fire in normal play — it is the guard that
+  makes a future 7-slot chassis a refusal instead of a silent discard. The refusal costs no Focus,
+  and its status line is deliberately not time-based (the program is still unrepresentable after
+  six seconds), retiring only when retargeted onto a golem that fits.
 - **No UI for `Haul` batch quantity.** It is stored per slot and saved, but nothing exposes it, so
   §2's "Consequence 4" — the Workbench's one remaining real decision — is not yet playable. This is
   what the §2 open decision below is actually waiting on.
