@@ -9,7 +9,7 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 > reviewed**. Everything from §1.5 on is **spec only**. The next pass starts at §1.5, which is
 > also what §1.4's Sandbox switch is waiting on.
 
-Tests stand at **897/897** (787 EditMode + 110 PlayMode), up from 590 before the progression pass
+Tests stand at **911/911** (801 EditMode + 110 PlayMode), up from 590 before the progression pass
 began. Console clean.
 
 > **Unity batch mode does run the tests, contrary to what the implementation plan says.** It is
@@ -443,7 +443,7 @@ constant is there because §9 Phase 1 hands the player one already holding 240; 
 prefab would mint 240 Coke for 30 Scrap + 10 Iron Plate — cheaper than R1 makes it, and a
 build-a-boiler exploit that voids §3.1 entirely.
 
-### The opening is soft-locked, and the Hand-Crank Bench is the only thing that opens it
+### The opening was soft-locked — **fixed**, the Hand-Crank Bench is built
 
 Found by trying to answer "how do I build a Boiler?". Two separate problems, one fixed and one not.
 
@@ -473,10 +473,33 @@ Plate that only a Presser can make.
 
 This is not a design error. §9 Phase 1 is explicit — *"Hand-gather and hand-crank your way to the
 first Brass Presser… The Presser costs 60 Scrap + 20 Iron Plate + 10 Gear — **all hand-made**"* — so
-the **Hand-Crank Bench (§11 item 7)** is what breaks the cycle, and it is unbuilt. It was already
-the last blocker on `requireSteamPower` (§10 needs it as the total-blackout backstop); it is now
-also the blocker on the game being playable past the first golem. **It is the highest-value item in
-this file.**
+the **Hand-Crank Bench (§11 item 7)** is what breaks the cycle.
+
+**It is now built** (`Buildings/HandCrankBench.cs` + `HandCrankRules.cs`). Held-Interact turns it,
+`R` at the bench cycles which recipe it makes, progress accrues on simulation ticks so it follows
+Play/Pause and the speed multiplier, and inputs are taken **at completion, never at the start** — so
+letting go of the crank costs time and never goods, which a rigid game has no step to refund. One
+stands in Sandbox at spawn per §9, and it is also placeable and free (§11 prices it at nothing, and
+§10's blackout backstop must never be unaffordable).
+
+**Verified end to end in Play mode:** from an empty stockpile, hand-harvesting 100 Scrap and
+cranking 40× R2 then 10× R8 yields exactly 60 Scrap + 20 Iron Plate + 10 Gear, and
+`TryWithdrawBundle` accepts the Brass Presser. **7.5 minutes of cranking** against §9's 12–15 minute
+estimate for the manual era — §6's costs and §11's 25 % speed were designed together and they land.
+
+> **A third design discrepancy, found and resolved in favour of arity.** §11 item 7 says "any
+> 1-input **Tier-1** recipe", but §5.1 classes Gear — R8's output — as **Tier 3**, while §6 and §9
+> both require the Presser's ten Gears to be hand-cranked. Read literally as Tier-1-only the bench
+> makes Coke, Iron Plate and Glass but **not Gears**, the Presser stays unbuildable, and the bench
+> fails at the one job Phase 1 gives it. **Arity is the load-bearing constraint** — one distinct
+> input type is what a person feeding a machine by hand can manage — and it is self-limiting:
+> exactly five of the nineteen recipes take one input (R1, R2, R3, R8, R19) and every Tier 4–5 good
+> needs three or four, so **no amount of cranking reaches the endgame**. "Tier-1" reads as shorthand
+> written before R8's output was classified. Pinned by `HandCrankBenchTests`.
+
+**`requireSteamPower` is now unblocked** — §10's total-blackout backstop exists, and a test asserts
+the bench both works with no steam network present and holds no reference to one. Turning the switch
+on is a separate call, and wants a playtest of the fuel ratio first.
 
 ### Also not yet wired
 

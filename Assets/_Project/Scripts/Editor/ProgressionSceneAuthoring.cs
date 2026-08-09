@@ -59,6 +59,8 @@ namespace GolemFactory.Editor
         private const string SteamPipePrefabPath = PrefabRoot + "SteamPipePrefab.prefab";
         private const string ClockTowerPrefabPath = PrefabRoot + "ClockTowerPrefab.prefab";
         private const string ManagerHoldersPath = PrefabRoot + "ManagerHolders.prefab";
+        private const string HandCrankBenchPrefabPath = PrefabRoot + "HandCrankBenchPrefab.prefab";
+        private const string RecipeRoot = "Assets/_Project/ScriptableObjects/Recipes/";
         private const string WorkbenchCanvasPath = PrefabRoot + "WorkbenchCanvas.prefab";
 
         // Placeholder tints for the three BUILDINGS. Tinting works here because nothing owns a
@@ -74,6 +76,7 @@ namespace GolemFactory.Editor
         private static readonly Color BoilerTint = new Color(0.82f, 0.40f, 0.26f, 1f);
         private static readonly Color SteamPipeTint = new Color(0.60f, 0.67f, 0.72f, 1f);
         private static readonly Color ClockTowerTint = new Color(0.88f, 0.74f, 0.36f, 1f);
+        private static readonly Color HandCrankBenchTint = new Color(0.56f, 0.42f, 0.30f, 1f);
 
         // Near-opaque, not the 0.78 the first pass used. These strips sit over the dark wall at
         // the top of the frame, and a translucent near-black plate under dim idle-grey text was
@@ -206,7 +209,55 @@ namespace GolemFactory.Editor
                     WriteStageList(new SerializedObject(tower), "stages");
                 });
 
+            // §11 item 7's "placed building", and §9 Phase 1's "the player begins alone in a cold
+            // workshop with a Hand-Crank Bench" -- so it is both placeable and present at spawn.
+            //
+            // FREE TO PLACE. §11 prices it at nothing and §9 hands the player one, so any cost
+            // here would be a tuning number no reviewer has seen. It is also the one building
+            // that must never be unaffordable: §10 leans on it as the total-blackout backstop,
+            // and a bench the player cannot rebuild is a backstop with a hole in it.
+            BuildPlaceable(
+                HandCrankBenchPrefabPath, "HandCrankBenchPrefab", HandCrankBenchTint,
+                Array.Empty<RecipeIngredient>(),
+                go =>
+                {
+                    HandCrankBench bench = Ensure<HandCrankBench>(go);
+                    // Every authored recipe is offered as a CANDIDATE; HandCrankRules filters to
+                    // the five a person can actually turn. Handing it the whole list means a
+                    // future recipe becomes crankable (or not) by its own shape rather than by
+                    // somebody remembering to update a second list here.
+                    WriteRecipeCandidates(new SerializedObject(bench));
+                });
+
             RestoreOrphanedCosts();
+        }
+
+        /// <summary>All 19 authored recipes in R1..R19 order; the bench filters them itself.</summary>
+        private static void WriteRecipeCandidates(SerializedObject so)
+        {
+            var recipes = new List<(int number, RecipeDefinition recipe)>();
+            foreach (string guid in AssetDatabase.FindAssets(
+                         "t:RecipeDefinition", new[] { RecipeRoot.TrimEnd('/') }))
+            {
+                var recipe = AssetDatabase.LoadAssetAtPath<RecipeDefinition>(
+                    AssetDatabase.GUIDToAssetPath(guid));
+                if (recipe != null)
+                {
+                    recipes.Add((RecipeNumber(recipe.name), recipe));
+                }
+            }
+
+            recipes.Sort((a, b) => a.number.CompareTo(b.number));
+
+            SerializedProperty list = so.FindProperty("candidateRecipes");
+            list.arraySize = recipes.Count;
+            for (int i = 0; i < recipes.Count; i++)
+            {
+                list.GetArrayElementAtIndex(i).objectReferenceValue = recipes[i].recipe;
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            Note("bench offered " + recipes.Count + " candidate recipes (rules filter to 1-input)");
         }
 
         /// <summary>
@@ -662,6 +713,7 @@ namespace GolemFactory.Editor
             AddPlaceablesToBuildMenu(scene);
             ResizeBuildMenu(scene);
             AddNodeMarkers(scene);
+            PlaceStartingBench(scene);
             WireBootstrapHolders(scene);
             RegisterSceneHudChrome(scene);
             PopulateWorkbenchRoster(scene);
@@ -686,7 +738,11 @@ namespace GolemFactory.Editor
                 }
             }
 
-            foreach (string path in new[] { BoilerPrefabPath, SteamPipePrefabPath, ClockTowerPrefabPath })
+            foreach (string path in new[]
+                     {
+                         BoilerPrefabPath, SteamPipePrefabPath, ClockTowerPrefabPath,
+                         HandCrankBenchPrefabPath,
+                     })
             {
                 PlaceableBuilding prefab =
                     AssetDatabase.LoadAssetAtPath<GameObject>(path).GetComponent<PlaceableBuilding>();
@@ -793,6 +849,39 @@ namespace GolemFactory.Editor
                 renderer.color = Color.white;
                 Note("AetherNodeMarker repointed to item_aether (was tinted brass)");
             }
+        }
+
+        /// <summary>
+        /// Stands one Hand-Crank Bench in the world at spawn, per §9 Phase 1: "The player begins
+        /// alone in a cold workshop with a Hand-Crank Bench and a Boiler holding 240 Coke."
+        ///
+        /// <para>
+        /// ONLY THE BENCH, NOT THE BOILER. The bench is a soft-lock fix -- without it the Presser
+        /// is unbuildable and the game stops at the first golem -- so placing it is repairing
+        /// something broken. The 240-Coke starting boiler is a different thing: it is the opening
+        /// §2 still lists as an open decision ("the opening changes substantially"), it only
+        /// matters once <c>requireSteamPower</c> is on, and handing the player 240 free Coke is a
+        /// tuning choice with no reviewer behind it. Left for a human.
+        /// </para>
+        ///
+        /// <para>
+        /// Placed two tiles south-west of the player's spawn, clear of the three markers on the
+        /// ±5/±2.5 ring and of the construction station, so the opening reads as a workshop
+        /// corner rather than a pile.
+        /// </para>
+        /// </summary>
+        private static void PlaceStartingBench(Scene scene)
+        {
+            GameObject bench = FindRoot(scene, "StarterHandCrankBench");
+            if (bench == null)
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(HandCrankBenchPrefabPath);
+                bench = (GameObject)PrefabUtility.InstantiatePrefab(prefab, scene);
+                bench.name = "StarterHandCrankBench";
+            }
+
+            bench.transform.position = new Vector3(-2.5f, 1.25f, 0f);
+            Note("StarterHandCrankBench at " + bench.transform.position);
         }
 
         private static void EnsureNodeMarker(

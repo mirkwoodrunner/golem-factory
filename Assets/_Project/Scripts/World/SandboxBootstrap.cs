@@ -144,8 +144,45 @@ namespace GolemFactory.World
             RegisterSpatialEndpoints();
             RegisterSteamNetwork();
             RegisterClockTower();
+            RegisterHandCrankBenches();
             WireSpatialGameplay();
             WireHudReadouts();
+        }
+
+        /// <summary>
+        /// Wires every Hand-Crank Bench in the scene to the player's stockpile and the clock
+        /// (docs/progression-design.md §11 item 7). Same sweep idiom as the boiler and tower
+        /// passes, so a bench the player builds later configures itself the same way.
+        ///
+        /// <para>
+        /// DELIBERATELY NOT GATED ON <c>requireSteamPower</c>, and never handed a steam network.
+        /// §10 clears the "total blackout with no golems to recover" row only because the bench
+        /// runs R1 without steam, so the player can always hand-crank coke back from nothing.
+        /// </para>
+        /// </summary>
+        private void RegisterHandCrankBenches()
+        {
+            Economy.StorageBufferRegistryHolder buffers = bufferRegistryHolder != null
+                ? bufferRegistryHolder
+                : FindAnyObjectByType<Economy.StorageBufferRegistryHolder>(FindObjectsInactive.Include);
+
+            GolemFactory.Buildings.HandCrankBench[] benches =
+                FindObjectsByType<GolemFactory.Buildings.HandCrankBench>(FindObjectsInactive.Exclude);
+
+            for (int i = 0; i < benches.Length; i++)
+            {
+                // Recipes come from the prefab; only the stockpile has to be resolved per scene,
+                // because a prefab cannot hold a reference to a scene object.
+                if (buffers != null)
+                {
+                    benches[i].ConfigureStockpile(buffers, stockpileBufferId);
+                }
+
+                if (clockRunner != null)
+                {
+                    clockRunner.Register(benches[i]);
+                }
+            }
         }
 
         /// <summary>

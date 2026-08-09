@@ -69,6 +69,8 @@ namespace GolemFactory.Player
         private ResourceNodeMarker[] _nodeMarkers = new ResourceNodeMarker[0];
         private GolemConstructionStation[] _stations = new GolemConstructionStation[0];
         private GolemEntity[] _golems = new GolemEntity[0];
+        private GolemFactory.Buildings.HandCrankBench[] _benches =
+            new GolemFactory.Buildings.HandCrankBench[0];
 
         // Position buffers refilled each frame from the cached component arrays, so the
         // per-frame selection allocates nothing. Sized only when the arrays are re-scanned.
@@ -188,12 +190,30 @@ namespace GolemFactory.Player
 
         private void OnInteractPerformed(InputAction.CallbackContext context) => Interact();
 
-        // R is shared with build mode. While a placeable is in hand it turns the ghost; only
-        // with empty hands does it turn the golem you are standing next to.
+        // R is shared three ways, all decided by context rather than by a mode the player has to
+        // remember: with a placeable in hand it turns the ghost, standing at a bench it changes
+        // what the bench makes, and otherwise it turns the golem you are next to.
+        //
+        // A bench wins over a golem here for the same reason RotateNearestGolem prefers the
+        // nearest GOLEM over the combined [E] pick: you can only be at one of them, and if you
+        // are standing at a bench you are cranking, not rotating something behind you. Selection
+        // shares R rather than claiming a new binding because the design specifies held-Interact
+        // for the crank itself and says nothing about how the recipe is chosen -- and every other
+        // key is already spoken for (E interact, Tab menu, G carry).
         private void OnRotatePerformed(InputAction.CallbackContext context)
         {
             if (_buildModeController != null && _buildModeController.IsPlacementActive)
             {
+                return;
+            }
+
+            HandCrankBench bench = SelectNearestBench(_interactRange);
+            if (bench != null)
+            {
+                bench.CycleRecipe();
+                LastStatusMessage = bench.SelectedRecipe != null
+                    ? $"Bench set to {bench.SelectedRecipe.name}."
+                    : "This bench has nothing it can make.";
                 return;
             }
 
@@ -364,6 +384,66 @@ namespace GolemFactory.Player
         {
             CarryHeldGolem();
             RefreshAffordance();
+            DriveHandCrank();
+        }
+
+        /// <summary>
+        /// The Hand-Crank Bench's held-Interact (docs/progression-design.md §11 item 7). Held,
+        /// not tapped: §9's manual era has to cost the player's attention, or it is just a slower
+        /// golem that needs no supervision.
+        ///
+        /// <para>
+        /// Polled here rather than driven from the <c>performed</c> callback because "is the key
+        /// down right now" is a state, not an event, and because the bench accrues on SIMULATION
+        /// ticks -- this only sets the flag, and <c>HandCrankBench.Tick</c> decides what a tick of
+        /// cranking is worth. That split is what lets a test crank a bench with no
+        /// InputActionAsset in the scene at all.
+        /// </para>
+        ///
+        /// <para>
+        /// Every other bench is cleared each frame, so walking away from a half-turned crank
+        /// stops it rather than leaving it running unattended across the factory.
+        /// </para>
+        /// </summary>
+        private void DriveHandCrank()
+        {
+            HandCrankBench nearest = SelectNearestBench(_interactRange);
+            bool held = _interactAction != null && _interactAction.IsPressed();
+
+            for (int i = 0; i < _benches.Length; i++)
+            {
+                HandCrankBench bench = _benches[i];
+                if (bench != null)
+                {
+                    bench.IsCranking = bench == nearest && held;
+                }
+            }
+        }
+
+        /// <summary>Nearest bench within arm's reach, or null. Same rule as the golem pick.</summary>
+        public HandCrankBench SelectNearestBench(float range)
+        {
+            HandCrankBench nearest = null;
+            float bestSqr = range * range;
+            Vector3 here = transform.position;
+
+            for (int i = 0; i < _benches.Length; i++)
+            {
+                HandCrankBench bench = _benches[i];
+                if (bench == null)
+                {
+                    continue;
+                }
+
+                float sqr = (bench.transform.position - here).sqrMagnitude;
+                if (sqr <= bestSqr)
+                {
+                    bestSqr = sqr;
+                    nearest = bench;
+                }
+            }
+
+            return nearest;
         }
 
         // Re-scans the scene for interactables. Called once on enable; also public so a
@@ -374,6 +454,7 @@ namespace GolemFactory.Player
             _nodeMarkers = FindObjectsByType<ResourceNodeMarker>(FindObjectsSortMode.None);
             _stations = FindObjectsByType<GolemConstructionStation>(FindObjectsSortMode.None);
             _golems = FindObjectsByType<GolemEntity>(FindObjectsSortMode.None);
+            _benches = FindObjectsByType<HandCrankBench>(FindObjectsSortMode.None);
 
             if (_nodePositions.Length != _nodeMarkers.Length)
             {
