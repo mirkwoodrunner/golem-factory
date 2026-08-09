@@ -65,6 +65,7 @@ Just looking. Tick each box or write what you saw instead.
 - [ ] **Top-right:** a panel reading `Clock Tower dormant`. It should say *dormant* — if it names a
       stage or shows a "starved" warning before you've built a tower, that's a regression.
 - [ ] **Top-centre:** `All golems running.`
+- [ ] **Bottom-centre:** *nothing* — the bench readout only appears when you're at a bench.
 - [ ] **Bottom-left:** a Build menu with **seven** rows, all costs legible and none cut off:
 
 | Row | Cost |
@@ -100,8 +101,8 @@ press **E** — or if you have no golem yet, skip to Part B and come back.
 - [ ] The Card Vault scrolls and contains ~25 cards: two logic cores, four verbs (Extract, Haul,
       **Push Output**, Load Into Scrap Buffer), then **Assemble Coking** through **Assemble Wire
       Drawing**.
-- [ ] **The fuel gauge and tower panel vanish while the Workbench is open** and come back when you
-      close it. If either floats over the Workbench, that's a regression.
+- [ ] **The fuel gauge, tower panel and bench readout all vanish while the Workbench is open** and
+      come back when you close it. If any floats over the Workbench, that's a regression.
 
 > **Judgement call I want your eye on:** the socket rows were re-spaced from 6 rows to 7 and each is
 > now ~20% shorter. Does a card still read at that height? Does the 6th socket look like a peer of
@@ -125,8 +126,22 @@ You need **100 Scrap** total: 60 for the Presser itself, 40 to reclaim into Iron
 
 ### B2. Crank Iron Plate
 
-Walk to the Hand-Crank Bench. Press **R** until the status line says the bench is set to
-**R2_ScrapReclamation**. Then **hold E**.
+Walk to the Hand-Crank Bench. **A readout appears bottom-centre**, just above the speed controls —
+it only shows while you're standing at a bench:
+
+```
+HAND-CRANK BENCH   R2 · Scrap Reclamation
+1 Scrap → 1 Iron Plate
+[███░░░░░░░] 30%   7s left
+hold [E] to crank   ·   [R] changes recipe
+```
+
+Press **R** until it reads **R2 · Scrap Reclamation**. Then **hold E**.
+
+- [ ] The readout appears when you walk up and disappears when you walk away.
+- [ ] The bar fills while you hold E and the countdown ticks down.
+- [ ] If you can't afford the recipe, the last line turns orange and reads
+      `need N more <item>` instead of the hint — **before** you spend time cranking, not after.
 
 - One Iron Plate takes **96 ticks ≈ 9.6 s** at 1x. That's 25% of machine speed, by design.
 - You need **40** of them ≈ **6.4 minutes** at 1x.
@@ -139,7 +154,7 @@ Walk to the Hand-Crank Bench. Press **R** until the status line says the bench i
 
 ### B3. Crank Gears
 
-Press **R** until the bench reads **R8_GearCutting**. Hold **E**.
+Press **R** until the readout says **R8 · Gear Cutting**. Hold **E**.
 
 - One Gear = 2 Iron Plate, **64 ticks ≈ 6.4 s**. You need **10** ≈ 1 minute.
 
@@ -262,8 +277,8 @@ These are already on the backlog. Noting them again costs us both time.
 
 - **The three buildings look identical** (Boiler, Steam Pipe, Clock Tower are the same tinted box).
   Placeholder art, known.
-- **The bench has no HUD readout.** No progress bar, no "what am I making", no affordability
-  warning. You have to read the status line. Known, and the obvious next polish.
+- **The bench readout is text-only** — a character-cell progress bar, no icons, no animation on the
+  bench itself. It tells you everything; it isn't pretty.
 - **Belts can't feed a buffer** — a belt only hands off to another belt. Getting goods into a depot
   needs a golem doing `Push`. Deliberate.
 - **Golems you build don't survive a reload.** Save/load can't respawn them yet.

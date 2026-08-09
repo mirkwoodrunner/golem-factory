@@ -466,7 +466,8 @@ namespace GolemFactory.Editor
                 RemoveMisparentedHud(root);
                 GameObject gauge = BuildSteamGauge(root);
                 GameObject tower = BuildClockTowerPanel(root);
-                RegisterHudChrome(root, gauge, tower);
+                GameObject crank = BuildHandCrankPanel(root);
+                RegisterHudChrome(root, gauge, tower, crank);
 
                 PrefabUtility.SaveAsPrefabAsset(root, WorkbenchCanvasPath);
             }
@@ -667,6 +668,77 @@ namespace GolemFactory.Editor
             so.ApplyModifiedPropertiesWithoutUndo();
 
             Note("ClockTowerPanel built (holder wired at runtime by SandboxBootstrap)");
+            return panel;
+        }
+
+        /// <summary>
+        /// The bench readout, bottom-centre and just above the simulation control bar.
+        ///
+        /// <para>
+        /// Placed there because it is the only free edge -- top-left is the fuel gauge, top-right
+        /// the tower, top-centre the alerts strip, bottom-left the build menu -- and because it
+        /// reads as "what you are doing right now" rather than a standing gauge. It is the only
+        /// HUD element that hides itself when irrelevant: the view switches its root off unless
+        /// the player is actually standing at a bench.
+        /// </para>
+        /// </summary>
+        private static GameObject BuildHandCrankPanel(GameObject root)
+        {
+            GameObject panel = EnsureUiChild(FindCanvas(root), "HandCrankPanel");
+            var rect = (RectTransform)panel.transform;
+            rect.anchorMin = new Vector2(0.5f, 0f);
+            rect.anchorMax = new Vector2(0.5f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(0f, 74f);
+            rect.sizeDelta = new Vector2(430f, 96f);
+
+            // THE BODY IS A CHILD, AND THAT IS LOAD-BEARING. This panel hides itself when the
+            // player walks away from a bench, and a disabled GameObject does not run Update -- so
+            // a view that switched off its OWN object could never switch back on. Found by
+            // running it: the readout vanished on the first frame and stayed gone. The outer
+            // object holds the view and stays active (only hideWhileOpen ever toggles it); the
+            // body carries the plate and the text. Same arrangement BuildMenuPanel already uses.
+            // An earlier build put the plate and the label directly on the panel; moving them
+            // under Body orphaned both, leaving a second empty CrankText that rendered nothing
+            // and a stale Image behind the real one. EnsureUiChild is idempotent per name PER
+            // PARENT, so re-parenting always needs the old location swept explicitly.
+            Transform strayLabel = panel.transform.Find("CrankText");
+            if (strayLabel != null)
+            {
+                UnityEngine.Object.DestroyImmediate(strayLabel.gameObject);
+                Note("removed stray CrankText left on the panel root");
+            }
+
+            Image strayPlate = panel.GetComponent<Image>();
+            if (strayPlate != null)
+            {
+                UnityEngine.Object.DestroyImmediate(strayPlate);
+                Note("removed stray plate Image left on the panel root");
+            }
+
+            GameObject body = EnsureUiChild(panel.transform, "Body");
+            var bodyRect = (RectTransform)body.transform;
+            bodyRect.anchorMin = Vector2.zero;
+            bodyRect.anchorMax = Vector2.one;
+            bodyRect.offsetMin = Vector2.zero;
+            bodyRect.offsetMax = Vector2.zero;
+
+            Image plate = Ensure<Image>(body);
+            plate.color = HudPlateColor;
+            plate.raycastTarget = false;
+
+            TextMeshProUGUI text = EnsureLabel(
+                body.transform, "CrankText", 15f, TextAlignmentOptions.TopLeft);
+
+            HandCrankPanelView view = Ensure<HandCrankPanelView>(panel);
+            var so = new SerializedObject(view);
+            // playerInteractor and stockpileHolder are scene objects, so they cannot be authored
+            // onto a prefab -- SandboxBootstrap hands them over at runtime.
+            so.FindProperty("panelRoot").objectReferenceValue = body;
+            so.FindProperty("readoutText").objectReferenceValue = text;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            Note("HandCrankPanel built (holder wired at runtime by SandboxBootstrap)");
             return panel;
         }
 
@@ -930,6 +1002,7 @@ namespace GolemFactory.Editor
             AssignIfPresent(so, "nodeExtractorHolder", FindInScene<NodeExtractorRegistryHolder>(scene));
             AssignIfPresent(so, "steamFuelGaugeView", FindInScene<SteamFuelGaugeView>(scene));
             AssignIfPresent(so, "clockTowerPanelView", FindInScene<ClockTowerPanelView>(scene));
+            AssignIfPresent(so, "handCrankPanelView", FindInScene<HandCrankPanelView>(scene));
 
             so.ApplyModifiedPropertiesWithoutUndo();
             Note("SandboxBootstrap holders wired");
@@ -953,11 +1026,17 @@ namespace GolemFactory.Editor
             WorkbenchController controller = FindInScene<WorkbenchController>(scene);
             SteamFuelGaugeView gauge = FindInScene<SteamFuelGaugeView>(scene);
             ClockTowerPanelView panel = FindInScene<ClockTowerPanelView>(scene);
-            if (controller == null || gauge == null || panel == null)
+            HandCrankPanelView crank = FindInScene<HandCrankPanelView>(scene);
+            if (controller == null || gauge == null || panel == null || crank == null)
             {
-                Note("WARNING: could not find the controller or both readouts in the scene");
+                Note("WARNING: could not find the controller or all three readouts in the scene");
                 return;
             }
+
+            var readouts = new List<GameObject>
+            {
+                gauge.gameObject, panel.gameObject, crank.gameObject,
+            };
 
             var so = new SerializedObject(controller);
             SerializedProperty list = so.FindProperty("hideWhileOpen");
@@ -965,16 +1044,13 @@ namespace GolemFactory.Editor
             for (int i = 0; i < list.arraySize; i++)
             {
                 UnityEngine.Object existing = list.GetArrayElementAtIndex(i).objectReferenceValue;
-                if (existing != null &&
-                    existing != gauge.gameObject &&
-                    existing != panel.gameObject)
+                if (existing != null && !readouts.Contains(existing as GameObject))
                 {
                     kept.Add(existing);
                 }
             }
 
-            kept.Add(gauge.gameObject);
-            kept.Add(panel.gameObject);
+            kept.AddRange(readouts);
 
             list.arraySize = kept.Count;
             for (int i = 0; i < kept.Count; i++)

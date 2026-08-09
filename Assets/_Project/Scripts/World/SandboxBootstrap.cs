@@ -122,6 +122,7 @@ namespace GolemFactory.World
         // authored, which is exactly what the Configure(...) idiom exists for.
         [SerializeField] private GolemFactory.UI.SteamFuelGaugeView steamFuelGaugeView;
         [SerializeField] private GolemFactory.UI.ClockTowerPanelView clockTowerPanelView;
+        [SerializeField] private GolemFactory.UI.HandCrankPanelView handCrankPanelView;
 
         private void Start()
         {
@@ -212,6 +213,17 @@ namespace GolemFactory.World
             if (panel != null && clockTowerSiteHolder != null)
             {
                 panel.Configure(clockTowerSiteHolder);
+            }
+
+            GolemFactory.UI.HandCrankPanelView crank = handCrankPanelView != null
+                ? handCrankPanelView
+                : FindAnyObjectByType<GolemFactory.UI.HandCrankPanelView>(FindObjectsInactive.Include);
+            if (crank != null && playerInteractor != null)
+            {
+                Economy.StorageBufferRegistryHolder buffers = bufferRegistryHolder != null
+                    ? bufferRegistryHolder
+                    : FindAnyObjectByType<Economy.StorageBufferRegistryHolder>(FindObjectsInactive.Include);
+                crank.Configure(playerInteractor, buffers, stockpileBufferId);
             }
         }
 

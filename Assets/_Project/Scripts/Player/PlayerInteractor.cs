@@ -405,9 +405,17 @@ namespace GolemFactory.Player
         /// stops it rather than leaving it running unattended across the factory.
         /// </para>
         /// </summary>
+        /// <summary>
+        /// The bench the player is standing at, or null. Exposed so the HUD readout can render
+        /// exactly the bench the crank would turn, rather than searching for one itself and
+        /// possibly disagreeing with this method about which is nearest.
+        /// </summary>
+        public HandCrankBench NearestBench { get; private set; }
+
         private void DriveHandCrank()
         {
             HandCrankBench nearest = SelectNearestBench(_interactRange);
+            NearestBench = nearest;
             bool held = _interactAction != null && _interactAction.IsPressed();
 
             for (int i = 0; i < _benches.Length; i++)

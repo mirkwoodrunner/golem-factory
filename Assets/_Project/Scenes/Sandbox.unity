@@ -3658,6 +3658,7 @@ MonoBehaviour:
   clockTowerSiteHolder: {fileID: 2110503008}
   steamFuelGaugeView: {fileID: 1555994602}
   clockTowerPanelView: {fileID: 1555994600}
+  handCrankPanelView: {fileID: 1503767190}
 --- !u!4 &350276946
 Transform:
   m_ObjectHideFlags: 0
@@ -13025,6 +13026,22 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &1503767189 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 2937656487605666739, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+  m_PrefabInstance: {fileID: 1555994596}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1503767190 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6486197611172712340, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+  m_PrefabInstance: {fileID: 1555994596}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1503767189}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0429cdecf56e87a449f7294f8f6d5184, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.HandCrankPanelView
 --- !u!1 &1516250653
 GameObject:
   m_ObjectHideFlags: 0
@@ -13920,7 +13937,7 @@ PrefabInstance:
       objectReference: {fileID: 2049142407}
     - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: hideWhileOpen.Array.size
-      value: 3
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: 'hideWhileOpen.Array.data[0]'
@@ -13934,6 +13951,10 @@ PrefabInstance:
       propertyPath: 'hideWhileOpen.Array.data[2]'
       value: 
       objectReference: {fileID: 1555994599}
+    - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: 'hideWhileOpen.Array.data[3]'
+      value: 
+      objectReference: {fileID: 1503767189}
     - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: availableAppendages.Array.size
       value: 23
