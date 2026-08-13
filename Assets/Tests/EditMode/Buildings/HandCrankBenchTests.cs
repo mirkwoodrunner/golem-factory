@@ -178,6 +178,129 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(0, stock.GetQuantity("IronPlate"));
         }
 
+        // --- The wait cannot be pre-paid ------------------------------------------------
+        // Found in playtest: progress used to accrue whether or not the inputs were on hand, so
+        // you could crank an empty bench to 97 %, fetch one Coal, and convert it to Coke almost
+        // instantly -- then repeat. That inverts §11's 25 % speed, whose whole point is that
+        // hand-made goods cost real time PER UNIT, and it made "stand at a bench you cannot use"
+        // the fastest way to play.
+
+        [Test]
+        public void CrankingWithAnEmptyHopperMakesNoProgressAtAll()
+        {
+            RecipeDefinition r1 = MakeRecipe("Coke", 1, 12, ("Coal", 1));
+            var (bench, _) = Build(r1);
+
+            bench.IsCranking = true;
+            for (int tick = 0; tick < 500; tick++)
+            {
+                bench.Tick(tick);
+            }
+
+            Assert.AreEqual(0, bench.ProgressTicks, "an empty hopper turns nothing");
+            Assert.AreEqual(0, bench.CompletedCrafts);
+        }
+
+        [Test]
+        public void ProgressCannotBeBankedBeforeOwningTheInputs()
+        {
+            // The exact reported exploit, start to finish.
+            RecipeDefinition r1 = MakeRecipe("Coke", 1, 12, ("Coal", 1));
+            var (bench, stock) = Build(r1);
+            int required = HandCrankRules.CrankTicks(12);
+
+            // Crank to "almost done" with nothing in stock.
+            bench.IsCranking = true;
+            for (int tick = 0; tick < required - 1; tick++)
+            {
+                bench.Tick(tick);
+            }
+
+            Assert.AreEqual(0, bench.ProgressTicks);
+
+            // Now fetch one Coal and try to cash in.
+            stock.Deposit("Coal", 1);
+            bench.Tick(9000);
+
+            Assert.AreEqual(0, bench.CompletedCrafts,
+                "a single tick after acquiring the input must not complete a craft");
+            Assert.AreEqual(1, bench.ProgressTicks, "the craft starts now, not where the bluff left off");
+
+            // And it still costs the full duration.
+            for (int tick = 0; tick < required - 1; tick++)
+            {
+                bench.Tick(9001 + tick);
+            }
+
+            Assert.AreEqual(1, bench.CompletedCrafts);
+            Assert.AreEqual(1, stock.GetQuantity("Coke"));
+        }
+
+        [Test]
+        public void RunningOutMidCraftFreezesProgressAndResumesWhenRestocked()
+        {
+            // Holding rather than discarding: the player did the work, and something else taking
+            // the Coal is not their mistake to be punished for.
+            RecipeDefinition r1 = MakeRecipe("Coke", 1, 12, ("Coal", 1));
+            var (bench, stock) = Build(r1);
+            int required = HandCrankRules.CrankTicks(12);
+            stock.Deposit("Coal", 1);
+
+            bench.IsCranking = true;
+            for (int tick = 0; tick < required / 2; tick++)
+            {
+                bench.Tick(tick);
+            }
+
+            int halfway = bench.ProgressTicks;
+            Assert.Greater(halfway, 0);
+
+            // A golem hauls the Coal away mid-craft.
+            stock.TryWithdraw("Coal", 1);
+            for (int tick = 0; tick < 100; tick++)
+            {
+                bench.Tick(1000 + tick);
+            }
+
+            Assert.AreEqual(halfway, bench.ProgressTicks, "progress freezes rather than draining away");
+            Assert.AreEqual(0, bench.CompletedCrafts);
+
+            stock.Deposit("Coal", 1);
+            for (int tick = 0; tick < required; tick++)
+            {
+                bench.Tick(2000 + tick);
+            }
+
+            Assert.AreEqual(1, bench.CompletedCrafts, "and resumes from where it stopped once restocked");
+        }
+
+        [Test]
+        public void AFullOutputSlotHoldsTheCraftAtFullRatherThanDiscardingIt()
+        {
+            RecipeDefinition r2 = MakeRecipe("IronPlate", 1, 24, ("Scrap", 1));
+            var (bench, stock) = Build(r2);
+            int required = HandCrankRules.CrankTicks(24);
+            stock.SetCapacityPerType(4);
+            stock.Deposit("Scrap", 4);
+            stock.Deposit("IronPlate", 4); // output slot full
+
+            bench.IsCranking = true;
+            for (int tick = 0; tick < required + 50; tick++)
+            {
+                bench.Tick(tick);
+            }
+
+            Assert.AreEqual(0, bench.CompletedCrafts);
+            Assert.AreEqual(required, bench.ProgressTicks,
+                "a blocked craft waits at 100 % and retries, like a stalled golem");
+
+            // Make room; the very next tick should settle it, with no re-cranking.
+            stock.TryWithdraw("IronPlate", 1);
+            bench.Tick(9999);
+
+            Assert.AreEqual(1, bench.CompletedCrafts);
+        }
+
         [Test]
         public void ByproductsAreBankedToo()
         {

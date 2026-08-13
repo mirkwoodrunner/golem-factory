@@ -140,26 +140,63 @@ namespace GolemFactory.Buildings
                 return;
             }
 
-            _progressTicks++;
+            // AN EMPTY HOPPER TURNS NOTHING. Without this the wait could be pre-paid: crank an
+            // empty bench to 97 %, then fetch a single Coal and convert it to Coke almost
+            // instantly, over and over. That inverts the whole point of §11's 25 % speed, which
+            // is that hand-made goods cost real time per unit -- and it is worse than a
+            // shortcut, because the fastest way to play would be to stand at a bench you cannot
+            // use, which is nonsense as a thing to do.
+            //
+            // Progress is HELD, not discarded, so walking away from a legitimate part-turned
+            // craft and coming back still works. That is a pause, not an exploit: the inputs
+            // were there the whole time and are still charged in full at completion.
+            if (!CanAffordSelected())
+            {
+                return;
+            }
+
+            // CAPPED, so "holds at 100 %" below is actually true. The increment used to be
+            // unconditional, so a craft blocked on a full output slot kept counting past
+            // RequiredTicks forever -- 146 ticks against a required 96 in the test that caught
+            // it. Nothing downstream reads ProgressTicks except the readout, which is why it
+            // survived: the bench still completed the moment room appeared, but the crank UI
+            // showed a bar filling past full for as long as the player stayed blocked.
+            if (_progressTicks < RequiredTicks)
+            {
+                _progressTicks++;
+            }
+
             if (_progressTicks < RequiredTicks)
             {
                 return;
             }
 
-            _progressTicks = 0;
-            TryCompleteCraft();
+            // Reset ONLY on success. A craft that cannot complete because the output has nowhere
+            // to go holds at 100 % and retries every tick, exactly as a blocked golem retries its
+            // step rather than throwing the cycle away.
+            if (TryCompleteCraft())
+            {
+                _progressTicks = 0;
+            }
         }
 
         /// <summary>
         /// Takes the inputs and banks the output, or does neither.
         ///
         /// <para>
-        /// CHECKED AND CHARGED AT COMPLETION, never at the start. Consuming up front would mean a
-        /// player who lets go of the key halfway -- or who is interrupted -- loses the goods with
-        /// nothing to show, and a rigid game has no step that could hand them back. Releasing the
-        /// crank costs time only. This is the same atomicity §1.3 protects for <c>Assemble</c>:
-        /// room for the output is confirmed before any input is withdrawn, so a full stockpile
-        /// slot leaves the inputs untouched rather than swallowing them.
+        /// CHARGED AT COMPLETION, never at the start. Consuming up front would mean a player who
+        /// lets go of the key halfway -- or who is interrupted -- loses the goods with nothing to
+        /// show, and a rigid game has no step that could hand them back. Releasing the crank costs
+        /// time only. This is the same atomicity §1.3 protects for <c>Assemble</c>: room for the
+        /// output is confirmed before any input is withdrawn, so a full stockpile slot leaves the
+        /// inputs untouched rather than swallowing them.
+        ///
+        /// <para>
+        /// Charged at completion is NOT the same as unchecked until completion: <see cref="Tick"/>
+        /// refuses to advance at all unless the inputs are on hand, so the time cost can never be
+        /// paid in advance of owning them. The check here is the second half of that -- it catches
+        /// the output-has-nowhere-to-go case, and stock that moved between the last tick and this
+        /// one.</para>
         /// </para>
         /// </summary>
         private bool TryCompleteCraft()
