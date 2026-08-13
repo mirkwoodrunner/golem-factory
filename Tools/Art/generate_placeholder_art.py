@@ -79,7 +79,32 @@ def _iso_cell_fraction(px, py, w):
     return dx + 2.0 * dy, 2.0 * dy - dx
 
 
+# Filenames this script no longer owns. generate_topdown_environment.py writes all of them, as
+# SQUARE top-down art; the versions in here are the 2:1 isometric diamonds they replaced.
+#
+# THIS GUARD EXISTS BECAUSE THE DOCUMENTED COMMAND WAS A LOADED GUN. CLAUDE.md tells you to
+# regenerate art with `python Tools/Art/generate_placeholder_art.py`, and running it with no
+# arguments used to silently overwrite every one of these with its isometric version -- undoing
+# the entire projection switch, with no warning from either script, in a way that would only
+# show up the next time somebody looked at the game.
+TOP_DOWN_OWNED = {
+    "floor_tile.png", "floor_tile_wood_b.png", "floor_tile_wood_c.png", "floor_tile_wood_d.png",
+    "floor_tile_accent.png", "floor_tile_grate.png", "build_ghost_tile.png",
+    "interaction_ring.png", "belt_tile.png", "ground_shadow.png",
+    "wall_segment_ne.png", "wall_segment_nw.png", "wall_segment_ne_lamp.png",
+    "wall_segment_nw_lamp.png", "floor_edge_se.png", "floor_edge_sw.png",
+    "wall_corner_post.png", "prop_crate.png", "prop_barrel.png",
+}
+
+
 def save(img: Image.Image, name: str) -> None:
+    if name in TOP_DOWN_OWNED:
+        raise RuntimeError(
+            f"{name} is owned by Tools/Art/generate_topdown_environment.py (top-down art).\n"
+            f"Writing it from this script would restore the isometric version and silently revert\n"
+            f"the projection switch. Run the top-down generator instead, or delete this name from\n"
+            f"TOP_DOWN_OWNED if the isometric set is genuinely being restored."
+        )
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, name)
     img.save(path)
