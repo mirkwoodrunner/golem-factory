@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using GolemFactory.Buildings;
 using GolemFactory.Economy;
@@ -188,12 +189,24 @@ namespace GolemFactory.Player
             }
         }
 
+        /// <summary>
+        /// Whether the cursor was over UI as of this frame's update. Sampled here rather than read
+        /// inside <see cref="OnClickPerformed"/>, because Unity hit-tests the UI once per frame
+        /// and querying it from within input-event processing answers with the PREVIOUS frame's
+        /// state -- which for a panel that just opened is exactly the wrong answer.
+        /// </summary>
+        private bool _pointerOverUi;
+
         private void Update()
         {
             if (_camera == null || Pointer.current == null)
             {
+                // No camera or pointer (tests, headless) -- leave _pointerOverUi false so
+                // PlaceOrRemove stays directly callable exactly as it always was.
                 return;
             }
+
+            _pointerOverUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
 
             Vector3 worldPos = _camera.ScreenToWorldPoint(Pointer.current.position.ReadValue());
             worldPos.z = 0f;
@@ -228,7 +241,10 @@ namespace GolemFactory.Player
             // pre-reskin cold grey floor and composited to a 1.06:1 contrast ratio against
             // each other on the warm plank floor that replaced it.
             _ghost.color = BuildGhostVisuals.Evaluate(GhostState, Time.time);
-            _ghost.gameObject.SetActive(_buildingPrefab != null);
+            // Hidden over UI as well as with nothing in hand, so the ghost and the click agree:
+            // a tile that will not be built on must not be showing a "valid placement" square
+            // under an open menu.
+            _ghost.gameObject.SetActive(BuildClickPolicy.ShouldPlace(_buildingPrefab != null, _pointerOverUi));
         }
 
         // The ghost's facing arrow, created on demand as a child of the ghost so no scene or
@@ -279,7 +295,19 @@ namespace GolemFactory.Player
             return GolemFactory.UI.ConstructionCostPolicy.CanAfford(ReadStock, _buildingPrefab.Cost);
         }
 
-        private void OnClickPerformed(InputAction.CallbackContext context) => PlaceOrRemove(_hoveredCell);
+        // A click over UI belongs to that UI, not to the world underneath it. Without this,
+        // closing the golem construction panel also tried to build a Depot on whatever tile the
+        // panel was covering -- and so did clicking a row in the build menu, so *selecting* a
+        // placeable immediately tried to place one.
+        private void OnClickPerformed(InputAction.CallbackContext context)
+        {
+            if (!BuildClickPolicy.ShouldPlace(IsPlacementActive, _pointerOverUi))
+            {
+                return;
+            }
+
+            PlaceOrRemove(_hoveredCell);
+        }
 
         public void PlaceOrRemove(Vector2Int cell)
         {
