@@ -4,22 +4,24 @@ namespace GolemFactory.World
 {
     // Turning a grid Facing into something you can point an arrow along on screen.
     //
-    // This is its own file, and its own pure static, because the grid and the screen genuinely
-    // disagree and every previous attempt to eyeball it got the diagonal wrong. FacingUtility
-    // works in *simulation* space, where the grid is a plain square top-down grid and North is
-    // (0, +1). The camera renders that isometrically, so North does not point up on screen --
-    // it points up-and-LEFT, while East points up-and-right. An arrow rotated by the naive
-    // 0/90/180/270 would contradict the belt it was drawn on.
+    // This is its own file, and its own pure static, because under the old ISOMETRIC camera the
+    // grid and the screen genuinely disagreed and every attempt to eyeball it got the diagonal
+    // wrong: North pointed up-and-LEFT on screen, East up-and-right, and a naive 0/90/180/270
+    // rotation contradicted the belt it was drawn on.
     //
-    // Derived from GridCoordinateConverter's own projection rather than hardcoded angles, so
-    // it stays correct if the scene's cell size is ever retuned.
+    // The projection is top-down now, so grid and screen agree again and North really is straight
+    // up. THIS FILE STILL EARNS ITS KEEP, and the reason is the reason it survived the switch
+    // untouched: it derives the angle from GridCoordinateConverter's own projection instead of
+    // hardcoding one. Swapping the projection changed its output and none of its code. Keep it
+    // that way rather than collapsing it into constants -- constants are what made it wrong before.
     public static class FacingVisuals
     {
         /// <summary>
-        /// The project's standard isometric cell size (see the Grid in Main/Sandbox). Used by
-        /// the convenience overloads so callers that have no converter to hand still agree.
+        /// The project's standard cell size (see the Grid in Main/Sandbox). Square since the
+        /// top-down switch; it was 1 x 0.5 for the 2:1 isometric run. Used by the convenience
+        /// overloads so callers that have no converter to hand still agree.
         /// </summary>
-        public static readonly Vector2 DefaultCellSize = new Vector2(1f, 0.5f);
+        public static readonly Vector2 DefaultCellSize = new Vector2(1f, 1f);
 
         /// <summary>
         /// Unit-length on-screen direction a golem/belt facing <paramref name="facing"/> points.

@@ -7,7 +7,8 @@ namespace GolemFactory.Tests.EditMode
 {
     public class FloorLayoutTests
     {
-        private static readonly Vector2 CellSize = new Vector2(1f, 0.5f);
+        // Square since the top-down switch; was 1 x 0.5 for the 2:1 isometric run.
+        private static readonly Vector2 CellSize = new Vector2(1f, 1f);
 
         [Test]
         public void GetFloorCells_DefaultHalfExtent_ReturnsExpectedCount()
@@ -83,14 +84,19 @@ namespace GolemFactory.Tests.EditMode
         {
             var converter = new GridCoordinateConverter(CellSize);
 
+            // Top-down: consecutive segments are one WHOLE cell apart along a single axis. The
+            // isometric run this used to assert (0.5 x 0.25, the 2:1 diagonal) is exactly what
+            // the projection switch removed -- an edge now runs straight down a world axis.
             foreach (FloorLayout.Edge edge in System.Enum.GetValues(typeof(FloorLayout.Edge)))
             {
                 Vector3 a = converter.CellFractionToWorld(FloorLayout.GetEdgeAnchor(edge, 0, 5));
                 Vector3 b = converter.CellFractionToWorld(FloorLayout.GetEdgeAnchor(edge, 1, 5));
                 Vector3 step = b - a;
 
-                Assert.AreEqual(0.5f, Mathf.Abs(step.x), 0.0001f, "edge " + edge);
-                Assert.AreEqual(0.25f, Mathf.Abs(step.y), 0.0001f, "edge " + edge);
+                Assert.AreEqual(1f, step.magnitude, 0.0001f, "edge " + edge + " must step one cell");
+                Assert.IsTrue(
+                    Mathf.Approximately(step.x, 0f) || Mathf.Approximately(step.y, 0f),
+                    "edge " + edge + " must run along a world axis, not a diagonal");
             }
         }
 
@@ -103,29 +109,48 @@ namespace GolemFactory.Tests.EditMode
             var converter = new GridCoordinateConverter(CellSize);
             const int halfExtent = 5;
 
+            // Y-sorting is what makes a wall read as behind or in front, so the edges that matter
+            // here are the ones that differ in Y. Under top-down those are the +Y and -Y edges --
+            // NorthWest and SouthWest under the enum's inherited isometric names (see the note on
+            // FloorLayout.Edge). The +X/-X edges share a Y with the row they border by
+            // construction, so asserting a sort order on them would be asserting nothing.
             for (int i = -halfExtent; i <= halfExtent; i++)
             {
-                float occupantY = converter.CellToWorldCenter(new Vector2Int(halfExtent, i)).y;
+                float occupantY = converter.CellToWorldCenter(new Vector2Int(i, halfExtent)).y;
                 float wallY = converter.CellFractionToWorld(
-                    FloorLayout.GetEdgeAnchor(FloorLayout.Edge.NorthEast, i, halfExtent)).y;
-                Assert.Greater(wallY, occupantY, "NE wall must be further back than the cell it borders");
+                    FloorLayout.GetEdgeAnchor(FloorLayout.Edge.NorthWest, i, halfExtent)).y;
+                Assert.Greater(wallY, occupantY, "north wall must be further back than the cell it borders");
 
-                float frontOccupantY = converter.CellToWorldCenter(new Vector2Int(-halfExtent, i)).y;
+                float frontOccupantY = converter.CellToWorldCenter(new Vector2Int(i, -halfExtent)).y;
                 float skirtY = converter.CellFractionToWorld(
-                    FloorLayout.GetEdgeAnchor(FloorLayout.Edge.SouthEast, i, halfExtent)).y;
-                Assert.Less(skirtY, frontOccupantY, "SE skirt must be nearer than the cell it borders");
+                    FloorLayout.GetEdgeAnchor(FloorLayout.Edge.SouthWest, i, halfExtent)).y;
+                Assert.Less(skirtY, frontOccupantY, "south skirt must be nearer than the cell it borders");
             }
         }
 
+        // Only where two runs meet, which under top-down is the two NORTH corners. The south
+        // corners are explicitly excluded: the post sprite is a front-on elevation whose body
+        // rises in +Y, so anchoring one at a south corner stands it inside the room, on top of
+        // the floor, sorted in front of everything (see the note on GetWallPostAnchors).
         [Test]
-        public void GetWallPostAnchors_CapsBothWallRunsAndTheirSharedCorner()
+        public void GetWallPostAnchors_CapsOnlyTheCornersWhereTwoRunsMeet()
         {
             var anchors = FloorLayout.GetWallPostAnchors(5).ToList();
 
-            Assert.AreEqual(3, anchors.Count);
+            Assert.AreEqual(2, anchors.Count);
             CollectionAssert.Contains(anchors, new Vector2(5.5f, 5.5f));
-            CollectionAssert.Contains(anchors, new Vector2(5.5f, -5.5f));
             CollectionAssert.Contains(anchors, new Vector2(-5.5f, 5.5f));
+        }
+
+        // The regression that test exists for: a post must never be anchored south of the floor,
+        // because its body would rise into the room instead of away from it.
+        [Test]
+        public void GetWallPostAnchors_NeverAnchorsAPostSouthOfTheFloor()
+        {
+            foreach (Vector2 anchor in FloorLayout.GetWallPostAnchors(5))
+            {
+                Assert.Greater(anchor.y, 0f, "a post rising in +Y must be anchored on a north corner");
+            }
         }
 
         // Each wall run must terminate exactly where its post sits, otherwise the run either

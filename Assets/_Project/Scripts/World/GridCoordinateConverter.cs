@@ -2,9 +2,15 @@ using UnityEngine;
 
 namespace GolemFactory.World
 {
-    // Isometric world<->cell math, decoupled from Unity's Tilemap component so it stays
-    // EditMode-testable without a scene. Must match the cell size configured on the scene's
-    // Grid/Tilemap (see the M1 manual setup steps in docs/unity-implementation-plan.md).
+    // World<->cell math, decoupled from Unity's Tilemap component so it stays EditMode-testable
+    // without a scene. Must match the cell size configured on the scene's Grid/Tilemap (see the
+    // M1 manual setup steps in docs/unity-implementation-plan.md).
+    //
+    // TOP-DOWN (RECTANGULAR). This is the whole projection: the two Fraction methods below are
+    // the only place the game decides how a cell maps to a screen position, which is why moving
+    // off isometric costs six lines here and nothing at the 20+ call sites. That was by design --
+    // GridMap has always been a plain rectangular grid and isometric was presentation only.
+    // Pair this with m_CellLayout: 0 (Rectangle) and a square m_CellSize on the scene's Grid.
     public readonly struct GridCoordinateConverter
     {
         public Vector2 CellSize { get; }
@@ -29,21 +35,12 @@ namespace GolemFactory.World
         // FloorLayout.ClampToFloor) where snapping to a cell would make movement jerky.
         public Vector2 WorldToCellFraction(Vector3 worldPosition)
         {
-            float halfWidth = CellSize.x * 0.5f;
-            float halfHeight = CellSize.y * 0.5f;
-            float a = worldPosition.x / halfWidth;
-            float b = worldPosition.y / halfHeight;
-
-            return new Vector2((a + b) * 0.5f, (b - a) * 0.5f);
+            return new Vector2(worldPosition.x / CellSize.x, worldPosition.y / CellSize.y);
         }
 
         public Vector3 CellFractionToWorld(Vector2 cellFraction)
         {
-            float halfWidth = CellSize.x * 0.5f;
-            float halfHeight = CellSize.y * 0.5f;
-            float x = (cellFraction.x - cellFraction.y) * halfWidth;
-            float y = (cellFraction.x + cellFraction.y) * halfHeight;
-            return new Vector3(x, y, 0f);
+            return new Vector3(cellFraction.x * CellSize.x, cellFraction.y * CellSize.y, 0f);
         }
     }
 }
