@@ -63,6 +63,52 @@ namespace GolemFactory.Tests.EditMode
             Assert.Less(accents / (float)total, 0.12f, "accent tiles must stay sparse");
         }
 
+        // The regression that matters most for a game that just left isometric. The previous
+        // implementation picked accents with a linear congruence, and a linear congruence over
+        // the integer plane is always a perfect 2-D lattice -- so every plate sat at a constant
+        // (-4,-3) from its nearest neighbour and the landmarks marched in diagonal chains across
+        // a floor whose geometry is square. Assert the offsets are actually varied.
+        [Test]
+        public void Select_AccentsDoNotFallOnALattice()
+        {
+            var accents = new List<Vector2Int>();
+            foreach (Vector2Int cell in FloorLayout.GetFloorCells())
+            {
+                if (FloorTileVariant.IsAccent(FloorTileVariant.Select(cell.x, cell.y)))
+                {
+                    accents.Add(cell);
+                }
+            }
+
+            Assert.Greater(accents.Count, 3, "need a few accents before the shape means anything");
+
+            var offsets = new HashSet<Vector2Int>();
+            foreach (Vector2Int a in accents)
+            {
+                Vector2Int nearest = Vector2Int.zero;
+                int best = int.MaxValue;
+                foreach (Vector2Int b in accents)
+                {
+                    if (a == b)
+                    {
+                        continue;
+                    }
+                    Vector2Int d = b - a;
+                    int distance = d.x * d.x + d.y * d.y;
+                    if (distance < best)
+                    {
+                        best = distance;
+                        nearest = d;
+                    }
+                }
+                offsets.Add(nearest);
+            }
+
+            // On a lattice this collapses to one or two vectors. Anything scattered spreads out.
+            Assert.Greater(offsets.Count, accents.Count / 2,
+                "nearest-neighbour offsets repeat -- the accents are on a lattice");
+        }
+
         [Test]
         public void Select_DoesNotProduceLongRunsOfTheSameVariant()
         {

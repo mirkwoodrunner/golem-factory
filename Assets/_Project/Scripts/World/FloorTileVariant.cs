@@ -18,23 +18,37 @@ namespace GolemFactory.World
         public const int GrateIndex = PlankVariantCount + 1;
         public const int TileCount = PlankVariantCount + 2;
 
-        // Coprime-ish moduli, so the two accent lattices interleave rather than landing on top
-        // of each other in a repeating clump. Grate is tested first, so where the lattices do
-        // coincide the rarer tile wins.
-        private const int GrateModulus = 43;
-        private const int PlateModulus = 29;
+        // ACCENTS ARE DRAWN FROM THE HASH, NOT FROM A CONGRUENCE.
+        //
+        // This used to test `x + 3y = 0 (mod 43)` and `5x + 3y = 0 (mod 29)`, with a comment
+        // claiming that coprime-ish moduli made the two lattices interleave rather than clump.
+        // That reasoning was about the wrong thing. A linear congruence over the integer plane
+        // always defines a perfect 2-D lattice; coprimality changes WHICH lattice, never WHETHER
+        // it is one. Measured over the real 25x25 room, every plate sat at a constant offset of
+        // (-4,-3) from its nearest neighbour and every grate at (3,-1) -- so the accents marched
+        // in clean diagonal chains across the floor.
+        //
+        // That is the one place isometric came back. The geometry is square now, but landmarks
+        // stepping diagonally is exactly the tell the projection switch set out to remove.
+        //
+        // Thresholding the hash has no lattice by construction. Different bit-slices of the same
+        // hash are used for the two draws so they are independent of each other and of the plank
+        // choice, which reads the low bits.
+        private const int GrateRarity = 300;
+        private const int PlateRarity = 180;
 
         public static int Select(int cellX, int cellY)
         {
-            if (Mod(cellX + cellY * 3, GrateModulus) == 0)
+            int h = Hash(cellX, cellY);
+            if (Mod(h >> 8, GrateRarity) == 0)
             {
                 return GrateIndex;
             }
-            if (Mod(cellX * 5 + cellY * 3, PlateModulus) == 0)
+            if (Mod(h >> 16, PlateRarity) == 0)
             {
                 return PlateIndex;
             }
-            return Mod(Hash(cellX, cellY), PlankVariantCount);
+            return Mod(h, PlankVariantCount);
         }
 
         public static bool IsAccent(int tileIndex)
