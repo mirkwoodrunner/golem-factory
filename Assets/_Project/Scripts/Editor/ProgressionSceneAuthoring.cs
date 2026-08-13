@@ -73,10 +73,21 @@ namespace GolemFactory.Editor
         // first frame. An authored tint is correct on disk, correct in the Editor, and gone the
         // moment you press Play. Node identity therefore has to be SPRITE, which is why
         // item_coal / item_copper_ore / item_zinc_ore now exist in the art generator.
-        private static readonly Color BoilerTint = new Color(0.82f, 0.40f, 0.26f, 1f);
+        // Boiler is WHITE for the same reason the Clock Tower is: it has its own sprite now
+        // (steam_boiler.png). SteamPipe is the last building BuildPlaceable still puts on the
+        // shared box, so this is the one tint here left doing real work -- but it is not the
+        // last building_block user in the project: DepotPrefab and GolemConstructionStationPrefab
+        // wear it too. Those two come through ApplyCost, which only restores a cost and never
+        // touches the SpriteRenderer, so giving them real art means routing them through
+        // BuildPlaceable (or setting the sprite where they are actually built), not editing here.
+        private static readonly Color BoilerTint = Color.white;
         private static readonly Color SteamPipeTint = new Color(0.60f, 0.67f, 0.72f, 1f);
-        private static readonly Color ClockTowerTint = new Color(0.88f, 0.74f, 0.36f, 1f);
-        private static readonly Color HandCrankBenchTint = new Color(0.56f, 0.42f, 0.30f, 1f);
+        // WHITE, and that is the point: the Clock Tower is the first building off the shared
+        // building_block box and onto its own sprite (clock_tower.png). A tint exists to tell
+        // identical boxes apart; once a building has real art the tint is the thing that would
+        // wreck it, so retiring the colour is part of retiring the box.
+        private static readonly Color ClockTowerTint = Color.white;
+        private static readonly Color HandCrankBenchTint = Color.white;
 
         // Near-opaque, not the 0.78 the first pass used. These strips sit over the dark wall at
         // the top of the frame, and a translucent near-black plate under dim idle-grey text was
@@ -187,7 +198,8 @@ namespace GolemFactory.Editor
                     // ("Boiler(3,-2)") at placement, so two placed boilers cannot share a name.
                     so.FindProperty("boilerId").stringValue = "";
                     so.ApplyModifiedPropertiesWithoutUndo();
-                });
+                },
+                "steam_boiler.png");
 
             // §3.1: a Steam Pipe is 1 Iron Plate.
             BuildPlaceable(
@@ -207,7 +219,8 @@ namespace GolemFactory.Editor
                     // see the long note on PlaceableClockTower.stages. Wired here so that
                     // placing the tower is what starts the megaproject.
                     WriteStageList(new SerializedObject(tower), "stages");
-                });
+                },
+                "clock_tower.png");
 
             // §11 item 7's "placed building", and §9 Phase 1's "the player begins alone in a cold
             // workshop with a Hand-Crank Bench" -- so it is both placeable and present at spawn.
@@ -227,7 +240,8 @@ namespace GolemFactory.Editor
                     // future recipe becomes crankable (or not) by its own shape rather than by
                     // somebody remembering to update a second list here.
                     WriteRecipeCandidates(new SerializedObject(bench));
-                });
+                },
+                "hand_crank_bench.png");
 
             RestoreOrphanedCosts();
         }
@@ -311,7 +325,8 @@ namespace GolemFactory.Editor
         // component carrying the actual behaviour. Built from that shape rather than by
         // duplicating DepotPrefab so the cost and the sibling are explicit at the call site.
         private static void BuildPlaceable(
-            string path, string name, Color tint, RecipeIngredient[] cost, Action<GameObject> addBehaviour)
+            string path, string name, Color tint, RecipeIngredient[] cost, Action<GameObject> addBehaviour,
+            string spriteFile = "building_block.png")
         {
             GameObject root = AssetDatabase.LoadAssetAtPath<GameObject>(path) != null
                 ? PrefabUtility.LoadPrefabContents(path)
@@ -322,7 +337,7 @@ namespace GolemFactory.Editor
                 root.name = name;
 
                 SpriteRenderer renderer = Ensure<SpriteRenderer>(root);
-                renderer.sprite = LoadSprite("building_block.png");
+                renderer.sprite = LoadSprite(spriteFile);
                 renderer.color = tint;
 
                 Ensure<YSortSpriteRenderer>(root);
