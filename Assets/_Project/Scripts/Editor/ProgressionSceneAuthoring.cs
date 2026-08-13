@@ -895,17 +895,21 @@ namespace GolemFactory.Editor
         // nodes so a golem can reach them BY ID, but nothing in the world let the player walk up
         // to one -- and a spatially placed golem finds a node by what is on the tile, so an
         // unmarked node is unreachable to the machine model too.
-        //
-        // Placed at 5 world units from the origin on the same ring as the existing three, which
-        // is the spacing ScrapNode and CoalNode already sit at.
         private static void AddNodeMarkers(Scene scene)
         {
             ResourceNodeRegistryHolder registry = FindInScene<ResourceNodeRegistryHolder>(scene);
 
             EnsureNodeMarker(scene, registry, "CopperOreNodeMarker", "CopperOreNode",
-                new Vector3(5f, 2.5f, 0f), "item_copper_ore.png");
+                StartingLayout["CopperOreNodeMarker"], "item_copper_ore.png");
             EnsureNodeMarker(scene, registry, "ZincOreNodeMarker", "ZincOreNode",
-                new Vector3(-5f, 2.5f, 0f), "item_zinc_ore.png");
+                StartingLayout["ZincOreNodeMarker"], "item_zinc_ore.png");
+
+            // The three older markers pre-date this script and it only ever repointed their
+            // sprites, so their positions were whatever the scene happened to hold -- which is
+            // how three of the five ended up on half-cells. The table owns all five now.
+            PlaceOnCell(scene, "ScrapNodeMarker", StartingLayout["ScrapNodeMarker"]);
+            PlaceOnCell(scene, "CoalNodeMarker", StartingLayout["CoalNodeMarker"]);
+            PlaceOnCell(scene, "AetherNodeMarker", StartingLayout["AetherNodeMarker"]);
 
             // The coal marker still wears the brass INGOT it inherited when §1.5 repointed the
             // deleted BrassNodeMarker at CoalNode, which made a coal seam and an aether node
@@ -952,9 +956,9 @@ namespace GolemFactory.Editor
         /// </para>
         ///
         /// <para>
-        /// Placed two tiles south-west of the player's spawn, clear of the three markers on the
-        /// ±5/±2.5 ring and of the construction station, so the opening reads as a workshop
-        /// corner rather than a pile.
+        /// Position comes from <see cref="StartingLayout"/>, in cells, along with the rest of
+        /// the opening -- see the long note there for why a world-space literal could not
+        /// survive the projection change.
         /// </para>
         /// </summary>
         private static void PlaceStartingBench(Scene scene)
@@ -967,13 +971,76 @@ namespace GolemFactory.Editor
                 bench.name = "StarterHandCrankBench";
             }
 
-            bench.transform.position = new Vector3(-2.5f, 1.25f, 0f);
-            Note("StarterHandCrankBench at " + bench.transform.position);
+            bench.transform.position = CellToWorld(scene, StartingLayout["StarterHandCrankBench"]);
+            Note("StarterHandCrankBench on cell " + StartingLayout["StarterHandCrankBench"]
+                 + " -> " + bench.transform.position);
+
+            // The station has always been a plain scene object this script never touched, so it
+            // kept its isometric literal too. Moved here because it is part of the same opening
+            // and belongs in the same table.
+            PlaceOnCell(scene, "StarterConstructionStation", StartingLayout["StarterConstructionStation"]);
+        }
+
+        // WHERE THE OPENING STANDS, IN CELLS -- the only representation that survives a
+        // projection change.
+        //
+        // These seven were authored as literal world-space Vector3s under the isometric camera:
+        // (2.5, -1.25), (0, 2.5), (-5, 2.5) and so on. That transform was
+        // world = ((cx - cy) * 0.5, (cx + cy) * 0.25), and inverting it turns every one of those
+        // literals back into an exact integer cell -- which is the evidence that they were
+        // designed as cells and flattened on the way to disk, not chosen as world coordinates.
+        //
+        // Top-down reads the same literals as world = (cx, cy), so all seven landed on HALF
+        // cells (RoundToInt then decides which tile a golem thinks they are on) and the layout
+        // collapsed from a spread across a 25x25 floor into roughly a 10x4 band. The cells below
+        // are the recovered originals, unchanged: this restores the authored layout in the new
+        // projection rather than proposing a new one.
+        //
+        // THE LAYOUT ITSELF IS A HUMAN DECISION AND HAS NOT BEEN MADE. The recovered spread was
+        // designed for a diamond, and on a square floor it is lopsided -- everything sits north
+        // and east of the player, and the west half of the room is empty. Three concrete
+        // proposals are written up in docs/open-items.md for someone to pick from; changing this
+        // table is how you apply one.
+        private static readonly Dictionary<string, Vector2Int> StartingLayout =
+            new Dictionary<string, Vector2Int>
+            {
+                { "ScrapNodeMarker", new Vector2Int(0, -5) },
+                { "CoalNodeMarker", new Vector2Int(-5, 0) },
+                { "AetherNodeMarker", new Vector2Int(5, 5) },
+                { "CopperOreNodeMarker", new Vector2Int(10, 0) },
+                { "ZincOreNodeMarker", new Vector2Int(0, 10) },
+                { "StarterHandCrankBench", new Vector2Int(0, 5) },
+                { "StarterConstructionStation", new Vector2Int(6, 0) },
+            };
+
+        // Reads the cell size off the scene's own Grid rather than assuming one, so this stays
+        // right if the Grid is ever retuned -- the same reason FacingVisuals derives its angle
+        // instead of hardcoding it. Falls back to a square unit cell if the scene has no Grid,
+        // which would mean a much louder failure elsewhere anyway.
+        private static Vector3 CellToWorld(Scene scene, Vector2Int cell)
+        {
+            Grid grid = FindInScene<Grid>(scene);
+            Vector2 cellSize = grid != null ? (Vector2)grid.cellSize : Vector2.one;
+            return new GridCoordinateConverter(cellSize).CellToWorldCenter(cell);
+        }
+
+        // For objects this script does not otherwise author: it only moves them onto their cell.
+        private static void PlaceOnCell(Scene scene, string rootName, Vector2Int cell)
+        {
+            GameObject go = FindRoot(scene, rootName);
+            if (go == null)
+            {
+                Debug.LogWarning("ProgressionSceneAuthoring: no '" + rootName + "' in the scene to place.");
+                return;
+            }
+
+            go.transform.position = CellToWorld(scene, cell);
+            Note(rootName + " placed on cell " + cell + " -> " + go.transform.position);
         }
 
         private static void EnsureNodeMarker(
             Scene scene, ResourceNodeRegistryHolder registry, string name, string nodeId,
-            Vector3 position, string spriteFile)
+            Vector2Int cell, string spriteFile)
         {
             GameObject go = FindRoot(scene, name);
             if (go == null)
@@ -982,6 +1049,7 @@ namespace GolemFactory.Editor
                 SceneManager.MoveGameObjectToScene(go, scene);
             }
 
+            Vector3 position = CellToWorld(scene, cell);
             go.transform.position = position;
 
             SpriteRenderer renderer = Ensure<SpriteRenderer>(go);
@@ -1001,7 +1069,8 @@ namespace GolemFactory.Editor
             so.FindProperty("nodeId").stringValue = nodeId;
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            Note(name + " at " + position + " -> " + nodeId + " (" + spriteFile + ")");
+            Note(name + " on cell " + cell + " (" + position + ") -> " + nodeId
+                 + " (" + spriteFile + ")");
         }
 
         // The scene's ManagerHolders is a prefab instance, so the Steam/ClockTower/NodeExtractor

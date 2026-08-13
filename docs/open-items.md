@@ -360,6 +360,54 @@ steam adjacency still fits.
   you. The design's mitigation is player-set `Haul` batch quantities (throughput traded against
   buffer pressure). Worth confirming that is enough to justify keeping the Workbench as the
   signature screen.
+- **Where the opening stands — the Sandbox map layout.** The seven objects that make up the
+  opening (five node markers, the Hand-Crank Bench, the construction station) were authored as
+  **isometric-space world literals** — `(2.5, -1.25)`, `(0, 2.5)`, `(-5, 2.5)`. Under top-down
+  those read as world `(cx, cy)`, so all seven landed on **half-cells** and the spread collapsed
+  into roughly a 10×4 band on a 25×25 floor.
+
+  **The mechanical half of this is fixed.** Inverting the old transform
+  (`world = ((cx − cy)·0.5, (cx + cy)·0.25)`) turns every one of those literals back into an
+  *exact integer cell* — which is the evidence that they were designed as cells and flattened on
+  the way to disk. Those recovered cells are now the `StartingLayout` table at the top of
+  `Scripts/Editor/ProgressionSceneAuthoring.cs`, and all seven sit on definite tiles again,
+  verified by reading `Sandbox.unity` back. **Nothing was redesigned.**
+
+  **The design half is yours.** The recovered spread was drawn for a diamond and is lopsided on a
+  square floor: everything is north and east of spawn, the whole west and south-west is empty,
+  and walk distances from spawn run 5 to 10 cells. Three proposals, each a drop-in replacement
+  for that table. Constraints they all respect: the floor is cells −12…+12, props hug the
+  outermost ring so nodes stay within ±9, the **south** edge is the open camera-facing one, and
+  §3.2's 2-extractor cap means every node wants at least two free orthogonal neighbours.
+
+  | | **A — Even ring** | **B — North bank** | **C — Quadrants** |
+  |---|---|---|---|
+  | Scrap | `(0, -8)` | `(-3, 9)` | `(-7, -7)` |
+  | Coal | `(-8, -3)` | `(-8, 9)` | `(7, -7)` |
+  | Aether | `(6, 6)` | `(0, -9)` | `(0, 9)` |
+  | Copper | `(8, -3)` | `(3, 9)` | `(-7, 7)` |
+  | Zinc | `(-6, 6)` | `(8, 9)` | `(7, 7)` |
+  | Bench | `(0, 3)` | `(0, 4)` | `(0, 3)` |
+  | Station | `(3, -1)` | `(3, 3)` | `(3, -1)` |
+
+  - **A — Even ring.** Five nodes on a radius-8 ring, roughly evenly spaced, all four quadrants
+    used, the 10×10 core left clear for the factory. Every node is 8–9 cells from spawn, so no
+    resource is the obvious first one by walking distance alone. *Cost:* the most neutral and the
+    least characterful — the room reads as a test chamber.
+  - **B — North bank.** Four bulk nodes in a row along the north wall, Aether alone at the far
+    south. Belts then run north→south, *toward* the open camera edge, and the player works in the
+    south half where the view is clearest. Matches the isometric-era habit of putting the wall at
+    your back. *Cost:* four nodes in one line is monotonous, and it makes the north wall's sconce
+    lighting the backdrop for every early screenshot.
+  - **C — Quadrants.** One node per corner plus Aether due north. The strongest read — each
+    resource has a *place*, which is what makes a factory memorable — and the diagonal runs are
+    long enough that belts and steam pipes are a real investment. *Cost:* the longest early-game
+    walking of the three, which lands directly on §9's 12–15 minute manual era, and the corners
+    are where the wall posts and prop clutter already are.
+
+  Recommendation if nobody wants to think about it: **C**, then playtest the walk. It is the only
+  one of the three that makes the map's shape mean anything, and §12 already flags every §9 timing
+  as ±25 %, so the walking cost is inside the noise the design expects to retune anyway.
 - **The Overclocker's identity.** Its flat-speed adjacency aura was cut in review — a non-local,
   adaptive effect contradicts the game's rigid local determinism. The design replaces it with a
   `Repeat(n)` appendage competing for the same slot as a third ingredient. Unbuilt, and it is the one
@@ -561,26 +609,38 @@ on is a separate call, and wants a playtest of the fuel ratio first.
   fix derives from actual head throughput.
 - **Belt jam signalling is off on placed belts** — a one-cell lane has no room for scrolling arrows,
   so a backed-up player belt looks like a flowing one apart from cargo sitting still.
-- **Sprite pivots are inconsistent project-wide — four separate conventions, no rule.** Chassis
-  sprites pivot centre, so golems render sunk about half a sprite-height into the floor;
-  `GroundShadow` compensates for the shadow only. Fixing it shifts every hand-placed golem in
-  `Main.unity`. But "inconsistent" undersells it: the environment art did not inherit the chassis
-  bug, it solved the same problem a *different* way, and an audit of every `.meta` in
-  `Assets/_Project/Art/` finds four regimes coexisting:
+- ~~**Chassis sprites pivot centre, so golems render sunk into the floor.**~~ **FIXED.** All five
+  chassis and the three `golem_generic` bodies are BottomCenter now
+  (`Scripts/Editor/CharacterArtAuthoring.cs`, re-runnable), so a golem stands on the cell it
+  occupies instead of three quarters of a tile south of it. `Main.unity`'s seven hand-placed
+  golems each dropped 0.75 to keep their apparent positions, and `GolemStallIndicator.worldOffset`
+  went 1.0 → 1.75 because it measures from the transform, which now means the golem's feet.
+  `GroundShadow` needed nothing: it reads `sprite.pivot.y` rather than assuming a convention.
+
+  **Still open, and now measurable: the chassis art is not trimmed to its alpha bounds.** The
+  pivot is the canvas bottom, and five of the eight sprites carry transparent rows beneath the
+  feet — Aether-Hauler 10 px, Brass Presser 6, the three generics 4, Zeppelin 3, at PPU 64. So
+  they float between **0.047 and 0.156 of a cell** above the floor. That is an art job (the same
+  alpha-trim the three buildings got) and belongs to the generator, not the importer.
+
+- **Sprite pivots are still inconsistent project-wide — three conventions and one trap.** The
+  characters agree with the buildings now, but the environment art solved the same problem a
+  *different* way, and an audit of every `.meta` in `Assets/_Project/Art/` finds:
 
   | Convention | Assets |
   |---|---|
-  | **Center** (`alignment: 0`) | 5 chassis, 3 `golem_generic`, all 6 items, floor tiles, belts, overlays, `building_block` |
-  | **Custom** (`alignment: 9`), hand-tuned per asset | walls `y≈0.06–0.08`, corner post `0.0625`, props `y≈0.2–0.23`, floor edges `y=0.8/0.85` |
-  | **BottomCenter** (`alignment: 7`, `y=0`) | `clock_tower`, `steam_boiler`, `hand_crank_bench` |
+  | **BottomCenter** (`alignment: 7`, `y=0`) | 5 chassis, 3 `golem_generic`, `clock_tower`, `steam_boiler`, `hand_crank_bench` |
+  | **Custom** (`alignment: 9`), pivoted on the contact line | head-on walls `y=3/96`, side walls `x=3/40` and `37/40`, corner post `1/96`, props `1/56`, floor edges `y=1` |
+  | **Center** (`alignment: 0`) | all 6 items, floor tiles, belts, overlays, `building_block` |
   | **Stale/contradictory** | `player`: `alignment: 7` but `spritePivot {0.5, 0.5}` |
 
-  Two things follow. **`player` is a trap for anyone auditing by eye**: Unity honours *alignment*,
-  not the stored `spritePivot`, so it behaves as BottomCenter while its recorded pivot says
-  centre — read `alignment`, not `spritePivot`. And **BottomCenter with `y=0` is the convention
-  for new world art** (it is why the Clock Tower does not sink the way the golems do), but it
-  currently exists *only* inside those three `.meta` files. It is written down here because a
-  convention that lives only in the assets obeying it is one the next asset will break.
+  This is no longer four *rules* — it is two rules plus a trap. **BottomCenter is the convention
+  for anything that stands on the floor**; **Custom-on-the-contact-line is the convention for
+  pieces of the room**, which need a horizontal contact line (the side walls' is vertical) or an
+  offset for the shadow the art draws under itself; **Center is correct for what is centred on a
+  cell rather than standing on one** (items, tiles, cursor overlays). And **`player` is a trap for
+  anyone auditing by eye**: Unity honours *alignment*, not the stored `spritePivot`, so it behaves
+  as BottomCenter while its record says centre — read `alignment`, not `spritePivot`.
 - **`Main.unity` is a diorama, not the game** — seven pre-wired golems demonstrating M2–M7, with no
   spatial routing (its golems are deliberately never `ConfigureSpatial`'d, which is exactly what
   keeps id-based routing working there). `Sandbox.unity` is the playable loop. The two will keep
