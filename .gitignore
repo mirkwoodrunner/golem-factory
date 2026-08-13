@@ -72,3 +72,6 @@ crashlytics-build.properties
 # MCP-for-Unity debug/verification screenshots
 /Assets/Screenshots.meta
 /Assets/Screenshots/
+
+# Local art review scratch (generated comparison images, not part of the build)
+art-review/

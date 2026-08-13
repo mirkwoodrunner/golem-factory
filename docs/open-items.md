@@ -263,11 +263,24 @@ using the same stable-total-order determinism §1.4 established.
 **Missing art.** The five node markers now each have their own icon (`item_coal`,
 `item_copper_ore`, `item_zinc_ore` were added to `Tools/Art/generate_placeholder_art.py`, and
 Aether was repointed at the `item_aether` that already existed), drawn silhouette-first because
-colour is not an available channel there. **The three buildings are still tinted copies of
-`building_block`** — a Boiler, a Steam Pipe and the Clock Tower are the same box in three colours.
-Tinting does work for buildings (nothing owns their colour at runtime), so this is legibility
-debt rather than a defect, but the Clock Tower in particular is the win condition rendered as a
-crate. Tints live in one table at the top of `Scripts/Editor/ProgressionSceneAuthoring.cs`. Enough to tell them apart on the floor; not a substitute for art.
+colour is not an available channel there.
+
+**Three of the six `building_block` users now have real art.** The Clock Tower, the Boiler and
+the Hand-Crank Bench are `clock_tower.png` / `steam_boiler.png` / `hand_crank_bench.png`
+(generated, then trimmed to their alpha bounds and imported at PPU 64, point filter,
+BottomCenter pivot). Their tints are now `Color.white`: a tint exists to tell identical boxes
+apart, so once a building has its own sprite the tint is the thing that would wreck it. The
+"win condition rendered as a crate" problem is therefore **fixed**, not outstanding.
+
+**Three remain on the box, and they are two different jobs, not one.** `SteamPipePrefab` still
+comes through `BuildPlaceable`, so it needs only a sprite argument and its tint retired — the
+same one-line change the other three got. But **`DepotPrefab` and `GolemConstructionStationPrefab`
+are authored by `ApplyCost`, which restores a cost and never touches the `SpriteRenderer` at
+all.** Their sprite is whatever is already serialized on the prefab. Giving those two real art
+means routing them through `BuildPlaceable` (or setting the sprite where they are actually
+built) — reading only the tint table will not lead you to them, because they were never in it.
+Tints still live in one table at the top of `Scripts/Editor/ProgressionSceneAuthoring.cs`, but
+that table is now a partial index of the problem rather than the whole of it.
 
 **`requireSteamPower` is still off.** Authoring `CoalNode` and R1 removed one of its two blockers —
 Coke now has a source. The remaining one is the **Hand-Crank Bench** (§11 item 7), which §10 requires
@@ -548,9 +561,26 @@ on is a separate call, and wants a playtest of the fuel ratio first.
   fix derives from actual head throughput.
 - **Belt jam signalling is off on placed belts** — a one-cell lane has no room for scrolling arrows,
   so a backed-up player belt looks like a flowing one apart from cargo sitting still.
-- **Sprite pivots are inconsistent project-wide.** Chassis sprites pivot centre, so golems render
-  sunk about half a sprite-height into the floor; `GroundShadow` compensates for the shadow only.
-  Fixing it shifts every hand-placed golem in `Main.unity`.
+- **Sprite pivots are inconsistent project-wide — four separate conventions, no rule.** Chassis
+  sprites pivot centre, so golems render sunk about half a sprite-height into the floor;
+  `GroundShadow` compensates for the shadow only. Fixing it shifts every hand-placed golem in
+  `Main.unity`. But "inconsistent" undersells it: the environment art did not inherit the chassis
+  bug, it solved the same problem a *different* way, and an audit of every `.meta` in
+  `Assets/_Project/Art/` finds four regimes coexisting:
+
+  | Convention | Assets |
+  |---|---|
+  | **Center** (`alignment: 0`) | 5 chassis, 3 `golem_generic`, all 6 items, floor tiles, belts, overlays, `building_block` |
+  | **Custom** (`alignment: 9`), hand-tuned per asset | walls `y≈0.06–0.08`, corner post `0.0625`, props `y≈0.2–0.23`, floor edges `y=0.8/0.85` |
+  | **BottomCenter** (`alignment: 7`, `y=0`) | `clock_tower`, `steam_boiler`, `hand_crank_bench` |
+  | **Stale/contradictory** | `player`: `alignment: 7` but `spritePivot {0.5, 0.5}` |
+
+  Two things follow. **`player` is a trap for anyone auditing by eye**: Unity honours *alignment*,
+  not the stored `spritePivot`, so it behaves as BottomCenter while its recorded pivot says
+  centre — read `alignment`, not `spritePivot`. And **BottomCenter with `y=0` is the convention
+  for new world art** (it is why the Clock Tower does not sink the way the golems do), but it
+  currently exists *only* inside those three `.meta` files. It is written down here because a
+  convention that lives only in the assets obeying it is one the next asset will break.
 - **`Main.unity` is a diorama, not the game** — seven pre-wired golems demonstrating M2–M7, with no
   spatial routing (its golems are deliberately never `ConfigureSpatial`'d, which is exactly what
   keeps id-based routing working there). `Sandbox.unity` is the playable loop. The two will keep

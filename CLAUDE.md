@@ -58,10 +58,17 @@ Editor (or a live MCP-for-Unity bridge, if connected):
 - **Play the game**: open `Assets/_Project/Scenes/Main.unity` (all milestone demos, hand-wired,
   running automatically) or `Assets/_Project/Scenes/Sandbox.unity` (the actual player-driven
   scenario — move around, harvest, build, construct+program golems) and hit Play.
-- **Regenerate placeholder art**: `python Tools/Art/generate_placeholder_art.py` (needs Pillow).
-  Writes PNGs to `Assets/_Project/Art/`; re-importing/rewiring them as Sprites still needs a manual
-  Editor pass (texture import settings, Tile assets, `SpriteRenderer` assignment) — see the
-  "Graphics demo implementation notes" section of the implementation plan for the exact steps.
+- **Regenerate art**: there are now **two** generators, and which one owns a file matters.
+  - `python Tools/Art/generate_topdown_environment.py` — the floor, walls, props, belt and
+    cursor overlays. Square, top-down, PPU 64. **This is the one that owns the environment.**
+  - `python Tools/Art/generate_placeholder_art.py` — everything else (chassis, items, player,
+    UI). Still contains the old 2:1 isometric versions of the environment sprites, so it
+    refuses to write any filename the top-down generator owns (see `TOP_DOWN_OWNED`); running
+    it used to silently revert the whole projection switch.
+  - Both write to `Assets/_Project/Art/`. Importing them is **no longer a manual Editor pass**:
+    run **Tools > Golem Factory > Rebuild Environment (All Scenes)**, or headless via
+    `-executeMethod GolemFactory.Editor.SandboxFloorGenerator.RebuildEnvironmentAllScenes`,
+    which applies PPU/pivots, builds the Tile assets, and repaints and re-walls both scenes.
 
 As of the last full run (progression pass, Editor passes, and the Hand-Crank Bench):
 **911/911 tests passing** (801 EditMode + 110 PlayMode).
