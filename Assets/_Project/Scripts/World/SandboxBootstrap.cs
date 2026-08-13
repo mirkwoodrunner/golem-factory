@@ -404,7 +404,7 @@ namespace GolemFactory.World
         // facing-based routing on without Main.unity (which never runs this) being touched.
         private void WireSpatialGameplay()
         {
-            var cellSize = grid != null ? (Vector2)grid.cellSize : new Vector2(1f, 0.5f);
+            var cellSize = grid != null ? (Vector2)grid.cellSize : new Vector2(1f, 1f);
 
             // Same find-it-in-the-scene fallback as ApplyBufferCapacityPolicy, and for the same
             // reason: adding a holder to ManagerHolders.prefab is an Editor pass, and until one

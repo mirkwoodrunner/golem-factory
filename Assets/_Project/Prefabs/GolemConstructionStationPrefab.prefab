@@ -134,7 +134,7 @@ MonoBehaviour:
   stockpileBufferId: FactoryStockpile
   spatialEndpointHolder: {fileID: 0}
   gridMapHolder: {fileID: 0}
-  cellSize: {x: 1, y: 0.5}
+  cellSize: {x: 1, y: 1}
   steamNetworkHolder: {fileID: 0}
   nodeExtractorHolder: {fileID: 0}
 --- !u!114 &6944689890859851846

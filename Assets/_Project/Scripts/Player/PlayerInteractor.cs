@@ -60,7 +60,7 @@ namespace GolemFactory.Player
         // exactly the right spot -- where the station itself then occupies one of the two tiles
         // the golem needs. So the player walks to the tile they want and summons the golem to it.
         [SerializeField] private GridMapHolder _gridMapHolder;
-        [SerializeField] private Vector2 _cellSize = new Vector2(1f, 0.5f);
+        [SerializeField] private Vector2 _cellSize = new Vector2(1f, 1f);
         [SerializeField] private float _summonRange = 12f;
 
         private InputAction _interactAction;

@@ -24,7 +24,7 @@ namespace GolemFactory.Golems
         [SerializeField] private GolemEntity golem;
         [SerializeField] private Sprite arrowSprite;
         [SerializeField] private Sprite tileSprite;
-        [SerializeField] private Vector2 cellSize = new Vector2(1f, 0.5f);
+        [SerializeField] private Vector2 cellSize = new Vector2(1f, 1f);
 
         // Warm amber for the push side, cool teal for the pull side. Deliberately NOT a
         // red/green pair: against this warm wood-and-brass floor dark red measured 5.4x

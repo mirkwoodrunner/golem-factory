@@ -17,7 +17,7 @@ namespace GolemFactory.Player
         [SerializeField] private PlaceableBuilding _buildingPrefab;
         [SerializeField] private SpriteRenderer _ghost;
         [SerializeField] private InputActionAsset _actions;
-        [SerializeField] private Vector2 _cellSize = new Vector2(1f, 0.5f);
+        [SerializeField] private Vector2 _cellSize = new Vector2(1f, 1f);
 
         // Left null in Main.unity today (Inspector default) -- placement there stays exactly
         // as free as it always was. Sandbox.unity wires this to the shared stockpile buffer,

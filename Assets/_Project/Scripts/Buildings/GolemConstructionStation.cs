@@ -31,7 +31,7 @@ namespace GolemFactory.Buildings
         // constructed golems route purely by the ids on their appendage cards, as before.
         [SerializeField] private SpatialEndpointRegistryHolder spatialEndpointHolder;
         [SerializeField] private GridMapHolder gridMapHolder;
-        [SerializeField] private Vector2 cellSize = new Vector2(1f, 0.5f);
+        [SerializeField] private Vector2 cellSize = new Vector2(1f, 1f);
 
         // Steam power (docs/progression-design.md §3.1). Optional in exactly the same way the
         // spatial holder above is: a station with no steam network builds golems that are

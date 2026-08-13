@@ -16,7 +16,7 @@ namespace GolemFactory.World
         [SerializeField] private Transform focusOrigin;
         [SerializeField] private Sprite arrowSprite;
         [SerializeField] private Sprite tileSprite;
-        [SerializeField] private Vector2 cellSize = new Vector2(1f, 0.5f);
+        [SerializeField] private Vector2 cellSize = new Vector2(1f, 1f);
 
         // Roughly three tiles. Far enough that walking up to a golem lights it before the
         // player is standing on top of it, close enough that only one is ever lit in a
