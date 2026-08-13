@@ -6,11 +6,12 @@ namespace GolemFactory.World
     // "extract the math into a static that a test can call without a scene" split
     // GridCoordinateConverter / YSortUtility / BeltSignalUtility / StallDiagnostics use.
     //
-    // The grid here is the *simulation* grid, which is a plain square top-down grid
-    // (World/GridMap is Vector2Int-indexed and deliberately decoupled from rendering).
-    // Isometric is presentation only and lives entirely in GridCoordinateConverter and the
-    // scene's Grid/Tilemap, so North really is (0, +1) here even though it renders as
-    // up-and-right on screen.
+    // The grid here is the *simulation* grid, which is a plain square grid (World/GridMap is
+    // Vector2Int-indexed and deliberately decoupled from rendering). Projection is presentation
+    // only and lives entirely in GridCoordinateConverter and the scene's Grid/Tilemap, so North
+    // is (0, +1) here regardless of where it lands on screen. That decoupling is why the switch
+    // from isometric to top-down -- which changed which way North renders -- did not touch a
+    // line of this file.
     public static class FacingUtility
     {
         /// <summary>Unit cell step in the given direction. North is (0,+1), East (+1,0).</summary>
@@ -46,8 +47,8 @@ namespace GolemFactory.World
         public static Facing Opposite(Facing facing) => RotateClockwise(RotateClockwise(facing));
 
         /// <summary>
-        /// Next facing clockwise (N -> E -> S -> W -> N). Clockwise in *grid* terms; the
-        /// isometric camera rotates that presentation but not the underlying cell math.
+        /// Next facing clockwise (N -> E -> S -> W -> N). Clockwise in *grid* terms; the camera's
+        /// projection rotates that presentation but not the underlying cell math.
         /// </summary>
         public static Facing RotateClockwise(Facing facing) => (Facing)(((int)facing + 1) & 3);
     }

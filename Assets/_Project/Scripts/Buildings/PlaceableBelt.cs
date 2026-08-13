@@ -48,10 +48,11 @@ namespace GolemFactory.Buildings
 
         private void Awake() => ApplyFacingVisual(FacingVisuals.DefaultCellSize);
 
-        // Rotates the arrow to point along the lane. The rotation is in *screen* space, so it
-        // uses the isometric angles from FacingVisuals rather than the grid's own 90-degree
-        // steps -- north on this grid renders as up-and-right of centre, and an arrow that
-        // ignored that would contradict the belt it sits on.
+        // Rotates the arrow to point along the lane. The rotation is in *screen* space, and it
+        // still goes through FacingVisuals rather than hardcoding the 90-degree steps that
+        // top-down happens to make correct. Under isometric those two answers disagreed (north
+        // rendered up-and-left) and an arrow that assumed otherwise contradicted the belt it sat
+        // on; asking the projection is what makes this file right under either one.
         private void ApplyFacingVisual(Vector2 cellSize)
         {
             if (directionArrow == null)

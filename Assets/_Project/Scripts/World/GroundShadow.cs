@@ -47,8 +47,10 @@ namespace GolemFactory.World
         // awkward to wire purely through the Inspector (GolemEntity.Configure,
         // WorkbenchController.Configure*), so bootstrap/Editor tooling can set this up directly.
         // `anchorToBottom` must be false for sprites that are already ground-anchored -- the
-        // isometric props are pivoted on the centre of their base diamond, so deriving a
-        // "sprite bottom" for them would sink the shadow below the floor.
+        // props are pivoted on their contact line with the floor, so deriving a "sprite bottom"
+        // for them would sink the shadow below the floor. (Under isometric that contact line
+        // was the centre of the prop's base diamond; top-down made it the base of the body,
+        // above the shadow the art draws. Different point, same reason this flag exists.)
         public void Configure(Sprite sprite, Vector2 offset, float shadowScale, float shadowOpacity,
             bool anchorToBottom)
         {

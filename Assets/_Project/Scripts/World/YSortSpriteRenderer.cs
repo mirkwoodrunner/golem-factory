@@ -3,8 +3,8 @@ using UnityEngine;
 namespace GolemFactory.World
 {
     // Visual-only, simulation-untouched -- same LateUpdate-driven idiom as
-    // Belts/BeltSegmentVisual.cs. Drop onto any golem/building/item SpriteRenderer so
-    // isometric depth looks right without hand-tuning a sortingOrder per object in the Editor.
+    // Belts/BeltSegmentVisual.cs. Drop onto any golem/building/item SpriteRenderer so depth
+    // looks right without hand-tuning a sortingOrder per object in the Editor.
     [RequireComponent(typeof(SpriteRenderer))]
     public sealed class YSortSpriteRenderer : MonoBehaviour
     {

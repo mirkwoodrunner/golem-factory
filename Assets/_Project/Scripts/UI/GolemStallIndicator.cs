@@ -10,8 +10,8 @@ namespace GolemFactory.UI
     // floating above the golem while it's Stalled, driven by GolemStalled/GolemResumed
     // (filtered to this golem's id) rather than polling Program.State every frame. Built as
     // a World Space Canvas child so it tracks the golem's position without manual
-    // WorldToScreenPoint math -- the isometric camera never rotates, so no billboarding is
-    // needed for it to face the camera correctly.
+    // WorldToScreenPoint math -- the camera never rotates, so no billboarding is needed for it
+    // to face the camera correctly.
     public sealed class GolemStallIndicator : MonoBehaviour
     {
         [SerializeField] private GolemEntity golem;

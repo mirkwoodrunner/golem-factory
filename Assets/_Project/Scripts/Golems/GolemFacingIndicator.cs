@@ -11,10 +11,10 @@ namespace GolemFactory.Golems
     // golem gets them with no scene wiring (the same self-assembling idiom FloatingPopup and
     // InteractionPromptView use):
     //   * a chevron beside the golem, always on, pointing the way it faces;
-    //   * a cool teal diamond on the SOURCE tile (what it pulls from);
-    //   * a warm amber diamond on the TARGET tile (what it pushes to).
+    //   * a cool teal square on the SOURCE tile (what it pulls from);
+    //   * a warm amber square on the TARGET tile (what it pushes to).
     //
-    // The two tile diamonds are shown only while this golem is the focused one (see
+    // The two tile markers are shown only while this golem is the focused one (see
     // RoutingFocusController) -- lighting every golem's pair at once turns a working factory
     // into a field of glowing tiles and communicates nothing.
     //
@@ -33,7 +33,7 @@ namespace GolemFactory.Golems
         // *cool*, so the two ends of the chain separate by temperature, not just brightness --
         // which also keeps them distinguishable without relying on hue discrimination.
         // The target marker is pushed near-white rather than mid-amber because the thing it
-        // most often lands on is a BELT, whose own art is brass -- a mid-amber diamond on a
+        // most often lands on is a BELT, whose own art is brass -- a mid-amber marker on a
         // brass plate was measured in-scene as almost invisible, the same "warm on warm"
         // failure that made the old build ghost unreadable on the plank floor. Raising value
         // (not hue) is what separates it, since the palette has no cool warm.

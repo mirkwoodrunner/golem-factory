@@ -113,10 +113,13 @@ namespace GolemFactory.Tests.EditMode.Belts
         [Test]
         public void Cargo_TiebreakIsSmallerThanAnyRealDepthDifference()
         {
-            // The bias must only ever settle exact ties: an object genuinely one cell (0.25 world
-            // Y on this isometric grid) in front of the belt still has to win.
+            // The bias must only ever settle exact ties: an object genuinely one cell in front of
+            // the belt still has to win. One cell is 1.0 world Y on the square top-down grid; it
+            // was 0.25 under the 2:1 isometric cell, and the margin here is wide enough that the
+            // test passed either way -- so the number is corrected to keep the comment honest,
+            // not because it was failing.
             int cargoAtZero = BeltSignalUtility.ComputeCargoSortingOrder(0f);
-            int golemOneCellInFront = YSortUtility.ComputeSortingOrder(-0.25f);
+            int golemOneCellInFront = YSortUtility.ComputeSortingOrder(-1f);
             Assert.Greater(golemOneCellInFront, cargoAtZero);
         }
 

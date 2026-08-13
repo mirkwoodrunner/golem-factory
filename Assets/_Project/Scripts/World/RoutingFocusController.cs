@@ -5,7 +5,7 @@ namespace GolemFactory.World
 {
     // Scene-level arbiter that lights exactly one golem's source/target tiles: the one nearest
     // the player. Without this every golem would draw its own pair and a working factory would
-    // turn into a field of glowing diamonds that says nothing about any single machine.
+    // turn into a field of glowing tiles that says nothing about any single machine.
     //
     // Also the component that retrofits GolemFacingIndicator onto golems, so a golem built at
     // runtime (GolemConstructionStation instantiates GolemPrefab) gets its markers without the

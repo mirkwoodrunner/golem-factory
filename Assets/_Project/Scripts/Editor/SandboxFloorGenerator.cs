@@ -9,16 +9,18 @@ using GolemFactory.World;
 namespace GolemFactory.Editor
 {
     // Builds the whole workshop shell of the active scene: repaints the floor Tilemap to
-    // FloorLayout's current HalfExtent, walls the two back edges, skirts the two open front
-    // edges, caps the wall runs with corner posts, and scatters crates/barrels along the walls.
+    // FloorLayout's current HalfExtent, walls the north edge head-on and caps the east and west
+    // edges, skirts the open south edge, caps the two north corners with posts, and scatters
+    // crates/barrels along the walls.
     // Reruns cleanly and deterministically -- it clears every tile and destroys the previously
     // generated parents before rebuilding, and every placement comes from FloorTileVariant /
     // FloorLayout rather than a random scatter, so regenerating never produces scene churn.
     //
     // Everything is built as plain GameObjects rather than prefab instances. Seven distinct
-    // piece types (two wall runs, two lamp variants, two skirting runs, posts, two props) would
-    // otherwise mean seven prefabs to keep in sync with this one code path, and the pieces are
-    // pure decoration with no per-instance authoring -- one generator is the simpler contract.
+    // piece types (north wall, its lamp variant, the east and west caps, skirting, posts, two
+    // props) would otherwise mean seven prefabs to keep in sync with this one code path, and the
+    // pieces are pure decoration with no per-instance authoring -- one generator is the simpler
+    // contract.
     public static class SandboxFloorGenerator
     {
         private const string ArtRoot = "Assets/_Project/Art/";

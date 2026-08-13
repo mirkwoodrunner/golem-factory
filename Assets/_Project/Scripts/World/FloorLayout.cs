@@ -67,16 +67,20 @@ namespace GolemFactory.World
         // Anchor for the wall/skirting segment covering ONE cell of the given boundary,
         // returned in cell-fraction space so it is converter-independent and unit-testable.
         //
-        // This is the whole fix for the "staircase wall" defect. A wall segment does not live
-        // at a perimeter *cell centre* (halfExtent + 1) -- it lives on the boundary LINE at
+        // This is the whole fix for the "staircase wall" defect, and it survived the projection
+        // switch because it was never about the projection. A wall segment does not live at a
+        // perimeter *cell centre* (halfExtent + 1) -- it lives on the boundary LINE at
         // halfExtent + 0.5, and its anchor is the MIDPOINT of the one-cell-long piece of that
-        // line, matching the sprite's pivot. Consecutive anchors are exactly one cell-edge
-        // apart (0.5 x 0.25 world units, the 2:1 isometric run), so segments whose sprites are
-        // 0.5 world wide with a base line rising 0.25 across that width butt together into a
-        // continuous wall. Placing 1.375-world-wide, flat-bottomed sprites one per perimeter
-        // cell -- which is what the earlier attempt did -- can never do that: the silhouette
-        // slope does not match the run, so the segments read as stacked blocks, i.e. a
-        // staircase, no matter how they are nudged.
+        // line, matching the sprite's pivot.
+        //
+        // Consecutive anchors are therefore exactly one cell apart along a single world axis.
+        // Under isometric that ran diagonally (0.5 x 0.25 world units, the 2:1 run) and a
+        // segment had to be 0.5 world wide with a base line rising 0.25 across that width to
+        // butt against its neighbour; top-down runs it straight, so a segment is one world unit
+        // wide with a flat base. The defect the anchor prevents is the same either way: place a
+        // sprite whose width does not match the run, once per perimeter cell -- which is what
+        // the earlier attempt did -- and the segments read as stacked blocks, i.e. a staircase,
+        // no matter how they are nudged.
         public static Vector2 GetEdgeAnchor(Edge edge, int index, int halfExtent = HalfExtent)
         {
             float outer = halfExtent + 0.5f;

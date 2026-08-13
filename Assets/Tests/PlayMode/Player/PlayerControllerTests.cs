@@ -85,10 +85,13 @@ namespace GolemFactory.Tests.PlayMode
             controller.SetFloorBounds(converter, 12);
             yield return null;
 
-            // Set the position directly (rather than driving MoveBy with a huge world-space
-            // displacement) since a pure world-X move actually traces a diagonal in cell space
-            // -- isometric transforms mix axes -- and would hit a corner clamp instead of the
-            // single-axis edge this test targets. Same setup FloorLayoutTests uses in EditMode.
+            // Set the position directly rather than driving MoveBy with a huge world-space
+            // displacement, so the test states the clamp it is checking instead of depending on
+            // where a long move happens to land. (Under isometric it was load-bearing: the
+            // transform mixed axes, so a pure world-X move traced a diagonal in cell space and
+            // hit a corner clamp rather than the single-axis edge targeted here. Top-down maps
+            // the axes independently and would now agree either way.) Same setup FloorLayoutTests
+            // uses in EditMode.
             controller.transform.position = converter.CellToWorldCenter(new Vector2Int(20, 0));
             controller.MoveBy(Vector2.zero, 0f);
 

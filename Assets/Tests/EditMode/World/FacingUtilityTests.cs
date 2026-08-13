@@ -10,7 +10,8 @@ namespace GolemFactory.Tests.EditMode
         public void Delta_UsesTopDownGridAxes()
         {
             // The simulation grid is a plain square grid (GridMap is Vector2Int-indexed and
-            // decoupled from rendering); isometric is presentation only.
+            // decoupled from rendering); the projection is presentation only, which is why
+            // moving off isometric left this file untouched.
             Assert.AreEqual(new Vector2Int(0, 1), FacingUtility.Delta(Facing.North));
             Assert.AreEqual(new Vector2Int(1, 0), FacingUtility.Delta(Facing.East));
             Assert.AreEqual(new Vector2Int(0, -1), FacingUtility.Delta(Facing.South));
