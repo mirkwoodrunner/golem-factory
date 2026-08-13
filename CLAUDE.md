@@ -70,8 +70,8 @@ Editor (or a live MCP-for-Unity bridge, if connected):
     `-executeMethod GolemFactory.Editor.SandboxFloorGenerator.RebuildEnvironmentAllScenes`,
     which applies PPU/pivots, builds the Tile assets, and repaints and re-walls both scenes.
 
-As of the last full run (progression pass, Editor passes, and the Hand-Crank Bench):
-**911/911 tests passing** (801 EditMode + 110 PlayMode).
+As of the last full run (progression pass, Editor passes, the Hand-Crank Bench, and the
+isometric→top-down projection switch): **934/934 tests passing** (824 EditMode + 110 PlayMode).
 
 **Two ways to run the tests, and which one depends on whether the Editor is open.**
 

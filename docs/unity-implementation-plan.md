@@ -2357,3 +2357,148 @@ passive transport, golems are the actuators.
 5. `BeltSegmentVisual`'s jam/flow signalling (arrow scroll, queued-cargo tint) is switched off on
    placed belts, since a one-cell lane has no room for it. A backed-up player belt therefore looks
    the same as a flowing one apart from the items sitting still.
+
+
+## The isometric → top-down projection switch
+
+The single largest visual change since the graphics pass, and the cheapest one in the simulation:
+**six lines**. `GridCoordinateConverter`'s two `Fraction` methods are the only place in the game
+that decides how a cell maps to a screen position, so replacing the 2:1 isometric transform with
+an axis-independent one cost nothing at the 20-odd call sites. That is `GridMap` having always
+been a plain rectangular grid, with isometric as presentation only, proving itself. Everything
+below is the *presentation* catching up.
+
+Scene side, it is `m_CellLayout: 0` (Rectangle) with `m_CellSize: {1, 1, 1}` on both scenes' Grid,
+and art at **PPU 64** so a 64×64 tile is exactly one cell (it was PPU 128 for art authored at
+32 px/unit and upscaled ×4 into a 128×64 diamond).
+
+### The environment is a different set of art, not the same art rotated
+
+`Tools/Art/generate_topdown_environment.py` is new and **owns** nineteen filenames;
+`generate_placeholder_art.py` still holds the isometric versions and now raises if asked to write
+any of them. That guard is not tidiness: `CLAUDE.md` told you to regenerate art by running the old
+script with no arguments, and doing so silently rewrote the whole environment back to isometric,
+with no warning from either script and nothing visible until somebody next looked at the game.
+
+Two sprites are genuinely new rather than redrawn — `wall_side_e` / `wall_side_w`, the caps for
+the +X and −X walls. An isometric room never needed them, because both of its walls were the same
+head-on face seen at two angles.
+
+Importing is **no longer a manual Editor pass**:
+`SandboxFloorGenerator.RebuildEnvironmentAllScenes` reimports at the current PPU/pivots and then
+repaints and re-walls both scenes, headless via `-executeMethod`. Finishing a projection switch by
+clicking through the Editor is why the previous attempt had been left half-converted.
+
+### What broke, in the order it hurt
+
+1. **`Tilemap.tileAnchor` defaults to `(0.5, 0.5)`.** Unity draws tile `(x,y)` at
+   `CellToWorld(cell) + tileAnchor * cellSize`, so with a 1×1 cell the painted floor sat **half a
+   cell up and half a cell right** of every position `GridCoordinateConverter` computes. Walls
+   anchored at ±12.5 bisected the outer tile row on two sides and left a half-cell gap on the
+   other two, and `ClampToFloor` stopped the player a full tile short of the painted edge at
+   +X/+Y. Isometric had masked it: the same offset worked out to `(0, +0.25)` — one axis, half
+   the size — which reads as art bleed rather than a bug.
+2. **PPU stayed at 128**, which renders 64px square art at half a cell: a floor of quarter-size
+   tiles with gaps between them. And the sweep that fixes PPU is keyed off the wall/prop **pivot
+   table**, so it missed `build_ghost_tile`, `interaction_ring` and `belt_tile` entirely — the
+   three sprites that follow the cursor and the player, i.e. the ones a player looks at most. A
+   half-size build ghost mis-sells every placement in the game.
+3. **Which edges get walls could not be inherited.** Isometric walls the two edges pointing away
+   from the camera; flattened onto the axes those become north and **east**, leaving the room's
+   left side open for no reason a player can see. Top-down takes the standard interior instead:
+   north walled head-on, east and west capped, south left open with the skirting slab.
+4. **Corner posts drew in front of the room.** `wall_corner_post` is a front-on elevation whose
+   body rises ~1.5 cells in +Y. At a north corner that puts it outside the room, which is the
+   point; at a south corner it rises *into* the room, and since sorting order is baked from world
+   Y, a piece at y = −12.5 gets the largest order anywhere and draws over the player, the golems
+   and the props. `GetWallPostAnchors` returns the two north corners only.
+5. **The floor's accent tiles marched in diagonal chains.** They were selected by a linear
+   congruence, and a linear congruence over the integer plane always defines a perfect 2-D
+   lattice — measured over the real 25×25 room, every brass plate sat at a constant `(−4, −3)`
+   from its nearest neighbour and every grate at `(3, −1)`. Diagonal landmarks on a square floor
+   is exactly the tell the switch existed to remove.
+6. **The sconce lights lit the background.** `make_wall` paints the glow 68px above the wall's
+   base line, so the obvious light offset is `68/64`. Under top-down a sprite's vertical offset is
+   a **fake elevation**: the wall's foot is on the boundary and its body is drawn rising up-screen,
+   but in world terms all of that is north of the floor. A point light at the painted flame sits a
+   cell and a bit outside the room and reaches the floor with nothing but the tail of its falloff.
+   The old value (1.28) was the same mistake, hidden by a projection where a world unit spanned
+   two cells of depth. The lit pool now sits just inside the room and the glow stays painted into
+   the sprite where it already was.
+7. **Every golem stood three quarters of a tile south of its own cell.** The five chassis and three
+   generic bodies were Center-pivoted, and at 64×96 with PPU 64 that is 0.75 world units. Fixed by
+   moving them to BottomCenter (`Scripts/Editor/CharacterArtAuthoring.cs`), which also required
+   dropping `Main.unity`'s seven hand-placed golems by 0.75 and raising the stall badge's
+   `worldOffset` from 1.0 to 1.75 — it measures from the transform, which now means the feet.
+   `GroundShadow` needed nothing, because it reads `sprite.pivot.y` instead of assuming one.
+8. **`FloorLayout.Edge` meant the opposite of what it said.** The isometric names survived the
+   flattening, so `SouthEast` was the **west** edge and `SandboxFloorGenerator` was reading
+   `Edge.SouthEast` to place the west wall — correct only because it had been written by someone
+   who knew. Renamed to North/East/South/West, ordered clockwise to match `Facing`; nothing
+   serializes the enum, which made reordering as safe as renaming.
+9. **The opening's seven objects landed on half-cells.** The five node markers, the Hand-Crank
+   Bench and the construction station were authored as isometric world literals, which top-down
+   reads as `(cx, cy)`; the layout collapsed from a spread across a 25×25 floor into roughly a
+   10×4 band, with `RoundToInt` deciding which tile a golem thought each was on. Inverting the old
+   transform turns all seven literals back into **exact integer cells**, which is the evidence they
+   were designed as cells and flattened on the way to disk — so they are now a `StartingLayout`
+   table in cells. Whether that recovered layout is the right one on a square floor is a design
+   call, written up as three proposals in `docs/open-items.md`.
+10. **Regenerating the shell rewrote both scenes end to end.** `Generate` destroyed and recreated
+    the `Walls`/`Props` parents, and Unity mints a fresh fileID per created object, so ~131 objects
+    were renumbered and ~26,000 lines changed on every run — nothing reviewable in the diff, and a
+    guaranteed conflict against any branch that touched a scene. Now find-or-create by name, with
+    a prune pass for pieces that stop being generated.
+
+### Rejected, and why
+
+- **Fixing the converter instead of the `tileAnchor`.** Both put the floor back under the walls.
+  The Tilemap is presentation and the converter is simulation truth (`CLAUDE.md`), so the
+  presentation moves. Shifting the converter would have put a half-cell skew into every
+  `GolemEntity.Cell`, every belt endpoint and every save file, to fix a rendering offset.
+- **Inheriting the isometric wall convention.** "Two back edges walled, two camera-facing edges
+  open" has no axis-aligned reading: a diagonal "back" covers two compass directions and an
+  axis-aligned one covers one. Taken literally it produces a room with no west wall.
+- **A fourth corner post**, on the reasoning that walling three edges makes every corner a run
+  termination. The anchor was never the problem — see breakage 4. The south ends of the side walls
+  are open ends facing the camera; capping them would need plan-view art, not a fourth copy of an
+  elevation.
+- **Different moduli for the accent lattices.** The original comment claimed coprime-ish moduli
+  made the two lattices interleave rather than clump. That reasons about the wrong thing:
+  coprimality changes *which* lattice, never *whether* it is one.
+- **Deleting `FacingVisuals`, `YSortUtility` and `FacingUtility` as now-trivial.** Top-down makes
+  north really point up, so `FacingVisuals` looks like it could collapse into 0/90/180/270
+  constants. It should not: it survived the switch **untouched** precisely because it derives its
+  angle from the projection, and hardcoded constants are what made it wrong before. Same for the
+  other two. Their comments were dated rather than deleted, for the same reason.
+- **Rewriting `TheAngleTracksTheCellAspectRatio` instead of deleting it.** It asserted that a
+  taller cell raises the on-screen angle — a property of a transform that mixes axes. Under
+  top-down there is no statement of it that could ever fail, so it was replaced by the property
+  that *can*: a facing's normalised screen direction is aspect-independent, which breaks loudly if
+  anyone reintroduces axis mixing.
+- **Custom per-sprite pivots to close the chassis foot gap.** Five of the eight character sprites
+  carry transparent rows beneath the feet (Aether-Hauler 10 px, down to Zeppelin 3), so
+  BottomCenter floats them 0.047–0.156 of a cell. Measured and left: the fix is an alpha trim in
+  the generator, the same one the three buildings got, and a fourth pivot convention is what this
+  project already has too many of.
+
+### Verification
+
+- **934/934 pass (824 EditMode + 110 PlayMode), zero failures.** Batch mode, Editor closed.
+- `RebuildEnvironmentAllScenes` run twice on a clean tree: 625 tiles and 128 pieces repainted per
+  scene, both scenes saved, `git diff` empty after each run.
+- `Sandbox.unity` read back from disk after the authoring pass: all seven opening objects on exact
+  integer cells, nine changed lines and nothing else.
+- The lattice and foot-gap claims above are **measured**, not eyeballed — nearest-neighbour offsets
+  over the real 25×25 room for the accents, alpha bounds per sprite for the float.
+
+### Still open
+
+1. **The map layout is a human decision.** Three proposals in `docs/open-items.md`; the mechanical
+   half-cell bug is fixed, the design half is deliberately untouched.
+2. **Art direction is deliberately unfinished**: more plank variants, a bevel on the brass plate,
+   a vertical belt sprite. It needs someone looking at pictures rather than at a diff.
+3. **Chassis art is not alpha-trimmed**, so golems float up to 0.156 of a cell — see above.
+4. **`Main.unity` drifts further from being representative** with every pass. Its seven golems are
+   hand-placed at positions that were arbitrary before the switch and are still arbitrary after
+   it; they were moved to preserve how they look, not to mean anything.

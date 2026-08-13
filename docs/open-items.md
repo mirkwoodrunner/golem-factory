@@ -9,8 +9,13 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 > reviewed**. Everything from §1.5 on is **spec only**. The next pass starts at §1.5, which is
 > also what §1.4's Sandbox switch is waiting on.
 
-Tests stand at **911/911** (801 EditMode + 110 PlayMode), up from 590 before the progression pass
+Tests stand at **934/934** (824 EditMode + 110 PlayMode), up from 590 before the progression pass
 began. Console clean.
+
+> **The projection is top-down now**, not isometric. The switch is done, verified and recorded as
+> its own milestone in `docs/unity-implementation-plan.md` — read that before touching the floor,
+> the walls, or anything that turns a cell into a world position. Anything in *this* file written
+> before it that says "isometric" is describing history.
 
 > **Unity batch mode does run the tests, contrary to what the implementation plan says.** It is
 > recorded there as a "nice-to-have, not implemented"; it works, and it is by far the cheapest way
