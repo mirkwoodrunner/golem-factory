@@ -25,10 +25,13 @@ namespace GolemFactory.World
         [SerializeField] private float scale = 1f;
         [SerializeField, Range(0f, 1f)] private float opacity = 0.85f;
 
-        // Sprite pivots are not consistent across this project's art -- the player sprite is
-        // pivoted bottom-centre (transform == feet) while every chassis sprite is pivoted
-        // centre (feet half a sprite-height below the transform). Rather than hand-tuning an
-        // offset per object, derive the sprite's own bottom edge and drop the shadow there.
+        // Sprite pivots are not consistent across this project's art. The characters agree now
+        // (player and all eight chassis/golem bodies are BottomCenter, transform == feet), but
+        // the room's own pieces are pivoted on their contact lines and the items and overlays
+        // are centred, so there is still no single offset that suits everything. Rather than
+        // hand-tuning one per object, derive the sprite's own bottom edge and drop the shadow
+        // there -- which is also why the BottomCenter pass needed no change here: this reads
+        // pivot.y, so it followed.
         // Recomputed every frame on purpose: GolemVisual assigns the chassis sprite after
         // Awake has already run, so a value cached at startup would be wrong for every golem
         // built at the construction station.

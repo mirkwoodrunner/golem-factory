@@ -15,7 +15,12 @@ namespace GolemFactory.UI
     public sealed class GolemStallIndicator : MonoBehaviour
     {
         [SerializeField] private GolemEntity golem;
-        [SerializeField] private Vector3 worldOffset = new Vector3(0f, 1f, 0f);
+        // Measured from the golem's TRANSFORM, which since the BottomCenter pivot pass means its
+        // feet rather than its middle. A chassis sprite is 96px at PPU 64, so its head is 1.5
+        // world units up; 1.75 leaves the same quarter-cell gap above it that 1.0 left when the
+        // transform sat at the sprite's centre. Left at 1.0 the badge would have hung on the
+        // golem's chest, which is the sort of thing a pivot change breaks quietly.
+        [SerializeField] private Vector3 worldOffset = new Vector3(0f, 1.75f, 0f);
         [SerializeField] private Sprite badgeSprite;
 
         private bool _isStalled;

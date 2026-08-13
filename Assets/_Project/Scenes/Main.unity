@@ -271,7 +271,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.GolemStallIndicator
   golem: {fileID: 1512167615}
-  worldOffset: {x: 0, y: 1, z: 0}
+  worldOffset: {x: 0, y: 1.75, z: 0}
   badgeSprite: {fileID: 21300000, guid: 6a818d166770ab7428a591655fade9f5, type: 3}
 --- !u!4 &38076541
 Transform:
@@ -535,7 +535,7 @@ Transform:
   m_GameObject: {fileID: 64937902}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1, y: -2.1, z: 0}
+  m_LocalPosition: {x: -1, y: -2.85, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1924,7 +1924,7 @@ Transform:
   m_GameObject: {fileID: 278421400}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.8, y: -1.7, z: 0}
+  m_LocalPosition: {x: 2.8, y: -2.45, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -3755,7 +3755,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.GolemStallIndicator
   golem: {fileID: 782237005}
-  worldOffset: {x: 0, y: 1, z: 0}
+  worldOffset: {x: 0, y: 1.75, z: 0}
   badgeSprite: {fileID: 21300000, guid: 6a818d166770ab7428a591655fade9f5, type: 3}
 --- !u!4 &449195125
 Transform:
@@ -4016,7 +4016,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.GolemStallIndicator
   golem: {fileID: 512723680}
-  worldOffset: {x: 0, y: 1, z: 0}
+  worldOffset: {x: 0, y: 1.75, z: 0}
   badgeSprite: {fileID: 21300000, guid: 6a818d166770ab7428a591655fade9f5, type: 3}
 --- !u!4 &489112572
 Transform:
@@ -4179,7 +4179,7 @@ Transform:
   m_GameObject: {fileID: 512723679}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1, y: 2.1, z: 0}
+  m_LocalPosition: {x: -1, y: 1.35, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -7399,7 +7399,7 @@ Transform:
   m_GameObject: {fileID: 782237004}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4, y: 0.9, z: 0}
+  m_LocalPosition: {x: -4, y: 0.15, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -17761,7 +17761,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.UI.GolemStallIndicator
   golem: {fileID: 2004279217}
-  worldOffset: {x: 0, y: 1, z: 0}
+  worldOffset: {x: 0, y: 1.75, z: 0}
   badgeSprite: {fileID: 21300000, guid: 6a818d166770ab7428a591655fade9f5, type: 3}
 --- !u!4 &1281273650
 Transform:
@@ -19673,7 +19673,7 @@ Transform:
   m_GameObject: {fileID: 1512167614}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.8, y: 1.7, z: 0}
+  m_LocalPosition: {x: 2.8, y: 0.95, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -22550,7 +22550,7 @@ Transform:
   m_GameObject: {fileID: 1763190200}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4, y: -0.9, z: 0}
+  m_LocalPosition: {x: -4, y: -1.65, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -25164,7 +25164,7 @@ Transform:
   m_GameObject: {fileID: 2004279216}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 4.5, y: 0, z: 0}
+  m_LocalPosition: {x: 4.5, y: -0.75, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
