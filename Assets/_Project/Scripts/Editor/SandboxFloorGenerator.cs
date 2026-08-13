@@ -12,9 +12,9 @@ namespace GolemFactory.Editor
     // FloorLayout's current HalfExtent, walls the north edge head-on and caps the east and west
     // edges, skirts the open south edge, caps the two north corners with posts, and scatters
     // crates/barrels along the walls.
-    // Reruns cleanly and deterministically -- it clears every tile and destroys the previously
-    // generated parents before rebuilding, and every placement comes from FloorTileVariant /
-    // FloorLayout rather than a random scatter, so regenerating never produces scene churn.
+    // Reruns cleanly and deterministically -- every piece is found by name and updated in place,
+    // and every placement comes from FloorTileVariant / FloorLayout rather than a random
+    // scatter, so regenerating never produces scene churn.
     //
     // Everything is built as plain GameObjects rather than prefab instances. Seven distinct
     // piece types (north wall, its lamp variant, the east and west caps, skirting, posts, two
@@ -197,10 +197,11 @@ namespace GolemFactory.Editor
         // which is the only way to do it while nobody is sitting in front of the Editor, and the
         // reason the projection switch could otherwise only be finished by hand.
         //
-        // Idempotent in the sense the rest of the authoring scripts are: Generate clears every
-        // tile and destroys the previously generated Walls/Props parents before rebuilding, and
-        // every placement is derived from FloorLayout/FloorTileVariant, so a second run produces
-        // a byte-identical scene rather than a second room.
+        // Idempotent in the sense the rest of the authoring scripts are, and idempotent all the
+        // way down to the scene file: every piece is found by name and updated in place (see
+        // EnsureChild), every placement is derived from FloorLayout/FloorTileVariant, so a second
+        // run leaves `git diff` empty rather than producing a second room OR renumbering the
+        // first one.
         [MenuItem("Tools/Golem Factory/Rebuild Environment (All Scenes)")]
         public static void RebuildEnvironmentAllScenes()
         {
@@ -280,13 +281,17 @@ namespace GolemFactory.Editor
                 tileCount++;
             }
 
-            DestroyChild(gridObject.transform, WallsParentName);
-            DestroyChild(gridObject.transform, PropsParentName);
-
             int pieceCount = 0;
             if (spawnWalls)
             {
                 pieceCount = BuildWalls(gridObject.transform, converter) + BuildProps(gridObject.transform, converter);
+            }
+            else
+            {
+                // "Floor only" means exactly that, so this path still removes the shell. It is
+                // the one place a destroy is the intent rather than a shortcut.
+                DestroyChild(gridObject.transform, WallsParentName);
+                DestroyChild(gridObject.transform, PropsParentName);
             }
 
             EditorSceneManager.MarkSceneDirty(gridObject.scene);
@@ -297,8 +302,8 @@ namespace GolemFactory.Editor
 
         private static int BuildWalls(Transform parent, GridCoordinateConverter converter)
         {
-            var wallsParent = new GameObject(WallsParentName);
-            wallsParent.transform.SetParent(parent, worldPositionStays: false);
+            Transform wallsParent = EnsureChild(parent, WallsParentName);
+            var expected = new HashSet<string>();
 
             Sprite north = LoadSprite("wall_segment_nw");
             Sprite northLamp = LoadSprite("wall_segment_nw_lamp");
@@ -322,14 +327,14 @@ namespace GolemFactory.Editor
             {
                 bool lit = Mod(index, LampSpacing) == 0;
 
-                count += PlaceEdgePiece(wallsParent.transform, converter, FloorLayout.Edge.North,
-                    index, lit ? northLamp : north, "WallNorth", lit);
-                count += PlaceEdgePiece(wallsParent.transform, converter, FloorLayout.Edge.East,
-                    index, sideEast, "WallEast", false);
-                count += PlaceEdgePiece(wallsParent.transform, converter, FloorLayout.Edge.West,
-                    index, sideWest, "WallWest", false);
-                count += PlaceEdgePiece(wallsParent.transform, converter, FloorLayout.Edge.South,
-                    index, skirt, "SkirtSouth", false);
+                count += PlaceEdgePiece(wallsParent, converter, FloorLayout.Edge.North,
+                    index, lit ? northLamp : north, "WallNorth", lit, expected);
+                count += PlaceEdgePiece(wallsParent, converter, FloorLayout.Edge.East,
+                    index, sideEast, "WallEast", false, expected);
+                count += PlaceEdgePiece(wallsParent, converter, FloorLayout.Edge.West,
+                    index, sideWest, "WallWest", false, expected);
+                count += PlaceEdgePiece(wallsParent, converter, FloorLayout.Edge.South,
+                    index, skirt, "SkirtSouth", false, expected);
             }
 
             int postIndex = 0;
@@ -339,31 +344,37 @@ namespace GolemFactory.Editor
                 // caps and overlaps them in X. Equal sorting orders have no defined draw order
                 // in Unity, so without the bias which one wins the corner flips between imports.
                 Vector3 world = converter.CellFractionToWorld(anchor);
-                CreateSpriteObject(wallsParent.transform, "WallPost_" + postIndex, postSprite, world,
-                    sortingBias: 1);
+                string name = "WallPost_" + postIndex;
+                EnsureSpriteObject(wallsParent, name, postSprite, world, sortingBias: 1);
+                expected.Add(name);
                 postIndex++;
                 count++;
             }
+
+            PruneUnexpected(wallsParent, expected);
 
             return count;
         }
 
         private static int PlaceEdgePiece(Transform parent, GridCoordinateConverter converter,
-            FloorLayout.Edge edge, int index, Sprite sprite, string namePrefix, bool withLight)
+            FloorLayout.Edge edge, int index, Sprite sprite, string namePrefix, bool withLight,
+            HashSet<string> expected)
         {
+            string name = namePrefix + "_" + index;
             Vector3 world = converter.CellFractionToWorld(FloorLayout.GetEdgeAnchor(edge, index));
-            GameObject piece = CreateSpriteObject(parent, namePrefix + "_" + index, sprite, world);
-            if (withLight)
-            {
-                CreateSconceLight(piece.transform);
-            }
+            GameObject piece = EnsureSpriteObject(parent, name, sprite, world);
+            expected.Add(name);
+
+            // Both directions, because a lamp's segment and a plain segment share a name: retune
+            // LampSpacing and a formerly lit segment has to LOSE its light, not keep a stale one.
+            EnsureSconceLight(piece.transform, withLight);
             return 1;
         }
 
         private static int BuildProps(Transform parent, GridCoordinateConverter converter)
         {
-            var propsParent = new GameObject(PropsParentName);
-            propsParent.transform.SetParent(parent, worldPositionStays: false);
+            Transform propsParent = EnsureChild(parent, PropsParentName);
+            var expected = new HashSet<string>();
 
             Sprite crate = LoadSprite("prop_crate");
             Sprite barrel = LoadSprite("prop_barrel");
@@ -379,34 +390,42 @@ namespace GolemFactory.Editor
             {
                 if (Mod(i * 3, 7) < 2)
                 {
-                    count += PlaceProp(propsParent.transform, converter, new Vector2Int(he, i),
-                        Mod(i, 2) == 0 ? crate : barrel, shadow);
+                    count += PlaceProp(propsParent, converter, new Vector2Int(he, i),
+                        Mod(i, 2) == 0 ? crate : barrel, shadow, expected);
                 }
                 if (Mod(i * 5 + 2, 7) < 2)
                 {
-                    count += PlaceProp(propsParent.transform, converter, new Vector2Int(i, he),
-                        Mod(i, 2) == 0 ? barrel : crate, shadow);
+                    count += PlaceProp(propsParent, converter, new Vector2Int(i, he),
+                        Mod(i, 2) == 0 ? barrel : crate, shadow, expected);
                 }
                 if (Mod(i * 3 + 4, 9) < 2)
                 {
-                    count += PlaceProp(propsParent.transform, converter, new Vector2Int(-he, i),
-                        Mod(i, 2) == 0 ? crate : barrel, shadow);
+                    count += PlaceProp(propsParent, converter, new Vector2Int(-he, i),
+                        Mod(i, 2) == 0 ? crate : barrel, shadow, expected);
                 }
                 if (Mod(i * 7 + 1, 9) < 2)
                 {
-                    count += PlaceProp(propsParent.transform, converter, new Vector2Int(i, -he),
-                        Mod(i, 2) == 0 ? barrel : crate, shadow);
+                    count += PlaceProp(propsParent, converter, new Vector2Int(i, -he),
+                        Mod(i, 2) == 0 ? barrel : crate, shadow, expected);
                 }
             }
+
+            PruneUnexpected(propsParent, expected);
             return count;
         }
 
         private static int PlaceProp(Transform parent, GridCoordinateConverter converter,
-            Vector2Int cell, Sprite sprite, Sprite shadowSprite)
+            Vector2Int cell, Sprite sprite, Sprite shadowSprite, HashSet<string> expected)
         {
+            string name = "Prop_" + cell.x + "_" + cell.y;
             Vector3 world = converter.CellToWorldCenter(cell);
-            GameObject prop = CreateSpriteObject(parent, "Prop_" + cell.x + "_" + cell.y, sprite, world);
-            var shadow = prop.AddComponent<GroundShadow>();
+            GameObject prop = EnsureSpriteObject(parent, name, sprite, world);
+            expected.Add(name);
+
+            // Ensure, not AddComponent: a second run would otherwise stack a second GroundShadow
+            // on every prop. GroundShadow.Configure then finds its own existing child by name and
+            // reuses it, so the shadow does not multiply either.
+            var shadow = Ensure<GroundShadow>(prop);
             shadow.Configure(shadowSprite, Vector2.zero, 0.95f, 0.9f, anchorToBottom: false);
             shadow.Refresh();
             return 1;
@@ -418,14 +437,13 @@ namespace GolemFactory.Editor
         // other gameplay MonoBehaviour here, has no [ExecuteAlways]). The value is exactly what
         // YSortSpriteRenderer would compute, so walls, props, golems and the player all share
         // one depth ordering.
-        private static GameObject CreateSpriteObject(
+        private static GameObject EnsureSpriteObject(
             Transform parent, string name, Sprite sprite, Vector3 world, int sortingBias = 0)
         {
-            var go = new GameObject(name);
-            go.transform.SetParent(parent, worldPositionStays: false);
+            GameObject go = EnsureChild(parent, name).gameObject;
             go.transform.position = world;
 
-            var renderer = go.AddComponent<SpriteRenderer>();
+            var renderer = Ensure<SpriteRenderer>(go);
             renderer.sprite = sprite;
             renderer.sortingOrder = YSortUtility.ComputeSortingOrder(world.y) + sortingBias;
 
@@ -437,13 +455,18 @@ namespace GolemFactory.Editor
             return go;
         }
 
-        private static void CreateSconceLight(Transform wallSegment)
+        private static void EnsureSconceLight(Transform wallSegment, bool lit)
         {
-            var lightObject = new GameObject("SconceLight");
-            lightObject.transform.SetParent(wallSegment, worldPositionStays: false);
-            lightObject.transform.localPosition = new Vector3(0f, LampLightInset, 0f);
+            if (!lit)
+            {
+                DestroyChild(wallSegment, "SconceLight");
+                return;
+            }
 
-            var light = lightObject.AddComponent<Light2D>();
+            Transform lightTransform = EnsureChild(wallSegment, "SconceLight");
+            lightTransform.localPosition = new Vector3(0f, LampLightInset, 0f);
+
+            var light = Ensure<Light2D>(lightTransform.gameObject);
             light.lightType = Light2D.LightType.Point;
             light.color = LampColor;
             // Retuned for top-down, where the radii mean something different and there is one
@@ -494,6 +517,53 @@ namespace GolemFactory.Editor
                 Debug.LogError("SandboxFloorGenerator: missing sprite " + ArtRoot + spriteName + ".png");
             }
             return sprite;
+        }
+
+        // FIND-OR-CREATE, NOT DESTROY-AND-RECREATE, and the reason is the scene diff.
+        //
+        // Unity mints a fresh fileID for every GameObject and Component it creates, and writes
+        // the scene file grouped by those ids. Rebuilding the shell from scratch therefore
+        // renumbered ~131 objects and rewrote essentially the whole of Main.unity and
+        // Sandbox.unity every single run -- 26,000 changed lines to fix one wall sprite, no way
+        // to review what actually moved, and a guaranteed conflict against any other branch that
+        // touched the scene. Reusing the object keeps its id, so a run that changes nothing
+        // produces a diff that says nothing. CLAUDE.md asks for this of every authoring script;
+        // ProgressionSceneAuthoring already did it, and this one was the exception.
+        //
+        // Names are the identity key, which is why every piece is named from its own coordinates
+        // (WallNorth_-12, Prop_7_-12) rather than from a running counter.
+        private static Transform EnsureChild(Transform parent, string name)
+        {
+            Transform existing = parent.Find(name);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, worldPositionStays: false);
+            return go.transform;
+        }
+
+        private static T Ensure<T>(GameObject go) where T : Component
+        {
+            T component = go.GetComponent<T>();
+            return component != null ? component : go.AddComponent<T>();
+        }
+
+        // The other half of idempotence: reuse cannot remove. Shrink HalfExtent, or retire a
+        // wall run, and the pieces that are no longer generated would otherwise stay in the
+        // scene forever with nothing pointing at them.
+        private static void PruneUnexpected(Transform parent, HashSet<string> expected)
+        {
+            for (int i = parent.childCount - 1; i >= 0; i--)
+            {
+                Transform child = parent.GetChild(i);
+                if (!expected.Contains(child.name))
+                {
+                    Object.DestroyImmediate(child.gameObject);
+                }
+            }
         }
 
         private static void DestroyChild(Transform parent, string name)
