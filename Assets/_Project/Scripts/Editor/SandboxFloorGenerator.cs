@@ -317,20 +317,18 @@ namespace GolemFactory.Editor
             // Top-down wants the standard interior: three walls, and the south edge left open so
             // the camera can see in. North gets the head-on face; east and west get the side
             // caps; south keeps the skirting slab that gives the floor a visible thickness.
-            // (Edge names are still the isometric ones -- NorthEast is +X, SouthEast is -X. See
-            // the note on FloorLayout.Edge.)
             int count = 0;
             foreach (int index in FloorLayout.GetEdgeIndices())
             {
                 bool lit = Mod(index, LampSpacing) == 0;
 
-                count += PlaceEdgePiece(wallsParent.transform, converter, FloorLayout.Edge.NorthWest,
+                count += PlaceEdgePiece(wallsParent.transform, converter, FloorLayout.Edge.North,
                     index, lit ? northLamp : north, "WallNorth", lit);
-                count += PlaceEdgePiece(wallsParent.transform, converter, FloorLayout.Edge.NorthEast,
+                count += PlaceEdgePiece(wallsParent.transform, converter, FloorLayout.Edge.East,
                     index, sideEast, "WallEast", false);
-                count += PlaceEdgePiece(wallsParent.transform, converter, FloorLayout.Edge.SouthEast,
+                count += PlaceEdgePiece(wallsParent.transform, converter, FloorLayout.Edge.West,
                     index, sideWest, "WallWest", false);
-                count += PlaceEdgePiece(wallsParent.transform, converter, FloorLayout.Edge.SouthWest,
+                count += PlaceEdgePiece(wallsParent.transform, converter, FloorLayout.Edge.South,
                     index, skirt, "SkirtSouth", false);
             }
 

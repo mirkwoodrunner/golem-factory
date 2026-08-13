@@ -41,14 +41,19 @@ namespace GolemFactory.World
             }
         }
 
-        // The four boundary lines of the floor, named from the ISOMETRIC era when they sat on
-        // screen diagonals. Top-down flattened those diagonals onto the axes, so the names now
-        // read as compass edges of a rectangle: NorthEast is the +X (east) edge, NorthWest the
-        // +Y (north) edge, SouthEast the -X (west) edge, SouthWest the -Y (south) edge.
+        // The four boundary lines of the floor, one per compass direction, each named for the
+        // axis it actually sits on: North is +Y, East is +X, South is -Y, West is -X.
         //
-        // The names are deliberately NOT renamed yet: SandboxFloorGenerator's sprite/pivot table
-        // is keyed off them, so a rename is a coordinated change across both files and belongs
-        // in the environment-art pass rather than smuggled into the projection switch.
+        // These were NorthEast/NorthWest/SouthEast/SouthWest until the top-down switch had
+        // settled, inherited from the isometric era when the four boundaries were screen
+        // diagonals. Flattening them onto the axes left the names pointing at the wrong
+        // directions -- SouthEast meant the WEST edge -- so SandboxFloorGenerator was reading
+        // `Edge.SouthEast` to place the west wall, and getting it right by knowing the names
+        // lied. That is the sort of thing that stays correct exactly until somebody trusts it.
+        //
+        // Ordered clockwise from North, matching Facing, so the two enums read the same way.
+        // Nothing serializes Edge (it is used by the Editor-only generator and by tests), which
+        // is what made reordering as safe as renaming.
         //
         // Which edges get full walls versus open skirting is a PRESENTATION decision that the
         // top-down switch reopened, and it has now been made in SandboxFloorGenerator.BuildWalls:
@@ -58,10 +63,10 @@ namespace GolemFactory.World
         // not -- inherited unchanged it walled north and east and left the room's left side open.
         public enum Edge
         {
-            NorthEast,
-            NorthWest,
-            SouthEast,
-            SouthWest,
+            North,
+            East,
+            South,
+            West,
         }
 
         // Anchor for the wall/skirting segment covering ONE cell of the given boundary,
@@ -86,9 +91,9 @@ namespace GolemFactory.World
             float outer = halfExtent + 0.5f;
             switch (edge)
             {
-                case Edge.NorthEast: return new Vector2(outer, index);
-                case Edge.NorthWest: return new Vector2(index, outer);
-                case Edge.SouthEast: return new Vector2(-outer, index);
+                case Edge.North: return new Vector2(index, outer);
+                case Edge.East: return new Vector2(outer, index);
+                case Edge.West: return new Vector2(-outer, index);
                 default: return new Vector2(index, -outer);
             }
         }

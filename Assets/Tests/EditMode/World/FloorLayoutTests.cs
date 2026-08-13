@@ -69,11 +69,31 @@ namespace GolemFactory.Tests.EditMode
         public void GetEdgeAnchor_SitsOnTheBoundaryLineNotAPerimeterCell()
         {
             // Half a cell outside the last floor cell -- on the shared edge, not one cell out.
-            Assert.AreEqual(5.5f, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.NorthEast, 2, 5).x, 0.0001f);
-            Assert.AreEqual(2f, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.NorthEast, 2, 5).y, 0.0001f);
-            Assert.AreEqual(5.5f, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.NorthWest, -3, 5).y, 0.0001f);
-            Assert.AreEqual(-5.5f, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.SouthEast, 0, 5).x, 0.0001f);
-            Assert.AreEqual(-5.5f, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.SouthWest, 0, 5).y, 0.0001f);
+            Assert.AreEqual(5.5f, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.East, 2, 5).x, 0.0001f);
+            Assert.AreEqual(2f, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.East, 2, 5).y, 0.0001f);
+            Assert.AreEqual(5.5f, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.North, -3, 5).y, 0.0001f);
+            Assert.AreEqual(-5.5f, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.West, 0, 5).x, 0.0001f);
+            Assert.AreEqual(-5.5f, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.South, 0, 5).y, 0.0001f);
+        }
+
+        // The rename's own regression test: each Edge must sit on the axis its NAME claims. The
+        // enum spent the projection switch meaning the opposite of what it said (SouthEast was
+        // the west edge), and the only thing keeping the generator correct was that it had been
+        // written by someone who knew.
+        [Test]
+        public void GetEdgeAnchor_EachEdgeSitsOnTheAxisItsNameClaims()
+        {
+            const int halfExtent = 5;
+            const float outer = 5.5f;
+
+            Assert.AreEqual(outer, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.North, 0, halfExtent).y, 0.0001f);
+            Assert.AreEqual(outer, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.East, 0, halfExtent).x, 0.0001f);
+            Assert.AreEqual(-outer, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.South, 0, halfExtent).y, 0.0001f);
+            Assert.AreEqual(-outer, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.West, 0, halfExtent).x, 0.0001f);
+
+            // And the index runs along the OTHER axis, so an edge is a line and not a point.
+            Assert.AreEqual(3f, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.North, 3, halfExtent).x, 0.0001f);
+            Assert.AreEqual(3f, FloorLayout.GetEdgeAnchor(FloorLayout.Edge.East, 3, halfExtent).y, 0.0001f);
         }
 
         // The staircase regression test: consecutive wall segments must be exactly one cell edge
@@ -110,20 +130,19 @@ namespace GolemFactory.Tests.EditMode
             const int halfExtent = 5;
 
             // Y-sorting is what makes a wall read as behind or in front, so the edges that matter
-            // here are the ones that differ in Y. Under top-down those are the +Y and -Y edges --
-            // NorthWest and SouthWest under the enum's inherited isometric names (see the note on
-            // FloorLayout.Edge). The +X/-X edges share a Y with the row they border by
-            // construction, so asserting a sort order on them would be asserting nothing.
+            // here are the ones that differ in Y: North and South. The East/West edges share a Y
+            // with the row they border by construction, so asserting a sort order on them would
+            // be asserting nothing.
             for (int i = -halfExtent; i <= halfExtent; i++)
             {
                 float occupantY = converter.CellToWorldCenter(new Vector2Int(i, halfExtent)).y;
                 float wallY = converter.CellFractionToWorld(
-                    FloorLayout.GetEdgeAnchor(FloorLayout.Edge.NorthWest, i, halfExtent)).y;
+                    FloorLayout.GetEdgeAnchor(FloorLayout.Edge.North, i, halfExtent)).y;
                 Assert.Greater(wallY, occupantY, "north wall must be further back than the cell it borders");
 
                 float frontOccupantY = converter.CellToWorldCenter(new Vector2Int(i, -halfExtent)).y;
                 float skirtY = converter.CellFractionToWorld(
-                    FloorLayout.GetEdgeAnchor(FloorLayout.Edge.SouthWest, i, halfExtent)).y;
+                    FloorLayout.GetEdgeAnchor(FloorLayout.Edge.South, i, halfExtent)).y;
                 Assert.Less(skirtY, frontOccupantY, "south skirt must be nearer than the cell it borders");
             }
         }
@@ -159,13 +178,13 @@ namespace GolemFactory.Tests.EditMode
         public void GetEdgeAnchor_RunEndsMeetTheCornerPosts()
         {
             const int halfExtent = 5;
-            Vector2 lastNorthEast = FloorLayout.GetEdgeAnchor(FloorLayout.Edge.NorthEast, halfExtent, halfExtent);
-            Vector2 lastNorthWest = FloorLayout.GetEdgeAnchor(FloorLayout.Edge.NorthWest, halfExtent, halfExtent);
+            Vector2 lastEast = FloorLayout.GetEdgeAnchor(FloorLayout.Edge.East, halfExtent, halfExtent);
+            Vector2 lastNorth = FloorLayout.GetEdgeAnchor(FloorLayout.Edge.North, halfExtent, halfExtent);
 
             // Each covers [index - 0.5, index + 0.5] along the run, so the far end of the last
             // segment is half a cell past its anchor -- exactly the shared corner post.
-            Assert.AreEqual(5.5f, lastNorthEast.y + 0.5f, 0.0001f);
-            Assert.AreEqual(5.5f, lastNorthWest.x + 0.5f, 0.0001f);
+            Assert.AreEqual(5.5f, lastEast.y + 0.5f, 0.0001f);
+            Assert.AreEqual(5.5f, lastNorth.x + 0.5f, 0.0001f);
         }
 
         [Test]
