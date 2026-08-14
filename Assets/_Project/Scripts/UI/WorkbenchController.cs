@@ -32,6 +32,11 @@ namespace GolemFactory.UI
         private static readonly Color CopperColor = new Color(0.88f, 0.58f, 0.34f);
         private static readonly Color CardInkColor = new Color(0.10f, 0.08f, 0.06f);
         private static readonly Color CardSubInkColor = new Color(0.24f, 0.19f, 0.14f);
+        // Brass keys on a copper card: a value shift rather than a hue shift, because the card
+        // under them is already warm and a second warm hue would vanish into it -- the same
+        // "raise value, not hue" finding the routing markers landed on.
+        private static readonly Color StepperFaceColor = new Color(0.96f, 0.82f, 0.58f);
+        private static readonly Color StepperDisabledColor = new Color(0.72f, 0.62f, 0.50f, 0.55f);
         // The chassis rack keeps cream lettering in both states so the label never has to
         // be recolored alongside the plate: an unselected plate is dark enough for cream
         // to read, a selected one is a hot brass-orange that still is. (The first pass at
@@ -147,6 +152,12 @@ namespace GolemFactory.UI
         private ChassisDefinition _draftChassis;
         private LogicCoreDefinition _draftLogicCore;
         private AppendageActionDefinition[] _draftAppendages = new AppendageActionDefinition[0];
+
+        // Per-slot batch size, parallel to _draftAppendages. Part of the DRAFT for the same
+        // reason the appendages are: nothing reaches GolemEntity.Program until the lever is
+        // pulled, so turning a dial has to be as reversible as picking a card up and putting it
+        // back. Sized alongside _draftAppendages and reset with it.
+        private int[] _draftQuantities = new int[0];
         private int _draftOverflowCount;
         private readonly Dictionary<ChassisDefinition, Image> _chassisButtonImages = new Dictionary<ChassisDefinition, Image>();
         private int _nextBlueprintNumber = 1;
@@ -272,6 +283,7 @@ namespace GolemFactory.UI
         private void Start()
         {
             _draftAppendages = new AppendageActionDefinition[appendageSlotZones.Length];
+            _draftQuantities = new int[appendageSlotZones.Length];
             LoadDraftFromGolem();
             BuildChassisButtons();
 
@@ -320,10 +332,15 @@ namespace GolemFactory.UI
             for (int i = 0; i < _draftAppendages.Length; i++)
             {
                 _draftAppendages[i] = null;
+                _draftQuantities[i] = WorkbenchQuantityPolicy.MinQuantity;
             }
             for (int i = 0; i < program.appendages.Count && i < _draftAppendages.Length; i++)
             {
                 _draftAppendages[i] = program.appendages[i];
+                // The golem's CURRENT batch sizes, not the cards' authored defaults -- opening
+                // the Workbench on a golem the player has already tuned must show what they set,
+                // or the screen quietly proposes undoing their work every time they look at it.
+                _draftQuantities[i] = WorkbenchQuantityPolicy.Clamp(program.GetQuantityAt(i));
             }
 
             // THE TRUNCATION IS NOW RECORDED RATHER THAN SILENT. The loop above deliberately
@@ -347,6 +364,16 @@ namespace GolemFactory.UI
         /// directly rather than inferring it from a status string.
         /// </summary>
         public int DraftOverflowCount => _draftOverflowCount;
+
+        /// <summary>
+        /// The batch size currently drafted for a slot. Exposed for the same reason
+        /// <see cref="DraftOverflowCount"/> is: a test should assert the draft directly rather
+        /// than inferring it from rendered card text.
+        /// </summary>
+        public int DraftQuantityAt(int slotIndex) =>
+            slotIndex >= 0 && slotIndex < _draftQuantities.Length
+                ? _draftQuantities[slotIndex]
+                : WorkbenchQuantityPolicy.MinQuantity;
 
         private int DraftMaxSlots => _draftChassis != null ? _draftChassis.maxAppendageSlots : 0;
 
@@ -428,6 +455,7 @@ namespace GolemFactory.UI
                     else if (card.SourceAppendageIndex >= 0)
                     {
                         _draftAppendages[card.SourceAppendageIndex] = null;
+                        _draftQuantities[card.SourceAppendageIndex] = WorkbenchQuantityPolicy.MinQuantity;
                     }
                 }
                 // Vault-origin card dropped nowhere valid: cancel, nothing to undo. The
@@ -442,11 +470,22 @@ namespace GolemFactory.UI
             else if (zone.Kind == DropZoneKind.Appendage && card.Appendage != null && SlotActive(zone.AppendageIndex))
             {
                 int targetIndex = zone.AppendageIndex;
+
+                // A card dragged BETWEEN sockets carries its batch size with it; one arriving
+                // from the vault starts at its own authored default. Both are what the player
+                // means: moving step 3 up to step 2 is a reorder, not a retune, and a fresh card
+                // has no history to keep.
+                int arrivingQuantity = card.IsVaultOrigin || card.SourceAppendageIndex < 0
+                    ? WorkbenchQuantityPolicy.Clamp(card.Appendage.haulQuantity)
+                    : _draftQuantities[card.SourceAppendageIndex];
+
                 if (!card.IsVaultOrigin && card.SourceAppendageIndex >= 0 && card.SourceAppendageIndex != targetIndex)
                 {
                     _draftAppendages[card.SourceAppendageIndex] = null;
+                    _draftQuantities[card.SourceAppendageIndex] = WorkbenchQuantityPolicy.MinQuantity;
                 }
                 _draftAppendages[targetIndex] = card.Appendage;
+                _draftQuantities[targetIndex] = arrivingQuantity;
             }
             // Any other combination (wrong card kind for the zone, or an inactive
             // appendage slot beyond the current chassis's capacity) is a no-op: the card
@@ -522,11 +561,26 @@ namespace GolemFactory.UI
                 return;
             }
 
-            foreach (AppendageActionDefinition appendage in _draftAppendages)
+            // Added first, then re-quantified. TryAddAppendage seeds each new slot from the
+            // CARD's authored default (a shared asset), so applying the player's sizes has to
+            // come after -- and it has to happen at all: before this, every Engage silently
+            // reset every batch size in the program back to the card defaults, which made the
+            // saved-and-restored quantity a value nothing could ever set and reprogramming a
+            // golem an invisible retune of it.
+            int committed = 0;
+            for (int i = 0; i < _draftAppendages.Length; i++)
             {
-                if (appendage != null)
+                if (_draftAppendages[i] == null)
                 {
-                    program.TryAddAppendage(appendage);
+                    continue;
+                }
+
+                if (program.TryAddAppendage(_draftAppendages[i]))
+                {
+                    // Indexed by where it LANDED, not by its socket: a program packs its
+                    // appendages, so leaving socket 2 empty puts socket 3's card at index 2.
+                    program.SetQuantityAt(committed, _draftQuantities[i]);
+                    committed++;
                 }
             }
 
@@ -1045,8 +1099,18 @@ namespace GolemFactory.UI
 
             CreateLabel(go.transform, cardName, 15f,
                 CardInkColor, TextAlignmentOptions.Left, new Vector2(0.06f, 0.40f), new Vector2(0.98f, 0.98f));
+            // A slot card that carries a batch-size stepper gives up the right-hand third of
+            // its subtitle row to it, rather than the two overlapping.
+            bool hasStepper = !isVaultOrigin && sourceAppendageIndex >= 0 &&
+                              WorkbenchQuantityPolicy.TakesQuantity(appendage);
             CreateLabel(go.transform, CardSubtitle(logicCore, appendage), 11f,
-                CardSubInkColor, TextAlignmentOptions.Left, new Vector2(0.06f, 0.04f), new Vector2(0.98f, 0.42f));
+                CardSubInkColor, TextAlignmentOptions.Left, new Vector2(0.06f, 0.04f),
+                new Vector2(hasStepper ? 0.60f : 0.98f, 0.42f));
+
+            if (hasStepper)
+            {
+                CreateQuantityStepper(go.transform, sourceAppendageIndex, appendage);
+            }
 
             WorkbenchCard card = go.GetComponent<WorkbenchCard>();
             card.LogicCore = logicCore;
@@ -1054,6 +1118,87 @@ namespace GolemFactory.UI
             card.IsVaultOrigin = isVaultOrigin;
             card.SourceAppendageIndex = sourceAppendageIndex;
             card.Init(this, dragLayer);
+        }
+
+        /// <summary>
+        /// The batch-size control: [-] x4 - 10t [+], on the right of a slot card's subtitle row.
+        ///
+        /// <para>
+        /// BUILT ON THE CARD, NOT THE SOCKET, so it is destroyed and recreated with the card by
+        /// RebuildUI -- the same "always re-render from data" rule the rest of this screen
+        /// follows. A stepper living on the socket would have to be told when the card under it
+        /// changed, which is the incremental-choreography this class exists to avoid.
+        /// </para>
+        ///
+        /// <para>
+        /// The buttons do not steal the drag. UGUI routes drag events to the nearest ancestor
+        /// implementing IDragHandler, which is still the card, so pressing a button adjusts the
+        /// batch and dragging from one picks the card up -- both gestures stay available on the
+        /// same few pixels.
+        /// </para>
+        /// </summary>
+        private void CreateQuantityStepper(
+            Transform card, int slotIndex, AppendageActionDefinition appendage)
+        {
+            var row = new GameObject("Quantity", typeof(RectTransform));
+            row.transform.SetParent(card, false);
+            var rowRect = row.GetComponent<RectTransform>();
+            rowRect.anchorMin = new Vector2(0.62f, 0.04f);
+            rowRect.anchorMax = new Vector2(0.98f, 0.42f);
+            rowRect.offsetMin = Vector2.zero;
+            rowRect.offsetMax = Vector2.zero;
+
+            int quantity = _draftQuantities[slotIndex];
+            CreateStepperButton(row.transform, "-", new Vector2(0f, 0f), new Vector2(0.22f, 1f),
+                slotIndex, -1, quantity > WorkbenchQuantityPolicy.MinQuantity);
+            CreateLabel(row.transform, WorkbenchQuantityPolicy.Describe(appendage, quantity), 11f,
+                CardInkColor, TextAlignmentOptions.Center, new Vector2(0.24f, 0f), new Vector2(0.76f, 1f));
+            CreateStepperButton(row.transform, "+", new Vector2(0.78f, 0f), new Vector2(1f, 1f),
+                slotIndex, 1, quantity < WorkbenchQuantityPolicy.MaxQuantity);
+        }
+
+        // Disabled rather than hidden at the ends of the range: a control that vanishes at 1 and
+        // 12 makes the player wonder what they broke, where a greyed one says "this is the end".
+        private void CreateStepperButton(
+            Transform parent, string glyph, Vector2 anchorMin, Vector2 anchorMax,
+            int slotIndex, int delta, bool interactable)
+        {
+            var go = new GameObject(glyph == "+" ? "Increase" : "Decrease",
+                typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            Image image = go.GetComponent<Image>();
+            image.color = interactable ? StepperFaceColor : StepperDisabledColor;
+
+            var button = go.GetComponent<Button>();
+            button.interactable = interactable;
+            int capturedSlot = slotIndex;
+            int capturedDelta = delta;
+            button.onClick.AddListener(() => AdjustDraftQuantity(capturedSlot, capturedDelta));
+
+            CreateLabel(go.transform, glyph, 14f, CardInkColor, TextAlignmentOptions.Center,
+                Vector2.zero, Vector2.one);
+        }
+
+        /// <summary>
+        /// Changes one slot's batch size in the DRAFT. Nothing reaches the golem until the lever
+        /// is pulled, exactly like moving a card -- so a player can try 8, look at the tick cost,
+        /// and put it back without having reprogrammed anything or spent any Focus.
+        /// </summary>
+        public void AdjustDraftQuantity(int slotIndex, int delta)
+        {
+            if (slotIndex < 0 || slotIndex >= _draftQuantities.Length || _draftAppendages[slotIndex] == null)
+            {
+                return;
+            }
+
+            _draftQuantities[slotIndex] = WorkbenchQuantityPolicy.Step(_draftQuantities[slotIndex], delta);
+            RebuildUI();
         }
 
         private static void StretchOverSocket(RectTransform rect, Transform slot)

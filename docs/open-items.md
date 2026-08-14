@@ -402,8 +402,9 @@ steam adjacency still fits.
   a recipe plus a chassis fully determines the program — the signature drag-and-drop UI has nothing
   left to decide, and the patent system's main use becomes skipping boilerplate the game forces on
   you. The design's mitigation is player-set `Haul` batch quantities (throughput traded against
-  buffer pressure). Worth confirming that is enough to justify keeping the Workbench as the
-  signature screen.
+  buffer pressure) — **now built and playable** (§3), so this is no longer waiting on code. What
+  is left is the judgement: play a factory and decide whether one dial per logistics slot is
+  enough to carry the game's signature screen, or whether the Workbench needs a larger job.
 - **The Overclocker's identity.** Its flat-speed adjacency aura was cut in review — a non-local,
   adaptive effect contradicts the game's rigid local determinism. The design replaces it with a
   `Repeat(n)` appendage competing for the same slot as a third ingredient. Unbuilt, and it is the one
@@ -611,9 +612,24 @@ decision §2 reserves. Nothing mechanical blocks it any more.
   makes a future 7-slot chassis a refusal instead of a silent discard. The refusal costs no Focus,
   and its status line is deliberately not time-based (the program is still unrepresentable after
   six seconds), retiring only when retargeted onto a golem that fits.
-- **No UI for `Haul` batch quantity.** It is stored per slot and saved, but nothing exposes it, so
-  §2's "Consequence 4" — the Workbench's one remaining real decision — is not yet playable. This is
-  what the §2 open decision below is actually waiting on.
+- ~~**No UI for `Haul` batch quantity.**~~ **DONE.** Each `Haul`/`ExtractFromNode` slot card now
+  carries a `[−] ×4 · 10t [+]` stepper, clamped 1…12 (the golem's own per-item-type stock cap, not
+  a number picked for the UI). It edits the **draft**, so trying 8 and putting it back costs
+  nothing and no Focus, exactly like picking a card up and setting it down.
+
+  **The tick cost is shown because it is half the decision.** §2's trade is throughput against
+  buffer pressure; a stepper showing only the number would hide the part that makes it a choice.
+  The figure is quoted from `Golems/StepDurationRules` — the same functions `GolemEntity` charges,
+  extracted from it for this — rather than a second copy of `max(2,q)` / `6+q` in the UI that
+  would drift the first time either was retuned.
+
+  **A defect this uncovered, which made the stored value pointless.** `EngageGears` rebuilds a
+  program with `TryAddAppendage`, and that seeds each slot from the **card's** authored default —
+  so every reprogram silently reset every batch size in the golem, including one restored from a
+  save moments earlier. The value save/load had been carefully round-tripping was one the game
+  overwrote the next time the player touched the lever. Quantities are now applied after the
+  appendages, indexed by where each card **landed** rather than by its socket, since a program
+  packs and the sockets do not.
 - **A one-card `ExtractFromNode` program now jams.** Extract fills internal stock instead of
   reaching the tile in front, so a spatially placed golem with no `Push` fills to 12 and stalls
   `InputFull`. Correct by design (a Scavenger is 2 slots: Extract + Push) and the stall names the
