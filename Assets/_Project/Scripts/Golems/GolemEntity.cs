@@ -833,7 +833,7 @@ namespace GolemFactory.Golems
             // precondition checks so a stalled step doesn't carry a stale duration into its
             // eventual successful retry.
             int quantity = CurrentStepQuantity();
-            _stepDuration = 6 + quantity;
+            _stepDuration = StepDurationRules.ExtractFromNode(quantity);
 
             // §3.2's crew cap, checked BEFORE BeginFillInputStock -- i.e. before anything is
             // taken out of the ground. A refused golem must not extract this tick and then be
@@ -1001,7 +1001,7 @@ namespace GolemFactory.Golems
             // trade -- throughput against holding N units hostage inside one golem and pulling
             // N at a time out of a shared buffer -- is the decision §2 hands the player.
             int quantity = CurrentStepQuantity();
-            _stepDuration = Mathf.Max(2, quantity);
+            _stepDuration = StepDurationRules.Haul(quantity);
 
             return BeginFillInputStock(step.inputItemType, quantity, out blockedResourceId);
         }
