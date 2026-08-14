@@ -554,15 +554,47 @@ estimate for the manual era — §6's costs and §11's 25 % speed were designed 
 > needs three or four, so **no amount of cranking reaches the endgame**. "Tier-1" reads as shorthand
 > written before R8's output was classified. Pinned by `HandCrankBenchTests`.
 
-**`requireSteamPower` is now unblocked** — §10's total-blackout backstop exists, and a test asserts
-the bench both works with no steam network present and holds no reference to one. Turning the switch
-on is a separate call, and wants a playtest of the fuel ratio first.
+**`requireSteamPower` was *not* unblocked by the bench alone** — this was claimed here and it was
+wrong. §10's backstop needs two halves and the bench is only one of them.
+
+> **The blackout loop, found by trying to turn the switch on.** A boiler's only Coke writer was
+> `BoilerFuelEndpoint`, which a **golem** `Push`es into. A golem needs a powered boiler to move.
+> A player-built boiler starts at **0 Coke** (deliberately — `DefaultStartingCoke` is §9's opening
+> gift and shipping it on the prefab would mint 240 Coke for 30 Scrap + 10 Iron Plate). And
+> `Sandbox.unity` contains **zero** `PlaceableBoiler` instances. So with the switch on, the first
+> boiler could never be lit: every golem stalls `NoSteam`, and nothing that is stalled can carry
+> fuel. The bench solved the *goods* half — it can make Coke — and nothing moved that Coke the
+> last three feet into the firebox. Flipping the switch would have been a hard soft-lock of the
+> only playable scene.
+
+**Fixed: the player can hand-load a boiler.** `[E]` on a boiler moves Coke from the stockpile into
+it (`Player/BoilerRefuelPolicy` + `PlayerInteractor.TryRefuelBoiler`), the mirror of harvesting.
+Deliberately **not** routed through the fuel endpoint — that is the golem-facing tile contract, and
+reaching it would mean inventing a spatial position for a player who has none.
+
+**The batch size is doing design work, not just UX.** 20 Coke is 2000 powered-golem-ticks: ~200 s
+of one golem, or ~25 s of a fully subscribed 8-golem boiler. So one press is a real emergency
+top-up, and keeping a live factory running by hand would mean standing at the firebox pressing a
+key forever — which keeps hand-fuelling a way to **restart** a dead factory rather than a way to
+**run** one. §3.1 wants Coke to be the contended throat of the game; a generous hand-load would
+quietly void that. Capping also lets a player split what they have between two cold boilers.
+
+**The fuel ratio itself is fine, and it is arithmetic rather than taste.** A coker at batch 1 is a
+17-tick cycle (2 haul + 12 assemble + 3 push) → **35.3 Coke/min**, against **6 Coke/min** per
+powered golem, so one coker sustains ~5.9 golems. That clears §10's 3.3 : 1 comfortably. The
+economy converges; what was missing was never the ratio, it was the bootstrap.
+
+**Turning the switch on is still a separate call**, and now a purely *design* one: it reshapes the
+opening into "harvest by hand → crank Iron Plate and Coke → build a boiler → light it by hand →
+build golems", which is §9 Phase 1's arc but is exactly the "the opening changes substantially"
+decision §2 reserves. Nothing mechanical blocks it any more.
 
 ### Also not yet wired
 
 - **Save/load does not persist Clock Tower progress**, so a reload restarts the current stage.
-- **`requireSteamPower` is still off.** Its last blocker is the Hand-Crank Bench (§11 item 7), which
-  §10 requires as the total-blackout backstop.
+- **`requireSteamPower` is still off, but nothing mechanical blocks it now.** Both halves of §10's
+  backstop exist: the Hand-Crank Bench makes Coke, and hand-loading a boiler delivers it. What
+  remains is the §2 design call about the opening — see the steam section above.
 - **The whole arc is unplaytested.** §12 names the boiler fuel ratio as "the single most important
   number to playtest first" — mis-tuned, the game becomes a coal simulator — and flags every golem
   count in §7/§9 as ±25 %. Nothing here has been played, only tested.

@@ -4,6 +4,7 @@ using UnityEngine.InputSystem;
 using GolemFactory.Belts;
 using GolemFactory.Buildings;
 using GolemFactory.Economy;
+using GolemFactory.Steam;
 using GolemFactory.Golems;
 using GolemFactory.UI;
 using GolemFactory.World;
@@ -71,12 +72,15 @@ namespace GolemFactory.Player
         private GolemEntity[] _golems = new GolemEntity[0];
         private GolemFactory.Buildings.HandCrankBench[] _benches =
             new GolemFactory.Buildings.HandCrankBench[0];
+        private PlaceableBoiler[] _boilers =
+            new PlaceableBoiler[0];
 
         // Position buffers refilled each frame from the cached component arrays, so the
         // per-frame selection allocates nothing. Sized only when the arrays are re-scanned.
         private Vector3[] _nodePositions = new Vector3[0];
         private Vector3[] _stationPositions = new Vector3[0];
         private Vector3[] _golemPositions = new Vector3[0];
+        private Vector3[] _boilerPositions = new Vector3[0];
 
         // Set by Interact()/the Try* methods on failure, for the prompt UI or a test to
         // surface -- mirrors BuildModeController.LastStatusMessage.
@@ -463,6 +467,12 @@ namespace GolemFactory.Player
             _stations = FindObjectsByType<GolemConstructionStation>(FindObjectsSortMode.None);
             _golems = FindObjectsByType<GolemEntity>(FindObjectsSortMode.None);
             _benches = FindObjectsByType<HandCrankBench>(FindObjectsSortMode.None);
+            _boilers = FindObjectsByType<PlaceableBoiler>(FindObjectsSortMode.None);
+
+            if (_boilerPositions.Length != _boilers.Length)
+            {
+                _boilerPositions = new Vector3[_boilers.Length];
+            }
 
             if (_nodePositions.Length != _nodeMarkers.Length)
             {
@@ -542,8 +552,9 @@ namespace GolemFactory.Player
             FillPositions(_nodeMarkers, _nodePositions);
             FillPositions(_stations, _stationPositions);
             FillPositions(_golems, _golemPositions);
+            FillPositions(_boilers, _boilerPositions);
             return InteractionTargeting.SelectNearest(
-                transform.position, _nodePositions, _stationPositions, _golemPositions);
+                transform.position, _nodePositions, _stationPositions, _golemPositions, _boilerPositions);
         }
 
         // Destroyed components leave null holes in the cached arrays (a removed building, a
@@ -569,13 +580,33 @@ namespace GolemFactory.Player
                     return pick.Index >= 0 && pick.Index < _stations.Length ? _stations[pick.Index] : null;
                 case InteractionKind.Program:
                     return pick.Index >= 0 && pick.Index < _golems.Length ? _golems[pick.Index] : null;
+                case InteractionKind.Refuel:
+                    return pick.Index >= 0 && pick.Index < _boilers.Length ? _boilers[pick.Index] : null;
                 default:
                     return null;
             }
         }
 
-        private static bool IsUnavailable(InteractionPick pick, Component target) =>
-            pick.Kind == InteractionKind.Harvest && ((ResourceNodeMarker)target).IsDepleted;
+        // A boiler with no Coke to give it reads Unavailable rather than Ready, for the same
+        // reason a depleted node does: "[E] Fuel Boiler" on a player holding nothing promises an
+        // action that will refuse.
+        private bool IsUnavailable(InteractionPick pick, Component target)
+        {
+            switch (pick.Kind)
+            {
+                case InteractionKind.Harvest:
+                    return ((ResourceNodeMarker)target).IsDepleted;
+                case InteractionKind.Refuel:
+                    return BoilerRefuelPolicy.AmountToLoad(StockpileCoke) <= 0;
+                default:
+                    return false;
+            }
+        }
+
+        private int StockpileCoke =>
+            _stockpileHolder == null
+                ? 0
+                : _stockpileHolder.Registry.GetQuantity(_stockpileBufferId, ItemType.Coke);
 
         private static void DescribeTarget(
             InteractionPick pick, Component target, bool isCarrying, out string targetName, out string detail)
@@ -596,6 +627,15 @@ namespace GolemFactory.Player
                     targetName = "";
                     detail = "";
                     break;
+                case InteractionKind.Refuel:
+                {
+                    var boiler = (PlaceableBoiler)target;
+                    targetName = "Boiler";
+                    // The boiler's own stock, not the player's: what the player wants to know
+                    // standing here is whether this firebox needs feeding.
+                    detail = boiler.Boiler != null ? boiler.Boiler.CokeStock + " Coke" : "cold";
+                    break;
+                }
                 case InteractionKind.Program:
                 {
                     var golem = (GolemEntity)target;
@@ -635,10 +675,63 @@ namespace GolemFactory.Player
                     return TryOpenConstruction(target as GolemConstructionStation);
                 case InteractionKind.Program:
                     return TryProgram(target as GolemEntity);
+                case InteractionKind.Refuel:
+                    return TryRefuelBoiler(target as PlaceableBoiler);
                 default:
                     LastStatusMessage = "Nothing in range to interact with.";
                     return false;
             }
+        }
+
+        /// <summary>
+        /// Hand-loads Coke from the stockpile into a boiler -- §10's blackout backstop, completed.
+        ///
+        /// <para>
+        /// THE LOOP THIS BREAKS: a boiler's only other Coke writer is <c>BoilerFuelEndpoint</c>,
+        /// which a golem <c>Push</c>es into, and a golem needs a powered boiler to move at all. A
+        /// player-built boiler starts at zero. So with <c>requireSteamPower</c> on, the first
+        /// boiler could never be lit and a total blackout was permanent -- the Hand-Crank Bench
+        /// could make Coke, and nothing could carry it the last three feet.
+        /// </para>
+        ///
+        /// <para>
+        /// Deliberately NOT routed through the fuel endpoint. That endpoint is the golem-facing
+        /// tile contract, and reaching it would mean inventing a spatial position for the player,
+        /// who does not have one. This is the same shape as <see cref="TryHarvest"/> in reverse:
+        /// the player moves goods between the world and the stockpile directly, and the boiler's
+        /// own <c>AddCoke</c> is the single place its fuel ever goes up either way.
+        /// </para>
+        /// </summary>
+        public bool TryRefuelBoiler(PlaceableBoiler boiler)
+        {
+            if (boiler == null || boiler.Boiler == null)
+            {
+                LastStatusMessage = "No boiler in range.";
+                return false;
+            }
+
+            int amount = BoilerRefuelPolicy.AmountToLoad(StockpileCoke);
+            if (amount <= 0)
+            {
+                LastStatusMessage = "No Coke in the stockpile.";
+                SpawnPopup(boiler.transform.position, "No Coke", RefusedPopupColor);
+                return false;
+            }
+
+            // Withdraw first, then add. The reverse order would mint Coke if the withdrawal
+            // failed -- and the withdrawal is the operation that can fail, since another system
+            // may have spent the stockpile between the readout and the press.
+            if (!_stockpileHolder.Registry.TryWithdraw(_stockpileBufferId, ItemType.Coke, amount))
+            {
+                LastStatusMessage = "No Coke in the stockpile.";
+                SpawnPopup(boiler.transform.position, "No Coke", RefusedPopupColor);
+                return false;
+            }
+
+            boiler.Boiler.AddCoke(amount);
+            LastStatusMessage = $"Loaded {amount} Coke.";
+            SpawnPopup(boiler.transform.position, "+" + amount + " Coke", HarvestPopupColor);
+            return true;
         }
 
         // Exposed separately from Interact() so tests (and the prompt UI) can target a

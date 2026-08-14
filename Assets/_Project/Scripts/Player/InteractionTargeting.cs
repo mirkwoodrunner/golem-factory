@@ -13,7 +13,14 @@ namespace GolemFactory.Player
         None = 0,
         Harvest = 1,
         Construct = 2,
-        Program = 3
+        Program = 3,
+
+        // Hand-loading Coke into a boiler. Appended, so the tie-break order above is unchanged
+        // for the three kinds that already existed: a boiler only wins a tie against nothing.
+        // That is the right end of the order for it -- a boiler is a large obvious building the
+        // player walks up to deliberately, while a node or a golem sharing its tile is the thing
+        // they are more likely to have meant.
+        Refuel = 4
     }
 
     /// <summary>
@@ -93,7 +100,8 @@ namespace GolemFactory.Player
             Vector3 origin,
             IReadOnlyList<Vector3> harvestables,
             IReadOnlyList<Vector3> stations,
-            IReadOnlyList<Vector3> golems)
+            IReadOnlyList<Vector3> golems,
+            IReadOnlyList<Vector3> boilers = null)
         {
             InteractionPick best = InteractionPick.None;
             // Evaluated in enum order with a strict less-than, so an exact distance tie keeps
@@ -101,6 +109,9 @@ namespace GolemFactory.Player
             Consider(origin, harvestables, InteractionKind.Harvest, ref best);
             Consider(origin, stations, InteractionKind.Construct, ref best);
             Consider(origin, golems, InteractionKind.Program, ref best);
+            // Optional and last, so every existing three-list caller (Main.unity's scenes and the
+            // whole pre-existing targeting suite) picks exactly what it always did.
+            Consider(origin, boilers, InteractionKind.Refuel, ref best);
             return best;
         }
 
@@ -154,6 +165,10 @@ namespace GolemFactory.Player
                 case InteractionKind.Harvest: return "Harvest";
                 case InteractionKind.Construct: return "Build Golem";
                 case InteractionKind.Program: return "Program";
+                // "Fuel", not "Refuel": the case that matters most is the boiler that has never
+                // been lit, and a player told to RE-fuel one looks for the fuel they must have
+                // spilled.
+                case InteractionKind.Refuel: return "Fuel Boiler";
                 default: return "";
             }
         }
