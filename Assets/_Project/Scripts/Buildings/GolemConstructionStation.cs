@@ -200,11 +200,79 @@ namespace GolemFactory.Buildings
             Vector3 spawnPosition;
             ResolveConstructedGolemPlacement(out spawnCell, out spawnFacing, out spawnPosition);
 
-            golem = Instantiate(golemPrefab, spawnPosition, Quaternion.identity);
-            golem.Configure($"PlayerGolem-{_nextGolemNumber:D3}", conveyorHolder);
-            _nextGolemNumber++;
+            golem = SpawnGolem(chassis, NextGolemId(), spawnCell, spawnFacing, spawnPosition);
+
+            if (workbenchController != null)
+            {
+                workbenchController.RetargetGolem(golem);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Rebuilds a golem a save file describes but the scene no longer contains, standing on
+        /// the cell it was saved on and facing the way it was saved facing.
+        ///
+        /// <para>
+        /// TWO THINGS THIS DELIBERATELY DOES NOT DO, both of which <see cref="TryConstructGolem"/>
+        /// does. It does not charge the chassis cost -- the player paid for this golem in the
+        /// session that built it, and charging again would make loading a game a tax, or fail
+        /// outright for a player who has since spent their stockpile. And it does not retarget
+        /// the Workbench: loading a factory of nine golems would otherwise leave the programming
+        /// screen pointed at whichever one happened to be last in the file.
+        /// </para>
+        ///
+        /// <para>
+        /// Everything else is the same wiring in the same order, because it goes through the same
+        /// <c>SpawnGolem</c>. The order is load-bearing and documented there.
+        /// </para>
+        /// </summary>
+        public bool TryRespawnGolem(
+            string golemId, ChassisDefinition chassis, Vector2Int savedCell, Facing savedFacing,
+            out GolemEntity golem)
+        {
+            golem = null;
+            if (chassis == null || golemPrefab == null || string.IsNullOrEmpty(golemId))
+            {
+                return false;
+            }
+
+            // Its own cell, not a resolved spawn tile: a loaded factory has to come back the
+            // shape it was saved in. ResolveConstructedGolemPlacement's walk past blocked
+            // neighbours is for a NEW golem stepping out of a station door, and applying it here
+            // would shuffle a restored factory's golems off their tiles -- which under spatial
+            // routing means quietly rerouting them.
+            Vector3 position = spatialEndpointHolder != null
+                ? new GridCoordinateConverter(cellSize).CellToWorldCenter(savedCell)
+                : transform.position;
+
+            golem = SpawnGolem(chassis, golemId, savedCell, savedFacing, position);
+
+            // Keep the counter ahead of every id restored from the file, or the next golem the
+            // player builds is handed a name a loaded golem already answers to -- and golem ids
+            // are the key for save entries, stall events and the spatial/steam registries, so a
+            // duplicate is not cosmetic. Parsed rather than tracked as a count because the file
+            // is the only thing that knows which numbers were used.
+            ReserveGolemNumber(golemId);
+            return true;
+        }
+
+        // The whole birth sequence, shared so a respawned golem cannot drift from a built one.
+        private GolemEntity SpawnGolem(
+            ChassisDefinition chassis, string golemId, Vector2Int spawnCell, Facing spawnFacing,
+            Vector3 spawnPosition)
+        {
+            GolemEntity golem = Instantiate(golemPrefab, spawnPosition, Quaternion.identity);
+            golem.Configure(golemId, conveyorHolder);
             golem.ConfigureEconomy(nodeRegistryHolder, bufferRegistryHolder);
             golem.Program.TryAssignChassis(chassis);
+
+            // What tells the save system this golem is reconstructible. Set here rather than at
+            // either call site so it is impossible to add a third way to build a golem that
+            // forgets it -- a golem that forgot would simply vanish on the next load, silently,
+            // which is the bug this whole change exists to fix.
+            golem.MarkRuntimeSpawned();
 
             if (spatialEndpointHolder != null)
             {
@@ -237,12 +305,32 @@ namespace GolemFactory.Buildings
                 clockRunner.Register(golem);
             }
 
-            if (workbenchController != null)
+            return golem;
+        }
+
+        // "PlayerGolem-007" -> reserve 7, so the next build is 008. Anything that does not match
+        // the pattern (a golem the player renamed, an id from another scene's bootstrap) is
+        // ignored rather than guessed at: an unparseable id cannot collide with a generated one.
+        private void ReserveGolemNumber(string golemId)
+        {
+            const string prefix = "PlayerGolem-";
+            if (golemId == null || !golemId.StartsWith(prefix))
             {
-                workbenchController.RetargetGolem(golem);
+                return;
             }
 
-            return true;
+            if (int.TryParse(golemId.Substring(prefix.Length), out int number) &&
+                number >= _nextGolemNumber)
+            {
+                _nextGolemNumber = number + 1;
+            }
+        }
+
+        private string NextGolemId()
+        {
+            string id = $"PlayerGolem-{_nextGolemNumber:D3}";
+            _nextGolemNumber++;
+            return id;
         }
 
         // Stands the new golem on a real tile and points it the same way the station points, so

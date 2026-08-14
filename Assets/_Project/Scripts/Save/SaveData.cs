@@ -55,6 +55,16 @@ namespace GolemFactory.Save
         public int cellY;
         public int facing;
 
+        // Whether this golem was BUILT DURING PLAY, and can therefore be rebuilt on load rather
+        // than only reprogrammed. Captured from GolemEntity.IsRuntimeSpawned.
+        //
+        // The whole point of the flag is what happens when it is FALSE: a scene golem is
+        // hand-wired and cannot be reconstructed from GolemPrefab, so it is left to be matched
+        // by id against the live scene exactly as before. An older save has no field at all and
+        // deserializes to false, which restores it byte for byte as it always did -- the same
+        // opt-in fork the machine model, spatial routing and steam all ride.
+        public bool wasRuntimeSpawned;
+
         // Per-slot Haul batch sizes, parallel to appendageNames. Absent in a pre-machine-model
         // save, which restores fine -- GolemProgram self-heals a short list back to the
         // authored per-card defaults.

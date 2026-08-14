@@ -52,6 +52,36 @@ namespace GolemFactory.Golems
         // rejected because exactly one of them would use it.
         private long _currentTick;
 
+        // --- Was this golem built during play, or authored into the scene? -------------------
+        // Read only by the save system, which respawns the former and never the latter.
+        //
+        // The distinction is not cosmetic. A scene golem is hand-wired -- Main.unity's seven
+        // demos carry serialized references, deliberately-absent spatial routing, and ids that
+        // its bootstraps look up -- so rebuilding one from GolemPrefab would produce a
+        // different object wearing the same name. A player-built golem, by contrast, is
+        // *entirely* described by GolemPrefab plus the station's wiring plus its saved program,
+        // which is exactly what makes it reconstructible.
+        //
+        // Not a [SerializeField], for the same reason steamNetworkHolder is not: authoring it
+        // in the Inspector would let a scene golem claim to be reconstructible when it is not,
+        // and false is the answer that preserves today's behaviour.
+        private bool _isRuntimeSpawned;
+
+        /// <summary>
+        /// True for a golem instantiated during play (by <c>GolemConstructionStation</c>, or
+        /// respawned from a save), false for one authored into the scene. Defaults to false, so
+        /// a golem nobody marks is treated as scene furniture the save system must not recreate.
+        /// </summary>
+        public bool IsRuntimeSpawned => _isRuntimeSpawned;
+
+        /// <summary>
+        /// Marks this golem as built during play and therefore reconstructible from a save.
+        /// One-way on purpose: nothing about loading or reprogramming a golem can turn a scene
+        /// object into a spawnable one, and a method that could unset this would be a way to
+        /// silently drop a player's golem from their save.
+        /// </summary>
+        public void MarkRuntimeSpawned() => _isRuntimeSpawned = true;
+
         public string GolemId => golemId;
         public GolemProgram Program => program;
 

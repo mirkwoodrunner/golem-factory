@@ -56,7 +56,8 @@ namespace GolemFactory.Save
                     state = (int)program.State,
                     cellX = golem.Cell.x,
                     cellY = golem.Cell.y,
-                    facing = (int)golem.Facing
+                    facing = (int)golem.Facing,
+                    wasRuntimeSpawned = golem.IsRuntimeSpawned
                 };
 
                 // Read through GetQuantityAt rather than copying appendageQuantities directly,
@@ -105,12 +106,45 @@ namespace GolemFactory.Save
             }
         }
 
-        // Golems not present in `golems` (e.g. removed since the save was made) are
-        // silently skipped -- restoring a golem program requires the real GolemEntity to
-        // apply it to, and there's no "spawn a new one" concept for a save file to invent.
-        public static void RestoreState(
+        /// <summary>
+        /// What a load actually did to the golems, so the UI can say so instead of counting the
+        /// save file's entries and calling that a result.
+        /// </summary>
+        public readonly struct RestoreReport
+        {
+            /// <summary>Golems already in the scene that had their program restored.</summary>
+            public int Restored { get; }
+
+            /// <summary>Golems rebuilt from the save because the scene no longer had them.</summary>
+            public int Respawned { get; }
+
+            /// <summary>
+            /// Entries neither matched nor rebuilt -- a scene golem that is genuinely gone, or a
+            /// player golem with no respawner wired. Reported rather than swallowed: this used
+            /// to be every player-built golem in the file, silently.
+            /// </summary>
+            public int Skipped { get; }
+
+            public RestoreReport(int restored, int respawned, int skipped)
+            {
+                Restored = restored;
+                Respawned = respawned;
+                Skipped = skipped;
+            }
+        }
+
+        // An entry with no live golem is REBUILT if the save says it was built during play and a
+        // respawner is available, and skipped otherwise -- which is what every entry used to do,
+        // because there was no way to make a golem a save file had merely described.
+        //
+        // The respawner only ever produces a bare-chassis golem standing in the right place. The
+        // program, the stock, the step index and the placement are then applied by the SAME loop
+        // that handles a golem which was already alive; there is deliberately no second restore
+        // path for a respawned golem to drift away from.
+        public static RestoreReport RestoreState(
             SaveData data, StorageBufferRegistry buffers, ArtificerFocusMeter focus,
-            PatentRegistry patents, IEnumerable<GolemEntity> golems, DefinitionCatalog catalog)
+            PatentRegistry patents, IEnumerable<GolemEntity> golems, DefinitionCatalog catalog,
+            IGolemRespawner respawner = null)
         {
             // Deposit is additive -- clear first so a load *replaces* buffer state
             // instead of merging into whatever's currently there.
@@ -144,11 +178,22 @@ namespace GolemFactory.Save
                 }
             }
 
+            int restored = 0;
+            int respawned = 0;
+            int skipped = 0;
+
             foreach (GolemEntry entry in data.golems)
             {
+                bool wasRespawned = false;
                 if (!golemsById.TryGetValue(entry.golemId, out GolemEntity golem))
                 {
-                    continue;
+                    if (!TryRespawnGolem(entry, catalog, respawner, out golem))
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    wasRespawned = true;
                 }
 
                 GolemProgram program = golem.Program;
@@ -205,7 +250,55 @@ namespace GolemFactory.Save
                 golem.SetPlacement(
                     new UnityEngine.Vector2Int(entry.cellX, entry.cellY),
                     (GolemFactory.World.Facing)entry.facing);
+
+                if (wasRespawned)
+                {
+                    respawned++;
+                }
+                else
+                {
+                    restored++;
+                }
             }
+
+            return new RestoreReport(restored, respawned, skipped);
+        }
+
+        // Three conditions, and the first two are refusals rather than failures:
+        //
+        // No respawner means the caller did not ask for this (every pre-existing call site, and
+        // every test written before it existed), so the entry is skipped exactly as it was.
+        //
+        // `wasRuntimeSpawned == false` means the save is describing a golem that was authored
+        // into a scene. Rebuilding one from GolemPrefab would produce a different object wearing
+        // its name -- no hand-wired references, no deliberately-absent spatial routing -- so a
+        // missing scene golem stays missing, which is the honest answer.
+        //
+        // A chassis the catalog cannot resolve is the genuine failure, and it also has to be
+        // caught HERE rather than after spawning: a golem is placed on a cell and registered
+        // with the clock at birth, so spawning first and discovering the chassis is unresolvable
+        // afterwards would leave an empty golem standing in the factory occupying a tile.
+        private static bool TryRespawnGolem(
+            GolemEntry entry, DefinitionCatalog catalog, IGolemRespawner respawner,
+            out GolemEntity golem)
+        {
+            golem = null;
+            if (respawner == null || !entry.wasRuntimeSpawned)
+            {
+                return false;
+            }
+
+            ChassisDefinition chassis = catalog.FindChassis(entry.chassisName);
+            if (chassis == null)
+            {
+                return false;
+            }
+
+            return respawner.TryRespawn(
+                entry.golemId, chassis,
+                new UnityEngine.Vector2Int(entry.cellX, entry.cellY),
+                (GolemFactory.World.Facing)entry.facing,
+                out golem) && golem != null;
         }
     }
 }

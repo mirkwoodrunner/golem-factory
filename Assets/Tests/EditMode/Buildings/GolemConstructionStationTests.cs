@@ -120,5 +120,104 @@ namespace GolemFactory.Tests.EditMode
             Object.DestroyImmediate(golemA.gameObject);
             Object.DestroyImmediate(golemB.gameObject);
         }
+
+        // --- Respawning a saved golem (Save/IGolemRespawner) ---------------------------------
+        //
+        // The station is the respawner because it is already the spawner: it holds every
+        // reference a working golem needs. These exercise the REAL station rather than the fake
+        // that GolemRespawnTests drives, because what can go wrong here is specifically the
+        // difference between building a golem and rebuilding one.
+
+        [Test]
+        public void TryRespawnGolem_DoesNotChargeTheChassisCostAgain()
+        {
+            // The player paid for this golem in the session that built it. Charging on load
+            // would make loading a game a tax -- and would simply fail for a player who has
+            // since spent their stockpile, which is to say most of them.
+            ChassisDefinition chassis = MakeChassis(scrapCost: 20, brassCost: 10);
+            (GolemConstructionStation station, StorageBufferRegistryHolder buffers) = Build(new[] { chassis });
+            buffers.Registry.Deposit("FactoryStockpile", ItemType.Scrap, 20);
+
+            bool result = station.TryRespawnGolem(
+                "PlayerGolem-001", chassis, new Vector2Int(2, 5), GolemFactory.World.Facing.South,
+                out GolemEntity golem);
+
+            Assert.IsTrue(result, "a respawn must not be blocked by an empty stockpile");
+            Assert.AreEqual(20, buffers.Registry.GetOrCreate("FactoryStockpile").GetQuantity(ItemType.Scrap),
+                "the cost was charged a second time");
+
+            Object.DestroyImmediate(golem.gameObject);
+        }
+
+        [Test]
+        public void TryRespawnGolem_KeepsTheSavedIdAndMarksTheGolemRebuildable()
+        {
+            ChassisDefinition chassis = MakeChassis(scrapCost: 0, brassCost: 0);
+            (GolemConstructionStation station, StorageBufferRegistryHolder _) = Build(new[] { chassis });
+
+            station.TryRespawnGolem(
+                "PlayerGolem-007", chassis, Vector2Int.zero, GolemFactory.World.Facing.North,
+                out GolemEntity golem);
+
+            Assert.AreEqual("PlayerGolem-007", golem.GolemId,
+                "the id is the save key -- a respawn that renames the golem loses it next save");
+            Assert.IsTrue(golem.IsRuntimeSpawned,
+                "a rebuilt golem must still be rebuildable, or the factory survives one reload");
+
+            Object.DestroyImmediate(golem.gameObject);
+        }
+
+        // The collision this prevents is not cosmetic: a golem id is the key for save entries,
+        // stall events, and the spatial and steam registries.
+        [Test]
+        public void TryRespawnGolem_AdvancesTheIdCounterPastEveryRestoredNumber()
+        {
+            ChassisDefinition chassis = MakeChassis(scrapCost: 0, brassCost: 0);
+            (GolemConstructionStation station, StorageBufferRegistryHolder _) = Build(new[] { chassis });
+
+            station.TryRespawnGolem(
+                "PlayerGolem-003", chassis, Vector2Int.zero, GolemFactory.World.Facing.North,
+                out GolemEntity restored);
+            station.TryConstructGolem(chassis, out GolemEntity fresh);
+
+            Assert.AreNotEqual(restored.GolemId, fresh.GolemId,
+                "the next golem built took the name of one that was loaded");
+            Assert.AreEqual("PlayerGolem-004", fresh.GolemId);
+
+            Object.DestroyImmediate(restored.gameObject);
+            Object.DestroyImmediate(fresh.gameObject);
+        }
+
+        [Test]
+        public void TryRespawnGolem_UnparseableRestoredId_LeavesTheCounterAlone()
+        {
+            // An id that does not match the generated pattern cannot collide with one, so
+            // guessing a number from it would only risk skipping names for no reason.
+            ChassisDefinition chassis = MakeChassis(scrapCost: 0, brassCost: 0);
+            (GolemConstructionStation station, StorageBufferRegistryHolder _) = Build(new[] { chassis });
+
+            station.TryRespawnGolem(
+                "Bob", chassis, Vector2Int.zero, GolemFactory.World.Facing.North,
+                out GolemEntity restored);
+            station.TryConstructGolem(chassis, out GolemEntity fresh);
+
+            Assert.AreEqual("PlayerGolem-001", fresh.GolemId);
+
+            Object.DestroyImmediate(restored.gameObject);
+            Object.DestroyImmediate(fresh.gameObject);
+        }
+
+        [Test]
+        public void TryRespawnGolem_NoChassis_RefusesRatherThanSpawningAnEmptyGolem()
+        {
+            (GolemConstructionStation station, StorageBufferRegistryHolder _) = Build(new ChassisDefinition[0]);
+
+            bool result = station.TryRespawnGolem(
+                "PlayerGolem-001", null, Vector2Int.zero, GolemFactory.World.Facing.North,
+                out GolemEntity golem);
+
+            Assert.IsFalse(result);
+            Assert.IsNull(golem, "a chassis-less golem would stand on a tile doing nothing forever");
+        }
     }
 }

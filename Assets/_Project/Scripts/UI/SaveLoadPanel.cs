@@ -112,9 +112,16 @@ namespace GolemFactory.UI
 
             var catalog = new DefinitionCatalog(chassisRoster, logicCoreRoster, appendageRoster);
             GolemEntity[] golems = Object.FindObjectsByType<GolemEntity>(FindObjectsSortMode.None);
-            SaveLoadService.RestoreState(
-                data, bufferRegistryHolder.Registry, focusMeterHolder.Meter, patentRegistryHolder.Registry, golems, catalog);
-            _statusMessage = $"Loaded {data.golems.Count} golem programs.";
+            SaveLoadService.RestoreReport report = SaveLoadService.RestoreState(
+                data, bufferRegistryHolder.Registry, focusMeterHolder.Meter, patentRegistryHolder.Registry,
+                golems, catalog, StationGolemRespawner.FindInScene());
+
+            // Reports what the load DID, not how many entries the file held. The old line said
+            // "Loaded N golem programs" whether or not a single one of them found a golem to
+            // load into -- which, for a player-built factory in a fresh session, was all of them.
+            _statusMessage = report.Skipped > 0
+                ? $"Loaded {report.Restored} golems, rebuilt {report.Respawned}, skipped {report.Skipped}."
+                : $"Loaded {report.Restored} golems, rebuilt {report.Respawned}.";
             Refresh();
         }
     }

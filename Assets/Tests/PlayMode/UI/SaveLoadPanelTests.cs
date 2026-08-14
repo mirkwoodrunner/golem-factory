@@ -103,7 +103,34 @@ namespace GolemFactory.Tests.PlayMode
             saveButton.onClick.Invoke();
             loadButton.onClick.Invoke();
 
-            Assert.AreEqual("Loaded 1 golem programs.", status.text);
+            // Was "Loaded 1 golem programs." -- which counted ENTRIES IN THE FILE and said the
+            // same thing whether or not any of them found a golem to load into. For a
+            // player-built factory in a fresh session that was every one of them, so the line
+            // that reported success was the line hiding the bug. It now reports what the load
+            // did: this golem is still in the scene, so it is restored in place, not rebuilt.
+            Assert.AreEqual("Loaded 1 golems, rebuilt 0.", status.text);
+        }
+
+        // The scene golem here is not marked runtime-spawned, so it is never rebuilt -- but the
+        // panel must still find a respawner rather than throwing, and must report the skip
+        // instead of swallowing it. (The rebuild path itself is covered in EditMode, where a
+        // fake respawner makes the decision testable without a prefab and seven scene refs.)
+        [UnityTest]
+        public IEnumerator LoadButton_GolemGoneFromScene_ReportsItAsSkippedRatherThanSilently()
+        {
+            (SaveLoadPanel panel, TextMeshProUGUI status) = Build();
+            var golem = new GameObject("Golem").AddComponent<GolemEntity>();
+            golem.transform.SetParent(_root.transform);
+            golem.Configure("Golem", null);
+            yield return null;
+
+            _root.transform.Find("Save").GetComponent<Button>().onClick.Invoke();
+            Object.DestroyImmediate(golem.gameObject);
+            yield return null;
+
+            _root.transform.Find("Load").GetComponent<Button>().onClick.Invoke();
+
+            Assert.AreEqual("Loaded 0 golems, rebuilt 0, skipped 1.", status.text);
         }
     }
 }
