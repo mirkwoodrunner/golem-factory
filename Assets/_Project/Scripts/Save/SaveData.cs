@@ -15,6 +15,51 @@ namespace GolemFactory.Save
         public float focusCurrent;
         public List<BlueprintEntry> blueprints = new List<BlueprintEntry>();
         public List<GolemEntry> golems = new List<GolemEntry>();
+
+        // Everything the player BUILT: belts, depots, boilers, steam pipes, the Clock Tower.
+        // Absent until now, which made the rest of this file a save of a factory's contents with
+        // no factory around them -- golems came back (see GolemEntry.wasRuntimeSpawned) and
+        // stalled immediately, because the belts they push into and the depots they fill did not.
+        public List<BuildingEntry> buildings = new List<BuildingEntry>();
+    }
+
+    /// <summary>
+    /// One player-placed building. Buildings authored into the scene are never captured -- see
+    /// <c>PlaceableBuilding.IsRuntimePlaced</c> -- because the scene brings those back by itself
+    /// and rebuilding them would double them on the floor.
+    /// </summary>
+    [Serializable]
+    public sealed class BuildingEntry
+    {
+        /// <summary>The prefab's name, resolved back through BuildModeController's own roster.</summary>
+        public string prefabKey;
+
+        public int cellX;
+        public int cellY;
+
+        /// <summary>
+        /// Load-bearing, not decoration: a belt's facing IS its routing, and a construction
+        /// station's decides which tile its golems step out onto. A factory restored with every
+        /// belt pointing North is a different factory.
+        /// </summary>
+        public int facing;
+
+        // --- Per-type state, each meaningless on the buildings that do not have it ------------
+        // Kept as flat fields rather than a polymorphic hierarchy because JsonUtility cannot
+        // serialize one, which is the same constraint that made buffer contents parallel lists.
+
+        /// <summary>A boiler's remaining fuel. Dropping it would burn the player's Coke on load.</summary>
+        public int cokeStock;
+
+        /// <summary>
+        /// Clock Tower progress: which stage is running and how far into it, in the same
+        /// millionths-of-a-tick units the site accrues. Saved because a stage is measured in
+        /// tens of minutes of a whole factory's output -- by far the most expensive single
+        /// number in a save file.
+        /// </summary>
+        public int clockTowerStageIndex;
+        public long clockTowerProgressUnits;
+        public bool clockTowerComplete;
     }
 
     [Serializable]

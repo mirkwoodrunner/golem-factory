@@ -41,6 +41,41 @@ namespace GolemFactory.Buildings
 
         public string OwnerId { get; set; } = LocalPlayerOwnerId;
 
+        // --- Was this building placed during play, or authored into the scene? ---------------
+        // Read only by the save system, which rebuilds the former and never the latter, exactly
+        // as GolemEntity.IsRuntimeSpawned governs golems.
+        //
+        // Sandbox authors two buildings directly into the scene -- StarterHandCrankBench and
+        // StarterConstructionStation. They come back with the scene every time it loads, so a
+        // save that also rebuilt them would double them on the floor, and the duplicate would
+        // occupy a cell the original already holds.
+        private bool _isRuntimePlaced;
+
+        /// <summary>
+        /// True for a building the player placed with build mode (or one rebuilt from a save),
+        /// false for one authored into the scene. Defaults to false, so a building nobody marks
+        /// is treated as scene furniture the save system must not recreate.
+        /// </summary>
+        public bool IsRuntimePlaced => _isRuntimePlaced;
+
+        /// <summary>
+        /// The prefab this instance came from, which is how a save file names it. Set at
+        /// placement rather than derived from <c>gameObject.name</c>, because Instantiate
+        /// appends "(Clone)" and a renamed instance would stop resolving.
+        /// </summary>
+        public string PrefabKey { get; private set; }
+
+        /// <summary>
+        /// Marks this building as player-placed and records which prefab built it. One-way, for
+        /// the same reason <c>GolemEntity.MarkRuntimeSpawned</c> is: nothing that happens to a
+        /// building afterwards should be able to drop it from the player's save.
+        /// </summary>
+        public void MarkRuntimePlaced(string prefabKey)
+        {
+            _isRuntimePlaced = true;
+            PrefabKey = prefabKey;
+        }
+
         public IReadOnlyList<RecipeIngredient> Cost => cost;
 
         // Test/bootstrap-friendly setter, matching the Configure(...) idiom used across the

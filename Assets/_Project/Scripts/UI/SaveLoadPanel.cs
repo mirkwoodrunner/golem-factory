@@ -88,10 +88,13 @@ namespace GolemFactory.UI
             }
 
             GolemEntity[] golems = Object.FindObjectsByType<GolemEntity>(FindObjectsSortMode.None);
+            GolemFactory.Buildings.PlaceableBuilding[] buildings =
+                Object.FindObjectsByType<GolemFactory.Buildings.PlaceableBuilding>(FindObjectsSortMode.None);
             SaveData data = SaveLoadService.CaptureState(
-                bufferRegistryHolder.Registry, focusMeterHolder.Meter, patentRegistryHolder.Registry, golems);
+                bufferRegistryHolder.Registry, focusMeterHolder.Meter, patentRegistryHolder.Registry,
+                golems, buildings);
             SaveFileIO.WriteToFile(data, SaveFileIO.DefaultPath);
-            _statusMessage = $"Saved {golems.Length} golems.";
+            _statusMessage = $"Saved {golems.Length} golems and {data.buildings.Count} buildings.";
             Refresh();
         }
 
@@ -114,14 +117,19 @@ namespace GolemFactory.UI
             GolemEntity[] golems = Object.FindObjectsByType<GolemEntity>(FindObjectsSortMode.None);
             SaveLoadService.RestoreReport report = SaveLoadService.RestoreState(
                 data, bufferRegistryHolder.Registry, focusMeterHolder.Meter, patentRegistryHolder.Registry,
-                golems, catalog, StationGolemRespawner.FindInScene());
+                golems, catalog, StationGolemRespawner.FindInScene(),
+                BuildModeBuildingRebuilder.FindInScene());
 
             // Reports what the load DID, not how many entries the file held. The old line said
             // "Loaded N golem programs" whether or not a single one of them found a golem to
             // load into -- which, for a player-built factory in a fresh session, was all of them.
-            _statusMessage = report.Skipped > 0
-                ? $"Loaded {report.Restored} golems, rebuilt {report.Respawned}, skipped {report.Skipped}."
-                : $"Loaded {report.Restored} golems, rebuilt {report.Respawned}.";
+            string golemLine = report.Skipped > 0
+                ? $"Loaded {report.Restored} golems, rebuilt {report.Respawned}, skipped {report.Skipped}"
+                : $"Loaded {report.Restored} golems, rebuilt {report.Respawned}";
+            string buildingLine = report.BuildingsSkipped > 0
+                ? $"{report.BuildingsRebuilt} buildings, {report.BuildingsSkipped} skipped"
+                : $"{report.BuildingsRebuilt} buildings";
+            _statusMessage = golemLine + "; " + buildingLine + ".";
             Refresh();
         }
     }

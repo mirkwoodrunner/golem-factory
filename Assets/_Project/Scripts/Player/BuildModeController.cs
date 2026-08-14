@@ -321,50 +321,7 @@ namespace GolemFactory.Player
             {
                 if (map.TryGetOccupant(cell, out object occupant) && occupant is PlaceableBuilding building)
                 {
-                    // Tear the lane down BEFORE destroying the GameObject. BeltNetwork.TryRemove
-                    // is what clears any upstream belt's Next pointer; skipping it would leave a
-                    // live belt handing items to an unregistered segment that never ticks, so
-                    // they would pile into a lane the player can no longer see.
-                    if (_beltNetworkHolder != null && building.GetComponent<PlaceableBelt>() != null)
-                    {
-                        _beltNetworkHolder.Network.TryRemove(cell);
-                    }
-
-                    // A removed depot must stop being an endpoint too, or golems keep pushing
-                    // into a building that is no longer there. The same is true of the two
-                    // other things that publish an input tile -- a Clock Tower and a Boiler's
-                    // fuel hatch -- so the test is "did this building publish an endpoint",
-                    // not "was it a depot".
-                    if (_spatialEndpointHolder != null &&
-                        (building.GetComponent<PlaceableDepot>() != null ||
-                         building.GetComponent<PlaceableClockTower>() != null ||
-                         building.GetComponent<PlaceableBoiler>() != null))
-                    {
-                        _spatialEndpointHolder.Registry.Unregister(cell);
-                    }
-
-                    // Steam has to come out of the grid before the GameObject goes, for the same
-                    // reason a belt does. A paved-over pipe that stayed registered would keep
-                    // carrying steam through a gap the player can see -- progression-design §9's
-                    // Phase 6 beat is precisely that gap biting, and it cannot bite if the
-                    // network never hears about it.
-                    if (_steamNetworkHolder != null)
-                    {
-                        PlaceableSteamPipe removedPipe = building.GetComponent<PlaceableSteamPipe>();
-                        if (removedPipe != null)
-                        {
-                            removedPipe.UnregisterFromSteamNetwork(_steamNetworkHolder);
-                        }
-
-                        PlaceableBoiler removedBoiler = building.GetComponent<PlaceableBoiler>();
-                        if (removedBoiler != null)
-                        {
-                            removedBoiler.UnregisterFromSteamNetwork(_steamNetworkHolder);
-                        }
-                    }
-
-                    map.Free(cell);
-                    Destroy(building.gameObject);
+                    DemolishBuilding(building, cell);
                 }
 
                 return;
@@ -375,6 +332,151 @@ namespace GolemFactory.Player
                 return;
             }
 
+            PlaceInternal(cell, map);
+        }
+
+        /// <summary>
+        /// Rebuilds a building a save file describes, at the cell and facing it was saved with.
+        ///
+        /// <para>
+        /// DOES NOT CHARGE THE COST, for the same reason
+        /// <c>GolemConstructionStation.TryRespawnGolem</c> does not: the player paid for this
+        /// building in the session that placed it, and charging on load would be a tax that
+        /// simply fails for anyone who has since spent their stockpile -- turning "load my game"
+        /// into "lose the half of my factory I can no longer afford".
+        /// </para>
+        ///
+        /// <para>
+        /// Everything else goes through the same occupancy and endpoint registration a placement
+        /// does, because a restored belt that never reached BeltNetwork would be a lane the
+        /// player can see and items cannot use.
+        /// </para>
+        /// </summary>
+        public bool TryRebuildSavedBuilding(
+            string prefabKey, Vector2Int cell, Facing facing, out PlaceableBuilding instance)
+        {
+            instance = null;
+            PlaceableBuilding prefab = FindPrefab(prefabKey);
+            if (prefab == null || _gridMapHolder == null)
+            {
+                return false;
+            }
+
+            GridMap map = _gridMapHolder.Map;
+            if (map.IsOccupied(cell))
+            {
+                return false;
+            }
+
+            instance = Instantiate(prefab, _converter.CellToWorldCenter(cell), Quaternion.identity);
+            instance.Cell = cell;
+            instance.Facing = facing;
+            instance.MarkRuntimePlaced(prefabKey);
+            map.TryOccupy(cell, instance);
+            RegisterPlacedEndpoints(instance, cell, facing);
+            return true;
+        }
+
+        /// <summary>
+        /// Removes every building the player placed, leaving the ones authored into the scene
+        /// alone. The counterpart of <c>StorageBufferRegistry.Clear()</c>: a load must REPLACE
+        /// the built world, not merge into it, or loading twice stacks two factories on one
+        /// floor -- and the second copy would silently fail to place, since the first already
+        /// occupies every cell.
+        /// </summary>
+        public int ClearRuntimePlacedBuildings()
+        {
+            var placed = new List<PlaceableBuilding>();
+            foreach (PlaceableBuilding building in
+                     FindObjectsByType<PlaceableBuilding>(FindObjectsSortMode.None))
+            {
+                if (building != null && building.IsRuntimePlaced)
+                {
+                    placed.Add(building);
+                }
+            }
+
+            foreach (PlaceableBuilding building in placed)
+            {
+                DemolishBuilding(building, building.Cell);
+            }
+
+            return placed.Count;
+        }
+
+        private PlaceableBuilding FindPrefab(string prefabKey)
+        {
+            if (string.IsNullOrEmpty(prefabKey) || _availablePrefabs == null)
+            {
+                return null;
+            }
+
+            foreach (PlaceableBuilding prefab in _availablePrefabs)
+            {
+                if (prefab != null && prefab.name == prefabKey)
+                {
+                    return prefab;
+                }
+            }
+
+            return null;
+        }
+
+        // Every registration a placement made, undone in one place, so removal and a save's
+        // "replace the built world" sweep can never drift apart.
+        private void DemolishBuilding(PlaceableBuilding building, Vector2Int cell)
+        {
+            // Tear the lane down BEFORE destroying the GameObject. BeltNetwork.TryRemove
+            // is what clears any upstream belt's Next pointer; skipping it would leave a
+            // live belt handing items to an unregistered segment that never ticks, so
+            // they would pile into a lane the player can no longer see.
+            if (_beltNetworkHolder != null && building.GetComponent<PlaceableBelt>() != null)
+            {
+                _beltNetworkHolder.Network.TryRemove(cell);
+            }
+
+            // A removed depot must stop being an endpoint too, or golems keep pushing
+            // into a building that is no longer there. The same is true of the two
+            // other things that publish an input tile -- a Clock Tower and a Boiler's
+            // fuel hatch -- so the test is "did this building publish an endpoint",
+            // not "was it a depot".
+            if (_spatialEndpointHolder != null &&
+                (building.GetComponent<PlaceableDepot>() != null ||
+                 building.GetComponent<PlaceableClockTower>() != null ||
+                 building.GetComponent<PlaceableBoiler>() != null))
+            {
+                _spatialEndpointHolder.Registry.Unregister(cell);
+            }
+
+            // Steam has to come out of the grid before the GameObject goes, for the same
+            // reason a belt does. A paved-over pipe that stayed registered would keep
+            // carrying steam through a gap the player can see -- progression-design §9's
+            // Phase 6 beat is precisely that gap biting, and it cannot bite if the
+            // network never hears about it.
+            if (_steamNetworkHolder != null)
+            {
+                PlaceableSteamPipe removedPipe = building.GetComponent<PlaceableSteamPipe>();
+                if (removedPipe != null)
+                {
+                    removedPipe.UnregisterFromSteamNetwork(_steamNetworkHolder);
+                }
+
+                PlaceableBoiler removedBoiler = building.GetComponent<PlaceableBoiler>();
+                if (removedBoiler != null)
+                {
+                    removedBoiler.UnregisterFromSteamNetwork(_steamNetworkHolder);
+                }
+            }
+
+            if (_gridMapHolder != null)
+            {
+                _gridMapHolder.Map.Free(cell);
+            }
+            Destroy(building.gameObject);
+        }
+
+        private void PlaceInternal(Vector2Int cell, GridMap map)
+        {
             // Atomic with a full refund on shortfall (StorageBufferRegistry.TryWithdrawBundle):
             // a Boiler is 30 Scrap + 10 Iron Plate, and taking the Scrap for a placement that
             // then refuses would be a straight theft at the cursor.
@@ -396,8 +498,11 @@ namespace GolemFactory.Player
             PlaceableBuilding instance = Instantiate(_buildingPrefab, _converter.CellToWorldCenter(cell), Quaternion.identity);
             instance.Cell = cell;
             instance.Facing = PlacementFacing;
+            // What tells the save system this building is rebuildable, and which prefab to
+            // rebuild it from. Recorded here, at the one place a building is ever placed.
+            instance.MarkRuntimePlaced(_buildingPrefab.name);
             map.TryOccupy(cell, instance);
-            RegisterPlacedEndpoints(instance, cell);
+            RegisterPlacedEndpoints(instance, cell, PlacementFacing);
             if (_stockpileHolder != null && _buildingPrefab.Cost != null && _buildingPrefab.Cost.Count > 0)
             {
                 SpawnPopup(_converter.CellToWorldCenter(cell),
@@ -414,15 +519,20 @@ namespace GolemFactory.Player
         //     whatever it points into. The scene component is only told the result.
         //   * A depot: publishes its StorageBuffer on the cell, giving a routed chain somewhere
         //     to actually end.
-        private void RegisterPlacedEndpoints(PlaceableBuilding instance, Vector2Int cell)
+        //
+        // Takes the facing explicitly rather than reading PlacementFacing, so the save system can
+        // rebuild a belt pointing the way it pointed when it was placed instead of the way the
+        // cursor happens to point now. A belt's facing IS its routing, so inheriting the
+        // cursor's would silently re-plumb a restored factory.
+        private void RegisterPlacedEndpoints(PlaceableBuilding instance, Vector2Int cell, Facing facing)
         {
             PlaceableBelt belt = instance.GetComponent<PlaceableBelt>();
             if (belt != null && _beltNetworkHolder != null)
             {
                 PlacedBelt placed;
-                if (_beltNetworkHolder.Network.TryPlace(cell, PlacementFacing, out placed))
+                if (_beltNetworkHolder.Network.TryPlace(cell, facing, out placed))
                 {
-                    belt.BindSegment(placed.Segment, PlacementFacing, _conveyorHolder, _cellSize);
+                    belt.BindSegment(placed.Segment, facing, _conveyorHolder, _cellSize);
                 }
             }
 

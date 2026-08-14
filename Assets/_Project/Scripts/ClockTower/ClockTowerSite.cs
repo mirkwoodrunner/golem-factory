@@ -228,6 +228,35 @@ namespace GolemFactory.ClockTower
         }
 
         /// <summary>
+        /// Puts the megaproject back where a save left it: which stage was running, how far into
+        /// it, and whether it had already been finished.
+        ///
+        /// <para>
+        /// PROGRESS IS RESTORED; THE RATE WINDOWS ARE NOT, and that asymmetry is deliberate.
+        /// Stage progress is a durable achievement -- tens of minutes of a whole factory's output,
+        /// by far the most expensive number in a save file. The 60-second delivery and
+        /// fresh-production windows are estimates of what a factory is doing *right now*, stamped
+        /// with tick numbers that <c>SaveData</c> does not persist (it is explicitly "continue
+        /// where you left off", not a simulation snapshot), so restoring them would mean replaying
+        /// samples against a tick counter that has restarted. They rebuild within a minute of the
+        /// factory running, which is the honest answer: a tower resumes at the rate its factory
+        /// can actually supply, not the rate it managed before the player quit.
+        /// </para>
+        ///
+        /// <para>
+        /// Must be called AFTER <see cref="SetStages"/>, which calls <see cref="Reset"/>.
+        /// </para>
+        /// </summary>
+        public void RestoreProgress(int stageIndex, long progressUnits, bool complete)
+        {
+            // Clamped rather than trusted: a save written against a different stage list (an
+            // edited asset, an older build) must not index off the end of it every tick.
+            _stageIndex = stageIndex < 0 ? 0 : (stageIndex > _stages.Count ? _stages.Count : stageIndex);
+            _progressUnits = progressUnits < 0L ? 0L : progressUnits;
+            _complete = complete || _stageIndex >= _stages.Count;
+        }
+
+        /// <summary>
         /// Whether the tower would accept <paramref name="itemType"/> right now -- i.e. whether
         /// the running stage demands it. What <see cref="ClockTowerInputEndpoint"/>'s typed
         /// <c>CanGive</c> answers.

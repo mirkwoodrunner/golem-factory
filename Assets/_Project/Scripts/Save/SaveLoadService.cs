@@ -14,7 +14,8 @@ namespace GolemFactory.Save
     {
         public static SaveData CaptureState(
             StorageBufferRegistry buffers, ArtificerFocusMeter focus,
-            PatentRegistry patents, IEnumerable<GolemEntity> golems)
+            PatentRegistry patents, IEnumerable<GolemEntity> golems,
+            IEnumerable<GolemFactory.Buildings.PlaceableBuilding> buildings = null)
         {
             var data = new SaveData();
 
@@ -74,7 +75,56 @@ namespace GolemFactory.Save
                 data.golems.Add(entry);
             }
 
+            CaptureBuildings(data, buildings);
             return data;
+        }
+
+        // Only what the PLAYER placed. A scene-authored building comes back with the scene, so
+        // capturing one would rebuild it into a cell its original already occupies -- the same
+        // distinction GolemEntry.wasRuntimeSpawned draws for golems, and the reason both flags
+        // default to false.
+        private static void CaptureBuildings(
+            SaveData data, IEnumerable<GolemFactory.Buildings.PlaceableBuilding> buildings)
+        {
+            if (buildings == null)
+            {
+                return;
+            }
+
+            foreach (GolemFactory.Buildings.PlaceableBuilding building in buildings)
+            {
+                if (building == null || !building.IsRuntimePlaced)
+                {
+                    continue;
+                }
+
+                var entry = new BuildingEntry
+                {
+                    prefabKey = building.PrefabKey,
+                    cellX = building.Cell.x,
+                    cellY = building.Cell.y,
+                    facing = (int)building.Facing
+                };
+
+                // Per-type extras, read off whichever sibling component happens to be there.
+                // A boiler's fuel and the tower's progress are both things the player spent real
+                // time on; everything else about a building is recreated by placing it.
+                var boiler = building.GetComponent<GolemFactory.Buildings.PlaceableBoiler>();
+                if (boiler != null && boiler.Boiler != null)
+                {
+                    entry.cokeStock = boiler.Boiler.CokeStock;
+                }
+
+                var tower = building.GetComponent<GolemFactory.Buildings.PlaceableClockTower>();
+                if (tower != null && tower.SiteHolder != null && tower.SiteHolder.Site != null)
+                {
+                    entry.clockTowerStageIndex = tower.SiteHolder.Site.StageIndex;
+                    entry.clockTowerProgressUnits = tower.SiteHolder.Site.ProgressUnits;
+                    entry.clockTowerComplete = tower.SiteHolder.Site.IsComplete;
+                }
+
+                data.buildings.Add(entry);
+            }
         }
 
         private static void CaptureStock(
@@ -125,11 +175,24 @@ namespace GolemFactory.Save
             /// </summary>
             public int Skipped { get; }
 
-            public RestoreReport(int restored, int respawned, int skipped)
+            /// <summary>Player-placed buildings rebuilt from the save.</summary>
+            public int BuildingsRebuilt { get; }
+
+            /// <summary>
+            /// Building entries that could not be rebuilt -- an unresolvable prefab, an occupied
+            /// cell, or no rebuilder wired.
+            /// </summary>
+            public int BuildingsSkipped { get; }
+
+            public RestoreReport(
+                int restored, int respawned, int skipped,
+                int buildingsRebuilt = 0, int buildingsSkipped = 0)
             {
                 Restored = restored;
                 Respawned = respawned;
                 Skipped = skipped;
+                BuildingsRebuilt = buildingsRebuilt;
+                BuildingsSkipped = buildingsSkipped;
             }
         }
 
@@ -144,7 +207,7 @@ namespace GolemFactory.Save
         public static RestoreReport RestoreState(
             SaveData data, StorageBufferRegistry buffers, ArtificerFocusMeter focus,
             PatentRegistry patents, IEnumerable<GolemEntity> golems, DefinitionCatalog catalog,
-            IGolemRespawner respawner = null)
+            IGolemRespawner respawner = null, IBuildingRebuilder buildingRebuilder = null)
         {
             // Deposit is additive -- clear first so a load *replaces* buffer state
             // instead of merging into whatever's currently there.
@@ -168,6 +231,14 @@ namespace GolemFactory.Save
                     entry.appendageNames.Select(catalog.FindAppendage).Where(a => a != null).ToList());
                 patents.TryPatent(blueprint);
             }
+
+            // THE WORLD BEFORE ITS INHABITANTS. Golems route by what is on the tile in front of
+            // them, so restoring a factory's golems into a floor with no belts and no depots
+            // brings them back already stalled -- which is exactly what happened between the
+            // golem-respawn pass and this one.
+            int buildingsRebuilt = 0;
+            int buildingsSkipped = 0;
+            RestoreBuildings(data, buildingRebuilder, ref buildingsRebuilt, ref buildingsSkipped);
 
             Dictionary<string, GolemEntity> golemsById = new Dictionary<string, GolemEntity>();
             foreach (GolemEntity golem in golems)
@@ -261,7 +332,66 @@ namespace GolemFactory.Save
                 }
             }
 
-            return new RestoreReport(restored, respawned, skipped);
+            return new RestoreReport(restored, respawned, skipped, buildingsRebuilt, buildingsSkipped);
+        }
+
+        // Clears first, for the same reason buffers.Clear() runs before buffers are replayed: a
+        // load must REPLACE the built world, not merge into it. Loading twice would otherwise
+        // stack two factories, and the second copy would fail cell by cell against the first.
+        private static void RestoreBuildings(
+            SaveData data, IBuildingRebuilder rebuilder, ref int rebuilt, ref int skipped)
+        {
+            if (rebuilder == null)
+            {
+                // No rebuilder wired: every entry is skipped, and SAID to be skipped. Silence
+                // here is how the whole built world went missing without anyone noticing.
+                skipped = data.buildings != null ? data.buildings.Count : 0;
+                return;
+            }
+
+            rebuilder.ClearPlacedBuildings();
+            if (data.buildings == null)
+            {
+                return;
+            }
+
+            foreach (BuildingEntry entry in data.buildings)
+            {
+                if (!rebuilder.TryRebuild(
+                        entry.prefabKey,
+                        new UnityEngine.Vector2Int(entry.cellX, entry.cellY),
+                        (GolemFactory.World.Facing)entry.facing,
+                        out GolemFactory.Buildings.PlaceableBuilding building) || building == null)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                RestoreBuildingState(entry, building);
+                rebuilt++;
+            }
+        }
+
+        // Applied after the building exists, because both of these live on components that only
+        // register themselves during the placement the rebuilder just performed.
+        private static void RestoreBuildingState(
+            BuildingEntry entry, GolemFactory.Buildings.PlaceableBuilding building)
+        {
+            var boiler = building.GetComponent<GolemFactory.Buildings.PlaceableBoiler>();
+            if (boiler != null && boiler.Boiler != null)
+            {
+                // SetCoke, not AddCoke: the rebuilt boiler was placed with whatever the prefab
+                // says it starts with, and adding to that would hand the player free fuel on
+                // every load.
+                boiler.Boiler.SetCoke(entry.cokeStock);
+            }
+
+            var tower = building.GetComponent<GolemFactory.Buildings.PlaceableClockTower>();
+            if (tower != null && tower.SiteHolder != null && tower.SiteHolder.Site != null)
+            {
+                tower.SiteHolder.Site.RestoreProgress(
+                    entry.clockTowerStageIndex, entry.clockTowerProgressUnits, entry.clockTowerComplete);
+            }
         }
 
         // Three conditions, and the first two are refusals rather than failures:

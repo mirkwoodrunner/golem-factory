@@ -69,7 +69,7 @@ namespace GolemFactory.Tests.PlayMode
             Button saveButton = _root.transform.Find("Save").GetComponent<Button>();
             saveButton.onClick.Invoke();
 
-            Assert.AreEqual("Saved 1 golems.", status.text);
+            Assert.AreEqual("Saved 1 golems and 0 buildings.", status.text);
             Assert.IsTrue(File.Exists(SaveFileIO.DefaultPath));
         }
 
@@ -108,7 +108,7 @@ namespace GolemFactory.Tests.PlayMode
             // player-built factory in a fresh session that was every one of them, so the line
             // that reported success was the line hiding the bug. It now reports what the load
             // did: this golem is still in the scene, so it is restored in place, not rebuilt.
-            Assert.AreEqual("Loaded 1 golems, rebuilt 0.", status.text);
+            Assert.AreEqual("Loaded 1 golems, rebuilt 0; 0 buildings.", status.text);
         }
 
         // The scene golem here is not marked runtime-spawned, so it is never rebuilt -- but the
@@ -130,7 +130,7 @@ namespace GolemFactory.Tests.PlayMode
 
             _root.transform.Find("Load").GetComponent<Button>().onClick.Invoke();
 
-            Assert.AreEqual("Loaded 0 golems, rebuilt 0, skipped 1.", status.text);
+            Assert.AreEqual("Loaded 0 golems, rebuilt 0, skipped 1; 0 buildings.", status.text);
         }
     }
 }

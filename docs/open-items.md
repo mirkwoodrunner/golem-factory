@@ -592,7 +592,16 @@ decision §2 reserves. Nothing mechanical blocks it any more.
 
 ### Also not yet wired
 
-- **Save/load does not persist Clock Tower progress**, so a reload restarts the current stage.
+- ~~**Save/load does not persist Clock Tower progress.**~~ **DONE**, and it turned out to be
+  downstream of a much larger hole — see the save/load entry below. Stage index, progress units
+  and the completed flag now ride the tower's own `BuildingEntry`.
+
+  **The rate windows are deliberately NOT restored.** Stage progress is a durable achievement
+  (tens of minutes of a whole factory's output); the 60-second delivery and fresh-production
+  windows are estimates of what a factory is doing *right now*, stamped with tick numbers
+  `SaveData` does not persist. Restoring them would replay samples against a tick counter that
+  has restarted. They rebuild within a minute, which is the honest answer: a tower resumes at the
+  rate its factory can actually supply, not the rate it managed before the player quit.
 - **`requireSteamPower` is still off, but nothing mechanical blocks it now.** Both halves of §10's
   backstop exist: the Hand-Crank Bench makes Coke, and hand-loading a boiler delivers it. What
   remains is the §2 design call about the opening — see the steam section above.
@@ -637,10 +646,29 @@ decision §2 reserves. Nothing mechanical blocks it any more.
 
 ### Carried forward from before
 
-- **Save/load cannot respawn player-built golems.** `SaveLoadService.RestoreState` persists each
-  golem's program, cell and facing, but can only restore onto a `GolemEntity` already present in the
-  scene. A factory the player constructed does not survive a session. **This is the most significant
-  functional gap in the game today.**
+- ~~**Save/load cannot respawn player-built golems.**~~ **DONE**, and the gap was twice the size it
+  looked. Golems now come back (`IGolemRespawner` → `GolemConstructionStation.TryRespawnGolem`), and
+  so does everything they route through: `SaveData` had **no concept of a placed building at all**,
+  so belts, depots, boilers, steam pipes and the Clock Tower were simply gone on reload. Restoring
+  golems alone would have brought a factory back already stalled, pushing into tiles that no longer
+  held anything.
+
+  Buildings ride `IBuildingRebuilder` → `BuildModeController.TryRebuildSavedBuilding`, which is the
+  same reasoning as the golem respawner: the controller is the rebuilder because it is already the
+  builder, and duplicating its grid occupancy plus three endpoint registrations would create a
+  second definition of "a building that works". A load **replaces** the built world (clear, then
+  rebuild) for the same reason buffers are cleared before being replayed.
+
+  Neither path charges the cost again — the player paid in the session that built it, and charging
+  on load fails outright for anyone who has since spent their stockpile.
+
+  **Only what the player placed comes back.** Scene-authored buildings and golems are excluded by
+  explicit flags (`IsRuntimePlaced` / `IsRuntimeSpawned`) that default to false, so `Main.unity`'s
+  hand-wired demos and Sandbox's two starter buildings are untouched — the same opt-in fork spatial
+  routing, steam and the machine model all ride.
+
+  **Still not saved, and deliberately:** belt *contents* and the tick counter, which `SaveData` has
+  always excluded as "continue where you left off, not a simulation snapshot".
 - **World-space HUD collides.** Stall badges and the interaction caption both anchor to the golem and
   overlap when two stand close. Reduced, not solved; needs a world-space layout pass.
 - **Belts are one cell per segment**, no merge or splitter, one endpoint per cell, so two belts
