@@ -2442,8 +2442,10 @@ clicking through the Editor is why the previous attempt had been left half-conve
    10×4 band, with `RoundToInt` deciding which tile a golem thought each was on. Inverting the old
    transform turns all seven literals back into **exact integer cells**, which is the evidence they
    were designed as cells and flattened on the way to disk — so they are now a `StartingLayout`
-   table in cells. Whether that recovered layout is the right one on a square floor is a design
-   call, written up as three proposals in `docs/open-items.md`.
+   table in cells. Whether that *recovered* layout was the right one on a square floor was a
+   separate design call, and it was not kept: the owner picked **Quadrants** (one node per corner,
+   Aether due north) from three proposals. See `docs/open-items.md` §2 for the reasoning and the
+   two rejected alternatives.
 10. **Regenerating the shell rewrote both scenes end to end.** `Generate` destroyed and recreated
     the `Walls`/`Props` parents, and Unity mints a fresh fileID per created object, so ~131 objects
     were renumbered and ~26,000 lines changed on every run — nothing reviewable in the diff, and a
@@ -2494,8 +2496,9 @@ clicking through the Editor is why the previous attempt had been left half-conve
 
 ### Still open
 
-1. **The map layout is a human decision.** Three proposals in `docs/open-items.md`; the mechanical
-   half-cell bug is fixed, the design half is deliberately untouched.
+1. **The map layout is chosen but unplayed.** Quadrants, per `docs/open-items.md` §2. It is the
+   longest-walking of the three proposals and lands on §9's 12–15 minute manual era, which §12
+   already flags as ±25 % — so the walk is the first thing a playtest should be timing.
 2. **Art direction is deliberately unfinished**: more plank variants, a bevel on the brass plate,
    a vertical belt sprite. It needs someone looking at pictures rather than at a diff.
 3. **Chassis art is not alpha-trimmed**, so golems float up to 0.156 of a cell — see above.

@@ -996,21 +996,43 @@ namespace GolemFactory.Editor
         // are the recovered originals, unchanged: this restores the authored layout in the new
         // projection rather than proposing a new one.
         //
-        // THE LAYOUT ITSELF IS A HUMAN DECISION AND HAS NOT BEEN MADE. The recovered spread was
-        // designed for a diamond, and on a square floor it is lopsided -- everything sits north
-        // and east of the player, and the west half of the room is empty. Three concrete
-        // proposals are written up in docs/open-items.md for someone to pick from; changing this
-        // table is how you apply one.
+        // THE LAYOUT BELOW IS "QUADRANTS", CHOSEN BY THE PROJECT OWNER from the three proposals
+        // written up in docs/open-items.md. The recovered isometric spread was not kept: designed
+        // for a diamond, it put everything north and east of the player and left the west half of
+        // a square room empty.
+        //
+        // One node per corner, Aether alone due north, and the reasoning is that each resource
+        // gets a PLACE. A factory is remembered as a map, and a map needs somewhere to be. The
+        // diagonal runs are also long enough (14 cells corner to corner) that belts and steam
+        // pipes are a real investment rather than a formality -- §3.2's 2-extractor cap and §1.4's
+        // 8-golem boiler radius both start to bite on distances like these, which they do not at 5.
+        //
+        // The cost, recorded so a playtest knows what to look at: every node is 7 cells Chebyshev
+        // (14 Manhattan) from spawn against 5 before, which is the longest early-game walking of
+        // the three proposals and lands on §9's 12-15 minute manual era (§12 already flags that as
+        // +/-25%). Nodes sit at +/-7 rather than +/-9 because the generated props hug the outermost
+        // ring at +/-12; measured against the real shell, the nearest prop to a corner node is 5
+        // cells away and nothing collides.
+        //
+        // The bench is 3 north of spawn and the station 3 east and 1 south, both inside the clear
+        // core, because Phase 1 is spent standing at the bench and it should not be a walk.
+        //
+        // Cells, never world literals: these were world-space Vector3s under the isometric camera
+        // -- (2.5, -1.25), (0, 2.5) -- and top-down reads those as (cx, cy), so all seven landed
+        // on HALF cells with RoundToInt deciding which tile a golem thought they were on. Inverting
+        // the old transform, world = ((cx - cy) * 0.5, (cx + cy) * 0.25), turned every one of them
+        // back into an exact integer cell, which is how we know they had been authored as cells
+        // and flattened on the way to disk. Changing this table is how you move the opening.
         private static readonly Dictionary<string, Vector2Int> StartingLayout =
             new Dictionary<string, Vector2Int>
             {
-                { "ScrapNodeMarker", new Vector2Int(0, -5) },
-                { "CoalNodeMarker", new Vector2Int(-5, 0) },
-                { "AetherNodeMarker", new Vector2Int(5, 5) },
-                { "CopperOreNodeMarker", new Vector2Int(10, 0) },
-                { "ZincOreNodeMarker", new Vector2Int(0, 10) },
-                { "StarterHandCrankBench", new Vector2Int(0, 5) },
-                { "StarterConstructionStation", new Vector2Int(6, 0) },
+                { "ScrapNodeMarker", new Vector2Int(-7, -7) },
+                { "CoalNodeMarker", new Vector2Int(7, -7) },
+                { "AetherNodeMarker", new Vector2Int(0, 9) },
+                { "CopperOreNodeMarker", new Vector2Int(-7, 7) },
+                { "ZincOreNodeMarker", new Vector2Int(7, 7) },
+                { "StarterHandCrankBench", new Vector2Int(0, 3) },
+                { "StarterConstructionStation", new Vector2Int(3, -1) },
             };
 
         // Reads the cell size off the scene's own Grid rather than assuming one, so this stays

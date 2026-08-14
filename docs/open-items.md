@@ -353,6 +353,45 @@ steam adjacency still fits.
   marginal cost a player actually optimises against is zero. Consumption must scale per powered
   golem.
 
+- **The Sandbox map layout is "Quadrants"** — one node per corner, Aether alone due north.
+  Confirmed by the project owner, chosen from three proposals. It lives in the `StartingLayout`
+  table at the top of `Scripts/Editor/ProgressionSceneAuthoring.cs`, **in cells**:
+
+  | Scrap | Coal | Aether | Copper | Zinc | Bench | Station |
+  |---|---|---|---|---|---|---|
+  | `(-7, -7)` | `(7, -7)` | `(0, 9)` | `(-7, 7)` | `(7, 7)` | `(0, 3)` | `(3, -1)` |
+
+  **Why cells and not world coordinates.** These seven were isometric-space world literals —
+  `(2.5, -1.25)`, `(0, 2.5)`, `(-5, 2.5)` — and top-down reads those as `(cx, cy)`, so after the
+  projection switch all seven sat on **half-cells**, with `RoundToInt` quietly deciding which tile
+  a golem thought each was on, and the spread collapsed into roughly a 10×4 band on a 25×25 floor.
+  Inverting the old transform (`world = ((cx − cy)·0.5, (cx + cy)·0.25)`) turned every literal back
+  into an exact integer cell, which is how we know they had been authored as cells and flattened on
+  the way to disk. A world literal cannot survive a projection change; a cell can.
+
+  **Why Quadrants.** Each resource gets a *place* — a factory is remembered as a map, and a map
+  needs somewhere to be. The recovered isometric spread was drawn for a diamond and was lopsided on
+  a square floor (everything north and east of spawn, the west half empty). The rejected
+  alternatives were **A — Even ring** (five nodes on a radius-8 ring: neutral, no resource is the
+  obvious first one, but the room reads as a test chamber) and **B — North bank** (four bulk nodes
+  along the north wall so belts run south toward the open camera edge: legible, but four nodes in a
+  line is monotonous and it makes the sconce wall the backdrop of every early screenshot).
+
+  **What it costs, so a playtest knows what to look at.** One thing, and it is the walk: every node
+  is **7 cells Chebyshev / 14 Manhattan** from spawn (Aether 9/9), against 5 before. That is the
+  longest of the three proposals and it lands directly on §9's 12–15 minute manual era — which §12
+  already flags as ±25 %, so it is inside the noise the design expects to retune, but it is the
+  first number to time when the arc is finally played. The 14-cell corner-to-corner runs are the
+  point rather than a side effect: §3.2's 2-extractor cap and §1.4's 8-golem boiler radius only
+  start to bite at distances like these, and did not at 5.
+
+  **The clutter concern was wrong, and measuring it is what showed that.** The proposal warned that
+  the corners are where the wall posts and prop scatter already live. Measured against the
+  generated shell: the nearest prop to any corner node is **5 cells** away (3 for Aether), there
+  are no collisions with any of the 26 props, and there are only two wall posts, both on the north
+  corners and both outside the room. Nodes sit at ±7 rather than ±9 anyway, because props hug the
+  outermost ring at ±12 — so the margin was never in question.
+
 ### Still open
 
 - **The opening changes substantially.** Sandbox currently starts with three infinite nodes and a
@@ -365,54 +404,6 @@ steam adjacency still fits.
   you. The design's mitigation is player-set `Haul` batch quantities (throughput traded against
   buffer pressure). Worth confirming that is enough to justify keeping the Workbench as the
   signature screen.
-- **Where the opening stands — the Sandbox map layout.** The seven objects that make up the
-  opening (five node markers, the Hand-Crank Bench, the construction station) were authored as
-  **isometric-space world literals** — `(2.5, -1.25)`, `(0, 2.5)`, `(-5, 2.5)`. Under top-down
-  those read as world `(cx, cy)`, so all seven landed on **half-cells** and the spread collapsed
-  into roughly a 10×4 band on a 25×25 floor.
-
-  **The mechanical half of this is fixed.** Inverting the old transform
-  (`world = ((cx − cy)·0.5, (cx + cy)·0.25)`) turns every one of those literals back into an
-  *exact integer cell* — which is the evidence that they were designed as cells and flattened on
-  the way to disk. Those recovered cells are now the `StartingLayout` table at the top of
-  `Scripts/Editor/ProgressionSceneAuthoring.cs`, and all seven sit on definite tiles again,
-  verified by reading `Sandbox.unity` back. **Nothing was redesigned.**
-
-  **The design half is yours.** The recovered spread was drawn for a diamond and is lopsided on a
-  square floor: everything is north and east of spawn, the whole west and south-west is empty,
-  and walk distances from spawn run 5 to 10 cells. Three proposals, each a drop-in replacement
-  for that table. Constraints they all respect: the floor is cells −12…+12, props hug the
-  outermost ring so nodes stay within ±9, the **south** edge is the open camera-facing one, and
-  §3.2's 2-extractor cap means every node wants at least two free orthogonal neighbours.
-
-  | | **A — Even ring** | **B — North bank** | **C — Quadrants** |
-  |---|---|---|---|
-  | Scrap | `(0, -8)` | `(-3, 9)` | `(-7, -7)` |
-  | Coal | `(-8, -3)` | `(-8, 9)` | `(7, -7)` |
-  | Aether | `(6, 6)` | `(0, -9)` | `(0, 9)` |
-  | Copper | `(8, -3)` | `(3, 9)` | `(-7, 7)` |
-  | Zinc | `(-6, 6)` | `(8, 9)` | `(7, 7)` |
-  | Bench | `(0, 3)` | `(0, 4)` | `(0, 3)` |
-  | Station | `(3, -1)` | `(3, 3)` | `(3, -1)` |
-
-  - **A — Even ring.** Five nodes on a radius-8 ring, roughly evenly spaced, all four quadrants
-    used, the 10×10 core left clear for the factory. Every node is 8–9 cells from spawn, so no
-    resource is the obvious first one by walking distance alone. *Cost:* the most neutral and the
-    least characterful — the room reads as a test chamber.
-  - **B — North bank.** Four bulk nodes in a row along the north wall, Aether alone at the far
-    south. Belts then run north→south, *toward* the open camera edge, and the player works in the
-    south half where the view is clearest. Matches the isometric-era habit of putting the wall at
-    your back. *Cost:* four nodes in one line is monotonous, and it makes the north wall's sconce
-    lighting the backdrop for every early screenshot.
-  - **C — Quadrants.** One node per corner plus Aether due north. The strongest read — each
-    resource has a *place*, which is what makes a factory memorable — and the diagonal runs are
-    long enough that belts and steam pipes are a real investment. *Cost:* the longest early-game
-    walking of the three, which lands directly on §9's 12–15 minute manual era, and the corners
-    are where the wall posts and prop clutter already are.
-
-  Recommendation if nobody wants to think about it: **C**, then playtest the walk. It is the only
-  one of the three that makes the map's shape mean anything, and §12 already flags every §9 timing
-  as ±25 %, so the walking cost is inside the noise the design expects to retune anyway.
 - **The Overclocker's identity.** Its flat-speed adjacency aura was cut in review — a non-local,
   adaptive effect contradicts the game's rigid local determinism. The design replaces it with a
   `Repeat(n)` appendage competing for the same slot as a third ingredient. Unbuilt, and it is the one
