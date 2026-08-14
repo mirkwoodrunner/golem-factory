@@ -54,6 +54,8 @@ namespace GolemFactory.Editor
         private const string SandboxScene = "Assets/_Project/Scenes/Sandbox.unity";
         private const string ClockTowerStageRoot = "Assets/_Project/ScriptableObjects/ClockTower/";
         private const string AppendageRoot = "Assets/_Project/ScriptableObjects/Appendages/";
+        private const string ChassisRoot = "Assets/_Project/ScriptableObjects/Chassis/";
+        private const string LogicCoreRoot = "Assets/_Project/ScriptableObjects/LogicCores/";
 
         private const string BoilerPrefabPath = PrefabRoot + "BoilerPrefab.prefab";
         private const string SteamPipePrefabPath = PrefabRoot + "SteamPipePrefab.prefab";
@@ -804,6 +806,7 @@ namespace GolemFactory.Editor
             WireBootstrapHolders(scene);
             RegisterSceneHudChrome(scene);
             PopulateWorkbenchRoster(scene);
+            PopulateSaveCatalog(scene);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
@@ -1257,6 +1260,72 @@ namespace GolemFactory.Editor
             so.ApplyModifiedPropertiesWithoutUndo();
             Note("Workbench roster = " + roster.Count + " cards (" + verbs.Count + " verbs + " +
                  assembles.Count + " recipes), Refine omitted");
+        }
+
+        /// <summary>
+        /// Fills <c>SaveLoadPanel</c>'s three rosters, which are how a load turns the names in a
+        /// save file back into assets (<c>DefinitionCatalog</c>). A card the catalog cannot
+        /// resolve is dropped from the restored program, silently.
+        ///
+        /// <para>
+        /// EVERY AUTHORED ASSET, NOT THE WORKBENCH'S ROSTER, and the difference is the whole
+        /// point. The Workbench's list is *what the player may choose*; this one is *what a save
+        /// file might name*, which is strictly larger -- it includes cards deliberately withheld
+        /// from the player (RefineIronPlate) and anything an older save was written against.
+        /// Populating it from the Workbench's list would look tidier and would quietly delete a
+        /// program step the day the two diverge.
+        /// </para>
+        ///
+        /// <para>
+        /// They HAD diverged. The panel was still carrying M8's four-card tutorial deck
+        /// (ExtractScrap / HaulScrap / LoadIntoScrapBuffer / RefineIronPlate) while the Workbench
+        /// had been re-authored to 23 -- the same stale deck that had already made Iron Plate
+        /// unreachable in play. So every golem programmed with any of the nineteen Assemble cards
+        /// came back from a load with an empty program and no error: a save round-trip that
+        /// silently wiped the player's factory logic.
+        /// </para>
+        /// </summary>
+        private static void PopulateSaveCatalog(Scene scene)
+        {
+            SaveLoadPanel panel = FindInScene<SaveLoadPanel>(scene);
+            if (panel == null)
+            {
+                Note("WARNING: no SaveLoadPanel in the scene");
+                return;
+            }
+
+            var so = new SerializedObject(panel);
+            int chassis = FillRosterWithEveryAsset<ChassisDefinition>(so, "chassisRoster", ChassisRoot);
+            int cores = FillRosterWithEveryAsset<LogicCoreDefinition>(so, "logicCoreRoster", LogicCoreRoot);
+            int cards = FillRosterWithEveryAsset<AppendageActionDefinition>(so, "appendageRoster", AppendageRoot);
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            Note("Save catalog = " + chassis + " chassis, " + cores + " logic cores, "
+                 + cards + " appendage cards");
+        }
+
+        // Sorted by path so the serialized order is stable between runs -- FindAssets does not
+        // promise one, and an unstable order would rewrite the scene on every authoring pass for
+        // no change, which is exactly the churn SandboxFloorGenerator was just cured of.
+        private static int FillRosterWithEveryAsset<T>(
+            SerializedObject so, string propertyName, string root) where T : UnityEngine.Object
+        {
+            var paths = new List<string>();
+            foreach (string guid in AssetDatabase.FindAssets("t:" + typeof(T).Name, new[] { root.TrimEnd('/') }))
+            {
+                paths.Add(AssetDatabase.GUIDToAssetPath(guid));
+            }
+            paths.Sort(System.StringComparer.Ordinal);
+
+            SerializedProperty list = so.FindProperty(propertyName);
+            list.arraySize = paths.Count;
+            for (int i = 0; i < paths.Count; i++)
+            {
+                list.GetArrayElementAtIndex(i).objectReferenceValue =
+                    AssetDatabase.LoadAssetAtPath<T>(paths[i]);
+            }
+
+            return paths.Count;
         }
 
         private static AppendageActionDefinition LoadAppendage(string assetName)
