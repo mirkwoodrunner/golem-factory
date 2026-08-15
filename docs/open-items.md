@@ -9,8 +9,16 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 > reviewed**. Everything from §1.5 on is **spec only**. The next pass starts at §1.5, which is
 > also what §1.4's Sandbox switch is waiting on.
 
-Tests stand at **934/934** (824 EditMode + 110 PlayMode), up from 590 before the progression pass
+Tests stand at **1001/1001** (869 EditMode + 132 PlayMode), up from 590 before the progression pass
 began. Console clean.
+
+> **The map has an outside now.** The workshop is no longer the whole world: a cobbled market
+> street runs eight rows south of the open shop front, and the five raw goods are bought from
+> traders standing on it rather than dug from boulders on the factory floor. This supersedes the
+> "Quadrants" node layout below. Read the market-street milestone in
+> `docs/unity-implementation-plan.md` before touching `FloorLayout`, the tile painter or the wall
+> runs — in particular, `GetFloorCells` still means **the workshop only**, and the thing that
+> bounds the *player* is `GetWorldCells`.
 
 > **The projection is top-down now**, not isometric. The switch is done, verified and recorded as
 > its own milestone in `docs/unity-implementation-plan.md` — read that before touching the floor,
@@ -353,13 +361,24 @@ steam adjacency still fits.
   marginal cost a player actually optimises against is zero. Consumption must scale per powered
   golem.
 
-- **The Sandbox map layout is "Quadrants"** — one node per corner, Aether alone due north.
-  Confirmed by the project owner, chosen from three proposals. It lives in the `StartingLayout`
-  table at the top of `Scripts/Editor/ProgressionSceneAuthoring.cs`, **in cells**:
+- ~~**The Sandbox map layout is "Quadrants"**~~ — **SUPERSEDED by the market street.** Quadrants
+  was right while the workshop was the whole map, and wrong the moment there was an outside: it
+  left five ore boulders standing on the factory floor, and `docs/game-design.md` puts the resource
+  markets on the *edge of the board*. The five traders now stand on the street at `y = -16`, four
+  cells apart; the Hand-Crank Bench and the construction station stay inside, because they are
+  workshop equipment and §9's Phase 1 is spent in a cold workshop rather than in the road. See the
+  market-street milestone in `docs/unity-implementation-plan.md`. The `StartingLayout` table at the
+  top of `Scripts/Editor/ProgressionSceneAuthoring.cs` is still where it lives, still **in cells**:
 
   | Scrap | Coal | Aether | Copper | Zinc | Bench | Station |
   |---|---|---|---|---|---|---|
-  | `(-7, -7)` | `(7, -7)` | `(0, 9)` | `(-7, 7)` | `(7, 7)` | `(0, 3)` | `(3, -1)` |
+  | `(-8, -16)` | `(-4, -16)` | `(8, -16)` | `(0, -16)` | `(4, -16)` | `(0, 3)` | `(3, -1)` |
+
+  **What survives from Quadrants is the reasoning below, not the table.** "Each resource gets a
+  place" still holds — a stall row is a place, and a more legible one than four corners. What does
+  **not** survive is the distance budget: every stall is now **16 cells Chebyshev** from spawn
+  against Quadrants' 7, so the walk that §9's 12–15 minute manual era is measured in has more than
+  doubled. That is the first number to time, ahead of the boiler fuel ratio.
 
   **Why cells and not world coordinates.** These seven were isometric-space world literals —
   `(2.5, -1.25)`, `(0, 2.5)`, `(-5, 2.5)` — and top-down reads those as `(cx, cy)`, so after the
@@ -394,6 +413,20 @@ steam adjacency still fits.
 
 ### Still open
 
+- **The street's shape needs an owner call.** It is the workshop's width (25 cells) and holds five
+  stalls comfortably at a four-cell pitch. §3.2 wants **~8 node sites at endgame**, and there is no
+  room for three more without either extending the road east/west past the building or adding a
+  second stall row. Both are map-shape decisions, and both cost more than tiles: a second row eats
+  the approach clearance the first row's two-extractor cap depends on, and extending east/west
+  means the world stops being a rectangle the side walls can bound in one run.
+- **Nothing about the market is priced.** The five stalls are `ResourceNode`s with `Infinite`
+  quantity behind market-shaped sprites — "bought from a trader" is presentation, and extraction is
+  byte-for-byte what it was when they were boulders. `docs/game-design.md`'s "full truckload
+  shipments" implies a cost and a delivery, which is design work the street sets up and does not do.
+- **`BuildModeController` bounds placement by `GridMap` occupancy alone**, so §3.3's "the buildable
+  area is the rendered floor" is unimplemented — the player can build anywhere, including out past
+  the kerb. This was always true and is now *visible*, because there is finally ground outside the
+  workshop to notice it on. `FloorLayout.IsInsideWorkshop` is the predicate it wants.
 - **The opening changes substantially.** Sandbox currently starts with three infinite nodes and a
   construction station. The design starts the player with a hand-crank bench and ~10–15 minutes of
   manual labour before their first automated line. That is the requested arc, but it is a real shift,

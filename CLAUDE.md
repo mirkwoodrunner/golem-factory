@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 `golem-factory` is a solo-play Unity prototype of "Golem Factory: The Clockwork Metropolis" — a
-Factorio/Satisfactory-style automation game (cozy isometric pixel art) where the player places
+Factorio/Satisfactory-style automation game (cozy top-down pixel art) where the player places
 "golems" programmed with punch-card-style Logic Core / Appendage / Chassis combinations that run
 rigidly on a world tick clock. It began as a tabletop board-game design (`docs/game-design.md`)
 and is being adapted into a digital prototype; read the docs below before making design calls, not
@@ -40,7 +40,8 @@ There is no `.cursor/rules`, `.github/copilot-instructions.md`, or CI config in 
 - **Unity 6000.5.4f1** (Unity 6 LTS), 2D URP template. Version pinned in
   `ProjectSettings/ProjectVersion.txt`.
 - New Input System (not legacy), Cinemachine v3 (installed but not yet wired into the camera — see
-  M1 notes), 2D Tilemap + Extras (isometric grid layout), Test Framework (EditMode + PlayMode).
+  M1 notes), 2D Tilemap + Extras (rectangular grid layout since the top-down switch), Test
+  Framework (EditMode + PlayMode).
 - No DOTS/ECS, no Addressables, no netcode package. Simulation is deliberately plain,
   data-oriented C# driven by a single fixed-tick loop, not per-object `Update()`.
 - `ProjectSettings/` and `Packages/` are committed, so a fresh clone opens directly in Unity Hub
@@ -70,8 +71,9 @@ Editor (or a live MCP-for-Unity bridge, if connected):
     `-executeMethod GolemFactory.Editor.SandboxFloorGenerator.RebuildEnvironmentAllScenes`,
     which applies PPU/pivots, builds the Tile assets, and repaints and re-walls both scenes.
 
-As of the last full run (progression pass, Editor passes, the Hand-Crank Bench, and the
-isometric→top-down projection switch): **934/934 tests passing** (824 EditMode + 110 PlayMode).
+As of the last full run (progression pass, Editor passes, the Hand-Crank Bench, the
+isometric→top-down projection switch, and the market street): **1001/1001 tests passing**
+(869 EditMode + 132 PlayMode).
 
 **Two ways to run the tests, and which one depends on whether the Editor is open.**
 
@@ -187,11 +189,23 @@ This is the mechanical core of the game and the part most milestones touch:
 
 ### Spatial systems
 
+- **The projection is TOP-DOWN (rectangular), not isometric.** It was switched, and there is a
+  full milestone entry for it in `docs/unity-implementation-plan.md`. Both scenes are
+  `m_CellLayout: 0` with a 1×1 cell, and environment art is PPU 64. Any comment or doc saying
+  "isometric" is describing history — read it as such rather than as the current state.
 - `World/GridMap.cs` — simulation truth for occupancy, `Vector2Int`-indexed. **Decoupled from
-  rendering** — the Tilemap is purely visual. Isometric presentation only affects the
-  `Grid`/`Tilemap` components and camera; grid math stays as if it were a top-down grid.
-- `World/GridCoordinateConverter.cs` — pure C# isometric world↔cell math, independent of Unity's
-  `Tilemap` component so it's unit-testable without a scene.
+  rendering** — the Tilemap is purely visual. Projection affects only the `Grid`/`Tilemap`
+  components and the camera; grid math has always been a plain rectangular grid.
+- `World/GridCoordinateConverter.cs` — pure C# world↔cell math, independent of Unity's `Tilemap`
+  component so it's unit-testable without a scene. Its two `Fraction` methods are **the only place
+  the game decides how a cell maps to a screen position**, which is why the projection switch cost
+  six lines here and nothing at the 20-odd call sites.
+- `World/FloorLayout.cs` — the shape of the ground, and it describes **two rectangles**. The
+  *workshop* (25×25, `GetFloorCells`) is what gets plank floor and walls; the *world*
+  (`GetWorldCells`, 25×33) adds the eight-row market street south of the open shop front and is
+  what bounds the **player** via `ClampToFloor`. Keep them distinct: every caller of
+  `GetFloorCells` means the room by it, and widening it paints planks down the street. Wall runs
+  along the world's boundary use `GetWorldEdgeIndices`/`GetWorldEdgeAnchor`.
 - `Belts/BeltSegment.cs` / `ConveyorSystem.cs` — **performance-critical: no GameObject per belt
   item.** Items are `ItemStack{ItemType, Progress}` structs in a `List<ItemStack>` per segment.
   `ConveyorSystem.Tick` runs two full passes (advance-all, then handoff-all) specifically so a

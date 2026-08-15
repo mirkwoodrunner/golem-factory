@@ -2505,3 +2505,161 @@ clicking through the Editor is why the previous attempt had been left half-conve
 4. **`Main.unity` drifts further from being representative** with every pass. Its seven golems are
    hand-placed at positions that were arbitrary before the switch and are still arbitrary after
    it; they were moved to preserve how they look, not to mean anything.
+
+---
+
+## The market street
+
+The first time the map grew since M1 drew the room. Until this pass the workshop **was** the map:
+one 25×25 square of planks, walls on three sides, and nothing beyond them. `docs/game-design.md` —
+the tabletop source of truth — describes something the digital adaptation had quietly lost:
+*"Loading Docks: resource markets on the edge of the board where raw materials arrive in full
+truckload shipments."* There was no edge of the board to put one on.
+
+So raw goods are **bought from stalls**, not dug out of boulders standing on the factory floor.
+Five traders, one per raw good, on a cobbled street outside the shop front.
+
+### The load-bearing idea: two regions, not one
+
+`FloorLayout` now describes two rectangles, and conflating them is precisely what had made
+"grow the world" look impossible:
+
+| | What it is | What reads it |
+|---|---|---|
+| **Workshop** | the plank floor that gets walls. **Still 25×25** | the tile painter, the wall runs, the prop scatter |
+| **World** | every cell of ground, workshop *and* street | `PlayerController.ClampToFloor` |
+
+The workshop does not shrink, because progression-design §3.3 sizes the 44-golem Phase-5 factory
+against exactly 25×25 and taking cells back would be a silent difficulty change. The street is
+`StreetDepth = 8` rows hung off the south edge, so the world is 25×33.
+
+`GetFloorCells` **keeps its name and its meaning** — the workshop only. Every existing caller means
+the room by it, and widening it in place would have painted planks down the street.
+
+The clamp is the part that makes it real: `ClampToFloor` now stops at the far kerb rather than the
+shop front. A clamp still pinned at the workshop wall would have left the market visible and
+unreachable, which is the one movement rule that would quietly undo the whole design. Only the
+south side opens up; north, east and west are still the building.
+
+### The workshop stays open-fronted
+
+No south wall, no door — an owner decision, and it is also what the top-down switch had already
+settled for a different reason (breakage 3 and 4 above): the south edge is the one the camera looks
+in through, and a front-on elevation placed there rises *into* the room and draws over everything,
+because sorting order is baked from world Y. An open front costs nothing and pays for itself twice.
+
+### What broke, in the order it hurt
+
+1. **Painting the street from `FloorTileVariant` would have littered the road with workshop
+   fittings.** That selector hashes for rare brass plates and floor grates; in a street they read
+   as debris. Cobbles pick between two variants on their own stride instead. Both surfaces share
+   one Tilemap — they provably never overlap, and a second Tilemap means a second renderer,
+   sorting order and `tileAnchor`, three more things to keep in step for nothing.
+2. **Quadrants put five ore boulders on the factory floor.** The corner-per-resource layout was
+   right while the workshop was the whole map and wrong the moment there was an outside — a market
+   inside the building is not a market, and the four corner cells are floor the factory wanted.
+   All five traders now stand on `y = -16`, four cells apart. Both numbers do work: the row leaves
+   three clear rows behind and four in front so a stall is approachable from both flanks (§3.2 caps
+   a node at two extractors and needs two free approach tiles — a stall backed against anything
+   silently caps at one), and the four-cell pitch keeps the 96px carts' overhang clear of the tiles
+   between them, which is where golems actually stand.
+3. **`AddNodeMarkers` had grown three mechanisms for one job**: two markers created by
+   `EnsureNodeMarker`, three only repositioned, and two more with bespoke sprite-repointing blocks
+   bolted on afterwards to undo art they had inherited. That is how the Aether marker spent months
+   wearing a brass ingot under a teal tint that `RefreshVisualState` overwrites white on the first
+   frame. One table, one loop, no special cases.
+4. **`renderer.size = 0.5 × 0.5` on the marker setup was a trap, not a bug.** It only applies to
+   Sliced/Tiled draw modes, so on a Simple sprite it had always been a no-op — but it encoded the
+   *old* item icon's world size, and left sitting beside a 96×120 cart it was a standing
+   instruction to squash a trader into half a cell the moment anything touched `drawMode`.
+5. **The street had no edges, and this is the one that only a screenshot could find.** Every wall
+   run walked `GetEdgeIndices` — the *workshop's* extent, because until now the workshop was the
+   map. So the side walls stopped dead in mid-air at the shop front and the road's west, east and
+   south edges cut straight into background. Read back from disk it was flawless; in Play mode it
+   did not read as "outside", it read as an unfinished tilemap. `GetWorldEdgeIndices` /
+   `GetWorldEdgeAnchor` describe the world's boundary alongside the room's, and the side runs go to
+   33 pieces a side. Capping the walls' dangling south ends fell out for free.
+6. **Reusing `floor_edge_sw` as the far kerb would have undone paving the street in stone.** It is
+   a **joist face** — the plank deck's thickness, on the plank palette, divided on the plank's own
+   16px board pitch. Under cobbles it reads as a timber sill holding back the pavement.
+   `make_street_edge` is its stone counterpart: dressed kerbstone, deliberately paler than any sett
+   in `COBBLE_TONES`, jointed on the setts' pitch, same 64×24 geometry and top-of-canvas pivot so
+   the road's near and far edges hang alike and frame it.
+
+   At the shop front the same slab is **correct** and was left alone — the workshop floor is a
+   raised wooden deck and the road is below it, so a joist face is exactly what the player should
+   see there.
+7. **The road's southern half was a hundred blank cobbles.** Five stalls all stand on one row and
+   nothing else was out there. 14 crates and barrels now, on the scatter idiom the room already
+   uses, confined to the two southernmost rows and the side walls beside them — the emptiest part,
+   and the part *provably* clear of the stalls four rows north, so the approach tiles stay open
+   without the floor generator having to know where `ProgressionSceneAuthoring` put them.
+
+### Three things that were expected to be broken and were not
+
+Worth recording as **checked**, because each was a live suspicion and "we looked" is the only thing
+that retires one:
+
+- **Y-sorting of the carts.** `ResourceNodeMarker` adds `YSortSpriteRenderer` in `Awake()`, which
+  does not run in EditMode — so the carts sort correctly only at runtime, and this was the single
+  most likely defect. It is correct: markers read order 1600 at `y = -16`, and a player at
+  `y = -16.6` draws in front of the cart. Screenshotted.
+- **The carts' overhang.** 96px sprites on 64px cells is 1.5 cells wide; at a four-cell pitch that
+  leaves 2.5 cells clear between neighbours and both approach tiles open.
+- **The Aether stall looking unlike the other four.** It is a glazed vitrine rather than a barrow,
+  and that is authored, not an accident — a rare good sold from a locked case. It is also the
+  marker that most needed its own silhouette, having previously rendered as a second brass ingot.
+
+### Rejected, and why
+
+- **Shrinking the workshop to pay for the street.** §3.3 sizes the endgame factory against 25×25.
+  Cells taken back are a difficulty change disguised as a layout change.
+- **Widening `GetFloorCells` to mean the whole world.** Every caller means the room by it. The
+  street would have been planked and the walls would have run round it.
+- **A south wall with a door.** The camera looks in through that edge, and a front-on elevation
+  anchored there draws over the room (breakage 4 of the projection switch). Open-fronted is both
+  the owner's call and the only one the art supports.
+- **Opting `Main.unity` out of the street.** Tempting — Main is a diorama with no market, so it now
+  carries 200 cobbles and no stalls. But Main has a Player, and `ClampToFloor` reads `FloorLayout`,
+  which is **global, not per-scene**: leaving Main unpaved while the clamp still allows `y = -20`
+  reproduces in Main the exact walk-into-the-void regression the paving was written to prevent.
+  Main keeps the shared shell until `FloorLayout` becomes per-scene or Main is retired.
+- **Extending the kerb run one index past each end** to close the sub-cell notch of background at
+  the two far corners, where the side wall's body reaches 0.39 of a cell past the kerb. One more
+  64px piece overshoots the wall by 0.61 of a cell, which trades a notch for a spur. The
+  shop-front corners have carried the identical notch since the top-down switch for the identical
+  reason; closing it properly needs a corner piece, not a longer run.
+
+### Verification
+
+- **1001 pass (869 EditMode + 132 PlayMode), zero failures.** Via the MCP bridge with the Editor
+  open, which is the only way to run them without closing it.
+- Both scenes read back from disk, not trusted from the authoring log: tilemap origin `(-12,-20)`,
+  size 25×33, 825 tile entries, `tileAnchor` still zero; 33/33 side pieces, 25 kerb pieces spanning
+  `x = -12..12`, kerb at `y = -20.5` on `street_edge` at PPU 64 with a top-of-canvas pivot; five
+  markers on painted street rows wearing stall art at 4/4/4/4 spacing.
+- `RebuildEnvironmentAllScenes` re-run on a clean tree leaves `git diff` **empty**, so the ~22k-line
+  scene diff is real content and not fileID churn.
+- **Looked at in Play mode** at gameplay zoom, at the shop front, at both far corners and at each
+  stall. The three commits before this one were explicitly handed off as *"STILL NOT LOOKED AT"*,
+  and breakage 5 is what that cost.
+
+### Still open
+
+1. **The street is the workshop's width and holds five stalls; §3.2 wants ~8 node sites at
+   endgame.** Extending the road east/west past the building, or adding a second stall row, is a
+   map-shape call for the owner.
+2. **`BuildModeController` still bounds placement by `GridMap` occupancy alone**, so §3.3's
+   "buildable area is the rendered floor" is unimplemented — and now more visible, because there
+   is ground outside the workshop to build on.
+3. **Nothing about the market is priced.** Stalls are `ResourceNode`s with `Infinite` quantity
+   behind a market-shaped sprite; "bought" is presentation. Making a trade cost something is the
+   design work this pass sets up and does not do.
+4. **The walk to a raw good has more than doubled, and nobody has timed it.** Measured from the
+   `(0,0)` spawn: every stall is **16 cells Chebyshev** (Manhattan 16 for Copper, 20 for Coal and
+   Zinc, 24 for Scrap and Aether), against Quadrants' 7 Chebyshev / 14 Manhattan. §9's manual era
+   is 12–15 minutes of hand-gathering — i.e. of walking to a node and back, repeatedly — and §12
+   already flags that estimate as ±25 %. Doubling the round trip is very likely outside that band.
+   This is now the **first** number a playtest should take, ahead of the boiler fuel ratio, because
+   it is the one this pass changed. If it bites, the lever is the stall row: moving it from
+   `y = -16` to `y = -14` costs two rows of approach clearance and buys back two cells each way.
