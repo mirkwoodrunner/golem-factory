@@ -17,11 +17,17 @@ import colorsys
 import os
 import random
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "Assets", "_Project", "Art")
 
 TILE = 64  # square, one cell, at PPU 64 => exactly 1 world unit
+
+# The market stalls are SHAPE work, not texture work, so they are drawn with ImageDraw while
+# everything above stays on raw pixel access. That split is deliberate: per-brick and per-plank
+# tone variation needs pixel writes, and a scalloped awning does not.
+TRANSPARENT = (0, 0, 0, 0)
+OUTLINE = (28, 19, 13, 255)
 
 # Warm wood-and-brass palette, carried over from generate_placeholder_art.py so the top-down
 # floor sits in the same world as the buildings already imported.
@@ -787,7 +793,287 @@ def make_barrel():
     return img
 
 
+# =========================================================================================
+# THE MARKET STREET
+#
+# docs/game-design.md, the tabletop source of truth, has this and the digital adaptation lost
+# it: "The Loading Docks: Resource markets on the edge of the board where raw materials
+# (Scrap, Brass, Aether) arrive in full truckload shipments." What the digital version built
+# instead was five ore boulders standing on the workshop floor.
+#
+# So raw goods are BOUGHT, not dug, and that finally makes the code honest: every node has been
+# infinite since 5.1 (scarcity is access, not depletion). A seam that never empties is a fiction
+# problem. A merchant who never runs out is just a merchant.
+#
+# COBBLES, NOT PLANKS. The street has to read as outside at a glance, from the tile alone, with
+# no walls to help -- so it changes both TEXTURE (round stones against straight boards) and HUE
+# (cool grey-blue against the floor's warm ochre). Those are the two channels the plank floor
+# spends its whole budget on being warm and rectilinear, which is exactly why the contrast works.
+# =========================================================================================
+
+# Pulled DOWN, deliberately. The floor palette note above records this exact mistake being made
+# once already: the ground was brighter and more saturated than everything standing on it, so
+# props read as dark blobs. The first cobble pass landed at 60-85 luminance -- brighter than the
+# plank floor's ~72 -- and the stalls sat on it as silhouettes. These sit just under the planks,
+# so the street reads as a cooler, slightly darker surface and the stalls own the contrast.
+COBBLE_TONES = [
+    (52, 51, 57, 255),
+    (60, 59, 65, 255),
+    (46, 45, 51, 255),
+    (66, 64, 70, 255),
+]
+COBBLE_MORTAR = (32, 31, 36, 255)
+COBBLE_MOSS = (48, 58, 46, 255)
+CANVAS = (198, 186, 164, 255)
+CANVAS_DARK = (150, 139, 120, 255)
+STALL_WOOD = (92, 66, 44, 255)
+STALL_WOOD_DARK = (62, 43, 28, 255)
+STALL_WOOD_LIGHT = (120, 90, 62, 255)
+
+SETT_W, SETT_H = 16, 8          # both divide 64 exactly -- see the note in make_cobbles
+
+
+def make_cobbles(variant=0):
+    """Street setts. Cool and slightly darker than the plank floor, so the street reads as
+    outside from the tile alone with no walls to help.
+
+    IT HAS TO TILE, IN BOTH AXES. The first pass laid stones at an arbitrary pitch and drew each
+    tile independently, so a paved street showed its 64px repeat as hard horizontal banding and
+    every stone crossing a tile edge was cut against a mismatched neighbour. The fix is the same
+    one the plank floor uses: make the pattern PERIODIC on the tile. Sett height 8 divides 64
+    (eight exact rows) and width 16 divides 64 (four per row), alternate rows offset by half a
+    sett, and any sett that runs past the right edge is drawn a second time wrapped to the left.
+    """
+    img = Image.new("RGBA", (TILE, TILE), COBBLE_MORTAR)
+    d = ImageDraw.Draw(img)
+    rng = random.Random(9100 + variant)
+
+    def sett(x, y, w, tone, mossy, top, bot, rad):
+        # THE JOINT HAS TO WOBBLE. Every stone sharing an exact top and bottom edge produces one
+        # unbroken horizontal joint across the whole street, and an unbroken horizontal joint at
+        # a regular pitch is precisely what brickwork IS -- which is why varying the widths and
+        # the bond phase did not stop the first two passes reading as a brick wall laid flat.
+        # A per-stone inset of 0-1 px at top and bottom keeps every stone inside its row band,
+        # so the tile still wraps exactly, while the joint stops being a ruled line.
+        d.rounded_rectangle([x + 1, y + top, x + w - 2, y + SETT_H - bot], radius=rad, fill=tone)
+        d.line([(x + 3, y + top), (x + w - 4, y + top)], fill=_shade(tone, 0.14))
+        d.line([(x + 3, y + SETT_H - bot), (x + w - 4, y + SETT_H - bot)], fill=_shade(tone, -0.12))
+        if mossy:
+            d.point((x + 3 + rng.randrange(max(1, w - 6)), y + 2 + rng.randrange(3)), fill=COBBLE_MOSS)
+
+    # A FOUR-PHASE BOND, AND MIXED SETT WIDTHS. Two-phase alternation at a single width is
+    # running bond -- it is what brickwork IS, so the first pass read as a brick wall laid flat
+    # no matter how the stones were coloured. Real setts are laid in courses but not in a
+    # two-phase stagger at one size. Both the phase cycle (0, 8, 4, 12) and the width pattern
+    # repeat on a multiple of SETT_W, so the tile still wraps exactly.
+    PHASES = (0, SETT_W // 2, SETT_W // 4, 3 * SETT_W // 4)
+    WIDTHS = ((12, 20), (16, 12, 20), (20, 12), (16,))
+
+    for row in range(TILE // SETT_H):
+        offset = PHASES[row % len(PHASES)] - SETT_W
+        widths = WIDTHS[row % len(WIDTHS)]
+        x = offset
+        i = 0
+        while x < TILE + SETT_W:
+            w = widths[i % len(widths)]
+            tone = COBBLE_TONES[rng.randrange(len(COBBLE_TONES))]
+            mossy = rng.random() < 0.07
+            shape = (rng.randrange(2), rng.randrange(2), rng.choice((2, 3, 3, 4)))
+            sett(x, row * SETT_H, w, tone, mossy, *shape)
+            # The wrap: a sett crossing either edge is drawn again one tile over, with the SAME
+            # jitter, which is what makes the seam invisible when the tile is laid next to itself.
+            if x + w > TILE:
+                sett(x - TILE, row * SETT_H, w, tone, False, *shape)
+            if x < 0:
+                sett(x + TILE, row * SETT_H, w, tone, False, *shape)
+            x += w
+            i += 1
+    return img
+
+
+# BIGGER CARTS. The first pass drew each stall on a 64x96 canvas -- one cell wide -- and beside
+# the player they read as toy barrows rather than as market carts a golem queues at. These are
+# 96x120: one and a half cells wide, not quite two tall.
+#
+# A SPRITE MAY BE WIDER THAN ITS CELL. A stall still OCCUPIES one cell, exactly like the wall
+# segments overhang their boundary and the corner post rises a cell and a half above its anchor.
+# The street lays stalls on a two-cell pitch, so a 96-wide sprite centred on its cell reaches
+# three quarters of a cell either side and never collides with its neighbour.
+#
+# Most of the added size goes into the CART, not the canopy. The awning grew by half; the counter
+# body more than doubled and gained wheels and a splayed trestle. That is the half of a market
+# barrow that says "this is a vehicle someone pushed here", and it was the half that was missing.
+STALL_W, STALL_H = 96, 120
+SHADOW_ROWS = 3
+
+
+def _stall_canvas():
+    return Image.new("RGBA", (STALL_W, STALL_H), TRANSPARENT)
+
+
+def _contact_shadow(d, x0, x1):
+    base = STALL_H - SHADOW_ROWS
+    for x in range(x0, x1):
+        d.point((x, base), fill=(24, 16, 10, 150))
+        d.point((x, base + 1), fill=(24, 16, 10, 90))
+
+
+def _stall_frame(d, awning, awning_dark):
+    """The parts every cart shares: wheels, a splayed trestle, a deep counter, and a striped
+    awning on posts. Drawn on the 96x120 canvas whose bottom rows are contact shadow, so a stall
+    stands on its cell the same way a wall stands on its boundary."""
+    # Wheels first, so the cart body overlaps them and they read as tucked underneath.
+    for wx in (14, 70):
+        d.ellipse([wx, 88, wx + 20, 108], fill=STALL_WOOD_DARK, outline=OUTLINE)
+        d.ellipse([wx + 6, 94, wx + 14, 102], fill=STALL_WOOD, outline=OUTLINE)
+        for a, b in [((wx + 10, 89), (wx + 10, 107)), ((wx + 1, 98), (wx + 19, 98))]:
+            d.line([a, b], fill=STALL_WOOD)
+        d.point((wx + 10, 98), fill=OUTLINE)
+
+    # Trestle legs, splayed outward -- a straight pair reads as a table, a splayed pair as a cart.
+    for lx, dx in ((10, -4), (86, 4)):
+        d.polygon([(lx, 74), (lx + 4, 74), (lx + 4 + dx, 104), (lx + dx, 104)],
+                  fill=STALL_WOOD_DARK, outline=OUTLINE)
+
+    # Counter: a thick plank top with a deep boarded front, which is where the bulk lives.
+    d.rectangle([2, 74, 93, 84], fill=STALL_WOOD_LIGHT, outline=OUTLINE)
+    d.line([(4, 76), (91, 76)], fill=_shade(STALL_WOOD_LIGHT, 0.18))
+    d.rectangle([5, 84, 90, 104], fill=STALL_WOOD, outline=OUTLINE)
+    for by in (89, 95, 101):
+        d.line([(7, by), (88, by)], fill=STALL_WOOD_DARK)
+    # Iron strapping at each end -- Victorian cart hardware, and it breaks up the plank field.
+    for sx in (10, 82):
+        d.rectangle([sx, 85, sx + 3, 103], fill=(70, 62, 56, 255), outline=OUTLINE)
+
+    # Posts carrying the canopy.
+    for px in (8, 84):
+        d.rectangle([px, 34, px + 4, 76], fill=STALL_WOOD_DARK, outline=OUTLINE)
+
+    # Awning: a shallow scalloped canopy, striped in the stall's own colour.
+    d.polygon([(0, 16), (95, 16), (88, 38), (7, 38)], fill=CANVAS, outline=OUTLINE)
+    for i in range(0, 96, 14):
+        d.polygon([(i + 2, 16), (i + 9, 16), (i + 8, 38), (i + 3, 38)], fill=awning)
+    d.line([(0, 16), (95, 16)], fill=awning_dark)
+    for i in range(6, 88, 9):
+        d.arc([i, 34, i + 9, 43], 0, 180, fill=OUTLINE)
+    d.line([(8, 38), (87, 38)], fill=CANVAS_DARK)
+    _contact_shadow(d, 8, 88)
+
+
+def make_stall_scrap():
+    """The rag-and-bone cart. Scrap is salvage, so this is the cluttered one -- bent plate heaped
+    on the counter and a cartwheel leaning against it. Names the Clockwork Scavenger directly."""
+    img = _stall_canvas()
+    d = ImageDraw.Draw(img)
+    _stall_frame(d, (150, 88, 52, 255), (96, 54, 32, 255))
+    # Heaped salvage, deliberately no two edges parallel.
+    d.polygon([(12, 60), (32, 54), (40, 74), (14, 74)], fill=(150, 88, 52, 255), outline=OUTLINE)
+    d.polygon([(38, 58), (56, 52), (64, 74), (40, 74)], fill=(116, 68, 40, 255), outline=OUTLINE)
+    d.polygon([(62, 62), (84, 56), (86, 74), (64, 74)], fill=(150, 88, 52, 255), outline=OUTLINE)
+    d.line([(16, 63), (30, 58)], fill=(182, 116, 72, 255))
+    d.point([(24, 68), (50, 64), (74, 67)], fill=(70, 52, 40, 255))
+    # A spare wheel leaning on the cart -- the silhouette tell at a distance.
+    d.ellipse([60, 82, 92, 112], outline=OUTLINE, width=2)
+    d.ellipse([70, 92, 82, 104], outline=STALL_WOOD_DARK)
+    for a, b in [((76, 83), (76, 111)), ((61, 97), (91, 97))]:
+        d.line([a, b], fill=STALL_WOOD_DARK)
+    return img
+
+
+def make_stall_coal():
+    """The coal merchant. Sacks and a scuttle under the only sooty awning -- everything here is
+    value-dark, so it reads as coal before any shape resolves.
+
+    EVERY DARK SHAPE GETS A RIM. Coal is the one good whose own colour sits below the ground it
+    stands on, so it cannot rely on fill alone: without a lit shoulder the whole cart reads as a
+    hole punched in the street."""
+    img = _stall_canvas()
+    d = ImageDraw.Draw(img)
+    _stall_frame(d, (74, 78, 88, 255), (44, 47, 54, 255))
+    for sx in (12, 38, 64) :
+        body = [(sx, 74), (sx + 3, 56), (sx + 10, 50), (sx + 17, 56), (sx + 20, 74)]
+        d.polygon(body, fill=(52, 48, 56, 255), outline=OUTLINE)
+        d.line([(sx + 3, 56), (sx + 10, 50)], fill=(120, 116, 130, 255))
+        d.line([(sx + 1, 68), (sx + 3, 57)], fill=(96, 92, 104, 255))
+        d.line([(sx + 6, 53), (sx + 14, 53)], fill=(138, 132, 146, 255))
+        d.point([(sx + 7, 59), (sx + 13, 62), (sx + 10, 66)], fill=(24, 22, 28, 255))
+    # Scuttle on the ground beside the cart.
+    d.polygon([(2, 108), (7, 90), (27, 90), (30, 108)], fill=(58, 54, 62, 255), outline=OUTLINE)
+    d.line([(7, 90), (27, 90)], fill=(122, 118, 132, 255))
+    d.line([(3, 105), (7, 92)], fill=(96, 92, 104, 255))
+    return img
+
+
+def make_stall_ore(green=True):
+    """The ore factor -- copper or zinc. Crates of graded rock rather than sacks, because ore
+    comes in lots. COPPER ORE IS GREEN in the ground (malachite), which is worth drawing: it
+    separates the stall you buy at from the orange ingot you smelt it into."""
+    img = _stall_canvas()
+    d = ImageDraw.Draw(img)
+    if green:
+        awning, awning_dark = (86, 132, 92, 255), (52, 84, 58, 255)
+        rock, vein, spec = (104, 92, 80, 255), (96, 158, 104, 255), (150, 200, 150, 255)
+    else:
+        awning, awning_dark = (140, 168, 186, 255), (88, 112, 130, 255)
+        rock, vein, spec = (110, 106, 100, 255), (186, 200, 210, 255), (226, 236, 244, 255)
+    _stall_frame(d, awning, awning_dark)
+    for cx in (10, 52):
+        d.rectangle([cx, 54, cx + 34, 74], fill=STALL_WOOD_DARK, outline=OUTLINE)
+        d.rectangle([cx + 3, 57, cx + 31, 72], fill=_shade(STALL_WOOD_DARK, -0.28))
+        d.line([(cx + 3, 57), (cx + 31, 57)], fill=_shade(STALL_WOOD_DARK, 0.20))
+        for ox, oy in [(cx + 5, 61), (cx + 15, 59), (cx + 24, 63), (cx + 11, 66)]:
+            d.polygon([(ox, oy), (ox + 8, oy - 3), (ox + 11, oy + 5), (ox + 3, oy + 8)],
+                      fill=rock, outline=OUTLINE)
+            d.line([(ox + 3, oy + 1), (ox + 8, oy)], fill=vein)
+            d.point((ox + 6, oy + 4), fill=spec)
+    return img
+
+
+def make_stall_aether():
+    """The aether dealer, and the one that must NOT look like the others. No canvas awning and no
+    cart: a lantern-lit cabinet on a plinth with a specimen under glass. Aether is the exotic good
+    in this economy and its pitch should read as a curiosity shop beside four honest traders."""
+    img = _stall_canvas()
+    d = ImageDraw.Draw(img)
+    aether = (96, 214, 200, 255)
+    aether_dark = (36, 116, 118, 255)
+    aether_lit = (186, 245, 238, 255)
+    # Plinth. Widened with the carts: the cabinet is meant to read as a DIFFERENT KIND of pitch,
+    # not a smaller one, and beside 96px carts the first version just looked undersized.
+    d.rectangle([8, 98, 88, 112], fill=STALL_WOOD_DARK, outline=OUTLINE)
+    d.line([(10, 100), (86, 100)], fill=STALL_WOOD)
+    # Cabinet body with a peaked lid -- still taller and narrower in PROPORTION than a cart, which
+    # is what keeps it distinct, but no longer smaller in absolute terms.
+    d.polygon([(12, 34), (48, 12), (84, 34), (84, 100), (12, 100)],
+              fill=STALL_WOOD_DARK, outline=OUTLINE)
+    d.polygon([(12, 34), (48, 12), (84, 34)], fill=STALL_WOOD, outline=OUTLINE)
+    d.line([(17, 32), (48, 15)], fill=STALL_WOOD_LIGHT)
+    # Glazed front, with the glow spilling onto the frame.
+    d.rectangle([20, 44, 76, 92], fill=aether_dark, outline=OUTLINE)
+    for gx in (38, 58):
+        d.line([(gx, 45), (gx, 91)], fill=_shade(aether_dark, 0.25))
+    # The specimen: one standing shard, the same silhouette as the Aether good itself.
+    d.polygon([(42, 48), (55, 64), (52, 88), (40, 88), (36, 64)], fill=aether, outline=OUTLINE)
+    d.polygon([(42, 48), (55, 64), (45, 64)], fill=aether_lit)
+    d.point([(42, 73), (49, 81)], fill=aether_lit)
+    # Hanging lanterns -- a curiosity dealer works after dark.
+    for lx in (2, 84):
+        d.line([(lx + 4, 24), (lx + 4, 34)], fill=OUTLINE)
+        d.ellipse([lx, 34, lx + 10, 45], fill=aether_dark, outline=OUTLINE)
+        d.point((lx + 5, 39), fill=aether_lit)
+    _contact_shadow(d, 10, 86)
+    return img
+
+
 def main():
+    _save(make_cobbles(0), "street_cobble.png")
+    _save(make_cobbles(1), "street_cobble_b.png")
+    _save(make_stall_scrap(), "stall_scrap.png")
+    _save(make_stall_coal(), "stall_coal.png")
+    _save(make_stall_ore(green=True), "stall_copper_ore.png")
+    _save(make_stall_ore(green=False), "stall_zinc_ore.png")
+    _save(make_stall_aether(), "stall_aether.png")
+
     _save(make_plank_floor(0), "floor_tile.png")
     _save(make_plank_floor(1), "floor_tile_wood_b.png")
     _save(make_plank_floor(2), "floor_tile_wood_c.png")

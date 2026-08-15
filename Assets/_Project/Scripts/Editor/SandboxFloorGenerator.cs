@@ -62,6 +62,12 @@ namespace GolemFactory.Editor
         private static readonly string[] CentrePivotOverlayNames =
         {
             "build_ghost_tile", "interaction_ring", "belt_tile",
+            // The market street's paving. Same treatment as the floor tiles it sits beside: one
+            // cell, centre-pivoted, PPU 64. Not yet painted by anything -- the world still has
+            // to grow before there is a street to lay them on -- but imported correctly now, so
+            // the .meta committed alongside the art is right rather than Unity's 100/bilinear
+            // default waiting to be discovered later.
+            "street_cobble", "street_cobble_b",
         };
 
         // TOP-DOWN: every environment sprite is authored at 64 art pixels per world unit, so a
@@ -105,6 +111,17 @@ namespace GolemFactory.Editor
             { "prop_crate", new Vector2(0.5f, 1f / 56f) },
             { "prop_barrel", new Vector2(0.5f, 1f / 56f) },
             { "ground_shadow", new Vector2(0.5f, 0.5f) },
+            // Market carts, 96x120 with three shadow rows at the foot -- the same contact-line
+            // rule the walls follow, so a cart stands on its cell rather than hovering over it.
+            // WIDER THAN THEIR CELL ON PURPOSE: a cart occupies one cell and the sprite overhangs
+            // it by 16px each side, exactly as a wall segment overhangs its boundary. The street
+            // lays them on a two-cell pitch, which keeps the overhang clear of the neighbour and
+            // leaves the two approach tiles §3.2's extractor cap needs.
+            { "stall_scrap", new Vector2(0.5f, 3f / 120f) },
+            { "stall_coal", new Vector2(0.5f, 3f / 120f) },
+            { "stall_copper_ore", new Vector2(0.5f, 3f / 120f) },
+            { "stall_zinc_ore", new Vector2(0.5f, 3f / 120f) },
+            { "stall_aether", new Vector2(0.5f, 3f / 120f) },
         };
 
         // Wall sconces every fourth segment along the one head-on wall run. Isometric had two
