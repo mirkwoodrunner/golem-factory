@@ -891,6 +891,46 @@ def make_cobbles(variant=0):
     return img
 
 
+def make_street_edge():
+    """The street's far kerb seen front-on: the kerbstone's worn top and its face below.
+
+    THE STONE COUNTERPART OF make_floor_edge, AND IT HAS TO BE ITS OWN ASSET. floor_edge_sw is a
+    JOIST FACE -- the plank deck's thickness, in the plank palette, divided on the plank's own
+    16px board pitch. That is exactly right where the workshop's raised floor stops against the
+    road, and exactly wrong at the far side of a cobbled street, where it reads as a timber sill
+    holding back the pavement. Reusing it was the obvious shortcut and it is the one that would
+    have undone the whole point of paving the street in a different material.
+
+    Same 64x24 geometry and the same top-of-canvas pivot as the joist face, so the road's two
+    edges -- near, at the shop front; far, at the kerb -- hang the same distance below their
+    boundary lines and frame the street symmetrically.
+    """
+    h, lip, face = 24, 3, 13
+    img = Image.new("RGBA", (TILE, h), (0, 0, 0, 0))
+    px = img.load()
+    # Paler than any sett in COBBLE_TONES on purpose: a kerb is a dressed stone, cut and set,
+    # not one of the rubble setts laid between them. The value difference is what makes the
+    # line read as an edge at gameplay zoom, where 24px is three or four screen pixels.
+    kerb = (78, 76, 83, 255)
+    for y in range(h):
+        for x in range(TILE):
+            if y < lip:
+                # The worn top, catching the same top key the deck chamfer does.
+                px[x, y] = _shade(kerb, 0.22 if y == 0 else 0.09)
+            elif y < lip + face:
+                # Joints on the setts' own 16px pitch, so the kerb reads as the ends of the same
+                # stonework rather than as an applied trim -- the rule make_floor_edge follows
+                # against the planks.
+                joint = x % SETT_W
+                tone = -0.24 if joint == 0 else (0.07 if joint == 1 else 0.0)
+                # A kerb face is in its own shadow toward the bottom.
+                px[x, y] = _shade(kerb, tone - 0.013 * (y - lip))
+            else:
+                k = y - (lip + face)
+                px[x, y] = (18, 17, 22, max(0, 175 - k * 22))
+    return img
+
+
 # BIGGER CARTS. The first pass drew each stall on a 64x96 canvas -- one cell wide -- and beside
 # the player they read as toy barrows rather than as market carts a golem queues at. These are
 # 96x120: one and a half cells wide, not quite two tall.
@@ -1068,6 +1108,7 @@ def make_stall_aether():
 def main():
     _save(make_cobbles(0), "street_cobble.png")
     _save(make_cobbles(1), "street_cobble_b.png")
+    _save(make_street_edge(), "street_edge.png")
     _save(make_stall_scrap(), "stall_scrap.png")
     _save(make_stall_coal(), "stall_coal.png")
     _save(make_stall_ore(green=True), "stall_copper_ore.png")

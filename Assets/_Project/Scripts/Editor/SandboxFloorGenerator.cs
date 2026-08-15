@@ -111,6 +111,11 @@ namespace GolemFactory.Editor
             // contact line is the top of the canvas, not the bottom.
             { "floor_edge_se", new Vector2(0.5f, 1f) },
             { "floor_edge_sw", new Vector2(0.5f, 1f) },
+            // The street's far kerb, 64x24. Same geometry and same top-of-canvas pivot as the
+            // joist face above, and a separate sprite for the reason make_street_edge records:
+            // floor_edge_sw is timber on the plank palette, which is right where the raised
+            // shop floor stops and wrong as the edge of a stone road.
+            { "street_edge", new Vector2(0.5f, 1f) },
             { "wall_corner_post", new Vector2(0.5f, 1f / 96f) },
             { "prop_crate", new Vector2(0.5f, 1f / 56f) },
             { "prop_barrel", new Vector2(0.5f, 1f / 56f) },
@@ -351,6 +356,7 @@ namespace GolemFactory.Editor
             Sprite sideEast = LoadSprite("wall_side_e");
             Sprite sideWest = LoadSprite("wall_side_w");
             Sprite skirt = LoadSprite("floor_edge_sw");
+            Sprite kerb = LoadSprite("street_edge");
             Sprite postSprite = LoadSprite("wall_corner_post");
 
             // WHICH EDGES ARE WALLED IS A TOP-DOWN DECISION, NOT AN INHERITED ONE. Isometric
@@ -363,19 +369,41 @@ namespace GolemFactory.Editor
             // Top-down wants the standard interior: three walls, and the south edge left open so
             // the camera can see in. North gets the head-on face; east and west get the side
             // caps; south keeps the skirting slab that gives the floor a visible thickness.
+            //
+            // THE SIDE RUNS FOLLOW THE WORLD, THE SKIRTING FOLLOWS THE ROOM, and the split is
+            // the whole of what the street needed. Every run used to walk GetEdgeIndices, i.e.
+            // the workshop's own extent -- so once the street existed, the east and west walls
+            // stopped dead at the shop front and eight rows of cobbles ran off into background
+            // on three sides. Seen in Play mode, that did not read as "outside"; it read as an
+            // unfinished tilemap, which is the one thing paving the street was meant to fix.
+            //
+            // The side walls now run the world's full height (the workshop's neighbours down the
+            // road, and the same piece caps the wall's formerly dangling south end for free).
+            // The skirting stays on the room's own indices, because it is the plank deck's
+            // thickness and has to stop where the planks do.
             int count = 0;
+            foreach (int index in FloorLayout.GetWorldEdgeIndices())
+            {
+                count += PlaceEdgePiece(wallsParent, converter, FloorLayout.Edge.East,
+                    index, sideEast, "WallEast", false, expected, world: true);
+                count += PlaceEdgePiece(wallsParent, converter, FloorLayout.Edge.West,
+                    index, sideWest, "WallWest", false, expected, world: true);
+            }
+
             foreach (int index in FloorLayout.GetEdgeIndices())
             {
                 bool lit = Mod(index, LampSpacing) == 0;
 
                 count += PlaceEdgePiece(wallsParent, converter, FloorLayout.Edge.North,
                     index, lit ? northLamp : north, "WallNorth", lit, expected);
-                count += PlaceEdgePiece(wallsParent, converter, FloorLayout.Edge.East,
-                    index, sideEast, "WallEast", false, expected);
-                count += PlaceEdgePiece(wallsParent, converter, FloorLayout.Edge.West,
-                    index, sideWest, "WallWest", false, expected);
                 count += PlaceEdgePiece(wallsParent, converter, FloorLayout.Edge.South,
                     index, skirt, "SkirtSouth", false, expected);
+
+                // The far kerb, on the same x indices as the skirting because the street is the
+                // workshop's width. The two bands frame the road: the shop's deck edge on the
+                // near side, dressed stone on the far one.
+                count += PlaceEdgePiece(wallsParent, converter, FloorLayout.Edge.South,
+                    index, kerb, "KerbStreet", false, expected, world: true);
             }
 
             int postIndex = 0;
@@ -397,13 +425,20 @@ namespace GolemFactory.Editor
             return count;
         }
 
+        // `world` selects which boundary the piece sits on: the workshop's (default) or the
+        // world's. They differ only on the south edge, but the flag is passed on the side runs
+        // too so the call site says which rectangle it means rather than relying on the reader
+        // knowing that east and west happen to coincide.
         private static int PlaceEdgePiece(Transform parent, GridCoordinateConverter converter,
             FloorLayout.Edge edge, int index, Sprite sprite, string namePrefix, bool withLight,
-            HashSet<string> expected)
+            HashSet<string> expected, bool world = false)
         {
             string name = namePrefix + "_" + index;
-            Vector3 world = converter.CellFractionToWorld(FloorLayout.GetEdgeAnchor(edge, index));
-            GameObject piece = EnsureSpriteObject(parent, name, sprite, world);
+            Vector2 anchor = world
+                ? FloorLayout.GetWorldEdgeAnchor(edge, index)
+                : FloorLayout.GetEdgeAnchor(edge, index);
+            Vector3 worldPosition = converter.CellFractionToWorld(anchor);
+            GameObject piece = EnsureSpriteObject(parent, name, sprite, worldPosition);
             expected.Add(name);
 
             // Both directions, because a lamp's segment and a plain segment share a name: retune
@@ -448,6 +483,46 @@ namespace GolemFactory.Editor
                 {
                     count += PlaceProp(propsParent, converter, new Vector2Int(i, -he),
                         Mod(i, 2) == 0 ? barrel : crate, shadow, expected);
+                }
+            }
+
+            // STREET CLUTTER. Same deterministic-modulo idiom, and needed for the same reason the
+            // room has any: seen in Play mode the road's southern half was a hundred blank
+            // cobbles, because the five stalls all stand on one row and nothing else is out
+            // there. A market with nothing stacked in it does not read as a market.
+            //
+            // Confined to the two southernmost rows and the side walls beside them. That is the
+            // emptiest part of the road AND the part that is provably clear of the stalls: they
+            // stand four rows north of here, so the approach tiles §3.2's two-extractor cap needs
+            // stay open without this having to know where ProgressionSceneAuthoring put them. A
+            // barrel on an approach tile would silently halve a stall's throughput the day
+            // extractors start queueing, and nothing would point at the barrel.
+            int kerbRow = -he - FloorLayout.StreetDepth;
+            for (int x = -he + 1; x <= he - 1; x++)
+            {
+                if (Mod(x * 5 + 3, 8) < 2)
+                {
+                    count += PlaceProp(propsParent, converter, new Vector2Int(x, kerbRow),
+                        Mod(x, 2) == 0 ? barrel : crate, shadow, expected);
+                }
+                if (Mod(x * 3 + 5, 11) < 2)
+                {
+                    count += PlaceProp(propsParent, converter, new Vector2Int(x, kerbRow + 1),
+                        Mod(x, 2) == 0 ? crate : barrel, shadow, expected);
+                }
+            }
+
+            for (int y = kerbRow; y <= kerbRow + 2; y++)
+            {
+                if (Mod(y * 5 + 1, 3) < 2)
+                {
+                    count += PlaceProp(propsParent, converter, new Vector2Int(he, y),
+                        Mod(y, 2) == 0 ? crate : barrel, shadow, expected);
+                }
+                if (Mod(y * 7 + 3, 3) < 2)
+                {
+                    count += PlaceProp(propsParent, converter, new Vector2Int(-he, y),
+                        Mod(y, 2) == 0 ? barrel : crate, shadow, expected);
                 }
             }
 

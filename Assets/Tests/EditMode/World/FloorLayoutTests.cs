@@ -292,6 +292,70 @@ namespace GolemFactory.Tests.EditMode
                 "a stall row needs clear ground in front of and behind it");
         }
 
+        // --- The world's boundary, as distinct from the workshop's ---------------------------
+
+        [Test]
+        public void GetWorldEdgeIndices_RunPastTheShopFrontAndDownTheStreet()
+        {
+            var indices = FloorLayout.GetWorldEdgeIndices(5, 3).ToList();
+
+            Assert.AreEqual(-8, indices.First(), "the run has to reach the far kerb");
+            Assert.AreEqual(5, indices.Last(), "and still reach the back wall");
+            Assert.AreEqual(14, indices.Count, "one piece per world row, no gaps");
+        }
+
+        [Test]
+        public void GetWorldEdgeIndices_CoverEveryRowOfGroundOnTheSideWalls()
+        {
+            // The defect this pins: the side runs used to walk the WORKSHOP's indices, so they
+            // stopped dead at the shop front and the street's west and east edges were undrawn.
+            var covered = new HashSet<int>(FloorLayout.GetWorldEdgeIndices());
+            foreach (Vector2Int cell in FloorLayout.GetWorldCells())
+            {
+                Assert.IsTrue(covered.Contains(cell.y),
+                    "row " + cell.y + " of ground has no side-wall piece beside it");
+            }
+        }
+
+        [Test]
+        public void GetWorldEdgeAnchor_DiffersFromTheWorkshopOnlyOnTheSouth()
+        {
+            const int halfExtent = 5;
+            const int streetDepth = 3;
+
+            foreach (FloorLayout.Edge edge in new[]
+                     { FloorLayout.Edge.North, FloorLayout.Edge.East, FloorLayout.Edge.West })
+            {
+                Assert.AreEqual(
+                    FloorLayout.GetEdgeAnchor(edge, 2, halfExtent),
+                    FloorLayout.GetWorldEdgeAnchor(edge, 2, halfExtent, streetDepth),
+                    edge + " is the building's own wall, so the two boundaries coincide");
+            }
+
+            Assert.AreEqual(-5.5f,
+                FloorLayout.GetEdgeAnchor(FloorLayout.Edge.South, 2, halfExtent).y, 0.0001f,
+                "the workshop's skirting stays at the shop front");
+            Assert.AreEqual(-8.5f,
+                FloorLayout.GetWorldEdgeAnchor(FloorLayout.Edge.South, 2, halfExtent, streetDepth).y,
+                0.0001f, "the kerb sits at the far side of the street");
+        }
+
+        [Test]
+        public void GetWorldEdgeAnchor_KerbHangsBelowEveryCobbleItEdges()
+        {
+            // Same relationship the skirting has to the plank floor: the band sits half a cell
+            // below the southernmost row's centre, so it hangs off the ground rather than
+            // covering it. If this inverts, the kerb draws on top of the last row of street.
+            float kerbY = FloorLayout.GetWorldEdgeAnchor(FloorLayout.Edge.South, 0).y;
+
+            foreach (Vector2Int cell in FloorLayout.GetStreetCells())
+            {
+                Assert.Less(kerbY, cell.y, "kerb is not south of street row " + cell.y);
+            }
+
+            Assert.AreEqual(FloorLayout.WorldMinY - 0.5f, kerbY, 0.0001f);
+        }
+
         [Test]
         public void IsInsideWorkshop_SeparatesTheRoomFromTheStreet()
         {

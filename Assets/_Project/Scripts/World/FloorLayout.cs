@@ -193,6 +193,47 @@ namespace GolemFactory.World
             }
         }
 
+        // THE WORLD HAS A BOUNDARY TOO, AND IT IS NOT THE WORKSHOP'S. Three of its four sides
+        // coincide -- north, east and west are the building's own walls -- but the world runs
+        // StreetDepth rows further south, and until this existed nothing described that line. So
+        // the side-wall runs stopped dead at the shop front and the street's three outer edges
+        // were undrawn: cobbles cut straight into background on the west, east and south, which
+        // is what made the market read as an unfinished tilemap rather than as outside.
+        //
+        // Kept as a separate pair of methods rather than as extra parameters on GetEdgeIndices/
+        // GetEdgeAnchor, because the existing pair means "the room" to every one of its callers
+        // (the skirting run under the plank floor still has to stop at the plank floor) and
+        // widening them in place would have moved that skirting to the far kerb.
+
+        /// <summary>
+        /// Indices for a run along the world's full height -- the east and west walls, which
+        /// carry on past the shop front and down the street.
+        /// </summary>
+        public static IEnumerable<int> GetWorldEdgeIndices(
+            int halfExtent = HalfExtent, int streetDepth = StreetDepth)
+        {
+            for (int i = -halfExtent - streetDepth; i <= halfExtent; i++)
+            {
+                yield return i;
+            }
+        }
+
+        /// <summary>
+        /// Anchor for one cell of the world's boundary. Identical to <see cref="GetEdgeAnchor"/>
+        /// on north, east and west -- the building's walls are the world's on those three sides --
+        /// and differs only on the south, which sits at the far kerb rather than the shop front.
+        /// </summary>
+        public static Vector2 GetWorldEdgeAnchor(
+            Edge edge, int index, int halfExtent = HalfExtent, int streetDepth = StreetDepth)
+        {
+            if (edge == Edge.South)
+            {
+                return new Vector2(index, -halfExtent - streetDepth - 0.5f);
+            }
+
+            return GetEdgeAnchor(edge, index, halfExtent);
+        }
+
         // THE TWO NORTH CORNERS ONLY -- the two places where two wall runs actually meet.
         //
         // Isometric returned three. A first pass at top-down returned four, on the reasoning that
