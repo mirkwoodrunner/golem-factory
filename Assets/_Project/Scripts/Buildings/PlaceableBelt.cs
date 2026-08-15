@@ -22,6 +22,14 @@ namespace GolemFactory.Buildings
         // another prefab) resolves to null on instantiation -- the cross-prefab-reference trap
         // in the architecture notes. It is therefore passed in at placement time instead.
         [SerializeField] private BeltSegmentVisual.ItemSpriteBinding[] itemSprites;
+
+        // Shown for a good with no binding above. WITHOUT IT AN UNBOUND GOOD IS INVISIBLE, not
+        // merely unrecognisable: BeltSegmentVisual.ResolveSprite ends in `return itemSprite`, so
+        // a miss hands the renderer null and the item rides the belt as empty space. That is
+        // exactly how twenty-one of the twenty-four goods went unnoticed. Deliberately the ghost
+        // placeholder rather than a real good's icon -- a wrong-but-visible marker gets found in
+        // ten seconds, where borrowing Scrap's icon would just relabel the bug.
+        [SerializeField] private Sprite fallbackItemSprite;
         [SerializeField] private Material itemMaterial;
 
         private BeltSegment _segment;
@@ -98,7 +106,7 @@ namespace GolemFactory.Buildings
             _cargoVisual = visualGo.AddComponent<BeltSegmentVisual>();
             _cargoVisual.ConfigureCargoOnly(
                 conveyorHolder, _segment.SegmentId, startGo.transform, endGo.transform,
-                itemSprites, itemMaterial);
+                itemSprites, itemMaterial, fallbackItemSprite);
         }
     }
 }

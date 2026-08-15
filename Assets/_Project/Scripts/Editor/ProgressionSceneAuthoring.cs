@@ -62,6 +62,54 @@ namespace GolemFactory.Editor
         private const string ClockTowerPrefabPath = PrefabRoot + "ClockTowerPrefab.prefab";
         private const string ManagerHoldersPath = PrefabRoot + "ManagerHolders.prefab";
         private const string HandCrankBenchPrefabPath = PrefabRoot + "HandCrankBenchPrefab.prefab";
+        private const string BeltPrefabPath = PrefabRoot + "BeltPrefab.prefab";
+
+        /// <summary>
+        /// Every ItemType paired with its icon, in section 5.1's ladder order.
+        ///
+        /// <para>
+        /// THE BINDING IS THE BUG, not the art. <c>BeltPrefab</c> bound three item types --
+        /// Scrap, Brass, Aether -- and <c>BeltSegmentVisual</c> falls back to its
+        /// <c>itemSprite</c> field, which on that prefab was **null**. So twenty-one of the
+        /// twenty-four goods rode belts completely invisibly: the whole tech tree above tier 0
+        /// moved around the factory as empty space. Nineteen recipes were authored to produce
+        /// goods that could not be seen.
+        /// </para>
+        ///
+        /// <para>
+        /// Written as an explicit table rather than inferred from the sprite filenames, because
+        /// the mapping is genuinely arbitrary in both directions -- <c>CopperOre</c> is
+        /// <c>item_copper_ore</c>, and an item whose id and file drift apart should fail loudly
+        /// here rather than quietly bind nothing.
+        /// </para>
+        /// </summary>
+        private static readonly (string ItemType, string Sprite)[] ItemSpriteTable =
+        {
+            (ItemType.Scrap, "item_scrap.png"),
+            (ItemType.Coal, "item_coal.png"),
+            (ItemType.CopperOre, "item_copper_ore.png"),
+            (ItemType.ZincOre, "item_zinc_ore.png"),
+            (ItemType.Aether, "item_aether.png"),
+            (ItemType.Coke, "item_coke.png"),
+            (ItemType.IronPlate, "item_iron_plate.png"),
+            (ItemType.Slag, "item_slag.png"),
+            (ItemType.Glass, "item_glass.png"),
+            (ItemType.CopperIngot, "item_copper_ingot.png"),
+            (ItemType.ZincIngot, "item_zinc_ingot.png"),
+            (ItemType.Brass, "item_brass.png"),
+            (ItemType.CopperWire, "item_copper_wire.png"),
+            (ItemType.Gear, "item_gear.png"),
+            (ItemType.Casing, "item_casing.png"),
+            (ItemType.Lens, "item_lens.png"),
+            (ItemType.Mainspring, "item_mainspring.png"),
+            (ItemType.AetherCell, "item_aether_cell.png"),
+            (ItemType.Mechanism, "item_mechanism.png"),
+            (ItemType.Regulator, "item_regulator.png"),
+            (ItemType.FrameSection, "item_frame_section.png"),
+            (ItemType.GreatCog, "item_great_cog.png"),
+            (ItemType.AetherConduit, "item_aether_conduit.png"),
+            (ItemType.ChronometerCore, "item_chronometer_core.png"),
+        };
         private const string RecipeRoot = "Assets/_Project/ScriptableObjects/Recipes/";
         private const string WorkbenchCanvasPath = PrefabRoot + "WorkbenchCanvas.prefab";
 
@@ -246,6 +294,7 @@ namespace GolemFactory.Editor
                 "hand_crank_bench.png");
 
             RestoreOrphanedCosts();
+            BindBeltItemSprites();
         }
 
         /// <summary>All 19 authored recipes in R1..R19 order; the bench filters them itself.</summary>
@@ -1096,6 +1145,70 @@ namespace GolemFactory.Editor
 
             Note(name + " on cell " + cell + " (" + position + ") -> " + nodeId
                  + " (" + spriteFile + ")");
+        }
+
+        /// <summary>
+        /// Binds all 24 goods on <c>BeltPrefab</c>, and gives the lookup a real fallback.
+        ///
+        /// <para>
+        /// The fallback matters as much as the table. <c>BeltSegmentVisual.ResolveSprite</c> ends
+        /// in <c>return itemSprite</c>, and that field was null -- so an unbound good did not
+        /// render as "something unrecognised", it rendered as nothing at all. Pointing it at
+        /// Scrap's icon means a good added tomorrow and forgotten here shows up as a visible
+        /// wrong thing rather than as empty belt, which is the difference between a bug someone
+        /// notices in ten seconds and one that survives nineteen recipes.
+        /// </para>
+        /// </summary>
+        private static void BindBeltItemSprites()
+        {
+            GameObject root = PrefabUtility.LoadPrefabContents(BeltPrefabPath);
+            try
+            {
+                var belt = root.GetComponent<PlaceableBelt>();
+                if (belt == null)
+                {
+                    Note("WARNING: BeltPrefab has no PlaceableBelt");
+                    return;
+                }
+
+                var so = new SerializedObject(belt);
+                SerializedProperty list = so.FindProperty("itemSprites");
+                list.arraySize = ItemSpriteTable.Length;
+
+                int bound = 0;
+                for (int i = 0; i < ItemSpriteTable.Length; i++)
+                {
+                    Sprite sprite = LoadSprite(ItemSpriteTable[i].Sprite);
+                    SerializedProperty element = list.GetArrayElementAtIndex(i);
+                    element.FindPropertyRelative("itemType").stringValue = ItemSpriteTable[i].ItemType;
+                    element.FindPropertyRelative("sprite").objectReferenceValue = sprite;
+                    if (sprite != null)
+                    {
+                        bound++;
+                    }
+                }
+
+                // FindProperty on the WRONG COMPONENT returns null, and the guard that used to
+                // sit here swallowed that silently while the log claimed a fallback had been set.
+                // The field lives on PlaceableBelt, which hands it to the runtime-created
+                // BeltSegmentVisual -- so assert it rather than skipping it.
+                SerializedProperty fallback = so.FindProperty("fallbackItemSprite");
+                bool fallbackSet = false;
+                if (fallback != null)
+                {
+                    fallback.objectReferenceValue = LoadSprite("ghost_placeholder.png");
+                    fallbackSet = fallback.objectReferenceValue != null;
+                }
+
+                so.ApplyModifiedPropertiesWithoutUndo();
+                PrefabUtility.SaveAsPrefabAsset(root, BeltPrefabPath);
+                Note("BeltPrefab now binds " + bound + " of " + ItemSpriteTable.Length
+                     + " goods; fallback " + (fallbackSet ? "set" : "NOT SET"));
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
         }
 
         // The scene's ManagerHolders is a prefab instance, so the Steam/ClockTower/NodeExtractor

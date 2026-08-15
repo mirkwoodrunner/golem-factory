@@ -131,7 +131,7 @@ namespace GolemFactory.Belts
         /// </remarks>
         public void ConfigureCargoOnly(
             ConveyorSystemHolder conveyor, string id, Transform start, Transform end,
-            ItemSpriteBinding[] sprites, Material material)
+            ItemSpriteBinding[] sprites, Material material, Sprite fallback = null)
         {
             conveyorHolder = conveyor;
             segmentId = id;
@@ -139,6 +139,9 @@ namespace GolemFactory.Belts
             endPoint = end;
             itemSprites = sprites;
             itemMaterial = material;
+            // The last resort in ResolveSprite. Left null by callers that do not care, which is
+            // every pre-existing one.
+            itemSprite = fallback;
             laneSprite = null;
             arrowSprite = null;
             rollerSprite = null;

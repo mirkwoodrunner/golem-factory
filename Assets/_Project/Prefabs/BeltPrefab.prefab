@@ -218,8 +218,51 @@ MonoBehaviour:
   itemSprites:
   - itemType: Scrap
     sprite: {fileID: 21300000, guid: 79f5cde8ba4c102479560bb983bac9cc, type: 3}
-  - itemType: Brass
-    sprite: {fileID: 21300000, guid: 30b015b39e42e52469fa9264e05c0a38, type: 3}
+  - itemType: Coal
+    sprite: {fileID: 21300000, guid: c0faf5c775f7df34b8c9e7b7251147e3, type: 3}
+  - itemType: CopperOre
+    sprite: {fileID: 21300000, guid: 356cccd5f63f3f94d9abe6b6018fde2e, type: 3}
+  - itemType: ZincOre
+    sprite: {fileID: 21300000, guid: 51d4e4a8938bfb6429f4916743e764c8, type: 3}
   - itemType: Aether
     sprite: {fileID: 21300000, guid: e90e0a15d5b9fce4f8dcc00f2ad055eb, type: 3}
+  - itemType: Coke
+    sprite: {fileID: 21300000, guid: ffc24a9e42f799847bb1744dc26e8092, type: 3}
+  - itemType: IronPlate
+    sprite: {fileID: 21300000, guid: 06c5ea6213c4f534fae03a6ec1173723, type: 3}
+  - itemType: Slag
+    sprite: {fileID: 21300000, guid: f0c61457bf0b544489bbf1e1d67b3f8a, type: 3}
+  - itemType: Glass
+    sprite: {fileID: 21300000, guid: 7feee3f81ad37cb45af24fb6f5fca86b, type: 3}
+  - itemType: CopperIngot
+    sprite: {fileID: 21300000, guid: 69a57c3649d82e640aef744d3e1e7ed2, type: 3}
+  - itemType: ZincIngot
+    sprite: {fileID: 21300000, guid: 4cebb42486cb40144b386fe16a5ae473, type: 3}
+  - itemType: Brass
+    sprite: {fileID: 21300000, guid: 30b015b39e42e52469fa9264e05c0a38, type: 3}
+  - itemType: CopperWire
+    sprite: {fileID: 21300000, guid: cd1fed2d2166d604aa8abdf0e5884256, type: 3}
+  - itemType: Gear
+    sprite: {fileID: 21300000, guid: 4ed638547a40a13419ded8a35f4ccc96, type: 3}
+  - itemType: Casing
+    sprite: {fileID: 21300000, guid: 837d2210ba2aaac46a668e9b4bff725b, type: 3}
+  - itemType: Lens
+    sprite: {fileID: 21300000, guid: 3a708f7dced44c844a5d0c976c0f2ba5, type: 3}
+  - itemType: Mainspring
+    sprite: {fileID: 21300000, guid: 11803029d66952a4d8512524b191851d, type: 3}
+  - itemType: AetherCell
+    sprite: {fileID: 21300000, guid: 63c85bb85dfe9064ca106e5431ae4ab2, type: 3}
+  - itemType: Mechanism
+    sprite: {fileID: 21300000, guid: 0b35366016c876447a8c30dc37ba0698, type: 3}
+  - itemType: Regulator
+    sprite: {fileID: 21300000, guid: 93fa513aeb00b6547b173fd98d058ffb, type: 3}
+  - itemType: FrameSection
+    sprite: {fileID: 21300000, guid: d40a8452a7d23f642bfa1e17108d7e23, type: 3}
+  - itemType: GreatCog
+    sprite: {fileID: 21300000, guid: 61feb763e4a56ed42bd62f3a76235110, type: 3}
+  - itemType: AetherConduit
+    sprite: {fileID: 21300000, guid: d427ab64ab044ba4c8fa230137cf2182, type: 3}
+  - itemType: ChronometerCore
+    sprite: {fileID: 21300000, guid: 30889fa0327b5ac4fbaf7fe8eea2bed4, type: 3}
+  fallbackItemSprite: {fileID: 21300000, guid: 48d093216e65a264d9c5a1ee99a1cac7, type: 3}
   itemMaterial: {fileID: 0}
