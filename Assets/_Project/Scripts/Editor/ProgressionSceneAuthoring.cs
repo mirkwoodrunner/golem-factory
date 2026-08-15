@@ -951,46 +951,9 @@ namespace GolemFactory.Editor
         {
             ResourceNodeRegistryHolder registry = FindInScene<ResourceNodeRegistryHolder>(scene);
 
-            EnsureNodeMarker(scene, registry, "CopperOreNodeMarker", "CopperOreNode",
-                StartingLayout["CopperOreNodeMarker"], "item_copper_ore.png");
-            EnsureNodeMarker(scene, registry, "ZincOreNodeMarker", "ZincOreNode",
-                StartingLayout["ZincOreNodeMarker"], "item_zinc_ore.png");
-
-            // The three older markers pre-date this script and it only ever repointed their
-            // sprites, so their positions were whatever the scene happened to hold -- which is
-            // how three of the five ended up on half-cells. The table owns all five now.
-            PlaceOnCell(scene, "ScrapNodeMarker", StartingLayout["ScrapNodeMarker"]);
-            PlaceOnCell(scene, "CoalNodeMarker", StartingLayout["CoalNodeMarker"]);
-            PlaceOnCell(scene, "AetherNodeMarker", StartingLayout["AetherNodeMarker"]);
-
-            // The coal marker still wears the brass INGOT it inherited when §1.5 repointed the
-            // deleted BrassNodeMarker at CoalNode, which made a coal seam and an aether node
-            // read as the same object. Given a marker's colour is not ours to set (see the tint
-            // note above), the sprite is the whole fix.
-            GameObject coal = FindRoot(scene, "CoalNodeMarker");
-            if (coal != null)
+            foreach ((string name, string nodeId, string sprite) in NodeMarkers)
             {
-                SpriteRenderer renderer = coal.GetComponent<SpriteRenderer>();
-                renderer.sprite = LoadSprite("item_coal.png");
-                // Reset to white explicitly: the first pass left a coal-black tint here, and
-                // although RefreshVisualState overwrites it every frame in play mode, leaving it
-                // makes the Editor and the game disagree about what the object looks like.
-                renderer.color = Color.white;
-                Note("CoalNodeMarker repointed to item_coal");
-            }
-
-            // Same bug, pre-existing and found by the same read-back: AetherNodeMarker wears the
-            // BRASS INGOT under a teal tint, while item_aether.png -- a tall pointed shard drawn
-            // for exactly this -- sits unused in the art folder. The tint is overwritten white on
-            // the first frame, so in play mode the aether node has always rendered as a second
-            // brass ingot. Pointing it at its own sprite fixes it in the only channel that works.
-            GameObject aether = FindRoot(scene, "AetherNodeMarker");
-            if (aether != null)
-            {
-                SpriteRenderer renderer = aether.GetComponent<SpriteRenderer>();
-                renderer.sprite = LoadSprite("item_aether.png");
-                renderer.color = Color.white;
-                Note("AetherNodeMarker repointed to item_aether (was tinted brass)");
+                EnsureNodeMarker(scene, registry, name, nodeId, StartingLayout[name], sprite);
             }
         }
 
@@ -1048,44 +1011,56 @@ namespace GolemFactory.Editor
         // are the recovered originals, unchanged: this restores the authored layout in the new
         // projection rather than proposing a new one.
         //
-        // THE LAYOUT BELOW IS "QUADRANTS", CHOSEN BY THE PROJECT OWNER from the three proposals
-        // written up in docs/open-items.md. The recovered isometric spread was not kept: designed
-        // for a diamond, it put everything north and east of the player and left the west half of
-        // a square room empty.
+        // THE OPENING, AND THE FIVE TRADERS ARE OUT ON THE STREET NOW.
         //
-        // One node per corner, Aether alone due north, and the reasoning is that each resource
-        // gets a PLACE. A factory is remembered as a map, and a map needs somewhere to be. The
-        // diagonal runs are also long enough (14 cells corner to corner) that belts and steam
-        // pipes are a real investment rather than a formality -- §3.2's 2-extractor cap and §1.4's
-        // 8-golem boiler radius both start to bite on distances like these, which they do not at 5.
+        // Quadrants -- one node per corner of the workshop -- was the right answer while the
+        // workshop was the whole map. It is the wrong answer now that there is a street, because
+        // it left five ore boulders standing on the factory floor: docs/game-design.md puts the
+        // "resource markets on the EDGE of the board", and a market inside the building is not a
+        // market. The corner cells are freed for the factory, which is what a workshop floor is
+        // for.
         //
-        // The cost, recorded so a playtest knows what to look at: every node is 7 cells Chebyshev
-        // (14 Manhattan) from spawn against 5 before, which is the longest early-game walking of
-        // the three proposals and lands on §9's 12-15 minute manual era (§12 already flags that as
-        // +/-25%). Nodes sit at +/-7 rather than +/-9 because the generated props hug the outermost
-        // ring at +/-12; measured against the real shell, the nearest prop to a corner node is 5
-        // cells away and nothing collides.
+        // The stalls sit in one row on y = -16, the middle of the eight-row street. That leaves
+        // three clear rows behind them and four in front, so both flanks are approachable --
+        // §3.2 caps a node at two extractors and needs two free approach tiles to reach it, and a
+        // stall backed against anything silently caps at one.
         //
-        // The bench is 3 north of spawn and the station 3 east and 1 south, both inside the clear
-        // core, because Phase 1 is spent standing at the bench and it should not be a walk.
+        // Four cells apart, not two. A cart sprite is 96px wide and overhangs its cell by a
+        // quarter either side; two-cell spacing fits but reads as a wall of awnings, and the
+        // approach tiles between stalls are where the golems actually stand.
+        //
+        // The bench and the construction station stay INSIDE. They are workshop equipment -- the
+        // player crafts at one and builds golems at the other -- and §9's Phase 1 is explicitly
+        // spent in a cold workshop, not out in the road.
         //
         // Cells, never world literals: these were world-space Vector3s under the isometric camera
-        // -- (2.5, -1.25), (0, 2.5) -- and top-down reads those as (cx, cy), so all seven landed
-        // on HALF cells with RoundToInt deciding which tile a golem thought they were on. Inverting
-        // the old transform, world = ((cx - cy) * 0.5, (cx + cy) * 0.25), turned every one of them
-        // back into an exact integer cell, which is how we know they had been authored as cells
-        // and flattened on the way to disk. Changing this table is how you move the opening.
+        // and top-down read them as (cx, cy), so all seven landed on half-cells. Changing this
+        // table is how you move the opening.
         private static readonly Dictionary<string, Vector2Int> StartingLayout =
             new Dictionary<string, Vector2Int>
             {
-                { "ScrapNodeMarker", new Vector2Int(-7, -7) },
-                { "CoalNodeMarker", new Vector2Int(7, -7) },
-                { "AetherNodeMarker", new Vector2Int(0, 9) },
-                { "CopperOreNodeMarker", new Vector2Int(-7, 7) },
-                { "ZincOreNodeMarker", new Vector2Int(7, 7) },
+                { "ScrapNodeMarker", new Vector2Int(-8, -16) },
+                { "CoalNodeMarker", new Vector2Int(-4, -16) },
+                { "CopperOreNodeMarker", new Vector2Int(0, -16) },
+                { "ZincOreNodeMarker", new Vector2Int(4, -16) },
+                { "AetherNodeMarker", new Vector2Int(8, -16) },
                 { "StarterHandCrankBench", new Vector2Int(0, 3) },
                 { "StarterConstructionStation", new Vector2Int(3, -1) },
             };
+
+        // Which stall each node trades from, and which node it is. One table, because all five
+        // are now the same kind of thing: a trader on the street. They used not to be -- two were
+        // created by EnsureNodeMarker, three were only repositioned, and two more had bespoke
+        // sprite-repointing blocks bolted on afterwards to undo inherited art. Three mechanisms
+        // for one job is how the Aether marker spent months wearing a brass ingot.
+        private static readonly (string Name, string NodeId, string Sprite)[] NodeMarkers =
+        {
+            ("ScrapNodeMarker", "ScrapNode", "stall_scrap.png"),
+            ("CoalNodeMarker", "CoalNode", "stall_coal.png"),
+            ("CopperOreNodeMarker", "CopperOreNode", "stall_copper_ore.png"),
+            ("ZincOreNodeMarker", "ZincOreNode", "stall_zinc_ore.png"),
+            ("AetherNodeMarker", "AetherNode", "stall_aether.png"),
+        };
 
         // Reads the cell size off the scene's own Grid rather than assuming one, so this stays
         // right if the Grid is ever retuned -- the same reason FacingVisuals derives its angle
@@ -1130,7 +1105,11 @@ namespace GolemFactory.Editor
             renderer.sprite = LoadSprite(spriteFile);
             // White, and left white: ResourceNodeMarker owns this channel at runtime.
             renderer.color = Color.white;
-            renderer.size = new Vector2(0.5f, 0.5f);
+            // renderer.size is NOT set. It only applies to Sliced/Tiled draw modes, so on a
+            // Simple sprite it was always a no-op -- and it said 0.5 x 0.5, which was the old
+            // item icon's world size. Left in place beside a 96x120 stall it would be a standing
+            // instruction to squash the cart into half a cell the moment anything touched
+            // drawMode. The sprite's own PPU and pivot decide how big a trader is.
 
             GroundShadow shadow = Ensure<GroundShadow>(go);
             var shadowSo = new SerializedObject(shadow);
