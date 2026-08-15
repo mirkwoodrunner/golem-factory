@@ -30,17 +30,41 @@ namespace GolemFactory.Editor
         // wide and one and a half tall.
         private const float CharacterPixelsPerUnit = 64f;
 
-        private static readonly string[] BottomCenterCharacters =
+        private static readonly string[] BottomCenterCharacters = BuildCharacterList();
+
+        private static string[] BuildCharacterList()
         {
-            "chassis_clockwork_scavenger",
-            "chassis_brass_presser",
-            "chassis_aether_hauler",
-            "chassis_mainspring_overclocker",
-            "chassis_zeppelin_freight_loader",
-            "golem_generic_brass",
-            "golem_generic_copper",
-            "golem_generic_steel",
-        };
+            var names = new System.Collections.Generic.List<string>
+            {
+                "chassis_clockwork_scavenger",
+                "chassis_brass_presser",
+                "chassis_aether_hauler",
+                "chassis_mainspring_overclocker",
+                "chassis_zeppelin_freight_loader",
+                "golem_generic_brass",
+                "golem_generic_copper",
+                "golem_generic_steel",
+            };
+
+            // The Artificer's sixteen walk frames answer to exactly this convention, and for the
+            // same reason: he stands on a cell rather than being centred on one. Listed here so the
+            // menu item stays the single place these settings are stated -- otherwise the frames
+            // are correct only for as long as nobody retunes the number above, and the walk cycle
+            // silently drifts off the pivot every other character sprite uses.
+            //
+            // Their baseline is a uniform 3px off the bottom of the cell, so BottomCenter puts his
+            // feet on the tile; Center would float him three quarters of a tile north of it, which
+            // is the bug this pass was originally written to fix for the chassis.
+            foreach (string direction in new[] { "down", "left", "right", "up" })
+            {
+                for (int frame = 0; frame < 4; frame++)
+                {
+                    names.Add("artificer_walk_" + direction + "_" + frame);
+                }
+            }
+
+            return names.ToArray();
+        }
 
         [MenuItem("Tools/Golem Factory/Reimport Character Art (BottomCenter)")]
         public static void ApplyCharacterPivots()

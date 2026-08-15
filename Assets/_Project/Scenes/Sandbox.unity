@@ -20285,6 +20285,7 @@ GameObject:
   - component: {fileID: 1683579196}
   - component: {fileID: 1683579199}
   - component: {fileID: 1683579200}
+  - component: {fileID: 1683579201}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -20396,7 +20397,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 9bcf82c35c90a2d4ca46c5ce078c689d, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 88d8d1e7f9a9498899a0a1c379a45b80, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -20440,6 +20441,37 @@ MonoBehaviour:
   ringOffset: {x: 0, y: -0.12, z: 0}
   captionOffset: {x: 0, y: 0.95, z: 0}
   sortingLayerName: Default
+--- !u!114 &1683579201
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1683579194}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c2d351d02bb4e3439499ca636371e3c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Player.ArtificerWalkAnimator
+  _frames:
+  - {fileID: 21300000, guid: 88d8d1e7f9a9498899a0a1c379a45b80, type: 3}
+  - {fileID: 21300000, guid: 87dc44454691401f80eb9d0f4692d4e3, type: 3}
+  - {fileID: 21300000, guid: ae8e2e6d6856478fa3c8bf9b7c0007f6, type: 3}
+  - {fileID: 21300000, guid: e449178613ae45f58e7924968bb97086, type: 3}
+  - {fileID: 21300000, guid: dbfc2be65f6d4fd1872571a81490313d, type: 3}
+  - {fileID: 21300000, guid: feaf38a312fe47689559cd17aeb25636, type: 3}
+  - {fileID: 21300000, guid: ff549a6eacd9439a83f93dc759451124, type: 3}
+  - {fileID: 21300000, guid: 919f0c4b902c462db448847241087c70, type: 3}
+  - {fileID: 21300000, guid: 283e3a9755e24f4092c333b36987b16e, type: 3}
+  - {fileID: 21300000, guid: 7d22aaea98954300a912813251e59c28, type: 3}
+  - {fileID: 21300000, guid: 6f4a4f5e19e94dcfa8205e58f32346ee, type: 3}
+  - {fileID: 21300000, guid: 5df32b95c4cf4ad59e08876217b88e29, type: 3}
+  - {fileID: 21300000, guid: 66272603b0fb4a70a8bfe7bd841a5098, type: 3}
+  - {fileID: 21300000, guid: d35c8222cf564c09a57ecf33bc462e22, type: 3}
+  - {fileID: 21300000, guid: d97a09730fa64c47afb5af3e6e5b25d7, type: 3}
+  - {fileID: 21300000, guid: f0e467acd50a46a38279e815b2f6830a, type: 3}
+  _strideLength: 0.35
+  _playerController: {fileID: 1683579197}
 --- !u!1 &1694160424
 GameObject:
   m_ObjectHideFlags: 0
