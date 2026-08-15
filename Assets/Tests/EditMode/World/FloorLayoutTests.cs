@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
@@ -213,7 +214,7 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void ClampToFloor_CornerCase_StaysInsideDiamond()
+        public void ClampToFloor_NorthCorner_StaysInsideTheWorkshop()
         {
             var converter = new GridCoordinateConverter(CellSize);
             Vector3 pastCorner = converter.CellToWorldCenter(new Vector2Int(20, 20));
@@ -225,17 +226,79 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(expectedCorner.y, result.y, 0.0001f);
         }
 
+        // CHANGED WITH THE MARKET STREET, deliberately. This used to expect (12, -12) -- the
+        // workshop's south wall -- because the room was the whole world. The street is ground
+        // now, so the player walks out of the open front and is stopped at the far kerb instead.
+        // A clamp that still pinned them at -12 would leave the stalls visible and unreachable.
         [Test]
-        public void ClampToFloor_OppositeCornerCase_StaysInsideDiamond()
+        public void ClampToFloor_SouthOfTheWorkshop_StopsAtTheFarKerbNotTheShopFront()
         {
             var converter = new GridCoordinateConverter(CellSize);
-            Vector3 pastCorner = converter.CellToWorldCenter(new Vector2Int(20, -20));
-            Vector3 expectedCorner = converter.CellToWorldCenter(new Vector2Int(12, -12));
+            Vector3 pastCorner = converter.CellToWorldCenter(new Vector2Int(20, -40));
+            Vector3 expectedCorner = converter.CellToWorldCenter(
+                new Vector2Int(12, FloorLayout.WorldMinY));
 
             Vector3 result = FloorLayout.ClampToFloor(pastCorner, converter, 12);
 
             Assert.AreEqual(expectedCorner.x, result.x, 0.0001f);
             Assert.AreEqual(expectedCorner.y, result.y, 0.0001f);
+        }
+
+        [Test]
+        public void ClampToFloor_OnTheStreet_IsUnchanged()
+        {
+            var converter = new GridCoordinateConverter(CellSize);
+            Vector3 atAStall = converter.CellToWorldCenter(new Vector2Int(3, -16));
+
+            Vector3 result = FloorLayout.ClampToFloor(atAStall, converter, 12);
+
+            Assert.AreEqual(atAStall.x, result.x, 0.0001f, "the street is walkable ground");
+            Assert.AreEqual(atAStall.y, result.y, 0.0001f);
+        }
+
+        // --- The two regions -----------------------------------------------------------------
+
+        [Test]
+        public void GetStreetCells_SitSouthOfTheWorkshopAndNeverOverlapIt()
+        {
+            var workshop = new HashSet<Vector2Int>(FloorLayout.GetFloorCells());
+            var street = FloorLayout.GetStreetCells().ToList();
+
+            Assert.IsNotEmpty(street);
+            foreach (Vector2Int cell in street)
+            {
+                Assert.Less(cell.y, -FloorLayout.HalfExtent, "street row " + cell + " is inside the shop");
+                Assert.IsFalse(workshop.Contains(cell), "cell " + cell + " is painted twice");
+            }
+        }
+
+        [Test]
+        public void GetWorldCells_IsExactlyTheWorkshopPlusTheStreet()
+        {
+            int workshop = FloorLayout.GetFloorCells().Count();
+            int street = FloorLayout.GetStreetCells().Count();
+            var world = FloorLayout.GetWorldCells().ToList();
+
+            Assert.AreEqual(workshop + street, world.Count);
+            Assert.AreEqual(world.Count, new HashSet<Vector2Int>(world).Count, "no cell may repeat");
+        }
+
+        [Test]
+        public void TheStreetIsWideEnoughForAStallRowWithApproachTilesBothSides()
+        {
+            // §3.2 caps a node at two extractors, which needs two free approach tiles. A stall
+            // row with only one clear row either side would silently cap at one golem.
+            Assert.GreaterOrEqual(FloorLayout.StreetDepth, 4,
+                "a stall row needs clear ground in front of and behind it");
+        }
+
+        [Test]
+        public void IsInsideWorkshop_SeparatesTheRoomFromTheStreet()
+        {
+            Assert.IsTrue(FloorLayout.IsInsideWorkshop(new Vector2Int(0, 0)));
+            Assert.IsTrue(FloorLayout.IsInsideWorkshop(new Vector2Int(12, -12)), "the shop front");
+            Assert.IsFalse(FloorLayout.IsInsideWorkshop(new Vector2Int(0, -13)), "one step outside");
+            Assert.IsFalse(FloorLayout.IsInsideWorkshop(new Vector2Int(13, 0)), "past the east wall");
         }
     }
 }

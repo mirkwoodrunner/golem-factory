@@ -3,16 +3,64 @@ using UnityEngine;
 
 namespace GolemFactory.World
 {
-    // Shape/size of the workshop floor, kept separate from GridCoordinateConverter (generic
-    // world<->cell math, no opinion on map shape) and GridMap (occupancy state, no opinion on
-    // bounds) -- same math/state split those two already establish. HalfExtent is the one
-    // knob to turn to resize the floor; SandboxFloorGenerator (Editor-only) reads it to
-    // repaint the Tilemap and place walls, and PlayerController.ClampToFloor reads it to
-    // keep analog movement inside the painted area.
+    // Shape/size of the ground, kept separate from GridCoordinateConverter (generic world<->cell
+    // math, no opinion on map shape) and GridMap (occupancy state, no opinion on bounds) -- same
+    // math/state split those two already establish. SandboxFloorGenerator (Editor-only) reads it
+    // to repaint the Tilemap and place walls, and PlayerController.ClampToFloor reads it to keep
+    // analog movement on the ground.
+    //
+    // TWO REGIONS NOW, NOT ONE. Until the market street, the workshop WAS the map: one square of
+    // planks, walls on three sides, and nothing beyond them. docs/game-design.md -- the tabletop
+    // source of truth -- describes something else: "Resource markets on the edge of the board
+    // where raw materials arrive in full truckload shipments." So the workshop becomes a building
+    // standing on a larger world, and the street is ground outside it.
+    //
+    // The split matters because the two regions answer different questions, and conflating them
+    // is what made "grow the world" look impossible:
+    //
+    //   WORKSHOP  what gets plank floor and walls. Unchanged at 25 x 25, because §3.3 sizes the
+    //             44-golem Phase-5 factory against exactly that and shrinking it would be a
+    //             silent difficulty change.
+    //   WORLD     every cell that exists as ground, workshop and street together. This is what
+    //             bounds the PLAYER, so walking out of the shop onto the street is possible --
+    //             which it must be, since the goods are bought out there.
+    //
+    // The south edge stays open: no wall, no door. A Victorian workshop opening onto the street
+    // keeps the convention that lets the camera see inside, and the existing skirting slab
+    // becomes the kerb between planks and cobbles.
     public static class FloorLayout
     {
+        /// <summary>
+        /// Half-width of the workshop room, in cells -- the plank floor that gets walls. The name
+        /// is unchanged because §3.3, SandboxFloorGenerator, PlayerController and the whole test
+        /// suite already speak in terms of it, and it still means exactly what it always did.
+        /// </summary>
         public const int HalfExtent = 12;
 
+        /// <summary>
+        /// How far the street runs south of the workshop's open front, in cells.
+        ///
+        /// <para>
+        /// Eight is two cart pitches plus walking room: the street lays stalls on a two-cell
+        /// pitch (a 96px cart overhangs its cell, and §3.2's extractor cap needs two free
+        /// approach tiles per stall), so eight rows holds a stall row with clear ground both in
+        /// front of it and behind.
+        /// </para>
+        /// </summary>
+        public const int StreetDepth = 8;
+
+        /// <summary>Southernmost world row. The street hangs below the workshop's south edge.</summary>
+        public const int WorldMinY = -HalfExtent - StreetDepth;
+
+        /// <summary>Northernmost world row -- the workshop's back wall.</summary>
+        public const int WorldMaxY = HalfExtent;
+
+        /// <summary>
+        /// The workshop's plank floor. Named GetFloorCells still, and still the workshop only:
+        /// every existing caller (the tile painter, the wall runs, the prop scatter) means the
+        /// ROOM by it, and quietly widening it to the whole world would have painted planks down
+        /// the market street.
+        /// </summary>
         public static IEnumerable<Vector2Int> GetFloorCells(int halfExtent = HalfExtent)
         {
             for (int x = -halfExtent; x <= halfExtent; x++)
@@ -23,6 +71,43 @@ namespace GolemFactory.World
                 }
             }
         }
+
+        /// <summary>
+        /// The cobbled street: the rows south of the workshop, same width as it.
+        /// </summary>
+        public static IEnumerable<Vector2Int> GetStreetCells(
+            int halfExtent = HalfExtent, int streetDepth = StreetDepth)
+        {
+            for (int x = -halfExtent; x <= halfExtent; x++)
+            {
+                for (int y = -halfExtent - streetDepth; y < -halfExtent; y++)
+                {
+                    yield return new Vector2Int(x, y);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Every cell of ground that exists -- workshop and street. What bounds the player.
+        /// </summary>
+        public static IEnumerable<Vector2Int> GetWorldCells(
+            int halfExtent = HalfExtent, int streetDepth = StreetDepth)
+        {
+            foreach (Vector2Int cell in GetFloorCells(halfExtent))
+            {
+                yield return cell;
+            }
+
+            foreach (Vector2Int cell in GetStreetCells(halfExtent, streetDepth))
+            {
+                yield return cell;
+            }
+        }
+
+        /// <summary>Whether a cell is inside the workshop room (as opposed to out on the street).</summary>
+        public static bool IsInsideWorkshop(Vector2Int cell, int halfExtent = HalfExtent) =>
+            cell.x >= -halfExtent && cell.x <= halfExtent &&
+            cell.y >= -halfExtent && cell.y <= halfExtent;
 
         // The ring one cell beyond the floor -- wall placement sits here, one full cell
         // outside the walkable area so wall sprites never overlap floor tiles.
@@ -137,11 +222,20 @@ namespace GolemFactory.World
         // correct under BOTH projections and the one that survived the switch untested-and-
         // unchanged. Uses floats (not Mathf.RoundToInt) so movement stays smooth instead of
         // snapping to cell centers.
-        public static Vector3 ClampToFloor(Vector3 worldPosition, GridCoordinateConverter converter, int halfExtent = HalfExtent)
+        public static Vector3 ClampToFloor(
+            Vector3 worldPosition, GridCoordinateConverter converter,
+            int halfExtent = HalfExtent, int streetDepth = StreetDepth)
         {
+            // BOUNDS THE WORLD, NOT THE ROOM, and that is the point of the split. The player buys
+            // raw goods at stalls out on the street, so a clamp at the workshop's south wall would
+            // pin them inside the shop and make the market unreachable -- the one movement rule
+            // that would quietly undo the whole change.
+            //
+            // Only the south side opens up. North, east and west are still the workshop's walls,
+            // because that is where the building actually ends.
             Vector2 cellFraction = converter.WorldToCellFraction(worldPosition);
             float clampedX = Mathf.Clamp(cellFraction.x, -halfExtent, halfExtent);
-            float clampedY = Mathf.Clamp(cellFraction.y, -halfExtent, halfExtent);
+            float clampedY = Mathf.Clamp(cellFraction.y, -halfExtent - streetDepth, halfExtent);
             return converter.CellFractionToWorld(new Vector2(clampedX, clampedY));
         }
     }
