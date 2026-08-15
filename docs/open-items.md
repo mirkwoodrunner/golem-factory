@@ -658,35 +658,51 @@ decision §2 reserves. Nothing mechanical blocks it any more.
   number to playtest first" — mis-tuned, the game becomes a coal simulator — and flags every golem
   count in §7/§9 as ±25 %. Nothing here has been played, only tested.
 
-- **The Artificer walk cycle is cut but not wired.** `ConceptArt/artificer_walk/` holds 16 frames
-  at 64x96 (four directions x four frames, one shared 32-colour palette, common baseline), plus a
-  `256x384` grid sheet, conditioned from `artificer_walk_4dir_sheet.png` by
-  `Tools/Art/slice_artificer_walk.py`. Nothing under `Assets/` references any of it; the player is
-  still the single static `player.png`.
+- ~~**The Artificer walk cycle is cut but not wired.**~~ **DONE**, and it needed no animation
+  infrastructure at all. The 16 frames are imported to `Assets/_Project/Art/artificer_walk_*.png`
+  (PPU 64, point, uncompressed, BottomCenter) and `Player/ArtificerWalkAnimator` drives them on the
+  Sandbox player. There is still not one `.controller` or `.anim` asset in the project, which was
+  the point: an Animator would have been a state machine to describe something that is a pure
+  function of where the player is standing.
 
-  **This is bigger than assigning sprites, which is why it is written down rather than done.**
-  The project has **no animation infrastructure at all** — not one `.controller` or `.anim` asset
-  anywhere, and `PlayerController` is a bare `SpriteRenderer` + `YSortSpriteRenderer`. Wiring it
-  means choosing that infrastructure. An Animator with four clips and a direction parameter is the
-  Unity-default answer; a small `PlayerSpriteAnimator` picking row from `PlayerMovement`'s last
-  non-zero direction and frame from **distance travelled, not wall time**, is the answer that
-  matches this codebase — pure function plus thin `MonoBehaviour`, no `Update()`-driven state
-  machine, and feet that cannot skate when the player walks into a wall. Prefer the latter unless
-  something else in the game turns out to need a full Animator.
+  **Frame comes from distance travelled, not wall time**, which is the whole reason it was worth
+  writing rather than dropping in an Animator. `ArtificerWalkAnimation` is engine-free math —
+  `ComputeFrameIndex`/`ComputeFacing`/`ComputeSpriteIndex`/`AdvanceDistance`/`IsWalking`, unit-
+  tested without a scene the way `GolemAnimationUtility` is — and the `MonoBehaviour` only measures
+  the frame's actual transform delta and assigns a sprite.
 
-  Three things the art itself imposes on that work:
-  - **`left` is not a mirror of `right`.** The two profile rows are independently drawn — apron
-    detail and hair differ — so the usual `flipX` trick would silently discard one of them.
-  - **The source has no vertical bob.** All four frames of each row sit on an identical baseline,
-    so legs move and the body does not. It needs a hand-lifted pixel on the pass frames before it
-    reads as a walk.
-  - **Frames are in sheet order**, which has not been judged as a contact/pass cycle; they may
-    need reordering by eye.
+  **Facing comes from intent, the frame from what actually happened**, and splitting those two is
+  what makes walls behave. `PlayerController.LastMoveInput` is the player's request *before*
+  `ClampToFloor` gets a say, so leaning into a bound turns the Artificer to face it and then leaves
+  his legs still. Verified in Play mode against the eastern bound: input held at `(1, 0)`, position
+  frozen, accumulated distance frozen, sprite parked on the standing frame.
 
-  Import settings if it goes ahead: PPU **64** (not `player.png`'s 100), point filter, no
-  compression, pivot bottom-centre — the frames are baselined 3px off the cell floor, which a
-  centre pivot throws away. At PPU 64 the character is 1.0x1.5 world units, near-identical on
-  screen to the current player, so nothing else needs rescaling.
+  **Standing is its own frame** (index 0), not "hold the last one drawn", which would freeze him
+  mid-stride on every stop.
+
+  What the art turned out to impose, against what was predicted here:
+  - **`left` is not a mirror of `right` — confirmed, and it is wired as two independent rows.**
+    A pixel diff puts left against a mirrored right at ~38 % of the sprite. `ComputeSpriteIndex`
+    can never map the two rows to the same frame and there is a test pinning that; `flipX` is
+    never touched.
+  - ~~**Frames are in sheet order, unjudged.**~~ **The sheet order is already a correct
+    contact/pass cycle** — judged off a contact sheet of the imported frames, and it agrees with
+    the pixel diffs: within every row, frames 0 and 2 are the two legs-together pass poses (they
+    are the most similar pair) and 1 and 3 are the opposite strides. **No reordering was needed**,
+    and it makes frame 0 the right choice for standing.
+  - **The source has no vertical bob, and this is the one thing still open.** Confirmed: all 16
+    frames share a 3px baseline. It is less bad than feared for three of the rows — `left`,
+    `right` and `up` do carry ~2px of head movement between pass and contact — but the `down` row
+    is genuinely flat, so walking toward the camera reads weakest. **No procedural bob was added**:
+    a `ComputeIdleBobOffset`-style lift layered on top would have been a silent substitute for the
+    hand-lifted pixel this actually wants, and the walk reads acceptably without it. It is an art
+    task, deliberately left for one.
+
+  Re-running it: **Tools > Golem Factory > Wire Artificer Walk Cycle** rebuilds the frame array on
+  the Sandbox player from disk, idempotently — that is the way to apply an art or frame-order
+  change, not a fresh manual pass. The frames are also listed in `CharacterArtAuthoring` so
+  **Reimport Character Art (BottomCenter)** keeps their pivot with the chassis sprites' rather than
+  letting them drift.
 
 ### Opened by the §1.1 machine-model pass
 
