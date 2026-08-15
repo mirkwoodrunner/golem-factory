@@ -96,17 +96,25 @@ namespace GolemFactory.World
         // switch below is on.
         [SerializeField] private GolemFactory.Steam.SteamNetworkHolder steamNetworkHolder;
 
-        // THE SWITCH. Off, deliberately, and the reason is a hard dependency rather than
-        // caution: COKE HAS NO SOURCE UNTIL §1.5 authors the coal node and the coking recipe.
-        // Turned on today, the starting boiler would burn its 240 Coke down, every golem in the
-        // scene would stall NoSteam, and there would be no way to make more -- a soft-lock in
-        // the one playable scene, and precisely the "total blackout with no golems to recover"
-        // row §10's audit clears only because the Hand-Crank Bench (§11 item 7, also unbuilt)
-        // can always hand-crank Coke.
+        // THE SWITCH, and it is ON in Sandbox.unity as of the steam pass. The field default
+        // stays false so any other scene or test rig is unaffected -- the serialized SCENE value
+        // is what turns it on, which is also why changing this line alone would do nothing.
         //
-        // This matches the state §1.2's buffer capacity is already in: built, wired, tested, and
-        // not yet biting. Flipping it is a one-line change here plus the §1.5 content it waits
-        // on -- see the §1.4 entry in docs/open-items.md.
+        // It waited on three things, all of which now exist:
+        //
+        //   1. A SOURCE OF COKE. §1.5 authored CoalNode and R1 Coking. Before that the starting
+        //      boiler burned down with no way to make more.
+        //   2. THE HAND-CRANK BENCH, §10's total-blackout backstop: it runs R1 without steam, so
+        //      the player can always crank Coke back from nothing.
+        //   3. A WAY TO GET THAT COKE INTO A BOILER. This was the one nobody had noticed. A
+        //      boiler's only other Coke writer is BoilerFuelEndpoint, which a GOLEM pushes into,
+        //      and a golem needs a powered boiler to move -- so with the switch on and no way to
+        //      hand-load, the first boiler could never be lit and the bench's Coke had nowhere
+        //      to go. PlayerInteractor.TryRefuelBoiler is that last step.
+        //
+        // What the player now does from a cold start: hand-harvest Scrap and Coal, crank R2 for
+        // Iron Plate and R1 for Coke, build a Boiler (30 Scrap + 10 Iron Plate), hand-load it,
+        // and build golems within reach of it. That is §9 Phase 1's arc.
         [SerializeField] private bool requireSteamPower;
 
         // --- The Clock Tower (docs/progression-design.md §7) --------------------------------

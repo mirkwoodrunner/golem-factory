@@ -602,9 +602,25 @@ decision §2 reserves. Nothing mechanical blocks it any more.
   `SaveData` does not persist. Restoring them would replay samples against a tick counter that
   has restarted. They rebuild within a minute, which is the honest answer: a tower resumes at the
   rate its factory can actually supply, not the rate it managed before the player quit.
-- **`requireSteamPower` is still off, but nothing mechanical blocks it now.** Both halves of §10's
-  backstop exist: the Hand-Crank Bench makes Coke, and hand-loading a boiler delivers it. What
-  remains is the §2 design call about the opening — see the steam section above.
+- ~~**`requireSteamPower` is still off.**~~ **ON**, in `Sandbox.unity`, at the project owner's
+  call. The field default stays `false` so other scenes and test rigs are unaffected; the
+  serialized **scene** value is what turns it on. The opening is now §9 Phase 1's arc:
+  hand-harvest Scrap and Coal → crank R2 for Iron Plate and R1 for Coke → build a Boiler
+  (30 Scrap + 10 Iron Plate) → hand-load it → build golems within its reach. **Unplayed** — the
+  fuel ratio is the number §12 says to time first.
+
+- **A player-built construction station is a decorative box**, and turning steam on is what made
+  this worth writing down. `GolemConstructionStationPrefab` is in Sandbox's build menu at 25 Scrap
+  + 5 Brass, but every serialized reference on it is null — no chassis roster, no golem prefab, no
+  buffer registry — so `TryConstructGolem` early-outs and the station builds nothing. Stations are
+  only ever wired by `SandboxBootstrap.WireSpatialGameplay`, which sweeps the scene **once at
+  startup**; the comment there claiming newly built stations "configure themselves via
+  PlaceableBuilding's own wiring path" describes a path that does not exist.
+
+  It is **not** a steam loophole — a station that cannot build a golem cannot build an unpowered
+  one — but it is a building the player can pay for and get nothing from. The fix is to wire a
+  placed station from `BuildModeController.RegisterPlacedEndpoints`, the way belts, depots and
+  boilers already are, which also needs the runtime holders a prefab cannot carry.
 - **The whole arc is unplaytested.** §12 names the boiler fuel ratio as "the single most important
   number to playtest first" — mis-tuned, the game becomes a coal simulator — and flags every golem
   count in §7/§9 as ±25 %. Nothing here has been played, only tested.

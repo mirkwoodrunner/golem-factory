@@ -2984,7 +2984,7 @@ MonoBehaviour:
   facingArrowSprite: {fileID: 21300000, guid: f404903f746380f42a28e27536d77a40, type: 3}
   routingTileSprite: {fileID: 21300000, guid: 20cc9822bf7a4f348a44442b915ca66a, type: 3}
   steamNetworkHolder: {fileID: 2110503010}
-  requireSteamPower: 0
+  requireSteamPower: 1
   clockTowerSiteHolder: {fileID: 2110503008}
   steamFuelGaugeView: {fileID: 1555994602}
   clockTowerPanelView: {fileID: 1555994600}
