@@ -922,43 +922,6 @@ def _item_canvas():
     return Image.new("RGBA", (16, 16), TRANSPARENT)
 
 
-def make_scrap_item() -> Image.Image:
-    """Jagged offcut of rusted plate -- irregular silhouette, warm rust, not cold grey."""
-    img = _item_canvas()
-    draw = ImageDraw.Draw(img)
-    # Two overlapping angular offcuts rather than one blob: the stepped silhouette is what
-    # separates Scrap from Brass's clean trapezoid at a glance, before colour is even read.
-    draw.polygon([(6, 2), (13, 3), (13, 8), (7, 8)], fill=RUST_DARK, outline=OUTLINE)
-    draw.polygon([(1, 8), (8, 6), (12, 9), (9, 13), (3, 13)], fill=RUST, outline=OUTLINE)
-    draw.line([(2, 8), (8, 7)], fill=RUST_LIGHT)
-    draw.line([(9, 4), (12, 4)], fill=RUST)
-    # Bolt holes read as "salvaged hardware".
-    draw.point([(5, 10), (9, 10)], fill=BELT_TREAD_DARK)
-    return upscale(img, 2)  # -> 32x32
-
-
-def make_brass_item() -> Image.Image:
-    """Poured brass ingot -- a clean trapezoid, the most 'manufactured' of the three."""
-    img = _item_canvas()
-    draw = ImageDraw.Draw(img)
-    draw.polygon([(3, 6), (12, 6), (14, 12), (1, 12)], fill=INGOT, outline=OUTLINE)
-    draw.polygon([(4, 4), (11, 4), (12, 6), (3, 6)], fill=INGOT_LIGHT, outline=OUTLINE)
-    draw.line([(3, 10), (13, 10)], fill=INGOT_DARK)
-    draw.line([(5, 8), (9, 8)], fill=INGOT_LIGHT)
-    return upscale(img, 2)  # -> 32x32
-
-
-def make_aether_item() -> Image.Image:
-    """Aether shard -- tall, pointed, and the only cool-hued item, so it never reads as metal."""
-    img = _item_canvas()
-    draw = ImageDraw.Draw(img)
-    draw.polygon([(7, 1), (11, 6), (10, 14), (5, 14), (4, 6)], fill=AETHER, outline=OUTLINE)
-    draw.polygon([(7, 1), (11, 6), (8, 6)], fill=AETHER_LIGHT)
-    draw.polygon([(8, 7), (10, 7), (10, 13), (8, 13)], fill=AETHER_DARK)
-    draw.line([(6, 4), (6, 12)], fill=AETHER_LIGHT)
-    return upscale(img, 2)  # -> 32x32
-
-
 COAL = (52, 48, 56, 255)
 COAL_LIGHT = (88, 84, 96, 255)
 COAL_DARK = (28, 26, 32, 255)
@@ -970,61 +933,390 @@ ZINC_DARK = (108, 124, 136, 255)
 
 
 # --------------------------------------------------------------------------------------------
-# The three §5.1 goods that had no icon. SILHOUETTE FIRST, COLOUR SECOND, and here that is a
-# hard requirement rather than good practice: ResourceNodeMarker OWNS SpriteRenderer.color at
-# runtime -- it is the depletion readout (ResourceNodeVisualState), and since every node is
-# infinite it pins every marker to FullTint = white forever. A tint authored on a node marker is
-# overwritten on the first frame, so two nodes sharing a sprite are INDISTINGUISHABLE in play
-# mode no matter what colour they are authored. Shape is the only channel that survives.
+# THE SIX TIER-0 GOODS, REDRAWN NATIVE AT 32.
 #
-# So each of these is built to differ from all five existing item icons by outline alone:
-#   Scrap  = stepped angular offcut      Brass = clean trapezoid ingot
-#   Aether = one tall pointed shard      Coal  = low cluster of rounded lumps
-#   CopperOre = fat boulder with veins   ZincOre = short splayed crystal pair
+# They were 16x16 upscaled x2, which was correct when the environment was 32 art px per cell.
+# Top-down redrew the floor at 64, and the eighteen manufactured goods below are native 32 -- so
+# these six were left at half the density of everything around them. On a contact sheet against
+# the real floor the top row read as visibly chunkier and softer than the rest, which is exactly
+# the "from a different game" tell that pixel density mismatches produce.
+#
+# Filenames are unchanged, so GUIDs and every existing scene/prefab reference survive.
 # --------------------------------------------------------------------------------------------
 
+def make_scrap_item() -> Image.Image:
+    """Scrap -- torn sheet metal, and it has to be STRAIGHT-EDGED. The first draft was a rounded
+    brown lump that read as a twin of Copper Ore's boulder, which is the worst possible clash:
+    Scrap is the good the player hand-harvests all game, and Copper Ore is a node marker whose
+    colour is overwritten at runtime. So this is all hard cut edges, a torn corner, bolt holes
+    and a pale galvanised sheen -- metal that has been CUT, against rock that has been dug."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    # Back plate: a clean rectangle, deliberately axis-aligned so it never reads as organic.
+    d.polygon([(13, 5), (28, 7), (27, 17), (14, 16)], fill=RUST_DARK, outline=OUTLINE)
+    d.line([(15, 8), (26, 9)], fill=RUST)
+    # Front plate: straight cuts with one torn corner bitten out of it.
+    d.polygon([(3, 14), (17, 12), (22, 18), (22, 27), (5, 27)], fill=RUST, outline=OUTLINE)
+    d.polygon([(17, 12), (22, 18), (17, 18)], fill=RUST_LIGHT)
+    d.line([(5, 16), (16, 14)], fill=RUST_LIGHT)
+    d.line([(5, 24), (21, 24)], fill=RUST_DARK)
+    # Bolt holes -- the "this was unbolted from something" tell that no rock has.
+    d.point([(9, 19), (15, 19), (9, 22), (15, 22)], fill=BELT_TREAD_DARK)
+    return img
+
+
+def make_brass_item() -> Image.Image:
+    """Brass -- a poured ingot, the tallest and most golden of the three bars."""
+    return _ingot(_icon(), INGOT, INGOT_LIGHT, INGOT_DARK, tall=True)
+
+
+def make_aether_item() -> Image.Image:
+    """Aether -- one tall pointed shard. The only cool crystal that is single and spire-like, so
+    it never trades with Zinc Ore's forked pair."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.polygon([(15, 1), (23, 12), (21, 29), (10, 29), (8, 12)], fill=AETHER, outline=OUTLINE)
+    d.polygon([(15, 1), (23, 12), (16, 12)], fill=AETHER_LIGHT)
+    d.polygon([(17, 14), (21, 14), (20, 27), (17, 27)], fill=AETHER_DARK)
+    d.line([(12, 9), (12, 26)], fill=AETHER_LIGHT)
+    d.point([(14, 5), (13, 18)], fill=AETHER_LIGHT)
+    return img
+
+
 def make_coal_item() -> Image.Image:
-    """Coal -- a low cluster of rounded lumps. The only near-black item, and the only one whose
-    silhouette is wider than it is tall with no straight edges."""
-    img = _item_canvas()
-    draw = ImageDraw.Draw(img)
-    draw.polygon([(1, 10), (4, 7), (8, 8), (9, 13), (2, 13)], fill=COAL, outline=OUTLINE)
-    draw.polygon([(8, 9), (11, 6), (14, 9), (14, 13), (9, 13)], fill=COAL_DARK, outline=OUTLINE)
-    draw.polygon([(5, 4), (9, 3), (10, 8), (5, 8)], fill=COAL, outline=OUTLINE)
-    # Two specular chips -- coal is glossy, and without them it reads as a hole in the floor.
-    draw.line([(6, 5), (8, 5)], fill=COAL_LIGHT)
-    draw.point([(3, 10), (12, 9)], fill=COAL_LIGHT)
-    return upscale(img, 2)  # -> 32x32
+    """Coal -- a low cluster of rounded glossy lumps. Wider than tall, no straight edges, and the
+    specular chips are what stop it reading as a hole in the floor."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.polygon([(2, 20), (7, 14), (15, 16), (17, 27), (4, 27)], fill=COAL, outline=OUTLINE)
+    d.polygon([(16, 18), (22, 12), (29, 18), (29, 27), (17, 27)], fill=COAL_DARK, outline=OUTLINE)
+    d.polygon([(9, 8), (18, 6), (20, 16), (10, 17)], fill=COAL, outline=OUTLINE)
+    d.line([(11, 10), (16, 9)], fill=COAL_LIGHT)
+    d.line([(5, 19), (9, 17)], fill=COAL_LIGHT)
+    d.point([(24, 17), (20, 22), (7, 23)], fill=COAL_LIGHT)
+    return img
 
 
 def make_copper_ore_item() -> Image.Image:
-    """Copper ore -- a fat unbroken boulder with bright veins running through it. Reads as rock
-    with metal IN it, against Brass's ingot which is metal already poured."""
-    img = _item_canvas()
-    draw = ImageDraw.Draw(img)
-    draw.polygon([(3, 4), (11, 3), (14, 8), (12, 13), (4, 13), (1, 8)], fill=ORE_ROCK, outline=OUTLINE)
-    draw.polygon([(4, 9), (12, 9), (12, 13), (4, 13)], fill=ORE_ROCK_DARK)
-    # The veins are the whole point of the icon, so they are drawn last and unbroken.
-    draw.line([(4, 7), (8, 5)], fill=COPPER)
-    draw.line([(8, 5), (12, 8)], fill=COPPER)
-    draw.line([(5, 11), (9, 10)], fill=COPPER)
-    draw.point([(7, 8), (10, 11)], fill=(214, 142, 96, 255))
-    return upscale(img, 2)  # -> 32x32
+    """Copper Ore -- a fat unbroken boulder with bright veins running through it. Rock with metal
+    IN it, against the ingot's metal already poured."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.polygon([(6, 8), (21, 5), (28, 15), (24, 27), (8, 27), (2, 16)], fill=ORE_ROCK, outline=OUTLINE)
+    d.polygon([(7, 19), (25, 18), (24, 27), (8, 27)], fill=ORE_ROCK_DARK)
+    d.line([(7, 14), (15, 10)], fill=COPPER)
+    d.line([(15, 10), (25, 16)], fill=COPPER)
+    d.line([(9, 23), (18, 21)], fill=COPPER)
+    d.line([(18, 21), (23, 23)], fill=COPPER)
+    d.point([(13, 16), (20, 13), (21, 24)], fill=COPPER_LIGHT)
+    return img
 
 
 def make_zinc_ore_item() -> Image.Image:
-    """Zinc ore -- a splayed pair of short blunt crystals. Cool like Aether but deliberately
-    SHORT AND FORKED where the Aether shard is tall and single, so the two never trade at a
-    glance even though both are cold-hued."""
-    img = _item_canvas()
-    draw = ImageDraw.Draw(img)
-    draw.polygon([(2, 13), (4, 5), (7, 6), (7, 13)], fill=ZINC, outline=OUTLINE)
-    draw.polygon([(8, 13), (10, 7), (13, 9), (13, 13)], fill=ZINC_DARK, outline=OUTLINE)
-    draw.polygon([(4, 5), (7, 6), (5, 8)], fill=ZINC_LIGHT)
-    draw.line([(11, 9), (11, 12)], fill=ZINC_LIGHT)
-    # A dark bed so the pair reads as sitting on rock rather than floating.
-    draw.line([(1, 13), (14, 13)], fill=ORE_ROCK_DARK)
-    return upscale(img, 2)  # -> 32x32
+    """Zinc Ore -- a forked PAIR of blunt crystals on a rock bed. Two, not three: the first draft
+    had three uneven spires and read as ears rather than a mineral. Cool like Aether but short
+    and forked where the shard is tall and single, so the two never trade at cargo size."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.rectangle([2, 23, 29, 28], fill=ORE_ROCK_DARK, outline=OUTLINE)
+    d.polygon([(4, 24), (9, 9), (15, 13), (14, 24)], fill=ZINC, outline=OUTLINE)
+    d.polygon([(9, 9), (15, 13), (11, 15)], fill=ZINC_LIGHT)
+    d.line([(7, 16), (7, 23)], fill=ZINC_LIGHT)
+    d.polygon([(16, 24), (22, 14), (27, 18), (26, 24)], fill=ZINC_DARK, outline=OUTLINE)
+    d.polygon([(22, 14), (27, 18), (23, 19)], fill=ZINC)
+    d.point([(19, 21), (24, 22)], fill=ZINC_LIGHT)
+    return img
+
+
+IRON = (150, 156, 162, 255)
+IRON_LIGHT = (198, 204, 210, 255)
+IRON_DARK = (96, 102, 108, 255)
+COKE_BODY = (78, 74, 82, 255)
+COKE_LIGHT = (126, 122, 132, 255)
+SLAG = (108, 94, 110, 255)
+SLAG_DARK = (72, 60, 76, 255)
+SLAG_LIGHT = (146, 130, 150, 255)
+GLASS = (176, 220, 226, 255)
+GLASS_LIGHT = (232, 250, 252, 255)
+GLASS_DARK = (116, 160, 170, 255)
+COPPER_LIGHT = (222, 152, 108, 255)
+
+
+def _icon():
+    """32 art px, native -- one pixel here is one floor pixel. See the goods section note."""
+    return Image.new("RGBA", (32, 32), TRANSPARENT)
+
+
+def _ingot(img, base, light, dark, tall):
+    """Shared poured-metal trapezoid. The three ingots differ by HUE and by profile height, so
+    they separate on a belt both by colour and, at a squint, by mass."""
+    d = ImageDraw.Draw(img)
+    top = 10 if tall else 15
+    d.polygon([(6, top + 5), (25, top + 5), (29, 26), (2, 26)], fill=base, outline=OUTLINE)
+    d.polygon([(9, top), (22, top), (25, top + 5), (6, top + 5)], fill=light, outline=OUTLINE)
+    d.line([(5, 22), (27, 22)], fill=dark)
+    d.line([(11, top + 2), (20, top + 2)], fill=light)
+    return img
+
+
+# =========================================================================================
+# THE EIGHTEEN MANUFACTURED GOODS -- every ItemType above tier 0 (progression-design 5.1).
+#
+# None of them had an icon. Nineteen recipes were authored to produce these and not one could
+# be seen: BeltPrefab bound three item types and fell back to a null sprite, so twenty-one of
+# the twenty-four goods rode belts invisibly.
+#
+# SILHOUETTE CARRIES, COLOUR CONFIRMS. Five tier-0 goods double as resource-node markers, and
+# ResourceNodeMarker OWNS SpriteRenderer.color at runtime -- with every node infinite it pins
+# the tint to white on the first frame, so a node's identity cannot be its colour. It is also
+# the right discipline for belt cargo, read at half a cell while moving.
+#
+# The families, by outline alone:
+#   raw rock      lumpy, irregular, no straight edges   (Coal, CopperOre, ZincOre, Scrap)
+#   poured metal  trapezoids and flat bars              (Brass/Copper/Zinc ingot, IronPlate)
+#   glassy        pointed or lens-curved, translucent   (Aether, Glass, Lens, AetherCell)
+#   turned parts  circles with teeth or coils           (Gear, GreatCog, Mainspring, CopperWire)
+#   assemblies    boxy with something protruding        (Casing, Mechanism, Regulator, Chronometer)
+#   structure     long straight spans                   (FrameSection, AetherConduit)
+# =========================================================================================
+
+def make_coke_item() -> Image.Image:
+    """Coke -- coal baked hollow. Same near-black family as Coal, told apart by being ANGULAR
+    and PITTED where coal is round and glossy: the holes are the whole read."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.polygon([(4, 20), (8, 12), (16, 11), (19, 19), (14, 26), (6, 26)], fill=COKE_BODY, outline=OUTLINE)
+    d.polygon([(18, 14), (26, 12), (28, 21), (22, 25), (18, 22)], fill=COKE_BODY, outline=OUTLINE)
+    for hole in [(9, 18), (13, 16), (11, 22), (16, 20), (22, 17), (24, 21)]:
+        d.rectangle([hole[0], hole[1], hole[0] + 1, hole[1] + 1], fill=OUTLINE)
+    d.line([(8, 13), (15, 12)], fill=COKE_LIGHT)
+    d.line([(19, 14), (25, 13)], fill=COKE_LIGHT)
+    return img
+
+
+def make_iron_plate_item() -> Image.Image:
+    """Iron Plate -- a flat sheet seen at a slight angle, riveted at the corners. The only item
+    that is a plain straight-edged slab, which separates it from every ingot."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.polygon([(3, 13), (24, 9), (29, 17), (8, 22)], fill=IRON, outline=OUTLINE)
+    d.polygon([(3, 13), (24, 9), (25, 12), (4, 16)], fill=IRON_LIGHT)
+    d.polygon([(4, 18), (26, 14), (29, 17), (8, 22)], fill=IRON_DARK)
+    for r in [(6, 15), (11, 14), (21, 12), (25, 15)]:
+        d.point(r, fill=OUTLINE)
+    return img
+
+
+def make_slag_item() -> Image.Image:
+    """Slag -- the byproduct nobody wants, and deliberately the ugliest silhouette in the set: a
+    slumped asymmetric dross in the one muddy purple nothing else uses. It has to look like
+    waste at a glance, or 5.3(c)'s Slag economy reads as a reward."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.polygon([(3, 22), (6, 14), (13, 11), (20, 13), (27, 19), (25, 26), (8, 27)],
+              fill=SLAG, outline=OUTLINE)
+    d.polygon([(8, 21), (14, 18), (22, 20), (24, 25), (10, 26)], fill=SLAG_DARK)
+    d.line([(7, 16), (12, 13)], fill=SLAG_LIGHT)
+    d.point([(17, 15), (21, 17), (12, 20)], fill=SLAG_LIGHT)
+    return img
+
+
+def make_glass_item() -> Image.Image:
+    """Glass -- a clean rectangular pane, tilted, with a hard diagonal highlight. Largely empty
+    inside so it reads as transparent against the solid metals."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.polygon([(8, 5), (25, 8), (22, 27), (6, 24)], fill=GLASS, outline=OUTLINE)
+    d.polygon([(10, 8), (16, 9), (10, 22), (8, 21)], fill=GLASS_LIGHT)
+    d.line([(19, 11), (17, 24)], fill=GLASS_DARK)
+    d.line([(20, 10), (22, 25)], fill=GLASS_LIGHT)
+    return img
+
+
+def make_copper_ingot_item() -> Image.Image:
+    """Copper ingot -- tall bar, the only warm-orange one of the three."""
+    return _ingot(_icon(), COPPER, COPPER_LIGHT, COPPER_DARK, tall=True)
+
+
+def make_zinc_ingot_item() -> Image.Image:
+    """Zinc ingot -- squat and cold-pale, the visual opposite of the copper bar."""
+    return _ingot(_icon(), ZINC, ZINC_LIGHT, ZINC_DARK, tall=False)
+
+
+def make_copper_wire_item() -> Image.Image:
+    """Copper Wire -- a spool. Concentric coils are unlike anything else in the set; the loose
+    tail is what stops it reading as a Gear at cargo size."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.ellipse([5, 7, 26, 25], fill=COPPER_DARK, outline=OUTLINE)
+    for inset in (3, 6):
+        d.ellipse([5 + inset, 7 + inset, 26 - inset, 25 - inset], outline=COPPER)
+    d.ellipse([13, 14, 18, 18], fill=OUTLINE)
+    d.line([(24, 10), (30, 5)], fill=COPPER_LIGHT)
+    d.line([(24, 11), (29, 7)], fill=COPPER)
+    return img
+
+
+def make_gear_item() -> Image.Image:
+    """Gear -- the classic toothed disc, brass. Kept SMALL with chunky teeth so the Great Cog can
+    be the same shape at a larger radius and still read as a different part."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.ellipse([7, 7, 24, 24], fill=INGOT, outline=OUTLINE)
+    for x, y in [(14, 3), (14, 25), (3, 14), (25, 14), (6, 6), (21, 6), (6, 21), (21, 21)]:
+        d.rectangle([x, y, x + 3, y + 3], fill=INGOT, outline=OUTLINE)
+    d.ellipse([12, 12, 19, 19], fill=OUTLINE)
+    d.arc([9, 9, 22, 22], 200, 320, fill=INGOT_LIGHT)
+    return img
+
+
+def make_great_cog_item() -> Image.Image:
+    """Great Cog -- the endgame gear. Fills the canvas edge to edge with SPOKES rather than a
+    solid face, so at a glance it is 'the big open one' next to the small solid Gear."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.ellipse([1, 1, 30, 30], fill=INGOT_DARK, outline=OUTLINE)
+    d.ellipse([5, 5, 26, 26], fill=TRANSPARENT, outline=OUTLINE)
+    for x, y in [(14, 0), (14, 28), (0, 14), (28, 14)]:
+        d.rectangle([x, y, x + 3, y + 3], fill=INGOT, outline=OUTLINE)
+    for a, b in [((16, 6), (16, 25)), ((6, 16), (25, 16)), ((9, 9), (22, 22)), ((22, 9), (9, 22))]:
+        d.line([a, b], fill=INGOT)
+    d.ellipse([12, 12, 19, 19], fill=INGOT_LIGHT, outline=OUTLINE)
+    return img
+
+
+def make_casing_item() -> Image.Image:
+    """Casing -- a pressed shell: boxy with a rolled rim and a flat lid, i.e. a container rather
+    than a part. The rim is what separates it from Iron Plate's bare slab."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.rectangle([5, 11, 26, 25], fill=IRON, outline=OUTLINE)
+    d.rectangle([3, 8, 28, 12], fill=IRON_LIGHT, outline=OUTLINE)
+    d.line([(7, 16), (24, 16)], fill=IRON_DARK)
+    d.line([(7, 20), (24, 20)], fill=IRON_DARK)
+    d.point([(7, 10), (24, 10)], fill=OUTLINE)
+    return img
+
+
+def make_lens_item() -> Image.Image:
+    """Lens -- a ground disc in a brass bezel with the crescent highlight that says 'curved
+    glass'. The bezel keeps it from reading as a plain Glass pane."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.ellipse([4, 6, 27, 25], fill=INGOT_DARK, outline=OUTLINE)
+    d.ellipse([7, 8, 24, 23], fill=GLASS, outline=OUTLINE)
+    d.arc([9, 10, 22, 21], 120, 260, fill=GLASS_LIGHT)
+    d.arc([10, 11, 21, 20], 130, 240, fill=GLASS_LIGHT)
+    d.arc([8, 9, 23, 22], 300, 40, fill=GLASS_DARK)
+    return img
+
+
+def make_mainspring_item() -> Image.Image:
+    """Mainspring -- a tight coil wound from the outside in, drawn as a SQUARED spiral so it
+    never trades with the Wire spool's concentric rings."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    box = [4, 5, 27, 26]
+    for step in range(4):
+        inset = step * 4
+        x0, y0, x1, y1 = box[0] + inset, box[1] + inset, box[2] - inset, box[3] - inset
+        if x1 - x0 < 3:
+            break
+        colour = INGOT if step % 2 == 0 else INGOT_LIGHT
+        d.line([(x0, y0), (x1, y0)], fill=colour)
+        d.line([(x1, y0), (x1, y1)], fill=colour)
+        d.line([(x1, y1), (x0 + 2, y1)], fill=colour)
+        d.line([(x0 + 2, y1), (x0 + 2, y0 + 3)], fill=colour)
+    d.line([(4, 5), (4, 26)], fill=OUTLINE)
+    return img
+
+
+def make_aether_cell_item() -> Image.Image:
+    """Aether Cell -- bottled aether: a brass-capped vial with the shard's own teal inside, so it
+    reads as the raw good CONTAINED rather than as a second kind of crystal."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.rectangle([10, 7, 21, 27], fill=AETHER_DARK, outline=OUTLINE)
+    d.rectangle([12, 12, 19, 25], fill=AETHER)
+    d.line([(13, 14), (13, 24)], fill=AETHER_LIGHT)
+    d.rectangle([8, 3, 23, 8], fill=INGOT, outline=OUTLINE)
+    d.line([(10, 5), (21, 5)], fill=INGOT_LIGHT)
+    d.point([(15, 17), (17, 21)], fill=AETHER_LIGHT)
+    return img
+
+
+def make_mechanism_item() -> Image.Image:
+    """Mechanism -- a small assembly: a gear meshed against a lever arm on a plate. The first
+    good in the ladder that is visibly MADE OF other goods, which is the point of tier 4."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.rectangle([3, 18, 28, 26], fill=IRON_DARK, outline=OUTLINE)
+    d.ellipse([5, 8, 18, 21], fill=INGOT, outline=OUTLINE)
+    for x, y in [(10, 5), (10, 20), (2, 13), (17, 13)]:
+        d.rectangle([x, y, x + 2, y + 2], fill=INGOT, outline=OUTLINE)
+    d.ellipse([9, 12, 14, 17], fill=OUTLINE)
+    d.line([(18, 12), (27, 8)], fill=IRON_LIGHT)
+    d.line([(18, 13), (27, 9)], fill=IRON)
+    d.ellipse([25, 6, 29, 10], fill=COPPER, outline=OUTLINE)
+    return img
+
+
+def make_regulator_item() -> Image.Image:
+    """Regulator -- a centrifugal governor: two weighted arms splayed off a central spindle. The
+    only Y-shaped silhouette in the set."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.rectangle([14, 6, 17, 24], fill=IRON, outline=OUTLINE)
+    d.line([(15, 10), (6, 17)], fill=INGOT)
+    d.line([(16, 10), (25, 17)], fill=INGOT)
+    d.ellipse([2, 14, 10, 22], fill=INGOT, outline=OUTLINE)
+    d.ellipse([21, 14, 29, 22], fill=INGOT, outline=OUTLINE)
+    d.arc([3, 15, 9, 21], 180, 300, fill=INGOT_LIGHT)
+    d.rectangle([10, 24, 21, 28], fill=IRON_DARK, outline=OUTLINE)
+    return img
+
+
+def make_frame_section_item() -> Image.Image:
+    """Frame Section -- a riveted I-beam on the diagonal. The only good whose silhouette runs
+    corner to corner."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.polygon([(3, 24), (9, 28), (28, 6), (23, 2)], fill=IRON, outline=OUTLINE)
+    d.line([(6, 26), (26, 4)], fill=IRON_DARK)
+    d.line([(5, 23), (24, 3)], fill=IRON_LIGHT)
+    for r in [(8, 23), (14, 17), (20, 11), (24, 7)]:
+        d.point(r, fill=OUTLINE)
+    return img
+
+
+def make_aether_conduit_item() -> Image.Image:
+    """Aether Conduit -- a flanged pipe with aether glowing along its bore. Horizontal and
+    tubular, against the Frame Section's diagonal solid beam."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.rectangle([2, 12, 29, 21], fill=INGOT_DARK, outline=OUTLINE)
+    d.rectangle([2, 15, 29, 18], fill=AETHER)
+    d.line([(3, 16), (28, 16)], fill=AETHER_LIGHT)
+    d.rectangle([5, 9, 9, 24], fill=INGOT, outline=OUTLINE)
+    d.rectangle([22, 9, 26, 24], fill=INGOT, outline=OUTLINE)
+    d.line([(6, 11), (6, 22)], fill=INGOT_LIGHT)
+    return img
+
+
+def make_chronometer_core_item() -> Image.Image:
+    """Chronometer Core -- the win condition's heart: a clock face with hands. The only good
+    carrying a readable dial, which is the correct amount of special for the last item."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.ellipse([2, 2, 29, 29], fill=INGOT_DARK, outline=OUTLINE)
+    d.ellipse([5, 5, 26, 26], fill=GLASS_LIGHT, outline=OUTLINE)
+    for x, y in [(15, 6), (15, 24), (6, 15), (24, 15)]:
+        d.point((x, y), fill=OUTLINE)
+    d.line([(16, 16), (16, 9)], fill=OUTLINE)
+    d.line([(16, 16), (21, 19)], fill=OUTLINE)
+    d.point((16, 16), fill=COPPER)
+    d.arc([6, 6, 25, 25], 200, 300, fill=GLASS)
+    return img
 
 
 def generate_belts() -> None:
@@ -1040,6 +1332,29 @@ def generate_belts() -> None:
     save(make_copper_ore_item(), "item_copper_ore.png")
     save(make_zinc_ore_item(), "item_zinc_ore.png")
     save(make_aether_item(), "item_aether.png")
+
+
+def generate_goods() -> None:
+    """The eighteen manufactured goods that had no icon at all -- every ItemType above tier 0.
+    Nineteen recipes were authored to produce these and not one of them could be seen."""
+    save(make_coke_item(), "item_coke.png")
+    save(make_iron_plate_item(), "item_iron_plate.png")
+    save(make_slag_item(), "item_slag.png")
+    save(make_glass_item(), "item_glass.png")
+    save(make_copper_ingot_item(), "item_copper_ingot.png")
+    save(make_zinc_ingot_item(), "item_zinc_ingot.png")
+    save(make_copper_wire_item(), "item_copper_wire.png")
+    save(make_gear_item(), "item_gear.png")
+    save(make_casing_item(), "item_casing.png")
+    save(make_lens_item(), "item_lens.png")
+    save(make_mainspring_item(), "item_mainspring.png")
+    save(make_aether_cell_item(), "item_aether_cell.png")
+    save(make_mechanism_item(), "item_mechanism.png")
+    save(make_regulator_item(), "item_regulator.png")
+    save(make_frame_section_item(), "item_frame_section.png")
+    save(make_great_cog_item(), "item_great_cog.png")
+    save(make_aether_conduit_item(), "item_aether_conduit.png")
+    save(make_chronometer_core_item(), "item_chronometer_core.png")
 
 
 # =========================================================================================
@@ -1275,6 +1590,8 @@ def main() -> None:
         generate_environment()
     if not only or "belts" in only:
         generate_belts()
+    if not only or "goods" in only:
+        generate_goods()
     if not only or "interaction" in only:
         generate_interaction()
     if not only or "routing" in only:
