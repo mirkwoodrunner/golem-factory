@@ -85,6 +85,82 @@ namespace GolemFactory.Tests.EditMode
                 ArtificerWalkAnimation.ComputeFrameIndex(float.PositiveInfinity, Stride));
         }
 
+        // --- IsWalking: standing vs actually covering ground ----------------------------------
+
+        [Test]
+        public void IsWalking_NoMovement_IsFalse()
+        {
+            // The wall case: input held, displacement zero, legs must not move.
+            Assert.IsFalse(ArtificerWalkAnimation.IsWalking(0f));
+        }
+
+        [Test]
+        public void IsWalking_FloatNoise_IsFalse()
+        {
+            Assert.IsFalse(ArtificerWalkAnimation.IsWalking(1e-9f));
+        }
+
+        [Test]
+        public void IsWalking_ARealFrameOfWalking_IsTrue()
+        {
+            // 4 u/s at 60fps is ~0.067 units in a frame, four orders of magnitude clear of noise.
+            Assert.IsTrue(ArtificerWalkAnimation.IsWalking(4f / 60f));
+        }
+
+        // --- AdvanceDistance: the bounded accumulator -----------------------------------------
+
+        [Test]
+        public void AdvanceDistance_AccumulatesTravel()
+        {
+            float d = ArtificerWalkAnimation.AdvanceDistance(0f, 0.1f, Stride);
+            Assert.AreEqual(0.1f, d, 1e-5f);
+
+            d = ArtificerWalkAnimation.AdvanceDistance(d, 0.1f, Stride);
+            Assert.AreEqual(0.2f, d, 1e-5f);
+        }
+
+        [Test]
+        public void AdvanceDistance_StaysWithinOneCycle()
+        {
+            float cycle = ArtificerWalkAnimation.FramesPerDirection * Stride;
+            float d = 0f;
+
+            for (int i = 0; i < 10000; i++)
+            {
+                d = ArtificerWalkAnimation.AdvanceDistance(d, 0.067f, Stride);
+
+                Assert.GreaterOrEqual(d, 0f);
+                Assert.Less(d, cycle);
+            }
+        }
+
+        [Test]
+        public void AdvanceDistance_WrappingPreservesTheFrameItLandsOn()
+        {
+            // Wrapping is an optimisation; it must not change which frame shows.
+            float cycle = ArtificerWalkAnimation.FramesPerDirection * Stride;
+            float wrapped = ArtificerWalkAnimation.AdvanceDistance(cycle - 0.01f, 0.1f, Stride);
+            float unwrapped = (cycle - 0.01f) + 0.1f;
+
+            Assert.AreEqual(
+                ArtificerWalkAnimation.ComputeFrameIndex(unwrapped, Stride),
+                ArtificerWalkAnimation.ComputeFrameIndex(wrapped, Stride));
+        }
+
+        [Test]
+        public void AdvanceDistance_NonFiniteOrNegativeStep_IsIgnored()
+        {
+            Assert.AreEqual(0.5f, ArtificerWalkAnimation.AdvanceDistance(0.5f, float.NaN, Stride), 1e-5f);
+            Assert.AreEqual(0.5f, ArtificerWalkAnimation.AdvanceDistance(0.5f, float.PositiveInfinity, Stride), 1e-5f);
+            Assert.AreEqual(0.5f, ArtificerWalkAnimation.AdvanceDistance(0.5f, -2f, Stride), 1e-5f);
+        }
+
+        [Test]
+        public void AdvanceDistance_NonPositiveStride_IsZero()
+        {
+            Assert.AreEqual(0f, ArtificerWalkAnimation.AdvanceDistance(5f, 1f, 0f));
+        }
+
         // --- ComputeFacing: the row, from the last non-zero movement --------------------------
 
         [Test]

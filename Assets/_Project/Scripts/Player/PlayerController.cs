@@ -18,6 +18,11 @@ namespace GolemFactory.Player
         private int _floorBoundsHalfExtent;
         private bool _hasFloorBounds;
 
+        // What the player asked for this frame, before the floor bounds got a say. ArtificerWalkAnimator
+        // takes his FACING from this and his frame from the distance actually covered, so pushing into
+        // a wall turns him to face it without walking him on the spot.
+        public Vector2 LastMoveInput { get; private set; }
+
         // Programmatic setup used by tests (and available for runtime bootstrapping),
         // mirroring BuildModeController.Configure -- avoids requiring Inspector-assigned
         // references.
@@ -74,6 +79,7 @@ namespace GolemFactory.Player
         // simulating Input System events, same pattern as BuildModeController.PlaceOrRemove.
         public void MoveBy(Vector2 moveInput, float deltaTime)
         {
+            LastMoveInput = moveInput;
             transform.position += PlayerMovement.ComputeDisplacement(moveInput, _moveSpeed, deltaTime);
             if (_hasFloorBounds)
             {

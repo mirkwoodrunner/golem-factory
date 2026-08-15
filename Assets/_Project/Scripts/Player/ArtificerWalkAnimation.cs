@@ -41,6 +41,12 @@ namespace GolemFactory.Player
         // enough to read as walking at the 4 u/s default move speed without buzzing.
         public const float DefaultStrideLength = 0.35f;
 
+        // Below this much movement in a frame he counts as standing. Not a tuning knob -- it only
+        // has to sit above float noise in a transform subtraction and below the ~0.067 units a
+        // 4 u/s walk covers in a 60fps frame, and the gap between those is four orders of
+        // magnitude. Walking into a wall yields exactly zero, which is the case that matters.
+        public const float MovementEpsilon = 1e-5f;
+
         // distanceTravelled is cumulative and only ever grows, so the cycle carries across a
         // direction change instead of snapping back to frame 0 every time the player turns.
         public static int ComputeFrameIndex(float distanceTravelled, float strideLength)
@@ -62,6 +68,38 @@ namespace GolemFactory.Player
             double steps = Math.Floor(distanceTravelled / strideLength);
             int index = (int)(steps % FramesPerDirection);
             return index < 0 ? index + FramesPerDirection : index;
+        }
+
+        // True when the Artificer covered real ground this frame, which is what separates walking
+        // from leaning on a wall. Held input is deliberately NOT the test: the player can hold a
+        // direction against a wall or a floor bound indefinitely, and animating that is the skate.
+        public static bool IsWalking(float distanceThisFrame) =>
+            distanceThisFrame > MovementEpsilon;
+
+        // Accumulates travel, wrapped to one full cycle so the total stays small forever. A raw
+        // running total works fine for an hour and then starts losing frames to float precision --
+        // by a million world units the gap between representable values is a sizeable fraction of a
+        // stride. Wrapping costs one modulo and makes the cycle exact for any session length.
+        public static float AdvanceDistance(float distanceTravelled, float distanceThisFrame, float strideLength)
+        {
+            if (strideLength <= 0f)
+            {
+                return 0f;
+            }
+
+            if (distanceThisFrame <= 0f || float.IsNaN(distanceThisFrame) || float.IsInfinity(distanceThisFrame))
+            {
+                distanceThisFrame = 0f;
+            }
+
+            float cycleLength = strideLength * FramesPerDirection;
+            float total = distanceTravelled + distanceThisFrame;
+            if (total < 0f)
+            {
+                return 0f;
+            }
+
+            return total % cycleLength;
         }
 
         // Facing follows the last NON-ZERO movement vector: with no input we keep facing whichever
