@@ -625,6 +625,36 @@ decision §2 reserves. Nothing mechanical blocks it any more.
   number to playtest first" — mis-tuned, the game becomes a coal simulator — and flags every golem
   count in §7/§9 as ±25 %. Nothing here has been played, only tested.
 
+- **The Artificer walk cycle is cut but not wired.** `ConceptArt/artificer_walk/` holds 16 frames
+  at 64x96 (four directions x four frames, one shared 32-colour palette, common baseline), plus a
+  `256x384` grid sheet, conditioned from `artificer_walk_4dir_sheet.png` by
+  `Tools/Art/slice_artificer_walk.py`. Nothing under `Assets/` references any of it; the player is
+  still the single static `player.png`.
+
+  **This is bigger than assigning sprites, which is why it is written down rather than done.**
+  The project has **no animation infrastructure at all** — not one `.controller` or `.anim` asset
+  anywhere, and `PlayerController` is a bare `SpriteRenderer` + `YSortSpriteRenderer`. Wiring it
+  means choosing that infrastructure. An Animator with four clips and a direction parameter is the
+  Unity-default answer; a small `PlayerSpriteAnimator` picking row from `PlayerMovement`'s last
+  non-zero direction and frame from **distance travelled, not wall time**, is the answer that
+  matches this codebase — pure function plus thin `MonoBehaviour`, no `Update()`-driven state
+  machine, and feet that cannot skate when the player walks into a wall. Prefer the latter unless
+  something else in the game turns out to need a full Animator.
+
+  Three things the art itself imposes on that work:
+  - **`left` is not a mirror of `right`.** The two profile rows are independently drawn — apron
+    detail and hair differ — so the usual `flipX` trick would silently discard one of them.
+  - **The source has no vertical bob.** All four frames of each row sit on an identical baseline,
+    so legs move and the body does not. It needs a hand-lifted pixel on the pass frames before it
+    reads as a walk.
+  - **Frames are in sheet order**, which has not been judged as a contact/pass cycle; they may
+    need reordering by eye.
+
+  Import settings if it goes ahead: PPU **64** (not `player.png`'s 100), point filter, no
+  compression, pivot bottom-centre — the frames are baselined 3px off the cell floor, which a
+  centre pivot throws away. At PPU 64 the character is 1.0x1.5 world units, near-identical on
+  screen to the current player, so nothing else needs rescaling.
+
 ### Opened by the §1.1 machine-model pass
 
 - ~~**The Workbench has 5 appendage sockets; the Zeppelin now has 6.**~~ **DONE.** `AppendageSlot5`
