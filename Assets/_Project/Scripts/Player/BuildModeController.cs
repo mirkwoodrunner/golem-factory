@@ -633,8 +633,12 @@ namespace GolemFactory.Player
             PlaceableBelt belt = instance.GetComponent<PlaceableBelt>();
             if (belt != null && _beltNetworkHolder != null)
             {
+                // A splitter is placed through the identical call with one flag -- it IS a belt
+                // as far as the lane, the capacity and the handoff pass are concerned, and only
+                // its outputs differ.
+                bool isSplitter = instance.GetComponent<PlaceableBeltSplitter>() != null;
                 PlacedBelt placed;
-                if (_beltNetworkHolder.Network.TryPlace(cell, facing, out placed))
+                if (_beltNetworkHolder.Network.TryPlace(cell, facing, isSplitter, out placed))
                 {
                     belt.BindSegment(placed.Segment, facing, _conveyorHolder, _cellSize);
                 }

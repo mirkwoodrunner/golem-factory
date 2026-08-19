@@ -36,5 +36,26 @@ namespace GolemFactory.World
 
             return true;
         }
+
+        /// <summary>
+        /// Whether a SPLITTER at <paramref name="splitterCell"/> should feed the belt at
+        /// <paramref name="toCell"/> facing <paramref name="toFacing"/>.
+        ///
+        /// <para>
+        /// A splitter has no facing of its own -- that is what makes it a splitter rather than a
+        /// belt -- so the rule is inverted: the neighbour opts IN by facing away. A belt whose
+        /// tail is against the splitter is being fed by it; a belt pointing back into it is
+        /// feeding it, and a belt running past it sideways is a neighbour and nothing more.
+        /// </para>
+        ///
+        /// <para>
+        /// Expressed as "the cell behind the neighbour is the splitter", which is exactly
+        /// <see cref="ShouldLink"/>'s test read from the other end -- so an input and an output
+        /// can never both be true of the same pair, and a two-cycle is impossible by
+        /// construction rather than by a second head-on guard.
+        /// </para>
+        /// </summary>
+        public static bool ShouldSplitTo(Vector2Int splitterCell, Vector2Int toCell, Facing toFacing) =>
+            FacingUtility.TargetCell(toCell, FacingUtility.Opposite(toFacing)) == splitterCell;
     }
 }

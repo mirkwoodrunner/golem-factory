@@ -9,7 +9,7 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 > reviewed**. Everything from §1.5 on is **spec only**. The next pass starts at §1.5, which is
 > also what §1.4's Sandbox switch is waiting on.
 
-Tests stand at **1209/1209** (1060 EditMode + 149 PlayMode), up from 590 before the progression pass
+Tests stand at **1218/1218** (1069 EditMode + 149 PlayMode), up from 590 before the progression pass
 began. Console clean.
 
 > **The Director's pass is validated.** Street extension, truckload market + Creative Mode, the
@@ -950,10 +950,28 @@ decision §2 reserves. Nothing mechanical blocks it any more.
   always excluded as "continue where you left off, not a simulation snapshot".
 - **World-space HUD collides.** Stall badges and the interaction caption both anchor to the golem and
   overlap when two stand close. Reduced, not solved; needs a world-space layout pass.
-- **Belts are one cell per segment**, no merge or splitter, one endpoint per cell, so two belts
-  cannot feed the same tile. A belt can only hand off to another belt — getting items into a buffer
-  requires a golem doing `LoadIntoBuffer`. The progression design leans on this constraint
-  deliberately, but merges will eventually be wanted.
+- ~~**Belts are one cell per segment**, no merge or splitter~~ -- **merges and splitters are
+  built**, and this entry was recording ONE gap where there were two, only half of them real.
+
+  **Merging already worked.** Two belts pointing at the same cell both link to it and contend for
+  its slots through the receiving lane's own spacing rule; nothing had to change, and there are
+  tests pinning it now so it stays true. **Fan-out was the real gap**: a belt has one facing, so
+  it points at exactly one cell and cannot split by construction. A **splitter** is therefore its
+  own placeable -- the cell with no facing of its own, whose outputs are every neighbour facing
+  away from it, so the neighbours opt in rather than the splitter choosing a direction it does
+  not have.
+
+  `BeltSegment.Next` became a list, with `Next` kept as "the first output" so every existing
+  caller reads unchanged, and `ConveyorSystem`'s handoff pass now makes one call for both cases --
+  a splitter and a plain belt take the identical path through the two-pass ordering, which is the
+  one piece of belt code that must never be duplicated. The branch cursor advances **only on a
+  successful handoff**, so a jammed branch is skipped rather than costing the item its turn, and
+  the scan order is a fixed compass walk rather than dictionary order, for §1.4's determinism
+  reason.
+
+  **Still true, and still deliberate:** a belt hands off only to another belt, so getting goods
+  into a buffer is still a golem's job. The progression design leans on that constraint and it
+  was not part of this item.
 - ~~**`ComputeItemScale` clamps at `maxItemScale = 1.0`**~~ -- **not true any more, and nobody
   fixed it: the projection switch did.** Measured at the real geometry (a placed belt is one cell =
   1.0 world units, `BeltNetwork`'s default 4-tick segment, item sprites 32px at PPU 64 = 0.5

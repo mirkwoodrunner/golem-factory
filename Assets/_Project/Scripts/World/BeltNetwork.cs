@@ -61,7 +61,16 @@ namespace GolemFactory.World
         /// Lays one belt. Fails on a cell that already carries a belt rather than silently
         /// replacing it, which would strand the old segment's items.
         /// </summary>
-        public bool TryPlace(Vector2Int cell, Facing facing, out PlacedBelt placed)
+        public bool TryPlace(Vector2Int cell, Facing facing, out PlacedBelt placed) =>
+            TryPlace(cell, facing, false, out placed);
+
+        /// <summary>
+        /// Lays a belt or a SPLITTER. A splitter is the same one-cell segment with the same
+        /// capacity and the same handoff pass -- it differs only in where its output goes: a
+        /// belt feeds the one cell it points at, a splitter feeds every neighbour that faces
+        /// away from it.
+        /// </summary>
+        public bool TryPlace(Vector2Int cell, Facing facing, bool isSplitter, out PlacedBelt placed)
         {
             placed = null;
             if (_belts.ContainsKey(cell))
@@ -78,6 +87,10 @@ namespace GolemFactory.World
             var segment = new BeltSegment(segmentId, _segmentLengthTicks);
             placed = new PlacedBelt(cell, facing, segment);
             _belts[cell] = placed;
+            if (isSplitter)
+            {
+                _splitters.Add(cell);
+            }
 
             if (_conveyor != null)
             {
@@ -130,6 +143,7 @@ namespace GolemFactory.World
             // items to a segment that is no longer registered, so it never advances and never
             // hands on. Items would vanish into a lane that still accepts them.
             placed.Segment.Next = null;
+            _splitters.Remove(cell);
             Relink();
             return true;
         }
@@ -152,7 +166,13 @@ namespace GolemFactory.World
         {
             foreach (PlacedBelt belt in _belts.Values)
             {
-                belt.Segment.Next = null;
+                belt.Segment.ClearOutputs();
+
+                if (_splitters.Contains(belt.Cell))
+                {
+                    LinkSplitter(belt);
+                    continue;
+                }
 
                 PlacedBelt downstream;
                 Vector2Int ahead = FacingUtility.TargetCell(belt.Cell, belt.Facing);
@@ -163,5 +183,51 @@ namespace GolemFactory.World
                 }
             }
         }
+
+        /// <summary>
+        /// Wires one splitter to every neighbour facing away from it.
+        ///
+        /// <para>
+        /// WALKED IN A FIXED COMPASS ORDER, not in dictionary order, and that is the whole of
+        /// the determinism story: the output list's order decides which branch a splitter feeds
+        /// first, so two identically-built factories must build that list identically. §1.4
+        /// settled this argument for steam and it is the same argument here.
+        /// </para>
+        /// </summary>
+        private void LinkSplitter(PlacedBelt splitter)
+        {
+            foreach (Facing facing in OutputScanOrder)
+            {
+                Vector2Int neighbourCell = FacingUtility.TargetCell(splitter.Cell, facing);
+                PlacedBelt neighbour;
+                if (!_belts.TryGetValue(neighbourCell, out neighbour))
+                {
+                    continue;
+                }
+
+                // A splitter never feeds another splitter: two of them side by side have no
+                // facing between them, so "which way does this go" would have no answer at all.
+                if (_splitters.Contains(neighbourCell))
+                {
+                    continue;
+                }
+
+                if (BeltPlacementRules.ShouldSplitTo(splitter.Cell, neighbour.Cell, neighbour.Facing))
+                {
+                    splitter.Segment.AddOutput(neighbour.Segment);
+                }
+            }
+        }
+
+        // North, East, South, West. Any fixed order would do; what matters is that it IS fixed.
+        private static readonly Facing[] OutputScanOrder =
+        {
+            Facing.North, Facing.East, Facing.South, Facing.West,
+        };
+
+        // Which placed cells are splitters. A HashSet beside the belt table rather than a flag
+        // on PlacedBelt, so PlacedBelt stays the immutable (cell, facing, segment) record every
+        // other caller reads it as.
+        private readonly HashSet<Vector2Int> _splitters = new HashSet<Vector2Int>();
     }
 }
