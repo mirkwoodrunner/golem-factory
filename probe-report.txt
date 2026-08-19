@@ -5,7 +5,7 @@ hideWhileOpen = 5
    [2] ClockTowerPanel
    [3] HandCrankPanel
    [4] AlertsStrip
-build menu = 7
+build menu = 9
    [0] DepotPrefab
    [1] GolemConstructionStationPrefab
    [2] BeltPrefab
@@ -13,6 +13,8 @@ build menu = 7
    [4] SteamPipePrefab
    [5] ClockTowerPrefab
    [6] HandCrankBenchPrefab
+   [7] FreightMastPrefab
+   [8] SlagHeapPrefab
 bootstrap.steamNetworkHolder = Steam
 bootstrap.clockTowerSiteHolder = ClockTower
 bootstrap.nodeExtractorHolder = NodeExtractors
@@ -21,12 +23,12 @@ bootstrap.clockTowerPanelView = ClockTowerPanel
 bootstrap.spatialEndpointHolder = SpatialEndpoints
 bootstrap.requireSteamPower = True
 clock tower stages = 0
-marker CoalNodeMarker at (-4.00, -16.00, 0.00)
-marker CopperOreNodeMarker at (0.00, -16.00, 0.00)
-marker ScrapNodeMarkerWest at (-16.00, -16.00, 0.00)
-marker ZincOreNodeMarker at (4.00, -16.00, 0.00)
 marker ScrapNodeMarker at (-8.00, -16.00, 0.00)
-marker AetherNodeMarker at (8.00, -16.00, 0.00)
-marker ZincOreNodeMarkerEast at (16.00, -16.00, 0.00)
 marker CoalNodeMarkerWest at (-12.00, -16.00, 0.00)
+marker AetherNodeMarker at (8.00, -16.00, 0.00)
+marker ScrapNodeMarkerWest at (-16.00, -16.00, 0.00)
+marker CoalNodeMarker at (-4.00, -16.00, 0.00)
+marker ZincOreNodeMarker at (4.00, -16.00, 0.00)
 marker CopperOreNodeMarkerEast at (12.00, -16.00, 0.00)
+marker ZincOreNodeMarkerEast at (16.00, -16.00, 0.00)
+marker CopperOreNodeMarker at (0.00, -16.00, 0.00)

@@ -56,9 +56,20 @@ Editor (or a live MCP-for-Unity bridge, if connected):
   `PlayMode` tab. There's no headless/CLI test runner wired up (Unity batch-mode `-runTests` is
   noted in the implementation plan as a "nice-to-have," not implemented).
 - **Run a single test**: right-click it in the Test Runner window → Run, or filter by name there.
-- **Play the game**: open `Assets/_Project/Scenes/Main.unity` (all milestone demos, hand-wired,
-  running automatically) or `Assets/_Project/Scenes/Sandbox.unity` (the actual player-driven
-  scenario — move around, harvest, build, construct+program golems) and hit Play.
+- **Play the game**: open `Assets/_Project/Scenes/Sandbox.unity` — **the only scene now** — and hit
+  Play. Move around, harvest, build, construct and program golems.
+
+  > **`Main.unity` was retired.** It was a diorama of seven hand-wired M2–M7 demos with no player,
+  > and it kept diverging from the playable scene. What it was load-bearing FOR was the id-routed
+  > fork -- a golem with no spatial endpoint holder routes by bare-string ids and charges the
+  > authored `durationTicks` -- and that is now pinned by
+  > `Assets/Tests/EditMode/Golems/IdRoutedDemoRegressionTests.cs`, which drives the same
+  > `HardcodedDemoProgram` builders the scene's bootstraps used. **Comments across the codebase
+  > still say "Main.unity" when explaining that fork; read them as history.** The scene, and the
+  > four bootstraps that only fed it (`MainSceneBootstrap`, `GolemDemoBootstrap`,
+  > `BeltDemoBootstrap`, `TriggerDemoBootstrap`), are in git history if the diorama is ever
+  > wanted back. `HardcodedDemoProgram` stays: it is the definition of the reference programs the
+  > regression suite pins.
 - **Regenerate art**: there are now **two** generators, and which one owns a file matters.
   - `python Tools/Art/generate_topdown_environment.py` — the floor, walls, props, belt and
     cursor overlays. Square, top-down, PPU 64. **This is the one that owns the environment.**

@@ -12,6 +12,11 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 Tests stand at **1245/1245** (1096 EditMode + 149 PlayMode), up from 590 before the progression pass
 began. Console clean.
 
+> **THE BUILD QUEUE IS EMPTY AND THE PLAYTEST IS THE CRITICAL PATH.** Everything on this file is
+> built; §3z below is the authoritative list of what is left, and `testscript/phase-1-playtest.md`
+> is the script for the half of it that needs a person. `Main.unity` is retired -- `Sandbox.unity`
+> is the only scene.
+
 > **The Director's pass is validated.** Street extension, truckload market + Creative Mode, the
 > bay upgrade row and §8's Assembly-Line gating are authored to disk, read back from the saved
 > scene, and **1178/1178 tests pass** (1029 EditMode + 149 PlayMode). Validation earned its keep:
@@ -1061,7 +1066,16 @@ decision §2 reserves. Nothing mechanical blocks it any more.
 
   Still true, and still the reason to retire it eventually:
 
-- **`Main.unity` is a diorama, not the game** — seven pre-wired golems demonstrating M2–M7, with no
+- ~~**`Main.unity` is a diorama, not the game**~~ -- **RETIRED.** The scene and the four
+  bootstraps that only fed it (`MainSceneBootstrap`, `GolemDemoBootstrap`, `BeltDemoBootstrap`,
+  `TriggerDemoBootstrap`) are deleted; `Sandbox.unity` is the only scene. `AssemblyLineDemoBootstrap`
+  stays, because Sandbox uses it, and so does `HardcodedDemoProgram`, which is now the definition
+  of the reference programs the regression suite drives. Both suites stayed green with the scene
+  gone, which is the evidence the rehousing actually held. **Comments across the codebase still
+  say "Main.unity" when explaining the id-routed fork -- read them as history**; the diorama is in
+  git if it is ever wanted back. Original entry, for the record:
+
+ — seven pre-wired golems demonstrating M2–M7, with no
   spatial routing (its golems are deliberately never `ConfigureSpatial`'d, which is exactly what
   keeps id-based routing working there). `Sandbox.unity` is the playable loop. The two will keep
   diverging; at some point `Main.unity` should be retired or explicitly reframed as a test bed.
@@ -1108,6 +1122,62 @@ Each of these was reviewed and judged non-blocking:
   outline with no baked light, so rotating it contradicts no light direction. A test pins the
   quarter-turn property, because if it ever stops holding (a projection change, eight-way facing)
   the rotated chevron stops working and the mirrored pair becomes real work again.
+
+---
+
+## 3z. WHAT IS ACTUALLY LEFT
+
+Every coded item on this file is built, and no node on the tech tree chart is flagged as planned
+any more. What remains splits three ways, and the first way is now the critical path.
+
+### A. Needs a person in front of the running game
+
+`testscript/phase-1-playtest.md` is the script for all of it and has been rewritten against this
+build. Nothing below can be produced by a test.
+
+| What | Why it can only be played |
+|---|---|
+| **The boiler fuel ratio** | §12: "the single most important number to playtest first -- mis-tuned, this becomes a coal simulator." |
+| **The manual era** | Budgeted at 12-15 min; measured at ~7.5 min of cranking *before* the market street doubled the walk to a stall (16 cells against 7). |
+| **Golem counts per phase** | §7/§9's figures, flagged ±25 % by the design itself. |
+| **Whether the Workbench still decides anything** | The design's own deferred judgement, now with Focus scaling and patent-stamping on top of it. |
+| **Whether the market is a good idea** | Truckloads are priced and bursty. Does that create a storage problem worth solving, or a toll booth? |
+| **The lighting** | Retuned from an even 1.8x to a pooled 3.4x. The ratio argument is sound; **nobody has looked at it.** |
+
+**And every number either pass invented.** They are listed as a table at the end of the playtest
+script: truckload prices and sizes, Assembly Line card costs (derived as 4x a recipe's own inputs),
+the floor-expansion curve, the Slag Heap ratio, the bay upgrade, the mast and heap prices, the flat
+freight launch. All were marked TUNING where they live, and none has been felt.
+
+### B. Two content decisions, surfaced but not taken
+
+- **The dead M2 demo.** `HardcodedDemoProgram.ExtractAndDeposit` cannot work by construction -- the
+  id-routed `ExtractFromNode` extracts onto a BELT named by the card's `destinationId`, and that
+  card names none. Its golem stood in `Main.unity` doing nothing for several milestones. The scene
+  is gone, so this is now only a question about the program: give it a belt, or delete it. A test
+  pins the current behaviour either way, with the reasoning attached.
+- **Whether `Sandbox.unity` wants a second scene back** -- a small test bed for hand-wired
+  experiments, now that the diorama is retired. Nothing needs it; it is a workflow preference.
+
+### C. Real work, none of it blocking
+
+In rough order of how much a player would notice:
+
+1. **The interior is an empty box** -- no workbenches, shelving or hearth. The biggest remaining
+   gap against "cozy, detailed", and an art job rather than a code one.
+2. **The floor is monotone** at gameplay zoom, with no feature larger than a single tile.
+3. **Workbench polish**: the lever housing is hand-coded pixel art, LiberationSans SDF stands in for
+   a period display face, the procedural grain visibly repeats, cards are text-only with no
+   per-action icons, and both lists have dead space below their entries.
+4. **Sprite pivots are three conventions project-wide.** Documented and coherent -- BottomCenter for
+   things that stand, Custom-on-the-contact-line for pieces of the room, Center for what is centred
+   on a cell -- and the one asset that contradicted its own record is fixed. A tidy-up, not a defect.
+
+### D. Deliberate cuts, unchanged
+
+`Refine` stays id-routed; Pixel Perfect Camera stays off (it fights the free-zoom camera); no player
+collision; no refund on demolishing a building; a one-card `ExtractFromNode` program jams by design.
+See §4.
 
 ---
 

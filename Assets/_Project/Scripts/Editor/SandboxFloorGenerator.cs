@@ -35,7 +35,6 @@ namespace GolemFactory.Editor
         // rebuilt only one would leave the other on the previous projection's geometry.
         private static readonly string[] FloorScenePaths =
         {
-            "Assets/_Project/Scenes/Main.unity",
             "Assets/_Project/Scenes/Sandbox.unity",
         };
 

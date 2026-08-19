@@ -3014,3 +3014,82 @@ remain: the Freight Link, the Freight Mast, the Slag Heap, Floor Expansion.
   wrote rather than what the game will load.
 - **Not played.** Every claim here is from tests and a scene read-back; the arc remains
   unplaytested, and the boiler fuel ratio is still the first number §12 says to time.
+
+## The Director's queue, and retiring Main.unity
+
+Ten queued items plus two Director decisions, built and validated in sequence. Each landed as its
+own commit with its own green run; the running total went 1071 → **1245** tests. What follows is
+only the part worth reading later: the decisions, and the four times the backlog turned out to be
+describing something that was not true.
+
+### The two Director decisions
+
+**The street extends east and west** (progression-design §13.1), so the world is a **T** rather than
+a rectangle: the road is 37 cells against the workshop's 25, and carries nine stalls. The
+alternative — a second stall row — was rejected for the player's factory rather than the map's
+tidiness: one row lets a player run clean parallel buses north into the shop, where a second row
+would sit across every one of them, and it would eat the free approach tiles §3.2's two-extractor
+cap needs. The cost accepted with it is that the side walls no longer bound the world in one run,
+which is what the two "shoulder" stubs beside the shop front are.
+
+**The market sells truckloads, with a Creative Mode bypass** (§13.2). A raw good is bought and
+arrives as one burst, which is what gives buffer chests and accumulator lines a job. It reuses
+`ResourceNode` rather than replacing it — a truckload is `Deliver`, and extraction, the extractor
+cap and the depletion tint are all untouched — and `GameMode.IsCreativeMode` restores the infinite,
+free, steady behaviour exactly. **No holder means creative**, which is how every pre-existing test
+keeps the world it was written against.
+
+### Four things the backlog was wrong about
+
+Worth recording as a class, because the same shape recurred four times: an entry described a defect
+that had already been fixed by something else, or described one gap where there were two.
+
+1. **`ComputeItemScale`'s clamp** was fixed by the projection switch. Measured at the real geometry,
+   the fit lands mid-range and cargo draws at exactly the authored ratio.
+2. **The mirrored belt-art pair** was an *isometric* requirement — a chevron rotated onto a diagonal
+   shears against a diamond. Top-down puts all four facings on exact quarter turns of one flat
+   sprite.
+3. **Belt merging already worked.** Two belts pointing at one cell have always both linked to it.
+   Only fan-out was missing, and fan-out is not something a belt can do — a belt has one facing, so
+   the splitter had to be its own placeable with no facing at all.
+4. **§11 assumed `FloorLayout.HalfExtent` had to stop being a `const`** for Floor Expansion. It did
+   not: every method there already took its extents as parameters, and a default argument must be
+   compile-time constant, so the live extent moved into `FloorBounds` and the layout math stayed
+   pure.
+
+In each case the honest deliverable was a measurement and a test pinning it, not an implementation.
+
+### Retiring Main.unity
+
+It was a diorama of seven hand-wired demos with no player, and the two scenes had been diverging for
+milestones. The thing that made it undeletable was that it was the only place the **id-routed** fork
+was exercised: a golem with no spatial endpoint holder routes by bare-string ids and charges the
+authored `durationTicks`.
+
+`IdRoutedDemoRegressionTests` rehouses that, and does it by driving the scene's **own**
+`HardcodedDemoProgram` builders rather than transcribing the programs — the same reason
+`TechTreeCatalogTests` reads the assets instead of restating them. Both suites then stayed green
+with the scene deleted, which is the evidence the rehousing held rather than the hope.
+
+> **It also found that one of the seven demos never worked.** `ExtractAndDeposit` describes
+> "extract from a node, deposit into a buffer", and the id-routed `ExtractFromNode` has never been
+> able to do that — it extracts onto a *belt* named by the card's `destinationId`, and that card
+> names none. So it refused at `CanEnqueue(null)` before touching the node, every tick, forever,
+> and the M2 demo golem stood there doing nothing while nothing asserted otherwise. Pinned rather
+> than repaired: giving it a belt changes what the demo demonstrates, which is a content decision.
+
+Deleted with it: `MainSceneBootstrap`, `GolemDemoBootstrap`, `BeltDemoBootstrap`,
+`TriggerDemoBootstrap`. Kept: `AssemblyLineDemoBootstrap` (Sandbox uses it) and
+`HardcodedDemoProgram` (now the definition of the reference programs the tests pin). Comments across
+the codebase still name Main.unity when explaining the fork; they are history, and CLAUDE.md says so.
+
+### Verification, and what it is not
+
+- **1245/1245** (1096 EditMode + 149 PlayMode), both authoring passes re-run headless, and
+  `SceneProbe.Verify` reading `Sandbox.unity` back afterwards.
+- The test runs earned their keep repeatedly: they caught the deck generator asking for
+  `AssembleAssembleCoking` and silently skipping all nineteen recipe cards, the movement verbs
+  quietly priced at 20 Scrap by a legacy default, a zero-cost claim refused by the one payment path
+  that never guarded it, and a world-HUD registry solving on the wrong frame.
+- **Nothing here has been played, and the lighting has not been looked at.** Every invented number
+  is tabulated at the end of `testscript/phase-1-playtest.md` for exactly that reason.
