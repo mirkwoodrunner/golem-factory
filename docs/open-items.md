@@ -1154,5 +1154,9 @@ imports fine). It is noise rather than breakage, and nothing this pass touched.
   the same reason a rebuilt building is not re-charged. Occupancy is derived (destroyed golems are
   pruned on read), because §10's escape hatch from an over-built factory is deleting golems and a
   slot that never came back would break it.
-- The Assembly Line still does not gate the Workbench roster — every card is available from the
-  start. This is the M9-era deferral, and the progression design is what finally resolves it.
+- ~~The Assembly Line still does not gate the Workbench roster — every card is available from the
+  start.~~ **RESOLVED** — this was the M9-era deferral and §8's gating is what finally closed it:
+  the vault shows claimed cards only, behind `SandboxBootstrap.gateWorkbenchRoster`, which is ON
+  in `Sandbox.unity` and field-default false everywhere else. The one thing that stays is the
+  **opening hand**: the movement verbs are granted at t=0, because a gated vault with nothing
+  claimed cannot program a golem at all and §9 Phase 1 asks for one within minutes.
