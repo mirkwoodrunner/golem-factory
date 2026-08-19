@@ -9,7 +9,7 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 > reviewed**. Everything from §1.5 on is **spec only**. The next pass starts at §1.5, which is
 > also what §1.4's Sandbox switch is waiting on.
 
-Tests stand at **1236/1236** (1087 EditMode + 149 PlayMode), up from 590 before the progression pass
+Tests stand at **1245/1245** (1096 EditMode + 149 PlayMode), up from 590 before the progression pass
 began. Console clean.
 
 > **The Director's pass is validated.** Street extension, truckload market + Creative Mode, the
@@ -1041,6 +1041,26 @@ decision §2 reserves. Nothing mechanical blocks it any more.
   cell rather than standing on one** (items, tiles, cursor overlays). And **`player` is a trap for
   anyone auditing by eye**: Unity honours *alignment*, not the stored `spritePivot`, so it behaves
   as BottomCenter while its record says centre — read `alignment`, not `spritePivot`.
+- **`Main.unity`'s id-routed regressions are rehoused, so retiring it is now a content decision
+  rather than a coverage loss.** `IdRoutedDemoRegressionTests` drives the scene's OWN program
+  builders (`HardcodedDemoProgram`, the same static its bootstraps call, so the tests cannot
+  drift from the demos) with no scene at all, and pins what the scene was the only witness to:
+  id routing by bare-string node/belt/buffer ids, the authored `durationTicks` rather than a
+  derived one, `Refine` between named buffers, the belt hand-off chain, the self-stalling
+  two-step program, the Threshold trigger firing once per crossing, and the machine model NOT
+  reaching an id-routed golem.
+
+  > **It also found that one of the seven demos never worked.**
+  > `HardcodedDemoProgram.ExtractAndDeposit` -- applied by `GolemDemoBootstrap` to a golem
+  > standing in `Main.unity` -- describes "extract from a node, deposit into a buffer", and the
+  > id-routed `ExtractFromNode` has never been able to do that: it extracts onto a BELT named by
+  > the card's `destinationId`, and that card names none. The step refuses at `CanEnqueue(null)`
+  > before it touches the node, every tick, forever, so the M2 demo golem has been visibly doing
+  > nothing. **Pinned rather than repaired** -- giving it a belt changes what the scene
+  > demonstrates, which is a content call.
+
+  Still true, and still the reason to retire it eventually:
+
 - **`Main.unity` is a diorama, not the game** — seven pre-wired golems demonstrating M2–M7, with no
   spatial routing (its golems are deliberately never `ConfigureSpatial`'d, which is exactly what
   keeps id-based routing working there). `Sandbox.unity` is the playable loop. The two will keep
