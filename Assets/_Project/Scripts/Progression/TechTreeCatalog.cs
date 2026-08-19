@@ -136,11 +136,14 @@ namespace GolemFactory.Progression
                 TechTreeNodeKind.Technique, 2, 1,
                 TechTreeUnlockSignal.None, null,
                 new[] { "bldg.belt", "milestone.steamgrid" }),
+            // NO LONGER PLANNED, AND IT WAS THE LAST ONE. §11 item 15 is built: the workshop's
+            // back wall moves north at runtime, painting new plank rows and re-placing the
+            // wall run, priced per row and capped -- land is finite and expensive.
             new TechTreeNode(
                 "bldg.floorexpansion", "Floor Expansion", "60 Scrap + 30 Iron Plate per 6×6 block",
                 TechTreeNodeKind.Building, 2, 2,
                 TechTreeUnlockSignal.Building, BuildingFloorExpansion,
-                new[] { "r2.reclamation" }, isPlanned: true),
+                new[] { "r2.reclamation" }),
 
             // ---- IV · The Metal Lines -------------------------------------------------------
             // A chassis sits in the phase it OPENS, not the one spent affording it: §9 lists the

@@ -176,14 +176,41 @@ namespace GolemFactory.Player
             _placementStreetDepth = streetDepth;
         }
 
+        // The live room, for Floor Expansion (§11 item 15). Held rather than copied: new floor
+        // has to be buildable the moment it is paid for, without a second call to re-bound.
+        private FloorBounds _placementBounds;
+
+        public void ConfigurePlacementBounds(FloorBounds bounds, int streetDepth)
+        {
+            _placementBounds = bounds;
+            if (bounds != null)
+            {
+                _placementHalfExtent = bounds.HalfExtent;
+                _placementStreetDepth = streetDepth;
+            }
+        }
+
         /// <summary>
         /// Whether a building may stand on <paramref name="cell"/> at all. Public so the ghost,
         /// the click and a test all read one answer -- a ghost that promises a tile placement
         /// then refuses is the bug this replaced, not an improvement on it.
         /// </summary>
-        public bool IsCellBuildable(Vector2Int cell) =>
-            _placementHalfExtent < 0 ||
-            FloorLayout.IsInsideWorld(cell, _placementHalfExtent, _placementStreetDepth);
+        public bool IsCellBuildable(Vector2Int cell)
+        {
+            if (_placementHalfExtent < 0)
+            {
+                return true;
+            }
+
+            if (_placementBounds != null)
+            {
+                return FloorLayout.IsInsideWorld(
+                    cell, _placementBounds.HalfExtent, _placementStreetDepth,
+                    FloorLayout.StreetHalfExtent, _placementBounds.NorthExtent);
+            }
+
+            return FloorLayout.IsInsideWorld(cell, _placementHalfExtent, _placementStreetDepth);
+        }
 
         // Called by UI/BuildMenuPanel when the player picks a different placeable type.
         public void SetActivePrefab(PlaceableBuilding prefab) => _buildingPrefab = prefab;

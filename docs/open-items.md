@@ -9,7 +9,7 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 > reviewed**. Everything from §1.5 on is **spec only**. The next pass starts at §1.5, which is
 > also what §1.4's Sandbox switch is waiting on.
 
-Tests stand at **1197/1197** (1048 EditMode + 149 PlayMode), up from 590 before the progression pass
+Tests stand at **1209/1209** (1060 EditMode + 149 PlayMode), up from 590 before the progression pass
 began. Console clean.
 
 > **The Director's pass is validated.** Street extension, truckload market + Creative Mode, the
@@ -777,6 +777,33 @@ decision §2 reserves. Nothing mechanical blocks it any more.
   answering "full" to everything would leave an empty heap unrefuellable by golem.
 
   The pinned `IsPlanned` test is now down to **one** name: Floor Expansion.
+
+- **§11 item 15's Floor Expansion is built, at runtime.** The workshop's back wall moves north,
+  new plank rows are painted onto the Tilemap and the wall run is re-placed -- in a build, not in
+  the Editor. §11 flags this as "more work than 'purchasable growth' suggests" and names the
+  reason: `SandboxFloorGenerator` is Editor-only. What is shared is the *math* -- the runtime
+  service walks the same `FloorLayout` methods and the same `FloorTileVariant` chooser -- and only
+  the Tile assets and wall sprites are handed over as serialized references, so a bought row is
+  tiled by the identical rule as an authored one.
+
+  **It grows NORTH only, and that is the load-bearing constraint.** Growing symmetrically would
+  move the shop front, and the street is defined as the eight rows south of it -- so the road, the
+  kerb and all nine market stalls would slide south with every purchase, moving the landmarks the
+  player navigates by. North extends the room away from the camera into empty space instead.
+
+  `FloorLayout.HalfExtent` stays a `const`: every method there takes its extents as parameters
+  with const defaults, and a default argument must be compile-time constant, so making it a field
+  would break every signature in the file. The live extent lives in `FloorBounds` and is passed
+  in -- which also means the player's clamp and the build bound read the **same object**, so new
+  floor is walkable and buildable the instant it is paid for.
+
+  Rows are capped and get dearer as the room grows: §11 asks for land that is "finite and
+  expensive, not continuously paveable", and the cap alone would leave the last row as cheap as
+  the first.
+
+  **The chart's `IsPlanned` list is now empty** -- every node on the Artificer's Ledger is a
+  shipped feature. The flag and its test stay, so the next designed-but-unbuilt thing is marked
+  the same way rather than quietly drawn as though it existed.
 
 ### Also not yet wired
 

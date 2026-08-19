@@ -71,6 +71,31 @@ namespace GolemFactory.World
         /// </summary>
         public const int StreetHalfExtent = 18;
 
+        /// <summary>
+        /// How far north the workshop reaches, in cells. Equal to <see cref="HalfExtent"/> for
+        /// the room as authored, and RAISED BY FLOOR EXPANSION (§11 item 15) -- which is why it
+        /// is a parameter everywhere below rather than a second constant.
+        ///
+        /// <para>
+        /// <b>Expansion grows the room NORTHWARD ONLY, and that is a deliberate constraint.</b>
+        /// Growing it symmetrically would move the south edge, and the street is defined as the
+        /// eight rows south of the shop front -- so the road, the kerb and all nine market
+        /// stalls would slide south with every purchase, moving landmarks the player navigates
+        /// by. Growing north instead extends the workshop away from the camera into empty space:
+        /// the shop front, the street and the traders never move, and the new floor appears
+        /// behind the factory where there is room to build.
+        /// </para>
+        ///
+        /// <para>
+        /// Capped at <see cref="MaxNorthExtent"/>: §11 is explicit that "the design needs land to
+        /// be finite and expensive, not continuously paveable".
+        /// </para>
+        /// </summary>
+        public const int DefaultNorthExtent = HalfExtent;
+
+        /// <summary>The furthest north expansion may ever reach. Land is finite.</summary>
+        public const int MaxNorthExtent = HalfExtent + 12;
+
         /// <summary>Southernmost world row. The street hangs below the workshop's south edge.</summary>
         public const int WorldMinY = -HalfExtent - StreetDepth;
 
@@ -83,11 +108,20 @@ namespace GolemFactory.World
         /// ROOM by it, and quietly widening it to the whole world would have painted planks down
         /// the market street.
         /// </summary>
-        public static IEnumerable<Vector2Int> GetFloorCells(int halfExtent = HalfExtent)
+        public static IEnumerable<Vector2Int> GetFloorCells(int halfExtent = HalfExtent) =>
+            GetFloorCells(halfExtent, halfExtent);
+
+        /// <summary>
+        /// The workshop's plank floor, with its north edge stated separately so Floor Expansion
+        /// can raise it. <paramref name="northExtent"/> below <paramref name="halfExtent"/> is
+        /// clamped up rather than producing an empty or inside-out room.
+        /// </summary>
+        public static IEnumerable<Vector2Int> GetFloorCells(int halfExtent, int northExtent)
         {
+            int north = northExtent < halfExtent ? halfExtent : northExtent;
             for (int x = -halfExtent; x <= halfExtent; x++)
             {
-                for (int y = -halfExtent; y <= halfExtent; y++)
+                for (int y = -halfExtent; y <= north; y++)
                 {
                     yield return new Vector2Int(x, y);
                 }
@@ -119,10 +153,14 @@ namespace GolemFactory.World
         /// Every cell of ground that exists -- workshop and street. What bounds the player.
         /// </summary>
         public static IEnumerable<Vector2Int> GetWorldCells(
-            int halfExtent = HalfExtent, int streetDepth = StreetDepth)
+            int halfExtent = HalfExtent, int streetDepth = StreetDepth) =>
+            GetWorldCells(halfExtent, streetDepth, halfExtent);
+
+        public static IEnumerable<Vector2Int> GetWorldCells(
+            int halfExtent, int streetDepth, int northExtent)
         {
             // Workshop rows first, then street rows -- two regions of different widths.
-            foreach (Vector2Int cell in GetFloorCells(halfExtent))
+            foreach (Vector2Int cell in GetFloorCells(halfExtent, northExtent))
             {
                 yield return cell;
             }
@@ -135,8 +173,11 @@ namespace GolemFactory.World
 
         /// <summary>Whether a cell is inside the workshop room (as opposed to out on the street).</summary>
         public static bool IsInsideWorkshop(Vector2Int cell, int halfExtent = HalfExtent) =>
+            IsInsideWorkshop(cell, halfExtent, halfExtent);
+
+        public static bool IsInsideWorkshop(Vector2Int cell, int halfExtent, int northExtent) =>
             cell.x >= -halfExtent && cell.x <= halfExtent &&
-            cell.y >= -halfExtent && cell.y <= halfExtent;
+            cell.y >= -halfExtent && cell.y <= (northExtent < halfExtent ? halfExtent : northExtent);
 
         /// <summary>
         /// Whether a cell is ground at all -- workshop OR street. The predicate form of
@@ -155,9 +196,14 @@ namespace GolemFactory.World
         /// or allow building in the empty space north-east and north-west of the building.
         /// </summary>
         public static bool IsInsideWorld(
-            Vector2Int cell, int halfExtent, int streetDepth, int streetHalfExtent)
+            Vector2Int cell, int halfExtent, int streetDepth, int streetHalfExtent) =>
+            IsInsideWorld(cell, halfExtent, streetDepth, streetHalfExtent, halfExtent);
+
+        public static bool IsInsideWorld(
+            Vector2Int cell, int halfExtent, int streetDepth, int streetHalfExtent, int northExtent)
         {
-            if (cell.y > halfExtent || cell.y < -halfExtent - streetDepth)
+            int north = northExtent < halfExtent ? halfExtent : northExtent;
+            if (cell.y > north || cell.y < -halfExtent - streetDepth)
             {
                 return false;
             }
@@ -228,12 +274,20 @@ namespace GolemFactory.World
         // sprite whose width does not match the run, once per perimeter cell -- which is what
         // the earlier attempt did -- and the segments read as stacked blocks, i.e. a staircase,
         // no matter how they are nudged.
-        public static Vector2 GetEdgeAnchor(Edge edge, int index, int halfExtent = HalfExtent)
+        public static Vector2 GetEdgeAnchor(Edge edge, int index, int halfExtent = HalfExtent) =>
+            GetEdgeAnchor(edge, index, halfExtent, halfExtent);
+
+        /// <summary>
+        /// With the north edge stated separately, so Floor Expansion can move the back wall
+        /// without touching the shop front or the two side walls' distance from the middle.
+        /// </summary>
+        public static Vector2 GetEdgeAnchor(Edge edge, int index, int halfExtent, int northExtent)
         {
             float outer = halfExtent + 0.5f;
+            float north = (northExtent < halfExtent ? halfExtent : northExtent) + 0.5f;
             switch (edge)
             {
-                case Edge.North: return new Vector2(index, outer);
+                case Edge.North: return new Vector2(index, north);
                 case Edge.East: return new Vector2(outer, index);
                 case Edge.West: return new Vector2(-outer, index);
                 default: return new Vector2(index, -outer);
@@ -267,9 +321,14 @@ namespace GolemFactory.World
         /// carry on past the shop front and down the street.
         /// </summary>
         public static IEnumerable<int> GetWorldEdgeIndices(
-            int halfExtent = HalfExtent, int streetDepth = StreetDepth)
+            int halfExtent = HalfExtent, int streetDepth = StreetDepth) =>
+            GetWorldEdgeIndices(halfExtent, streetDepth, halfExtent);
+
+        public static IEnumerable<int> GetWorldEdgeIndices(
+            int halfExtent, int streetDepth, int northExtent)
         {
-            for (int i = -halfExtent - streetDepth; i <= halfExtent; i++)
+            int north = northExtent < halfExtent ? halfExtent : northExtent;
+            for (int i = -halfExtent - streetDepth; i <= north; i++)
             {
                 yield return i;
             }
@@ -281,7 +340,11 @@ namespace GolemFactory.World
         /// and differs only on the south, which sits at the far kerb rather than the shop front.
         /// </summary>
         public static Vector2 GetWorldEdgeAnchor(
-            Edge edge, int index, int halfExtent = HalfExtent, int streetDepth = StreetDepth)
+            Edge edge, int index, int halfExtent = HalfExtent, int streetDepth = StreetDepth) =>
+            GetWorldEdgeAnchor(edge, index, halfExtent, streetDepth, halfExtent);
+
+        public static Vector2 GetWorldEdgeAnchor(
+            Edge edge, int index, int halfExtent, int streetDepth, int northExtent)
         {
             if (edge == Edge.South)
             {
@@ -298,7 +361,7 @@ namespace GolemFactory.World
                 return new Vector2(edge == Edge.East ? outer : -outer, index);
             }
 
-            return GetEdgeAnchor(edge, index, halfExtent);
+            return GetEdgeAnchor(edge, index, halfExtent, northExtent);
         }
 
         /// <summary>
@@ -351,11 +414,16 @@ namespace GolemFactory.World
         // The south ends of the side walls are open ends facing the camera. They terminate into
         // the opening; there is nothing there for a pillar to cap. Capping them would need
         // plan-view art, not a fourth copy of the elevation.
-        public static IEnumerable<Vector2> GetWallPostAnchors(int halfExtent = HalfExtent)
+        public static IEnumerable<Vector2> GetWallPostAnchors(int halfExtent = HalfExtent) =>
+            GetWallPostAnchors(halfExtent, halfExtent);
+
+        public static IEnumerable<Vector2> GetWallPostAnchors(int halfExtent, int northExtent)
         {
+            // The posts cap the two NORTH corners, so they ride the back wall outward with it.
             float outer = halfExtent + 0.5f;
-            yield return new Vector2(outer, outer);
-            yield return new Vector2(-outer, outer);
+            float north = (northExtent < halfExtent ? halfExtent : northExtent) + 0.5f;
+            yield return new Vector2(outer, north);
+            yield return new Vector2(-outer, north);
         }
 
         // Clamps in cell-fraction space, not world space. Under the old isometric projection
@@ -368,7 +436,12 @@ namespace GolemFactory.World
         // snapping to cell centers.
         public static Vector3 ClampToFloor(
             Vector3 worldPosition, GridCoordinateConverter converter,
-            int halfExtent = HalfExtent, int streetDepth = StreetDepth)
+            int halfExtent = HalfExtent, int streetDepth = StreetDepth) =>
+            ClampToFloor(worldPosition, converter, halfExtent, streetDepth, halfExtent);
+
+        public static Vector3 ClampToFloor(
+            Vector3 worldPosition, GridCoordinateConverter converter,
+            int halfExtent, int streetDepth, int northExtent)
         {
             // BOUNDS THE WORLD, NOT THE ROOM, and that is the point of the split. The player buys
             // raw goods at stalls out on the street, so a clamp at the workshop's south wall would
@@ -383,7 +456,8 @@ namespace GolemFactory.World
             // player running south down the outer street cannot be pulled sideways by a row they
             // are no longer on.
             Vector2 cellFraction = converter.WorldToCellFraction(worldPosition);
-            float clampedY = Mathf.Clamp(cellFraction.y, -halfExtent - streetDepth, halfExtent);
+            float north = northExtent < halfExtent ? halfExtent : northExtent;
+            float clampedY = Mathf.Clamp(cellFraction.y, -halfExtent - streetDepth, north);
 
             // Half a cell of tolerance at the seam: the boundary between the two widths runs
             // along the workshop's south wall line, and a player walking east along the street

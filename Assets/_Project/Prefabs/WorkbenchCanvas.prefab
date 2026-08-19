@@ -57,6 +57,7 @@ MonoBehaviour:
   statusText: {fileID: 2210640994762708609}
   claimButtonSprite: {fileID: 21300000, guid: 6a818d166770ab7428a591655fade9f5, type: 3}
   assemblyBay: {fileID: 0}
+  floorExpansion: {fileID: 0}
   stockpileBufferId: FactoryStockpile
 --- !u!1 &24686110985122961
 GameObject:

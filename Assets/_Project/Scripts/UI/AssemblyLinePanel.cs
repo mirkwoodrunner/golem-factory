@@ -36,6 +36,11 @@ namespace GolemFactory.UI
         // buffer, while a bay upgrade is paid out of the player's stockpile -- the same buffer
         // the construction station and the build menu spend from.
         [SerializeField] private AssemblyBayStructure assemblyBay;
+
+        // §11 item 15's Floor Expansion. It shares this tab with the bay row because they are
+        // the same kind of decision -- spend goods to raise a cap the factory is pressing
+        // against -- and a player looking for "why can I not build more" finds both in one place.
+        [SerializeField] private GolemFactory.World.FloorExpansionService floorExpansion;
         [SerializeField] private string stockpileBufferId = "FactoryStockpile";
 
         // Warm parchment, not Color.black: these rows sit on ManagementScreen's near-black
@@ -89,6 +94,9 @@ namespace GolemFactory.UI
         // bufferRegistryHolder, which would silently re-point every Claim button.
         private StorageBufferRegistryHolder _bayStockpileHolder;
 
+        public void ConfigureFloorExpansion(GolemFactory.World.FloorExpansionService expansion) =>
+            floorExpansion = expansion;
+
         /// <summary>Stock reader for the bay's cost, matching GolemConstructionStation.StockOf.</summary>
         private int BayStockOf(string itemType)
         {
@@ -135,6 +143,7 @@ namespace GolemFactory.UI
             // put on a golem at all, so a player who cannot build is looking for this line
             // rather than scrolling past the draft to find it.
             CreateBayRow();
+            CreateFloorExpansionRow();
 
             AssemblyLineState line = lineHolder.State;
             for (int i = 0; i < line.SlotCount; i++)
@@ -227,6 +236,80 @@ namespace GolemFactory.UI
             // rest of this panel and WorkbenchController.RebuildUI follow.
             Refresh();
             return upgraded;
+        }
+
+        /// <summary>
+        /// "Workshop 25x27 · +2 rows north · 80 Scrap + 40 Iron Plate · [Extend]".
+        ///
+        /// <para>
+        /// The room's CURRENT size is stated, not just the purchase, because the number the
+        /// player is deciding against is how much floor they already have.
+        /// </para>
+        /// </summary>
+        private void CreateFloorExpansionRow()
+        {
+            if (floorExpansion == null || floorExpansion.Bounds == null)
+            {
+                return;
+            }
+
+            GolemFactory.World.FloorBounds bounds = floorExpansion.Bounds;
+            GameObject row = CreateSlotRoot();
+
+            int width = bounds.HalfExtent * 2 + 1;
+            int depth = bounds.NorthExtent + bounds.HalfExtent + 1;
+            string label = "Workshop " + width + "x" + depth;
+
+            if (!bounds.CanExpand)
+            {
+                // Land is finite (§11): when it runs out the row says so rather than offering a
+                // button that always refuses.
+                CreateLabel(row.transform, label + "  ·  fully extended", DimTextColor);
+                return;
+            }
+
+            IReadOnlyList<RecipeIngredient> cost = floorExpansion.NextCost();
+            bool affordable = floorExpansion.CanAfford();
+
+            CreateLabel(
+                row.transform,
+                label + "  ·  +" + floorExpansion.RowsPerPurchase + " rows north",
+                RowTextColor);
+            CreateCostLabel(
+                row.transform, ConstructionCostPolicy.FormatCost(cost),
+                affordable ? AffordableCostColor : DimTextColor);
+
+            var buttonGo = new GameObject("Extend", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+            buttonGo.transform.SetParent(row.transform, false);
+            LayoutElement buttonLayout = buttonGo.GetComponent<LayoutElement>();
+            buttonLayout.preferredWidth = 74f;
+            buttonLayout.preferredHeight = 24f;
+            if (claimButtonSprite != null)
+            {
+                Image buttonImage = buttonGo.GetComponent<Image>();
+                buttonImage.sprite = claimButtonSprite;
+                buttonImage.type = Image.Type.Sliced;
+            }
+
+            Button extendButton = buttonGo.GetComponent<Button>();
+            extendButton.onClick.AddListener(() => ExtendFloor());
+            extendButton.interactable = affordable;
+            CreateButtonLabel(buttonGo.transform, "Extend");
+        }
+
+        /// <summary>Buys one expansion. Public so a test drives the same path the button does.</summary>
+        public bool ExtendFloor()
+        {
+            if (floorExpansion == null)
+            {
+                _statusMessage = "No expandable floor in this scene.";
+                return false;
+            }
+
+            bool expanded = floorExpansion.TryPurchaseExpansion();
+            _statusMessage = expanded ? "" : floorExpansion.LastStatusMessage;
+            Refresh();
+            return expanded;
         }
 
         private GameObject CreateSlotRoot()

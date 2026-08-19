@@ -212,7 +212,10 @@ namespace GolemFactory.Tests.EditMode
             // "verb.freightlink" and "bldg.freightmast" -- and each time this test failed first,
             // which is exactly what it is for: it is the reminder to clear the flag rather than
             // leave the chart quietly calling a shipped feature "planned".
-            var expected = new HashSet<string> { "bldg.floorexpansion" };
+            // EMPTY, and that is the milestone: every node on the chart is now a shipped
+            // feature. The flag and this test stay, because the next designed-but-unbuilt thing
+            // should be marked the same way rather than quietly drawn as though it existed.
+            var expected = new HashSet<string>();
 
             var actual = new HashSet<string>();
             foreach (TechTreeNode node in TechTreeCatalog.Nodes)

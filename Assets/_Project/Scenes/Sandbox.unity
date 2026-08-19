@@ -2311,6 +2311,72 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &268086508
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 268086510}
+  - component: {fileID: 268086509}
+  m_Layer: 0
+  m_Name: FloorExpansion
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &268086509
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 268086508}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11961075e2891d04ba568d2636945e58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.World.FloorExpansionService
+  boundsHolder: {fileID: 976168742}
+  tilemap: {fileID: 1986735071}
+  floorTiles:
+  - {fileID: 11400000, guid: 794e73abd263c6b44ac49da237883490, type: 2}
+  - {fileID: 11400000, guid: bfacd2ed8fb458e4eb3378b59a6a0b63, type: 2}
+  - {fileID: 11400000, guid: 503662a195005264985ce9c34d1f3297, type: 2}
+  - {fileID: 11400000, guid: d0fe5527d9a73704dabffab71af40103, type: 2}
+  - {fileID: 11400000, guid: b80b1df576ab0044590b654ed703a8ae, type: 2}
+  - {fileID: 11400000, guid: 1b9a94a60a239ed49aeff6f04f232e6d, type: 2}
+  wallsParent: {fileID: 396309366}
+  northWallSprite: {fileID: 21300000, guid: 58d69d4cc1e3f2247904fd6a11f7f3f1, type: 3}
+  northWallLampSprite: {fileID: 21300000, guid: ad12ed326d157f74286e53c2d993c0d8, type: 3}
+  eastWallSprite: {fileID: 21300000, guid: e1e2926e223cc2c4cb5cb307960a4f99, type: 3}
+  westWallSprite: {fileID: 21300000, guid: a17d3d25a62f6aa4da89ae0fafeffb81, type: 3}
+  cornerPostSprite: {fileID: 21300000, guid: eefa9f0f0516497429d84448f67b6658, type: 3}
+  lampSpacing: 6
+  wallMaterial: {fileID: 2100000, guid: 823c56bbb1725444bbcc3cdafac4f926, type: 2}
+  scrapPerRow: 40
+  ironPlatePerRow: 20
+  rowsPerPurchase: 2
+  stockpileBufferId: FactoryStockpile
+  bufferRegistryHolder: {fileID: 2049142409}
+--- !u!4 &268086510
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 268086508}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &280633211
 GameObject:
   m_ObjectHideFlags: 0
@@ -3743,6 +3809,8 @@ MonoBehaviour:
   cardCatalog: {fileID: 11400000, guid: 9ef986169bf9ac440a8252ac8c5a9142, type: 2}
   claimUserId: LocalPlayer
   mastRegistryHolder: {fileID: 624134875}
+  floorBoundsHolder: {fileID: 976168742}
+  floorExpansion: {fileID: 268086509}
   marketHolder: {fileID: 2069369534}
   gameModeHolder: {fileID: 2069369535}
   bufferRegistryHolder: {fileID: 0}
@@ -12479,6 +12547,17 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!114 &976168742 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 305610506013585323, guid: d9a69809c839d0741a1698e2d0f22ae3, type: 3}
+  m_PrefabInstance: {fileID: 2049142403}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0c30d63245b8cb4ea7a1f4df3df2d19, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.World.FloorBoundsHolder
 --- !u!1 &985532451
 GameObject:
   m_ObjectHideFlags: 0
@@ -35022,3 +35101,4 @@ SceneRoots:
   - {fileID: 2068611573}
   - {fileID: 22393202}
   - {fileID: 1574197033}
+  - {fileID: 268086510}

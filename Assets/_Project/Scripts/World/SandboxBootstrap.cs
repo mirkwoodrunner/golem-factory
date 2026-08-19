@@ -50,6 +50,11 @@ namespace GolemFactory.World
         // §6's Freight Link. Optional like every holder here.
         [SerializeField] private FreightMastRegistryHolder mastRegistryHolder;
 
+        // §11 item 15's Floor Expansion. Optional: with no holder the room is the authored one
+        // and nothing can grow it, which is every scene that predates expansion.
+        [SerializeField] private FloorBoundsHolder floorBoundsHolder;
+        [SerializeField] private FloorExpansionService floorExpansion;
+
         [SerializeField] private Economy.TruckloadMarketHolder marketHolder;
         [SerializeField] private Economy.GameModeHolder gameModeHolder;
 
@@ -178,13 +183,27 @@ namespace GolemFactory.World
                 // HalfExtent is still the WORKSHOP's, and FloorLayout.ClampToFloor derives the
                 // street's wider bound from it internally (§13.1). Passing the street's width
                 // here instead would let the player walk through the shop's side walls.
-                player.SetFloorBounds(new GridCoordinateConverter(grid.cellSize), FloorLayout.HalfExtent);
+                //
+                // The LIVE bounds object where one exists, not a copied number: Floor Expansion
+                // moves the back wall mid-session, and a clamp holding last frame's extent would
+                // pin the player out of the floor they just paid for.
+                FloorBoundsHolder bounds = ResolveFloorBounds();
+                var converter = new GridCoordinateConverter(grid.cellSize);
+                if (bounds != null)
+                {
+                    player.SetFloorBounds(converter, bounds.Bounds);
+                }
+                else
+                {
+                    player.SetFloorBounds(converter, FloorLayout.HalfExtent);
+                }
             }
 
             ApplyBufferCapacityPolicy();
             RegisterSpatialEndpoints();
             RegisterSteamNetwork();
             RegisterFreightMasts();
+            RegisterFloorExpansion();
             RegisterClockTower();
             RegisterHandCrankBenches();
             RegisterMarket();
@@ -582,6 +601,42 @@ namespace GolemFactory.World
         /// boiler and tower passes use -- so a mast authored into a scene works without having
         /// been placed by the player.
         /// </summary>
+        private FloorBoundsHolder ResolveFloorBounds() =>
+            floorBoundsHolder != null
+                ? floorBoundsHolder
+                : FindAnyObjectByType<FloorBoundsHolder>(FindObjectsInactive.Include);
+
+        /// <summary>
+        /// Hands the expansion service the scene references a prefab cannot carry: the Tilemap it
+        /// paints, the bounds it grows and the stockpile it charges.
+        /// </summary>
+        private void RegisterFloorExpansion()
+        {
+            FloorExpansionService expansion = floorExpansion != null
+                ? floorExpansion
+                : FindAnyObjectByType<FloorExpansionService>(FindObjectsInactive.Include);
+            FloorBoundsHolder bounds = ResolveFloorBounds();
+            if (expansion == null || bounds == null || grid == null)
+            {
+                return;
+            }
+
+            Economy.StorageBufferRegistryHolder buffers = bufferRegistryHolder != null
+                ? bufferRegistryHolder
+                : FindAnyObjectByType<Economy.StorageBufferRegistryHolder>(FindObjectsInactive.Include);
+
+            expansion.Configure(
+                bounds, grid.GetComponentInChildren<UnityEngine.Tilemaps.Tilemap>(),
+                grid.cellSize, buffers, stockpileBufferId);
+
+            GolemFactory.UI.AssemblyLinePanel linePanel =
+                FindAnyObjectByType<GolemFactory.UI.AssemblyLinePanel>(FindObjectsInactive.Include);
+            if (linePanel != null)
+            {
+                linePanel.ConfigureFloorExpansion(expansion);
+            }
+        }
+
         private void RegisterFreightMasts()
         {
             if (grid == null)
@@ -714,13 +769,22 @@ namespace GolemFactory.World
                 buildModeController.ConfigureBelts(beltNetworkHolder, spatialEndpointHolder, conveyorHolder);
             }
 
-            // §3.3: the buildable area is the ground that is drawn. Same two numbers that bound
-            // the player above, deliberately -- "I can walk there" and "I can build there" have
-            // to be one boundary, or the kerb is a rule the player learns by being refused at it.
+            // §3.3: the buildable area is the ground that is drawn. Same bounds object that
+            // bounds the player above, deliberately -- "I can walk there" and "I can build
+            // there" have to be one boundary, or the kerb is a rule the player learns by being
+            // refused at it, and new floor would be walkable but unbuildable.
             if (buildModeController != null)
             {
-                buildModeController.ConfigurePlacementBounds(
-                    FloorLayout.HalfExtent, FloorLayout.StreetDepth);
+                FloorBoundsHolder bounds = ResolveFloorBounds();
+                if (bounds != null)
+                {
+                    buildModeController.ConfigurePlacementBounds(bounds.Bounds, FloorLayout.StreetDepth);
+                }
+                else
+                {
+                    buildModeController.ConfigurePlacementBounds(
+                        FloorLayout.HalfExtent, FloorLayout.StreetDepth);
+                }
             }
 
             // Placement wiring is UNCONDITIONAL: a boiler or pipe the player builds should join

@@ -590,6 +590,11 @@ namespace GolemFactory.Editor
                 // §6's mast registry: scene-wide, like the extractor cap beside it.
                 Ensure<FreightMastRegistryHolder>(EnsureChild(root, "FreightMasts"));
 
+                // §11 item 15: how far the workshop currently reaches. Runtime state, because
+                // Floor Expansion moves the back wall mid-session and FloorLayout's extents are
+                // consts that every default argument depends on.
+                Ensure<FloorBoundsHolder>(EnsureChild(root, "FloorBounds"));
+
                 ClockTowerSiteHolder site = Ensure<ClockTowerSiteHolder>(EnsureChild(root, "ClockTower"));
                 // DELIBERATELY EMPTY. Stages wired here start stage 1 in Awake, which made a
                 // fresh Sandbox open with "Stage 1 Foundation - 0%" and a starvation alert for a
@@ -1049,6 +1054,7 @@ namespace GolemFactory.Editor
             ResizeBuildMenu(scene);
             AddNodeMarkers(scene);
             PlaceStartingBench(scene);
+            WireFloorExpansion(scene);
             WireBootstrapHolders(scene);
             RegisterSceneHudChrome(scene);
             PopulateWorkbenchRoster(scene);
@@ -1420,6 +1426,119 @@ namespace GolemFactory.Editor
         // The scene's ManagerHolders is a prefab instance, so the Steam/ClockTower/NodeExtractor
         // children arrive with it -- but SandboxBootstrap's own [SerializeField]s still have to
         // be pointed at them, and the two HUD views need their holders handed over at runtime.
+        /// <summary>
+        /// Stands up §11 item 15's expansion service and hands it the two things only Editor
+        /// code can resolve: the floor Tile ASSETS the generator paints with, and the wall
+        /// sprites it builds the shell from.
+        ///
+        /// <para>
+        /// This is the whole reason expansion needed an authoring pass at all. The layout math
+        /// is shared -- the service walks the same FloorLayout methods and the same
+        /// FloorTileVariant chooser -- but a runtime component cannot go and find a Tile asset by
+        /// path, so the references are wired here once and a paid-for row is tiled by the
+        /// identical rule as an authored one.
+        /// </para>
+        /// </summary>
+        private static void WireFloorExpansion(Scene scene)
+        {
+            var bootstrap = FindInScene<SandboxBootstrap>(scene);
+            if (bootstrap == null)
+            {
+                Note("WARNING: no SandboxBootstrap -- floor expansion not wired");
+                return;
+            }
+
+            GameObject host = FindRoot(scene, "FloorExpansion");
+            if (host == null)
+            {
+                host = new GameObject("FloorExpansion");
+                UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(host, scene);
+            }
+
+            FloorExpansionService service = Ensure<FloorExpansionService>(host);
+            var so = new SerializedObject(service);
+
+            so.FindProperty("boundsHolder").objectReferenceValue = FindInScene<FloorBoundsHolder>(scene);
+            so.FindProperty("bufferRegistryHolder").objectReferenceValue =
+                FindInScene<StorageBufferRegistryHolder>(scene);
+
+            Grid grid = FindInScene<Grid>(scene);
+            if (grid != null)
+            {
+                so.FindProperty("tilemap").objectReferenceValue =
+                    grid.GetComponentInChildren<UnityEngine.Tilemaps.Tilemap>();
+
+                Transform walls = grid.transform.parent != null
+                    ? FindDeep(grid.transform.parent, "Walls")
+                    : FindDeep(grid.transform, "Walls");
+                if (walls == null)
+                {
+                    foreach (GameObject root in scene.GetRootGameObjects())
+                    {
+                        walls = FindDeep(root.transform, "Walls");
+                        if (walls != null)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                so.FindProperty("wallsParent").objectReferenceValue = walls;
+            }
+
+            // The same Tile assets the generator paints the authored floor with, in the same
+            // order FloorTileVariant.Select indexes them -- so a seam between an authored row
+            // and a bought one is impossible by construction rather than by matching numbers.
+            // Taken from SandboxFloorGenerator.FloorTileAssetNames, in that order: FloorTileVariant
+            // indexes this array by position, so a name out of place would tile a bought row with
+            // a different plank than the one beside it.
+            string[] tileNames =
+            {
+                "FloorTile", "FloorTileWoodB", "FloorTileWoodC", "FloorTileWoodD",
+                "FloorTileAccent", "FloorTileGrate",
+            };
+            SerializedProperty tiles = so.FindProperty("floorTiles");
+            tiles.arraySize = tileNames.Length;
+            int found = 0;
+            for (int i = 0; i < tileNames.Length; i++)
+            {
+                var tile = AssetDatabase.LoadAssetAtPath<UnityEngine.Tilemaps.TileBase>(
+                    "Assets/_Project/Tilemaps/" + tileNames[i] + ".asset");
+                tiles.GetArrayElementAtIndex(i).objectReferenceValue = tile;
+                if (tile != null)
+                {
+                    found++;
+                }
+            }
+
+            // The same five the generator loads, by the same names -- the back wall is
+            // wall_segment_nw (head-on), the two sides are their own left/right caps.
+            AssignSpriteIfPresent(so, "northWallSprite", "wall_segment_nw.png");
+            AssignSpriteIfPresent(so, "northWallLampSprite", "wall_segment_nw_lamp.png");
+            AssignSpriteIfPresent(so, "eastWallSprite", "wall_side_e.png");
+            AssignSpriteIfPresent(so, "westWallSprite", "wall_side_w.png");
+            AssignSpriteIfPresent(so, "cornerPostSprite", "wall_corner_post.png");
+
+            var litMaterial = AssetDatabase.LoadAssetAtPath<Material>(
+                "Assets/Settings/SpriteLit2D.mat");
+            if (litMaterial != null)
+            {
+                so.FindProperty("wallMaterial").objectReferenceValue = litMaterial;
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            Note("FloorExpansion wired (" + found + "/" + tileNames.Length + " floor tiles)");
+        }
+
+        private static void AssignSpriteIfPresent(SerializedObject so, string property, string spriteFile)
+        {
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(ArtRoot + spriteFile);
+            if (sprite != null)
+            {
+                so.FindProperty(property).objectReferenceValue = sprite;
+            }
+        }
+
         private static void WireBootstrapHolders(Scene scene)
         {
             SandboxBootstrap bootstrap = FindInScene<SandboxBootstrap>(scene);
@@ -1434,6 +1553,8 @@ namespace GolemFactory.Editor
 
             // §13.2's market and the mode that bypasses it, plus §8's Assembly Line.
             AssignIfPresent(so, "mastRegistryHolder", FindInScene<FreightMastRegistryHolder>(scene));
+            AssignIfPresent(so, "floorBoundsHolder", FindInScene<FloorBoundsHolder>(scene));
+            AssignIfPresent(so, "floorExpansion", FindInScene<FloorExpansionService>(scene));
             AssignIfPresent(so, "marketHolder", FindInScene<TruckloadMarketHolder>(scene));
             AssignIfPresent(so, "gameModeHolder", FindInScene<GameModeHolder>(scene));
             AssignIfPresent(so, "assemblyLineHolder",
