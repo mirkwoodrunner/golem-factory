@@ -235,8 +235,13 @@ namespace GolemFactory.Tests.EditMode
         {
             var converter = new GridCoordinateConverter(CellSize);
             Vector3 pastCorner = converter.CellToWorldCenter(new Vector2Int(20, -40));
+
+            // X CLAMPS TO THE STREET'S WIDTH HERE, NOT THE WORKSHOP'S, and that is §13.1
+            // working: the road runs past the building now, so a player off its south-east
+            // corner is stopped by the street's edge. This test read 12 while the world was a
+            // rectangle; the world is a T.
             Vector3 expectedCorner = converter.CellToWorldCenter(
-                new Vector2Int(12, FloorLayout.WorldMinY));
+                new Vector2Int(FloorLayout.StreetHalfExtent, FloorLayout.WorldMinY));
 
             Vector3 result = FloorLayout.ClampToFloor(pastCorner, converter, 12);
 

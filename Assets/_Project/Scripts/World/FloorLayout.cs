@@ -49,6 +49,28 @@ namespace GolemFactory.World
         /// </summary>
         public const int StreetDepth = 8;
 
+        /// <summary>
+        /// Half-width of the market street, in cells. WIDER THAN THE WORKSHOP, which is the
+        /// Game Director's call recorded in progression-design §13.1: §3.2 wants ~8 node sites
+        /// at endgame and the street at the building's own width held five.
+        ///
+        /// <para>
+        /// The alternative was a second stall row, and it was rejected for the player's sake
+        /// rather than the map's: one row lets a factory run clean parallel vertical buses north
+        /// into the workshop, where a second row would sit across every one of them. It would
+        /// also eat the free approach tiles §3.2's two-extractor cap needs in front of a stall.
+        /// </para>
+        ///
+        /// <para>
+        /// EIGHTEEN, so nine stalls fit at the existing four-cell pitch (x = 0, ±4, ±8, ±12,
+        /// ±16) with two cells of margin at each end. Nine rather than eight because keeping
+        /// the pitch and the origin means **the five existing stalls do not move** -- their
+        /// walk distances are on the Director's do-not-tune list, and shifting them to make a
+        /// symmetric eight would have retuned §9's manual era as a side effect.
+        /// </para>
+        /// </summary>
+        public const int StreetHalfExtent = 18;
+
         /// <summary>Southernmost world row. The street hangs below the workshop's south edge.</summary>
         public const int WorldMinY = -HalfExtent - StreetDepth;
 
@@ -76,9 +98,15 @@ namespace GolemFactory.World
         /// The cobbled street: the rows south of the workshop, same width as it.
         /// </summary>
         public static IEnumerable<Vector2Int> GetStreetCells(
-            int halfExtent = HalfExtent, int streetDepth = StreetDepth)
+            int halfExtent = HalfExtent, int streetDepth = StreetDepth,
+            int streetHalfExtent = StreetHalfExtent)
         {
-            for (int x = -halfExtent; x <= halfExtent; x++)
+            // The street is WIDER than the room it runs past, so the world is a T rather than a
+            // rectangle. Everything that used to be able to say "the world is halfExtent wide"
+            // has to ask which row it means -- see IsInsideWorld and ClampToFloor, which are the
+            // two places that answer it.
+            int width = streetHalfExtent < halfExtent ? halfExtent : streetHalfExtent;
+            for (int x = -width; x <= width; x++)
             {
                 for (int y = -halfExtent - streetDepth; y < -halfExtent; y++)
                 {
@@ -93,6 +121,7 @@ namespace GolemFactory.World
         public static IEnumerable<Vector2Int> GetWorldCells(
             int halfExtent = HalfExtent, int streetDepth = StreetDepth)
         {
+            // Workshop rows first, then street rows -- two regions of different widths.
             foreach (Vector2Int cell in GetFloorCells(halfExtent))
             {
                 yield return cell;
@@ -108,6 +137,34 @@ namespace GolemFactory.World
         public static bool IsInsideWorkshop(Vector2Int cell, int halfExtent = HalfExtent) =>
             cell.x >= -halfExtent && cell.x <= halfExtent &&
             cell.y >= -halfExtent && cell.y <= halfExtent;
+
+        /// <summary>
+        /// Whether a cell is ground at all -- workshop OR street. The predicate form of
+        /// <see cref="GetWorldCells"/>, and what bounds BUILDING, for the same reason
+        /// <c>ClampToFloor</c> bounds the player by the world rather than by the room: the five
+        /// traders stand out on the street, so a workshop-only rule would forbid the belts and
+        /// depots that reach them and quietly make the market unautomatable.
+        /// </summary>
+        public static bool IsInsideWorld(
+            Vector2Int cell, int halfExtent = HalfExtent, int streetDepth = StreetDepth) =>
+            IsInsideWorld(cell, halfExtent, streetDepth, StreetHalfExtent);
+
+        /// <summary>
+        /// The T-shaped test. A workshop row is the building's width; a street row is the
+        /// street's, which is wider. Asking one rectangle would either forbid the outer stalls
+        /// or allow building in the empty space north-east and north-west of the building.
+        /// </summary>
+        public static bool IsInsideWorld(
+            Vector2Int cell, int halfExtent, int streetDepth, int streetHalfExtent)
+        {
+            if (cell.y > halfExtent || cell.y < -halfExtent - streetDepth)
+            {
+                return false;
+            }
+
+            int width = cell.y >= -halfExtent ? halfExtent : streetHalfExtent;
+            return cell.x >= -width && cell.x <= width;
+        }
 
         // The ring one cell beyond the floor -- wall placement sits here, one full cell
         // outside the walkable area so wall sprites never overlap floor tiles.
@@ -231,7 +288,53 @@ namespace GolemFactory.World
                 return new Vector2(index, -halfExtent - streetDepth - 0.5f);
             }
 
+            // THE SIDE RUNS STEP OUT AT THE SHOP FRONT. North of it they are the building's own
+            // walls; south of it they are the street's, which is StreetHalfExtent - HalfExtent
+            // cells further out on each side. This is the cost the Director accepted with §13.1:
+            // the world is no longer a rectangle the side walls bound in one straight run.
+            if (edge == Edge.East || edge == Edge.West)
+            {
+                float outer = index < -halfExtent ? StreetHalfExtent + 0.5f : halfExtent + 0.5f;
+                return new Vector2(edge == Edge.East ? outer : -outer, index);
+            }
+
             return GetEdgeAnchor(edge, index, halfExtent);
+        }
+
+        /// <summary>
+        /// Indices for the far kerb and any other run that spans the STREET's width rather than
+        /// the workshop's. Separate from <see cref="GetEdgeIndices"/> for exactly the reason
+        /// that pair is separate from the world one: the skirting under the plank deck still has
+        /// to stop where the planks do.
+        /// </summary>
+        public static IEnumerable<int> GetStreetEdgeIndices(int streetHalfExtent = StreetHalfExtent)
+        {
+            for (int i = -streetHalfExtent; i <= streetHalfExtent; i++)
+            {
+                yield return i;
+            }
+        }
+
+        /// <summary>
+        /// The two "shoulders": the stretches of wall running east and west along the workshop's
+        /// south face, from the corner of the building out to the street's own edge.
+        ///
+        /// <para>
+        /// They exist only because the street is wider than the building. Without them the
+        /// ground north of the outer street -- the empty space beside the shop front -- has no
+        /// boundary drawn at all, and the cobbles run off into background exactly as they did
+        /// on three sides before the world edge existed. Anchored on the workshop's south line,
+        /// facing the street, so they read as the outside of the building's flank.
+        /// </para>
+        /// </summary>
+        public static IEnumerable<Vector2> GetShoulderAnchors(
+            int halfExtent = HalfExtent, int streetHalfExtent = StreetHalfExtent)
+        {
+            for (int x = halfExtent + 1; x <= streetHalfExtent; x++)
+            {
+                yield return new Vector2(x, -halfExtent - 0.5f);
+                yield return new Vector2(-x, -halfExtent - 0.5f);
+            }
         }
 
         // THE TWO NORTH CORNERS ONLY -- the two places where two wall runs actually meet.
@@ -274,9 +377,19 @@ namespace GolemFactory.World
             //
             // Only the south side opens up. North, east and west are still the workshop's walls,
             // because that is where the building actually ends.
+            //
+            // THE STREET IS WIDER THAN THE ROOM (§13.1), so the x clamp depends on which region
+            // the player is standing in. Y is clamped FIRST and x against the clamped y, so a
+            // player running south down the outer street cannot be pulled sideways by a row they
+            // are no longer on.
             Vector2 cellFraction = converter.WorldToCellFraction(worldPosition);
-            float clampedX = Mathf.Clamp(cellFraction.x, -halfExtent, halfExtent);
             float clampedY = Mathf.Clamp(cellFraction.y, -halfExtent - streetDepth, halfExtent);
+
+            // Half a cell of tolerance at the seam: the boundary between the two widths runs
+            // along the workshop's south wall line, and a player walking east along the street
+            // must be stopped by the building's side wall rather than teleported inside it.
+            float width = clampedY >= -halfExtent ? halfExtent : StreetHalfExtent;
+            float clampedX = Mathf.Clamp(cellFraction.x, -width, width);
             return converter.CellFractionToWorld(new Vector2(clampedX, clampedY));
         }
     }

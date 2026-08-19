@@ -917,3 +917,54 @@ items — the same 24-item tree is deep because coke, node access and floor spac
    is narrower than Factorio, and it should be, because rigid local determinism is this game's
    identity rather than a limitation. It is Factorio-*shaped* at roughly a fifth of the mechanical
    surface area, sized for a 4–5 hour prototype campaign rather than a 40-hour game.
+
+---
+
+## 13. Director's amendments (post-review)
+
+The design below §12 passed its three-round review before any code existed. These two decisions
+were taken later, by the project's Game Director, against questions the review left open. They are
+recorded here rather than edited into the sections above, so the reviewed text stays the reviewed
+text and a reader can see what changed after it.
+
+### 13.1 The market street extends east and west (amends §3.2)
+
+§3.2 wants **~8 node sites at endgame**. The street as built is the workshop's width (25 cells) and
+holds five stalls at a four-cell pitch, with no room for three more.
+
+**Decision: extend the road east and west, past the building, keeping ONE stall row.**
+
+The reasoning is the player's factory layout rather than the map's tidiness. A single row of stalls
+lets a player run **clean parallel vertical buses** north into the workshop -- one belt lane per
+good, no crossings. A second stall row would sit in front of those lanes and force every one of
+them to route around it, and it would also eat the approach clearance §3.2's **two-extractor cap**
+depends on: a stall needs free tiles in front of it for two extractors to stand.
+
+What the decision costs, accepted knowingly:
+
+- **The world is no longer as wide as the workshop.** The side walls stop bounding it in a single
+  run, so wall placement is now per-region rather than one rectangle.
+- `FloorLayout` grows a street half-extent distinct from the workshop's, and everything that reads
+  "the world" has to mean the wider shape -- including the player's `ClampToFloor` and the build
+  bound added in the backlog pass.
+
+### 13.2 The market sells full truckloads, and Creative Mode bypasses it (amends §5.1)
+
+`docs/game-design.md` promises "full truckload shipments" and the street shipped as five `Infinite`
+`ResourceNode`s: buying from a trader was presentation, and extraction was byte-for-byte what it
+had been when the stalls were boulders.
+
+**Decision: a market order is paid for, and arrives as a batch burst.**
+
+- **Priced**, so raw goods are a late-game **economic sink** rather than free input. The player
+  spends to buy, which is the counterweight §3.1's steam upkeep has and the raw supply never did.
+- **Delivered in bursts**, so a line fed from the market has to absorb a lump rather than a
+  trickle. That is what gives **buffer chests and accumulator lines** a job: smoothing a bursty
+  supply into a steady one is a factory problem the game did not previously pose.
+
+**Architecture requirement, and it is a state rather than a build flag: `isCreativeMode`.** With
+creative mode on, the payment and the burst are bypassed and the stall behaves exactly as it did --
+infinite, free, steady. The old boulder behaviour is therefore **a state the game can be put into**,
+not a version of the game that was deleted, which is what keeps every pre-existing test, `Main.unity`,
+and any save made before the change valid.
+

@@ -2663,3 +2663,354 @@ that retires one:
    This is now the **first** number a playtest should take, ahead of the boiler fuel ratio, because
    it is the one this pass changed. If it bites, the lever is the stall row: moving it from
    `y = -16` to `y = -14` costs two rows of approach clearance and buys back two cells each way.
+
+---
+
+## The Artificer's Ledger: an in-game tech tree chart
+
+The research track of `docs/progression-design.md` as a chart the player can open mid-game, on a
+fifth Management tab, with every node showing whether it is researched, available now, locked, or
+designed-but-unbuilt. 44 nodes across §9's six phases, ~76 prerequisite routes.
+
+### The load-bearing decision: the chart is drawn from data, not baked
+
+The obvious build is a poster PNG with the tree painted on it and markers overlaid at authored
+positions. That was rejected. A baked chart is a **second copy of §5.2 and §6** that no test can
+hold to the assets, and it goes stale the first time a recipe is retuned or a chassis cost changes
+— the exact failure mode this repo has been bitten by twice (the isometric world literals; the tint
+table that was "the whole of the problem" and was not).
+
+So the split is:
+
+- **Pixel art is chrome only** (`Tools/Art/generate_tech_tree_art.py` → `Art/UI/TechTree/`, 13
+  sprites): four node plaques, five kind badges, a phase banner, the drafting field, two dashed
+  rules. Nothing with a node name on it.
+- **Content** is `Progression/TechTreeCatalog.cs` — 44 nodes, transcribed from §5.2/§6/§9.
+- **Arrangement** is `Progression/TechTreeChartLayout.cs` — pure `Rect` math over a chart space
+  with y running *down*, unit-tested without a Canvas, the same idiom as `GridCoordinateConverter`.
+- **State** is `TechTreeStatusRules` over a `TechTreeProgressLedger`.
+
+`TechTreeCatalogTests` then pins the transcription against the assets on disk: every recipe node
+must unlock on a good some authored `RecipeDefinition` actually produces, all five chassis must
+appear, and the recipe-node count must equal the authored recipe count. A recipe added and not
+placed on the track fails the suite.
+
+### State comes from the world, not from a claim ledger
+
+§8's Assembly-Line gating (§11 item 12) is **spec only**. A chart keyed to claimed cards would read
+empty in the game as it ships. So a node is `Researched` when its unlock has been *observed*: an
+item produced, a chassis carried by some golem, a building placed, a tower stage completed. That is
+the same ordering §8 will later enforce, arrived at from the other end, and it works today.
+
+`TechTreeProgressTracker` (Holder-shaped, on `ManagerHolders.prefab`) collects it from two sources
+because neither alone is honest: `ItemAssembledEvent` catches a good the moment a golem makes it,
+including one that goes straight into another golem; the buffer sweep catches hand-cranked output,
+the opening stock, and everything a **loaded save** restores (a load restores buffers, not events).
+Chassis and buildings are polled on a 1 s timer rather than evented — there is no "golem built"
+signal on the bus, and inventing one to serve a read-only chart would mean editing
+`GolemConstructionStation` and `BuildModeController`.
+
+**The ledger only ever grows.** Deleting the last Presser does not un-invent the Presser, and a
+stockpile running dry does not un-discover Iron Plate. It is also what keeps the chart still: read
+live from buffer contents, half the track would flicker every time a golem emptied a depot.
+
+### Planned nodes, and why they cannot be researched
+
+Six nodes describe things the design specifies and the build does not have — `Repeat`, the Freight
+Link and its mast, the Slag Heap, Floor Expansion, the Assembly Bay cap (`docs/open-items.md`).
+They are drawn as blue drafting sketches and **stop at `Available`**, never `Researched`: no signal
+for them can ever arrive, and promoting them on prerequisites alone would have the chart report an
+unlock that does not exist. `TechTreeCatalogTests` pins the exact six *by name*, so building one
+fails the suite — which is the reminder to clear the flag rather than leave the chart calling a
+shipped feature "planned".
+
+### Built once, tinted often
+
+`ManagementPanel` refreshes its active tab **every frame while open**. The destroy-and-recreate
+idiom `WorkbenchController.RebuildUI` and `AssemblyLinePanel.Refresh` use is right for a handful of
+rows and would be hundreds of allocations a frame for 44 cards and ~228 line segments. So the
+chart's shape is built once from data and its state is re-applied only when the ledger's version
+moves. `TechTreeProgressLedger.Version` exists for exactly that gate.
+
+### Three things found by looking at the game view, not the properties
+
+Each of these passed every serialized-property check and was wrong on screen.
+
+1. **The detail line on every researched card was invisible** — warm parchment text on a bright
+   brass plaque. The ink now inverts with the plate (dark on brass, light on iron), which is the
+   rule `ManagementPanel`'s tab captions already followed and this screen had not.
+2. **The badges were brass on brass.** They are now tinted to a dark silhouette; each is drawn with
+   an outline, so shape — the channel the badge was carrying anyway — survives the tint.
+3. **"Done" and "do this next" read identically.** Both plaques are brass and the seal-versus-notch
+   silhouette was too quiet for the chart's single most important read. Researched is now knocked
+   back to a muted tint and available keeps full brass, so the few live cards are the brightest
+   thing on the page.
+
+### A pre-existing overlap this exposed and fixed
+
+`hideWhileOpen` — the list that hides the world HUD behind a full screen — lives on
+`WorkbenchController` only, and its comment claims it covers "the Workbench and Management modals".
+It did not: `ManagementPanel` had no such list, so the steam gauge and Clock Tower panel drew
+straight over the Management screen. Visible the first time the Ledger was opened in Play mode.
+`WorkbenchController.SetWorldHudVisible(bool)` is now public and `ManagementPanel.Open`/`Close`
+call it, so there is still exactly **one** authored list rather than a second copy to drift.
+
+### Manual Editor setup
+
+None. **Tools > Golem Factory > Author Tech Tree Chart** imports the 13 sprites (PPU 64, point,
+uncompressed, 10px 9-slice border on the plaques), adds `TechTreeProgressTracker` to
+`ManagerHolders.prefab`, clones the Save/Load tab button into a fifth `Ledger` button, builds the
+`TechTreeTab` (header, legend, `ScrollRect` + `RectMask2D` + chart), wires `ManagementPanel`, and
+then **reads `Sandbox.unity` back** — because the scene carries prefab overrides, and an authoring
+pass reports what it wrote rather than what the game will load.
+
+### Verification
+
+- **1071/1071 tests passing** (931 EditMode + 140 PlayMode), of which 37 are new.
+- **Opened in Play mode and looked at**, against both a fresh save (1/44, "Next: Clockwork
+  Scavenger") and a seeded mid-game ledger (12/44, "Next: Aether-Hauler"). All three visual defects
+  above were found that way and only that way.
+- Chart measured live at 1720×940 with 266 child objects under a clipping viewport.
+
+### Still open
+
+1. **No scrollbars.** The chart is 1720px wide, phases V and VI start off-screen, and panning is
+   drag-only — the headline carries a "drag the chart to pan" hint because nothing else on screen
+   says so. Real scrollbars, or a fit-to-width zoom, would be better.
+2. **Detail lines truncate** on the longer costs (the Zeppelin's five-item bundle). The card is
+   196px; the alternatives are a taller card or a hover readout, and there is no hover state on
+   this screen yet.
+3. **The alerts strip still draws over the Management screen.** It is not in `hideWhileOpen` at
+   all, so it does the same over the Workbench. Pre-existing, and left alone here.
+4. **Prerequisites are the readable gate, not the full ingredient list** — at most three per node,
+   chosen as the structural gate plus the ingredients whose arrival is the actual wait. R17's four
+   inputs are all real; four inbound lines per card turns the chart into a wiring diagram.
+5. **When §8's gating lands**, `TechTreeUnlockSignal` should grow a `Card` case and the ledger a
+   claimed-card set, so the chart reads the claim ledger *as well as* the world.
+
+
+## The backlog pass: eight items off `open-items.md`
+
+A sweep through the actionable backlog rather than one system: two functional bugs the player pays
+for, one unimplemented design rule, two readouts that were lying, an art job, and the two designed
+verbs that were still spec. What follows is ordered by how much of it a player would notice.
+
+### 1. A player-built construction station was a decorative box
+
+`GolemConstructionStationPrefab` is in Sandbox's build menu at 25 Scrap + 5 Brass and **every
+serialized reference on it is null** — no chassis roster, no golem prefab, no buffer registry — so
+`TryConstructGolem` early-outed on the null registry and built nothing, silently. The player paid
+and got a crate.
+
+The cause was structural rather than a missed field: stations are wired by
+`SandboxBootstrap.WireSpatialGameplay`, which sweeps the scene **once at startup** and therefore
+cannot ever see a station built afterwards. The comment there claiming newly built stations
+"configure themselves via `PlaceableBuilding`'s own wiring path" described a path that does not
+exist.
+
+**The fix is a seam, not a second set of holders.** `Buildings/IPlacedStationConfigurator` follows
+`Save/IGolemRespawner` and `Save/IBuildingRebuilder` exactly: the thing that already knows how to
+wire a station is the scene's bootstrap, so it implements the interface and
+`BuildModeController.RegisterPlacedEndpoints` asks it — rather than the controller growing its own
+copy of six holder references. `SandboxBootstrap.ConfigureStation` is now the **one** definition of
+"a station, fully wired into this scene", used by the startup sweep and by placement alike, so the
+two can never drift.
+
+Two smaller decisions inside it:
+
+- **The station's wiring is split in half.** `ConfigureSceneServices` takes the registries, clock
+  and Workbench; `ConfigureBuildRoster` takes the chassis list and golem prefab. The split exists
+  so the sweep can hand out scene references without being able to *blank* the assets an authored
+  station already carries — a single `Configure` that took everything would do exactly that the
+  first time a caller passed a null roster.
+- **The roster is captured from the scene, not duplicated onto the bootstrap.** The first station
+  found with a roster becomes the template every later one is built from. A serialized copy on
+  `SandboxBootstrap` would have been a second authored roster to drift.
+
+A save's rebuilt station comes back wired too, because `TryRebuildSavedBuilding` goes through the
+same `RegisterPlacedEndpoints`.
+
+### 2. The buildable area is now the ground that is drawn
+
+§3.3 asks for it and `BuildModeController` bounded placement by `GridMap` occupancy alone, so the
+player could build out past the kerb into nothing. Always true; finally *visible* once the map had
+an outside.
+
+**The bound is the WORLD, not the workshop**, and `docs/open-items.md` named the wrong predicate.
+`FloorLayout.IsInsideWorkshop` would forbid building on the market street — where all five traders
+stand — so no belt or depot could ever reach them, which is a worse bug than the one being fixed.
+`FloorLayout.IsInsideWorld` is the predicate form of `GetWorldCells` (and a test holds the two
+together over the whole neighbourhood rather than restating the arithmetic).
+
+- Unbounded by default (`-1`, following `ResourceNode.Infinite`'s sentinel idiom), turned on by
+  `SandboxBootstrap` next to the identical call that bounds the *player* — one boundary for "I can
+  walk there" and "I can build there".
+- **Removal is deliberately not bounded.** A building standing off the ground (an old save, a
+  bound that moved) must always be removable, or it is litter the player cannot clear.
+- Off the ground reads as `Blocked` on the ghost rather than as a fourth state: the player's move
+  is the same one an occupied tile asks for.
+
+### 3. The alerts strip: the last thing drawing over the full-screen modals
+
+Recorded twice as still-open. It is now in `hideWhileOpen`, in the prefab **and** in the scene's
+override of it — and confirmed by reading `Sandbox.unity` back rather than by trusting the
+authoring log:
+
+```
+hideWhileOpen = 5
+   [0] BuildMenuPanel  [1] SteamGauge  [2] ClockTowerPanel  [3] HandCrankPanel  [4] AlertsStrip
+```
+
+### 4. Two economy readouts that were lying
+
+**The stock bars were relative-only.** §1.2 added `CapacityPerType`/`RoomFor` and nothing read it,
+so a capped buffer's bar still measured against the biggest row on screen and buffer backpressure —
+which §5.3(c)'s whole Slag economy runs on — stayed invisible until a golem stalled.
+`Economy/StockBarPolicy` is the pure split: a capped buffer's bar is a real fill fraction with its
+own colour ramp and a `84/100` label; an uncapped one (the player's deliberately `Unlimited`
+stockpile) keeps the honest relative comparison. The two modes are kept apart rather than blended
+because a half-length bar means two different things in them. Near-full trips at five sixths —
+about one player reaction before the stall, which is what a warning is for.
+
+**The rate column was net stock change**, so a line running 60/min in and 60/min out — fully loaded
+— printed "0/min, Steady", identical to a line dead for ten minutes. That is unfixable from levels
+alone: sampling a quantity can only ever see net change. `StorageBuffer` now keeps two **monotone
+lifetime counters** (deposited/withdrawn per type); `BufferRateTracker` samples them alongside the
+level and fits both slopes, and `BufferFlowUtility` asks the second question — with the level flat,
+is anything passing through? Throughput is `min(in, out)`, because the surplus of either side is
+already reported as net movement and counting it twice reads as double the traffic there is.
+
+The counters are bookkeeping, not rate tracking: every derivation stays in the presentation-side
+tracker, and they are cleared by `ClearContents` because that is the load path, and fitting a slope
+across a discontinuity is precisely what the Clock Tower's rate windows are deliberately not
+restored to avoid.
+
+### 5. Belts: the arrows were wrong in both directions
+
+The arrows scrolled at `speed × (1 − congestion)`, which measures how **full** a lane is rather
+than how fast it is running.
+
+- Two of four queue slots blocked behind a parked head, tail still running free: arrows halved,
+  while the lane was keeping up at the front.
+- A lane whose single item cannot move at all: congestion is **zero** (a parked head is
+  deliberately not counted as a jam, or every terminal belt in the factory is permanently red), so
+  the arrows ran at *full* speed over cargo that was not moving.
+
+`BeltFlowUtility.ComputeFlowFactor` replaces it, and it is the **maximum** over the cargo rather
+than the mean. The mean freezes the arrows whenever the head is parked — and a terminal segment
+parks its head permanently while items behind it keep advancing; frozen arrows over visibly moving
+cargo is a worse lie than the one being fixed. The max is always a speed something on the lane is
+really travelling at, and reaches zero only when nothing is moving. Congestion keeps the alarm
+channel, unchanged.
+
+> A first attempt at this added a combined `ComputeStallLevel` = `max(congestion, 1 − flow)` and it
+> was wrong: it would have made every terminal belt permanently red, which is the exact thing
+> `IsQueuedBehindAnother` was written to prevent. The test suite caught it as a contradiction with
+> the pinned congestion behaviour.
+
+**A placed belt now has a jam readout at all.** A one-cell belt has no room for scrolling arrows,
+so `ConfigureCargoOnly` switches that whole channel off — a backed-up player belt was
+distinguishable from a working one only by staring at the cargo. It now lends its own static
+direction arrow to the visual as a flow lamp (`ConfigureFlowSignalTarget`), which captures the
+authored colour as the resting state, so a free-flowing belt looks exactly as authored and only a
+jammed one changes.
+
+**`ComputeItemScale`'s clamp turned out to be already fixed** — by the projection switch, not by
+anyone. Measured at the real geometry (a placed belt is one cell = 1.0 world units, `BeltNetwork`'s
+default 4-tick segment, item sprites 32 px at PPU 64 = 0.5 units): the fit lands at 0.625, strictly
+inside both clamps, and cargo draws at exactly the authored 1.25× of slot spacing. A test now pins
+that geometry so the claim cannot silently become true again.
+
+### 6. Art: the floor, and the last three crates
+
+**24 character sprites were floating.** BottomCenter puts the pivot on the bottom row of the
+*canvas*, not of the drawing, so five of the eight golem sprites floated between 0.047 and 0.156 of
+a cell above their tile — the pivot fix put them on the right tile and the canvas padding lifted
+them off it again. `Tools/Art/trim_character_alpha.py` trims the transparent rows beneath the feet.
+
+> **The shared-minimum rule** is the one subtle thing in it. The Artificer's sixteen walk frames
+> are trimmed by the *same* number of rows, taken from the frame with the least padding — never per
+> frame. Per-frame trimming would manufacture a vertical bob out of art that deliberately has none,
+> and a procedurally invented bob is exactly what was rejected when the walk cycle landed.
+
+It is a script rather than an importer change because an importer that trimmed would silently
+disagree with the file on disk about where the sprite ends — and it could not live in
+`generate_placeholder_art.py`, whose chassis output was hand-replaced long ago (`--legacy` warns
+that regenerating clobbers the real art).
+
+**The last three `building_block` users have their own sprites** (`Tools/Art/generate_building_art.py`
+→ steam pipe, depot, construction station), and the awkward half of that problem is closed: `Depot`
+and `GolemConstructionStation` are authored by `ApplyCost`, which restored a cost and never touched
+the `SpriteRenderer` at all, so no amount of reading the tint table would have led anyone to them.
+`ApplyCost` takes a sprite now. Every tint in the table is white; the table is kept, because the
+reasoning on it — *a tint exists to tell identical boxes apart, so the moment a building has a
+silhouette the tint is what wrecks it* — is what stops the next building being tinted instead of
+drawn.
+
+**`player.png.meta`'s pivot trap is closed**: it recorded `alignment: 7` with a stored pivot of
+`{0.5, 0.5}`, behaving as BottomCenter while reading as centre to anyone auditing by eye.
+
+### 7. `Repeat(n)`: the Overclocker finally has a verb
+
+§6's replacement for the cut adjacency speed aura. Re-runs the immediately preceding `Assemble`
+n more times from the same input stock, at n × its duration, stalling on the same shortfall rules,
+Overclocker-only.
+
+**It is n sequential assemblies, not one step with multiplied quantities**, and that is the
+load-bearing choice. §1.3's atomicity is per assembly: each iteration checks room for its own
+output and holds its own inputs before consuming anything, so a repeat that runs out halfway leaves
+finished batches in output stock and the remaining inputs untouched — instead of stranding a
+part-consumed multi-batch withdrawal inside a golem that nothing can reach. It also makes §6's
+claim about the 12-per-type cap true for free: `Repeat` on R15 (10 Casing) stalls `MissingItem` on
+the second iteration, because 20 Casing cannot be held.
+
+Mechanically it rides the existing loop rather than adding a second kind of step: a repeat that
+owes another iteration rewinds `StepProgressTicks` instead of advancing the step index, so the
+stall guard, the resume event and the duration clamp all keep treating it as one ordinary step
+being begun again. The state is **self-correcting** rather than notified — any non-`Repeat` step
+clears it, and a captured card that no longer matches the preceding step restarts the count —
+because `EngageGears` rewrites the same `GolemProgram` instance under a running golem and nothing
+tells the entity that happened.
+
+The Overclocker-only rule is `ChassisDefinition.allowsRepeat`, a flag on the data written from the
+same authoring table that carries the costs — not a name comparison, which a renamed asset breaks
+silently. It is refused at **assembly** time (`GolemProgram.TryAddAppendage`), not stalled at run
+time, because a Scavenger will never grow the ability and the rigid-stall rule is for conditions
+the world can change.
+
+### 8. The Assembly Bay cap is in the loop
+
+`AssemblyBayStructure` had capacity and upgrade bookkeeping, tested, for several milestones — and
+no job. §8 gives it one: bays start at **10** slots ("above the natural Phase-2 count of ~8", so
+the cap is a middle-game decision rather than a Phase-1 wall) and upgrade **+6 for 40 Scrap + 20
+Iron Plate**.
+
+That price is **Presser-tier goods only, deliberately** — "so the cap can never gate on something
+the cap itself prevents you from making" — which is now a test rather than a sentence. The cost
+became an item bundle (§11 item 8) because the old `scrapCost`/`brassCost` int pair could not
+express a price in Iron Plate at all.
+
+`GolemConstructionStation` checks the cap **before** the cost, so a refusal never touches the
+stockpile, and reports `LastRefusalReason` so the panel stops printing a shortfall of nothing at a
+player whose stockpile is full. Occupancy is **derived**: destroyed golems are pruned on read
+rather than relying on every deletion path remembering to release a slot — §10's own recovery route
+from an over-built factory is "delete golems, freeing both bay slots and upkeep instantly", so a
+slot that never came back would break the escape hatch. The load path force-assigns past the cap,
+for the same reason a rebuilt building is not re-charged: a save describes a factory that was legal
+when it was built.
+
+### What this cost the tech tree chart, on purpose
+
+Two of the six `IsPlanned` nodes are cleared — `verb.repeat` and `bays.assembly` — and the test
+that pins the exact six **failed first**, which is what it was written to do: it is the reminder to
+clear the flag rather than leaving the chart quietly calling a shipped feature "planned". Four
+remain: the Freight Link, the Freight Mast, the Slag Heap, Floor Expansion.
+
+### Verification
+
+- **982/982 EditMode** and **149/149 PlayMode**, from a 931 + 140 baseline — 60 new tests.
+- Both authoring passes re-run headless and `SceneProbe.Verify` read `Sandbox.unity` back
+  afterwards, because the scene carries prefab overrides and an authoring pass reports what it
+  wrote rather than what the game will load.
+- **Not played.** Every claim here is from tests and a scene read-back; the arc remains
+  unplaytested, and the boiler fuel ratio is still the first number §12 says to time.

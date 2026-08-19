@@ -102,6 +102,59 @@ namespace GolemFactory.Belts
             return Mathf.Clamp01(CountQueued(items, segmentLength, step) / (float)queueSlots);
         }
 
+        /// <summary>
+        /// The fraction of a full step this lane's cargo is actually achieving, in [0, 1] --
+        /// what the arrows scroll at. An empty lane reads 1: nothing is being held up.
+        ///
+        /// <para>
+        /// The arrows were multiplied by <c>1 - congestion</c>, which measures how FULL the
+        /// lane is, not how fast it is running: two queued slots out of four halved the arrow
+        /// speed while the front of the lane was still handing off at full rate, so a belt that
+        /// was keeping up looked like one falling behind.
+        /// </para>
+        ///
+        /// <para>
+        /// It is the MAXIMUM over the cargo, not the mean, and that is the load-bearing choice.
+        /// The mean freezes the arrows whenever the head is parked -- and a terminal segment
+        /// parks its head permanently, waiting for a golem to pull it, while items behind it
+        /// keep advancing. Frozen arrows over visibly moving cargo is a worse lie than the one
+        /// being fixed. The max is always a speed something on this lane is really travelling
+        /// at, and reaches zero only when nothing at all is moving.
+        /// </para>
+        ///
+        /// <para>
+        /// This is the SPEED channel only. Whether the lane is jammed stays
+        /// <see cref="ComputeCongestion"/>'s answer, which deliberately does not count a lone
+        /// parked head as a jam -- otherwise every terminal belt in the factory is permanently
+        /// red and the alarm means nothing.
+        /// </para>
+        /// </summary>
+        public static float ComputeFlowFactor(
+            IReadOnlyList<ItemStack> items, int segmentLength, float step)
+        {
+            if (items == null || items.Count == 0 || step <= 0f)
+            {
+                return 1f;
+            }
+
+            float fastest = 0f;
+            for (int i = 0; i < items.Count; i++)
+            {
+                // Exactly BeltSegment.Advance's cap: the lane's end for the head item, one
+                // MinSpacing behind the item ahead for everyone else. Restating the rule would
+                // be a second definition of blocking; this mirrors the one in the simulation.
+                float cap = i == 0 ? segmentLength : items[i - 1].Progress - BeltSegment.MinSpacing;
+                float advance = Mathf.Min(items[i].Progress + step, cap) - items[i].Progress;
+                float achieved = Mathf.Clamp01(advance / step);
+                if (achieved > fastest)
+                {
+                    fastest = achieved;
+                }
+            }
+
+            return fastest;
+        }
+
         /// <summary>Sub-tick interpolated progress used for the item's on-screen position.</summary>
         public static float ComputeDisplayProgress(float currentProgress, float predictedProgress, float tickFraction)
         {

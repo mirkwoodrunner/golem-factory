@@ -23,6 +23,29 @@ namespace GolemFactory.World
 
         public bool IsDepleted => RemainingQuantity == 0;
 
+        /// <summary>
+        /// A truckload arriving (progression-design §13.2). Adds to a finite node's stock and
+        /// returns what was actually added.
+        ///
+        /// <para>
+        /// A DELIVERY TO AN INFINITE NODE IS A NO-OP, deliberately, rather than an error or a
+        /// silent conversion to finite: <see cref="Infinite"/> is what Creative Mode leaves
+        /// every stall on, and a market order placed in that state has nothing to deliver
+        /// because the stall never runs out. That keeps one code path for both modes instead of
+        /// a creative-only branch inside the market.
+        /// </para>
+        /// </summary>
+        public int Deliver(int quantity)
+        {
+            if (quantity <= 0 || RemainingQuantity == Infinite)
+            {
+                return 0;
+            }
+
+            RemainingQuantity += quantity;
+            return quantity;
+        }
+
         public bool TryExtract(out ItemStack item)
         {
             if (IsDepleted)

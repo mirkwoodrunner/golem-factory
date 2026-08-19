@@ -86,9 +86,38 @@ namespace GolemFactory.Golems
                 return false;
             }
 
+            // §6: "The Overclocker alone may hold a Repeat(n) appendage." Refused at ASSEMBLY
+            // time rather than stalled at run time, because this is not a precondition that can
+            // come true later -- a Scavenger will never grow the ability -- and the rigid-stall
+            // rule is for conditions the world can change.
+            if (!CanHold(appendage))
+            {
+                return false;
+            }
+
             SyncQuantities();
             appendages.Add(appendage);
             appendageQuantities.Add(ClampQuantity(appendage.haulQuantity));
+            return true;
+        }
+
+        /// <summary>
+        /// Whether <paramref name="appendage"/> is legal on this program's chassis at all.
+        /// Public so the Workbench can grey a card out rather than letting the player drag it
+        /// into a socket and discover on Engage Gears that it was never allowed.
+        /// </summary>
+        public bool CanHold(AppendageActionDefinition appendage)
+        {
+            if (appendage == null)
+            {
+                return false;
+            }
+
+            if (appendage.actionType == AppendageActionType.Repeat)
+            {
+                return chassis != null && chassis.allowsRepeat;
+            }
+
             return true;
         }
 

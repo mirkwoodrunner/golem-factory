@@ -125,6 +125,84 @@ namespace GolemFactory.Player
         /// Wires the build-mode controller this interactor defers the shared R key to. Optional:
         /// with none wired, R always rotates the nearest golem.
         /// </summary>
+        // --- The market (progression-design §13.2) -----------------------------------------
+        // Optional in exactly the same additive way build mode and the boiler hatch are: with
+        // no market wired, a stall is harvested and never ordered from, which is the
+        // boulder-era behaviour and also what Creative Mode leaves in place.
+        private Economy.TruckloadMarketHolder _market;
+        private Economy.StorageBufferRegistryHolder _marketWallet;
+        private string _marketWalletBufferId = "FactoryStockpile";
+
+        public void ConfigureMarket(
+            Economy.TruckloadMarketHolder market, Economy.StorageBufferRegistryHolder wallet,
+            string walletBufferId)
+        {
+            _market = market;
+            _marketWallet = wallet;
+            if (!string.IsNullOrEmpty(walletBufferId))
+            {
+                _marketWalletBufferId = walletBufferId;
+            }
+        }
+
+        /// <summary>
+        /// Orders one truckload from the stall a marker trades for. Separate from
+        /// <see cref="TryHarvest"/> and reached only when the stall is EMPTY, which makes the
+        /// two actions share one key without ever being ambiguous: a stall with stock is
+        /// something you take from, a stall without is something you buy from.
+        /// </summary>
+        public bool TryOrderTruckload(ResourceNodeMarker marker)
+        {
+            if (marker == null || _market == null)
+            {
+                LastStatusMessage = "Nothing to order here.";
+                return false;
+            }
+
+            Economy.MarketOffer offer;
+            if (!_market.Market.TryGetOffer(marker.NodeId, out offer))
+            {
+                LastStatusMessage = "This stall is not trading.";
+                return false;
+            }
+
+            Economy.MarketOrderResult result = _market.Market.TryOrder(
+                marker.NodeId,
+                _marketWallet != null ? _marketWallet.Registry : null,
+                _marketWalletBufferId,
+                _market.CurrentTick);
+
+            switch (result)
+            {
+                case Economy.MarketOrderResult.Ordered:
+                    LastStatusMessage =
+                        $"Ordered {offer.TruckloadSize} {marker.ItemType}; the cart is on its way.";
+                    SpawnPopup(marker.transform.position, "Ordered", HarvestPopupColor);
+                    return true;
+
+                case Economy.MarketOrderResult.AlreadyInTransit:
+                    LastStatusMessage = "That cart is already on the road.";
+                    SpawnPopup(marker.transform.position, "En route", RefusedPopupColor);
+                    return false;
+
+                case Economy.MarketOrderResult.CannotAfford:
+                    // Names the shortfall, exactly as a refused chassis or building does.
+                    LastStatusMessage = GolemFactory.UI.ConstructionCostPolicy.FormatShortfall(
+                        MarketStockOf, offer.Price);
+                    SpawnPopup(marker.transform.position, "Can't pay", RefusedPopupColor);
+                    return false;
+
+                default:
+                    LastStatusMessage = "This stall never runs dry.";
+                    return false;
+            }
+        }
+
+        private int MarketStockOf(string itemType) =>
+            _marketWallet == null
+                ? 0
+                : _marketWallet.Registry.GetQuantity(_marketWalletBufferId, itemType);
+
         public void ConfigureBuildMode(BuildModeController buildModeController) =>
             _buildModeController = buildModeController;
 
@@ -595,12 +673,37 @@ namespace GolemFactory.Player
             switch (pick.Kind)
             {
                 case InteractionKind.Harvest:
-                    return ((ResourceNodeMarker)target).IsDepleted;
+                {
+                    var marker = (ResourceNodeMarker)target;
+                    // An empty stall with a cart already on the road is genuinely unavailable;
+                    // an empty stall you can order from is not, it is the other half of the
+                    // market. Without this the prompt would grey out at exactly the moment the
+                    // player most needs to be told they can buy more.
+                    if (marker.IsDepleted && CanOrderFrom(marker))
+                    {
+                        return false;
+                    }
+
+                    return marker.IsDepleted;
+                }
                 case InteractionKind.Refuel:
                     return BoilerRefuelPolicy.AmountToLoad(StockpileCoke) <= 0;
                 default:
                     return false;
             }
+        }
+
+        /// <summary>
+        /// Whether this stall would take an order right now: a market is wired, it trades this
+        /// node, and it has no cart already on the road.
+        /// </summary>
+        public bool CanOrderFrom(ResourceNodeMarker marker)
+        {
+            Economy.MarketOffer offer;
+            return marker != null
+                   && _market != null
+                   && _market.Market.TryGetOffer(marker.NodeId, out offer)
+                   && !_market.Market.IsInTransit(marker.NodeId);
         }
 
         private int StockpileCoke =>
@@ -670,7 +773,19 @@ namespace GolemFactory.Player
             switch (pick.Kind)
             {
                 case InteractionKind.Harvest:
-                    return TryHarvest(target as ResourceNodeMarker);
+                {
+                    // ONE KEY, TWO ACTIONS, decided by the stall rather than by a mode: full
+                    // stalls are harvested, empty ones are ordered from. In Creative Mode a
+                    // stall is never empty, so this branch is never reached and [E] means what
+                    // it always meant.
+                    var marker = target as ResourceNodeMarker;
+                    if (marker != null && marker.IsDepleted && CanOrderFrom(marker))
+                    {
+                        return TryOrderTruckload(marker);
+                    }
+
+                    return TryHarvest(marker);
+                }
                 case InteractionKind.Construct:
                     return TryOpenConstruction(target as GolemConstructionStation);
                 case InteractionKind.Program:

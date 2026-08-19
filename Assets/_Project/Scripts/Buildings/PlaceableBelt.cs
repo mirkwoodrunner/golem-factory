@@ -107,6 +107,12 @@ namespace GolemFactory.Buildings
             _cargoVisual.ConfigureCargoOnly(
                 conveyorHolder, _segment.SegmentId, startGo.transform, endGo.transform,
                 itemSprites, itemMaterial, fallbackItemSprite);
+
+            // The one cue this belt already draws, lent to the cargo visual as its jam lamp.
+            // Without it a placed belt has no flow readout at all: the scrolling-arrow channel
+            // that carries "backed up" on a long lane does not exist on a single tile, so a
+            // jammed belt was distinguishable from a working one only by staring at the cargo.
+            _cargoVisual.ConfigureFlowSignalTarget(directionArrow);
         }
     }
 }

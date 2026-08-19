@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using GolemFactory.ClockTower;
 using GolemFactory.Economy;
+using GolemFactory.AssemblyLine;
 using GolemFactory.PunchCards;
 
 namespace GolemFactory.Editor
@@ -230,16 +231,181 @@ namespace GolemFactory.Editor
             int recipes = AuthorRecipes();
             int cards = AuthorAssembleCards();
             cards += AuthorPushCard();
+            cards += AuthorRepeatCard();
             cards += RepurposeLegacyRefineCard();
             int chassis = AuthorChassisCosts();
             int stages = AuthorClockTowerStages();
+            int deck = AuthorAssemblyLineDeck();
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
             Debug.Log($"ProgressionAssetAuthoring: {recipes} recipes, {cards} appendage cards, " +
-                      $"{chassis} chassis cost bundles, {stages} Clock Tower stages written to disk.");
+                      $"{chassis} chassis cost bundles, {stages} Clock Tower stages, " +
+                      $"{deck} Assembly Line cards written to disk.");
         }
+
+        private const string DeckRoot = "Assets/_Project/ScriptableObjects/AssemblyLineCards/";
+
+        /// <summary>
+        /// §8's draftable deck: one <c>DraftableCardDefinition</c> per punch card and per
+        /// chassis, so the Assembly Line has something to gate WITH. Without a deck, turning
+        /// §8's gating on would leave the vault empty and the game unplayable -- gating is only
+        /// half a feature until the thing it gates exists.
+        ///
+        /// <para>
+        /// <b>Generated from the assets, not hand-listed.</b> A recipe card's claim cost is
+        /// derived from the recipe's own inputs, which is §8.2's rule ("Tier-N cards cost
+        /// Tier-(N-1) goods -- the actual tech spend") expressed as code rather than as
+        /// nineteen transcribed bundles that could drift from the recipes they mirror. A card's
+        /// item prerequisite is likewise the recipe's first input: §8.3's worked example is that
+        /// Aether Containment cannot appear before a Lens has been made, and the first input IS
+        /// that relationship for every row of §5.2.
+        /// </para>
+        ///
+        /// <para>
+        /// <b>The multiplier is tuning.</b> Four batches' worth of inputs is a first pass for
+        /// the Game Director to balance in play; the derivation is the part that has to be right
+        /// here.
+        /// </para>
+        ///
+        /// <para>
+        /// The four movement verbs are FREE, NON-UNIQUE and prerequisite-free: they are how a
+        /// golem does anything at all, they keep cycling so a second player (or a lost card)
+        /// cannot strand anyone, and they are what the opening hand grants outright.
+        /// </para>
+        /// </summary>
+        private static int AuthorAssemblyLineDeck()
+        {
+            EnsureFolder(DeckRoot);
+
+            // Multiplier from a recipe's inputs to its card's claim cost. TUNING.
+            const int BatchesPerCard = 4;
+
+            int count = 0;
+            var deck = new List<DraftableCardDefinition>();
+            var openingHand = new List<DraftableCardDefinition>();
+
+            // --- the verbs ------------------------------------------------------------------
+            foreach (string verb in new[] { "ExtractScrap", "HaulScrap", "PushOutput", "RepeatAssembly" })
+            {
+                AppendageActionDefinition card = LoadAppendageOrNull(verb);
+                if (card == null)
+                {
+                    continue;
+                }
+
+                DraftableCardDefinition draftable =
+                    LoadOrCreate<DraftableCardDefinition>(DeckRoot + "Card_" + verb + ".asset");
+                draftable.chassis = null;
+                draftable.logicCore = null;
+                draftable.appendage = card;
+                draftable.claimCost = new List<RecipeIngredient>();
+                // AND the legacy fields, explicitly zeroed. An empty bundle falls back to the
+                // legacy Scrap price for M9's demo deck's sake, and a freshly created asset's
+                // baseCost defaults to 20 -- so leaving these alone quietly priced the four
+                // movement verbs at 20 Scrap each, which is neither free nor authored anywhere.
+                draftable.baseCost = 0;
+                draftable.minCost = 0;
+                draftable.decayPerSecond = 0f;
+                draftable.prerequisiteCards = new List<DraftableCardDefinition>();
+                draftable.prerequisiteItemProduced = null;
+                draftable.isUnique = false;
+                EditorUtility.SetDirty(draftable);
+                deck.Add(draftable);
+                // The opening hand: a gated vault with none of these in it cannot
+                // program a golem at all, and §9 Phase 1 asks for one in minutes.
+                openingHand.Add(draftable);
+                count++;
+            }
+
+            // --- the recipes ----------------------------------------------------------------
+            foreach (RecipeRow row in Recipes)
+            {
+                var recipe = AssetDatabase.LoadAssetAtPath<RecipeDefinition>(RecipeRoot + row.AssetName + ".asset");
+                // CardName ALREADY carries the "Assemble" prefix ("AssembleCoking") -- prefixing it again
+                // asked for AssembleAssembleCoking, found nothing, and silently skipped all nineteen
+                // recipe cards, leaving a deck of verbs and chassis only.
+                AppendageActionDefinition card = LoadAppendageOrNull(row.CardName);
+                if (recipe == null || card == null)
+                {
+                    continue;
+                }
+
+                DraftableCardDefinition draftable =
+                    LoadOrCreate<DraftableCardDefinition>(DeckRoot + "Card_" + row.AssetName + ".asset");
+                draftable.chassis = null;
+                draftable.logicCore = null;
+                draftable.appendage = card;
+
+                var cost = new List<RecipeIngredient>();
+                for (int i = 0; i < recipe.inputs.Count; i++)
+                {
+                    cost.Add(new RecipeIngredient(
+                        recipe.inputs[i].itemType, recipe.inputs[i].quantity * BatchesPerCard));
+                }
+
+                draftable.claimCost = cost;
+                draftable.prerequisiteCards = new List<DraftableCardDefinition>();
+                // The first input, in the recipe's AUTHORED order -- the same ordering rule
+                // GolemEntity uses to pick which shortfall to name, so two readers of one recipe
+                // always agree about which ingredient is the gate.
+                draftable.prerequisiteItemProduced =
+                    recipe.inputs.Count > 0 ? recipe.inputs[0].itemType : null;
+                draftable.isUnique = true;
+                EditorUtility.SetDirty(draftable);
+                deck.Add(draftable);
+                count++;
+            }
+
+            // --- the chassis ----------------------------------------------------------------
+            foreach ((string assetName, RecipeIngredient[] chassisCost) in ChassisCosts)
+            {
+                var chassis = AssetDatabase.LoadAssetAtPath<ChassisDefinition>(ChassisRoot + assetName + ".asset");
+                if (chassis == null)
+                {
+                    continue;
+                }
+
+                DraftableCardDefinition draftable =
+                    LoadOrCreate<DraftableCardDefinition>(DeckRoot + "Card_" + assetName + ".asset");
+                draftable.appendage = null;
+                draftable.logicCore = null;
+                draftable.chassis = chassis;
+
+                // A chassis CARD is the right to build it, not the build itself -- the golem's
+                // own cost is still charged by the construction station. A quarter of the build
+                // cost, floored at one, so the card is a real spend without double-charging the
+                // chassis. TUNING.
+                var cost = new List<RecipeIngredient>();
+                for (int i = 0; i < chassisCost.Length; i++)
+                {
+                    int quantity = chassisCost[i].quantity / 4;
+                    cost.Add(new RecipeIngredient(chassisCost[i].itemType, quantity < 1 ? 1 : quantity));
+                }
+
+                draftable.claimCost = cost;
+                draftable.prerequisiteCards = new List<DraftableCardDefinition>();
+                draftable.prerequisiteItemProduced =
+                    chassisCost.Length > 0 ? chassisCost[0].itemType : null;
+                draftable.isUnique = true;
+                EditorUtility.SetDirty(draftable);
+                deck.Add(draftable);
+                count++;
+            }
+
+            // One catalogue asset holding the whole deck, rebuilt wholesale so a card dropped
+            // from the tables above actually leaves the pool.
+            DraftableCardCatalog catalog =
+                LoadOrCreate<DraftableCardCatalog>(DeckRoot + "AssemblyLineDeck.asset");
+            catalog.SetContents(deck, openingHand);
+            EditorUtility.SetDirty(catalog);
+
+            return count;
+        }
+
+        private static AppendageActionDefinition LoadAppendageOrNull(string assetName) =>
+            AssetDatabase.LoadAssetAtPath<AppendageActionDefinition>(AppendageRoot + assetName + ".asset");
 
         private static int AuthorClockTowerStages()
         {
@@ -388,6 +554,38 @@ namespace GolemFactory.Editor
         }
 
         /// <summary>
+        /// §6's Overclocker verb, as a card. One asset, not one per recipe: <c>Repeat</c> carries
+        /// no recipe of its own -- it re-runs whatever <c>Assemble</c> sits immediately in front
+        /// of it -- so a card per recipe would be nineteen ways to spell the same instruction.
+        ///
+        /// <para>
+        /// <c>haulQuantity</c> is the authored DEFAULT n, and 1 is deliberate: one extra
+        /// iteration is §6's own worked example ("Haul(Plate,8) -> Haul(Brass,2) -> Assemble ->
+        /// Repeat(1) -> Push", 2 Casings per cycle), and it is the smallest value that makes
+        /// the card do anything at all. The player's real n lives per slot on GolemProgram.
+        /// </para>
+        /// </summary>
+        private static int AuthorRepeatCard()
+        {
+            EnsureFolder(AppendageRoot);
+
+            AppendageActionDefinition repeat =
+                LoadOrCreate<AppendageActionDefinition>(AppendageRoot + "RepeatAssembly.asset");
+
+            repeat.actionType = AppendageActionType.Repeat;
+            repeat.recipe = null;
+            repeat.sourceId = null;
+            repeat.destinationId = null;
+            repeat.inputItemType = null;
+            repeat.outputItemType = null;
+            repeat.haulQuantity = 1;
+            repeat.durationTicks = 1;
+
+            EditorUtility.SetDirty(repeat);
+            return 1;
+        }
+
+        /// <summary>
         /// §11 item 6: "repurpose RefineBrass.asset to Scrap -> Iron Plate".
         ///
         /// <para>
@@ -472,6 +670,11 @@ namespace GolemFactory.Editor
                 }
 
                 chassis.cost = new List<RecipeIngredient>(cost);
+
+                // §6: "The Overclocker alone may hold a Repeat(n) appendage." Written from this
+                // table so the permission and the roster stay one list -- a second place naming
+                // the Overclocker is a second place to forget it.
+                chassis.allowsRepeat = assetName == "MainspringOverclocker";
 
                 // maxAppendageSlots is NOT touched. §1.1 already set the roster to 2/3/4/5/6 and
                 // slot count is THE tier gate in this design -- a tuning script quietly

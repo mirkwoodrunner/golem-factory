@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using GolemFactory.AssemblyLine;
 using GolemFactory.Buildings;
 using GolemFactory.Economy;
+using GolemFactory.PunchCards;
 
 namespace GolemFactory.UI
 {
@@ -23,6 +25,18 @@ namespace GolemFactory.UI
         // Claim button skin, applied per-row since rows are rebuilt from scratch on every
         // Refresh() -- left unset, the button falls back to its default flat Image color.
         [SerializeField] private Sprite claimButtonSprite;
+
+        // --- The Assembly Bay cap (progression-design 8) -----------------------------------
+        // Wired at RUNTIME by SandboxBootstrap, never authored: the bay lives on
+        // ManagerHolders.prefab and this panel on WorkbenchCanvas.prefab, and a prefab cannot
+        // hold a reference into another prefab. Left unwired the row simply does not appear,
+        // which is what every scene without a bay wants.
+        //
+        // Its own buffer id, NOT walletBufferId: the Assembly Line claims cards from a wallet
+        // buffer, while a bay upgrade is paid out of the player's stockpile -- the same buffer
+        // the construction station and the build menu spend from.
+        [SerializeField] private AssemblyBayStructure assemblyBay;
+        [SerializeField] private string stockpileBufferId = "FactoryStockpile";
 
         // Warm parchment, not Color.black: these rows sit on ManagementScreen's near-black
         // iron panel (0.08 grey), where the original black text was effectively invisible.
@@ -48,6 +62,47 @@ namespace GolemFactory.UI
         }
 
         public void ConfigureSprites(Sprite claimButton) => claimButtonSprite = claimButton;
+
+        /// <summary>
+        /// Wires the bay row. Separate from <see cref="Configure"/> for the same reason every
+        /// other Configure* split in this project is: a scene with no bay never calls it and
+        /// this panel behaves exactly as it did.
+        /// </summary>
+        public void ConfigureBays(
+            AssemblyBayStructure bay, StorageBufferRegistryHolder stockpile, string stockpileBuffer)
+        {
+            assemblyBay = bay;
+            if (stockpile != null)
+            {
+                bufferRegistryHolder = bufferRegistryHolder != null ? bufferRegistryHolder : stockpile;
+                _bayStockpileHolder = stockpile;
+            }
+
+            if (!string.IsNullOrEmpty(stockpileBuffer))
+            {
+                stockpileBufferId = stockpileBuffer;
+            }
+        }
+
+        // The bay spends from the stockpile, which need not be the same registry holder the
+        // Assembly Line's wallet lives in. Held separately rather than overwriting
+        // bufferRegistryHolder, which would silently re-point every Claim button.
+        private StorageBufferRegistryHolder _bayStockpileHolder;
+
+        /// <summary>Stock reader for the bay's cost, matching GolemConstructionStation.StockOf.</summary>
+        private int BayStockOf(string itemType)
+        {
+            StorageBufferRegistryHolder holder = _bayStockpileHolder != null
+                ? _bayStockpileHolder
+                : bufferRegistryHolder;
+            StorageBuffer buffer;
+            if (holder == null || !holder.Registry.TryGetBuffer(stockpileBufferId, out buffer))
+            {
+                return 0;
+            }
+
+            return buffer.GetQuantity(itemType);
+        }
 
         public void Refresh()
         {
@@ -76,6 +131,11 @@ namespace GolemFactory.UI
 
             CreateLabel(CreateSlotRoot().transform, "Wallet: " + wallet + " Scrap (" + walletBufferId + ")", AffordableCostColor);
 
+            // FIRST, above the card rows. The cap governs whether a claimed card can ever be
+            // put on a golem at all, so a player who cannot build is looking for this line
+            // rather than scrolling past the draft to find it.
+            CreateBayRow();
+
             AssemblyLineState line = lineHolder.State;
             for (int i = 0; i < line.SlotCount; i++)
             {
@@ -87,6 +147,86 @@ namespace GolemFactory.UI
             {
                 statusText.text = _statusMessage;
             }
+        }
+
+        /// <summary>
+        /// The bay occupancy readout and its Upgrade button: "Bays 7/10 · +6 slots ·
+        /// 40 Scrap + 20 Iron Plate · [Upgrade]".
+        ///
+        /// <para>
+        /// Rendered only when a bay is wired. Before this row existed, §8's cap was a hard wall
+        /// at ten golems: <c>AssemblyBayStructure.TryUpgrade</c> was implemented, tested, and
+        /// called by nothing in the game.
+        /// </para>
+        /// </summary>
+        private void CreateBayRow()
+        {
+            if (assemblyBay == null)
+            {
+                return;
+            }
+
+            GameObject row = CreateSlotRoot();
+            IReadOnlyList<RecipeIngredient> cost = assemblyBay.UpgradeCost;
+            bool affordable = AssemblyBayRowPolicy.CanAfford(BayStockOf, cost);
+
+            CreateLabel(
+                row.transform,
+                AssemblyBayRowPolicy.FormatOccupancy(assemblyBay.OccupiedSlots, assemblyBay.MaxGolemSlots)
+                + "  ·  " + AssemblyBayRowPolicy.FormatUpgradeEffect(AssemblyBayStructure.SlotsPerUpgrade),
+                assemblyBay.HasFreeSlot ? RowTextColor : AffordableCostColor);
+
+            CreateCostLabel(
+                row.transform, AssemblyBayRowPolicy.FormatCost(cost),
+                affordable ? AffordableCostColor : DimTextColor);
+
+            var buttonGo = new GameObject("Upgrade", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+            buttonGo.transform.SetParent(row.transform, false);
+            LayoutElement buttonLayout = buttonGo.GetComponent<LayoutElement>();
+            buttonLayout.preferredWidth = 74f;
+            buttonLayout.preferredHeight = 24f;
+            if (claimButtonSprite != null)
+            {
+                Image buttonImage = buttonGo.GetComponent<Image>();
+                buttonImage.sprite = claimButtonSprite;
+                buttonImage.type = Image.Type.Sliced;
+            }
+
+            Button upgradeButton = buttonGo.GetComponent<Button>();
+            // Wrapped, not passed directly: UpgradeBays returns a bool so a test can assert
+            // on the outcome, and UnityAction takes none.
+            upgradeButton.onClick.AddListener(() => UpgradeBays());
+            upgradeButton.interactable = affordable;
+            CreateButtonLabel(buttonGo.transform, "Upgrade");
+        }
+
+        /// <summary>
+        /// Buys one bay upgrade. Public so a test can drive the decision without clicking a
+        /// Button, exactly as <c>ClaimSlot</c> and <c>BuildModeController.PlaceOrRemove</c> are.
+        /// </summary>
+        public bool UpgradeBays()
+        {
+            if (assemblyBay == null)
+            {
+                _statusMessage = "No assembly bays in this scene.";
+                return false;
+            }
+
+            StorageBufferRegistryHolder holder = _bayStockpileHolder != null
+                ? _bayStockpileHolder
+                : bufferRegistryHolder;
+            IReadOnlyList<RecipeIngredient> cost = assemblyBay.UpgradeCost;
+
+            bool upgraded = holder != null
+                && assemblyBay.TryUpgrade(holder.Registry, stockpileBufferId);
+
+            _statusMessage = AssemblyBayRowPolicy.DescribeResult(
+                upgraded, BayStockOf, cost, AssemblyBayStructure.SlotsPerUpgrade);
+
+            // Re-render from data rather than patching the row in place -- the same idiom the
+            // rest of this panel and WorkbenchController.RebuildUI follow.
+            Refresh();
+            return upgraded;
         }
 
         private GameObject CreateSlotRoot()

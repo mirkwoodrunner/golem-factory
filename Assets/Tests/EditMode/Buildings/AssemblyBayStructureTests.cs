@@ -33,12 +33,24 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void NewBay_StartsAtTierOneWithOneSlot()
+        public void NewBay_StartsAtTierOneWithTenSlots()
         {
+            // ONE became TEN when §8's cap went into the loop: the bay stopped being inert
+            // bookkeeping and became the concurrent-golem limit, whose authored figure is ten.
             AssemblyBayStructure bay = Build();
 
             Assert.AreEqual(1, bay.Tier);
-            Assert.AreEqual(1, bay.MaxGolemSlots);
+            Assert.AreEqual(AssemblyBayStructure.DefaultSlots, bay.MaxGolemSlots);
+        }
+
+        /// <summary>Fills every slot but one, so the capacity tests below stay about capacity
+        /// rather than about counting to ten.</summary>
+        private void FillToOneFreeSlot(AssemblyBayStructure bay)
+        {
+            for (int i = 0; i < AssemblyBayStructure.DefaultSlots - 1; i++)
+            {
+                bay.TryAssignGolem(MakeGolem("Filler" + i));
+            }
         }
 
         [Test]
@@ -55,6 +67,7 @@ namespace GolemFactory.Tests.EditMode
         public void TryAssignGolem_AtCapacity_Fails()
         {
             AssemblyBayStructure bay = Build();
+            FillToOneFreeSlot(bay);
             bay.TryAssignGolem(MakeGolem("GolemA"));
 
             bool result = bay.TryAssignGolem(MakeGolem("GolemB"));
@@ -76,8 +89,10 @@ namespace GolemFactory.Tests.EditMode
         public void ReleaseGolem_FreesASlot()
         {
             AssemblyBayStructure bay = Build();
+            FillToOneFreeSlot(bay);
             GolemEntity golem = MakeGolem("Golem");
             bay.TryAssignGolem(golem);
+            Assert.IsFalse(bay.HasFreeSlot);
 
             Assert.IsTrue(bay.ReleaseGolem(golem));
             Assert.IsTrue(bay.TryAssignGolem(MakeGolem("GolemB")));
@@ -86,18 +101,23 @@ namespace GolemFactory.Tests.EditMode
         [Test]
         public void TryUpgrade_SufficientResources_IncrementsTierAndSlots_AndWithdraws()
         {
+            // §8's price: 40 Scrap + 20 Iron Plate for +6 slots. The BRASS in the old pair is
+            // gone with the pair itself -- the cost is an item bundle now (§11 item 8), which
+            // is the only shape that can express a price in Iron Plate at all.
             AssemblyBayStructure bay = Build();
             var buffers = new StorageBufferRegistry();
-            buffers.Deposit("Bay", ItemType.Scrap, 20);
-            buffers.Deposit("Bay", ItemType.Brass, 5);
+            buffers.Deposit("Bay", ItemType.Scrap, 40);
+            buffers.Deposit("Bay", ItemType.IronPlate, 20);
 
             bool result = bay.TryUpgrade(buffers, "Bay");
 
             Assert.IsTrue(result);
             Assert.AreEqual(2, bay.Tier);
-            Assert.AreEqual(2, bay.MaxGolemSlots);
+            Assert.AreEqual(
+                AssemblyBayStructure.DefaultSlots + AssemblyBayStructure.SlotsPerUpgrade,
+                bay.MaxGolemSlots);
             Assert.AreEqual(0, buffers.GetOrCreate("Bay").GetQuantity(ItemType.Scrap));
-            Assert.AreEqual(0, buffers.GetOrCreate("Bay").GetQuantity(ItemType.Brass));
+            Assert.AreEqual(0, buffers.GetOrCreate("Bay").GetQuantity(ItemType.IronPlate));
         }
 
         [Test]
@@ -105,27 +125,27 @@ namespace GolemFactory.Tests.EditMode
         {
             AssemblyBayStructure bay = Build();
             var buffers = new StorageBufferRegistry();
-            buffers.Deposit("Bay", ItemType.Brass, 5);
+            buffers.Deposit("Bay", ItemType.IronPlate, 20);
 
             bool result = bay.TryUpgrade(buffers, "Bay");
 
             Assert.IsFalse(result);
             Assert.AreEqual(1, bay.Tier);
-            Assert.AreEqual(5, buffers.GetOrCreate("Bay").GetQuantity(ItemType.Brass));
+            Assert.AreEqual(20, buffers.GetOrCreate("Bay").GetQuantity(ItemType.IronPlate));
         }
 
         [Test]
-        public void TryUpgrade_InsufficientBrass_Fails_RefundsScrap()
+        public void TryUpgrade_InsufficientPlate_Fails_RefundsScrap()
         {
             AssemblyBayStructure bay = Build();
             var buffers = new StorageBufferRegistry();
-            buffers.Deposit("Bay", ItemType.Scrap, 20);
+            buffers.Deposit("Bay", ItemType.Scrap, 40);
 
             bool result = bay.TryUpgrade(buffers, "Bay");
 
             Assert.IsFalse(result);
             Assert.AreEqual(1, bay.Tier);
-            Assert.AreEqual(20, buffers.GetOrCreate("Bay").GetQuantity(ItemType.Scrap));
+            Assert.AreEqual(40, buffers.GetOrCreate("Bay").GetQuantity(ItemType.Scrap));
         }
     }
 }

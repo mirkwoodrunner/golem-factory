@@ -44,9 +44,38 @@ namespace GolemFactory.Buildings
         // work any node they face, which is the state Main.unity is in permanently.
         [SerializeField] private NodeExtractorRegistryHolder nodeExtractorHolder;
 
+        // §8's concurrent-golem cap. Optional in exactly the same additive way the steam
+        // network and the extractor cap are: a station with no bay builds without a limit,
+        // which is what Main.unity's demos and every pre-existing test do.
+        [SerializeField] private AssemblyBayStructure assemblyBay;
+
         private int _nextGolemNumber = 1;
 
+        /// <summary>
+        /// Why the last <see cref="TryConstructGolem"/> refused, when the reason was not the
+        /// cost. Empty otherwise. Exists because "you are out of bay slots" and "you cannot
+        /// afford this" need different actions from the player, and the panel previously read
+        /// every refusal as a shortfall -- which would have printed "needs 0 more Scrap" at a
+        /// player whose stockpile was full.
+        /// </summary>
+        public string LastRefusalReason { get; private set; } = "";
+
+        /// <summary>The bay this station's golems occupy, or null when uncapped.</summary>
+        public AssemblyBayStructure AssemblyBay => assemblyBay;
+
+        /// <summary>
+        /// Subjects every golem this station builds to §8's bay cap. Split out for the same
+        /// reason ConfigureSteam is -- a station that never gets one keeps building without a
+        /// limit, which is the state every scene but Sandbox is in.
+        /// </summary>
+        public void ConfigureAssemblyBay(AssemblyBayStructure bay) => assemblyBay = bay;
+
         public ChassisDefinition[] ChassisRoster => chassisRoster;
+
+        /// <summary>What this station instantiates. Exposed so the scene's bootstrap can
+        /// hand a station the player just built the same prefab the authored one uses,
+        /// rather than a second serialized copy of that reference.</summary>
+        public GolemEntity GolemPrefab => golemPrefab;
 
         // Test/bootstrap-friendly setup mirroring GolemEntity.Configure/ConfigureEconomy.
         public void Configure(
@@ -63,6 +92,48 @@ namespace GolemFactory.Buildings
             workbenchController = workbench;
             stockpileBufferId = bufferId;
         }
+
+        /// <summary>
+        /// The asset half of a station's wiring: what it can build, and what it builds them
+        /// from. Split out of <see cref="Configure"/> so a station that came into the world
+        /// after the scene bootstrap ran (one the player placed, one a save rebuilt) can be
+        /// given a roster without also being handed a fresh set of scene holders.
+        /// </summary>
+        public void ConfigureBuildRoster(ChassisDefinition[] roster, GolemEntity prefab)
+        {
+            chassisRoster = roster ?? new ChassisDefinition[0];
+            golemPrefab = prefab;
+        }
+
+        /// <summary>
+        /// The scene half: the registries, clock and Workbench a station needs, and nothing
+        /// else. DELIBERATELY DOES NOT TOUCH the roster or the golem prefab -- those are asset
+        /// references a scene-authored station already carries, and overwriting them from a
+        /// sweep would let one unconfigured caller blank a station that was working.
+        /// </summary>
+        public void ConfigureSceneServices(
+            ConveyorSystemHolder conveyor, ResourceNodeRegistryHolder nodes,
+            StorageBufferRegistryHolder buffers, SimulationClockRunner clock,
+            WorkbenchController workbench, string bufferId)
+        {
+            conveyorHolder = conveyor;
+            nodeRegistryHolder = nodes;
+            bufferRegistryHolder = buffers;
+            clockRunner = clock;
+            workbenchController = workbench;
+            if (!string.IsNullOrEmpty(bufferId))
+            {
+                stockpileBufferId = bufferId;
+            }
+        }
+
+        /// <summary>
+        /// Whether this station could build anything if asked. False on a freshly placed
+        /// prefab, whose roster and golem prefab are both empty -- which is exactly the state
+        /// that made a player-built station a decorative box.
+        /// </summary>
+        public bool HasBuildRoster =>
+            golemPrefab != null && chassisRoster != null && chassisRoster.Length > 0;
 
         /// <summary>
         /// Turns on facing-based routing for every golem this station builds. Split out from
@@ -179,8 +250,21 @@ namespace GolemFactory.Buildings
         public bool TryConstructGolem(ChassisDefinition chassis, out GolemEntity golem)
         {
             golem = null;
+            LastRefusalReason = "";
             if (chassis == null || golemPrefab == null || bufferRegistryHolder == null)
             {
+                return false;
+            }
+
+            // §8: Assembly Bays cap concurrent golems. CHECKED BEFORE THE COST, so a refused
+            // build never touches the stockpile -- charging four goods and then discovering
+            // there is nowhere to put the golem would be the partial-charge bug the bundle
+            // withdrawal exists to prevent, one level up.
+            if (assemblyBay != null && !assemblyBay.HasFreeSlot)
+            {
+                LastRefusalReason =
+                    $"All {assemblyBay.MaxGolemSlots} assembly bays are full. " +
+                    "Upgrade the bays, or dismantle a golem.";
                 return false;
             }
 
@@ -201,6 +285,14 @@ namespace GolemFactory.Buildings
             ResolveConstructedGolemPlacement(out spawnCell, out spawnFacing, out spawnPosition);
 
             golem = SpawnGolem(chassis, NextGolemId(), spawnCell, spawnFacing, spawnPosition);
+
+            // Takes the slot the check above reserved. Assigned after the golem exists rather
+            // than before, so a spawn that somehow failed cannot leave a bay slot held by
+            // nothing -- the bay counts golems, and there was no golem to count.
+            if (assemblyBay != null)
+            {
+                assemblyBay.TryAssignGolem(golem);
+            }
 
             if (workbenchController != null)
             {
@@ -248,6 +340,14 @@ namespace GolemFactory.Buildings
                 : transform.position;
 
             golem = SpawnGolem(chassis, golemId, savedCell, savedFacing, position);
+
+            // FORCED, not checked. A save describes a factory that was legal when it was built,
+            // and refusing part of it on load would silently delete golems the player owns
+            // because a cap moved -- the same reasoning that stops a load re-charging costs.
+            if (assemblyBay != null)
+            {
+                assemblyBay.ForceAssignGolem(golem);
+            }
 
             // Keep the counter ahead of every id restored from the file, or the next golem the
             // player builds is handed a name a loaded golem already answers to -- and golem ids

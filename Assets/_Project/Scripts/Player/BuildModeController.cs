@@ -132,6 +132,51 @@ namespace GolemFactory.Player
         public void ConfigureSteam(GolemFactory.Steam.SteamNetworkHolder steamNetworkHolder) =>
             _steamNetworkHolder = steamNetworkHolder;
 
+        // A placed GolemConstructionStation needs SCENE references a prefab cannot carry, so
+        // the scene's bootstrap hands itself over here and this asks it to wire each station
+        // as it is built. Runtime-only (no [SerializeField]) because an interface reference
+        // is not serializable and this is exactly the Configure(...) case the project's idiom
+        // exists for. Unwired, a station places as a plain building -- which is what it did
+        // before, decoratively.
+        private GolemFactory.Buildings.IPlacedStationConfigurator _stationConfigurator;
+
+        public void ConfigureStationWiring(GolemFactory.Buildings.IPlacedStationConfigurator configurator) =>
+            _stationConfigurator = configurator;
+
+        // --- The buildable area (docs/progression-design.md §3.3) -------------------------
+        // -1 means UNBOUNDED, following ResourceNode.Infinite and StorageBuffer.Unlimited's
+        // sentinel idiom, and it is the default: Main.unity and every existing test rig never
+        // call ConfigurePlacementBounds and place exactly where they always could. Sandbox
+        // turns it on from SandboxBootstrap, next to the identical call that bounds the player.
+        private int _placementHalfExtent = -1;
+        private int _placementStreetDepth;
+
+        /// <summary>
+        /// Bounds placement to the ground that is actually drawn. Separate from
+        /// <see cref="Configure"/> for the same reason ConfigureBelts is -- a scene that never
+        /// calls this keeps building anywhere.
+        ///
+        /// <para>
+        /// The bound is the WORLD (workshop + street), not the workshop: the five traders stand
+        /// out on the street, so bounding to the room would forbid the belts and depots that
+        /// reach them. See <see cref="FloorLayout.IsInsideWorld"/>.
+        /// </para>
+        /// </summary>
+        public void ConfigurePlacementBounds(int halfExtent, int streetDepth)
+        {
+            _placementHalfExtent = halfExtent;
+            _placementStreetDepth = streetDepth;
+        }
+
+        /// <summary>
+        /// Whether a building may stand on <paramref name="cell"/> at all. Public so the ghost,
+        /// the click and a test all read one answer -- a ghost that promises a tile placement
+        /// then refuses is the bug this replaced, not an improvement on it.
+        /// </summary>
+        public bool IsCellBuildable(Vector2Int cell) =>
+            _placementHalfExtent < 0 ||
+            FloorLayout.IsInsideWorld(cell, _placementHalfExtent, _placementStreetDepth);
+
         // Called by UI/BuildMenuPanel when the player picks a different placeable type.
         public void SetActivePrefab(PlaceableBuilding prefab) => _buildingPrefab = prefab;
 
@@ -235,7 +280,10 @@ namespace GolemFactory.Player
             UpdateGhostFacingArrow();
 
             bool occupied = _gridMapHolder != null && _gridMapHolder.Map.IsOccupied(_hoveredCell);
-            GhostState = BuildGhostVisuals.Classify(occupied, CanAffordActivePrefab());
+            // Off the ground reads as Blocked rather than as a fourth state: the player's move
+            // is the same one an occupied tile asks for -- put the cursor somewhere else.
+            bool refused = occupied || !IsCellBuildable(_hoveredCell);
+            GhostState = BuildGhostVisuals.Classify(refused, CanAffordActivePrefab());
             // Colours and the blocked pulse come from BuildGhostVisuals, which documents the
             // measurements behind them -- the old inline green/red pair was tuned against the
             // pre-reskin cold grey floor and composited to a 1.06:1 contrast ratio against
@@ -329,6 +377,16 @@ namespace GolemFactory.Player
 
             if (_buildingPrefab == null)
             {
+                return;
+            }
+
+            // REMOVAL is checked above and is deliberately NOT bounded: a building standing off
+            // the ground (an old save, a bound that moved) must always be removable, or it is
+            // litter the player cannot clear.
+            if (!IsCellBuildable(cell))
+            {
+                LastStatusMessage = "Can't build there -- that is outside the workshop and the street.";
+                SpawnPopup(_converter.CellToWorldCenter(cell), "off the ground", RefusedPopupColor);
                 return;
             }
 
@@ -540,6 +598,18 @@ namespace GolemFactory.Player
             if (depot != null)
             {
                 depot.RegisterAsSpatialEndpoint(_spatialEndpointHolder, _stockpileHolder, cell);
+            }
+
+            //   * a construction station: gets the scene registries, clock and Workbench that
+            //     let it actually build a golem. Without this a station the player PAID for
+            //     was inert -- TryConstructGolem early-outs on a null buffer registry and says
+            //     nothing, so the money went and the building did not work. Stations were only
+            //     ever wired by the bootstrap's one-shot startup sweep, which by definition
+            //     cannot see one built afterwards.
+            GolemConstructionStation station = instance.GetComponent<GolemConstructionStation>();
+            if (station != null && _stationConfigurator != null)
+            {
+                _stationConfigurator.ConfigureStation(station);
             }
 
             //   * a clock tower: publishes its input tile, giving the megaproject somewhere for

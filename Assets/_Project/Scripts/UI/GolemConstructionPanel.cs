@@ -251,6 +251,15 @@ namespace GolemFactory.UI
             GolemEntity golem;
             if (!_station.TryConstructGolem(chassis, out golem))
             {
+                // A refusal the station can explain outranks the cost guess. Out of bay slots
+                // with a full stockpile would otherwise print a shortfall of nothing, which
+                // reads as "this failed for no reason".
+                if (!string.IsNullOrEmpty(_station.LastRefusalReason))
+                {
+                    _statusMessage = _station.LastRefusalReason;
+                    return false;
+                }
+
                 // Names the missing resources and the amounts, not just "not enough" -- the
                 // shortfall is the only part of the failure the player can act on, and on a
                 // four-good bundle naming only the first would send them back and forth.

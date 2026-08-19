@@ -123,15 +123,18 @@ namespace GolemFactory.Editor
         // first frame. An authored tint is correct on disk, correct in the Editor, and gone the
         // moment you press Play. Node identity therefore has to be SPRITE, which is why
         // item_coal / item_copper_ore / item_zinc_ore now exist in the art generator.
-        // Boiler is WHITE for the same reason the Clock Tower is: it has its own sprite now
-        // (steam_boiler.png). SteamPipe is the last building BuildPlaceable still puts on the
-        // shared box, so this is the one tint here left doing real work -- but it is not the
-        // last building_block user in the project: DepotPrefab and GolemConstructionStationPrefab
-        // wear it too. Those two come through ApplyCost, which only restores a cost and never
-        // touches the SpriteRenderer, so giving them real art means routing them through
-        // BuildPlaceable (or setting the sprite where they are actually built), not editing here.
+        // EVERY tint here is now white, and the table is kept rather than deleted because the
+        // reasoning is what stops the next building being tinted instead of drawn: a tint exists
+        // to tell identical boxes apart, so the moment a building has its own silhouette the
+        // tint is the thing that wrecks it.
+        //
+        // The last three building_block users -- SteamPipe, Depot and the construction station
+        // -- have their own art now (Tools/Art/generate_building_art.py). Depot and the station
+        // were the awkward pair: they come through ApplyCost, which restores a cost and never
+        // touched the SpriteRenderer at all, so no amount of reading this table would ever have
+        // led anyone to them. ApplyCost takes a sprite now, which is what closes that.
         private static readonly Color BoilerTint = Color.white;
-        private static readonly Color SteamPipeTint = new Color(0.60f, 0.67f, 0.72f, 1f);
+        private static readonly Color SteamPipeTint = Color.white;
         // WHITE, and that is the point: the Clock Tower is the first building off the shared
         // building_block box and onto its own sprite (clock_tower.png). A tint exists to tell
         // identical boxes apart; once a building has real art the tint is the thing that would
@@ -192,7 +195,19 @@ namespace GolemFactory.Editor
         private static void ImportItemIcons()
         {
             Log.AppendLine("[item icons]");
-            foreach (string file in new[] { "item_coal.png", "item_copper_ore.png", "item_zinc_ore.png" })
+            // The three building sprites ride along: same PPU, same point filter, same
+            // no-compression rule. They differ only in pivot, which is applied below --
+            // a building STANDS ON its cell, an item icon is centred on one.
+            var bottomCenter = new System.Collections.Generic.HashSet<string>
+            {
+                "steam_pipe.png", "depot.png", "golem_construction_station.png",
+            };
+
+            foreach (string file in new[]
+                     {
+                         "item_coal.png", "item_copper_ore.png", "item_zinc_ore.png",
+                         "steam_pipe.png", "depot.png", "golem_construction_station.png",
+                     })
             {
                 string path = ArtRoot + file;
                 var importer = AssetImporter.GetAtPath(path) as TextureImporter;
@@ -209,8 +224,22 @@ namespace GolemFactory.Editor
                 importer.textureCompression = TextureImporterCompression.Uncompressed;
                 importer.alphaIsTransparency = true;
                 importer.mipmapEnabled = false;
+
+                if (bottomCenter.Contains(file))
+                {
+                    // BOTH, and in this order, for the reason CharacterArtAuthoring gives:
+                    // Unity honours spriteAlignment and reads spritePivot only under Custom, so
+                    // writing just one leaves a .meta that behaves differently from how it reads.
+                    var settings = new TextureImporterSettings();
+                    importer.ReadTextureSettings(settings);
+                    settings.spriteAlignment = (int)SpriteAlignment.BottomCenter;
+                    settings.spritePivot = new Vector2(0.5f, 0f);
+                    importer.SetTextureSettings(settings);
+                }
+
                 importer.SaveAndReimport();
-                Note(file + " imported at PPU 64, point filter");
+                Note(file + " imported at PPU 64, point filter"
+                     + (bottomCenter.Contains(file) ? ", BottomCenter" : ""));
             }
         }
 
@@ -255,7 +284,8 @@ namespace GolemFactory.Editor
             BuildPlaceable(
                 SteamPipePrefabPath, "SteamPipePrefab", SteamPipeTint,
                 new[] { new RecipeIngredient(ItemType.IronPlate, SteamNetwork.SteamPipeIronPlateCost) },
-                go => Ensure<PlaceableSteamPipe>(go));
+                go => Ensure<PlaceableSteamPipe>(go),
+                "steam_pipe.png");
 
             // NO COST, per PlaceableClockTower's own note: §7 places the tower in the world and
             // prices it at nothing. The megaproject is the goal, not a purchase.
@@ -346,22 +376,48 @@ namespace GolemFactory.Editor
         /// </summary>
         private static void RestoreOrphanedCosts()
         {
-            ApplyCost("DepotPrefab", new[] { new RecipeIngredient(ItemType.Scrap, 15) });
+            // The two prefabs that were never in the tint table and therefore never got art:
+            // they are authored HERE, not by BuildPlaceable, and this pass only ever restored
+            // their cost. They wore whatever sprite was already serialized on them, which was
+            // the shared building_block crate.
+            ApplyCost("DepotPrefab", new[] { new RecipeIngredient(ItemType.Scrap, 15) },
+                "depot.png");
             ApplyCost("GolemConstructionStationPrefab", new[]
             {
                 new RecipeIngredient(ItemType.Scrap, 25),
                 new RecipeIngredient(ItemType.Brass, 5),
-            });
+            }, "golem_construction_station.png");
+            // The belt keeps its own authored plate -- it is the one placeable that already had
+            // art of its own, plus a direction arrow that has to stay lined up with it.
             ApplyCost("BeltPrefab", new[] { new RecipeIngredient(ItemType.Scrap, 1) });
         }
 
-        private static void ApplyCost(string prefabName, RecipeIngredient[] cost)
+        private static void ApplyCost(string prefabName, RecipeIngredient[] cost, string spriteFile = null)
         {
             string path = PrefabRoot + prefabName + ".prefab";
             GameObject root = PrefabUtility.LoadPrefabContents(path);
             try
             {
                 WriteCost(root.GetComponent<PlaceableBuilding>(), cost);
+
+                if (spriteFile != null)
+                {
+                    SpriteRenderer renderer = root.GetComponent<SpriteRenderer>();
+                    if (renderer == null)
+                    {
+                        Note("WARNING: " + prefabName + " has no SpriteRenderer to give art to");
+                    }
+                    else
+                    {
+                        renderer.sprite = LoadSprite(spriteFile);
+                        // White, with the tint retired for the same reason the Clock Tower's was:
+                        // a tint tells identical boxes apart and ruins a sprite that no longer
+                        // needs telling apart.
+                        renderer.color = Color.white;
+                        Note(prefabName + " sprite -> " + spriteFile + " (tint retired)");
+                    }
+                }
+
                 PrefabUtility.SaveAsPrefabAsset(root, path);
                 Note(prefabName + " cost restored -> " + DescribeCost(cost));
             }
@@ -468,6 +524,26 @@ namespace GolemFactory.Editor
                 Ensure<SteamNetworkHolder>(EnsureChild(root, "Steam"));
                 Ensure<NodeExtractorRegistryHolder>(EnsureChild(root, "NodeExtractors"));
 
+                // The market's economy and the mode switch that bypasses it (§13.2). Both are
+                // scene-wide state with no place on any one building, which is what the Holder
+                // pattern is for.
+                GameModeHolder mode = Ensure<GameModeHolder>(EnsureChild(root, "GameMode"));
+                TruckloadMarketHolder market =
+                    Ensure<TruckloadMarketHolder>(EnsureChild(root, "Market"));
+                WriteMarketOffers(new SerializedObject(market));
+                // Serialized so the scene opens in the mode it ships in; SandboxBootstrap reads
+                // the same holder at runtime. CREATIVE IS OFF: §13.2 makes the truckload economy
+                // the game's rules and creative the escape hatch, not the other way round.
+                var modeSo = new SerializedObject(mode);
+                modeSo.FindProperty("creativeMode").boolValue = false;
+                modeSo.ApplyModifiedPropertiesWithoutUndo();
+
+                // §8's concurrent-golem cap. It lives here rather than on a placeable because
+                // the bay is bookkeeping the whole scene shares -- there is one cap, not one
+                // per building -- which is the same reason the extractor cap sits beside it.
+                // §11 item 14 asked for exactly this: "Assembly Bay in the loop".
+                Ensure<AssemblyBayStructure>(EnsureChild(root, "AssemblyBays"));
+
                 ClockTowerSiteHolder site = Ensure<ClockTowerSiteHolder>(EnsureChild(root, "ClockTower"));
                 // DELIBERATELY EMPTY. Stages wired here start stage 1 in Awake, which made a
                 // fresh Sandbox open with "Stage 1 Foundation - 0%" and a starvation alert for a
@@ -490,6 +566,65 @@ namespace GolemFactory.Editor
         // §7's four stages, in authored order. Sorted by asset name so Stage1..Stage4 land in
         // sequence rather than in whatever order the asset database happens to return -- the
         // site advances through this list by index, so the order IS the progression.
+        /// <summary>
+        /// The market's authored terms of trade (§13.2), written onto TruckloadMarketHolder.
+        ///
+        /// <para>
+        /// <b>Every price, size and delay here is TUNING, not derived.</b> §5.1 prices no raw
+        /// good at all, so these are a first pass for the Game Director to balance in play --
+        /// the mechanism is what this pass owes. They are written from one table so a retune is
+        /// one edit rather than nine.
+        /// </para>
+        ///
+        /// <para>
+        /// <b>The Scrap stalls are free, and that part is structural.</b> §10 forbids a
+        /// soft-lock: if every stall cost Scrap, a player at zero Scrap could buy nothing, make
+        /// nothing and never recover -- the Hand-Crank Bench does not help, because it needs
+        /// inputs too. Aether is the dearest and the smallest load, which is how §5.1 says its
+        /// scarcity should read now that no node depletes on its own.
+        /// </para>
+        /// </summary>
+        private static void WriteMarketOffers(SerializedObject so)
+        {
+            (string NodeId, int ScrapPrice, int Truckload, int DeliveryTicks)[] table =
+            {
+                ("ScrapNode", 0, 30, 40),
+                ("ScrapNodeWest", 0, 30, 40),
+                ("CoalNode", 10, 40, 60),
+                ("CoalNodeWest", 10, 40, 60),
+                ("CopperOreNode", 20, 40, 80),
+                ("CopperOreNodeEast", 20, 40, 80),
+                ("ZincOreNode", 20, 40, 80),
+                ("ZincOreNodeEast", 20, 40, 80),
+                ("AetherNode", 40, 20, 120),
+            };
+
+            SerializedProperty list = so.FindProperty("offers");
+            list.arraySize = table.Length;
+            for (int i = 0; i < table.Length; i++)
+            {
+                SerializedProperty entry = list.GetArrayElementAtIndex(i);
+                entry.FindPropertyRelative("nodeId").stringValue = table[i].NodeId;
+                entry.FindPropertyRelative("truckloadSize").intValue = table[i].Truckload;
+                entry.FindPropertyRelative("deliveryTicks").intValue = table[i].DeliveryTicks;
+
+                SerializedProperty price = entry.FindPropertyRelative("price");
+                // A free stall is an EMPTY bundle, not a zero-quantity entry: MarketOffer.IsFree
+                // tests the count, and TryWithdrawBundle treats an empty bundle as free -- the
+                // same convention a zero-cost chassis already uses.
+                price.arraySize = table[i].ScrapPrice > 0 ? 1 : 0;
+                if (table[i].ScrapPrice > 0)
+                {
+                    SerializedProperty ingredient = price.GetArrayElementAtIndex(0);
+                    ingredient.FindPropertyRelative("itemType").stringValue = ItemType.Scrap;
+                    ingredient.FindPropertyRelative("quantity").intValue = table[i].ScrapPrice;
+                }
+            }
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            Note("market offers written for " + table.Length + " stalls (Scrap stalls free)");
+        }
+
         private static void WriteStageList(SerializedObject so, string propertyName)
         {
             var stages = new List<ClockTowerStageDefinition>();
@@ -533,7 +668,23 @@ namespace GolemFactory.Editor
                 GameObject gauge = BuildSteamGauge(root);
                 GameObject tower = BuildClockTowerPanel(root);
                 GameObject crank = BuildHandCrankPanel(root);
-                RegisterHudChrome(root, gauge, tower, crank);
+
+                // The alerts strip is world HUD too, and it was the one piece of it never put
+                // on this list -- so it went on drawing over BOTH full-screen modals after the
+                // gauge and the tower panel were fixed. Found by component, never by name: the
+                // prefab root is a plain Transform that shares its name with the Canvas child,
+                // which is exactly how both readouts ended up parented outside the Canvas and
+                // invisible.
+                AlertsPanel alerts = root.GetComponentInChildren<AlertsPanel>(true);
+                if (alerts == null)
+                {
+                    Note("WARNING: no AlertsPanel on the canvas -- alerts strip not registered");
+                    RegisterHudChrome(root, gauge, tower, crank);
+                }
+                else
+                {
+                    RegisterHudChrome(root, gauge, tower, crank, alerts.gameObject);
+                }
 
                 PrefabUtility.SaveAsPrefabAsset(root, WorkbenchCanvasPath);
             }
@@ -1044,6 +1195,22 @@ namespace GolemFactory.Editor
                 { "CopperOreNodeMarker", new Vector2Int(0, -16) },
                 { "ZincOreNodeMarker", new Vector2Int(4, -16) },
                 { "AetherNodeMarker", new Vector2Int(8, -16) },
+
+                // THE OUTER FOUR, added when §13.1 widened the street. Same row, same four-cell
+                // pitch, continuing outward -- so the five above KEEP THE POSITIONS THEY HAD.
+                // That is deliberate: walk distance from spawn is on the Director's do-not-tune
+                // list, and re-centring the row to make a symmetric eight would have retuned
+                // §9's manual era as a side effect of a map decision.
+                //
+                // A SECOND STALL OF EACH BULK GOOD, and none for Aether. §3.2 caps a node at two
+                // extractors, so a second stall is how a good's throughput doubles; leaving
+                // Aether single keeps the one exotic input scarce by ACCESS, which is exactly
+                // how §5.1 says its scarcity should work now that every node is infinite.
+                { "ScrapNodeMarkerWest", new Vector2Int(-16, -16) },
+                { "CoalNodeMarkerWest", new Vector2Int(-12, -16) },
+                { "CopperOreNodeMarkerEast", new Vector2Int(12, -16) },
+                { "ZincOreNodeMarkerEast", new Vector2Int(16, -16) },
+
                 { "StarterHandCrankBench", new Vector2Int(0, 3) },
                 { "StarterConstructionStation", new Vector2Int(3, -1) },
             };
@@ -1060,6 +1227,15 @@ namespace GolemFactory.Editor
             ("CopperOreNodeMarker", "CopperOreNode", "stall_copper_ore.png"),
             ("ZincOreNodeMarker", "ZincOreNode", "stall_zinc_ore.png"),
             ("AetherNodeMarker", "AetherNode", "stall_aether.png"),
+
+            // The outer four. Each is its OWN node id, not a second marker onto an existing one:
+            // §3.2's cap is two extractors PER NODE, so sharing an id would give the player a
+            // second stall that adds no capacity at all -- a decoration wearing the shape of a
+            // decision.
+            ("ScrapNodeMarkerWest", "ScrapNodeWest", "stall_scrap.png"),
+            ("CoalNodeMarkerWest", "CoalNodeWest", "stall_coal.png"),
+            ("CopperOreNodeMarkerEast", "CopperOreNodeEast", "stall_copper_ore.png"),
+            ("ZincOreNodeMarkerEast", "ZincOreNodeEast", "stall_zinc_ore.png"),
         };
 
         // Reads the cell size off the scene's own Grid rather than assuming one, so this stays
@@ -1205,6 +1381,35 @@ namespace GolemFactory.Editor
             AssignIfPresent(so, "clockTowerPanelView", FindInScene<ClockTowerPanelView>(scene));
             AssignIfPresent(so, "handCrankPanelView", FindInScene<HandCrankPanelView>(scene));
 
+            // §13.2's market and the mode that bypasses it, plus §8's Assembly Line.
+            AssignIfPresent(so, "marketHolder", FindInScene<TruckloadMarketHolder>(scene));
+            AssignIfPresent(so, "gameModeHolder", FindInScene<GameModeHolder>(scene));
+            AssignIfPresent(so, "assemblyLineHolder",
+                FindInScene<GolemFactory.AssemblyLine.AssemblyLineStateHolder>(scene));
+
+            var deck = AssetDatabase.LoadAssetAtPath<GolemFactory.AssemblyLine.DraftableCardCatalog>(
+                "Assets/_Project/ScriptableObjects/AssemblyLineCards/AssemblyLineDeck.asset");
+            if (deck == null)
+            {
+                Note("WARNING: no Assembly Line deck asset -- run Author Progression Assets first");
+            }
+            else
+            {
+                AssignIfPresent(so, "cardCatalog", deck);
+            }
+
+            // §8's gating, ON in this scene. The FIELD default stays false so Main.unity and
+            // every test rig keep the ungated roster; this serialized scene value is what turns
+            // it on, exactly as requireSteamPower does -- and it is one line to flip back if a
+            // playtest says the drip-feed is wrong.
+            SerializedProperty gate = so.FindProperty("gateWorkbenchRoster");
+            if (gate != null)
+            {
+                gate.boolValue = deck != null;
+                Note("gateWorkbenchRoster = " + gate.boolValue
+                     + (deck == null ? " (no deck to gate with)" : ""));
+            }
+
             so.ApplyModifiedPropertiesWithoutUndo();
             Note("SandboxBootstrap holders wired");
         }
@@ -1238,6 +1443,20 @@ namespace GolemFactory.Editor
             {
                 gauge.gameObject, panel.gameObject, crank.gameObject,
             };
+
+            // The scene half of the alerts-strip fix. Sandbox.unity carries an OVERRIDE on
+            // hideWhileOpen, so writing the prefab alone reports success and changes nothing
+            // the game will actually load -- the exact trap that left hideWhileOpen at one
+            // entry after it had been "fixed" on the prefab.
+            AlertsPanel alerts = FindInScene<AlertsPanel>(scene);
+            if (alerts != null)
+            {
+                readouts.Add(alerts.gameObject);
+            }
+            else
+            {
+                Note("WARNING: no AlertsPanel in the scene -- alerts strip not registered");
+            }
 
             var so = new SerializedObject(controller);
             SerializedProperty list = so.FindProperty("hideWhileOpen");
@@ -1309,7 +1528,16 @@ namespace GolemFactory.Editor
             }
 
             var verbs = new List<AppendageActionDefinition>();
-            foreach (string name in new[] { "ExtractScrap", "HaulScrap", "PushOutput", "LoadIntoScrapBuffer" })
+            // RepeatAssembly rides with the movement verbs rather than with the recipes,
+            // because that is what it is: a verb that takes no recipe of its own. It is offered
+            // to every player like every other card -- the Overclocker-only rule is enforced
+            // where it belongs, in GolemProgram.TryAddAppendage, so a Scavenger simply refuses
+            // the card rather than the vault pretending it does not exist.
+            foreach (string name in new[]
+                     {
+                         "ExtractScrap", "HaulScrap", "PushOutput", "RepeatAssembly",
+                         "LoadIntoScrapBuffer",
+                     })
             {
                 AppendageActionDefinition card = LoadAppendage(name);
                 if (card != null)

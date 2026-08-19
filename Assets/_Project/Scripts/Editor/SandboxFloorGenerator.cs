@@ -399,11 +399,31 @@ namespace GolemFactory.Editor
                 count += PlaceEdgePiece(wallsParent, converter, FloorLayout.Edge.South,
                     index, skirt, "SkirtSouth", false, expected);
 
-                // The far kerb, on the same x indices as the skirting because the street is the
-                // workshop's width. The two bands frame the road: the shop's deck edge on the
-                // near side, dressed stone on the far one.
+            }
+
+            // The far kerb runs the STREET's width, not the room's, since §13.1 widened the road
+            // past the building. It used to share the skirting's loop on the reasoning that the
+            // two were the same width; they are not any more, and reusing that loop would leave
+            // the outer six cells of road at each end unedged -- the exact "unfinished tilemap"
+            // read that paving the street was done to fix.
+            foreach (int index in FloorLayout.GetStreetEdgeIndices())
+            {
                 count += PlaceEdgePiece(wallsParent, converter, FloorLayout.Edge.South,
                     index, kerb, "KerbStreet", false, expected, world: true);
+            }
+
+            // The two shoulders: the building's south face where it is no longer the world's
+            // edge. Head-on wall art, because from the street these are the flanks of the shop
+            // rather than a side cap seen edge-on.
+            int shoulderIndex = 0;
+            foreach (Vector2 anchor in FloorLayout.GetShoulderAnchors())
+            {
+                string shoulderName = "WallShoulder_" + shoulderIndex;
+                EnsureSpriteObject(
+                    wallsParent, shoulderName, north, converter.CellFractionToWorld(anchor));
+                expected.Add(shoulderName);
+                shoulderIndex++;
+                count++;
             }
 
             int postIndex = 0;

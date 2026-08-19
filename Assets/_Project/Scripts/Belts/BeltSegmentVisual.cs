@@ -109,6 +109,11 @@ namespace GolemFactory.Belts
         private float _previousHeadProgress = -1f;
         private int _previousItemCount;
 
+        // A renderer this visual does not own, borrowed as the lane's flow lamp. Used by
+        // player-placed belts, which draw their own static direction arrow.
+        private SpriteRenderer _flowSignalTarget;
+        private Color _flowSignalRestColor = Color.white;
+
         private void Awake()
         {
             TryResolveSegment();
@@ -148,6 +153,21 @@ namespace GolemFactory.Belts
             TryResolveSegment();
         }
 
+        /// <summary>
+        /// Borrows a renderer the caller already draws as this lane's jam lamp -- for a
+        /// one-cell placed belt, its own direction arrow. Its authored colour is captured as
+        /// the resting state, so a free-flowing belt looks exactly as it was authored and only
+        /// a jammed one changes.
+        /// </summary>
+        public void ConfigureFlowSignalTarget(SpriteRenderer target)
+        {
+            _flowSignalTarget = target;
+            if (target != null)
+            {
+                _flowSignalRestColor = target.color;
+            }
+        }
+
         // Bootstrap scripts (e.g. BeltDemoBootstrap) register segments in their own Start(),
         // which always runs after every Awake() -- so resolving only in Awake() means this
         // component silently never finds its segment. Keep retrying in LateUpdate until it
@@ -166,14 +186,19 @@ namespace GolemFactory.Belts
             }
 
             IReadOnlyList<ItemStack> items = _segment.Items;
-            float congestion = BeltFlowUtility.ComputeCongestion(items, _segment.Capacity, _segment.Length, 1f);
+            // Two different questions, and the lane needs both: how fast the cargo is really
+            // travelling (what the arrows scroll at) and how backed up the lane is (what the
+            // colours say). One number cannot answer both -- see BeltFlowUtility.
+            float flowFactor = BeltFlowUtility.ComputeFlowFactor(items, _segment.Length, 1f);
+            float congestion = BeltFlowUtility.ComputeCongestion(
+                items, _segment.Capacity, _segment.Length, 1f);
 
-            UpdateLane(congestion);
+            UpdateLane(flowFactor, congestion);
             UpdateItems(items);
             UpdateHandoffSparkle(items);
         }
 
-        private void UpdateLane(float congestion)
+        private void UpdateLane(float flowFactor, float congestion)
         {
             if (_arrows == null)
             {
@@ -191,7 +216,7 @@ namespace GolemFactory.Belts
             // Arrows slow as the lane jams so "slow + flashing" and "fast + amber" are the two
             // ends of one continuous readout rather than a binary light.
             float speed = BeltFlowUtility.ComputeTreadSpeed(_laneLength, _segment.Length, ticksPerSecond, clockSpeed)
-                          * (1f - congestion);
+                          * flowFactor;
             _scrollPhase = BeltFlowUtility.AdvanceScrollPhase(_scrollPhase, Time.deltaTime, speed, arrowSpacing);
             _pulsePhase = BeltSignalUtility.AdvancePulsePhase(
                 _pulsePhase, Time.deltaTime, BeltSignalUtility.JamPulseHz, clockSpeed);
@@ -214,6 +239,16 @@ namespace GolemFactory.Belts
             if (_rollerEnd != null)
             {
                 _rollerEnd.color = Color.Lerp(Color.white, arrowColor, congestion);
+            }
+
+            // A one-cell player belt has no room for scrolling arrows, so it draws its own
+            // static one and gets NONE of the readout above -- a backed-up belt looked exactly
+            // like a flowing one apart from cargo sitting still, which is the state the player
+            // most needs to spot. Handing that arrow the same signal colour gives it the jam
+            // alarm without inventing a second visual language for it.
+            if (_flowSignalTarget != null)
+            {
+                _flowSignalTarget.color = Color.Lerp(_flowSignalRestColor, arrowColor, congestion);
             }
 
             for (int i = 0; i < _arrows.Length; i++)

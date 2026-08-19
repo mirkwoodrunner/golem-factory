@@ -18,7 +18,14 @@ namespace GolemFactory.PunchCards
         // tile in front; Assemble consumes from its input stock and deposits into its output
         // stock without ever touching a tile. Both are new verbs with no legacy call sites.
         Push,
-        Assemble
+        Assemble,
+
+        // docs/progression-design.md §6, "The Overclocker's verb". Re-runs the immediately
+        // preceding Assemble n more times from the same input stock, amortising the fixed
+        // Haul/Push overhead across a batch. APPENDED, like every member before it: this enum
+        // is serialized by integer index into authored .asset files, so inserting anywhere but
+        // the end would silently re-point every card in the project at a different verb.
+        Repeat
     }
 
     [CreateAssetMenu(fileName = "NewAppendageAction", menuName = "Golem Factory/Punch Cards/Appendage Action")]

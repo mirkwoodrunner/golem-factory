@@ -55,6 +55,14 @@ namespace GolemFactory.UI
         private static readonly Color BarTrackColor = new Color(1f, 1f, 1f, 0.09f);
         private static readonly Color BarFillColor = new Color(0.85f, 0.66f, 0.32f, 0.55f);
 
+        // A bar measured against a real capacity is a different claim from one measured
+        // against the biggest row on screen, so it is a different colour -- brighter brass at
+        // rest, and the same warning channel the rest of the HUD uses as it fills. Without
+        // this a half-length bar would mean two things in one column.
+        private static readonly Color CapacityFillColor = new Color(0.80f, 0.72f, 0.42f, 0.70f);
+        private static readonly Color NearFullFillColor = new Color(1f, 0.70f, 0.28f, 0.80f);
+        private static readonly Color FullFillColor = new Color(1f, 0.42f, 0.30f, 0.85f);
+
         private const float RowHeight = 26f;
         private const float HeaderHeight = 24f;
         private const float IconSize = 22f;
@@ -116,9 +124,10 @@ namespace GolemFactory.UI
             var bufferIds = new List<string>(buffers.Keys);
             bufferIds.Sort(string.CompareOrdinal);
 
-            // The magnitude bars are normalized against the largest single stock on screen,
-            // because a StorageBuffer has no capacity concept in the simulation -- there is
-            // no "full" to draw a percentage against, so the honest comparison is relative.
+            // Still computed, because it is what an UNCAPPED buffer's bar is measured against
+            // -- the player's stockpile is deliberately Unlimited (progression-design 1.2), so
+            // its rows have no "full" to be a percentage of and the honest comparison stays
+            // relative. A capped buffer measures against its own capacity; see StockBarPolicy.
             int largestQuantity = 0;
             foreach (string bufferId in bufferIds)
             {
@@ -148,7 +157,9 @@ namespace GolemFactory.UI
 
                 foreach (string itemType in itemTypes)
                 {
-                    CreateItemRow(bufferId, itemType, buffer.GetQuantity(itemType), largestQuantity);
+                    CreateItemRow(
+                        bufferId, itemType, buffer.GetQuantity(itemType), largestQuantity,
+                        buffer.CapacityPerType);
                 }
             }
         }
@@ -165,16 +176,28 @@ namespace GolemFactory.UI
                 TextAlignmentOptions.MidlineRight, flexibleWidth: 0f, fixedWidth: RateWidth);
         }
 
-        private void CreateItemRow(string bufferId, string itemType, int quantity, int largestQuantity)
+        private void CreateItemRow(
+            string bufferId, string itemType, int quantity, int largestQuantity, int capacityPerType)
         {
             GameObject row = CreateRowRoot("Item", RowHeight, RowTint, null);
+            StockBar bar = StockBarPolicy.Evaluate(quantity, capacityPerType, largestQuantity);
 
             CreateIcon(row.transform, itemType);
             CreateLabel(row.transform, "Name", itemType, ItemNameColor, 13, FontStyles.Normal,
                 TextAlignmentOptions.MidlineLeft, flexibleWidth: 1f, fixedWidth: 0f);
-            CreateMagnitudeBar(row.transform, quantity, largestQuantity);
-            CreateLabel(row.transform, "Quantity", quantity.ToString(), QuantityColor, 15, FontStyles.Bold,
-                TextAlignmentOptions.MidlineRight, flexibleWidth: 0f, fixedWidth: QuantityWidth);
+            CreateMagnitudeBar(row.transform, bar);
+
+            // "84/100" against a cap, bare "84" without one. The denominator is the whole
+            // point of the capacity readout: a fraction with no bottom half is the relative
+            // bar again, in text.
+            string quantityText = bar.Mode == StockBarMode.AgainstCapacity
+                ? quantity + "/" + capacityPerType
+                : quantity.ToString();
+            CreateLabel(row.transform, "Quantity", quantityText,
+                bar.IsFull ? FullFillColor : QuantityColor,
+                bar.Mode == StockBarMode.AgainstCapacity ? 13 : 15,
+                FontStyles.Bold, TextAlignmentOptions.MidlineRight,
+                flexibleWidth: 0f, fixedWidth: QuantityWidth);
             CreateRateLabel(row.transform, bufferId, itemType);
         }
 
@@ -183,24 +206,42 @@ namespace GolemFactory.UI
             float rate = 0f;
             bool hasReading = throughputMonitor != null
                 && throughputMonitor.TryGetRatePerMinute(bufferId, itemType, out rate);
-            if (!hasReading)
+
+            // The second question, and the one a level alone cannot answer: with the level
+            // flat, is anything actually passing through? 60/min in against 60/min out used to
+            // print "0/min Steady" -- indistinguishable from a line that had been dead for ten
+            // minutes, on the readout whose entire job is telling those two apart.
+            float inRate = 0f;
+            float outRate = 0f;
+            bool hasFlow = throughputMonitor != null
+                && throughputMonitor.TryGetFlowPerMinute(bufferId, itemType, out inRate, out outRate);
+
+            StockFlowKind kind = BufferFlowUtility.Classify(hasReading, rate, hasFlow, inRate, outRate);
+            StockTrend trend = BufferTrendUtility.Classify(rate);
+
+            Color color;
+            switch (kind)
             {
-                // Not "0/min": no reading yet and a genuinely flat stock are different
-                // claims, and printing the second when we only know the first is a lie the
-                // player would plan around.
-                CreateLabel(parent, "Rate", "--", DimColor, 12, FontStyles.Normal,
-                    TextAlignmentOptions.MidlineRight, flexibleWidth: 0f, fixedWidth: RateWidth);
-                return;
+                case StockFlowKind.Net:
+                    color = trend == StockTrend.Rising ? RisingColor : FallingColor;
+                    break;
+                case StockFlowKind.Throughput:
+                    // Neither accumulating nor draining: the item-name colour, so a working
+                    // line reads as ordinary rather than as either kind of alarm.
+                    color = ItemNameColor;
+                    break;
+                default:
+                    color = DimColor;
+                    break;
             }
 
-            StockTrend trend = BufferTrendUtility.Classify(rate);
-            Color color = trend == StockTrend.Rising ? RisingColor
-                : trend == StockTrend.Falling ? FallingColor
-                : DimColor;
+            string text = BufferFlowUtility.FormatFlow(kind, rate, inRate, outRate);
+            string glyph = BufferFlowUtility.Glyph(kind, trend);
 
             CreateLabel(parent, "Rate",
-                BufferTrendUtility.TrendGlyph(trend) + " " + BufferTrendUtility.FormatRate(rate),
-                color, 12, trend == StockTrend.Steady ? FontStyles.Normal : FontStyles.Bold,
+                kind == StockFlowKind.Unknown ? text : glyph + " " + text,
+                color, 12,
+                kind == StockFlowKind.Net ? FontStyles.Bold : FontStyles.Normal,
                 TextAlignmentOptions.MidlineRight, flexibleWidth: 0f, fixedWidth: RateWidth);
         }
 
@@ -281,7 +322,7 @@ namespace GolemFactory.UI
             image.color = Color.white;
         }
 
-        private void CreateMagnitudeBar(Transform parent, int quantity, int largestQuantity)
+        private void CreateMagnitudeBar(Transform parent, StockBar bar)
         {
             var track = new GameObject("Bar", typeof(RectTransform), typeof(LayoutElement), typeof(Image));
             track.transform.SetParent(parent, false);
@@ -303,7 +344,7 @@ namespace GolemFactory.UI
             // Anchored fraction rather than a LayoutElement: this child is inside a
             // container with no LayoutGroup of its own, so it stretches with the track and
             // needs no layout participation at all.
-            float fraction = largestQuantity > 0 ? Mathf.Clamp01((float)quantity / largestQuantity) : 0f;
+            float fraction = bar.Fraction;
             var fillRect = (RectTransform)fill.transform;
             fillRect.anchorMin = new Vector2(0f, 0f);
             fillRect.anchorMax = new Vector2(fraction, 1f);
@@ -311,7 +352,10 @@ namespace GolemFactory.UI
             fillRect.offsetMax = Vector2.zero;
 
             Image fillImage = fill.GetComponent<Image>();
-            fillImage.color = BarFillColor;
+            fillImage.color = bar.Mode == StockBarMode.RelativeToLargest ? BarFillColor
+                : bar.IsFull ? FullFillColor
+                : bar.IsNearFull ? NearFullFillColor
+                : CapacityFillColor;
             fillImage.raycastTarget = false;
         }
 

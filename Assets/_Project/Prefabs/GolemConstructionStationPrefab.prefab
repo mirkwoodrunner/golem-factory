@@ -84,8 +84,8 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: d1f49fca51be48f4d8aac2d6bece25bf, type: 3}
-  m_Color: {r: 0.9, g: 0.8, b: 0.4, a: 1}
+  m_Sprite: {fileID: 21300000, guid: aaf1e65c384e799499334ac86c5ca13d, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -137,6 +137,7 @@ MonoBehaviour:
   cellSize: {x: 1, y: 1}
   steamNetworkHolder: {fileID: 0}
   nodeExtractorHolder: {fileID: 0}
+  assemblyBay: {fileID: 0}
 --- !u!114 &6944689890859851846
 MonoBehaviour:
   m_ObjectHideFlags: 0

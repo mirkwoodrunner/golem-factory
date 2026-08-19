@@ -66,14 +66,27 @@ Editor (or a live MCP-for-Unity bridge, if connected):
     UI). Still contains the old 2:1 isometric versions of the environment sprites, so it
     refuses to write any filename the top-down generator owns (see `TOP_DOWN_OWNED`); running
     it used to silently revert the whole projection switch.
-  - Both write to `Assets/_Project/Art/`. Importing them is **no longer a manual Editor pass**:
+  - `python Tools/Art/generate_workbench_ui_art.py` — the Workbench screen's mahogany-and-brass
+    UI chrome, and `python Tools/Art/generate_tech_tree_art.py` — the tech tree chart's plaques,
+    badges and rules. Both write under `Art/UI/`, are 9-sliced, and are imported by their own
+    Editor pass (**Tools > Golem Factory > Author Tech Tree Chart** for the latter).
+  - `python Tools/Art/generate_building_art.py` — the steam pipe, depot and construction station
+    (the last three things wearing `building_block.png`). Imported by the progression scene
+    authoring pass, BottomCenter at PPU 64.
+  - `python Tools/Art/trim_character_alpha.py --apply` — trims the transparent rows beneath a
+    standing sprite's feet, which BottomCenter would otherwise render as a float above the tile.
+    **The sixteen walk frames are trimmed by a shared minimum, never per frame** — per-frame
+    trimming would invent a vertical bob the art deliberately does not have. Re-runnable; a
+    trimmed sprite reports nothing to do.
+  - The environment and placeholder generators write to `Assets/_Project/Art/`. Importing them is
+    **no longer a manual Editor pass**:
     run **Tools > Golem Factory > Rebuild Environment (All Scenes)**, or headless via
     `-executeMethod GolemFactory.Editor.SandboxFloorGenerator.RebuildEnvironmentAllScenes`,
     which applies PPU/pivots, builds the Tile assets, and repaints and re-walls both scenes.
 
 As of the last full run (progression pass, Editor passes, the Hand-Crank Bench, the
-isometric→top-down projection switch, and the market street): **1001/1001 tests passing**
-(869 EditMode + 132 PlayMode).
+isometric→top-down projection switch, the market street, the tech tree chart, and the backlog
+pass, and the Director's pass): **1178/1178 tests passing** (1029 EditMode + 149 PlayMode).
 
 **Two ways to run the tests, and which one depends on whether the Editor is open.**
 
@@ -141,6 +154,20 @@ Every plain-C# manager class (that needs to live in a scene) gets a thin, single
 giving it a scene presence other components can reference in the Inspector. When adding a new
 manager-style system, follow this pattern rather than making the logic itself a `MonoBehaviour`.
 
+### Late-wiring seams (`IGolemRespawner`, `IBuildingRebuilder`, `IPlacedStationConfigurator`)
+
+Three interfaces, one shape: something enters the world *after* the scene's one-shot bootstrap
+sweep — a golem a save restores, a building a save rebuilds, a construction station the player
+places — and needs scene references a prefab cannot carry. In every case the implementor is the
+component that **already** knows how to do that job (`GolemConstructionStation`,
+`BuildModeController`, `SandboxBootstrap`), so the caller asks rather than growing a second copy
+of the wiring. Reach for this rather than adding half a dozen holder fields to whoever happens to
+be holding the reference at the time.
+
+The station case is the one with teeth: before it existed, a station the player paid 25 Scrap +
+5 Brass for silently built nothing, because `SandboxBootstrap.WireSpatialGameplay` sweeps the
+scene once at startup and by definition cannot see a station built later.
+
 ### Golem execution model
 
 This is the mechanical core of the game and the part most milestones touch:
@@ -177,6 +204,13 @@ This is the mechanical core of the game and the part most milestones touch:
   skip/reorder/substitute — the golem stalls and retries the same step every tick until conditions
   clear, publishing `GolemStalledEvent`/`GolemResumedEvent`. There is no branching in the model;
   rigidity is structural.
+  - `Repeat(n)` (progression-design §6) re-runs the **immediately preceding** `Assemble` n more
+    times from the same input stock, at n × its duration. It is implemented as n *sequential*
+    assemblies (rewinding `StepProgressTicks` rather than adding a second kind of step index), so
+    §1.3's per-assembly atomicity holds: a repeat that runs dry keeps its finished batches and
+    strands nothing. Overclocker-only via `ChassisDefinition.allowsRepeat`, refused at assembly
+    time in `GolemProgram.TryAddAppendage` rather than stalled at run time — a Scavenger will
+    never grow the ability, and the rigid-stall rule is for conditions the world can change.
   - Trigger types: `AlwaysOn`, `Interval` (evaluated generically), `Threshold` (edge-triggered
     poll of a `StorageBufferRegistry` quantity — fires once per crossing, not every tick above
     threshold), `Signal` (subscribes to `EventBus.GolemCompleted`, latches a pending fire if it
@@ -261,6 +295,14 @@ an actual playable front door, reusing `Main.unity`'s systems unchanged via two 
   sort order**, so an IMGUI panel could never be made to respect the other screens. That was the
   root cause of the Sandbox HUD overlap, not a cosmetic leftover — mutual exclusion is now
   centralised in `UI/HudScreenPolicy.cs` and covered by a PlayMode exclusivity suite.
+- **The Artificer's Ledger** (`UI/TechTreePanel.cs` + `Scripts/Progression/`) is the tech tree
+  chart, a fifth Management tab. Its content (`TechTreeCatalog`), arrangement
+  (`TechTreeChartLayout`) and state rules (`TechTreeStatusRules`) are engine-free and tested; the
+  generated pixel art is chrome only, never a baked chart — a baked one would be a second copy of
+  `progression-design.md` §5.2/§6 that no test could hold to the assets. It is a **readout**, not a
+  gate: §8's Assembly-Line gating is still unbuilt, so nodes light up from what the player has
+  produced, built and completed. Nodes flagged `IsPlanned` describe unbuilt design and can never
+  reach `Researched`; a test pins exactly which six those are.
 - The Workbench (`UI/WorkbenchController.cs` + `WorkbenchCard.cs`/`WorkbenchDropZone.cs`) is the
   one real **UGUI** system (Canvas + EventSystem + `InputSystemUIInputModule` — the project's
   Input System setting is New-Input-System-only, so the legacy `StandaloneInputModule` won't

@@ -32,6 +32,26 @@ namespace GolemFactory.PunchCards
         /// </summary>
         public List<RecipeIngredient> cost = new List<RecipeIngredient>();
 
+        /// <summary>
+        /// Whether this chassis may hold a <c>Repeat</c> appendage
+        /// (docs/progression-design.md §6, "The Overclocker's verb"). False everywhere but the
+        /// Mainspring Overclocker.
+        ///
+        /// <para>
+        /// A FLAG ON THE DATA, not a name comparison in code. The roster is authored as assets
+        /// and every other per-chassis difference (slots, tier, cost) already lives here;
+        /// keying an ability off <c>name == "Mainspring Overclocker"</c> would put one chassis's
+        /// identity in a string literal that renaming the asset silently breaks.
+        /// </para>
+        ///
+        /// <para>
+        /// Defaults to FALSE, which is the safe direction: a chassis authored before this field
+        /// existed reads as "may not hold Repeat", so the exclusivity is on from the first run
+        /// rather than depending on a migration.
+        /// </para>
+        /// </summary>
+        public bool allowsRepeat;
+
         public Sprite chassisSprite;
     }
 }

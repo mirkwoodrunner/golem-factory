@@ -23,4 +23,5 @@ MonoBehaviour:
     quantity: 24
   - itemType: Gear
     quantity: 12
+  allowsRepeat: 1
   chassisSprite: {fileID: 21300000, guid: 13c4598b2c492e4448f7773550309d13, type: 3}

@@ -107,8 +107,44 @@ namespace GolemFactory.UI
         // no-op.
         [SerializeField] private GameObject[] hideWhileOpen = new GameObject[0];
 
+        // LEGACY, and now only a floor for scenes that never opted into §8's scaling. The live
+        // cost is WorkbenchFocusPolicy.EngageCost -- 8 + 6 x appendageCount, or a flat 10 for a
+        // draft stamped from a patent. Kept serialized because both numbers are authored into
+        // two scenes and the readout still quotes the patent cost from here.
         [SerializeField] private float reprogramFocusCost = 10f;
         [SerializeField] private float patentFocusCost = 20f;
+
+        // Set when a draft is loaded from a patented blueprint and cleared the moment the player
+        // edits it, because a stamped program that has been changed is not the patented one any
+        // more -- charging it the flat rate would make patenting a way to buy a discount on
+        // arbitrary programs rather than on repetition.
+        private bool _draftIsStamped;
+
+        /// <summary>
+        /// What Engage Gears would cost right now (§8). Public so the readout and the button's
+        /// enabled state quote the same number the lever charges.
+        /// </summary>
+        public float CurrentEngageFocusCost =>
+            WorkbenchFocusPolicy.EngageCost(CountDraftAppendages(), _draftIsStamped);
+
+        private int CountDraftAppendages()
+        {
+            if (_draftAppendages == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int i = 0; i < _draftAppendages.Length; i++)
+            {
+                if (_draftAppendages[i] != null)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
 
         // Only used to turn a cycle length in ticks into the "cycles per minute" figure on
         // the diagnostic tape. Mirrors SimulationClock's default rate; the Workbench is a
@@ -192,6 +228,94 @@ namespace GolemFactory.UI
             availableAppendages = appendageRoster ?? new AppendageActionDefinition[0];
         }
 
+        // --- §8.1: the vault shows what the player has CLAIMED ------------------------------
+        // Optional, and that is the whole compatibility story: with no line wired the roster is
+        // the authored one and every card is available from the start, which is the state this
+        // screen shipped in for four milestones. Wiring it turns the authored roster into the
+        // full CATALOGUE and the claimed set into what is actually offered.
+        [SerializeField] private GolemFactory.AssemblyLine.AssemblyLineStateHolder assemblyLineHolder;
+        [SerializeField] private string claimUserId = "LocalPlayer";
+
+        public void ConfigureCardGating(
+            GolemFactory.AssemblyLine.AssemblyLineStateHolder line, string userId)
+        {
+            assemblyLineHolder = line;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                claimUserId = userId;
+            }
+
+            // The vault is rebuilt from data on every open, so a claim made while this screen is
+            // shut is picked up with no event plumbing -- "always re-render from data", the
+            // idiom RebuildUI already follows.
+            if (IsOpen)
+            {
+                RebuildUI();
+            }
+        }
+
+        /// <summary>
+        /// Whether card gating is in play at all. False in every scene that never wires a line,
+        /// which is what keeps the ungated roster valid rather than deprecated.
+        /// </summary>
+        public bool IsRosterGated =>
+            assemblyLineHolder != null && assemblyLineHolder.State != null;
+
+        /// <summary>
+        /// Whether this appendage is offered right now: always, when ungated; only when claimed,
+        /// when gated. Public so a test can ask the question the vault asks.
+        /// </summary>
+        public bool IsCardAvailable(AppendageActionDefinition card)
+        {
+            if (card == null)
+            {
+                return false;
+            }
+
+            if (!IsRosterGated)
+            {
+                return true;
+            }
+
+            System.Collections.Generic.IReadOnlyList<GolemFactory.AssemblyLine.DraftableCardDefinition>
+                claimed = assemblyLineHolder.State.GetClaimedCards(claimUserId);
+            for (int i = 0; i < claimed.Count; i++)
+            {
+                if (claimed[i] != null && claimed[i].appendage == card)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Same question for a chassis, which the Assembly Line also drafts.</summary>
+        public bool IsChassisAvailable(ChassisDefinition chassis)
+        {
+            if (chassis == null)
+            {
+                return false;
+            }
+
+            if (!IsRosterGated)
+            {
+                return true;
+            }
+
+            System.Collections.Generic.IReadOnlyList<GolemFactory.AssemblyLine.DraftableCardDefinition>
+                claimed = assemblyLineHolder.State.GetClaimedCards(claimUserId);
+            for (int i = 0; i < claimed.Count; i++)
+            {
+                if (claimed[i] != null && claimed[i].chassis == chassis)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public void ConfigureUI(
             RectTransform vault, RectTransform chassisRow, RectTransform drag,
             WorkbenchDropZone logicSlot, WorkbenchDropZone[] appendageSlots,
@@ -269,6 +393,18 @@ namespace GolemFactory.UI
             SetHiddenChromeActive(true);
         }
 
+        /// <summary>
+        /// Shows or hides the always-on world HUD -- the build menu, the fuel gauge, the tower
+        /// panel, the alerts strip. Public because the <b>Management</b> screen needs the same
+        /// thing and there must not be a second list: <c>hideWhileOpen</c> is authored once, on
+        /// this component, and <see cref="HudScreenPolicy.ShouldShowWorldHud"/> already says the
+        /// rule is per-screen-open rather than per-screen-identity. Without this the fuel gauge
+        /// and the alerts strip drew straight over the Management modal -- the same class of
+        /// overlap the UGUI conversion was done to kill, surviving in the one screen that never
+        /// got the list.
+        /// </summary>
+        public void SetWorldHudVisible(bool visible) => SetHiddenChromeActive(visible);
+
         private void SetHiddenChromeActive(bool active)
         {
             for (int i = 0; i < hideWhileOpen.Length; i++)
@@ -324,6 +460,9 @@ namespace GolemFactory.UI
             }
 
             GolemProgram program = targetGolem.Program;
+            // Read off a golem, not stamped from a patent: §8's flat rate is for repetition,
+            // and this is whatever this particular golem already runs.
+            _draftIsStamped = false;
             _draftChassis = program.chassis;
             _draftLogicCore = program.logicCore;
             // Blank first: this only ever overwrote the indices the incoming program
@@ -444,6 +583,11 @@ namespace GolemFactory.UI
         // somewhere that isn't a valid drop zone.
         public void HandleDrop(WorkbenchCard card, WorkbenchDropZone zone)
         {
+            // ANY hand edit ends the flat rate. A stamped program that has been changed is not
+            // the patented one any more, and charging it 10 would turn patenting into a discount
+            // on arbitrary programs rather than on repetition.
+            _draftIsStamped = false;
+
             if (zone == null)
             {
                 if (!card.IsVaultOrigin)
@@ -535,11 +679,13 @@ namespace GolemFactory.UI
                 return;
             }
 
+            // §8: 8 + 6 x appendageCount, or a flat 10 for a draft stamped from a patent.
+            float engageCost = CurrentEngageFocusCost;
             ArtificerFocusMeter meter = focusMeterHolder != null ? focusMeterHolder.Meter : null;
-            if (meter == null || !meter.TryConsume(reprogramFocusCost))
+            if (meter == null || !meter.TryConsume(engageCost))
             {
                 SetStatus(
-                    $"Not enough Focus to reprogram (need {reprogramFocusCost:F0}).",
+                    $"Not enough Focus to reprogram (need {engageCost:F0}).",
                     WorkbenchStatusReason.InsufficientFocusEngage);
                 RefuseLever();
                 return;
@@ -555,7 +701,7 @@ namespace GolemFactory.UI
             {
                 // Shouldn't happen -- the draft's own appendage count is already gated to
                 // fit _draftChassis via SlotActive -- but refund and report if it does.
-                meter.Refund(reprogramFocusCost);
+                meter.Refund(engageCost);
                 SetStatus("Cannot engage: chassis rejected the current appendage count.", WorkbenchStatusReason.Info);
                 RefuseLever();
                 return;
@@ -649,6 +795,9 @@ namespace GolemFactory.UI
                 return;
             }
 
+            // The flat-rate flag. Set here and cleared by any subsequent edit, so the discount
+            // follows the patented program rather than the screen it was loaded into.
+            _draftIsStamped = true;
             _draftChassis = blueprint.Chassis;
             _draftLogicCore = blueprint.LogicCore;
             for (int i = 0; i < _draftAppendages.Length; i++)
@@ -883,6 +1032,14 @@ namespace GolemFactory.UI
 
             foreach (ChassisDefinition chassis in availableChassis)
             {
+                // §8.1: the authored roster is the CATALOGUE; what the player has claimed is
+                // what is offered. Ungated (no Assembly Line wired) every entry passes, which
+                // is the state this screen shipped in.
+                if (!IsChassisAvailable(chassis))
+                {
+                    continue;
+                }
+
                 var go = new GameObject(chassis.name, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
                 go.transform.SetParent(chassisButtonRow, false);
                 var rect = go.GetComponent<RectTransform>();
@@ -956,6 +1113,14 @@ namespace GolemFactory.UI
             CreateVaultHeading(vaultContent, "APPENDAGES  ·  actions");
             foreach (AppendageActionDefinition appendage in availableAppendages)
             {
+                // §8.1, the vault half. Filtered here rather than by rewriting the roster, so
+                // one authored list stays the catalogue and a claim shows up on the next
+                // rebuild with no roster surgery.
+                if (!IsCardAvailable(appendage))
+                {
+                    continue;
+                }
+
                 CreateCard(vaultContent, null, appendage, isVaultOrigin: true, sourceAppendageIndex: -1);
             }
 

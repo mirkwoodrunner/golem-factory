@@ -417,6 +417,20 @@ namespace GolemFactory.Golems
             }
 
             CompleteStep(step);
+
+            // A Repeat owing further iterations restarts the SAME step instead of advancing.
+            // Rewinding the progress counter (rather than adding a second kind of step index)
+            // means every other part of the loop -- the stall guard, the resume event, the
+            // duration clamp -- keeps treating this as one ordinary step being begun again,
+            // which is exactly what it is.
+            if (step.actionType == AppendageActionType.Repeat && _repeatIterationsLeft > 1)
+            {
+                _repeatIterationsLeft--;
+                program.StepProgressTicks = 0;
+                return;
+            }
+
+            ClearRepeatState();
             program.AdvanceStep();
             if (program.CurrentStepIndex == 0)
             {
@@ -523,6 +537,14 @@ namespace GolemFactory.Golems
                 return steamStall;
             }
 
+            // Any step that is not a Repeat ends whatever repeat was in flight. Reprogramming
+            // is the case that needs this: nothing tells a golem its program was rewritten, so
+            // the state has to be self-correcting rather than notified.
+            if (step.actionType != AppendageActionType.Repeat)
+            {
+                ClearRepeatState();
+            }
+
             switch (step.actionType)
             {
                 case AppendageActionType.ExtractFromNode:
@@ -537,6 +559,8 @@ namespace GolemFactory.Golems
                     return BeginPush(out blockedResourceId);
                 case AppendageActionType.Assemble:
                     return BeginAssemble(step, out blockedResourceId);
+                case AppendageActionType.Repeat:
+                    return BeginRepeat(out blockedResourceId);
                 default:
                     return StallReason.None;
             }
@@ -544,6 +568,17 @@ namespace GolemFactory.Golems
 
         /// <summary>Player-set batch size for the step currently executing.</summary>
         private int CurrentStepQuantity() => program.GetQuantityAt(program.CurrentStepIndex);
+
+        /// <summary>
+        /// Forgets any repeat in flight. Called when the step advances, and whenever the
+        /// program itself is replaced -- a counter left over from the old program would make
+        /// the first step of the new one run several times.
+        /// </summary>
+        private void ClearRepeatState()
+        {
+            _repeatIterationsLeft = 0;
+            _repeatedAssemble = null;
+        }
 
         /// <summary>
         /// Whether steam reaches this golem, or <see cref="StallReason.NoSteam"/> naming its
@@ -677,6 +712,19 @@ namespace GolemFactory.Golems
         // no-op for them.
         private void CompleteStep(AppendageActionDefinition step)
         {
+            // A Repeat iteration finishing IS the borrowed Assemble finishing, products,
+            // ItemAssembledEvent and all -- the Clock Tower's fresh-production window must
+            // count a repeated batch exactly as it counts a single one.
+            if (step.actionType == AppendageActionType.Repeat)
+            {
+                if (_repeatedAssemble != null)
+                {
+                    CompleteStep(_repeatedAssemble);
+                }
+
+                return;
+            }
+
             if (step.actionType == AppendageActionType.Refine && bufferRegistryHolder != null)
             {
                 bufferRegistryHolder.Registry.Deposit(step.destinationId, step.outputItemType);
@@ -1129,6 +1177,83 @@ namespace GolemFactory.Golems
         // IT READS ONLY step.recipe. The step's own inputItemType/outputItemType were an
         // explicit §1.1 placeholder for a single-input Assemble and are no longer consulted here
         // at all; they stay on the asset because Refine and Haul still mean something by them.
+        /// <summary>
+        /// How many more iterations the running <c>Repeat</c> owes. Zero when no repeat is in
+        /// flight, which is also how <see cref="BeginRepeat"/> knows an iteration is the first
+        /// one rather than a retry of a stalled one.
+        /// </summary>
+        private int _repeatIterationsLeft;
+
+        /// <summary>
+        /// The <c>Assemble</c> card a running <c>Repeat</c> is re-running. Captured when the
+        /// repeat starts so a mid-repeat stall retries the same recipe, and so
+        /// <c>CompleteStep</c> knows what to deposit.
+        /// </summary>
+        private AppendageActionDefinition _repeatedAssemble;
+
+        /// <summary>
+        /// The step immediately before the one running, or null at index 0.
+        /// <c>Repeat</c> is defined against it and nothing else.
+        /// </summary>
+        private AppendageActionDefinition PrecedingStep()
+        {
+            int index = program.CurrentStepIndex - 1;
+            return index >= 0 && index < program.appendages.Count ? program.appendages[index] : null;
+        }
+
+        /// <summary>
+        /// <c>Repeat(n)</c> -- docs/progression-design.md §6, "The Overclocker's verb":
+        /// re-runs the immediately preceding <c>Assemble</c> n more times from the same input
+        /// stock, taking n x that Assemble's duration and stalling on the same shortfall rules.
+        ///
+        /// <para>
+        /// Implemented as n SEQUENTIAL runs of <see cref="BeginAssemble"/> rather than as one
+        /// step that multiplies quantities, and that is the load-bearing choice. §1.3's
+        /// atomicity is per assembly: each iteration checks room for its own output and holds
+        /// its own inputs before consuming anything, so a repeat that runs out halfway leaves
+        /// completed batches in output stock and the remaining inputs untouched, instead of
+        /// stranding a part-consumed multi-batch withdrawal inside a golem nothing can reach.
+        /// It is also what makes §6's claim about the 12-per-type cap true for free: Repeat on
+        /// R15 (10 Casing) simply stalls MissingItem on the second iteration, because 20 Casing
+        /// cannot be held.
+        /// </para>
+        ///
+        /// <para>
+        /// A <c>Repeat</c> that follows anything but an <c>Assemble</c> stalls
+        /// <see cref="StallReason.Unconfigured"/>, alongside the missing/malformed recipe: all
+        /// three are "this program was never finished being written", which is an authoring
+        /// mistake rather than a condition the world can clear.
+        /// </para>
+        /// </summary>
+        private StallReason BeginRepeat(out string blockedResourceId)
+        {
+            blockedResourceId = null;
+
+            AppendageActionDefinition preceding = PrecedingStep();
+            if (preceding == null || preceding.actionType != AppendageActionType.Assemble)
+            {
+                return StallReason.Unconfigured;
+            }
+
+            // Restarted when the captured card no longer matches what precedes this step: the
+            // player can reprogram a golem mid-cycle (EngageGears rewrites the SAME
+            // GolemProgram instance under it), and a count left over from the old program
+            // would silently multiply the new one's first assembly.
+            if (_repeatIterationsLeft <= 0 || _repeatedAssemble != preceding)
+            {
+                // The player-set n, from this slot's own quantity -- the same per-slot dial
+                // Haul uses, for the same reason it lives on GolemProgram rather than on the
+                // shared card asset.
+                _repeatIterationsLeft = Mathf.Max(1, CurrentStepQuantity());
+                _repeatedAssemble = preceding;
+            }
+
+            // Everything else -- duration, the room check, the atomic ingredient withdrawal,
+            // the shortfall report -- is BeginAssemble's, unchanged. Repeat adds a count and
+            // nothing else, so the two verbs can never disagree about what an assembly costs.
+            return BeginAssemble(_repeatedAssemble, out blockedResourceId);
+        }
+
         private StallReason BeginAssemble(AppendageActionDefinition step, out string blockedResourceId)
         {
             blockedResourceId = null;
