@@ -57,7 +57,12 @@ namespace GolemFactory.UI
                 return;
             }
 
-            _canvas.transform.position = golem.transform.position + worldOffset;
+            // Through the registry, so two golems standing a cell apart do not stack their
+            // badges on one another -- a stall badge nobody can read is a stall nobody fixes.
+            // Keyed by golem id rather than by instance, so the answer is stable across a
+            // respawn from a save.
+            _canvas.transform.position = WorldHudRegistry.Resolve(
+                golem.transform.position + worldOffset, golem.GolemId);
         }
 
         private void OnGolemStalled(GolemStalledEvent e)

@@ -9,7 +9,7 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 > reviewed**. Everything from §1.5 on is **spec only**. The next pass starts at §1.5, which is
 > also what §1.4's Sandbox switch is waiting on.
 
-Tests stand at **1218/1218** (1069 EditMode + 149 PlayMode), up from 590 before the progression pass
+Tests stand at **1228/1228** (1079 EditMode + 149 PlayMode), up from 590 before the progression pass
 began. Console clean.
 
 > **The Director's pass is validated.** Street extension, truckload market + Creative Mode, the
@@ -948,8 +948,17 @@ decision §2 reserves. Nothing mechanical blocks it any more.
 
   **Still not saved, and deliberately:** belt *contents* and the tick counter, which `SaveData` has
   always excluded as "continue where you left off, not a simulation snapshot".
-- **World-space HUD collides.** Stall badges and the interaction caption both anchor to the golem and
-  overlap when two stand close. Reduced, not solved; needs a world-space layout pass.
+- ~~**World-space HUD collides.**~~ **DONE** -- the layout pass it was waiting for.
+  `UI/WorldHudLayout` is the pure solver (bucket by column, order south-first with the owner id
+  as tie-break, stack the rest upward); `WorldHudRegistry` collects one frame's anchors and
+  `WorldHudSolver` ticks it from `Update`, so every label reads a layout computed after the last
+  of them registered and before any of them draws -- an ordering guaranteed by Unity's phases
+  rather than by a script execution order somebody has to remember.
+
+  **Stacked, not scattered**: colliding labels climb in a column so each stays horizontally over
+  the thing it describes, where a radial nudge would put a badge over a *neighbour* at exactly
+  the moment that neighbour also has something to say. The interaction caption sorts below every
+  golem id on purpose -- the thing the player is reaching for should not be the thing that moved.
 - ~~**Belts are one cell per segment**, no merge or splitter~~ -- **merges and splitters are
   built**, and this entry was recording ONE gap where there were two, only half of them real.
 

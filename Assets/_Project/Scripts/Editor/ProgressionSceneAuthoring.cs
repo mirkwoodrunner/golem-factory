@@ -590,6 +590,10 @@ namespace GolemFactory.Editor
                 // §6's mast registry: scene-wide, like the extractor cap beside it.
                 Ensure<FreightMastRegistryHolder>(EnsureChild(root, "FreightMasts"));
 
+                // Ticks the world-space HUD layout, so stall badges and the interaction caption
+                // stack instead of overprinting when golems stand close.
+                Ensure<WorldHudSolver>(EnsureChild(root, "WorldHud"));
+
                 // §11 item 15: how far the workshop currently reaches. Runtime state, because
                 // Floor Expansion moves the back wall mid-session and FloorLayout's extents are
                 // consts that every default argument depends on.

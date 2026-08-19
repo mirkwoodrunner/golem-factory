@@ -29,6 +29,9 @@ namespace GolemFactory.Player
         [SerializeField] private Sprite ringSprite;
         [SerializeField] private Vector3 ringOffset = new Vector3(0f, -0.12f, 0f);
         [SerializeField] private Vector3 captionOffset = new Vector3(0f, 0.95f, 0f);
+
+        // Sorts before any golem id, so the caption takes the bottom of a shared column.
+        private const string CaptionOwnerId = "!interaction";
         [SerializeField] private string sortingLayerName = "Default";
 
         /// <summary>
@@ -181,7 +184,13 @@ namespace GolemFactory.Player
 
             if (_captionCanvas != null)
             {
-                _captionCanvas.transform.position = basePosition + captionOffset;
+                // Through the same registry the stall badges use, so an interaction caption and
+                // a stall badge over the same crowded tile stack instead of overprinting. The
+                // caption registers under a FIXED id because there is only ever one of it -- and
+                // it is submitted first each frame, so it keeps the lowest slot in its column:
+                // the thing the player is reaching for should not be the thing that moved.
+                _captionCanvas.transform.position = GolemFactory.UI.WorldHudRegistry.Resolve(
+                    basePosition + captionOffset, CaptionOwnerId);
             }
         }
 
