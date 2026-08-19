@@ -1064,7 +1064,12 @@ namespace GolemFactory.UI
                 _chassisButtonImages[chassis] = image;
 
                 ChassisDefinition captured = chassis;
-                go.GetComponent<Button>().onClick.AddListener(() => SelectChassis(captured));
+                Button chassisButton = go.GetComponent<Button>();
+                // Measured states rather than Unity's defaults, whose highlighted multiplier
+                // composites to a 3.9 % luminance shift on this sprite -- the "effectively
+                // invisible" hover the backlog recorded.
+                chassisButton.colors = WorkbenchInteractionColors.ButtonColors();
+                chassisButton.onClick.AddListener(() => SelectChassis(captured));
 
                 CreateLabel(go.transform, WorkbenchDiagnostics.Humanize(chassis.name), 15f,
                     ChassisInkColor, TextAlignmentOptions.Left, new Vector2(0.05f, 0.44f), new Vector2(0.97f, 0.96f));
@@ -1255,7 +1260,8 @@ namespace GolemFactory.UI
             }
 
             Image cardImage = go.GetComponent<Image>();
-            cardImage.color = logicCore != null ? TealColor : CopperColor;
+            Color cardBase = logicCore != null ? TealColor : CopperColor;
+            cardImage.color = cardBase;
             if (vaultCardSprite != null)
             {
                 cardImage.sprite = vaultCardSprite;
@@ -1278,6 +1284,9 @@ namespace GolemFactory.UI
             }
 
             WorkbenchCard card = go.GetComponent<WorkbenchCard>();
+            // Told its resting colour so hover and press modulate the card's OWN tint rather
+            // than replacing it -- a hovered logic core has to stay teal.
+            card.SetBaseColor(cardBase);
             card.LogicCore = logicCore;
             card.Appendage = appendage;
             card.IsVaultOrigin = isVaultOrigin;

@@ -9,7 +9,7 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 > reviewed**. Everything from §1.5 on is **spec only**. The next pass starts at §1.5, which is
 > also what §1.4's Sandbox switch is waiting on.
 
-Tests stand at **1228/1228** (1079 EditMode + 149 PlayMode), up from 590 before the progression pass
+Tests stand at **1236/1236** (1087 EditMode + 149 PlayMode), up from 590 before the progression pass
 began. Console clean.
 
 > **The Director's pass is validated.** Street extension, truckload market + Creative Mode, the
@@ -1049,13 +1049,26 @@ decision §2 reserves. Nothing mechanical blocks it any more.
 ### Presentation polish deferred from the production-quality pass
 Each of these was reviewed and judged non-blocking:
 
-- Workbench: no hover/press states on vault cards or chassis buttons (measured at a ~4% colour
-  shift, effectively invisible); lever housing is basic hand-coded pixel art; LiberationSans SDF
+- ~~Workbench: no hover/press states on vault cards or chassis buttons~~ -- **DONE, and the
+  measurement was the fix.** `Image.color` MULTIPLIES its sprite, so a tint can only darken and
+  "highlight" is unreachable from a resting state of white -- which is why Unity's default
+  highlighted multiplier composites to the 3.9 % nobody could see. The controls now rest at 0.82
+  and hover goes to full, so the lift is real; the cost is a slightly dimmer resting card, and it
+  is the same headroom move `BuildGhostVisuals` made with its near-white source sprite. A vault
+  card is not a `Button` (it is a drag handle) so it got the four pointer handlers directly.
+  Tests assert the SEPARATION between every pair of states, including a test that pins Unity's
+  default at ~4 % so nobody reinstates it. Workbench polish still outstanding: lever housing is basic hand-coded pixel art; LiberationSans SDF
   rather than a period display face; procedural grain visibly repeats; cards are text-only with no
   per-action icons; dead space below 5 chassis entries and ~8 vault cards.
 - Environment: the floor is monotone at gameplay zoom with no feature larger than one tile; the
   interior is an empty box (no workbenches, shelving, or hearth — the biggest gap against "cozy,
-  detailed"); lighting is even rather than dramatic.
+  detailed"). ~~Lighting is even rather than dramatic.~~ **Retuned**: the global light drops
+  1.15 → 0.62 and the sconces rise 0.95 → 1.5 with a wider radius, taking a lit spot from 1.8× the
+  shadow between lamps to **3.4×**. Cutting the ambient is what does the work -- while a 2D global
+  light sits near 1 the sconces can only add to an already-lit room. 0.62 is a floor rather than a
+  mood: this is a factory game and the grid must stay readable unlit. Every `BuildGhostVisuals`
+  contrast figure survives, because a uniform multiplier scales the ghost and its floor equally
+  and those were all stated as ratios. **Unverified by eye** -- the numbers are reasoned, not seen.
 - ~~Economy: stock bars are still relative-only ... the rate readout is also still *net* stock
   change.~~ **BOTH DONE.** A capped buffer's bar is a real fill fraction now
   (`Economy/StockBarPolicy`, with a `84/100` label and a warning ramp at five sixths); an uncapped
@@ -1066,8 +1079,15 @@ Each of these was reviewed and judged non-blocking:
   `StorageBuffer` now keeps monotone lifetime deposited/withdrawn counters, `BufferRateTracker`
   fits both slopes, and throughput is `min(in, out)` (the surplus of either side is already
   reported as net movement; counting it twice would read as double the traffic there is).
-- Belt art is direction-neutral with a rotated chevron rather than a proper mirrored NE/NW
-  isometric pair.
+- ~~Belt art is direction-neutral with a rotated chevron rather than a proper mirrored NE/NW
+  isometric pair.~~ **Stale, like the `ComputeItemScale` entry above: the projection switch
+  resolved it.** A mirrored pair is what an ISOMETRIC grid needs, because a chevron rotated onto
+  a diagonal shears against the diamond it sits on. Top-down puts all four facings on world axes
+  -- measured at exactly 0°, 90°, 180°, 270° -- so the four are exact quarter turns of one sprite
+  and a mirrored pair would be two copies of the same picture. The art is flat white on a dark
+  outline with no baked light, so rotating it contradicts no light direction. A test pins the
+  quarter-turn property, because if it ever stops holding (a projection change, eight-way facing)
+  the rotated chevron stops working and the mirrored pair becomes real work again.
 
 ---
 

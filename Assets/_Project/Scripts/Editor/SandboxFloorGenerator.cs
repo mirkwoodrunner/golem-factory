@@ -140,6 +140,14 @@ namespace GolemFactory.Editor
         private const int LampSpacing = 4;
         private static readonly Color LampColor = new Color(1f, 0.72f, 0.42f, 1f);
 
+        // --- The dramatic-lighting pass -----------------------------------------------------
+        // TUNING, and they only mean anything as a pair: a lit spot is
+        // (Global + Sconce) / Global = 3.4x the shadow between lamps, against 1.8x before.
+        // Cutting the ambient is what does the work; raising the sconce alone would just wash
+        // the whole room brighter.
+        private const float GlobalIntensity = 0.62f;
+        private const float SconceIntensity = 1.5f;
+
         // WHERE THE LIGHT GOES IS NOT WHERE THE FLAME IS PAINTED, and that is not a bug.
         //
         // make_wall paints the sconce glow 68px above the wall's base line (canvas row 24 on a
@@ -330,6 +338,7 @@ namespace GolemFactory.Editor
             if (spawnWalls)
             {
                 pieceCount = BuildWalls(gridObject.transform, converter) + BuildProps(gridObject.transform, converter);
+                TuneGlobalLight();
             }
             else
             {
@@ -611,10 +620,66 @@ namespace GolemFactory.Editor
             // now it reaches 3 cells in both, over a 25-cell room lit from a single edge. The
             // spacing is 4 cells, so the outer radius has to exceed that or the wall alternates
             // pool-dark-pool instead of reading as continuously lit.
-            light.intensity = 0.95f;
+            //
+            // RAISED FOR THE DRAMATIC-LIGHTING PASS, together with the global light being cut
+            // (see TuneGlobalLight). The two numbers only mean anything as a ratio: at the old
+            // 0.95 sconce over a 1.15 ambient, a lit spot was (1.15 + 0.95) / 1.15 = 1.8x the
+            // shadow, which is a room lit evenly with faint warm patches -- the "even rather
+            // than dramatic" the backlog recorded. At 1.5 over 0.62 it is 3.4x, which is a pool
+            // of light with darkness between, and it is the RATIO that does that rather than
+            // either number alone.
+            light.intensity = SconceIntensity;
             light.pointLightInnerRadius = 0.5f;
-            light.pointLightOuterRadius = 4.5f;
+            // Widened with the intensity so the pools still overlap: the lamps sit 4 cells
+            // apart, and an outer radius that does not exceed the spacing gives a wall that
+            // alternates pool-dark-pool, which is exactly what the note above warns against.
+            // The brighter a light is, the more visible its own edge becomes.
+            light.pointLightOuterRadius = 5.5f;
             light.falloffIntensity = 0.6f;
+        }
+
+        /// <summary>
+        /// The ambient floor, and the other half of the dramatic-lighting pass.
+        ///
+        /// <para>
+        /// A 2D global light is a flat multiplier over everything, so while it sits near 1 the
+        /// sconces can only ever ADD to an already-lit room: nothing is ever in shadow, and the
+        /// lamps read as warm patches rather than as the source of the light. Cutting it to
+        /// <see cref="GlobalIntensity"/> is what gives the sconces somewhere to be brighter
+        /// than -- the same "leave headroom" move the Workbench's hover states needed, and for
+        /// the same reason.
+        /// </para>
+        ///
+        /// <para>
+        /// <b>0.62 is a floor, not a mood.</b> This is a factory game: the grid, the belts and
+        /// the build ghost all have to stay readable in the unlit middle of the room, so the
+        /// ambient is cut to roughly half rather than to darkness. Every contrast figure
+        /// BuildGhostVisuals measured survives the change, because a uniform multiplier scales
+        /// the ghost and the floor it sits on equally and those were all stated as ratios.
+        /// </para>
+        /// </summary>
+        private static void TuneGlobalLight()
+        {
+            Light2D[] lights = UnityEngine.Object.FindObjectsByType<Light2D>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+            int tuned = 0;
+            for (int i = 0; i < lights.Length; i++)
+            {
+                if (lights[i].lightType != Light2D.LightType.Global)
+                {
+                    continue;
+                }
+
+                lights[i].intensity = GlobalIntensity;
+                EditorUtility.SetDirty(lights[i]);
+                tuned++;
+            }
+
+            if (tuned == 0)
+            {
+                Debug.LogWarning("SandboxFloorGenerator: no global Light2D to tune.");
+            }
         }
 
         // Creates the Tile assets on first run so the whole floor is reproducible from the PNGs
