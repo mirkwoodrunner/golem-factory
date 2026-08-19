@@ -22,4 +22,5 @@ MonoBehaviour:
   - itemType: Coke
     quantity: 30
   allowsRepeat: 0
+  allowsFreightLaunch: 0
   chassisSprite: {fileID: 21300000, guid: e708142ede14d6f4db352208a709cd79, type: 3}

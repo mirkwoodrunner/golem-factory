@@ -251,7 +251,45 @@ def make_construction_station() -> Image.Image:
     return image
 
 
+def make_freight_mast() -> Image.Image:
+    """A mooring mast: a tall lattice tower with a docking ring and a landing pad at its foot.
+
+    TALL AND THIN on purpose. It is the one building whose job is to be seen from the far side
+    of the map -- a Zeppelin bound to it may be launching from anywhere -- so the silhouette has
+    to read at a glance from outside its own screen, which a squat box cannot do.
+    """
+    width, height = 52, 120
+    image = Image.new("RGBA", (width, height), TRANSPARENT)
+    draw = ImageDraw.Draw(image)
+
+    _contact_shadow(draw, (2, 116, 49, 119))
+
+    # Landing pad: where the freight actually lands, so it is the widest thing at ground level.
+    _panel(draw, (0, 100, 51, 115), IRON_DARK, IRON, (34, 30, 44, 255), 0.12, 71, image)
+    for x in range(4, 48, 10):
+        draw.rectangle([x, 104, x + 6, 111], fill=IRON)
+
+    # Lattice tower: two legs and their cross-bracing, drawn as a zigzag rather than a solid
+    # block so it reads as a frame you can see the sky through.
+    for x in (14, 34):
+        _panel(draw, (x, 24, x + 4, 101), IRON, IRON_LIGHT, IRON_DARK, 0.10, 73, image)
+
+    for y in range(30, 100, 10):
+        draw.line([(18, y), (34, y + 5)], fill=IRON_LIGHT)
+        draw.line([(18, y + 5), (34, y)], fill=_shade(IRON, -0.2))
+
+    # Docking ring and its beacon: the two details that say "something moors here".
+    _panel(draw, (6, 12, 45, 24), BRASS, BRASS_LIGHT, BRASS_DARK, 0.10, 79, image)
+    draw.ellipse([18, 2, 33, 17], outline=OUTLINE, fill=BRASS_DARK)
+    draw.ellipse([21, 5, 30, 14], fill=BRASS_LIGHT)
+    draw.ellipse([24, 8, 27, 11], fill=GLOW)
+    _rivets(draw, (9, 42), (16,))
+
+    return image
+
+
 def main() -> None:
+    save(make_freight_mast(), "freight_mast.png")
     save(make_steam_pipe(), "steam_pipe.png")
     save(make_depot(), "depot.png")
     save(make_construction_station(), "golem_construction_station.png")

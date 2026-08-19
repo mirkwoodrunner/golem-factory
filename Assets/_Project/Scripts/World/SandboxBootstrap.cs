@@ -47,6 +47,9 @@ namespace GolemFactory.World
         // --- The market (progression-design §13.2) -----------------------------------------
         // Optional in the same additive way: with no market holder the stalls stay infinite and
         // free, which is exactly the pre-truckload behaviour and exactly what Creative Mode is.
+        // §6's Freight Link. Optional like every holder here.
+        [SerializeField] private FreightMastRegistryHolder mastRegistryHolder;
+
         [SerializeField] private Economy.TruckloadMarketHolder marketHolder;
         [SerializeField] private Economy.GameModeHolder gameModeHolder;
 
@@ -181,6 +184,7 @@ namespace GolemFactory.World
             ApplyBufferCapacityPolicy();
             RegisterSpatialEndpoints();
             RegisterSteamNetwork();
+            RegisterFreightMasts();
             RegisterClockTower();
             RegisterHandCrankBenches();
             RegisterMarket();
@@ -573,6 +577,41 @@ namespace GolemFactory.World
         /// readouts of the boilers that exist, and a boiler with nothing drawing on it burns
         /// nothing anyway (§3.1).
         /// </summary>
+        /// <summary>
+        /// Publishes every Freight Mast already standing in the scene, the same sweep idiom the
+        /// boiler and tower passes use -- so a mast authored into a scene works without having
+        /// been placed by the player.
+        /// </summary>
+        private void RegisterFreightMasts()
+        {
+            if (grid == null)
+            {
+                return;
+            }
+
+            FreightMastRegistryHolder masts = mastRegistryHolder != null
+                ? mastRegistryHolder
+                : FindAnyObjectByType<FreightMastRegistryHolder>(FindObjectsInactive.Include);
+            if (masts == null)
+            {
+                return;
+            }
+
+            var converter = new GridCoordinateConverter(grid.cellSize);
+            Economy.StorageBufferRegistryHolder buffers = bufferRegistryHolder != null
+                ? bufferRegistryHolder
+                : FindAnyObjectByType<Economy.StorageBufferRegistryHolder>(FindObjectsInactive.Include);
+
+            GolemFactory.Buildings.PlaceableFreightMast[] placed =
+                FindObjectsByType<GolemFactory.Buildings.PlaceableFreightMast>(FindObjectsInactive.Exclude);
+            for (int i = 0; i < placed.Length; i++)
+            {
+                Vector2Int cell = converter.WorldToCell(placed[i].transform.position);
+                placed[i].RegisterAsSpatialEndpoint(spatialEndpointHolder, buffers, cell);
+                placed[i].RegisterWithMastNetwork(masts, cell);
+            }
+        }
+
         private void RegisterSteamNetwork()
         {
             if (steamNetworkHolder == null || grid == null)
@@ -682,6 +721,11 @@ namespace GolemFactory.World
                 buildModeController.ConfigureSteam(steamNetworkHolder);
             }
 
+            if (buildModeController != null && _stationMasts != null)
+            {
+                buildModeController.ConfigureFreight(_stationMasts);
+            }
+
             if (playerInteractor != null)
             {
                 playerInteractor.ConfigureBuildMode(buildModeController);
@@ -737,6 +781,9 @@ namespace GolemFactory.World
             _stationBay = assemblyBay != null
                 ? assemblyBay
                 : FindAnyObjectByType<GolemFactory.Buildings.AssemblyBayStructure>(FindObjectsInactive.Include);
+            _stationMasts = mastRegistryHolder != null
+                ? mastRegistryHolder
+                : FindAnyObjectByType<FreightMastRegistryHolder>(FindObjectsInactive.Include);
 
             for (int i = 0; i < stations.Length; i++)
             {
@@ -771,6 +818,7 @@ namespace GolemFactory.World
         private SimulationClockRunner _stationClock;
         private GolemFactory.UI.WorkbenchController _stationWorkbench;
         private GolemFactory.Buildings.AssemblyBayStructure _stationBay;
+        private FreightMastRegistryHolder _stationMasts;
 
         /// <summary>
         /// The ONE definition of "a construction station, fully wired into this scene". Called
@@ -835,6 +883,13 @@ namespace GolemFactory.World
             if (_stationBay != null)
             {
                 station.ConfigureAssemblyBay(_stationBay);
+            }
+
+            // §6's Freight Link. Not behind any switch: a mast registry with no masts in it
+            // binds nothing, so a scene without masts is unaffected.
+            if (_stationMasts != null)
+            {
+                station.ConfigureFreight(_stationMasts);
             }
 
             return station.HasBuildRoster;

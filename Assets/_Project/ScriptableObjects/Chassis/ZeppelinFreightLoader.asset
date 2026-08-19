@@ -26,4 +26,5 @@ MonoBehaviour:
   - itemType: Brass
     quantity: 40
   allowsRepeat: 0
+  allowsFreightLaunch: 1
   chassisSprite: {fileID: 21300000, guid: 9d4bb39bd41777843afac2209c8242c1, type: 3}

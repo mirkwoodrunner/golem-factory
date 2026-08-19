@@ -201,12 +201,14 @@ namespace GolemFactory.Editor
             var bottomCenter = new System.Collections.Generic.HashSet<string>
             {
                 "steam_pipe.png", "depot.png", "golem_construction_station.png",
+                "freight_mast.png",
             };
 
             foreach (string file in new[]
                      {
                          "item_coal.png", "item_copper_ore.png", "item_zinc_ore.png",
                          "steam_pipe.png", "depot.png", "golem_construction_station.png",
+                         "freight_mast.png",
                      })
             {
                 string path = ArtRoot + file;
@@ -322,6 +324,26 @@ namespace GolemFactory.Editor
                     WriteRecipeCandidates(new SerializedObject(bench));
                 },
                 "hand_crank_bench.png");
+
+            // §6's Freight Mast: 20 Brass + 10 Casing, the far end of the Zeppelin's link.
+            BuildPlaceable(
+                PrefabRoot + "FreightMastPrefab.prefab", "FreightMastPrefab", Color.white,
+                new[]
+                {
+                    new RecipeIngredient(ItemType.Brass, PlaceableFreightMast.BrassCost),
+                    new RecipeIngredient(ItemType.Casing, PlaceableFreightMast.CasingCost),
+                },
+                go =>
+                {
+                    PlaceableFreightMast mast = Ensure<PlaceableFreightMast>(go);
+                    // Blank on the prefab: RegisterWithMastNetwork stamps a cell-based id at
+                    // placement, so two masts cannot share a name -- the same rule the boiler's
+                    // id follows.
+                    var so = new SerializedObject(mast);
+                    so.FindProperty("mastId").stringValue = "";
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                },
+                "freight_mast.png");
 
             RestoreOrphanedCosts();
             BindBeltItemSprites();
@@ -543,6 +565,9 @@ namespace GolemFactory.Editor
                 // per building -- which is the same reason the extractor cap sits beside it.
                 // §11 item 14 asked for exactly this: "Assembly Bay in the loop".
                 Ensure<AssemblyBayStructure>(EnsureChild(root, "AssemblyBays"));
+
+                // §6's mast registry: scene-wide, like the extractor cap beside it.
+                Ensure<FreightMastRegistryHolder>(EnsureChild(root, "FreightMasts"));
 
                 ClockTowerSiteHolder site = Ensure<ClockTowerSiteHolder>(EnsureChild(root, "ClockTower"));
                 // DELIBERATELY EMPTY. Stages wired here start stage 1 in Awake, which made a
@@ -1032,6 +1057,10 @@ namespace GolemFactory.Editor
                      {
                          BoilerPrefabPath, SteamPipePrefabPath, ClockTowerPrefabPath,
                          HandCrankBenchPrefabPath,
+                         // §6's Freight Mast. The menu's height is derived from the row count,
+                         // so an eighth entry does not push anything off the bottom edge the way
+                         // the sixth once did.
+                         PrefabRoot + "FreightMastPrefab.prefab",
                      })
             {
                 PlaceableBuilding prefab =
@@ -1382,6 +1411,7 @@ namespace GolemFactory.Editor
             AssignIfPresent(so, "handCrankPanelView", FindInScene<HandCrankPanelView>(scene));
 
             // §13.2's market and the mode that bypasses it, plus §8's Assembly Line.
+            AssignIfPresent(so, "mastRegistryHolder", FindInScene<FreightMastRegistryHolder>(scene));
             AssignIfPresent(so, "marketHolder", FindInScene<TruckloadMarketHolder>(scene));
             AssignIfPresent(so, "gameModeHolder", FindInScene<GameModeHolder>(scene));
             AssignIfPresent(so, "assemblyLineHolder",

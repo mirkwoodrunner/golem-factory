@@ -3742,6 +3742,7 @@ MonoBehaviour:
   assemblyLineHolder: {fileID: 1354695015}
   cardCatalog: {fileID: 11400000, guid: 9ef986169bf9ac440a8252ac8c5a9142, type: 2}
   claimUserId: LocalPlayer
+  mastRegistryHolder: {fileID: 624134875}
   marketHolder: {fileID: 2069369534}
   gameModeHolder: {fileID: 2069369535}
   bufferRegistryHolder: {fileID: 0}
@@ -7488,6 +7489,17 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 3027985943304981846, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
   m_PrefabInstance: {fileID: 1555994596}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &624134875 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4373768750390332259, guid: d9a69809c839d0741a1698e2d0f22ae3, type: 3}
+  m_PrefabInstance: {fileID: 2049142403}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b15a417c94223864581ef851916d21ac, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.World.FreightMastRegistryHolder
 --- !u!1 &625619114
 GameObject:
   m_ObjectHideFlags: 0
@@ -18100,7 +18112,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 16, y: 16}
-  m_SizeDelta: {x: 280, y: 266}
+  m_SizeDelta: {x: 280, y: 296}
   m_Pivot: {x: 0, y: 0}
 --- !u!114 &1518134819
 MonoBehaviour:
@@ -18802,7 +18814,7 @@ PrefabInstance:
       objectReference: {fileID: 2049142407}
     - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: appendageRoster.Array.size
-      value: 25
+      value: 26
       objectReference: {fileID: 0}
     - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: 'chassisRoster.Array.data[0]'
@@ -18895,21 +18907,25 @@ PrefabInstance:
     - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: 'appendageRoster.Array.data[20]'
       value: 
-      objectReference: {fileID: 11400000, guid: 693839c047db44f4a7353cf13bb09cbe, type: 2}
+      objectReference: {fileID: 11400000, guid: f385ae1e8839fb54bbe930de1a046c4f, type: 2}
     - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: 'appendageRoster.Array.data[21]'
       value: 
-      objectReference: {fileID: 11400000, guid: eb555807b24640a8a8ad58db02eb1f49, type: 2}
+      objectReference: {fileID: 11400000, guid: 693839c047db44f4a7353cf13bb09cbe, type: 2}
     - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: 'appendageRoster.Array.data[22]'
       value: 
-      objectReference: {fileID: 11400000, guid: 65e4be04b1146cb428f1722752dc4bcd, type: 2}
+      objectReference: {fileID: 11400000, guid: eb555807b24640a8a8ad58db02eb1f49, type: 2}
     - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: 'appendageRoster.Array.data[23]'
       value: 
-      objectReference: {fileID: 11400000, guid: 4505ee4552b64cdb94e8dff3678ea7cf, type: 2}
+      objectReference: {fileID: 11400000, guid: 65e4be04b1146cb428f1722752dc4bcd, type: 2}
     - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: 'appendageRoster.Array.data[24]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 4505ee4552b64cdb94e8dff3678ea7cf, type: 2}
+    - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
+      propertyPath: 'appendageRoster.Array.data[25]'
       value: 
       objectReference: {fileID: 11400000, guid: aa3aa5e3d17e670499fb0a29be14c465, type: 2}
     - target: {fileID: 1739638850736082168, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
@@ -21560,10 +21576,12 @@ MonoBehaviour:
   - {fileID: 8127764119132227910, guid: c1395835c05f4d14f92cc7549b6a0a35, type: 3}
   - {fileID: 8727834534799143137, guid: 314dd6df90b07cc4a8db35772c3c65ea, type: 3}
   - {fileID: 8756892170623386532, guid: 92c9c58210cb90d438a5edc9b72f0110, type: 3}
+  - {fileID: 1477165926223768981, guid: 61c7f6c160570214d8285d7c114b880c, type: 3}
   _beltNetworkHolder: {fileID: 909043062}
   _spatialEndpointHolder: {fileID: 476967491}
   _conveyorHolder: {fileID: 2049142410}
   _steamNetworkHolder: {fileID: 0}
+  _mastRegistryHolder: {fileID: 0}
   _facingArrowSprite: {fileID: 21300000, guid: f404903f746380f42a28e27536d77a40, type: 3}
 --- !u!4 &1749759287
 Transform:

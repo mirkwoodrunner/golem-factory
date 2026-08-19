@@ -25,7 +25,13 @@ namespace GolemFactory.PunchCards
         // Haul/Push overhead across a batch. APPENDED, like every member before it: this enum
         // is serialized by integer index into authored .asset files, so inserting anywhere but
         // the end would silently re-point every card in the project at a different verb.
-        Repeat
+        Repeat,
+
+        // docs/progression-design.md §6, "The Zeppelin's verb". Empties the golem's output
+        // stock onto its bound Freight Mast's tile, regardless of distance -- one-way, fixed
+        // pair, 24 ticks, no pathfinding and no adaptivity. APPENDED, like every member before
+        // it: this enum is serialized by integer index into authored .asset files.
+        FreightLaunch
     }
 
     [CreateAssetMenu(fileName = "NewAppendageAction", menuName = "Golem Factory/Punch Cards/Appendage Action")]

@@ -4,6 +4,7 @@ using UnityEngine;
 using GolemFactory.ClockTower;
 using GolemFactory.Economy;
 using GolemFactory.AssemblyLine;
+using GolemFactory.Golems;
 using GolemFactory.PunchCards;
 
 namespace GolemFactory.Editor
@@ -232,6 +233,7 @@ namespace GolemFactory.Editor
             int cards = AuthorAssembleCards();
             cards += AuthorPushCard();
             cards += AuthorRepeatCard();
+            cards += AuthorFreightLaunchCard();
             cards += RepurposeLegacyRefineCard();
             int chassis = AuthorChassisCosts();
             int stages = AuthorClockTowerStages();
@@ -287,7 +289,8 @@ namespace GolemFactory.Editor
             var openingHand = new List<DraftableCardDefinition>();
 
             // --- the verbs ------------------------------------------------------------------
-            foreach (string verb in new[] { "ExtractScrap", "HaulScrap", "PushOutput", "RepeatAssembly" })
+            foreach (string verb in new[]
+                     { "ExtractScrap", "HaulScrap", "PushOutput", "RepeatAssembly", "FreightLaunch" })
             {
                 AppendageActionDefinition card = LoadAppendageOrNull(verb);
                 if (card == null)
@@ -313,9 +316,16 @@ namespace GolemFactory.Editor
                 draftable.isUnique = false;
                 EditorUtility.SetDirty(draftable);
                 deck.Add(draftable);
-                // The opening hand: a gated vault with none of these in it cannot
-                // program a golem at all, and §9 Phase 1 asks for one in minutes.
-                openingHand.Add(draftable);
+
+                // The opening hand: a gated vault with none of these in it cannot program a
+                // golem at all, and §9 Phase 1 asks for one in minutes. The two CHASSIS-GATED
+                // verbs are excluded -- no chassis that can hold them exists for hours, so
+                // handing them over at t=0 would put two permanently unusable cards in the vault
+                // and teach the player that a card in hand means nothing.
+                if (verb != "RepeatAssembly" && verb != "FreightLaunch")
+                {
+                    openingHand.Add(draftable);
+                }
                 count++;
             }
 
@@ -586,6 +596,33 @@ namespace GolemFactory.Editor
         }
 
         /// <summary>
+        /// §6's Zeppelin verb, as a card. Like <c>Repeat</c> it carries no recipe and no ids:
+        /// the destination is the mast the golem was bound to at placement, which is a property
+        /// of the golem rather than of the card.
+        /// </summary>
+        private static int AuthorFreightLaunchCard()
+        {
+            EnsureFolder(AppendageRoot);
+
+            AppendageActionDefinition launch =
+                LoadOrCreate<AppendageActionDefinition>(AppendageRoot + "FreightLaunch.asset");
+
+            launch.actionType = AppendageActionType.FreightLaunch;
+            launch.recipe = null;
+            launch.sourceId = null;
+            launch.destinationId = null;
+            launch.inputItemType = null;
+            launch.outputItemType = null;
+            // §6 fixes the flight at 24 ticks regardless of distance or load; GolemEntity
+            // charges FreightLaunchTicks itself, and this mirrors it so the asset does not read
+            // as though the duration were authorable.
+            launch.durationTicks = GolemEntity.FreightLaunchTicks;
+
+            EditorUtility.SetDirty(launch);
+            return 1;
+        }
+
+        /// <summary>
         /// §11 item 6: "repurpose RefineBrass.asset to Scrap -> Iron Plate".
         ///
         /// <para>
@@ -675,6 +712,10 @@ namespace GolemFactory.Editor
                 // table so the permission and the roster stay one list -- a second place naming
                 // the Overclocker is a second place to forget it.
                 chassis.allowsRepeat = assetName == "MainspringOverclocker";
+
+                // §6: the Zeppelin alone may hold FreightLaunch. Written from the same table for
+                // the same reason -- one list naming who gets what.
+                chassis.allowsFreightLaunch = assetName == "ZeppelinFreightLoader";
 
                 // maxAppendageSlots is NOT touched. §1.1 already set the roster to 2/3/4/5/6 and
                 // slot count is THE tier gate in this design -- a tuning script quietly

@@ -254,16 +254,20 @@ namespace GolemFactory.Progression
                 TechTreeNodeKind.Chassis, 4, 6,
                 TechTreeUnlockSignal.Chassis, ChassisZeppelin,
                 new[] { "r11.mainspringwinding", "r10.lensgrinding", "r12.aethercontainment" }, isKeystone: true),
+            // NO LONGER PLANNED -- §6's Freight Link is built: FreightLaunch empties the golem's
+            // output stock onto its bound mast's tile at a flat 24 ticks, Zeppelin-only via
+            // ChassisDefinition.allowsFreightLaunch, with the mast a placeable that publishes
+            // its own receiving tile.
             new TechTreeNode(
                 "verb.freightlink", "Freight Link", "Push to a bound mast, regardless of distance",
                 TechTreeNodeKind.Technique, 4, 7,
                 TechTreeUnlockSignal.None, null,
-                new[] { "chassis.zeppelin" }, isPlanned: true),
+                new[] { "chassis.zeppelin" }),
             new TechTreeNode(
                 "bldg.freightmast", "Freight Mast", "20 Brass + 10 Casing · one Zeppelin per mast",
                 TechTreeNodeKind.Building, 4, 8,
                 TechTreeUnlockSignal.Building, BuildingFreightMast,
-                new[] { "verb.freightlink" }, isPlanned: true),
+                new[] { "verb.freightlink" }),
             new TechTreeNode(
                 "r14.regulator", "R14 Regulator", "1 Aether Cell + 2 Brass + 1 Gear + 4 Wire",
                 TechTreeNodeKind.Recipe, 4, 9,

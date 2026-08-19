@@ -561,6 +561,8 @@ namespace GolemFactory.Golems
                     return BeginAssemble(step, out blockedResourceId);
                 case AppendageActionType.Repeat:
                     return BeginRepeat(out blockedResourceId);
+                case AppendageActionType.FreightLaunch:
+                    return BeginFreightLaunch(out blockedResourceId);
                 default:
                     return StallReason.None;
             }
@@ -677,11 +679,18 @@ namespace GolemFactory.Golems
             return endpoint;
         }
 
-        private IItemEndpoint ResolveSpatialTarget()
+        private IItemEndpoint ResolveSpatialTarget() => ResolveEndpointAt(TargetCell);
+
+        /// <summary>
+        /// The endpoint published on any cell. Split out of ResolveSpatialTarget because §6's
+        /// Freight Link reaches a cell that is deliberately NOT the tile in front -- the one
+        /// place in the game where a golem touches a tile it is not standing beside.
+        /// </summary>
+        private IItemEndpoint ResolveEndpointAt(Vector2Int targetCell)
         {
             IItemEndpoint endpoint;
             if (spatialEndpointHolder == null ||
-                !spatialEndpointHolder.Registry.TryGetEndpoint(TargetCell, out endpoint))
+                !spatialEndpointHolder.Registry.TryGetEndpoint(targetCell, out endpoint))
             {
                 return null;
             }
@@ -1065,6 +1074,108 @@ namespace GolemFactory.Golems
         // honest Unconfigured stall rather than the no-op success Haul had to keep for
         // compatibility. There is no id-routed meaning of "the tile in front" to fall back to,
         // and inventing one would be a worse lie than the one Haul's stub used to tell.
+        // --- §6's Freight Link ---------------------------------------------------------------
+
+        /// <summary>
+        /// §6: 24 ticks, flat, "regardless of distance". A fixed cost is the whole character of
+        /// the link -- it is a rigid pair of authored points, not a vehicle, so nothing about it
+        /// may vary with where the mast is.
+        /// </summary>
+        public const int FreightLaunchTicks = 24;
+
+        /// <summary>
+        /// The mast this golem was bound to at placement, or null if it never found one. A
+        /// FIXED PAIR: §6 binds a Zeppelin to exactly one mast and never re-decides, so a mast
+        /// built closer later changes nothing, and no per-tick search can make two identical
+        /// factories diverge.
+        /// </summary>
+        public Vector2Int? BoundMastCell { get; private set; }
+
+        private FreightMastRegistryHolder _mastRegistryHolder;
+
+        /// <summary>
+        /// Wires the freight side and binds this golem to its mast, once. Optional in the same
+        /// additive way spatial routing and steam are: a golem that never gets a registry keeps
+        /// no binding and stalls if it is ever asked to launch.
+        /// </summary>
+        public void ConfigureFreight(FreightMastRegistryHolder mastRegistry)
+        {
+            _mastRegistryHolder = mastRegistry;
+            BindToNearestMast();
+        }
+
+        /// <summary>
+        /// Picks this golem's mast: nearest by Chebyshev distance, ties broken by cell order.
+        /// Called at placement and never again -- see <see cref="BoundMastCell"/>.
+        /// </summary>
+        public bool BindToNearestMast()
+        {
+            if (_mastRegistryHolder == null)
+            {
+                return false;
+            }
+
+            Vector2Int mast;
+            if (!_mastRegistryHolder.Registry.TryFindNearest(Cell, out mast))
+            {
+                return false;
+            }
+
+            BoundMastCell = mast;
+            return true;
+        }
+
+        private StallReason BeginFreightLaunch(out string blockedResourceId)
+        {
+            blockedResourceId = null;
+
+            if (!IsSpatiallyPlaced)
+            {
+                return StallReason.Unconfigured;
+            }
+
+            // A Zeppelin with no mast is not misconfigured in the "unfinished program" sense --
+            // the player can go and build one -- so this names the tile it has nothing to reach,
+            // exactly as a Push into an empty tile does, and clears when a mast appears.
+            if (BoundMastCell == null && !BindToNearestMast())
+            {
+                blockedResourceId = "no Freight Mast";
+                return StallReason.NoTargetAtTile;
+            }
+
+            IItemEndpoint target = ResolveEndpointAt(BoundMastCell.Value);
+            if (target == null)
+            {
+                // The mast was demolished out from under the binding. Re-bind rather than stall
+                // forever at a cell that no longer holds anything.
+                BoundMastCell = null;
+                if (!BindToNearestMast())
+                {
+                    blockedResourceId = "no Freight Mast";
+                    return StallReason.NoTargetAtTile;
+                }
+
+                target = ResolveEndpointAt(BoundMastCell.Value);
+                if (target == null)
+                {
+                    blockedResourceId = BoundMastCell.Value.ToString();
+                    return StallReason.NoTargetAtTile;
+                }
+            }
+
+            StallReason reason = PushStockInto(target, out blockedResourceId);
+            if (reason != StallReason.None)
+            {
+                return reason;
+            }
+
+            // FLAT 24, overwriting the 2 + unitCount a Push charges. A launch is one flight
+            // whatever it carries; charging per unit would make the link cheaper for a light
+            // hold, which is a throughput dial §6 never gave it.
+            _stepDuration = FreightLaunchTicks;
+            return StallReason.None;
+        }
+
         private StallReason BeginPush(out string blockedResourceId)
         {
             blockedResourceId = null;
@@ -1080,6 +1191,23 @@ namespace GolemFactory.Golems
                 blockedResourceId = TargetCell.ToString();
                 return StallReason.NoTargetAtTile;
             }
+
+            return PushStockInto(target, out blockedResourceId);
+        }
+
+        /// <summary>
+        /// Empties this golem's push stock into <paramref name="target"/>, wherever that is.
+        ///
+        /// <para>
+        /// EXTRACTED SO FREIGHTLAUNCH CANNOT DRIFT FROM PUSH. The per-type skip below is not a
+        /// detail -- it is §10's deadlock fix, and a second copy of this loop is a second place
+        /// for a full Slag slot to start blocking Iron Plate. The two verbs differ in exactly
+        /// two ways: where the target comes from, and what the step costs.
+        /// </para>
+        /// </summary>
+        private StallReason PushStockInto(IItemEndpoint target, out string blockedResourceId)
+        {
+            blockedResourceId = null;
 
             GolemInventory.Stock stock = PushStock;
             if (stock.TotalUnits <= 0)

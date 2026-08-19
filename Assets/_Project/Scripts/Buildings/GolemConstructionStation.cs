@@ -70,6 +70,11 @@ namespace GolemFactory.Buildings
         /// </summary>
         public void ConfigureAssemblyBay(AssemblyBayStructure bay) => assemblyBay = bay;
 
+        // §6's Freight Link. Optional like every holder above it.
+        [SerializeField] private FreightMastRegistryHolder mastRegistryHolder;
+
+        public void ConfigureFreight(FreightMastRegistryHolder masts) => mastRegistryHolder = masts;
+
         public ChassisDefinition[] ChassisRoster => chassisRoster;
 
         /// <summary>What this station instantiates. Exposed so the scene's bootstrap can
@@ -392,6 +397,14 @@ namespace GolemFactory.Buildings
             if (nodeExtractorHolder != null)
             {
                 golem.ConfigureNodeExtractorCap(nodeExtractorHolder);
+            }
+
+            // §6's Freight Link, and it must come after ConfigureSpatial too -- the binding is
+            // "the mast nearest THIS golem", so it is meaningless until the golem has a cell.
+            // This is the placement §6 binds at: one mast, chosen once, kept.
+            if (mastRegistryHolder != null)
+            {
+                golem.ConfigureFreight(mastRegistryHolder);
             }
 
             GolemVisual visual = golem.GetComponent<GolemVisual>();

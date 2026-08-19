@@ -208,13 +208,13 @@ namespace GolemFactory.Tests.EditMode
             // BUILDING one of them fails this test -- which is the reminder to clear the flag,
             // rather than leaving the chart quietly calling a shipped feature "planned".
             //
-            // "verb.repeat" AND "bays.assembly" USED TO BE HERE AND ARE NOT ANY MORE, and that
-            // is this test working exactly as intended: both were built, this test failed, and
-            // clearing the flags is what it was asking for.
+            // FOUR NAMES HAVE LEFT THIS LIST -- "verb.repeat", "bays.assembly",
+            // "verb.freightlink" and "bldg.freightmast" -- and each time this test failed first,
+            // which is exactly what it is for: it is the reminder to clear the flag rather than
+            // leave the chart quietly calling a shipped feature "planned".
             var expected = new HashSet<string>
             {
                 "bldg.floorexpansion", "bldg.slagheap",
-                "verb.freightlink", "bldg.freightmast"
             };
 
             var actual = new HashSet<string>();

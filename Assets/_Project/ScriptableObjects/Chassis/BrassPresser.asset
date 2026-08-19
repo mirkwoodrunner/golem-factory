@@ -22,4 +22,5 @@ MonoBehaviour:
   - itemType: Gear
     quantity: 10
   allowsRepeat: 0
+  allowsFreightLaunch: 0
   chassisSprite: {fileID: 21300000, guid: 6d37216bf6dea754b9e6d1a416a92816, type: 3}

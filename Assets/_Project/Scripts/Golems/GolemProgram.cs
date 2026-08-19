@@ -118,6 +118,14 @@ namespace GolemFactory.Golems
                 return chassis != null && chassis.allowsRepeat;
             }
 
+            // §6: the Zeppelin alone may hold FreightLaunch. Refused at assembly time for the
+            // same reason Repeat is -- a Scavenger will never grow a freight hold, and the
+            // rigid-stall rule is for conditions the world can change.
+            if (appendage.actionType == AppendageActionType.FreightLaunch)
+            {
+                return chassis != null && chassis.allowsFreightLaunch;
+            }
+
             return true;
         }
 

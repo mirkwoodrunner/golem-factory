@@ -132,6 +132,14 @@ namespace GolemFactory.Player
         public void ConfigureSteam(GolemFactory.Steam.SteamNetworkHolder steamNetworkHolder) =>
             _steamNetworkHolder = steamNetworkHolder;
 
+        // §6's Freight Mast. Optional in the same additive way steam is: unwired, a mast prefab
+        // places as a plain building that publishes its tile but joins no mast network, so no
+        // Zeppelin can bind to it.
+        [SerializeField] private FreightMastRegistryHolder _mastRegistryHolder;
+
+        public void ConfigureFreight(FreightMastRegistryHolder mastRegistryHolder) =>
+            _mastRegistryHolder = mastRegistryHolder;
+
         // A placed GolemConstructionStation needs SCENE references a prefab cannot carry, so
         // the scene's bootstrap hands itself over here and this asks it to wire each station
         // as it is built. Runtime-only (no [SerializeField]) because an interface reference
@@ -501,9 +509,19 @@ namespace GolemFactory.Player
             if (_spatialEndpointHolder != null &&
                 (building.GetComponent<PlaceableDepot>() != null ||
                  building.GetComponent<PlaceableClockTower>() != null ||
-                 building.GetComponent<PlaceableBoiler>() != null))
+                 building.GetComponent<PlaceableBoiler>() != null ||
+                 building.GetComponent<PlaceableFreightMast>() != null))
             {
                 _spatialEndpointHolder.Registry.Unregister(cell);
+            }
+
+            // A demolished mast must leave the registry too, or a Zeppelin stays bound to a cell
+            // with nothing on it. GolemEntity re-binds when its target vanishes, but only if the
+            // registry has stopped offering the dead mast.
+            PlaceableFreightMast removedMast = building.GetComponent<PlaceableFreightMast>();
+            if (removedMast != null)
+            {
+                removedMast.UnregisterFromMastNetwork(_mastRegistryHolder, cell);
             }
 
             // Steam has to come out of the grid before the GameObject goes, for the same
@@ -619,6 +637,16 @@ namespace GolemFactory.Player
             if (tower != null)
             {
                 tower.RegisterAsSpatialEndpoint(_spatialEndpointHolder, tower.SiteHolder, cell);
+            }
+
+            //   * a freight mast: publishes its tile like a depot AND joins the mast registry,
+            //     which is the half a Zeppelin binds to. Both, because §6's link has to deliver
+            //     goods somewhere real as well as be findable.
+            PlaceableFreightMast mast = instance.GetComponent<PlaceableFreightMast>();
+            if (mast != null)
+            {
+                mast.RegisterAsSpatialEndpoint(_spatialEndpointHolder, _stockpileHolder, cell);
+                mast.RegisterWithMastNetwork(_mastRegistryHolder, cell);
             }
 
             //   * a boiler or a steam pipe: publishes itself into the SteamNetwork, which

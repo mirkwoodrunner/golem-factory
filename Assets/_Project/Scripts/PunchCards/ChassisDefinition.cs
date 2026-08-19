@@ -52,6 +52,18 @@ namespace GolemFactory.PunchCards
         /// </summary>
         public bool allowsRepeat;
 
+        /// <summary>
+        /// Whether this chassis may hold a <c>FreightLaunch</c> appendage (§6, "The Zeppelin's
+        /// verb"). False everywhere but the Zeppelin Freight Loader.
+        ///
+        /// <para>
+        /// Same shape and same reasoning as <see cref="allowsRepeat"/>: a flag on the data
+        /// rather than a name comparison, and defaulting FALSE so a chassis authored before the
+        /// verb existed reads as "may not hold it".
+        /// </para>
+        /// </summary>
+        public bool allowsFreightLaunch;
+
         public Sprite chassisSprite;
     }
 }

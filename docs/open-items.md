@@ -9,7 +9,7 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 > reviewed**. Everything from §1.5 on is **spec only**. The next pass starts at §1.5, which is
 > also what §1.4's Sandbox switch is waiting on.
 
-Tests stand at **1178/1178** (1029 EditMode + 149 PlayMode), up from 590 before the progression pass
+Tests stand at **1187/1187** (1038 EditMode + 149 PlayMode), up from 590 before the progression pass
 began. Console clean.
 
 > **The Director's pass is validated.** Street extension, truckload market + Creative Mode, the
@@ -743,6 +743,26 @@ decision §2 reserves. Nothing mechanical blocks it any more.
 
   The switch is `SandboxBootstrap.gateWorkbenchRoster`, field-default **false** and turned on by
   the scene value, exactly as `requireSteamPower` is -- one line to flip back.
+
+- **§6's Freight Link is built.** `FreightLaunch` empties a Zeppelin's push stock onto its bound
+  mast's tile regardless of distance, at a flat 24 ticks, Zeppelin-only via
+  `ChassisDefinition.allowsFreightLaunch` -- the same chassis-gated-verb pattern `Repeat`
+  established. `PlaceableFreightMast` (20 Brass + 10 Casing) publishes its own receiving tile
+  exactly as a depot does, so the goods land somewhere a belt or another golem can work from, and
+  registers in `FreightMastRegistry` so a Zeppelin can bind to it.
+
+  Three decisions worth keeping. **The pair is fixed at placement** (nearest by Chebyshev, ties
+  broken by cell order): a per-tick search would re-route a working factory the moment a mast was
+  built elsewhere, and an uncontracted tie-break would let two identically-built factories
+  diverge. **The launch shares `Push`'s loop** (`PushStockInto`) rather than copying it, because
+  the per-type skip in there is §10's deadlock fix and a second copy is a second place for a full
+  Slag slot to start blocking Iron Plate. And **the hold moves at Begin, not at completion**, like
+  every other movement verb -- an "in flight" payload would be a third place goods can exist,
+  neither in the golem nor on the mast, which is exactly the window the consume-after-give
+  ordering was written to keep closed.
+
+  Two of the four remaining `IsPlanned` nodes are cleared; the pinned test now names **two**:
+  Floor Expansion and the Slag Heap.
 
 ### Also not yet wired
 
