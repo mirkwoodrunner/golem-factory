@@ -9,7 +9,7 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 > reviewed**. Everything from §1.5 on is **spec only**. The next pass starts at §1.5, which is
 > also what §1.4's Sandbox switch is waiting on.
 
-Tests stand at **1187/1187** (1038 EditMode + 149 PlayMode), up from 590 before the progression pass
+Tests stand at **1197/1197** (1048 EditMode + 149 PlayMode), up from 590 before the progression pass
 began. Console clean.
 
 > **The Director's pass is validated.** Street extension, truckload market + Creative Mode, the
@@ -763,6 +763,20 @@ decision §2 reserves. Nothing mechanical blocks it any more.
 
   Two of the four remaining `IsPlanned` nodes are cleared; the pinned test now names **two**:
   Floor Expansion and the Slag Heap.
+
+- **§5.3(c)'s Slag Heap is built.** A placeable that voids Slag at **1 Coke per 4**, on an
+  integer accumulator with the remainder carried (§1.4's no-floats discipline), so the ratio is
+  exact at every scale. Its tile takes two goods and means different things by them: Slag is
+  destroyed, Coke is fuel -- one cell, because a second would be a second building, and drawing
+  Coke from the stockpile at a distance would make disposal cost no logistics at all.
+
+  **A heap out of Coke refuses Slag, and that refusal is the mechanic**: the backlog builds, the
+  smelter stalls on its byproduct, and the player is told by the thing stopping that disposal has
+  a running cost they stopped paying. Voiding free when the fuel ran out would delete the §5.3(c)
+  decision silently. It keeps accepting **Coke** while refusing Slag, which is how it recovers --
+  answering "full" to everything would leave an empty heap unrefuellable by golem.
+
+  The pinned `IsPlanned` test is now down to **one** name: Floor Expansion.
 
 ### Also not yet wired
 

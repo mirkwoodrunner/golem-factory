@@ -610,6 +610,16 @@ namespace GolemFactory.World
                 placed[i].RegisterAsSpatialEndpoint(spatialEndpointHolder, buffers, cell);
                 placed[i].RegisterWithMastNetwork(masts, cell);
             }
+
+            // Slag Heaps ride the same sweep -- a heap authored into a scene has to publish its
+            // tile without having been placed by the player, exactly as a boiler does.
+            GolemFactory.Buildings.PlaceableSlagHeap[] heaps =
+                FindObjectsByType<GolemFactory.Buildings.PlaceableSlagHeap>(FindObjectsInactive.Exclude);
+            for (int i = 0; i < heaps.Length; i++)
+            {
+                heaps[i].RegisterAsSpatialEndpoint(
+                    spatialEndpointHolder, converter.WorldToCell(heaps[i].transform.position));
+            }
         }
 
         private void RegisterSteamNetwork()

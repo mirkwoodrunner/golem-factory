@@ -201,14 +201,14 @@ namespace GolemFactory.Editor
             var bottomCenter = new System.Collections.Generic.HashSet<string>
             {
                 "steam_pipe.png", "depot.png", "golem_construction_station.png",
-                "freight_mast.png",
+                "freight_mast.png", "slag_heap.png",
             };
 
             foreach (string file in new[]
                      {
                          "item_coal.png", "item_copper_ore.png", "item_zinc_ore.png",
                          "steam_pipe.png", "depot.png", "golem_construction_station.png",
-                         "freight_mast.png",
+                         "freight_mast.png", "slag_heap.png",
                      })
             {
                 string path = ArtRoot + file;
@@ -344,6 +344,27 @@ namespace GolemFactory.Editor
                     so.ApplyModifiedPropertiesWithoutUndo();
                 },
                 "freight_mast.png");
+
+            // §5.3(c)'s costed sink: voids Slag at 1 Coke per 4.
+            BuildPlaceable(
+                PrefabRoot + "SlagHeapPrefab.prefab", "SlagHeapPrefab", Color.white,
+                new[]
+                {
+                    new RecipeIngredient(ItemType.Scrap, PlaceableSlagHeap.ScrapCost),
+                    new RecipeIngredient(ItemType.IronPlate, PlaceableSlagHeap.IronPlateCost),
+                },
+                go =>
+                {
+                    PlaceableSlagHeap heap = Ensure<PlaceableSlagHeap>(go);
+                    var so = new SerializedObject(heap);
+                    // Blank id, stamped from the cell at placement; and NO starting Coke, for
+                    // the same reason a player-built boiler starts empty -- shipping fuel on the
+                    // prefab would mint Coke for the price of a building.
+                    so.FindProperty("heapId").stringValue = "";
+                    so.FindProperty("startingCoke").intValue = 0;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                },
+                "slag_heap.png");
 
             RestoreOrphanedCosts();
             BindBeltItemSprites();
@@ -1061,6 +1082,7 @@ namespace GolemFactory.Editor
                          // so an eighth entry does not push anything off the bottom edge the way
                          // the sixth once did.
                          PrefabRoot + "FreightMastPrefab.prefab",
+                         PrefabRoot + "SlagHeapPrefab.prefab",
                      })
             {
                 PlaceableBuilding prefab =

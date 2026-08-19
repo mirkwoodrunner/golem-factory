@@ -163,11 +163,14 @@ namespace GolemFactory.Progression
                 TechTreeNodeKind.Recipe, 3, 2,
                 TechTreeUnlockSignal.Item, ItemType.Glass,
                 new[] { "r4.ironsmelting" }),
+            // NO LONGER PLANNED -- §5.3(c)'s sink is built: a placeable that voids Slag at
+            // 1 Coke per 4, refusing when it has no fuel so the backlog is felt rather
+            // than silently absorbed.
             new TechTreeNode(
                 "bldg.slagheap", "Slag Heap", "Voids Slag at 1 Coke per 4 · the costed sink",
                 TechTreeNodeKind.Building, 3, 3,
                 TechTreeUnlockSignal.Building, BuildingSlagHeap,
-                new[] { "r4.ironsmelting" }, isPlanned: true),
+                new[] { "r4.ironsmelting" }),
             new TechTreeNode(
                 "r5.coppersmelting", "R5 Copper Smelting", "2 Copper Ore + 1 Coke → 1 Copper Ingot",
                 TechTreeNodeKind.Recipe, 3, 4,

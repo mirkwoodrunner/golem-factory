@@ -18112,7 +18112,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 16, y: 16}
-  m_SizeDelta: {x: 280, y: 296}
+  m_SizeDelta: {x: 280, y: 326}
   m_Pivot: {x: 0, y: 0}
 --- !u!114 &1518134819
 MonoBehaviour:
@@ -21577,6 +21577,7 @@ MonoBehaviour:
   - {fileID: 8727834534799143137, guid: 314dd6df90b07cc4a8db35772c3c65ea, type: 3}
   - {fileID: 8756892170623386532, guid: 92c9c58210cb90d438a5edc9b72f0110, type: 3}
   - {fileID: 1477165926223768981, guid: 61c7f6c160570214d8285d7c114b880c, type: 3}
+  - {fileID: 8420489272461302305, guid: 6a9ea9e0c647f414abe8a59136e10c5f, type: 3}
   _beltNetworkHolder: {fileID: 909043062}
   _spatialEndpointHolder: {fileID: 476967491}
   _conveyorHolder: {fileID: 2049142410}

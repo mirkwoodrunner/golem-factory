@@ -288,7 +288,57 @@ def make_freight_mast() -> Image.Image:
     return image
 
 
+def make_slag_heap() -> Image.Image:
+    """A cooling slag pile in an iron collar, with a burner grate at its foot.
+
+    LOW AND WIDE, the opposite silhouette to the mast: this is a thing you dump into, and the
+    heap itself is the readable shape. The grate says it burns something -- disposal costs Coke,
+    and a pile with no burner would read as free.
+    """
+    width, height = 68, 52
+    image = Image.new("RGBA", (width, height), TRANSPARENT)
+    draw = ImageDraw.Draw(image)
+
+    _contact_shadow(draw, (2, 48, 65, 51))
+
+    # Iron collar: the retaining ring the pile sits in.
+    _panel(draw, (0, 36, 67, 47), IRON_DARK, IRON, (34, 30, 44, 255), 0.12, 83, image)
+
+    # The pile itself, drawn as three stepped mounds so it reads as loose material rather than
+    # a solid block. Warm greys shading to a dull ember at the base of the middle mound.
+    slag = (86, 74, 78, 255)
+    slag_light = (124, 110, 112, 255)
+    slag_dark = (54, 46, 52, 255)
+    draw.polygon([(6, 37), (20, 14), (34, 37)], fill=slag, outline=OUTLINE)
+    draw.polygon([(28, 37), (44, 8), (60, 37)], fill=slag, outline=OUTLINE)
+    draw.polygon([(46, 37), (58, 20), (66, 37)], fill=slag_dark, outline=OUTLINE)
+
+    pixels = image.load()
+    for y in range(9, 37):
+        for x in range(4, 66):
+            if pixels[x, y][3] == 0 or pixels[x, y] == OUTLINE:
+                continue
+            noise = _hash2(x, y, 91)
+            if noise > 0.82:
+                pixels[x, y] = slag_light
+            elif noise < 0.18:
+                pixels[x, y] = slag_dark
+
+    # Lit edges on the two sunward faces, so the mounds have direction.
+    draw.line([(20, 15), (33, 36)], fill=slag_light)
+    draw.line([(44, 9), (59, 36)], fill=slag_light)
+
+    # The burner grate: where the Coke goes in.
+    _panel(draw, (24, 40, 43, 46), (44, 30, 28, 255), IRON, (28, 20, 22, 255))
+    for x in range(26, 42, 4):
+        draw.line([(x, 41), (x, 45)], fill=(226, 120, 46, 255))
+
+    _rivets(draw, (4, 62), (39,), IRON_LIGHT)
+    return image
+
+
 def main() -> None:
+    save(make_slag_heap(), "slag_heap.png")
     save(make_freight_mast(), "freight_mast.png")
     save(make_steam_pipe(), "steam_pipe.png")
     save(make_depot(), "depot.png")

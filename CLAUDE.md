@@ -86,7 +86,7 @@ Editor (or a live MCP-for-Unity bridge, if connected):
 
 As of the last full run (progression pass, Editor passes, the Hand-Crank Bench, the
 isometric→top-down projection switch, the market street, the tech tree chart, and the backlog
-pass, and the Director's pass): **1187/1187 tests passing** (1038 EditMode + 149 PlayMode).
+pass, and the Director's pass): **1197/1197 tests passing** (1048 EditMode + 149 PlayMode).
 
 **Two ways to run the tests, and which one depends on whether the Editor is open.**
 

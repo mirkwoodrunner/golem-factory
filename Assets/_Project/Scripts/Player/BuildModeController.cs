@@ -510,7 +510,8 @@ namespace GolemFactory.Player
                 (building.GetComponent<PlaceableDepot>() != null ||
                  building.GetComponent<PlaceableClockTower>() != null ||
                  building.GetComponent<PlaceableBoiler>() != null ||
-                 building.GetComponent<PlaceableFreightMast>() != null))
+                 building.GetComponent<PlaceableFreightMast>() != null ||
+                 building.GetComponent<PlaceableSlagHeap>() != null))
             {
                 _spatialEndpointHolder.Registry.Unregister(cell);
             }
@@ -637,6 +638,15 @@ namespace GolemFactory.Player
             if (tower != null)
             {
                 tower.RegisterAsSpatialEndpoint(_spatialEndpointHolder, tower.SiteHolder, cell);
+            }
+
+            //   * a slag heap: publishes its tile, which accepts Slag to void and Coke to burn
+            //     it with. §5.3(c)'s costed sink -- without a published tile it is a building
+            //     the smelter cannot reach, which is the whole of its job.
+            PlaceableSlagHeap slagHeap = instance.GetComponent<PlaceableSlagHeap>();
+            if (slagHeap != null)
+            {
+                slagHeap.RegisterAsSpatialEndpoint(_spatialEndpointHolder, cell);
             }
 
             //   * a freight mast: publishes its tile like a depot AND joins the mast registry,
