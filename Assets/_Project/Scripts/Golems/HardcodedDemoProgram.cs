@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using GolemFactory.PunchCards;
 
 namespace GolemFactory.Golems
@@ -49,7 +49,34 @@ namespace GolemFactory.Golems
             }
         }
 
-        public static GolemProgram ExtractAndDeposit()
+        /// <summary>
+        /// The canonical id-routed chain: pull from "ScrapNode" onto
+        /// <paramref name="beltSegmentId"/>, then carry that belt's head into "ScrapBuffer".
+        ///
+        /// <para>
+        /// <b>THE BELT ARGUMENT IS NEW, AND IT IS WHY THIS PROGRAM NOW WORKS.</b> Written in M2
+        /// with no belt at all, it could never run: the id-routed <c>ExtractFromNode</c> extracts
+        /// ONTO a belt named by the card's <c>destinationId</c>, so an extract card naming none
+        /// refused at <c>CanEnqueue(null)</c> before it ever touched the node -- every tick,
+        /// forever. <c>GolemDemoBootstrap</c> applied exactly this to a golem standing in
+        /// <c>Main.unity</c>, which is why that golem visibly did nothing for several milestones.
+        /// </para>
+        ///
+        /// <para>
+        /// It was left broken deliberately while the scene existed, because giving it a belt
+        /// would have changed what the diorama demonstrated -- a content decision rather than a
+        /// test's to make (docs/open-items.md §3z B). The scene is retired, so that constraint is
+        /// gone and only the question about the PROGRAM remains. A file whose whole job is to be
+        /// the definition of the reference programs cannot afford a reference that does not run:
+        /// the next person to copy it would inherit the jam along with the name.
+        /// </para>
+        ///
+        /// <para>
+        /// The belt is a required parameter rather than a defaulted magic string, so the
+        /// requirement is structural. A caller cannot rebuild the original fiction by accident.
+        /// </para>
+        /// </summary>
+        public static GolemProgram ExtractAndDeposit(string beltSegmentId)
         {
             var logicCore = ScriptableObject.CreateInstance<LogicCoreDefinition>();
             logicCore.triggerType = TriggerType.AlwaysOn;
@@ -57,9 +84,11 @@ namespace GolemFactory.Golems
             var extract = ScriptableObject.CreateInstance<AppendageActionDefinition>();
             extract.actionType = AppendageActionType.ExtractFromNode;
             extract.sourceId = "ScrapNode";
+            extract.destinationId = beltSegmentId;
 
             var deposit = ScriptableObject.CreateInstance<AppendageActionDefinition>();
             deposit.actionType = AppendageActionType.LoadIntoBuffer;
+            deposit.sourceId = beltSegmentId;
             deposit.destinationId = "ScrapBuffer";
 
             var program = new GolemProgram

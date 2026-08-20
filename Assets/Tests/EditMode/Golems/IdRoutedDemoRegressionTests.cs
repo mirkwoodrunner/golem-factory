@@ -1,4 +1,4 @@
-using NUnit.Framework;
+﻿using NUnit.Framework;
 using UnityEngine;
 using GolemFactory.Belts;
 using GolemFactory.Economy;
@@ -89,28 +89,60 @@ namespace GolemFactory.Tests.EditMode
             return (conveyor, nodes, buffers);
         }
 
-        // --- Golem A: THE DEMO THAT CANNOT WORK ----------------------------------------------
+        // --- Golem A: THE DEMO THAT NOW WORKS ------------------------------------------------
 
         [Test]
-        public void ExtractAndDeposit_IsAFiction_AndStallsForever()
+        public void ExtractAndDeposit_CarriesTheWholeChain_NodeToBeltToBuffer()
         {
-            // FOUND BY WRITING THIS SUITE, and it is the answer to "what was Main.unity actually
-            // proving": for Golem A, nothing. HardcodedDemoProgram.ExtractAndDeposit describes
-            // "extract from a node, deposit into a buffer", and the ID-ROUTED ExtractFromNode
-            // has never been able to do that -- it extracts ONTO A BELT named by the card's
-            // destinationId, and this program's extract card names none. So the step refuses at
-            // CanEnqueue(null) before it touches the node, every tick, forever.
+            // THIS PROGRAM USED TO BE A FICTION. Written in M2 with no belt, it could never run:
+            // the id-routed ExtractFromNode extracts ONTO a belt named by the card's
+            // destinationId, and the card named none, so the step refused at CanEnqueue(null)
+            // before it ever touched the node -- every tick, forever. GolemDemoBootstrap applied
+            // exactly this to a golem standing in Main.unity, which is why that golem visibly did
+            // nothing for several milestones.
             //
-            // GolemDemoBootstrap applies exactly this program to a golem standing in Main.unity,
-            // so the M2 demo golem has been visibly doing nothing. Pinned rather than quietly
-            // repaired: giving it a belt would change what the scene demonstrates, and that is a
-            // content decision rather than a test's to make.
+            // It was pinned broken rather than repaired while the scene existed, because a belt
+            // would have changed what the diorama demonstrated. The scene is retired, so it takes
+            // a belt now -- as a REQUIRED argument, so the fiction cannot be rebuilt by accident
+            // -- and this test pins the two-step id-routed chain end to end instead of pinning a
+            // jam. Nothing else covered node -> belt -> buffer in one program.
             (ConveyorSystemHolder conveyor, ResourceNodeRegistryHolder nodes,
                 StorageBufferRegistryHolder buffers) = BuildWorld();
             nodes.Registry.Register(new ResourceNode("ScrapNode", ItemType.Scrap));
+            conveyor.System.Register(new BeltSegment("ScrapBelt", 4));
 
             GolemEntity golem = BuildGolem(
-                HardcodedDemoProgram.ExtractAndDeposit(), conveyor, nodes, buffers);
+                HardcodedDemoProgram.ExtractAndDeposit("ScrapBelt"), conveyor, nodes, buffers);
+
+            // Long enough for a unit to be extracted, travel the belt's whole length, and be
+            // carried off its head -- LoadIntoBuffer goes through TryPeekHead, which refuses an
+            // item still in transit.
+            for (long tick = 0; tick < 40; tick++)
+            {
+                golem.Tick(tick);
+                conveyor.System.Tick(tick);
+            }
+
+            Assert.Greater(
+                buffers.Registry.GetQuantity("ScrapBuffer", ItemType.Scrap), 0,
+                "the chain should deliver: node -> belt -> buffer");
+        }
+
+        [Test]
+        public void AnExtractCardNamingNoBelt_StillRefusesBeforeItTouchesTheNode()
+        {
+            // The invariant the old fiction was accidentally documenting, kept deliberately now
+            // that the demo no longer demonstrates it. This is the no-item-loss rule at the
+            // extract end: a producer pulling from an irreversible source must confirm the
+            // destination has room BEFORE it consumes, so a card with no belt takes nothing out
+            // of the ground rather than extracting into nowhere.
+            (ConveyorSystemHolder conveyor, ResourceNodeRegistryHolder nodes,
+                StorageBufferRegistryHolder buffers) = BuildWorld();
+            var node = new ResourceNode("ScrapNode", ItemType.Scrap, 10);
+            nodes.Registry.Register(node);
+
+            GolemEntity golem = BuildGolem(
+                HardcodedDemoProgram.ExtractAndDeposit(null), conveyor, nodes, buffers);
 
             for (long tick = 0; tick < 8; tick++)
             {
@@ -120,6 +152,7 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(GolemState.Stalled, golem.Program.State);
             Assert.AreEqual(StallReason.BeltFull, golem.StallReason,
                 "refused at the destination belt -- which is null, because the card names none");
+            Assert.AreEqual(10, node.RemainingQuantity, "and the seam was never touched");
             Assert.AreEqual(0, buffers.Registry.GetQuantity("ScrapBuffer", ItemType.Scrap));
         }
 
