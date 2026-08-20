@@ -105,10 +105,8 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void ClampToFloor_ClampsYFirstSoTheSeamCannotPullAPlayerSideways()
+        public void ClampToFloor_OffTheSouthEndAtAnOuterX_StaysOnTheStreet()
         {
-            // Standing off the south end of the road at an outer x: the y clamp puts them on the
-            // last street row, where that x is legal -- not on the workshop row, where it is not.
             var converter = new GridCoordinateConverter(CellSize);
             Vector3 wanted = converter.CellFractionToWorld(new Vector2(17f, -40f));
 
@@ -116,6 +114,82 @@ namespace GolemFactory.Tests.EditMode
 
             Assert.AreEqual(FloorLayout.WorldMinY, cell.y, 0.001f);
             Assert.AreEqual(17f, cell.x, 0.001f);
+        }
+
+        [Test]
+        public void WalkingNorthOnTheOuterStreet_HitsAWall_NotTheWorkshop()
+        {
+            // THE CLIP FOUND IN PLAY. Standing on the outer street beside the building and
+            // walking north used to clamp Y first -- which put the player on a workshop row,
+            // where the legal width is only the room's, so the X clamp then teleported them
+            // sideways THROUGH the building's flank and into the shop.
+            //
+            // The shoulder has to behave like the wall it is drawn as: movement north stops.
+            //
+            // WALKED, NOT TELEPORTED -- one movement step from a legal spot on the outer street,
+            // which is what the player actually did. A teleport to the middle of that empty space
+            // is a different question, and "nearest legal point" rightly answers it with the room.
+            var converter = new GridCoordinateConverter(CellSize);
+            var onTheStreet = new Vector2(16f, -13f);
+
+            for (int step = 0; step < 40; step++)
+            {
+                Vector3 wanted = converter.CellFractionToWorld(onTheStreet + new Vector2(0f, 0.15f));
+                onTheStreet = converter.WorldToCellFraction(FloorLayout.ClampToFloor(wanted, converter));
+
+                Assert.AreEqual(16f, onTheStreet.x, 0.001f,
+                    "must NOT be pulled sideways into the workshop, at step " + step);
+                Assert.LessOrEqual(onTheStreet.y, -FloorLayout.HalfExtent - 1f + 0.001f,
+                    "and must be held south of the shop front, at step " + step);
+            }
+        }
+
+        [Test]
+        public void TheWorkshopItselfIsStillFullyWalkable()
+        {
+            // The fix must not shrink the room: a player at the far corner of the shop floor
+            // stays exactly where they are.
+            var converter = new GridCoordinateConverter(CellSize);
+            Vector3 wanted = converter.CellFractionToWorld(
+                new Vector2(FloorLayout.HalfExtent, FloorLayout.HalfExtent));
+
+            Vector2 cell = converter.WorldToCellFraction(FloorLayout.ClampToFloor(wanted, converter));
+
+            Assert.AreEqual(FloorLayout.HalfExtent, cell.x, 0.001f);
+            Assert.AreEqual(FloorLayout.HalfExtent, cell.y, 0.001f);
+        }
+
+        [Test]
+        public void WalkingSouthOutOfTheShopFront_IsNotBlocked()
+        {
+            // The other half of the seam: the shop front is OPEN, so walking south out of the
+            // room and onto the road has to be continuous. An earlier fix made the road's north
+            // edge a hard line for every column, which would have penned the player indoors.
+            var converter = new GridCoordinateConverter(CellSize);
+            var position = new Vector2(0f, -11.5f);
+
+            for (int step = 0; step < 20; step++)
+            {
+                Vector3 wanted = converter.CellFractionToWorld(position - new Vector2(0f, 0.15f));
+                position = converter.WorldToCellFraction(FloorLayout.ClampToFloor(wanted, converter));
+            }
+
+            Assert.Less(position.y, -FloorLayout.HalfExtent,
+                "the player must be able to walk out onto the street");
+        }
+
+        [Test]
+        public void TheStreetIsStillWalkableEndToEnd()
+        {
+            var converter = new GridCoordinateConverter(CellSize);
+            foreach (float x in new[] { -17f, -13f, 0f, 13f, 17f })
+            {
+                Vector3 wanted = converter.CellFractionToWorld(new Vector2(x, -16f));
+                Vector2 cell = converter.WorldToCellFraction(FloorLayout.ClampToFloor(wanted, converter));
+
+                Assert.AreEqual(x, cell.x, 0.001f, "the whole road is walkable, at x = " + x);
+                Assert.AreEqual(-16f, cell.y, 0.001f);
+            }
         }
 
         [Test]

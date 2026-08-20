@@ -451,20 +451,41 @@ namespace GolemFactory.World
             // Only the south side opens up. North, east and west are still the workshop's walls,
             // because that is where the building actually ends.
             //
-            // THE STREET IS WIDER THAN THE ROOM (§13.1), so the x clamp depends on which region
-            // the player is standing in. Y is clamped FIRST and x against the clamped y, so a
-            // player running south down the outer street cannot be pulled sideways by a row they
-            // are no longer on.
+            // THE STREET IS WIDER THAN THE ROOM (§13.1), so this is a T and not a rectangle, and
+            // a T cannot be clamped one axis at a time. Both orders are wrong in their own way:
+            //
+            //   Y THEN X pulled a player sideways THROUGH the building's flank. Standing on the
+            //   outer street at x = 16 and walking north put them on a workshop row, where the
+            //   legal width is only the room's, and the X clamp then moved them 4 cells east into
+            //   the shop. That is the wall-clip found in play.
+            //
+            //   X THEN Y sent anyone standing outside the world's north-east corner all the way
+            //   down the road, because it preserved an x that only the street could justify.
+            //
+            // So: clamp into each RECTANGLE the T is made of, and take whichever is nearer. That
+            // is a wall for a walking player -- movement is small steps, so the road stays the
+            // nearer rectangle right up until the room genuinely is -- and it is the honest
+            // nearest-legal-point answer for anything teleported in from outside.
             Vector2 cellFraction = converter.WorldToCellFraction(worldPosition);
             float north = northExtent < halfExtent ? halfExtent : northExtent;
-            float clampedY = Mathf.Clamp(cellFraction.y, -halfExtent - streetDepth, north);
 
-            // Half a cell of tolerance at the seam: the boundary between the two widths runs
-            // along the workshop's south wall line, and a player walking east along the street
-            // must be stopped by the building's side wall rather than teleported inside it.
-            float width = clampedY >= -halfExtent ? halfExtent : StreetHalfExtent;
-            float clampedX = Mathf.Clamp(cellFraction.x, -width, width);
-            return converter.CellFractionToWorld(new Vector2(clampedX, clampedY));
+            // The room.
+            var inRoom = new Vector2(
+                Mathf.Clamp(cellFraction.x, -halfExtent, halfExtent),
+                Mathf.Clamp(cellFraction.y, -halfExtent, north));
+
+            // The road. Its north edge STEPS BACK beside the building: level with the shop front
+            // the road is only as wide as the room, and further out there is wall.
+            float roadX = Mathf.Clamp(cellFraction.x, -StreetHalfExtent, StreetHalfExtent);
+            float roadNorth = Mathf.Abs(roadX) > halfExtent ? -halfExtent - 1f : -halfExtent;
+            var onRoad = new Vector2(
+                roadX, Mathf.Clamp(cellFraction.y, -halfExtent - streetDepth, roadNorth));
+
+            Vector2 nearest = (cellFraction - inRoom).sqrMagnitude <= (cellFraction - onRoad).sqrMagnitude
+                ? inRoom
+                : onRoad;
+
+            return converter.CellFractionToWorld(nearest);
         }
     }
 }

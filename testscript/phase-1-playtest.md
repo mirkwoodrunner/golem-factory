@@ -48,8 +48,9 @@ If you only have half an hour, answer 1–3. They are the ones no test can reach
 |---|---|
 | **WASD** | Move |
 | **E** | Interact — *tap* to harvest a stall / **order a truckload from an empty stall** / open a construction station / refuel a boiler / program a golem. **Hold** at the Hand-Crank Bench to crank. |
-| **R** | Context-sensitive: turns the build ghost if you hold a placeable → cycles the recipe at the bench → otherwise rotates the golem you stand next to. |
-| **G** | Pick up / put down a golem |
+| **R** | Context-sensitive, **in this order**: turns the build ghost *if you are holding a placeable* → otherwise cycles the recipe at a bench you are standing at → otherwise rotates the golem you stand next to. **If R is not doing what you expect, you are still holding a placeable — press Escape.** |
+| **Escape** *or* **right-click** | **Put the placeable down / leave build mode.** New. |
+| **G** | Pick up the golem you are standing next to; press again to set it down on your own tile. It refuses to drop onto an occupied tile. |
 | **Tab** | Management menu (Inventory · Assembly Line · Patents · Save/Load · **Ledger**) |
 | **Left click** | Place or remove a building |
 | **Mouse wheel / drag** | Zoom / pan |
@@ -60,14 +61,30 @@ unit per key press regardless of speed.
 
 ---
 
+## Retests from session 1
+
+Your first session produced four findings. Two were real bugs, one was this script being wrong, and
+one was a question. Each is answered **in place** below as an indented `RETEST` line under the item
+that found it, so you can pick them up without re-reading the whole script:
+
+| Finding | Verdict | Where |
+|---|---|---|
+| Clipping through the wall at the top of the street | **Real bug, fixed** | A3 |
+| Bench recipe would not change with R | **Real bug, fixed — it was build mode, not the bench** | B2 |
+| Crank progress "remains at whatever % it was at" | **The script was wrong, not the game** | B2 |
+| "What are steps 1–6?" | **Answered; nothing changed in the game** | A4 |
+| Lighting "a little dark" | **Raised 0.62 → 0.72** | A2 |
+
+---
+
 ## Part A — Smoke test (~20 min)
 
 ### A1. The HUD
 
-- [ ] **Top-left:** fuel gauge, `0 Coke · 0/min · idle`.
-- [ ] **Top-right:** `Clock Tower dormant` — *dormant*, not a stage or a starvation warning.
-- [ ] **Top-centre:** `All golems running.`
-- [ ] **Bottom-left:** a Build menu with **nine** rows, all costs legible, none cut off:
+- [Done] **Top-left:** fuel gauge, `0 Coke · 0/min · idle`.
+- [Done] **Top-right:** `Clock Tower dormant` — *dormant*, not a stage or a starvation warning.
+- [Done] **Top-centre:** `All golems running.`
+- [Done] **Bottom-left:** a Build menu with **nine** rows, all costs legible, none cut off:
 
 | Row | Cost |
 |---|---|
@@ -81,46 +98,75 @@ unit per key press regardless of speed.
 | **FreightMast** | 20 Brass + 10 Casing |
 | **SlagHeap** | 20 Scrap + 10 Iron Plate *(TUNING)* |
 
+- [ ] **NEW — leaving build mode.** Click a row, then get out of build mode three ways: **Escape**,
+      **right-click**, and **clicking the same row again**. After each, the ghost should vanish and
+      a left click on the floor should do **nothing** (no placing, no demolishing). This did not
+      exist before your session — there was no way out at all.
+
 ### A2. The light — **question 5**
 
 The global light was cut 1.15 → 0.62 and the wall sconces raised 0.95 → 1.5, taking a lit spot from
 1.8× the shadow between lamps to **3.4×**. The reasoning is sound; the result is unseen.
 
-- [ ] Stand in the middle of the room, away from the walls. **Can you still read the floor grid, a
+- [Done] Stand in the middle of the room, away from the walls. **Can you still read the floor grid, a
       belt's direction and the build ghost?** That is the floor this change must not go below.
-- [ ] Walk along the north wall. Do the sconces read as *the source of the light* now, with pools
+- [Done] Walk along the north wall. Do the sconces read as *the source of the light* now, with pools
       and darkness between, or is it just dimmer everywhere?
-- [ ] **Your call:** too dark, about right, or not dramatic enough?
+- [A little dark] **Your call:** too dark, about right, or not dramatic enough?
+  - [ ] **RETEST — ambient raised 0.62 → 0.72** on your note. The pool ratio is now 3.1× the
+        shadow (it was 3.4×, and 1.8× before this pass started), so the lamps should still read as
+        the source of the light while the unlit middle of the room comes up about 16 %. Better,
+        worse, or still a little dark? *If it is still dark, say by how much and I will move it
+        again — this is one number.*
 
 ### A3. The world
 
 The workshop is 25×25 with an open south front. **The market street runs outside it** — nine stalls
 in a row at `y = -16`, about 16 cells south of spawn.
 
-- [ ] Walk out of the shop onto the street. The road is **wider than the building** (37 cells) and
+- [Done] Walk out of the shop onto the street. The road is **wider than the building** (37 cells) and
       should be paved edge to edge, with a kerb along its far side and short wall stubs
       ("shoulders") closing the gap beside the shop front. **No cobbles running off into
       background** — that is the specific thing to look for.
-- [ ] Nine stalls: Scrap ×2, Coal ×2, Copper ×2, Zinc ×2, Aether ×1. Each pair is a separate node,
+- [Done] Nine stalls: Scrap ×2, Coal ×2, Copper ×2, Zinc ×2, Aether ×1. Each pair is a separate node,
       so two extractors can work each.
-- [ ] All five goods are **distinguishable from each other** by silhouette (placeholder art — I am
+- [Done] All five goods are **distinguishable from each other** by silhouette (placeholder art — I am
       asking whether you can tell them apart, not whether they are pretty).
-- [ ] Try to walk off the edge of the road, and off the sides past the building. You should be
+- [You can clip through the wall on the top of the street where there isnt any workshop space] Try to walk off the edge of the road, and off the sides past the building. You should be
       stopped everywhere, with no way into the empty space beside the shop front.
-- [ ] Try to place a Depot out past the kerb. It should refuse with `off the ground`.
+  - [ ] **RETEST — FIXED (real bug, thank you).** The clamp asked "how far north may I go?" before
+        "how far east am I?", so standing on the outer street at x = 16 and walking north put you
+        on a workshop row — where the legal width is only the room's — and the sideways clamp then
+        **pushed you through the building's flank into the shop**. It now bounds east/west first
+        and north/south against it, so the shoulder behaves like the wall it is drawn as.
+        **Walk the outer street on BOTH sides and push north into the building's flank.** You
+        should stop dead beside the shop front, and never end up inside. Also confirm the shop
+        floor itself is still fully walkable to all four corners — the fix must not have shrunk
+        the room.
+- [Done] Try to place a Depot out past the kerb. It should refuse with `off the ground`.
 
 ### A4. The Workbench
 
 Walk to the construction station, press **E**, then close. Programming needs a golem — come back
 after Part B if you have none.
 
-- [ ] **TRIGGER** then **STEP 1**–**STEP 6**, six numbered sockets, no duplicates.
-- [ ] **The vault is now GATED** — it shows only cards you have *claimed*, not the whole catalogue.
+- [What are steps 1-6?] **TRIGGER** then **STEP 1**–**STEP 6**, six numbered sockets, no duplicates.
+  - **Answer:** they are the golem's **program**, run top to bottom once per cycle — `STEP 1`
+        happens, then `STEP 2`, and so on, then it starts again. TRIGGER decides *when* a cycle
+        begins. So `Extract → Assemble → Push` means "take from the tile behind me, make the
+        thing, put it on the tile in front", forever. A chassis with fewer slots simply greys the
+        later sockets out.
+  - [ ] **RETEST — nothing changed in the game.** Knowing that, does the screen say it? I have
+        **deliberately not** relabelled anything mid-playtest, because a Workbench redesign is
+        not a thing to do while you are using it. If the numbering still reads as a mystery,
+        that is a legibility finding worth logging (it is already in `open-items.md` §3z C) and I
+        will take it as its own task.
+- [Done] **The vault is now GATED** — it shows only cards you have *claimed*, not the whole catalogue.
       From a fresh start you should hold exactly the movement verbs (Extract, Haul, Push). If the
       vault is empty, that is a blocker: say so immediately.
-- [ ] **Hover a chassis button and a vault card.** Both should visibly brighten, and darken on
-      press. This was measured at a 4% shift (invisible) and is now ~22%. Does it read?
-- [ ] The fuel gauge, tower panel, bench readout **and the alerts strip** all vanish while the
+- [Done] **Hover a chassis button and a vault card.** Both should visibly brighten, and darken on
+    ewas  press. This was measured at a 4% shift (invisible) and is now ~22%. Does it read?
+- [Done] The fuel gauge, tower panel, bench readout **and the alerts strip** all vanish while the
       Workbench is open, and return when you close it.
 
 ---
@@ -130,11 +176,24 @@ after Part B if you have none.
 **Time it.** The design budgets 12–15 minutes. It was measured at ~7.5 min of cranking *before* the
 market moved the goods 16 cells away.
 
-- [ ] Harvest **100 Scrap** from a Scrap stall (one press each). Note how long, and how it feels —
+- [Done] Harvest **100 Scrap** from a Scrap stall (one press each). Note how long, and how it feels —
       100 discrete presses plus the walk is a candidate finding on its own.
-- [ ] Crank **R2 Scrap Reclamation** at the bench for 40 Iron Plate (~9.6 s each at 1x), then **R8
+- [How do I change the bench? I can only do coking, pressing R changes orientation of item it wants to place, but doesn't change recipe] Crank **R2 Scrap Reclamation** at the bench for 40 Iron Plate (~9.6 s each at 1x), then **R8
       Gear Cutting** for 10 Gears.
-- [ ] Let go of **E** mid-craft: progress abandons, **no goods lost**. Press **R** mid-craft: same.
+  - [ ] **RETEST — FIXED, and the bench was never the problem.** `R` is arbitrated on "am I
+        holding a placeable?", and **there was no way to stop holding one** — the build menu only
+        ever selected. So after you opened the build menu once, `R` turned the ghost and returned
+        before it could ever reach the bench (or a golem). **Press Escape or right-click to put
+        the placeable down, then press R at the bench** — it should cycle through the five
+        hand-crankable recipes (R1 Coking, R2 Scrap Reclamation, R3 Glassmaking, R8 Gear Cutting,
+        R19 Wire Drawing) and the readout should name each one.
+  - [ ] **RETEST — and the same fix should give you R on golems back** (Part C needs it).
+- [ ] Let go of **E** mid-craft: progress **is kept**, and no goods are lost. Walk away and come
+      back and it resumes where it was — that is deliberate (a pause, not an exploit: the inputs
+      are only charged at completion). Press **R** mid-craft to change recipe: progress resets to
+      zero, still no goods lost.
+      *(An earlier draft of this script said progress "abandons" on release. That was the script
+      being wrong, not the game.)*
 - [ ] Build the **Brass Presser** (60 Scrap + 20 Iron Plate + 10 Gear).
 
 > **Record total elapsed time.** Note separately how much of it was *walking*.

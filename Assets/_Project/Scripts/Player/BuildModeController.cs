@@ -43,6 +43,7 @@ namespace GolemFactory.Player
         private GridCoordinateConverter _converter;
         private InputAction _clickAction;
         private InputAction _rotateAction;
+        private InputAction _cancelAction;
         private Vector2Int _hoveredCell;
 
         /// <summary>
@@ -226,6 +227,7 @@ namespace GolemFactory.Player
                 InputActionMap gameplay = _actions.FindActionMap("Gameplay");
                 _clickAction = gameplay?.FindAction("Click");
                 _rotateAction = gameplay?.FindAction("Rotate");
+                _cancelAction = gameplay?.FindAction("CancelBuild");
             }
         }
 
@@ -242,6 +244,12 @@ namespace GolemFactory.Player
                 _rotateAction.Enable();
                 _rotateAction.performed += OnRotatePerformed;
             }
+
+            if (_cancelAction != null)
+            {
+                _cancelAction.Enable();
+                _cancelAction.performed += OnCancelPerformed;
+            }
         }
 
         private void OnDisable()
@@ -257,6 +265,49 @@ namespace GolemFactory.Player
                 _rotateAction.performed -= OnRotatePerformed;
                 _rotateAction.Disable();
             }
+
+            if (_cancelAction != null)
+            {
+                _cancelAction.performed -= OnCancelPerformed;
+                _cancelAction.Disable();
+            }
+        }
+
+        private void OnCancelPerformed(InputAction.CallbackContext context) => CancelPlacement();
+
+        /// <summary>
+        /// Puts the held placeable down -- leaves build mode. Public so the build menu, a test
+        /// and the key binding all take the same path.
+        ///
+        /// <para>
+        /// <b>Why this had to exist.</b> There was no way out of build mode at all: the menu only
+        /// ever called <see cref="SetActivePrefab"/>, so once a row was clicked
+        /// <see cref="IsPlacementActive"/> stayed true for the rest of the session. Every left
+        /// click went on placing or demolishing, and -- because R is arbitrated on exactly that
+        /// flag -- <b>R could never again reach the Hand-Crank Bench or a golem</b>. A player who
+        /// opened the build menu once could no longer change a bench recipe or turn a golem,
+        /// which is how this was found in play.
+        /// </para>
+        /// </summary>
+        public bool CancelPlacement()
+        {
+            if (_buildingPrefab == null)
+            {
+                return false;
+            }
+
+            _buildingPrefab = null;
+            LastStatusMessage = "";
+
+            // The ghost hides itself on the next Update (BuildClickPolicy sees nothing in hand),
+            // but hiding it here too means the feedback lands on the frame of the key press
+            // rather than one frame later.
+            if (_ghost != null)
+            {
+                _ghost.gameObject.SetActive(false);
+            }
+
+            return true;
         }
 
         // R only turns the ghost when a placeable is actually in hand; otherwise it belongs to

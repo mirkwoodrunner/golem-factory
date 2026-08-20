@@ -9,7 +9,7 @@ Everything here is known and deliberate — none of it is a surprise waiting to 
 > reviewed**. Everything from §1.5 on is **spec only**. The next pass starts at §1.5, which is
 > also what §1.4's Sandbox switch is waiting on.
 
-Tests stand at **1245/1245** (1096 EditMode + 149 PlayMode), up from 590 before the progression pass
+Tests stand at **1249/1249** (1100 EditMode + 149 PlayMode), up from 590 before the progression pass
 began. Console clean.
 
 > **THE BUILD QUEUE IS EMPTY AND THE PLAYTEST IS THE CRITICAL PATH.** Everything on this file is
@@ -1124,6 +1124,40 @@ Each of these was reviewed and judged non-blocking:
   the rotated chevron stops working and the mirrored pair becomes real work again.
 
 ---
+
+## 3y. Playtest session 1 — findings and dispositions
+
+The first live session, and it earned four findings in Part A alone. Two were real bugs that no
+test had reached, one was the script being wrong about the game, and one was a legibility question.
+
+- **Wall clip at the street/workshop seam — FIXED.** Standing on the outer street beside the
+  building and walking north pushed the player *through* the flank into the shop.
+  `ClampToFloor` was clamping one axis then the other, and **a T cannot be clamped one axis at a
+  time**: Y-then-X pulled the player sideways through the wall, and X-then-Y (the first fix) sent
+  anyone standing off the north-east corner the length of the road. It now clamps into **each
+  rectangle the T is made of and takes the nearer** — which is a wall to a walking player, because
+  walking is small steps and the road stays nearer until the room genuinely is, and the honest
+  nearest-legal-point answer for anything teleported in from outside. Four tests, including one
+  that *walks* rather than teleports, because the teleport version asks a different question.
+- **No way to leave build mode — FIXED, and it was three bugs wearing one coat.** `BuildMenuPanel`
+  only ever selected a placeable; nothing ever cleared it, so `IsPlacementActive` stayed true for
+  the session. Left click went on placing forever — and because **`R` is arbitrated on that flag**,
+  R could never again reach the Hand-Crank Bench *or* a golem. The player reported it as "I can
+  only do coking" and "how do I move a golem": one cause, three symptoms. There is now a
+  `CancelBuild` action (**Escape** and **right-click**), and clicking the held row toggles it off.
+- **"Crank progress remains at whatever % it was at" — the SCRIPT was wrong, not the game.**
+  Progress is held on release deliberately, so walking away mid-craft and coming back works; the
+  inputs are only charged at completion, so letting go costs time and never goods. The script had
+  claimed progress "abandons". Corrected there.
+- **"What are steps 1-6?" — a legibility finding, logged not fixed.** They are the golem's program,
+  run top to bottom once per cycle. The screen numbers them and never says that. Deliberately NOT
+  relabelled mid-playtest: a Workbench redesign is not something to do while somebody is using it.
+- **"A little dark" — ambient raised 0.62 → 0.72**, keeping the lamps as the light source (a 3.1×
+  pool against the shadow, from 1.8× before the pass) while bringing the unlit middle of the room
+  up ~16 %. Flagged for retest.
+
+Every one of these has a `RETEST` sub-task under the item that found it in
+`testscript/phase-1-playtest.md`.
 
 ## 3z. WHAT IS ACTUALLY LEFT
 

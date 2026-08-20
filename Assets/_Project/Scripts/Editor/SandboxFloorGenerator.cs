@@ -144,7 +144,11 @@ namespace GolemFactory.Editor
         // (Global + Sconce) / Global = 3.4x the shadow between lamps, against 1.8x before.
         // Cutting the ambient is what does the work; raising the sconce alone would just wash
         // the whole room brighter.
-        private const float GlobalIntensity = 0.62f;
+        // 0.62 -> 0.72 after the first playtest read it as "a little dark". Still a pool rather
+        // than a wash -- (0.72 + 1.5) / 0.72 = 3.1x the shadow between lamps, against the 1.8x
+        // this pass started from -- but the unlit middle of the room comes back up by ~16 %,
+        // which is where a factory game has to stay readable.
+        private const float GlobalIntensity = 0.72f;
         private const float SconceIntensity = 1.5f;
 
         // WHERE THE LIGHT GOES IS NOT WHERE THE FLAME IS PAINTED, and that is not a bug.

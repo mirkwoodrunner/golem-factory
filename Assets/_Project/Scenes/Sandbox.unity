@@ -6548,7 +6548,7 @@ MonoBehaviour:
     rid: 3172094957816119375
   m_FalloffIntensity: 0.5
   m_Color: {r: 1, g: 0.955, b: 0.895, a: 1}
-  m_Intensity: 0.62
+  m_Intensity: 0.72
   m_LightVolumeIntensity: 1
   m_LightVolumeEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -22415,7 +22415,6 @@ MonoBehaviour:
   _buildModeController: {fileID: 1749759286}
   _gridMapHolder: {fileID: 2049142406}
   _cellSize: {x: 1, y: 1}
-  _summonRange: 12
 --- !u!114 &1683579197
 MonoBehaviour:
   m_ObjectHideFlags: 0

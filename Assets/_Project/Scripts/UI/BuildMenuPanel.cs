@@ -178,7 +178,19 @@ namespace GolemFactory.UI
             PlaceableBuilding captured = prefab;
             go.GetComponent<Button>().onClick.AddListener(() =>
             {
-                _buildModeController.SetActivePrefab(captured);
+                // TOGGLE, not just select: clicking the row you already hold puts the
+                // placeable down. Two ways out of build mode (this and Escape / right-click),
+                // because the one thing worse than no way out is one nobody finds.
+                if (_buildModeController.ActivePrefab == captured)
+                {
+                    _buildModeController.CancelPlacement();
+                }
+                else
+                {
+                    _buildModeController.SetActivePrefab(captured);
+                }
+
+                RefreshHighlights();
                 RefreshHighlights();
             });
 
