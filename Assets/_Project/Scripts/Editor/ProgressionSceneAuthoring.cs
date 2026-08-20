@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEditor;
@@ -835,6 +835,13 @@ namespace GolemFactory.Editor
                 // in the one UI whose entire job is showing the player the order of their
                 // program. Deriving every caption here means a future seventh socket cannot
                 // reintroduce it.
+                //
+                // THIS IS NOW THE DISK DEFAULT, NOT WHAT THE PLAYER READS. Since
+                // docs/cozy-automation-design.md §3, WorkbenchController.RefreshSlotCaptions
+                // rewrites these every rebuild with a second clause driven from the live draft
+                // ("STEP 3 · loops back to 1"), because a hint about the cycle cannot be
+                // authored -- it depends on a program that only exists while the screen is open.
+                // Kept in step here anyway so a prefab opened in the Editor reads correctly.
                 Transform caption = row.Find("Caption");
                 if (caption != null)
                 {

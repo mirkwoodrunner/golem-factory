@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
@@ -1157,6 +1157,8 @@ namespace GolemFactory.UI
                 }
             }
 
+            RefreshSlotCaptions();
+
             foreach (var entry in _chassisButtonImages)
             {
                 // Leave the plate mid-flash alone; UpdateChassisFlash restores it.
@@ -1480,6 +1482,83 @@ namespace GolemFactory.UI
         // rebuild would strip a slot down to a bare rectangle the first time anything
         // was dropped into it. Drag placeholders go too: a ghost has no WorkbenchCard, so
         // an interrupted drag would otherwise leave a permanent translucent stripe.
+        /// <summary>
+        /// Writes the socket captions from the live draft (docs/cozy-automation-design.md §3):
+        /// <c>TRIGGER · when to start</c>, <c>STEP 1 · then</c>, <c>STEP 3 · loops back to 1</c>.
+        ///
+        /// <para>
+        /// THIS IS THE ANSWER TO §3y'S "What are steps 1-6?". They are the golem's program, run
+        /// top to bottom once per cycle, and the screen numbered them without ever saying so.
+        /// Driving the captions from the draft means the loop marker walks down as the player
+        /// builds -- demonstrating the cycle rather than describing it.
+        /// </para>
+        ///
+        /// <para>
+        /// Done at RUNTIME rather than in the scene authoring pass that currently writes these
+        /// captions, because a hint depends on the draft program and a draft only exists while
+        /// the screen is open. One owner, no prefab round-trip, and no chance of a scene
+        /// override silently winning -- which has bitten this project before.
+        /// </para>
+        ///
+        /// <para>
+        /// Every lookup is null-tolerant: a Workbench built by a test wires drop zones without
+        /// caption children, and a missing caption must be a no-op rather than an exception in
+        /// the middle of a rebuild.
+        /// </para>
+        /// </summary>
+        private void RefreshSlotCaptions()
+        {
+            int capacity = DraftMaxSlots;
+            int lastFilled = WorkbenchLoopLabels.LastFilledStep(
+                _draftAppendages.Length,
+                step => step >= 1 && step <= _draftAppendages.Length && _draftAppendages[step - 1] != null);
+
+            if (logicCoreSlotZone != null)
+            {
+                SetSlotCaption(
+                    logicCoreSlotZone.transform,
+                    WorkbenchLoopLabels.Compose(
+                        WorkbenchLoopLabels.TriggerRow, _draftLogicCore != null, lastFilled, capacity));
+            }
+
+            for (int i = 0; i < appendageSlotZones.Length; i++)
+            {
+                WorkbenchDropZone zone = appendageSlotZones[i];
+                if (zone == null)
+                {
+                    continue;
+                }
+
+                // The socket at array index i is STEP i+1 on screen -- the same off-by-one the
+                // authoring pass makes when it captions row i as "STEP " + i, counting the
+                // trigger as row 0.
+                SetSlotCaption(
+                    zone.transform,
+                    WorkbenchLoopLabels.Compose(
+                        i + 1, _draftAppendages[i] != null, lastFilled, capacity));
+            }
+        }
+
+        private static void SetSlotCaption(Transform row, string text)
+        {
+            if (row == null)
+            {
+                return;
+            }
+
+            Transform caption = row.Find("Caption");
+            if (caption == null)
+            {
+                return;
+            }
+
+            var label = caption.GetComponent<TextMeshProUGUI>();
+            if (label != null)
+            {
+                label.text = text;
+            }
+        }
+
         private static void ClearCards(Transform parent)
         {
             if (parent == null)

@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
@@ -58,6 +58,7 @@ namespace GolemFactory.Tests.PlayMode
             logicSlotGo.transform.SetParent(_root.transform, false);
             var logicSlot = logicSlotGo.AddComponent<WorkbenchDropZone>();
             logicSlot.Configure(DropZoneKind.LogicCore, -1);
+            AddCaption(logicSlotGo.transform);
 
             var appendageZones = new WorkbenchDropZone[3];
             for (int i = 0; i < appendageZones.Length; i++)
@@ -66,6 +67,10 @@ namespace GolemFactory.Tests.PlayMode
                 zoneGo.transform.SetParent(_root.transform, false);
                 var zone = zoneGo.AddComponent<WorkbenchDropZone>();
                 zone.Configure(DropZoneKind.Appendage, i);
+                // The caption child the real prefab's rows carry, and which
+                // WorkbenchController.RefreshSlotCaptions writes the loop labels onto. Found by
+                // NAME, exactly as the controller finds it, so this pins the lookup too.
+                AddCaption(zoneGo.transform);
                 appendageZones[i] = zone;
             }
 
@@ -87,6 +92,16 @@ namespace GolemFactory.Tests.PlayMode
 
             return (controller, golem, focus, patents);
         }
+
+        private static TextMeshProUGUI AddCaption(Transform row)
+        {
+            var caption = new GameObject("Caption", typeof(RectTransform), typeof(TextMeshProUGUI));
+            caption.transform.SetParent(row, false);
+            return caption.GetComponent<TextMeshProUGUI>();
+        }
+
+        private static string CaptionOf(WorkbenchDropZone zone) =>
+            zone.transform.Find("Caption").GetComponent<TextMeshProUGUI>().text;
 
         private static RectTransform NewRect(string name, Transform parent)
         {
@@ -1024,5 +1039,76 @@ namespace GolemFactory.Tests.PlayMode
 
         private static Transform FindSibling(WorkbenchController controller, string name) =>
             controller.transform.parent.Find(name);
+
+        // --- The loop labels (docs/cozy-automation-design.md §3) ---------------------------
+        // §3y's "What are steps 1-6?" was a legibility finding, deliberately left alone
+        // mid-playtest. These pin that the answer actually reaches the sockets: the strings
+        // themselves are WorkbenchLoopLabelsTests' job, and this is the wiring.
+
+        private string SlotCaption(int appendageIndex) =>
+            _root.transform.Find("AppendageSlot" + appendageIndex)
+                 .Find("Caption").GetComponent<TextMeshProUGUI>().text;
+
+        private string TriggerCaption() =>
+            _root.transform.Find("LogicSlot").Find("Caption").GetComponent<TextMeshProUGUI>().text;
+
+        [UnityTest]
+        public IEnumerator SlotCaptions_NameTheLoop_AndTheMarkerFollowsTheLastFilledStep()
+        {
+            ChassisDefinition chassis = MakeChassis(3);
+            AppendageActionDefinition first = MakeAppendage();
+            AppendageActionDefinition second = MakeAppendage();
+            var (controller, _, _, _) = Build(
+                new[] { chassis }, new LogicCoreDefinition[0], new[] { first, second });
+            yield return null;
+            SelectChassisViaButton(controller, 0);
+
+            controller.HandleDrop(VaultCard(null, first), MakeZone(DropZoneKind.Appendage, 0));
+
+            Assert.AreEqual("STEP 1  ·  loops back to 1", SlotCaption(0));
+            Assert.AreEqual("STEP 2  ·  unused", SlotCaption(1));
+
+            controller.HandleDrop(VaultCard(null, second), MakeZone(DropZoneKind.Appendage, 1));
+
+            // The marker WALKED DOWN, which is the part that demonstrates the cycle rather than
+            // describing it.
+            Assert.AreEqual("STEP 1  ·  then", SlotCaption(0));
+            Assert.AreEqual("STEP 2  ·  loops back to 1", SlotCaption(1));
+            Assert.AreEqual("STEP 3  ·  unused", SlotCaption(2));
+        }
+
+        [UnityTest]
+        public IEnumerator TriggerCaption_TeachesWhicheverThingIsMissing()
+        {
+            ChassisDefinition chassis = MakeChassis(3);
+            AppendageActionDefinition appendage = MakeAppendage();
+            var (controller, _, _, _) = Build(
+                new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
+            yield return null;
+
+            Assert.AreEqual("TRIGGER  ·  fit a chassis first", TriggerCaption());
+
+            SelectChassisViaButton(controller, 0);
+            Assert.AreEqual("TRIGGER  ·  drop cards below to build a cycle", TriggerCaption());
+
+            controller.HandleDrop(VaultCard(null, appendage), MakeZone(DropZoneKind.Appendage, 0));
+            Assert.AreEqual("TRIGGER  ·  when to start", TriggerCaption());
+        }
+
+        [UnityTest]
+        public IEnumerator SlotCaptions_SurviveARowWithNoCaptionChild()
+        {
+            // The real prefab's rows all carry one, but a Workbench assembled without them must
+            // be a no-op rather than an exception in the middle of a rebuild.
+            ChassisDefinition chassis = MakeChassis(3);
+            var (controller, _, _, _) = Build(
+                new[] { chassis }, new LogicCoreDefinition[0], new[] { MakeAppendage() });
+            yield return null;
+
+            Object.DestroyImmediate(_root.transform.Find("AppendageSlot1").Find("Caption").gameObject);
+            SelectChassisViaButton(controller, 0);
+
+            Assert.AreEqual("STEP 1  ·  unused", SlotCaption(0), "the surviving rows still update");
+        }
     }
 }
