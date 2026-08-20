@@ -2067,6 +2067,29 @@ MonoBehaviour:
   badgeBuildingSprite: {fileID: 21300000, guid: fd5a59306defa7b4b886bbbd459e969a, type: 3}
   badgeTechniqueSprite: {fileID: 21300000, guid: 1e7f140353f297144a8c0c275c251bd6, type: 3}
   badgeMilestoneSprite: {fileID: 21300000, guid: 2e0af1b7b85cb2645a3b55b68ca8bb59, type: 3}
+  recipes:
+  - {fileID: 11400000, guid: 79012760172d3a64e8b69090ce580c60, type: 2}
+  - {fileID: 11400000, guid: 54720ebc737d2ad41b8b347ecfdcc969, type: 2}
+  - {fileID: 11400000, guid: 41bfc7951692c3d429fc551281d15500, type: 2}
+  - {fileID: 11400000, guid: 56c1d0777967aeb409cc4959f2a22dff, type: 2}
+  - {fileID: 11400000, guid: ef56d0b440609f94982496d708659f5c, type: 2}
+  - {fileID: 11400000, guid: d0c6de11de3d2904eb67ed08f0d66822, type: 2}
+  - {fileID: 11400000, guid: de249b84e8751974a9dd8bfd431577e8, type: 2}
+  - {fileID: 11400000, guid: dc0c801f5efcd04468a5055a39fde6a8, type: 2}
+  - {fileID: 11400000, guid: 40cee0092fb48da43bb4a854f16fce22, type: 2}
+  - {fileID: 11400000, guid: 29e0b9deffec2504e9e97bb3b10c388b, type: 2}
+  - {fileID: 11400000, guid: daadde5f9c183ac4c94822863db5df64, type: 2}
+  - {fileID: 11400000, guid: 5213db3c792d0b9499ecf324975d3fd6, type: 2}
+  - {fileID: 11400000, guid: 8be0b12f9314bd443be2fc57ce68887d, type: 2}
+  - {fileID: 11400000, guid: 60ed808390b637443be6cfffd777e22f, type: 2}
+  - {fileID: 11400000, guid: 74842355259110a47bc78b334510d1d6, type: 2}
+  - {fileID: 11400000, guid: 22d57f34dd0f2d9469d2321577efdcb5, type: 2}
+  - {fileID: 11400000, guid: 42095ba833697304098c93a7baa590f3, type: 2}
+  - {fileID: 11400000, guid: 4f158daa3a00cb84e9ac970c83c79e03, type: 2}
+  - {fileID: 11400000, guid: e94df2472b47aab4f93b5f8bd0be1859, type: 2}
+  throughputMonitor: {fileID: 0}
+  stockpileBufferId: FactoryStockpile
+  ticksPerSecondForReadout: 10
 --- !u!1 &1634318328088844862
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
 using GolemFactory.Progression;
@@ -122,6 +122,78 @@ namespace GolemFactory.Tests.EditMode
                         $"later phase {source.PhaseIndex}.");
                 }
             }
+        }
+
+        [Test]
+        public void EveryStringTheChartDrawsIsLatin1()
+        {
+            // FOURTEEN NODE DETAILS CARRIED U+2192 FROM THE DAY THE CHART WAS WRITTEN, plus one
+            // em dash. TMP's default LiberationSans SDF atlas has no entry for either, so every
+            // recipe node on the Ledger drew a missing-glyph box where its arrow should be. The
+            // constraint is recorded in three other files already (StallDiagnostics,
+            // GolemStallIndicator, WorkbenchLoopLabels); this catalog simply never heard about
+            // it, and nothing was checking. The middle dot (U+00B7) is in the atlas and stays.
+            foreach (TechTreePhase phase in TechTreeCatalog.Phases)
+            {
+                AssertLatin1(phase.Title, "phase title");
+                AssertLatin1(phase.Goal, "phase goal");
+            }
+
+            foreach (TechTreeNode node in TechTreeCatalog.Nodes)
+            {
+                AssertLatin1(node.DisplayName, node.Id + " name");
+                AssertLatin1(node.Detail, node.Id + " detail");
+            }
+        }
+
+        private static void AssertLatin1(string text, string what)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            foreach (char c in text)
+            {
+                Assert.LessOrEqual(
+                    (int)c, 0xFF,
+                    $"{what} has a glyph the TMP atlas cannot draw (U+{(int)c:X4}) in \"{text}\"");
+            }
+        }
+
+        [Test]
+        public void EveryRecipeNodeResolvesToARecipeAssetByItsNumber()
+        {
+            // How the Ledger's readout finds the recipe a node names, and the reason it is done
+            // by NUMBER: r4.ironsmelting signals on Slag rather than on Iron Plate -- R4 is the
+            // only recipe that makes Slag, which makes it the sharper detector -- so resolving
+            // by output found nothing for it and the readout silently fell back to the
+            // catalog's hand-written line.
+            List<RecipeDefinition> recipes = LoadAll<RecipeDefinition>(RecipeRoot);
+
+            foreach (TechTreeNode node in TechTreeCatalog.Nodes)
+            {
+                if (node.Kind != TechTreeNodeKind.Recipe)
+                {
+                    continue;
+                }
+
+                Assert.IsNotNull(
+                    RecipeLedger.FindByNodeName(recipes, node.DisplayName),
+                    $"'{node.DisplayName}' ({node.Id}) resolves to no recipe asset -- a recipe " +
+                    "node's display name must lead with its number, e.g. \"R4 Iron Smelting\"");
+            }
+        }
+
+        [Test]
+        public void ARecipeNumberPrefixDoesNotMatchALongerNumber()
+        {
+            // The underscore in the prefix is what stops "R1" matching R19_WireDrawing.
+            Assert.AreEqual("R1_", RecipeLedger.RecipeAssetPrefix("R1 Coking"));
+            Assert.AreEqual("R19_", RecipeLedger.RecipeAssetPrefix("R19 Wire Drawing"));
+            Assert.IsNull(RecipeLedger.RecipeAssetPrefix("Regulator"));
+            Assert.IsNull(RecipeLedger.RecipeAssetPrefix("Clockwork Scavenger"));
+            Assert.IsNull(RecipeLedger.RecipeAssetPrefix(""));
         }
 
         [Test]

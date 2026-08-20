@@ -28,6 +28,14 @@ namespace GolemFactory.Progression
     /// </summary>
     public static class TechTreeCatalog
     {
+        // ASCII "->" IN EVERY DETAIL LINE, NOT AN ARROW GLYPH. Fourteen of these carried U+2192
+        // from the day the chart was written, and TMP's default LiberationSans SDF atlas has no
+        // entry for it -- so every recipe node on the Ledger has been drawing a missing-glyph box
+        // where its arrow should be. The constraint is recorded in three other places already
+        // (StallDiagnostics, GolemStallIndicator, WorkbenchLoopLabels) and this file simply never
+        // heard about it; TechTreeCatalogTests now walks every string and refuses anything above
+        // U+00FF, so it cannot come back. The middle dot is fine and stays -- it is Latin-1.
+
         // Chassis nodes name the ASSET name, not a display string: that is what a golem's
         // GolemProgram.chassis reports at runtime and what the .asset file is called on disk.
         public const string ChassisScavenger = "ClockworkScavenger";
@@ -83,17 +91,17 @@ namespace GolemFactory.Progression
 
             // ---- II · The First Machine -----------------------------------------------------
             new TechTreeNode(
-                "r2.reclamation", "R2 Scrap Reclamation", "1 Scrap → 1 Iron Plate",
+                "r2.reclamation", "R2 Scrap Reclamation", "1 Scrap -> 1 Iron Plate",
                 TechTreeNodeKind.Recipe, 1, 0,
                 TechTreeUnlockSignal.Item, ItemType.IronPlate,
                 new[] { "bench.handcrank" }),
             new TechTreeNode(
-                "r8.gearcutting", "R8 Gear Cutting", "2 Iron Plate → 1 Gear",
+                "r8.gearcutting", "R8 Gear Cutting", "2 Iron Plate -> 1 Gear",
                 TechTreeNodeKind.Recipe, 1, 1,
                 TechTreeUnlockSignal.Item, ItemType.Gear,
                 new[] { "r2.reclamation" }),
             new TechTreeNode(
-                "r1.coking", "R1 Coking", "1 Coal → 1 Coke · the throat of the economy",
+                "r1.coking", "R1 Coking", "1 Coal -> 1 Coke · the throat of the economy",
                 TechTreeNodeKind.Recipe, 1, 2,
                 TechTreeUnlockSignal.Item, ItemType.Coke,
                 new[] { "bench.handcrank" }),
@@ -133,7 +141,7 @@ namespace GolemFactory.Progression
                 TechTreeUnlockSignal.None, null,
                 new[] { "bldg.steampipe", "r1.coking" }, isKeystone: true),
             new TechTreeNode(
-                "milestone.nodecap", "A Second Node Site", "2 extractors per node — scale means distance",
+                "milestone.nodecap", "A Second Node Site", "2 extractors per node - scale means distance",
                 TechTreeNodeKind.Technique, 2, 1,
                 TechTreeUnlockSignal.None, null,
                 new[] { "bldg.belt", "milestone.steamgrid" }),
@@ -158,12 +166,12 @@ namespace GolemFactory.Progression
             // R4's signal is Slag, not Iron Plate: R2 also makes Plate, and a signal has to name
             // the good that ONLY this recipe produces or the node lights up in phase II.
             new TechTreeNode(
-                "r4.ironsmelting", "R4 Iron Smelting", "2 Scrap + 1 Coke → 2 Iron Plate + 1 Slag",
+                "r4.ironsmelting", "R4 Iron Smelting", "2 Scrap + 1 Coke -> 2 Iron Plate + 1 Slag",
                 TechTreeNodeKind.Recipe, 3, 1,
                 TechTreeUnlockSignal.Item, ItemType.Slag,
                 new[] { "chassis.hauler", "r1.coking" }),
             new TechTreeNode(
-                "r3.glassmaking", "R3 Glassmaking", "1 Slag → 1 Glass · the productive Slag sink",
+                "r3.glassmaking", "R3 Glassmaking", "1 Slag -> 1 Glass · the productive Slag sink",
                 TechTreeNodeKind.Recipe, 3, 2,
                 TechTreeUnlockSignal.Item, ItemType.Glass,
                 new[] { "r4.ironsmelting" }),
@@ -179,47 +187,47 @@ namespace GolemFactory.Progression
             // Sits beside it because they compete for the same Coke: half the disposal rate,
             // plus a Scrap back.
             new TechTreeNode(
-                "bldg.scraprecycler", "Scrap Recycler", "Any junk → Scrap · 1 Coke per 4 points",
+                "bldg.scraprecycler", "Scrap Recycler", "Any junk -> Scrap · 1 Coke per 4 points",
                 TechTreeNodeKind.Building, 3, 4,
                 TechTreeUnlockSignal.Building, BuildingScrapRecycler,
                 new[] { "bldg.slagheap" }),
             new TechTreeNode(
-                "r5.coppersmelting", "R5 Copper Smelting", "2 Copper Ore + 1 Coke → 1 Copper Ingot",
+                "r5.coppersmelting", "R5 Copper Smelting", "2 Copper Ore + 1 Coke -> 1 Copper Ingot",
                 TechTreeNodeKind.Recipe, 3, 5,
                 TechTreeUnlockSignal.Item, ItemType.CopperIngot,
                 new[] { "chassis.hauler", "r1.coking" }),
             new TechTreeNode(
-                "r6.zincsmelting", "R6 Zinc Smelting", "2 Zinc Ore + 1 Coke → 1 Zinc Ingot",
+                "r6.zincsmelting", "R6 Zinc Smelting", "2 Zinc Ore + 1 Coke -> 1 Zinc Ingot",
                 TechTreeNodeKind.Recipe, 3, 6,
                 TechTreeUnlockSignal.Item, ItemType.ZincIngot,
                 new[] { "chassis.hauler", "r1.coking" }),
             new TechTreeNode(
-                "r7.brassalloying", "R7 Brass Alloying", "2 Copper + 1 Zinc → 3 Brass · seven consumers",
+                "r7.brassalloying", "R7 Brass Alloying", "2 Copper + 1 Zinc -> 3 Brass · seven consumers",
                 TechTreeNodeKind.Recipe, 3, 7,
                 TechTreeUnlockSignal.Item, ItemType.Brass,
                 new[] { "r5.coppersmelting", "r6.zincsmelting" }),
             new TechTreeNode(
-                "r19.wiredrawing", "R19 Wire Drawing", "1 Copper Ingot → 3 Copper Wire",
+                "r19.wiredrawing", "R19 Wire Drawing", "1 Copper Ingot -> 3 Copper Wire",
                 TechTreeNodeKind.Recipe, 3, 8,
                 TechTreeUnlockSignal.Item, ItemType.CopperWire,
                 new[] { "r5.coppersmelting" }),
             new TechTreeNode(
-                "r9.casingpress", "R9 Casing Press", "4 Iron Plate + 1 Brass → 1 Casing",
+                "r9.casingpress", "R9 Casing Press", "4 Iron Plate + 1 Brass -> 1 Casing",
                 TechTreeNodeKind.Recipe, 3, 9,
                 TechTreeUnlockSignal.Item, ItemType.Casing,
                 new[] { "r4.ironsmelting", "r7.brassalloying" }),
             new TechTreeNode(
-                "r10.lensgrinding", "R10 Lens Grinding", "2 Glass + 1 Brass → 1 Lens",
+                "r10.lensgrinding", "R10 Lens Grinding", "2 Glass + 1 Brass -> 1 Lens",
                 TechTreeNodeKind.Recipe, 3, 10,
                 TechTreeUnlockSignal.Item, ItemType.Lens,
                 new[] { "r3.glassmaking", "r7.brassalloying" }),
             new TechTreeNode(
-                "r11.mainspringwinding", "R11 Mainspring Winding", "3 Brass + 2 Gear → 1 Mainspring",
+                "r11.mainspringwinding", "R11 Mainspring Winding", "3 Brass + 2 Gear -> 1 Mainspring",
                 TechTreeNodeKind.Recipe, 3, 11,
                 TechTreeUnlockSignal.Item, ItemType.Mainspring,
                 new[] { "r7.brassalloying", "r8.gearcutting" }),
             new TechTreeNode(
-                "r12.aethercontainment", "R12 Aether Containment", "1 Aether + 2 Lens → 1 Aether Cell",
+                "r12.aethercontainment", "R12 Aether Containment", "1 Aether + 2 Lens -> 1 Aether Cell",
                 TechTreeNodeKind.Recipe, 3, 12,
                 TechTreeUnlockSignal.Item, ItemType.AetherCell,
                 new[] { "r10.lensgrinding" }),

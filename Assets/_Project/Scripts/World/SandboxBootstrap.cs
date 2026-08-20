@@ -443,7 +443,25 @@ namespace GolemFactory.World
             if (techTree != null)
             {
                 techTree.Configure(tracker);
+
+                // The recipe readout's LIVE half, wired per scene rather than authored: the
+                // monitor is a scene object and the panel lives on WorkbenchCanvas.prefab, and a
+                // prefab cannot hold a field reference into a different prefab. Resolved off the
+                // buffer registry as a sibling, exactly as InventoryPanel resolves the same
+                // monitor for its rate column.
+                Economy.BufferThroughputMonitor monitor =
+                    buffers != null ? buffers.GetComponent<Economy.BufferThroughputMonitor>() : null;
+                techTree.ConfigureThroughput(
+                    monitor,
+                    stockpileBufferId,
+                    clockRunner != null ? clockRunner.Clock.TicksPerSecond : 0f);
             }
+
+            // Floor Expansion has no component to count, so the ledger reads the room's shape.
+            tracker.ConfigureFloorBounds(
+                floorBoundsHolder != null
+                    ? floorBoundsHolder
+                    : FindAnyObjectByType<FloorBoundsHolder>(FindObjectsInactive.Include));
         }
 
         /// <summary>

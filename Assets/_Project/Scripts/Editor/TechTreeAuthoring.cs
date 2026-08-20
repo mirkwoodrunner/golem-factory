@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using TMPro;
 using UnityEditor;
@@ -7,6 +8,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using GolemFactory.Progression;
+using GolemFactory.PunchCards;
 using GolemFactory.UI;
 
 namespace GolemFactory.Editor
@@ -297,6 +299,7 @@ namespace GolemFactory.Editor
             AssignIfPresent(so, "badgeBuildingSprite", LoadSprite("tt_badge_anvil.png"));
             AssignIfPresent(so, "badgeTechniqueSprite", LoadSprite("tt_badge_hand.png"));
             AssignIfPresent(so, "badgeMilestoneSprite", LoadSprite("tt_badge_tower.png"));
+            WriteRecipeRoster(so);
             so.ApplyModifiedPropertiesWithoutUndo();
 
             // Inactive on disk, exactly like PatentsTab/AssemblyLineTab/SaveLoadTab: the screen
@@ -304,6 +307,54 @@ namespace GolemFactory.Editor
             tab.SetActive(false);
             return panel;
         }
+
+        /// <summary>
+        /// Every authored recipe, so the readout can resolve the one a node names.
+        ///
+        /// <para>
+        /// Written onto the PREFAB rather than bootstrapped, unlike the throughput monitor
+        /// beside it, because these are asset references -- a prefab holds those perfectly well
+        /// and only a reference into another PREFAB resolves to null on instantiation.
+        /// </para>
+        ///
+        /// <para>
+        /// Loaded off disk in name order rather than transcribed, for the reason
+        /// <c>ProgressionSceneAuthoring.WriteRecipeCandidates</c> gives about the bench's list: a
+        /// hand-written roster is a second copy of the Recipes folder that nothing holds to it.
+        /// </para>
+        /// </summary>
+        private static void WriteRecipeRoster(SerializedObject so)
+        {
+            SerializedProperty list = so.FindProperty("recipes");
+            if (list == null)
+            {
+                Note("WARNING: TechTreePanel has no 'recipes' field");
+                return;
+            }
+
+            var recipes = new List<RecipeDefinition>();
+            foreach (string guid in AssetDatabase.FindAssets("t:RecipeDefinition", new[] { RecipeRoot }))
+            {
+                var recipe = AssetDatabase.LoadAssetAtPath<RecipeDefinition>(
+                    AssetDatabase.GUIDToAssetPath(guid));
+                if (recipe != null)
+                {
+                    recipes.Add(recipe);
+                }
+            }
+
+            recipes.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
+
+            list.arraySize = recipes.Count;
+            for (int i = 0; i < recipes.Count; i++)
+            {
+                list.GetArrayElementAtIndex(i).objectReferenceValue = recipes[i];
+            }
+
+            Note("TechTreePanel recipe roster = " + recipes.Count + " recipes");
+        }
+
+        private const string RecipeRoot = "Assets/_Project/ScriptableObjects/Recipes";
 
         // ---- read-back -------------------------------------------------------------------
 

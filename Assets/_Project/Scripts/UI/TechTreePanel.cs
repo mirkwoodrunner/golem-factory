@@ -1,8 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using GolemFactory.Economy;
 using GolemFactory.Progression;
+using GolemFactory.PunchCards;
 
 namespace GolemFactory.UI
 {
@@ -207,6 +209,11 @@ namespace GolemFactory.UI
 
             _chartBuilt = true;
             _appliedVersion = -1;
+
+            // After the chart, so the readout draws over it; and re-applied from the kept ID
+            // rather than an index, because every view above was just recreated.
+            EnsureDetailPane();
+            RefreshDetailPane();
         }
 
         private void ApplyStates(TechTreeProgressLedger ledger)
@@ -237,6 +244,10 @@ namespace GolemFactory.UI
             {
                 headerText.text = BuildHeadline(nodes, _states);
             }
+
+            // The readout carries a LIVE rate, which moves without the ledger's version moving,
+            // so it is refreshed on every state pass rather than only on selection.
+            RefreshDetailPane();
         }
 
         private static string BuildHeadline(
@@ -362,7 +373,16 @@ namespace GolemFactory.UI
 
             Image plaque = card.gameObject.AddComponent<Image>();
             plaque.type = Image.Type.Sliced;
-            plaque.raycastTarget = false;
+            // RAYCASTS ON, unlike before: the plaque is now the click target that opens the
+            // recipe readout. Its children stay off so a click anywhere on the card counts,
+            // rather than only on the gaps between the labels.
+            plaque.raycastTarget = true;
+
+            var button = card.gameObject.AddComponent<Button>();
+            button.targetGraphic = plaque;
+            button.transition = Selectable.Transition.None;
+            string nodeId = node.Id;
+            button.onClick.AddListener(() => SelectNode(nodeId));
 
             RectTransform badgeRect = CreateChild("Badge", new Rect(0f, 0f, BadgeSize, BadgeSize), card);
             badgeRect.anchoredPosition = new Vector2(9f, -(rect.height - BadgeSize) * 0.5f);
@@ -382,6 +402,215 @@ namespace GolemFactory.UI
 
             return new NodeView(plaque, badge, name, detail);
         }
+
+        // ===================================================================================
+        // The recipe readout (docs/cozy-automation-design.md §4a)
+        // ===================================================================================
+        // The chart lights nodes up and says nothing about the recipe a node names -- a node's
+        // Detail is a hand-written transcription, so the real ratio lived only in the .asset and
+        // in §5.2. Clicking a node now opens what it actually costs.
+
+        [SerializeField] private RecipeDefinition[] recipes = new RecipeDefinition[0];
+        [SerializeField] private BufferThroughputMonitor throughputMonitor;
+        [SerializeField] private string stockpileBufferId = "FactoryStockpile";
+        [SerializeField] private float ticksPerSecondForReadout = 10f;
+
+        private RectTransform _detailPane;
+        private TextMeshProUGUI _detailTitle;
+        private TextMeshProUGUI _detailBody;
+
+        // Kept by ID, never by view index: RebuildChart recreates the view arrays wholesale, so
+        // an index would silently point at a different node after any rebuild.
+        private string _selectedNodeId;
+
+        /// <summary>
+        /// Wires the recipes the readout resolves and the monitor it reads live rates from.
+        /// Separate from <see cref="Configure"/> for the reason every other Configure* in this
+        /// project is: existing call sites keep working by simply never calling it, and a panel
+        /// with no recipes shows names and states exactly as it always did.
+        /// </summary>
+        public void ConfigureRecipeReadout(
+            RecipeDefinition[] recipeRoster, BufferThroughputMonitor monitor,
+            string bufferId, float ticksPerSecond)
+        {
+            ConfigureRecipes(recipeRoster);
+            ConfigureThroughput(monitor, bufferId, ticksPerSecond);
+        }
+
+        /// <summary>
+        /// The recipe roster, which is ASSET references and therefore lives happily on the
+        /// prefab -- written there by <c>TechTreeAuthoring</c>.
+        /// </summary>
+        public void ConfigureRecipes(RecipeDefinition[] recipeRoster) =>
+            recipes = recipeRoster ?? new RecipeDefinition[0];
+
+        /// <summary>
+        /// The live-rate half, which must be wired PER SCENE.
+        ///
+        /// <para>
+        /// Split from the roster for a concrete reason rather than tidiness: the monitor is a
+        /// scene object and this panel lives on <c>WorkbenchCanvas.prefab</c>, and a prefab
+        /// cannot hold a field reference into a different prefab -- it resolves to null on
+        /// instantiation. So the roster is authored and the monitor is bootstrapped, and calling
+        /// one must never clear the other.
+        /// </para>
+        /// </summary>
+        public void ConfigureThroughput(
+            BufferThroughputMonitor monitor, string bufferId, float ticksPerSecond)
+        {
+            throughputMonitor = monitor;
+            if (!string.IsNullOrEmpty(bufferId))
+            {
+                stockpileBufferId = bufferId;
+            }
+
+            if (ticksPerSecond > 0f)
+            {
+                ticksPerSecondForReadout = ticksPerSecond;
+            }
+        }
+
+        /// <summary>The node whose readout is open, or null. Exposed so a test can assert it.</summary>
+        public string SelectedNodeId => _selectedNodeId;
+
+        /// <summary>The readout's body text, for the same reason.</summary>
+        public string DetailBodyText => _detailBody != null ? _detailBody.text : "";
+
+        public void SelectNode(string nodeId)
+        {
+            _selectedNodeId = nodeId;
+            RefreshDetailPane();
+        }
+
+        private void RefreshDetailPane()
+        {
+            if (_detailPane == null)
+            {
+                return;
+            }
+
+            TechTreeNode node;
+            if (string.IsNullOrEmpty(_selectedNodeId) ||
+                !TechTreeCatalog.TryGetNode(_selectedNodeId, out node))
+            {
+                _detailPane.gameObject.SetActive(false);
+                return;
+            }
+
+            _detailPane.gameObject.SetActive(true);
+            _detailTitle.text = node.DisplayName + "  ·  " + DescribeState(node);
+
+            // By RECIPE NUMBER, not by unlock signal. r4.ironsmelting signals on Slag rather
+            // than Iron Plate -- R4 is the only recipe that makes Slag, which makes it the
+            // sharper detector -- so resolving by output found nothing for it and the readout
+            // silently fell back to the catalog's hand-written line. The number is exact for
+            // every node; the output lookup stays as a fallback for a node named some other way.
+            RecipeDefinition recipe = null;
+            if (node.Kind == TechTreeNodeKind.Recipe)
+            {
+                recipe = RecipeLedger.FindByNodeName(recipes, node.DisplayName)
+                         ?? RecipeLedger.FindByOutput(recipes, node.SignalId);
+            }
+
+            if (recipe == null)
+            {
+                // Everything that is not a recipe -- chassis, buildings, techniques, milestones --
+                // keeps the catalog's authored line, which is the only thing there is to say
+                // about it. Better than an empty pane that reads as a bug.
+                _detailBody.text = node.Detail;
+                return;
+            }
+
+            bool measured = false;
+            float livePerMinute = 0f;
+            if (throughputMonitor != null)
+            {
+                measured = throughputMonitor.TryGetRatePerMinute(
+                    stockpileBufferId, recipe.outputItemType, out livePerMinute);
+            }
+
+            _detailBody.text = RecipeLedger.Describe(
+                recipe, ticksPerSecondForReadout, measured, livePerMinute);
+        }
+
+        private string DescribeState(TechTreeNode node)
+        {
+            if (node.IsPlanned)
+            {
+                return "planned";
+            }
+
+            for (int i = 0; i < TechTreeCatalog.Nodes.Count; i++)
+            {
+                if (TechTreeCatalog.Nodes[i] == node && _states != null && i < _states.Length)
+                {
+                    return _states[i].ToString().ToLowerInvariant();
+                }
+            }
+
+            return "";
+        }
+
+        /// <summary>
+        /// Builds the readout pane once, parented to the chart's VIEWPORT rather than to the
+        /// chart itself.
+        ///
+        /// <para>
+        /// That distinction is load-bearing twice over. <c>RebuildChart</c> destroys every child
+        /// of <c>chartRoot</c>, so a pane living there would be deleted on the next rebuild; and
+        /// <c>chartRoot</c> is the scrolling content, so a pane inside it would slide off screen
+        /// while the player panned. The viewport does neither.
+        /// </para>
+        /// </summary>
+        private void EnsureDetailPane()
+        {
+            if (_detailPane != null)
+            {
+                return;
+            }
+
+            var parent = chartRoot != null ? chartRoot.parent as RectTransform : null;
+            if (parent == null)
+            {
+                parent = chartRoot;
+            }
+
+            if (parent == null)
+            {
+                return;
+            }
+
+            var go = new GameObject("RecipeReadout", typeof(RectTransform), typeof(Image));
+            _detailPane = (RectTransform)go.transform;
+            _detailPane.SetParent(parent, false);
+            _detailPane.anchorMin = new Vector2(0f, 0f);
+            _detailPane.anchorMax = new Vector2(0f, 0f);
+            _detailPane.pivot = new Vector2(0f, 0f);
+            _detailPane.anchoredPosition = new Vector2(12f, 12f);
+            _detailPane.sizeDelta = new Vector2(300f, 92f);
+
+            var backing = go.GetComponent<Image>();
+            backing.color = DetailPaneColor;
+            backing.raycastTarget = false;
+            if (phasePlateSprite != null)
+            {
+                backing.sprite = phasePlateSprite;
+                backing.type = Image.Type.Sliced;
+            }
+
+            _detailTitle = CreateLabel(_detailPane, "Title", "", NameFontSize, TextAlignmentOptions.TopLeft);
+            Stretch(_detailTitle.rectTransform, 10f, 8f, 10f, 68f);
+            _detailTitle.color = ResearchedName;
+            _detailTitle.fontStyle = FontStyles.Bold;
+
+            _detailBody = CreateLabel(_detailPane, "Body", "", DetailFontSize, TextAlignmentOptions.TopLeft);
+            Stretch(_detailBody.rectTransform, 10f, 28f, 10f, 8f);
+            _detailBody.color = ResearchedDetail;
+
+            go.SetActive(false);
+        }
+
+        private static readonly Color DetailPaneColor = new Color(0.90f, 0.85f, 0.75f, 0.97f);
 
         private Sprite BadgeFor(TechTreeNodeKind kind)
         {
