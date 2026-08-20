@@ -119,7 +119,19 @@ namespace GolemFactory.Events
         // has a full crew" have opposite fixes -- wait/expand versus relocate -- and the node
         // in question is visibly still full of ore, so reporting it as empty would read as a
         // bug. Appended, because StallReason is serialized by index (see above).
-        NodeCrowded
+        NodeCrowded,
+
+        // Push: the destination is LABELLED for a good this golem is not carrying
+        // (docs/cozy-automation-design.md §1). ResourceId carries the item type the golem is
+        // holding and could not place, matching the InputFull/OutputFull/MissingItem convention
+        // -- the fix is to re-route that good, and the player cannot do it without knowing which.
+        //
+        // Deliberately NOT folded into BeltFull, for exactly the reason NodeCrowded is not
+        // folded into NodeEmpty: "this crate is full" and "this crate is for something else"
+        // have opposite fixes. Waiting will never empty a Plate crate of the Slag it was never
+        // going to take, and a player told "full" would go and drain a depot that is not the
+        // problem. Appended, because StallReason is serialized by index.
+        FilterMismatch
     }
 
     // Which kind of trigger fired. Mirrors PunchCards.TriggerType minus AlwaysOn, which is

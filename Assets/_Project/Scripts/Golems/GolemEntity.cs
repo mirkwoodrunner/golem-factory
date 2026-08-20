@@ -1225,8 +1225,7 @@ namespace GolemFactory.Golems
 
             if (!target.CanGive())
             {
-                blockedResourceId = target.DisplayName;
-                return StallReason.BeltFull;
+                return RefusalFor(target, stock, out blockedResourceId);
             }
 
             // Unit at a time, and each unit is removed from stock only AFTER the destination
@@ -1282,14 +1281,52 @@ namespace GolemFactory.Golems
 
             if (pushed <= 0)
             {
-                blockedResourceId = target.DisplayName;
-                return StallReason.BeltFull;
+                return RefusalFor(target, stock, out blockedResourceId);
             }
 
             // 2 + unitCount, on what actually left the golem rather than on what it hoped to
             // push -- a partial push must not also be charged for the units still held.
             _stepDuration = 2 + pushed;
             return StallReason.None;
+        }
+
+        /// <summary>
+        /// Why a push that moved nothing moved nothing: the destination is <b>full</b>, or it is
+        /// <b>labelled for something else</b> (docs/cozy-automation-design.md §1).
+        ///
+        /// <para>
+        /// Those have opposite fixes -- wait for the crate to drain, versus take this load
+        /// somewhere else -- so they are separate stall reasons, and a golem told the wrong one
+        /// sends the player to drain a depot that was never going to accept the good anyway.
+        /// </para>
+        ///
+        /// <para>
+        /// Asked by type-testing the endpoint, the same idiom <see cref="EmptyReasonFor"/> uses
+        /// to pick the right "it's empty" reason (<c>endpoint is ResourceNodeEndpoint</c>), and
+        /// on the failure path only -- never per unit.
+        /// </para>
+        /// </summary>
+        private static StallReason RefusalFor(
+            IItemEndpoint target, GolemInventory.Stock stock, out string blockedResourceId)
+        {
+            var filtered = target as IFilteredEndpoint;
+            if (filtered != null && !string.IsNullOrEmpty(filtered.AcceptedItemType))
+            {
+                // A labelled crate that is merely FULL of its own good is still a "full" stall:
+                // the good is right, the room is not, and waiting genuinely fixes it. Only a
+                // hold with none of the accepted type is a mismatch.
+                if (stock.Get(filtered.AcceptedItemType) <= 0)
+                {
+                    // The first type in the golem's deterministic drain order, so two
+                    // identically-programmed golems name the same good. Null when the hold is
+                    // empty, which the phrasing already falls back for.
+                    blockedResourceId = stock.TypesInOrder.Count > 0 ? stock.TypesInOrder[0] : null;
+                    return StallReason.FilterMismatch;
+                }
+            }
+
+            blockedResourceId = target.DisplayName;
+            return StallReason.BeltFull;
         }
 
         // --- Assemble (docs/progression-design.md §5.2, §11 item 2) ---------------------------

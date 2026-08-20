@@ -20,7 +20,13 @@ namespace GolemFactory.Player
         // That is the right end of the order for it -- a boiler is a large obvious building the
         // player walks up to deliberately, while a node or a golem sharing its tile is the thing
         // they are more likely to have meant.
-        Refuel = 4
+        Refuel = 4,
+
+        // Labelling a depot (docs/cozy-automation-design.md §1). Appended for the same reason
+        // Refuel was, and it belongs at this end of the order for a stronger reason than the
+        // boiler does: a golem almost always stands beside the depot it pushes into, and a crate
+        // that beat that golem on a distance tie would make it unprogrammable.
+        Sort = 5
     }
 
     /// <summary>
@@ -101,7 +107,8 @@ namespace GolemFactory.Player
             IReadOnlyList<Vector3> harvestables,
             IReadOnlyList<Vector3> stations,
             IReadOnlyList<Vector3> golems,
-            IReadOnlyList<Vector3> boilers = null)
+            IReadOnlyList<Vector3> boilers = null,
+            IReadOnlyList<Vector3> depots = null)
         {
             InteractionPick best = InteractionPick.None;
             // Evaluated in enum order with a strict less-than, so an exact distance tie keeps
@@ -112,6 +119,7 @@ namespace GolemFactory.Player
             // Optional and last, so every existing three-list caller (Main.unity's scenes and the
             // whole pre-existing targeting suite) picks exactly what it always did.
             Consider(origin, boilers, InteractionKind.Refuel, ref best);
+            Consider(origin, depots, InteractionKind.Sort, ref best);
             return best;
         }
 
@@ -169,6 +177,10 @@ namespace GolemFactory.Player
                 // been lit, and a player told to RE-fuel one looks for the fuel they must have
                 // spilled.
                 case InteractionKind.Refuel: return "Fuel Boiler";
+                // "Label", not "Filter" or "Sort": the fantasy is chalking a word on a crate,
+                // and the verb has to say that pressing the key CHANGES something. "Sort Depot"
+                // would read as an action the depot performs on its contents.
+                case InteractionKind.Sort: return "Label Depot";
                 default: return "";
             }
         }

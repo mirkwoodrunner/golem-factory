@@ -76,6 +76,14 @@ namespace GolemFactory.UI
                     return string.IsNullOrEmpty(resourceId)
                         ? "seam already crewed"
                         : resourceId + " already has 2 extractors";
+                // §1's labelled crate. Says what the destination WILL NOT take rather than what
+                // it wants, because the golem is standing there holding the refused good and
+                // that is the thing the player has to re-route. "Depot wants Iron Plate" would
+                // be true and useless -- it does not say which of a mixed hold is stuck.
+                case StallReason.FilterMismatch:
+                    return string.IsNullOrEmpty(resourceId)
+                        ? "wrong crate for this load"
+                        : "nothing here takes " + resourceId;
                 case StallReason.Unconfigured:
                     return "not wired up";
                 default:
@@ -127,6 +135,10 @@ namespace GolemFactory.UI
                     return string.IsNullOrEmpty(resourceId)
                         ? who + " stalled: that seam is already fully crewed"
                         : who + " stalled: " + resourceId + " is already worked by 2 extractors";
+                case StallReason.FilterMismatch:
+                    return string.IsNullOrEmpty(resourceId)
+                        ? who + " stalled: its load does not fit the crate in front of it"
+                        : who + " stalled: nothing in front of it takes " + resourceId;
                 case StallReason.Unconfigured:
                     return who + " stalled: not wired up";
                 default:

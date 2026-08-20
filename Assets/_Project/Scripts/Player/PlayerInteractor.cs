@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using GolemFactory.Belts;
@@ -73,6 +73,10 @@ namespace GolemFactory.Player
             new GolemFactory.Buildings.HandCrankBench[0];
         private PlaceableBoiler[] _boilers =
             new PlaceableBoiler[0];
+        // §1's labelled crates. Cached like every other interactable kind rather than found on
+        // demand, because RefreshAffordance runs every frame and FindObjectsByType does not.
+        private PlaceableDepot[] _depots =
+            new PlaceableDepot[0];
 
         // Position buffers refilled each frame from the cached component arrays, so the
         // per-frame selection allocates nothing. Sized only when the arrays are re-scanned.
@@ -80,6 +84,7 @@ namespace GolemFactory.Player
         private Vector3[] _stationPositions = new Vector3[0];
         private Vector3[] _golemPositions = new Vector3[0];
         private Vector3[] _boilerPositions = new Vector3[0];
+        private Vector3[] _depotPositions = new Vector3[0];
 
         // Set by Interact()/the Try* methods on failure, for the prompt UI or a test to
         // surface -- mirrors BuildModeController.LastStatusMessage.
@@ -545,6 +550,12 @@ namespace GolemFactory.Player
             _golems = FindObjectsByType<GolemEntity>(FindObjectsSortMode.None);
             _benches = FindObjectsByType<HandCrankBench>(FindObjectsSortMode.None);
             _boilers = FindObjectsByType<PlaceableBoiler>(FindObjectsSortMode.None);
+            _depots = FindObjectsByType<PlaceableDepot>(FindObjectsSortMode.None);
+
+            if (_depotPositions.Length != _depots.Length)
+            {
+                _depotPositions = new Vector3[_depots.Length];
+            }
 
             if (_boilerPositions.Length != _boilers.Length)
             {
@@ -630,8 +641,10 @@ namespace GolemFactory.Player
             FillPositions(_stations, _stationPositions);
             FillPositions(_golems, _golemPositions);
             FillPositions(_boilers, _boilerPositions);
+            FillPositions(_depots, _depotPositions);
             return InteractionTargeting.SelectNearest(
-                transform.position, _nodePositions, _stationPositions, _golemPositions, _boilerPositions);
+                transform.position, _nodePositions, _stationPositions, _golemPositions,
+                _boilerPositions, _depotPositions);
         }
 
         // Destroyed components leave null holes in the cached arrays (a removed building, a
@@ -659,6 +672,8 @@ namespace GolemFactory.Player
                     return pick.Index >= 0 && pick.Index < _golems.Length ? _golems[pick.Index] : null;
                 case InteractionKind.Refuel:
                     return pick.Index >= 0 && pick.Index < _boilers.Length ? _boilers[pick.Index] : null;
+                case InteractionKind.Sort:
+                    return pick.Index >= 0 && pick.Index < _depots.Length ? _depots[pick.Index] : null;
                 default:
                     return null;
             }
@@ -738,6 +753,17 @@ namespace GolemFactory.Player
                     detail = boiler.Boiler != null ? boiler.Boiler.CokeStock + " Coke" : "cold";
                     break;
                 }
+                case InteractionKind.Sort:
+                {
+                    var depot = (PlaceableDepot)target;
+                    targetName = "";
+                    // The CURRENT label, not the next one. A prompt that previewed the next
+                    // option would be telling the player what the crate is about to be while
+                    // they are still deciding whether to change it -- and with a cycle that
+                    // grows as the factory does, "what is it now" is the harder question.
+                    detail = "holds " + depot.FilterLabel + " · [E] relabel";
+                    break;
+                }
                 case InteractionKind.Program:
                 {
                     var golem = (GolemEntity)target;
@@ -791,10 +817,36 @@ namespace GolemFactory.Player
                     return TryProgram(target as GolemEntity);
                 case InteractionKind.Refuel:
                     return TryRefuelBoiler(target as PlaceableBoiler);
+                case InteractionKind.Sort:
+                    return TryRelabelDepot(target as PlaceableDepot);
                 default:
                     LastStatusMessage = "Nothing in range to interact with.";
                     return false;
             }
+        }
+
+        /// <summary>
+        /// Chalks the next label onto a depot (docs/cozy-automation-design.md §1): the crate
+        /// cycles through "any goods" and every item type the stockpile has handled, and the tile
+        /// it publishes is re-registered on the spot so the change is live immediately.
+        ///
+        /// <para>
+        /// Public and returning a bool like every other Try* here, so a test can drive it without
+        /// synthesising Input System events.
+        /// </para>
+        /// </summary>
+        public bool TryRelabelDepot(PlaceableDepot depot)
+        {
+            if (depot == null)
+            {
+                LastStatusMessage = "No depot in range to label.";
+                return false;
+            }
+
+            depot.CycleFilter();
+            LastStatusMessage = "Depot now holds " + depot.FilterLabel + ".";
+            SpawnPopup(depot.transform.position, depot.FilterLabel, HarvestPopupColor);
+            return true;
         }
 
         /// <summary>

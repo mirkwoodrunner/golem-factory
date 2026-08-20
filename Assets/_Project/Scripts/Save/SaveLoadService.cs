@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using GolemFactory.Blueprints;
 using GolemFactory.Economy;
@@ -113,6 +113,12 @@ namespace GolemFactory.Save
                 if (boiler != null && boiler.Boiler != null)
                 {
                     entry.cokeStock = boiler.Boiler.CokeStock;
+                }
+
+                var depot = building.GetComponent<GolemFactory.Buildings.PlaceableDepot>();
+                if (depot != null)
+                {
+                    entry.depotFilterItemType = depot.FilterItemType;
                 }
 
                 var tower = building.GetComponent<GolemFactory.Buildings.PlaceableClockTower>();
@@ -384,6 +390,15 @@ namespace GolemFactory.Save
                 // says it starts with, and adding to that would hand the player free fuel on
                 // every load.
                 boiler.Boiler.SetCoke(entry.cokeStock);
+            }
+
+            // SetFilter, not a bare field write: the rebuilder has already placed this depot and
+            // published an UNFILTERED endpoint on its cell, so the label has to re-register the
+            // tile to mean anything. That is exactly why PlaceableDepot.SetFilter re-publishes.
+            var depot = building.GetComponent<GolemFactory.Buildings.PlaceableDepot>();
+            if (depot != null)
+            {
+                depot.SetFilter(entry.depotFilterItemType);
             }
 
             var tower = building.GetComponent<GolemFactory.Buildings.PlaceableClockTower>();
