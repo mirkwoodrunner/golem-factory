@@ -1,5 +1,6 @@
-using UnityEngine;
+﻿using UnityEngine;
 using GolemFactory.Buildings;
+using GolemFactory.World;
 using GolemFactory.ClockTower;
 using GolemFactory.Economy;
 using GolemFactory.Events;
@@ -49,7 +50,19 @@ namespace GolemFactory.Progression
 
         private float _nextPollTime;
 
+        // Optional, and found by type when unwired -- Floor Expansion has no component to count,
+        // so the ledger has to read the room's shape instead. Left null in a test scene, the
+        // sweep simply never fires, which is the safe direction to be wrong in.
+        [SerializeField] private FloorBoundsHolder floorBoundsHolder;
+
         public TechTreeProgressLedger Ledger { get; } = new TechTreeProgressLedger();
+
+        /// <summary>
+        /// Wires the floor bounds this tracker reads Floor Expansion from. Separate from
+        /// <c>Configure</c> for the reason every other Configure* in this project is separate:
+        /// existing call sites keep working by simply never calling it.
+        /// </summary>
+        public void ConfigureFloorBounds(FloorBoundsHolder bounds) => floorBoundsHolder = bounds;
 
         public void Configure(StorageBufferRegistryHolder buffers, ClockTowerSiteHolder clockTower)
         {
@@ -196,6 +209,51 @@ namespace GolemFactory.Progression
             if (Exists<PlaceableClockTower>())
             {
                 Ledger.RecordBuilding(TechTreeCatalog.BuildingClockTower);
+            }
+
+            // --- THREE SIGNALS THE CATALOG NAMED AND NOTHING EVER RECORDED --------------------
+            // bldg.slagheap, bldg.freightmast and bldg.floorexpansion have been on the chart
+            // since their features shipped, and could never light: this sweep listed six
+            // component types and the catalog named nine. §3z says "nothing on it should read as
+            // planned any more -- every node is a shipped feature", which was true of the
+            // catalog and quietly false of the readout. A player who built a Slag Heap was told
+            // by the Ledger that they had not.
+            //
+            // BuildingSignalCoverageTests now stands one of every placeable in a scene and
+            // asserts every Building-signalled node reaches Researched, so a tenth building
+            // cannot repeat this.
+            if (Exists<PlaceableSlagHeap>())
+            {
+                Ledger.RecordBuilding(TechTreeCatalog.BuildingSlagHeap);
+            }
+            if (Exists<PlaceableFreightMast>())
+            {
+                Ledger.RecordBuilding(TechTreeCatalog.BuildingFreightMast);
+            }
+            if (Exists<PlaceableScrapRecycler>())
+            {
+                Ledger.RecordBuilding(TechTreeCatalog.BuildingScrapRecycler);
+            }
+
+            SweepFloorExpansion();
+        }
+
+        /// <summary>
+        /// Floor Expansion is the one "building" with no component to count, because what the
+        /// player buys is rows of floor rather than an object. The observable fact is that the
+        /// room has grown past the shape it started in -- which <see cref="FloorBounds"/> already
+        /// tracks, and which cannot be reached any other way.
+        /// </summary>
+        private void SweepFloorExpansion()
+        {
+            FloorBoundsHolder holder = floorBoundsHolder != null
+                ? floorBoundsHolder
+                : FindAnyObjectByType<FloorBoundsHolder>();
+
+            FloorBounds bounds = holder != null ? holder.Bounds : null;
+            if (bounds != null && bounds.NorthExtent > bounds.HalfExtent)
+            {
+                Ledger.RecordBuilding(TechTreeCatalog.BuildingFloorExpansion);
             }
         }
 

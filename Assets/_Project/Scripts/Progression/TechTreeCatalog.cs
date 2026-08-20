@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using GolemFactory.Economy;
 
 namespace GolemFactory.Progression
@@ -48,6 +48,7 @@ namespace GolemFactory.Progression
         public const string BuildingSlagHeap = "SlagHeap";
         public const string BuildingFreightMast = "FreightMast";
         public const string BuildingFloorExpansion = "FloorExpansion";
+        public const string BuildingScrapRecycler = "ScrapRecycler";
 
         private static readonly TechTreePhase[] PhaseTable =
         {
@@ -174,49 +175,57 @@ namespace GolemFactory.Progression
                 TechTreeNodeKind.Building, 3, 3,
                 TechTreeUnlockSignal.Building, BuildingSlagHeap,
                 new[] { "r4.ironsmelting" }),
+            // The heap's counterpart, and the only way to get rid of anything that is not Slag.
+            // Sits beside it because they compete for the same Coke: half the disposal rate,
+            // plus a Scrap back.
+            new TechTreeNode(
+                "bldg.scraprecycler", "Scrap Recycler", "Any junk → Scrap · 1 Coke per 4 points",
+                TechTreeNodeKind.Building, 3, 4,
+                TechTreeUnlockSignal.Building, BuildingScrapRecycler,
+                new[] { "bldg.slagheap" }),
             new TechTreeNode(
                 "r5.coppersmelting", "R5 Copper Smelting", "2 Copper Ore + 1 Coke → 1 Copper Ingot",
-                TechTreeNodeKind.Recipe, 3, 4,
+                TechTreeNodeKind.Recipe, 3, 5,
                 TechTreeUnlockSignal.Item, ItemType.CopperIngot,
                 new[] { "chassis.hauler", "r1.coking" }),
             new TechTreeNode(
                 "r6.zincsmelting", "R6 Zinc Smelting", "2 Zinc Ore + 1 Coke → 1 Zinc Ingot",
-                TechTreeNodeKind.Recipe, 3, 5,
+                TechTreeNodeKind.Recipe, 3, 6,
                 TechTreeUnlockSignal.Item, ItemType.ZincIngot,
                 new[] { "chassis.hauler", "r1.coking" }),
             new TechTreeNode(
                 "r7.brassalloying", "R7 Brass Alloying", "2 Copper + 1 Zinc → 3 Brass · seven consumers",
-                TechTreeNodeKind.Recipe, 3, 6,
+                TechTreeNodeKind.Recipe, 3, 7,
                 TechTreeUnlockSignal.Item, ItemType.Brass,
                 new[] { "r5.coppersmelting", "r6.zincsmelting" }),
             new TechTreeNode(
                 "r19.wiredrawing", "R19 Wire Drawing", "1 Copper Ingot → 3 Copper Wire",
-                TechTreeNodeKind.Recipe, 3, 7,
+                TechTreeNodeKind.Recipe, 3, 8,
                 TechTreeUnlockSignal.Item, ItemType.CopperWire,
                 new[] { "r5.coppersmelting" }),
             new TechTreeNode(
                 "r9.casingpress", "R9 Casing Press", "4 Iron Plate + 1 Brass → 1 Casing",
-                TechTreeNodeKind.Recipe, 3, 8,
+                TechTreeNodeKind.Recipe, 3, 9,
                 TechTreeUnlockSignal.Item, ItemType.Casing,
                 new[] { "r4.ironsmelting", "r7.brassalloying" }),
             new TechTreeNode(
                 "r10.lensgrinding", "R10 Lens Grinding", "2 Glass + 1 Brass → 1 Lens",
-                TechTreeNodeKind.Recipe, 3, 9,
+                TechTreeNodeKind.Recipe, 3, 10,
                 TechTreeUnlockSignal.Item, ItemType.Lens,
                 new[] { "r3.glassmaking", "r7.brassalloying" }),
             new TechTreeNode(
                 "r11.mainspringwinding", "R11 Mainspring Winding", "3 Brass + 2 Gear → 1 Mainspring",
-                TechTreeNodeKind.Recipe, 3, 10,
+                TechTreeNodeKind.Recipe, 3, 11,
                 TechTreeUnlockSignal.Item, ItemType.Mainspring,
                 new[] { "r7.brassalloying", "r8.gearcutting" }),
             new TechTreeNode(
                 "r12.aethercontainment", "R12 Aether Containment", "1 Aether + 2 Lens → 1 Aether Cell",
-                TechTreeNodeKind.Recipe, 3, 11,
+                TechTreeNodeKind.Recipe, 3, 12,
                 TechTreeUnlockSignal.Item, ItemType.AetherCell,
                 new[] { "r10.lensgrinding" }),
             new TechTreeNode(
                 "milestone.carriers", "Carrier Golems", "Chassis slots buy back buffer faces",
-                TechTreeNodeKind.Technique, 3, 12,
+                TechTreeNodeKind.Technique, 3, 13,
                 TechTreeUnlockSignal.None, null,
                 new[] { "chassis.hauler" }),
 

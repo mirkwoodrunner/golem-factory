@@ -201,14 +201,14 @@ namespace GolemFactory.Editor
             var bottomCenter = new System.Collections.Generic.HashSet<string>
             {
                 "steam_pipe.png", "depot.png", "golem_construction_station.png",
-                "freight_mast.png", "slag_heap.png",
+                "freight_mast.png", "slag_heap.png", "scrap_recycler.png",
             };
 
             foreach (string file in new[]
                      {
                          "item_coal.png", "item_copper_ore.png", "item_zinc_ore.png",
                          "steam_pipe.png", "depot.png", "golem_construction_station.png",
-                         "freight_mast.png", "slag_heap.png",
+                         "freight_mast.png", "slag_heap.png", "scrap_recycler.png",
                      })
             {
                 string path = ArtRoot + file;
@@ -365,6 +365,27 @@ namespace GolemFactory.Editor
                     so.ApplyModifiedPropertiesWithoutUndo();
                 },
                 "slag_heap.png");
+
+            // §4b's junk hopper: the Slag Heap's counterpart, and priced identically on purpose.
+            BuildPlaceable(
+                PrefabRoot + "ScrapRecyclerPrefab.prefab", "ScrapRecyclerPrefab", Color.white,
+                new[]
+                {
+                    new RecipeIngredient(ItemType.Scrap, PlaceableScrapRecycler.ScrapCost),
+                    new RecipeIngredient(ItemType.IronPlate, PlaceableScrapRecycler.IronPlateCost),
+                },
+                go =>
+                {
+                    PlaceableScrapRecycler recycler = Ensure<PlaceableScrapRecycler>(go);
+                    var so = new SerializedObject(recycler);
+                    // Blank id stamped from the cell at placement, and NO starting Coke -- the
+                    // same rule the heap and a player-built boiler follow. Shipping fuel on the
+                    // prefab would mint Coke for the price of a building.
+                    so.FindProperty("recyclerId").stringValue = "";
+                    so.FindProperty("startingCoke").intValue = 0;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                },
+                "scrap_recycler.png");
 
             RestoreOrphanedCosts();
             BindBeltItemSprites();
@@ -1100,6 +1121,10 @@ namespace GolemFactory.Editor
                          // the sixth once did.
                          PrefabRoot + "FreightMastPrefab.prefab",
                          PrefabRoot + "SlagHeapPrefab.prefab",
+                         // The tenth row. The menu's height is derived from the row count, so
+                         // this does not push anything off the bottom edge the way the sixth once
+                         // did -- but ten rows is worth a look on a real screen.
+                         PrefabRoot + "ScrapRecyclerPrefab.prefab",
                      })
             {
                 PlaceableBuilding prefab =
