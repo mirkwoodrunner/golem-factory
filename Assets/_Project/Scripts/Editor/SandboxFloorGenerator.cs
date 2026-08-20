@@ -144,12 +144,19 @@ namespace GolemFactory.Editor
         // (Global + Sconce) / Global = 3.4x the shadow between lamps, against 1.8x before.
         // Cutting the ambient is what does the work; raising the sconce alone would just wash
         // the whole room brighter.
-        // 0.62 -> 0.72 after the first playtest read it as "a little dark". Still a pool rather
-        // than a wash -- (0.72 + 1.5) / 0.72 = 3.1x the shadow between lamps, against the 1.8x
-        // this pass started from -- but the unlit middle of the room comes back up by ~16 %,
-        // which is where a factory game has to stay readable.
-        private const float GlobalIntensity = 0.72f;
-        private const float SconceIntensity = 1.5f;
+        // THIRD SETTING, and the first two were both too dark in play: 0.62 read as "a little
+        // dark", 0.72 as "still feels dark". Raising the ambient ALONE would have flattened the
+        // room back toward the even wash this pass set out to fix, so BOTH go up together:
+        //
+        //   ambient 0.72 -> 0.95   (+32 % in the unlit middle of the room)
+        //   sconce  1.5  -> 1.9    (so a lit spot keeps its lead)
+        //
+        // A lit spot is now (0.95 + 1.9) / 0.95 = 3.0x the shadow between lamps -- against 3.1x
+        // at the last setting and 1.8x before the pass -- so the drama survives almost intact
+        // while the whole room gets brighter. That is the knob that was actually wanted: the
+        // complaint was never about contrast, it was about the floor being hard to read.
+        private const float GlobalIntensity = 0.95f;
+        private const float SconceIntensity = 1.9f;
 
         // WHERE THE LIGHT GOES IS NOT WHERE THE FLAME IS PAINTED, and that is not a bug.
         //

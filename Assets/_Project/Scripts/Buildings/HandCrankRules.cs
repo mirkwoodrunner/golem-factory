@@ -44,17 +44,35 @@ namespace GolemFactory.Buildings
     /// </summary>
     public static class HandCrankRules
     {
-        /// <summary>§11 item 7's "25 % speed", as a whole-number divisor rather than a float.</summary>
-        public const int SpeedPercent = 25;
-
         /// <summary>
-        /// How many ticks a hand-cranked craft takes: four times the authored machine duration.
+        /// How fast a person turns a machine's recipe by hand.
         ///
         /// <para>
-        /// Integer arithmetic, following the discipline §1.4's burn accumulator and §1.6's
-        /// progress counter established -- 25 % is exactly 1/4, so this is exact rather than
-        /// nearly-exact, and two players cranking the same recipe always finish on the same tick.
+        /// <b>50 %, not §11 item 7's authored 25 %.</b> Changed on the Game Director's call after
+        /// the first playtest: "Hand Crank is too long." §11's figure had never been felt by
+        /// anyone, and the arc it prices — §9 Phase 1's 12–15 minute manual era — is on the
+        /// design's own ±25 % list. This halves every hand-cranked craft: R2 Scrap Reclamation
+        /// goes 96 ticks → 48 (9.6 s → 4.8 s at 10 ticks/s), and §9 Phase 1's ~7.5 minutes of
+        /// cranking becomes ~3.75.
         /// </para>
+        ///
+        /// <para>
+        /// <b>The property that matters is unchanged:</b> a bench is still strictly slower than
+        /// the machine that replaces it, so automating is still the point of automating. It is
+        /// now twice as slow rather than four times.
+        /// </para>
+        ///
+        /// <para>
+        /// Still a whole-number divisor rather than a float — 50 % is exactly 1/2 — so the
+        /// integer discipline §1.4's burn accumulator and §1.6's progress counter established
+        /// holds, and two players cranking the same recipe still finish on the same tick.
+        /// </para>
+        /// </summary>
+        public const int SpeedPercent = 50;
+
+        /// <summary>
+        /// How many ticks a hand-cranked craft takes: <see cref="SpeedPercent"/> of machine
+        /// speed, i.e. twice the authored machine duration.
         /// </summary>
         public static int CrankTicks(int machineDurationTicks)
         {

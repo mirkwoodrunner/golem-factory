@@ -75,6 +75,15 @@ that found it, so you can pick them up without re-reading the whole script:
 | "What are steps 1–6?" | **Answered; nothing changed in the game** | A4 |
 | Lighting "a little dark" | **Raised 0.62 → 0.72** | A2 |
 
+**Session 2** added four more:
+
+| Finding | Verdict | Where |
+|---|---|---|
+| Escape/right-click left the build row lit, needing two clicks to reselect | **Real bug, fixed** | A1 |
+| "Still feels dark" | **Both lights raised — 0.95 ambient, 1.9 sconce** | A2 |
+| "Hand Crank is too long — halve it" | **Done: 25 % → 50 % of machine speed** | B4 |
+| "What is this test?" on the golem-rotation retest | **My fault; rewritten and moved to Part C** | C |
+
 ---
 
 ## Part A — Smoke test (~20 min)
@@ -98,10 +107,17 @@ that found it, so you can pick them up without re-reading the whole script:
 | **FreightMast** | 20 Brass + 10 Casing |
 | **SlagHeap** | 20 Scrap + 10 Iron Plate *(TUNING)* |
 
-- [ ] **NEW — leaving build mode.** Click a row, then get out of build mode three ways: **Escape**,
+- [All those options work, but ESC and Right Click don't unhighlight the build option in the list, so to reactivate, you have to click twice] **NEW — leaving build mode.** Click a row, then get out of build mode three ways: **Escape**,
       **right-click**, and **clicking the same row again**. After each, the ghost should vanish and
       a left click on the floor should do **nothing** (no placing, no demolishing). This did not
       exist before your session — there was no way out at all.
+  - [ ] **RETEST — FIXED (real bug).** The highlight was only ever refreshed when a ROW was
+        clicked, so Escape and right-click cleared the held placeable and left the row still lit.
+        Worse than cosmetic: the menu still believed it held that prefab, so your next click on it
+        *toggled it off* rather than reselecting — hence needing two clicks. The rows now follow
+        the controller's real state every frame, whichever way you let go.
+        **Check:** press Escape (and right-click) and confirm the row **unlights immediately**,
+        then that **one** click on it picks it up again.
 
 ### A2. The light — **question 5**
 
@@ -113,11 +129,13 @@ The global light was cut 1.15 → 0.62 and the wall sconces raised 0.95 → 1.5,
 - [Done] Walk along the north wall. Do the sconces read as *the source of the light* now, with pools
       and darkness between, or is it just dimmer everywhere?
 - [A little dark] **Your call:** too dark, about right, or not dramatic enough?
-  - [ ] **RETEST — ambient raised 0.62 → 0.72** on your note. The pool ratio is now 3.1× the
-        shadow (it was 3.4×, and 1.8× before this pass started), so the lamps should still read as
-        the source of the light while the unlit middle of the room comes up about 16 %. Better,
-        worse, or still a little dark? *If it is still dark, say by how much and I will move it
-        again — this is one number.*
+  - [Still feels dark] **RETEST — ambient raised 0.62 → 0.72** on your note. *(Superseded — see below.)*
+  - [ ] **RETEST 2 — brighter again, and this time BOTH lights moved.** Ambient 0.72 → **0.95**
+        (+32 % in the unlit middle of the room) and the sconces 1.5 → **1.9**, so a lit spot keeps
+        its lead: 3.0× the shadow, against 3.1× last time and 1.8× before this whole pass. Raising
+        the ambient alone would have flattened the room back toward the even wash the pass set out
+        to fix — your complaint was never about contrast, it was about the floor being hard to
+        read, so the whole room got brighter instead. Still dark, about right, or now too flat?
 
 ### A3. The world
 
@@ -134,7 +152,7 @@ in a row at `y = -16`, about 16 cells south of spawn.
       asking whether you can tell them apart, not whether they are pretty).
 - [You can clip through the wall on the top of the street where there isnt any workshop space] Try to walk off the edge of the road, and off the sides past the building. You should be
       stopped everywhere, with no way into the empty space beside the shop front.
-  - [ ] **RETEST — FIXED (real bug, thank you).** The clamp asked "how far north may I go?" before
+  - [Done] **RETEST — FIXED (real bug, thank you).** The clamp asked "how far north may I go?" before
         "how far east am I?", so standing on the outer street at x = 16 and walking north put you
         on a workshop row — where the legal width is only the room's — and the sideways clamp then
         **pushed you through the building's flank into the shop**. It now bounds east/west first
@@ -180,21 +198,32 @@ market moved the goods 16 cells away.
       100 discrete presses plus the walk is a candidate finding on its own.
 - [How do I change the bench? I can only do coking, pressing R changes orientation of item it wants to place, but doesn't change recipe] Crank **R2 Scrap Reclamation** at the bench for 40 Iron Plate (~9.6 s each at 1x), then **R8
       Gear Cutting** for 10 Gears.
-  - [ ] **RETEST — FIXED, and the bench was never the problem.** `R` is arbitrated on "am I
+  - [Done] **RETEST — FIXED, and the bench was never the problem.** `R` is arbitrated on "am I
         holding a placeable?", and **there was no way to stop holding one** — the build menu only
         ever selected. So after you opened the build menu once, `R` turned the ghost and returned
         before it could ever reach the bench (or a golem). **Press Escape or right-click to put
         the placeable down, then press R at the bench** — it should cycle through the five
         hand-crankable recipes (R1 Coking, R2 Scrap Reclamation, R3 Glassmaking, R8 Gear Cutting,
         R19 Wire Drawing) and the readout should name each one.
-  - [ ] **RETEST — and the same fix should give you R on golems back** (Part C needs it).
-- [ ] Let go of **E** mid-craft: progress **is kept**, and no goods are lost. Walk away and come
+  - [What is this test?] ~~**RETEST — and the same fix should give you R on golems back**~~
+        *(My fault — that said nothing useful, and you have no golem yet at this point in the
+        script. It belongs in Part C, where it now is. Skip it here.)*
+- [Done] Let go of **E** mid-craft: progress **is kept**, and no goods are lost. Walk away and come
       back and it resumes where it was — that is deliberate (a pause, not an exploit: the inputs
       are only charged at completion). Press **R** mid-craft to change recipe: progress resets to
       zero, still no goods lost.
       *(An earlier draft of this script said progress "abandons" on release. That was the script
       being wrong, not the game.)*
-- [ ] Build the **Brass Presser** (60 Scrap + 20 Iron Plate + 10 Gear).
+- [Hand Crank is too long.  Let's halve the time, then we'll retest] Build the **Brass Presser** (60 Scrap + 20 Iron Plate + 10 Gear).
+  - [ ] **RETEST — HALVED, as asked.** The bench ran at §11 item 7's authored **25 %** of machine
+        speed; it now runs at **50 %**. Every hand-cranked craft is twice as fast: R2 Scrap
+        Reclamation 96 ticks → **48** (9.6 s → 4.8 s at 1x), R8 Gear Cutting 64 → **32**, R1 Coking
+        48 → **24**. §9's ~7.5 minutes of cranking becomes **~3.75**.
+        **Time Part B again from the top** and say whether the manual era now lands — this is
+        question 2, and it is the number the whole opening arc is paced by.
+        *One property held deliberately: the bench is still strictly slower than the machine that
+        replaces it (a test pins it at every duration), so automating is still the point of
+        automating. It is twice as slow now rather than four times.*
 
 > **Record total elapsed time.** Note separately how much of it was *walking*.
 
@@ -209,6 +238,10 @@ market moved the goods 16 cells away.
       not the old flat 10. Does that read as a cost worth managing?
 - [ ] Patent the program, then stamp it onto a second golem: a patented commit is a **flat 10**.
       Does the saving land — does stamping feel obviously right by the third identical golem?
+- [ ] **RETEST (moved here from B2) — `R` should rotate golems again.** Stand next to a golem and
+      press **R**: it should turn, and a popup should name the new facing. If it does not, you are
+      still holding a placeable — press **Escape** or right-click first. That arbitration was the
+      whole bug: while a placeable is in hand, `R` turns the build ghost and never reaches a golem.
 - [ ] Turn a golem to face nothing: it should **stall with a badge naming the problem**, then resume
       on its own when turned back.
 - [ ] **Stand two stalled golems one cell apart.** Their badges should stack vertically, not

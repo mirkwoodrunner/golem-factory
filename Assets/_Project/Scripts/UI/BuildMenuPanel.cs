@@ -191,7 +191,6 @@ namespace GolemFactory.UI
                 }
 
                 RefreshHighlights();
-                RefreshHighlights();
             });
 
             // "GolemConstructionStationPrefab (Scrap 25, Brass 5)" wrapped onto a second line
@@ -202,6 +201,33 @@ namespace GolemFactory.UI
                 StripPrefabSuffix(prefab.name) + "   (" + ConstructionCostPolicy.FormatCost(prefab.Cost) + ")");
 
             _rows.Add((prefab, image));
+        }
+
+        // What the rows were last drawn against. The highlight used to be refreshed ONLY when a
+        // row was clicked, so Escape and right-click cleared the held placeable and left the row
+        // still lit -- the player then had to click twice to get it back, because the first click
+        // was toggling a selection the menu only believed it still had. Polled rather than
+        // event-driven because the controller can lose its placeable several ways (a key, a
+        // mouse button, a row) and one of them will always be the one nobody wired an event to.
+        private PlaceableBuilding _highlightedPrefab;
+        private bool _hasDrawnHighlights;
+
+        private void LateUpdate()
+        {
+            if (_buildModeController == null)
+            {
+                return;
+            }
+
+            PlaceableBuilding active = _buildModeController.ActivePrefab;
+            if (_hasDrawnHighlights && active == _highlightedPrefab)
+            {
+                return;
+            }
+
+            _highlightedPrefab = active;
+            _hasDrawnHighlights = true;
+            RefreshHighlights();
         }
 
         private void RefreshHighlights()
