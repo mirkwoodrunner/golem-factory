@@ -3093,3 +3093,193 @@ the codebase still name Main.unity when explaining the fork; they are history, a
   that never guarded it, and a world-HUD registry solving on the wrong frame.
 - **Nothing here has been played, and the lighting has not been looked at.** Every invented number
   is tabulated at the end of `testscript/phase-1-playtest.md` for exactly that reason.
+
+---
+
+## The cozy automation pass
+
+Six tasks in one pass, designed up front in `docs/cozy-automation-design.md` before any of them
+was built. Two answer findings that were already on the board; the other two are new systems. The
+pass ran **1249 → 1380 tests** (1100 → 1220 EditMode, 149 → 160 PlayMode), console clean.
+
+**Read the design doc first.** It leads with eight invariants this pass was not allowed to break —
+integer determinism, the `IsSpatiallyPlaced` fork, append-only enums, no item loss, §10's per-type
+skip, opt-in-by-null, pure-function-plus-thin-applier, and the TMP atlas's missing glyphs — because
+three of the four Phase-1 features could plausibly have violated one, and one of them (the
+recycler's safety argument) turned out to be wrong in a way only implementing it revealed.
+
+### 1. Smart depot filtering — a crate can be labelled
+
+A `PlaceableDepot` had no settings at all, and every depot publishes the same `FactoryStockpile`,
+so a depot had no identity either. The half that was genuinely broken was the **output** side:
+`StorageBufferEndpoint` has carried a `PreferredItemType` field since it was written and **nothing
+has ever set it**, so a golem hauling from a depot pulled whichever good the shared buffer happened
+to enumerate first. You could not run two lines off one stockpile.
+
+- `World/FilteredBufferEndpoint.cs` **wraps** rather than flagging `StorageBufferEndpoint`, whose
+  own comments are careful about why its typed and untyped `CanGive` answer differently, and which
+  is published by masts and bootstrap buffers too.
+- Its untyped `CanGive()` **does** diverge — a labelled crate full of its own good can accept
+  nothing — and that is *not* §10's deadlock. The deadlock is one type blocking a **different**
+  type; a labelled crate has one type by construction.
+- `StallReason.FilterMismatch` is appended beside `NodeCrowded` and for the same reason it is not
+  folded into `NodeEmpty`: *"this crate is full"* and *"this crate is for something else"* have
+  opposite fixes, and waiting will never empty a Plate crate of the Slag it was never going to
+  take. `GolemEntity` asks which by type-testing through `IFilteredEndpoint` — the idiom
+  `EmptyReasonFor` already uses, on the failure path only, never per unit.
+- **`[E]` cycles the label, not `[R]`.** A golem almost always stands beside the depot it pushes
+  into, and a crate that beat that golem on a distance tie would make it unrotatable.
+- The cycle is built from **what the stockpile has actually handled**, so it is four to eight
+  entries rather than all twenty-four goods — and a label survives its good running out, or the
+  next press would silently retune a crate whose setting had dropped out of its own list.
+- `Economy/ItemTiers.cs` falls out of this and is pinned **by reflection over `ItemType`**, so a
+  25th good cannot be added without being given a tier.
+
+### 2. Golem moods — a sleeping golem stops looking broken
+
+A golem had two appearances: white and bobbing, or red and shaking. A golem asleep on an Interval
+trigger, a golem three units from backing up, and a golem running perfectly all read the same — and
+a factory-wide steam brownout read as *"lots of red badges"* rather than as one thing with one fix.
+
+Six moods at three volumes. `Working` draws **nothing**, deliberately: forty golems each wearing a
+"working" icon is a factory nobody can read, so silence is the state that means everything is fine.
+
+- **`Starved` is split out of `Stalled`** because `NoSteam` is the one stall whose fix is a
+  *building* rather than a rotation or a wait, and the one that hits everything at once.
+- **`Straining`** is the only predictive mood: a running golem at 9 of 12 with nobody collecting
+  will be stopped inside a minute, which is what makes a full-stock icon worth drawing at all.
+- **The badge polls rather than listens.** Four of the transitions that matter — `Idle → Running`,
+  stock filling toward the cap, a program being erased, a golem enabled while *already* stalled —
+  publish no event, and `GolemStallIndicator.OnEnable` already carried a hand-written
+  re-derivation for the last one with a comment saying the event stream could not cover it. The
+  stall event survives for exactly one job: the entry shake, which is a transition a poller cannot
+  see.
+- **Dwell is in the rules, not the view**, and it is the load-bearing part: an `AlwaysOn` golem is
+  `Idle` for a single tick at the end of every cycle, so without it the `zzz` badge would strobe at
+  cycle rate. A test pins the dwell against one tick *at the clock's real rate* rather than against
+  the constant itself.
+- **The class is still called `GolemStallIndicator`.** It is referenced by name from
+  `GolemPrefab.prefab`; renaming it compiles perfectly and orphans that reference silently.
+
+### 3. The Workbench says its steps are a loop
+
+Playtest §3y asked *"What are steps 1–6?"* and it was logged rather than fixed, because a Workbench
+redesign is not a thing to do while somebody is using it. The captions now carry a second clause
+driven from the live draft: `STEP 2 · loops back to 1`. Because the marker follows the **last
+filled** step it walks down as the player builds, which *demonstrates* the cycle rather than
+describing it. The trigger row is a progressive teacher — `fit a chassis first`, then `drop cards
+below to build a cycle`, then `when to start`.
+
+Written at runtime in `RebuildUI` rather than in the authoring pass that owns these captions on
+disk, because a hint about the cycle **cannot** be authored: it depends on a program that only
+exists while the screen is open. The separator is the Latin-1 middle dot the vault headings already
+use, not an arrow.
+
+### 4. The Scrap Recycler — and a safety argument that did not survive implementation
+
+Slag had two outlets; everything else in the game had none. A mis-ordered truckload, a
+decommissioned line's leftover Casings, a depot of Glass nobody wants — §10's escape hatch from an
+over-built factory is *deleting golems*, and goods had no equivalent.
+
+`ScrapRecycler` is `SlagHeap`'s pattern with the sign flipped: same integer accumulator, same
+carried remainder, same charge-on-the-crossing discipline, but it charges **and returns something**.
+Goods are priced by `ItemTiers` depth, four points buy one Scrap, one Coke is burnt per Scrap. Slag
+at tier 1 lands on **2 Slag per Coke** against the heap's 4 — half the disposal rate plus a good,
+so §5.3(c)'s decision survives intact. Unlike the heap's tile this one goes **both ways**: the
+Scrap is hauled out by a golem rather than teleporting to the stockpile, which makes it a machine
+in the logistics graph and gives it real backpressure.
+
+> **THE DESIGN DOC'S SAFETY ARGUMENT WAS WRONG, and a test caught it.** It reasoned in Scrap and
+> concluded every cycle was lossy. `Gear` broke the guard, and working out why showed the whole
+> argument was unsound: R4 turns 2 Scrap into 2 Iron Plate **plus** a Slag and R19 turns 1 Copper
+> Ingot into 3 Copper Wire, so any positive per-unit value *multiplies* across a recipe whose
+> output count exceeds its input count. No integer tier table can avoid that.
+>
+> What holds instead is better because it is **structural rather than numerical**: Scrap is free at
+> the market (§10 forbids a soft-lock), so a machine whose only output is Scrap cannot be an
+> economic exploit — what it saves is the *walk*; and the recycler is a strict **Coke sink**, so the
+> currency a loop would have to close in is spent monotonically. Three tests pin it. The design doc
+> records the correction rather than quietly editing it away.
+
+One rule deliberately differs from the heap: a **full** hopper refuses feedstock at any accumulator
+level. Points banked against a full output have no path to being paid out except collection, so
+accepting them would be taking in goods the machine cannot process.
+
+### 5. The Ledger says what a recipe costs — and fifteen glyphs it could not draw
+
+The Artificer's Ledger lit nodes up and said nothing about the recipe any of them named. Clicking a
+node now opens its full ratio, its byproduct **in lowest terms** (`1 Slag per 2 Iron Plate` is the
+sentence that sizes a Slag Heap; `byproductQuantity: 1` is not), its cycle time and theoretical
+rate, and — when the factory has been measured — its live one. The live line is **omitted rather
+than zeroed**, because `now: 0.0/min` for a branch nobody has built yet makes an unstarted line
+look broken.
+
+Two real bugs fell out of building it:
+
+- **Fifteen glyphs the TMP atlas cannot draw.** `TechTreeCatalog` carried fourteen `U+2192` arrows
+  and an em dash from the day the chart was written, so **every recipe node on the Ledger has been
+  rendering a missing-glyph box** where its arrow should be. The constraint is recorded in three
+  other files already; this one never heard about it because nothing was checking. A test now walks
+  every phase title, node name and detail and refuses anything above `U+00FF`.
+- **Resolving a node to its recipe by unlock signal is wrong, and quietly so.**
+  `r4.ironsmelting` signals on **Slag** rather than Iron Plate — deliberately, since R4 is the only
+  recipe that makes Slag while R2 also makes Plate. Looking up by output found nothing for R4 and
+  the readout fell back to the catalog's hand-written line, which *after the arrow fix was
+  byte-identical to the generated ratio* and so looked perfectly correct. It resolves by **recipe
+  number** now, and a test proves all nineteen resolve.
+
+The roster is authored onto the prefab (asset references survive that) while the throughput monitor
+is bootstrapped per scene (a prefab cannot hold a reference into another prefab), so the two
+`Configure` calls are deliberately separate and neither clears the other.
+
+### 6. Three dead nodes on the Ledger, found while wiring the recycler up
+
+`TechTreeCatalog` named **nine** building signals and `SweepBuildings` listed **six** component
+types, so `bldg.slagheap`, `bldg.freightmast` and `bldg.floorexpansion` could never light — for as
+long as those features had shipped. §3z's claim that *"nothing on the chart should read as planned
+any more, every node is a shipped feature"* was true of the catalog and quietly false of the
+readout: **a player who built a Slag Heap was told by the Ledger that they had not.**
+
+Nothing static could have caught it — the catalog and the sweep are two hand-written lists that
+never mention each other, and both compiled perfectly. `BuildingSignalCoverageTests` now stands one
+of every placeable in a scene, polls, and demands every Building-signalled node reach `Researched`,
+plus the opposite direction so it cannot pass by the ledger saying yes to everything. Floor
+Expansion needed its own answer: what the player buys is rows of floor, not an object, so it reads
+`FloorBounds` having grown past its starting shape.
+
+### 7. The dead M2 demo gets its belt
+
+`HardcodedDemoProgram.ExtractAndDeposit` was a fiction (`open-items.md` §3z B). It was pinned broken
+because a belt would have changed what `Main.unity` demonstrated — a content decision rather than a
+test's to make. The diorama is retired, so only the question about the *program* is left, and a file
+whose entire job is being the definition of the reference programs cannot afford a reference that
+does not run. The belt is a **required** argument rather than a defaulted magic string, so the
+fiction cannot be rebuilt by accident. The regression test now pins the two-step chain end to end;
+the invariant the fiction was accidentally documenting — an extract card with no belt must refuse
+*before* it touches the node — is kept as its own test, and now checks the seam is untouched.
+
+### 8. The workshop is furnished
+
+§3z C's *"biggest remaining gap against cozy, detailed"*. Four pieces — a hearth with a live fire, a
+loaded three-shelf unit, a trestle workbench with a vice, and a pegboard tool rack — along the
+**north** wall, which is the run the camera looks straight at because the shop front is open to the
+south. The other three walls keep their clutter, which is what stops the furniture reading as a
+showroom.
+
+Positions are **authored, not generated**. Every other prop run in `SandboxFloorGenerator` comes
+from a congruence because clutter should look scattered; furniture should look *arranged*, and an
+arrangement is exactly what a hash cannot produce. Offsets are from the room's centre line rather
+than absolute, so a wider workshop keeps the arrangement centred. Every piece stands on the wall
+ring, never on playable floor — a hearth occupying a cell the player wanted for a smelter would be
+a decoration that cost them a machine — and the clutter pass now yields those cells rather than
+overwriting them depending on which loop happened to run second.
+
+### What this pass did NOT do
+
+- **No playtesting.** Everything §3z A lists still needs a person in front of the running game, and
+  this pass *added* to the tuning table rather than shrinking it.
+- **Workbench slot styling, action icons and lever art** stay deferred with the rest of the
+  presentation polish. The loop labels are the part that answered a finding.
+- **Floor variation** was already built (four plank variants plus two rare hash-placed accents) and
+  was not touched. If the floor still reads as monotone in play, that is a tuning question about
+  `FloorTileVariant`'s rarities, not a missing feature.

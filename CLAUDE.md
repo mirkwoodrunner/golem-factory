@@ -28,6 +28,12 @@ just the code.
 - `docs/progression-design.md` — the gameplay progression: a 4+ tier tech tree, steam-power
   scarcity, chassis unlock sequencing, and the Clock Tower endgame. Passed a three-round review
   against a 9-point rubric. **Entirely unimplemented** — it is a spec, not a record of what exists.
+- `docs/cozy-automation-design.md` — the technical design for the cozy automation pass (smart
+  depot filtering, golem moods, the Workbench's loop labels, the Scrap Recycler, the Ledger's
+  recipe readout). Written **before** any of it was built and kept as-written afterwards: §4b's
+  safety argument turned out to be wrong and the doc records the correction rather than hiding it.
+  Its §0 is the list of eight invariants a pass touching golems, endpoints or TMP text must not
+  break, and is the most reusable part of the file.
 - `docs/open-items.md` — **read this before planning any work.** Consolidated backlog: what the
   progression pass still needs (in dependency order), the decisions still awaiting a human call,
   known functional gaps, and deliberate scope cuts. Distinguishes what is built from what is only
@@ -81,8 +87,8 @@ Editor (or a live MCP-for-Unity bridge, if connected):
     UI chrome, and `python Tools/Art/generate_tech_tree_art.py` — the tech tree chart's plaques,
     badges and rules. Both write under `Art/UI/`, are 9-sliced, and are imported by their own
     Editor pass (**Tools > Golem Factory > Author Tech Tree Chart** for the latter).
-  - `python Tools/Art/generate_building_art.py` — the steam pipe, depot and construction station
-    (the last three things wearing `building_block.png`). Imported by the progression scene
+  - `python Tools/Art/generate_building_art.py` — the steam pipe, depot, construction station,
+    freight mast, slag heap and **scrap recycler**. Imported by the progression scene
     authoring pass, BottomCenter at PPU 64.
   - `python Tools/Art/trim_character_alpha.py --apply` — trims the transparent rows beneath a
     standing sprite's feet, which BottomCenter would otherwise render as a float above the tile.
@@ -96,8 +102,9 @@ Editor (or a live MCP-for-Unity bridge, if connected):
     which applies PPU/pivots, builds the Tile assets, and repaints and re-walls both scenes.
 
 As of the last full run (progression pass, Editor passes, the Hand-Crank Bench, the
-isometric→top-down projection switch, the market street, the tech tree chart, and the backlog
-pass, and the Director's pass): **1249/1249 tests passing** (1100 EditMode + 149 PlayMode).
+isometric→top-down projection switch, the market street, the tech tree chart, the backlog
+pass, the Director's pass, and the cozy automation pass): **1380/1380 tests passing**
+(1220 EditMode + 160 PlayMode).
 
 **Two ways to run the tests, and which one depends on whether the Editor is open.**
 
@@ -365,6 +372,22 @@ future second owner would need a rewrite instead of a parameter.
   caused real bugs (golem sprites invisible until Play mode; Signal-trigger tests needing to be
   PlayMode not EditMode). If something works in Play mode but not when just viewing the scene,
   check this first.
+- **A labelled depot publishes a different endpoint.** `PlaceableDepot` with an empty
+  `filterItemType` publishes the `StorageBufferEndpoint` it always did; with one set it publishes
+  `FilteredBufferEndpoint`, which accepts and dispenses only that good. Its **untyped** `CanGive()`
+  deliberately diverges from the unfiltered one — a labelled crate full of its own good can accept
+  nothing — and that is not §10's deadlock, which is about one type blocking a *different* type.
+  `IFilteredEndpoint` exists so `GolemEntity.PushStockInto` can tell "this crate is full" from
+  "this crate is for something else" on the failure path; it is not part of `IItemEndpoint` and
+  should not become part of it.
+- **Item tiers are data now.** `Economy/ItemTiers.cs` transcribes §5.1's grouping (which previously
+  lived only in `ItemType`'s comments) so code can ask a good's depth. `ItemTiersTests` pins it by
+  **reflection over `ItemType`**, so a new good cannot be added without being given a tier.
+- **A golem's `Mood` is a read-only classification, not state.** `GolemMoodRules.Classify` derives
+  it from `Program.State` + `StallReason` + the inventory; nothing writes it and the tick loop
+  never asks. Presentation **polls** it rather than listening, because four of the transitions that
+  matter publish no event at all. Add new visual feedback by widening the mood, not by adding a
+  second floating component — one badge, one anchor, one `WorldHudRegistry` slot.
 - **Bare-string ids** (not enums or object references) identify belts, buffers, and nodes across
   systems (e.g. `"ScrapBuffer"`, `"ScrapBeltA"`) — `Economy/ItemType.cs` holds canonical item-type
   id constants so recipes don't restate raw literals, but node/buffer/belt *instance* ids are
@@ -388,6 +411,12 @@ future second owner would need a rewrite instead of a parameter.
   Node identity must be the *sprite*. This had already bitten once before it was noticed: the
   Aether marker wore the brass ingot under a teal tint and rendered as plain brass in every play
   session, while `item_aether.png` sat unused.
+- **TMP text is ASCII or Latin-1 only.** The default `LiberationSans SDF` atlas has no arrows
+  (`U+2192`), no em dash (`U+2014`) and no `U+26A0`; they render as missing-glyph boxes. `·`
+  (U+00B7) is in the atlas and is the project's separator. **This has bitten for real**: fourteen
+  arrows sat in `TechTreeCatalog`'s node details from the day the chart was written, so every
+  recipe node on the Ledger drew a box. `TechTreeCatalogTests` now walks every catalog string and
+  refuses anything above `U+00FF`; do the same for any new authored UI text.
 - **Verify a UI change by looking at the game view, not just its serialized properties.** Both §8
   HUD readouts were once parented to `WorkbenchCanvas.prefab`'s *root* — which is a plain
   `Transform` that happens to share its name with the `Canvas` child — so they were present,

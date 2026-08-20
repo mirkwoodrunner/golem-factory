@@ -9,8 +9,8 @@ below was invented by a developer and has never been felt.
 
 **Time:** ~20 min for the smoke test (Part A), ~60–90 min for the full run (Parts B–H).
 
-**Build under test:** branch `claude/artificer-walk-animation`, **1245/1245 tests green**
-(1096 EditMode + 149 PlayMode).
+**Build under test:** branch `claude/artificer-walk-animation`, **1380/1380 tests green**
+(1220 EditMode + 160 PlayMode).
 
 ---
 
@@ -47,7 +47,7 @@ If you only have half an hour, answer 1–3. They are the ones no test can reach
 | Key | Does |
 |---|---|
 | **WASD** | Move |
-| **E** | Interact — *tap* to harvest a stall / **order a truckload from an empty stall** / open a construction station / refuel a boiler / program a golem. **Hold** at the Hand-Crank Bench to crank. |
+| **E** | Interact — *tap* to harvest a stall / **order a truckload from an empty stall** / open a construction station / refuel a boiler / **label a depot** / program a golem. **Hold** at the Hand-Crank Bench to crank. |
 | **R** | Context-sensitive, **in this order**: turns the build ghost *if you are holding a placeable* → otherwise cycles the recipe at a bench you are standing at → otherwise rotates the golem you stand next to. **If R is not doing what you expect, you are still holding a placeable — press Escape.** |
 | **Escape** *or* **right-click** | **Put the placeable down / leave build mode.** New. |
 | **G** | Pick up the golem you are standing next to; press again to set it down on your own tile. It refuses to drop onto an occupied tile. |
@@ -74,6 +74,12 @@ that found it, so you can pick them up without re-reading the whole script:
 | Crank progress "remains at whatever % it was at" | **The script was wrong, not the game** | B2 |
 | "What are steps 1–6?" | **Answered; nothing changed in the game** | A4 |
 | Lighting "a little dark" | **Raised 0.62 → 0.72** | A2 |
+
+**Session 3** is this build's new work rather than a retest — see **Part I** at the end. In short:
+depots can be labelled, golems have moods, the Workbench says its steps are a loop, there is a
+Scrap Recycler, and the Ledger tells you what a recipe costs. Two of those answer findings you
+raised: **A4's "what are steps 1-6?"** is now answered on the screen itself, and the room is no
+longer an empty box.
 
 **Session 2** added four more:
 
@@ -174,11 +180,23 @@ after Part B if you have none.
         begins. So `Extract → Assemble → Push` means "take from the tile behind me, make the
         thing, put it on the tile in front", forever. A chassis with fewer slots simply greys the
         later sockets out.
-  - [ ] **RETEST — nothing changed in the game.** Knowing that, does the screen say it? I have
-        **deliberately not** relabelled anything mid-playtest, because a Workbench redesign is
-        not a thing to do while you are using it. If the numbering still reads as a mystery,
-        that is a legibility finding worth logging (it is already in `open-items.md` §3z C) and I
-        will take it as its own task.
+  - [Answered] ~~**RETEST — nothing changed in the game.**~~ *(Superseded — the screen says it now.)*
+  - [ ] **RETEST 2 — THE SCREEN SAYS IT.** Each socket's caption gained a second clause driven from
+        what you have actually built:
+
+        ```
+        TRIGGER  ·  when to start
+        STEP 1   ·  then
+        STEP 2   ·  loops back to 1
+        STEP 3   ·  unused
+        ```
+
+        **The marker moves as you build.** Drop a card into step 3 and "loops back to 1" walks down
+        to it, which is meant to *show* you the cycle rather than tell you about it. Before you fit
+        a chassis the trigger row reads `fit a chassis first`; with a chassis and no cards it reads
+        `drop cards below to build a cycle`.
+        **Check:** build a two-card program and watch the marker move. Does the loop read now
+        without anyone explaining it?
 - [Done] **The vault is now GATED** — it shows only cards you have *claimed*, not the whole catalogue.
       From a fresh start you should hold exactly the movement verbs (Extract, Haul, Push). If the
       vault is empty, that is a blocker: say so immediately.
@@ -328,15 +346,103 @@ real arc, not arithmetic.
 
 ---
 
+## Part I — What the cozy automation pass added (~20 min) — **NEW, never played**
+
+None of this has been in front of a person. Five things, and the first two are the ones I most
+want an opinion on.
+
+### I1. Golem moods — is silence the right default?
+
+A golem used to have two looks: running, or red. It has six now, at three volumes.
+
+- [ ] **Working draws NOTHING.** That is deliberate — forty golems each wearing a "working" icon is
+      a factory you cannot read — but it is also the call I am least sure of. Stand in front of a
+      working factory: does "no badge" read as *fine*, or as *the badges are broken*?
+- [ ] **A golem waiting on a trigger shows a dim `zzz`** after about 1.5 s. An `AlwaysOn` golem
+      should **never** show it (it is only idle for a single tick per cycle). If you see `zzz`
+      flickering on a busy golem, that is a bug — say so.
+- [ ] **A golem with no program shows `no program`.** Build a golem and *don't* program it.
+- [ ] **A golem whose hold is nearly full shows an amber `hold nearly full`** at 9 of 12 units.
+      **The judgement:** is 9 far enough ahead of the jam to be worth acting on, or does it fire so
+      late you were going to notice anyway? *TUNING.*
+- [ ] **A golem with no steam shows a BLUE badge, not a red one.** Let a boiler run dry with several
+      golems on it. **The thing to look for:** does a field of blue read as *one* fault with one
+      fix, rather than as everything being broken at once? That split is the whole reason it exists.
+
+### I2. Smart depots — can you sort with them?
+
+Press **[E]** on a depot to label it. It cycles through "any goods" and everything your stockpile
+has handled, so the list stays short and grows with your factory.
+
+- [ ] A labelled crate **takes only that good**. Push a mixed hold at one: the matching good goes
+      in, the rest **stays in the golem** for the next tile. That is the sorter.
+- [ ] A labelled crate **hands out only that good**. This is the half that was actually broken —
+      before, a golem hauling from a depot got whichever good the shared stockpile felt like. Try
+      running **two different lines off one stockpile** with two labelled crates. Does that work,
+      and did you want it?
+- [ ] Push a hold with **none** of the label at one: the golem stalls with `nothing here takes
+      Slag`, naming the good it is stuck with. Relabel the crate and it should resume on its own.
+- [ ] A crate that is simply **full** of its own good says `full` instead. Those are different
+      problems with different fixes; check the badge tells them apart.
+- [ ] **The judgement:** is `[E]`-cycling a decent control, or do you want a picker? With twenty
+      goods in the stockpile the cycle is twenty presses long.
+
+### I3. The Scrap Recycler — 20 Scrap + 10 Iron Plate *(TUNING)*
+
+New building, tenth row of the build menu. Throw **anything** in, get **Scrap** out, and it burns
+**Coke** doing it. Deeper goods are worth more: a Casing comes back worth more than a lump of Coal.
+
+- [ ] Build one, push Coke into it as fuel, then push junk in. Haul the Scrap back out with a golem
+      — **it does not teleport to your stockpile**, which is deliberate.
+- [ ] Let it run out of Coke: it should **refuse junk** and keep taking Coke, so refuelling is the
+      way out. Let it fill up with nobody collecting: it should **stop**, visibly.
+- [ ] **THE BIG ONE.** It disposes of Slag at **half** the Slag Heap's rate (2 per Coke against 4)
+      and gives you a Scrap for the difference. Is that a real choice, or is one of them obviously
+      right? If the heap now feels pointless, or the recycler does, that is the number to move.
+      *TUNING.*
+- [ ] Do you ever actually use it for anything **other** than Slag? It exists because there was no
+      way to get rid of a mis-ordered truckload or a decommissioned line's leftovers. Did that
+      turn out to be a problem you have?
+
+### I4. The Ledger tells you what a recipe costs
+
+**Tab → Ledger**, then **click a node**.
+
+- [ ] A recipe node opens its full ratio, its byproduct **in lowest terms** (`1 Slag per 2 Iron
+      Plate` — the number you size a Slag Heap by), its cycle time and rate, and its **live** rate
+      once your factory is actually making it.
+- [ ] **Check the arrows render.** Every recipe node's detail line used to contain a character the
+      font does not have, so it drew a box. If you see any square boxes anywhere on this chart,
+      that is a finding.
+- [ ] **The Slag Heap, the Freight Mast and Floor Expansion should now light up when you build
+      them.** They never did — three nodes on the chart were unreachable for as long as those
+      features have existed. Build a Slag Heap and check its node goes lit.
+
+### I5. The workshop is furnished
+
+- [ ] Look at the **north wall** (the back of the room). There should be a hearth with a fire on the
+      centre line, flanked by shelves, a workbench and tool racks. The other three walls keep their
+      crates and barrels on purpose.
+- [ ] **Nothing should be standing anywhere you wanted to build.** Everything sits on the wall ring.
+      If a piece of furniture is in your way, say which one.
+- [ ] **Your call:** does the room read as somebody's workshop now, or just as a room with more
+      stuff in it?
+- [ ] **And the floor.** It already has four plank variants plus rare brass plates and grates — that
+      was built a while ago. Standing at gameplay zoom, can you see any of it? If it still reads as
+      flat, the accents need to be commoner, not newer.
+
+---
+
 ## Known gaps — please *don't* report these
 
-- **The interior is an empty box** — no workbenches, shelving or hearth. The biggest known gap
-  against "cozy, detailed", and the largest thing still outstanding.
-- **The floor is monotone** at gameplay zoom, with no feature larger than one tile.
+- ~~**The interior is an empty box**~~ — **fixed, see I5.** Report what you think of it.
+- ~~**The floor is monotone**~~ — it has variants and accents already; **see I5** for whether they
+  are visible enough.
 - **Belts can't feed a buffer.** A belt hands off only to another belt; getting goods into a depot
   needs a golem doing `Push`. Deliberate.
 - **Workbench polish**: hand-coded lever housing, LiberationSans rather than a period face,
-  procedural grain that repeats, text-only cards with no icons, dead space in both lists.
+  procedural grain that repeats, text-only cards with no icons, dead space in both lists. *(The
+  step captions are no longer part of this — see A4.)*
 - **No player collision** — you walk through everything.
 - **No refund** on removing a placed building.
 - **A one-card `ExtractFromNode` program jams** by design (a Scavenger needs Extract + Push).
@@ -375,6 +481,11 @@ Severity: **blocker** (can't proceed) / **bad** (playable but wrong) / **note** 
 
 **5. Lighting —** too dark, about right, or not dramatic enough? Was anything unreadable?
 
+>
+
+**6. The moods —** does a factory where a working golem shows NOTHING read as calm, or as broken?
+This is the call I am least sure of in the whole pass. **Part I1.**
+
 > 
 
 ### Every number below is TUNING and has never been felt
@@ -392,6 +503,15 @@ Mark any that felt wrong, with a direction.
 | Floor expansion | +2 rows, rising cost, capped at +12 | |
 | Freight launch | flat 24 ticks | |
 | Focus | `8 + 6 × steps`, patent stamp flat 10 | |
+| **Recycler: points per Scrap** | 4 | |
+| **Recycler: value by tier** | 1 / 2 / 3 / 5 / 8 / 13 (raw → megaproject) | |
+| **Recycler: Coke per Scrap** | 1 | |
+| **Recycler: output capacity** | 24 (two golem-loads) | |
+| **Recycler: cost** | 20 Scrap + 10 Iron Plate | |
+| **Recycler vs Slag Heap** | 2 Slag/Coke + a Scrap, against 4 Slag/Coke and nothing | |
+| **Golem `Straining` threshold** | 9 of 12 units | |
+| **Badge dwell: sleeping** | 1.5 s | |
+| **Badge dwell: advisory** | 2.0 s | |
 
 ### Anything else
 

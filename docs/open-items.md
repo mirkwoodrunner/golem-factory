@@ -25,6 +25,18 @@ began. Console clean.
 > verbs quietly priced at 20 Scrap by a legacy default, and a zero-cost claim being refused by
 > the one payment path that had never guarded it.
 
+> **THE COZY AUTOMATION PASS HAS LANDED.** Six tasks, designed up front in
+> `docs/cozy-automation-design.md`: smart depot filtering, golem moods, the Workbench's loop
+> labels, the Scrap Recycler, the Ledger's recipe readout, and furniture in the workshop. It also
+> took §3z B's dead M2 demo and §3z C's items 1 and 3. **1220 EditMode + 160 PlayMode green**, up
+> from 1100 + 149. See the cozy-automation-pass milestone in `docs/unity-implementation-plan.md`.
+>
+> It found **three real bugs nothing was checking for**: three Ledger nodes that could never light
+> (the catalog named nine building signals and the sweep recorded six), fifteen glyphs in the
+> catalog the TMP atlas cannot draw, and a recipe-node lookup that silently fell back to a
+> hand-written line. It also **disproved its own design doc's safety argument** for the recycler,
+> and the doc records the correction rather than hiding it. §3z below is updated.
+
 > **A backlog pass has just been through this file**, taking the eight actionable items off it: the
 > decorative construction station, the unbounded build area, the alerts strip, the two lying economy
 > readouts, the belt arrow speed, the untrimmed character art and the last three crates, `Repeat(n)`
@@ -1183,29 +1195,65 @@ script: truckload prices and sizes, Assembly Line card costs (derived as 4x a re
 the floor-expansion curve, the Slag Heap ratio, the bay upgrade, the mast and heap prices, the flat
 freight launch. All were marked TUNING where they live, and none has been felt.
 
-### B. Two content decisions, surfaced but not taken
+### B. Content decisions
 
-- **The dead M2 demo.** `HardcodedDemoProgram.ExtractAndDeposit` cannot work by construction -- the
-  id-routed `ExtractFromNode` extracts onto a BELT named by the card's `destinationId`, and that
-  card names none. Its golem stood in `Main.unity` doing nothing for several milestones. The scene
-  is gone, so this is now only a question about the program: give it a belt, or delete it. A test
-  pins the current behaviour either way, with the reasoning attached.
+- ~~**The dead M2 demo.**~~ **TAKEN: it got its belt.** The constraint that made it a judgement
+  call was the diorama, and the diorama is retired -- so only the question about the *program* was
+  left, and a file whose entire job is being the definition of the reference programs cannot afford
+  a reference that does not run. The belt is a **required** argument rather than a defaulted magic
+  string, so the fiction cannot be rebuilt by accident. The regression test pins the two-step chain
+  end to end now; the invariant the fiction was accidentally documenting (an extract card with no
+  belt must refuse *before* it touches the node) is kept as its own test and now checks the seam is
+  untouched.
 - **Whether `Sandbox.unity` wants a second scene back** -- a small test bed for hand-wired
   experiments, now that the diorama is retired. Nothing needs it; it is a workflow preference.
+  **Still open, still nobody's problem.**
 
 ### C. Real work, none of it blocking
 
 In rough order of how much a player would notice:
 
-1. **The interior is an empty box** -- no workbenches, shelving or hearth. The biggest remaining
-   gap against "cozy, detailed", and an art job rather than a code one.
-2. **The floor is monotone** at gameplay zoom, with no feature larger than a single tile.
+1. ~~**The interior is an empty box**~~ -- **DONE.** A hearth with a live fire, a loaded shelf
+   unit, a trestle workbench with a vice and a pegboard tool rack now line the **north** wall, which
+   is the run the camera looks straight at (the shop front is open to the south). The other three
+   walls keep their clutter, which is what stops the furniture reading as a showroom. Positions are
+   authored rather than generated, because clutter should look scattered and furniture should look
+   *arranged* -- and an arrangement is exactly what a hash cannot produce.
+2. **The floor is monotone** at gameplay zoom -- **RE-DIAGNOSED, NOT A MISSING FEATURE.** Four
+   plank variants plus two rare hash-placed accents are already built and were not touched by this
+   pass. If it still reads as flat in play, that is a tuning question about `FloorTileVariant`'s
+   `GrateRarity`/`PlateRarity` and the plank tones, not an art job. **Needs a person to look at it
+   before anyone builds anything.**
 3. **Workbench polish**: the lever housing is hand-coded pixel art, LiberationSans SDF stands in for
    a period display face, the procedural grain visibly repeats, cards are text-only with no
-   per-action icons, and both lists have dead space below their entries.
+   per-action icons, and both lists have dead space below their entries. **The legibility half is
+   done** -- §3y's "What are steps 1-6?" is answered by the loop labels (`STEP 2 · loops back to
+   1`), which move as the player builds. What is left here is purely art.
 4. **Sprite pivots are three conventions project-wide.** Documented and coherent -- BottomCenter for
    things that stand, Custom-on-the-contact-line for pieces of the room, Center for what is centred
    on a cell -- and the one asset that contradicted its own record is fixed. A tidy-up, not a defect.
+   The four new furniture pieces were authored 56 tall precisely so they share the crate's contact
+   line rather than adding a fifth convention.
+
+### C2. Opened by the cozy automation pass
+
+Nothing here blocks anything. All of it is felt-not-measured.
+
+- **Eight new invented numbers**, all marked TUNING and all listed in the playtest script's table:
+  the recycler's four constants and its cost, the `Straining` threshold, and the two badge dwells.
+  The recycler's ratio is the one with teeth -- it is deliberately half the Slag Heap's disposal
+  rate, and if that trade is wrong the heap either becomes pointless or the recycler does.
+- **Does the depot label cycle stay short enough?** It is built from what the stockpile has handled,
+  so it grows with the factory. Four to eight entries is the design intent; a late-game player with
+  twenty goods in the stockpile presses `[E]` twenty times to get back round. If that bites, the
+  answer is a picker panel rather than a longer cycle.
+- **Is `Straining` useful or is it noise?** It is the only predictive mood, and the only one whose
+  value depends entirely on whether 9-of-12 is far enough ahead of the jam to act on.
+- **Ten rows in the build menu.** The menu's height is derived from the row count so nothing is cut
+  off, but ten is worth a look on a real screen.
+- **The recycler's art is a placeholder** like every other building's, and it carries more weight
+  than most: its silhouette is the only thing saying "this one gives something back, go and collect
+  it".
 
 ### D. Deliberate cuts, unchanged
 
