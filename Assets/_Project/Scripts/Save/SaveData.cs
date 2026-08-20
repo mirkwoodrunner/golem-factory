@@ -63,6 +63,18 @@ namespace GolemFactory.Save
         public string depotFilterItemType;
 
         /// <summary>
+        /// A Scrap Recycler's fuel, its uncollected Scrap, and its banked remainder
+        /// (docs/cozy-automation-design.md §4b). All three, because dropping the remainder would
+        /// silently round every hopper's ratio down on every load -- the exact thing the integer
+        /// accumulator exists to prevent.
+        /// </summary>
+        public int recyclerCokeStock;
+
+        public int recyclerScrapStock;
+
+        public int recyclerPendingPoints;
+
+        /// <summary>
         /// Clock Tower progress: which stage is running and how far into it, in the same
         /// millionths-of-a-tick units the site accrues. Saved because a stage is measured in
         /// tens of minutes of a whole factory's output -- by far the most expensive single

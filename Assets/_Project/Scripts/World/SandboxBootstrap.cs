@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using GolemFactory.Belts;
 using GolemFactory.Economy;
 using GolemFactory.Player;
@@ -674,6 +674,15 @@ namespace GolemFactory.World
             {
                 heaps[i].RegisterAsSpatialEndpoint(
                     spatialEndpointHolder, converter.WorldToCell(heaps[i].transform.position));
+            }
+
+            // And Scrap Recyclers, for the same reason.
+            GolemFactory.Buildings.PlaceableScrapRecycler[] recyclers =
+                FindObjectsByType<GolemFactory.Buildings.PlaceableScrapRecycler>(FindObjectsInactive.Exclude);
+            for (int i = 0; i < recyclers.Length; i++)
+            {
+                recyclers[i].RegisterAsSpatialEndpoint(
+                    spatialEndpointHolder, converter.WorldToCell(recyclers[i].transform.position));
             }
         }
 

@@ -456,19 +456,32 @@ Exactly half the throughput, plus a good. That is a real choice rather than a do
 and §5.3(c)'s decision — *disposal competes for the scarcest intermediate* — is untouched: the
 recycler competes for the same Coke, harder.
 
-#### Why this is not a perpetual-motion machine
+#### Why it cannot be looped — and why the argument above was wrong
 
-Every loop through it is strictly lossy in both Scrap and Coke. Checked against the two recipes
-that could plausibly close a loop:
+**This section originally reasoned in Scrap and concluded every cycle was lossy. Implementing it
+proved that false, and the correction is worth keeping rather than quietly editing away.**
 
-- **R2** (1 Scrap → 1 Iron Plate): Plate is tier 1 = 2 points, so 2 Plate recycle to 1 Scrap. Spend
-  2 Scrap, recover 1, burn 1 Coke.
-- **R4** (2 Scrap + 1 Coke → 2 Iron Plate + 1 Slag): recycling the whole output recovers ~1.5 Scrap
-  from 2 Scrap spent, while burning ~1.5 Coke on top of the 1 the recipe already ate.
+The claim does not survive contact with the authored recipes. R4 turns 2 Scrap into 2 Iron Plate
+**plus** a Slag; R19 turns 1 Copper Ingot into 3 Copper Wire. Any positive per-unit value therefore
+*multiplies* across a recipe whose output count exceeds its input count, and no integer tier table
+can avoid that. Copper Wire at tier 2 recycles for three times what its ingot does.
 
-And the free good cannot be farmed: Scrap is tier 0 = 1 point, so 4 Scrap in yields 1 Scrap out and
-costs a Coke. Feeding the recycler its own output is the worst move in the game, which is the
-correct shape for a disposal machine.
+Two things do hold, and they are enough:
+
+1. **Scrap is free at the market.** §10 forbids a soft-lock, so Scrap truckloads cost nothing and
+   the player can already order it forever. A machine whose only output is Scrap cannot be an
+   economic exploit — what it saves is the *walk*.
+2. **It is a strict Coke sink.** It consumes Coke on every batch and can never produce or return
+   any, so the currency a loop would have to close in is spent monotonically. This is structural
+   rather than numerical, so no tuning pass can break it by accident.
+
+What the tier table buys, then, is **fairness, not exploit-proofing**: a Casing represents four
+recipes' work and should come back worth more than a lump of Coal. And it is capped — the deepest
+good in the game returns 3 Scrap for something that took minutes of a whole factory to build, so
+recycling is always obviously worse than using the thing.
+
+Three tests pin exactly this: Coke never rises across any feedstock, no good returns more than a
+handful of Scrap, and a deeper good never returns less than a shallower one.
 
 #### Failure states
 
@@ -476,7 +489,7 @@ correct shape for a disposal machine.
 |---|---|
 | No Coke, accumulator below the crossing | Accepts (the unit rides the remainder, exactly as the heap's first three Slag do). |
 | No Coke, accumulator at the crossing | **Refuses** that type. The line backs up and the player is told by the thing stopping. Coke is still accepted, which is the recovery. |
-| Output at capacity | Refuses everything except Coke, same as above. Untyped `CanGive()` stays **true** while Coke is acceptable — refusing outright would abandon the push that would fix it, which is the bug `SlagHeapEndpoint.CanGive()`'s comment already records. |
+| Output at capacity | Refuses **all** feedstock, at any accumulator level — deliberately unlike the Coke case, where units below the crossing ride free. Banked points against a full output have no path to being paid out except collection, so accepting them would be taking in goods the machine cannot process. Untyped `CanGive()` stays **true** while Coke is acceptable — refusing outright would abandon the push that would fix it, which is the bug `SlagHeapEndpoint.CanGive()`'s comment already records. |
 | Golem pushes a hold the recycler cannot pay for | `PushStockInto` pushes what it can and leaves the rest; if nothing moves, `StallReason.BeltFull` naming the recycler. "Out of Coke" reads as "full", which is honest — it has no room *for that good right now*. |
 | Unknown item type (a good with no tier) | `TierOf` returns -1 and the recycler **refuses** it. Silently valuing an unknown good at some default is how a future item becomes an exploit. |
 | Recycler demolished with Scrap inside | Lost, like a demolished depot's contents. §4 already stands on "no refund on removing a placed building". |

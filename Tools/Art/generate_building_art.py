@@ -337,7 +337,69 @@ def make_slag_heap() -> Image.Image:
     return image
 
 
+def make_scrap_recycler() -> Image.Image:
+    """A hopper on legs with a chute, a firebox and a full crate of Scrap underneath.
+
+    THE SILHOUETTE HAS TO SAY "IN AT THE TOP, OUT AT THE BOTTOM", because that is the one thing
+    about this building a player must read without a tooltip: unlike the Slag Heap beside it, the
+    recycler gives something back, and a golem has to be sent to collect it. So it is TALL where
+    the heap is low and wide -- a funnel, not a pile -- and the output crate sits proud at the
+    foot in Scrap's own rusty palette rather than the machine's iron.
+
+    The firebox is the same warm grate the heap wears, and for the same reason: this burns Coke
+    too, and a machine with no visible fire would read as free.
+    """
+    width, height = 68, 60
+    image = Image.new("RGBA", (width, height), TRANSPARENT)
+    draw = ImageDraw.Draw(image)
+
+    _contact_shadow(draw, (3, 56, 64, 59))
+
+    # The hopper mouth: a wide inverted trapezoid, open at the top. Drawn before the body so the
+    # body's rim overlaps it and the mouth reads as recessed.
+    mouth = (72, 66, 60, 255)
+    draw.polygon([(4, 4), (63, 4), (52, 22), (15, 22)], fill=mouth, outline=OUTLINE)
+    draw.polygon([(9, 6), (58, 6), (49, 19), (18, 19)], fill=(46, 40, 38, 255))
+    # Junk in the throat -- three chips of different greys, so a full hopper is legible at a
+    # glance and the mouth is obviously where things go.
+    draw.polygon([(20, 12), (26, 8), (30, 14)], fill=(128, 116, 104, 255), outline=OUTLINE)
+    draw.polygon([(32, 15), (38, 10), (43, 16)], fill=(96, 88, 92, 255), outline=OUTLINE)
+    draw.polygon([(43, 13), (48, 11), (49, 17)], fill=(140, 120, 96, 255), outline=OUTLINE)
+
+    # Body: the iron drum the grinding happens in.
+    _panel(draw, (13, 21, 54, 40), IRON, IRON_LIGHT, IRON_DARK, 0.10, 57, image)
+
+    # A brass inspection band across the drum, so it is not one flat slab of iron.
+    _panel(draw, (13, 28, 54, 33), (150, 108, 46, 255), (196, 152, 74, 255), (98, 68, 26, 255))
+    draw.ellipse([31, 29, 36, 32], fill=(44, 60, 52, 255), outline=OUTLINE)
+
+    # Firebox at the drum's foot: where the Coke goes.
+    _panel(draw, (17, 35, 32, 40), (44, 30, 28, 255), IRON, (28, 20, 22, 255))
+    for x in range(19, 32, 4):
+        draw.line([(x, 36), (x, 39)], fill=(226, 120, 46, 255))
+
+    # Legs, leaving the crate visibly UNDER the machine rather than beside it.
+    draw.rectangle([16, 40, 20, 52], fill=IRON_DARK, outline=OUTLINE)
+    draw.rectangle([47, 40, 51, 52], fill=IRON_DARK, outline=OUTLINE)
+
+    # The chute, angling out from under the drum toward the crate.
+    draw.polygon([(34, 39), (46, 39), (44, 47), (36, 47)], fill=IRON, outline=OUTLINE)
+
+    # Output crate: Scrap's own rusty palette, deliberately NOT the machine's iron, so the thing
+    # you collect reads as a different substance from the thing that made it.
+    rust = (122, 76, 48, 255)
+    _panel(draw, (22, 45, 46, 55), rust, (158, 104, 66, 255), (78, 46, 28, 255), 0.16, 29, image)
+    draw.line([(22, 49), (46, 49)], fill=(78, 46, 28, 255))
+    # A heaped lip, so the crate reads as full rather than as a closed box.
+    draw.polygon([(26, 45), (31, 41), (36, 45)], fill=rust, outline=OUTLINE)
+    draw.polygon([(35, 45), (40, 42), (44, 45)], fill=(158, 104, 66, 255), outline=OUTLINE)
+
+    _rivets(draw, (15, 52), (23, 38), IRON_LIGHT)
+    return image
+
+
 def main() -> None:
+    save(make_scrap_recycler(), "scrap_recycler.png")
     save(make_slag_heap(), "slag_heap.png")
     save(make_freight_mast(), "freight_mast.png")
     save(make_steam_pipe(), "steam_pipe.png")

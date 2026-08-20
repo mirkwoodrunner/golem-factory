@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -589,7 +589,8 @@ namespace GolemFactory.Player
                  building.GetComponent<PlaceableClockTower>() != null ||
                  building.GetComponent<PlaceableBoiler>() != null ||
                  building.GetComponent<PlaceableFreightMast>() != null ||
-                 building.GetComponent<PlaceableSlagHeap>() != null))
+                 building.GetComponent<PlaceableSlagHeap>() != null ||
+                 building.GetComponent<PlaceableScrapRecycler>() != null))
             {
                 _spatialEndpointHolder.Registry.Unregister(cell);
             }
@@ -729,6 +730,15 @@ namespace GolemFactory.Player
             if (slagHeap != null)
             {
                 slagHeap.RegisterAsSpatialEndpoint(_spatialEndpointHolder, cell);
+            }
+
+            //   * a scrap recycler: publishes its tile, which takes junk and Coke in and hands
+            //     Scrap back out. BOTH directions matter -- it is a machine in the middle of the
+            //     logistics graph rather than a sink, so a golem has to be able to haul from it.
+            PlaceableScrapRecycler recycler = instance.GetComponent<PlaceableScrapRecycler>();
+            if (recycler != null)
+            {
+                recycler.RegisterAsSpatialEndpoint(_spatialEndpointHolder, cell);
             }
 
             //   * a freight mast: publishes its tile like a depot AND joins the mast registry,

@@ -121,6 +121,14 @@ namespace GolemFactory.Save
                     entry.depotFilterItemType = depot.FilterItemType;
                 }
 
+                var recycler = building.GetComponent<GolemFactory.Buildings.PlaceableScrapRecycler>();
+                if (recycler != null && recycler.Recycler != null)
+                {
+                    entry.recyclerCokeStock = recycler.Recycler.CokeStock;
+                    entry.recyclerScrapStock = recycler.Recycler.ScrapStock;
+                    entry.recyclerPendingPoints = recycler.Recycler.PendingPoints;
+                }
+
                 var tower = building.GetComponent<GolemFactory.Buildings.PlaceableClockTower>();
                 if (tower != null && tower.SiteHolder != null && tower.SiteHolder.Site != null)
                 {
@@ -399,6 +407,16 @@ namespace GolemFactory.Save
             if (depot != null)
             {
                 depot.SetFilter(entry.depotFilterItemType);
+            }
+
+            // Restore, not Add: the rebuilt hopper was placed with whatever the prefab starts
+            // with, and adding to that would mint fuel and goods on every load -- the same
+            // reasoning SteamBoiler.SetCoke records above.
+            var recycler = building.GetComponent<GolemFactory.Buildings.PlaceableScrapRecycler>();
+            if (recycler != null && recycler.Recycler != null)
+            {
+                recycler.Recycler.Restore(
+                    entry.recyclerCokeStock, entry.recyclerScrapStock, entry.recyclerPendingPoints);
             }
 
             var tower = building.GetComponent<GolemFactory.Buildings.PlaceableClockTower>();
