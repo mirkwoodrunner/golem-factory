@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -118,6 +118,13 @@ namespace GolemFactory.Editor
             { "wall_corner_post", new Vector2(0.5f, 1f / 96f) },
             { "prop_crate", new Vector2(0.5f, 1f / 56f) },
             { "prop_barrel", new Vector2(0.5f, 1f / 56f) },
+            // Interior furniture. All authored 56 tall precisely so they share the crate's
+            // contact line and need no pivot of their own beyond this row -- a piece standing on
+            // a different fraction of its canvas would float or sink against the props beside it.
+            { "prop_shelf", new Vector2(0.5f, 1f / 56f) },
+            { "prop_hearth", new Vector2(0.5f, 1f / 56f) },
+            { "prop_workbench", new Vector2(0.5f, 1f / 56f) },
+            { "prop_tool_rack", new Vector2(0.5f, 1f / 56f) },
             { "ground_shadow", new Vector2(0.5f, 0.5f) },
             // Market carts, 96x120 with three shadow rows at the foot -- the same contact-line
             // rule the walls follow, so a cart stands on its cell rather than hovering over it.
@@ -495,11 +502,29 @@ namespace GolemFactory.Editor
             Sprite barrel = LoadSprite("prop_barrel");
             Sprite shadow = LoadSprite("ground_shadow");
 
+            // --- THE BACK WALL IS FURNITURE, NOT CLUTTER ------------------------------------
+            // §3z C: "the interior is an empty box -- no workbenches, shelving or hearth. The
+            // biggest remaining gap against cozy, detailed." It had crates and barrels and
+            // nothing else, and the two read completely differently: clutter says goods are
+            // stored here, furniture says somebody WORKS here.
+            //
+            // The NORTH wall specifically, because that is the run the camera looks straight at
+            // -- the shop front is open to the south, so the back wall is the room's face. The
+            // other three keep their clutter, which is what stops the furniture reading as a
+            // showroom.
+            //
+            // Every piece stands ON THE WALL RING, never on playable floor. A hearth occupying a
+            // cell the player wanted for a smelter would be a decoration that cost them a
+            // machine, and that is the same rule the street clutter follows around the stalls'
+            // approach tiles.
+            var furnished = new HashSet<Vector2Int>();
+            int furnitureCount = FurnishNorthWall(propsParent, converter, shadow, expected, furnished);
+
             // Deterministic, irregular-looking clutter hugging all four edges. Each run uses a
             // different phase so the room never looks mirrored, and the interior stays clear
             // for the actual factory. Determinism matters as much here as in FloorTileVariant:
             // a random scatter would rewrite the scene file on every regeneration.
-            int count = 0;
+            int count = furnitureCount;
             int he = FloorLayout.HalfExtent;
             for (int i = -he + 1; i <= he - 1; i++)
             {
@@ -508,7 +533,10 @@ namespace GolemFactory.Editor
                     count += PlaceProp(propsParent, converter, new Vector2Int(he, i),
                         Mod(i, 2) == 0 ? crate : barrel, shadow, expected);
                 }
-                if (Mod(i * 5 + 2, 7) < 2)
+                // The north run yields to the furniture: a barrel sharing a cell with the hearth
+                // would be the last one placed and would simply replace it, silently undoing the
+                // whole pass depending on which loop ran second.
+                if (Mod(i * 5 + 2, 7) < 2 && !furnished.Contains(new Vector2Int(i, he)))
                 {
                     count += PlaceProp(propsParent, converter, new Vector2Int(i, he),
                         Mod(i, 2) == 0 ? barrel : crate, shadow, expected);
@@ -566,6 +594,74 @@ namespace GolemFactory.Editor
             }
 
             PruneUnexpected(propsParent, expected);
+            return count;
+        }
+
+        /// <summary>
+        /// Lays the workshop's furniture along the north wall: a hearth at the room's centre
+        /// line, a workbench and shelves flanking it, tool racks between.
+        ///
+        /// <para>
+        /// <b>Authored positions, not a modulo pattern.</b> Every other prop run in this file is
+        /// generated from a congruence because clutter should look scattered; furniture should
+        /// look ARRANGED, and an arrangement is exactly the thing a hash cannot produce. The
+        /// hearth is on the centre line because it is the room's focal point and a fireplace
+        /// off-axis reads as a mistake; the two heavy pieces flank it at equal offsets, and the
+        /// racks fill the gaps because they are mostly negative space and three solid masses in
+        /// a row would read as a barricade.
+        /// </para>
+        ///
+        /// <para>
+        /// Returns how many were placed, and records their cells so the clutter pass can leave
+        /// them alone.
+        /// </para>
+        /// </summary>
+        private static int FurnishNorthWall(
+            Transform parent, GridCoordinateConverter converter, Sprite shadow,
+            HashSet<string> expected, HashSet<Vector2Int> furnished)
+        {
+            Sprite shelf = LoadSprite("prop_shelf");
+            Sprite hearth = LoadSprite("prop_hearth");
+            Sprite workbench = LoadSprite("prop_workbench");
+            Sprite rack = LoadSprite("prop_tool_rack");
+
+            int he = FloorLayout.HalfExtent;
+
+            // Offsets from the room's centre line, so the arrangement stays centred if the
+            // workshop is ever widened rather than drifting to one side of it.
+            (int offset, Sprite sprite)[] layout =
+            {
+                (0, hearth),
+                (-2, rack),
+                (2, rack),
+                (-4, workbench),
+                (4, shelf),
+                (-6, shelf),
+                (6, workbench),
+            };
+
+            int count = 0;
+            foreach ((int offset, Sprite sprite) in layout)
+            {
+                if (sprite == null)
+                {
+                    // A missing sprite is an art-pass ordering mistake, not a reason to abort the
+                    // whole floor rebuild -- the rest of the room is still correct without it.
+                    continue;
+                }
+
+                var cell = new Vector2Int(offset, he);
+                // Off the end of the wall if the room ever shrinks. Skipped rather than clamped,
+                // because two pieces stacked on the last cell is worse than one piece missing.
+                if (cell.x <= -he || cell.x >= he)
+                {
+                    continue;
+                }
+
+                count += PlaceProp(parent, converter, cell, sprite, shadow, expected);
+                furnished.Add(cell);
+            }
+
             return count;
         }
 
