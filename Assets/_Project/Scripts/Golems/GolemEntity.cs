@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using GolemFactory.Simulation;
 using GolemFactory.Events;
 using GolemFactory.PunchCards;
@@ -93,6 +93,34 @@ namespace GolemFactory.Golems
 
         /// <summary>Tile this golem pushes to -- directly in front of it.</summary>
         public Vector2Int TargetCell => FacingUtility.TargetCell(cell, facing);
+
+        // --- Moods (docs/cozy-automation-design.md §2) ---------------------------------------
+        // A READ-ONLY CLASSIFICATION OF STATE THIS GOLEM ALREADY HAS. Nothing here is simulation
+        // state, nothing writes it, and the tick loop never asks -- it exists so the badge and
+        // the sprite tint agree about what this golem is doing without each deriving it a
+        // slightly different way. The rules themselves are engine-free in GolemMoodRules.
+
+        /// <summary>
+        /// Whether this golem could ever do anything: it has a trigger and at least one step.
+        ///
+        /// <para>
+        /// Deliberately not "has a chassis". A chassis governs CAPACITY, not runnability -- a
+        /// golem with steps and no chassis executes them perfectly well -- whereas a null logic
+        /// core makes <c>ShouldTrigger</c> return false forever and an empty step list has
+        /// nothing to run. Those two are the honest definition of "nobody has told it what to
+        /// do", and they are also exactly the state a golem sits in between leaving the
+        /// construction station and being committed at the Workbench.
+        /// </para>
+        /// </summary>
+        public bool HasRunnableProgram =>
+            program != null && program.logicCore != null && program.appendages.Count > 0;
+
+        /// <summary>What this golem is doing, as the player reads it.</summary>
+        public GolemMood Mood => GolemMoodRules.Classify(
+            program != null ? program.State : GolemState.Idle,
+            StallReason,
+            HasRunnableProgram,
+            _inventory.FullestTypeUnits);
 
         // Runtime-only diagnostics (deliberately not on GolemProgram, which is savable state):
         // why the current step is blocked and which belt/node/buffer id blocked it. Read by the

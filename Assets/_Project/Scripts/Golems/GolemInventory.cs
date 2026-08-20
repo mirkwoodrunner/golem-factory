@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace GolemFactory.Golems
 {
@@ -53,6 +53,27 @@ namespace GolemFactory.Golems
         }
 
         /// <summary>
+        /// The largest single-type count anywhere in this golem, across both stocks.
+        ///
+        /// <para>
+        /// "How close is this machine to jamming?" in one number. Both stocks, because both can
+        /// stall it and for different reasons: a full INPUT slot stops the next Haul
+        /// (<c>StallReason.InputFull</c>) and a full OUTPUT slot stops the next Assemble
+        /// (<c>OutputFull</c>). Whichever is fullest is the one about to bite, which is exactly
+        /// what <c>GolemMoodRules.Straining</c> wants to warn about.
+        /// </para>
+        /// </summary>
+        public int FullestTypeUnits
+        {
+            get
+            {
+                int input = Input.FullestTypeUnits;
+                int output = Output.FullestTypeUnits;
+                return input > output ? input : output;
+            }
+        }
+
+        /// <summary>
         /// One typed pile of goods, per-item-type capped.
         /// </summary>
         public sealed class Stock
@@ -84,6 +105,28 @@ namespace GolemFactory.Golems
                         total += Get(_order[i]);
                     }
                     return total;
+                }
+            }
+
+            /// <summary>
+            /// The largest count held of any one type, or 0 when empty. Allocation-free, so a
+            /// presentation layer may ask every frame.
+            /// </summary>
+            public int FullestTypeUnits
+            {
+                get
+                {
+                    int fullest = 0;
+                    for (int i = 0; i < _order.Count; i++)
+                    {
+                        int held = Get(_order[i]);
+                        if (held > fullest)
+                        {
+                            fullest = held;
+                        }
+                    }
+
+                    return fullest;
                 }
             }
 
