@@ -15,7 +15,6 @@ namespace GolemFactory.UI
     public sealed class SaveLoadPanel : MonoBehaviour
     {
         [SerializeField] private StorageBufferRegistryHolder bufferRegistryHolder;
-        [SerializeField] private ArtificerFocusMeterHolder focusMeterHolder;
         [SerializeField] private PatentRegistryHolder patentRegistryHolder;
         [SerializeField] private ChassisDefinition[] chassisRoster = new ChassisDefinition[0];
         [SerializeField] private LogicCoreDefinition[] logicCoreRoster = new LogicCoreDefinition[0];
@@ -28,11 +27,10 @@ namespace GolemFactory.UI
         private string _statusMessage = "";
 
         public void Configure(
-            StorageBufferRegistryHolder buffers, ArtificerFocusMeterHolder focus, PatentRegistryHolder patents,
+            StorageBufferRegistryHolder buffers, PatentRegistryHolder patents,
             ChassisDefinition[] chassis, LogicCoreDefinition[] logicCores, AppendageActionDefinition[] appendages)
         {
             bufferRegistryHolder = buffers;
-            focusMeterHolder = focus;
             patentRegistryHolder = patents;
             chassisRoster = chassis ?? new ChassisDefinition[0];
             logicCoreRoster = logicCores ?? new LogicCoreDefinition[0];
@@ -62,14 +60,14 @@ namespace GolemFactory.UI
             }
         }
 
-        // A scene that forgot to wire the three holders used to NullReferenceException on
-        // the first click (Sandbox.unity shipped in exactly that state). Reporting the gap
-        // in the panel's own status line is both safe and diagnosable.
+        // A scene that forgot to wire the holders used to NullReferenceException on the
+        // first click (Sandbox.unity shipped in exactly that state). Reporting the gap in
+        // the panel's own status line is both safe and diagnosable.
         private bool HasDataSources
         {
             get
             {
-                if (bufferRegistryHolder != null && focusMeterHolder != null && patentRegistryHolder != null)
+                if (bufferRegistryHolder != null && patentRegistryHolder != null)
                 {
                     return true;
                 }
@@ -91,7 +89,7 @@ namespace GolemFactory.UI
             GolemFactory.Buildings.PlaceableBuilding[] buildings =
                 Object.FindObjectsByType<GolemFactory.Buildings.PlaceableBuilding>(FindObjectsSortMode.None);
             SaveData data = SaveLoadService.CaptureState(
-                bufferRegistryHolder.Registry, focusMeterHolder.Meter, patentRegistryHolder.Registry,
+                bufferRegistryHolder.Registry, patentRegistryHolder.Registry,
                 golems, buildings);
             SaveFileIO.WriteToFile(data, SaveFileIO.DefaultPath);
             _statusMessage = $"Saved {golems.Length} golems and {data.buildings.Count} buildings.";
@@ -116,7 +114,7 @@ namespace GolemFactory.UI
             var catalog = new DefinitionCatalog(chassisRoster, logicCoreRoster, appendageRoster);
             GolemEntity[] golems = Object.FindObjectsByType<GolemEntity>(FindObjectsSortMode.None);
             SaveLoadService.RestoreReport report = SaveLoadService.RestoreState(
-                data, bufferRegistryHolder.Registry, focusMeterHolder.Meter, patentRegistryHolder.Registry,
+                data, bufferRegistryHolder.Registry, patentRegistryHolder.Registry,
                 golems, catalog, StationGolemRespawner.FindInScene(),
                 BuildModeBuildingRebuilder.FindInScene());
 

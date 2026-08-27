@@ -271,18 +271,37 @@ namespace GolemFactory.World
                 return;
             }
 
-            line.State.SeedCandidates(cardCatalog.Cards);
+            // THE CONTEXT MUST BE WIRED BEFORE THE POOL IS SEEDED, and the order is the whole
+            // of §8.3. SeedCandidates asks IsUnlocked of every card on the way in, and an
+            // unanswerable prerequisite deliberately PASSES (that is what keeps pre-§8 scenes
+            // working). Seeded first, "unanswerable" is exactly what every prerequisite was, so
+            // the entire deck went into the refill queue and nothing ever waited -- R1 Coking
+            // sat in a claimable slot in a factory that had never seen coal. The gating was
+            // authored, tested at unit level, and inert in the only scene that ships it.
+            GolemFactory.Progression.TechTreeProgressTracker tracker =
+                FindAnyObjectByType<GolemFactory.Progression.TechTreeProgressTracker>(
+                    FindObjectsInactive.Include);
 
-            // The line's item prerequisites ask the world what has been produced. Answered from
-            // the buffers rather than from a second ledger: a good the player is holding is a
-            // good the player has made or bought, and a load restores buffers.
             Economy.StorageBufferRegistryHolder buffers = bufferRegistryHolder != null
                 ? bufferRegistryHolder
                 : FindAnyObjectByType<Economy.StorageBufferRegistryHolder>(FindObjectsInactive.Include);
-            if (buffers != null)
+
+            // Asked of the tech tree's ledger rather than of the buffers, because "has this
+            // factory ever produced X" is a question about history and a buffer only knows the
+            // present. The ledger is already fed by both sources that answer it honestly
+            // (ItemAssembledEvent plus its own buffer sweep) and is explicitly monotone, so
+            // spending your last Scrap cannot re-lock a card you had already unlocked. The
+            // buffer sweep stays as the fallback for a scene with no tracker.
+            if (tracker != null)
+            {
+                line.State.ConfigureUnlockContext(itemType => tracker.Ledger.HasItem(itemType));
+            }
+            else if (buffers != null)
             {
                 line.State.ConfigureUnlockContext(itemType => HasEverHeld(buffers, itemType));
             }
+
+            line.State.SeedCandidates(cardCatalog.Cards);
 
             for (int i = 0; i < cardCatalog.OpeningHand.Count; i++)
             {
@@ -301,9 +320,6 @@ namespace GolemFactory.World
                 }
             }
 
-            GolemFactory.Progression.TechTreeProgressTracker tracker =
-                FindAnyObjectByType<GolemFactory.Progression.TechTreeProgressTracker>(
-                    FindObjectsInactive.Include);
             if (tracker != null)
             {
                 tracker.ConfigureCardClaims(line, claimUserId);
@@ -897,6 +913,17 @@ namespace GolemFactory.World
             if (buildModeController != null)
             {
                 buildModeController.ConfigureStationWiring(this);
+            }
+
+            // What lets the wrecking bar take a golem back. The dismantler is the same station
+            // that builds them (GolemConstructionStation implements IGolemDismantler), because
+            // the death sequence has to undo exactly the birth sequence -- the bay slot, the
+            // clock registration and the Workbench target. _stationTemplate is the authored
+            // station the sweep above kept; unwired, the wrecking bar simply refuses a golem's
+            // tile as it did before golems were removable.
+            if (buildModeController != null && _stationTemplate != null)
+            {
+                buildModeController.ConfigureGolemDismantling(_stationTemplate);
             }
 
             if (routingFocusController != null && playerTransform != null)

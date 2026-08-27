@@ -186,6 +186,55 @@ namespace GolemFactory.Player
         }
 
         /// <summary>
+        /// The separator between two clauses of a prompt's detail. U+00B7, deliberately: the
+        /// project's TMP atlas has no em dash and no arrow, and both draw as a missing-glyph box.
+        /// </summary>
+        public const string DetailSeparator = " · ";
+
+        /// <summary>
+        /// What [G] would do to the golem within arm's reach: pick it up, or set down the one
+        /// already in hand.
+        /// </summary>
+        /// <remarks>
+        /// Here rather than spelled out at its two call sites because those two sites are the
+        /// ONLY places the game ever tells the player that [G] exists, and they had to agree.
+        /// One is the golem's own caption; the other is the aside appended to whatever else won
+        /// the [E] pick -- which is the case that matters, because a freshly built golem stands
+        /// on the tile in front of its station, so at the spot the player is standing when it
+        /// appears the *station* is nearest and the golem's caption is not the one being drawn.
+        /// Without the aside, a player who never wanders off the station never learns the key.
+        /// </remarks>
+        /// <param name="golemId">
+        /// Named only when the caption is not already about that golem; pass null from the
+        /// golem's own prompt, where the name is the prompt's subject.
+        /// </param>
+        public static string GolemHandlingHint(string golemId, bool isCarrying)
+        {
+            if (isCarrying)
+            {
+                // "Set down", not "drop": dropping is what happens to something you were not
+                // being careful with, and this places the golem on a chosen tile.
+                return "[G] set down";
+            }
+
+            return string.IsNullOrEmpty(golemId) ? "[G] carry" : "[G] carry " + golemId;
+        }
+
+        /// <summary>
+        /// Joins another clause onto a prompt's detail, supplying the separator only when there
+        /// is something on both sides of it.
+        /// </summary>
+        public static string AppendDetail(string detail, string addition)
+        {
+            if (string.IsNullOrEmpty(addition))
+            {
+                return detail;
+            }
+
+            return string.IsNullOrEmpty(detail) ? addition : detail + DetailSeparator + addition;
+        }
+
+        /// <summary>
         /// The full prompt line. In range it leads with the key so it scans as an action
         /// ("[E] Harvest Scrap - 12 left"); out of range it leads with the instruction, since
         /// pressing the key would do nothing and showing it would be a lie.

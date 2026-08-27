@@ -38,40 +38,33 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void CaptureState_CapturesBufferContentsAndFocus()
+        public void CaptureState_CapturesBufferContents()
         {
             var buffers = new StorageBufferRegistry();
             buffers.Deposit("ScrapBuffer", ItemType.Scrap, 42);
-            var focus = new ArtificerFocusMeter("LocalPlayer", 100f);
-            focus.TryConsume(30f);
             var patents = new PatentRegistry();
 
-            SaveData data = SaveLoadService.CaptureState(buffers, focus, patents, new List<GolemEntity>());
+            SaveData data = SaveLoadService.CaptureState(buffers, patents, new List<GolemEntity>());
 
             Assert.AreEqual(1, data.buffers.Count);
             Assert.AreEqual("ScrapBuffer", data.buffers[0].bufferId);
             Assert.AreEqual(ItemType.Scrap, data.buffers[0].itemTypes[0]);
             Assert.AreEqual(42, data.buffers[0].quantities[0]);
-            Assert.AreEqual(70f, data.focusCurrent);
         }
 
         [Test]
-        public void RestoreState_RestoresBufferContentsAndFocus()
+        public void RestoreState_RestoresBufferContents()
         {
             var sourceBuffers = new StorageBufferRegistry();
             sourceBuffers.Deposit("ScrapBuffer", ItemType.Scrap, 42);
-            var sourceFocus = new ArtificerFocusMeter("LocalPlayer", 100f);
-            sourceFocus.TryConsume(30f);
-            SaveData data = SaveLoadService.CaptureState(sourceBuffers, sourceFocus, new PatentRegistry(), new List<GolemEntity>());
+            SaveData data = SaveLoadService.CaptureState(sourceBuffers, new PatentRegistry(), new List<GolemEntity>());
 
             var destBuffers = new StorageBufferRegistry();
-            var destFocus = new ArtificerFocusMeter("LocalPlayer", 100f);
             var catalog = new DefinitionCatalog(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
 
-            SaveLoadService.RestoreState(data, destBuffers, destFocus, new PatentRegistry(), new List<GolemEntity>(), catalog);
+            SaveLoadService.RestoreState(data, destBuffers, new PatentRegistry(), new List<GolemEntity>(), catalog);
 
             Assert.AreEqual(42, destBuffers.GetOrCreate("ScrapBuffer").GetQuantity(ItemType.Scrap));
-            Assert.AreEqual(70f, destFocus.CurrentFocus);
         }
 
         [Test]
@@ -83,31 +76,16 @@ namespace GolemFactory.Tests.EditMode
             var sourceBuffers = new StorageBufferRegistry();
             sourceBuffers.Deposit("ScrapBuffer", ItemType.Scrap, 42);
             SaveData data = SaveLoadService.CaptureState(
-                sourceBuffers, new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(), new List<GolemEntity>());
+                sourceBuffers, new PatentRegistry(), new List<GolemEntity>());
 
             var destBuffers = new StorageBufferRegistry();
             destBuffers.Deposit("ScrapBuffer", ItemType.Scrap, 9999);
 
             SaveLoadService.RestoreState(
-                data, destBuffers, new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(), new List<GolemEntity>(),
+                data, destBuffers, new PatentRegistry(), new List<GolemEntity>(),
                 new DefinitionCatalog(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]));
 
             Assert.AreEqual(42, destBuffers.GetOrCreate("ScrapBuffer").GetQuantity(ItemType.Scrap));
-        }
-
-        [Test]
-        public void RestoreState_FocusLowerThanCurrent_StillSetsExactly()
-        {
-            // Refund can only ever increase CurrentFocus -- restoring a save with a lower
-            // value than what's live right now needs SetCurrent, not Refund.
-            var data = new SaveData { focusCurrent = 10f };
-            var destFocus = new ArtificerFocusMeter("LocalPlayer", 100f); // starts at 100
-
-            SaveLoadService.RestoreState(
-                data, new StorageBufferRegistry(), destFocus, new PatentRegistry(), new List<GolemEntity>(),
-                new DefinitionCatalog(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]));
-
-            Assert.AreEqual(10f, destFocus.CurrentFocus);
         }
 
         [Test]
@@ -123,13 +101,13 @@ namespace GolemFactory.Tests.EditMode
             var sourcePatents = new PatentRegistry();
             sourcePatents.TryPatent(new Blueprint("BP-001", "LocalPlayer", chassis, logicCore, new List<AppendageActionDefinition> { appendage }));
             SaveData data = SaveLoadService.CaptureState(
-                new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), sourcePatents, new List<GolemEntity>());
+                new StorageBufferRegistry(), sourcePatents, new List<GolemEntity>());
 
             var destPatents = new PatentRegistry();
             var catalog = new DefinitionCatalog(new[] { chassis }, new[] { logicCore }, new[] { appendage });
 
             SaveLoadService.RestoreState(
-                data, new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), destPatents, new List<GolemEntity>(), catalog);
+                data, new StorageBufferRegistry(), destPatents, new List<GolemEntity>(), catalog);
 
             Assert.IsTrue(destPatents.TryUseBlueprint("BP-001", "LocalPlayer", out Blueprint restored));
             Assert.AreEqual(chassis, restored.Chassis);
@@ -156,13 +134,13 @@ namespace GolemFactory.Tests.EditMode
             sourceGolem.Program.State = GolemState.Running;
 
             SaveData data = SaveLoadService.CaptureState(
-                new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(), new List<GolemEntity> { sourceGolem });
+                new StorageBufferRegistry(), new PatentRegistry(), new List<GolemEntity> { sourceGolem });
 
             GolemEntity destGolem = MakeGolem("Golem1");
             var catalog = new DefinitionCatalog(new[] { chassis }, new[] { logicCore }, new[] { appendage });
 
             SaveLoadService.RestoreState(
-                data, new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                data, new StorageBufferRegistry(), new PatentRegistry(),
                 new List<GolemEntity> { destGolem }, catalog);
 
             Assert.AreEqual(chassis, destGolem.Program.chassis);
@@ -192,12 +170,12 @@ namespace GolemFactory.Tests.EditMode
             sourceGolem.Program.SetQuantityAt(1, 3);
 
             SaveData data = SaveLoadService.CaptureState(
-                new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                new StorageBufferRegistry(), new PatentRegistry(),
                 new List<GolemEntity> { sourceGolem });
 
             GolemEntity destGolem = MakeGolem("Golem1");
             SaveLoadService.RestoreState(
-                data, new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                data, new StorageBufferRegistry(), new PatentRegistry(),
                 new List<GolemEntity> { destGolem },
                 new DefinitionCatalog(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage }));
 
@@ -215,12 +193,12 @@ namespace GolemFactory.Tests.EditMode
             sourceGolem.Inventory.AddOutput(ItemType.Aether, 4);
 
             SaveData data = SaveLoadService.CaptureState(
-                new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                new StorageBufferRegistry(), new PatentRegistry(),
                 new List<GolemEntity> { sourceGolem });
 
             GolemEntity destGolem = MakeGolem("Golem1");
             SaveLoadService.RestoreState(
-                data, new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                data, new StorageBufferRegistry(), new PatentRegistry(),
                 new List<GolemEntity> { destGolem },
                 new DefinitionCatalog(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]));
 
@@ -239,7 +217,7 @@ namespace GolemFactory.Tests.EditMode
             GolemEntity sourceGolem = MakeGolem("Golem1");
             sourceGolem.Inventory.AddInput(ItemType.Scrap, 3);
             SaveData data = SaveLoadService.CaptureState(
-                new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                new StorageBufferRegistry(), new PatentRegistry(),
                 new List<GolemEntity> { sourceGolem });
 
             GolemEntity destGolem = MakeGolem("Golem1");
@@ -247,7 +225,7 @@ namespace GolemFactory.Tests.EditMode
             destGolem.Inventory.AddOutput(ItemType.Brass, 5);
 
             SaveLoadService.RestoreState(
-                data, new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                data, new StorageBufferRegistry(), new PatentRegistry(),
                 new List<GolemEntity> { destGolem },
                 new DefinitionCatalog(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]));
 
@@ -285,7 +263,7 @@ namespace GolemFactory.Tests.EditMode
             GolemEntity destGolem = MakeGolem("Golem1");
 
             Assert.DoesNotThrow(() => SaveLoadService.RestoreState(
-                data, new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                data, new StorageBufferRegistry(), new PatentRegistry(),
                 new List<GolemEntity> { destGolem },
                 new DefinitionCatalog(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage })));
 
@@ -312,7 +290,7 @@ namespace GolemFactory.Tests.EditMode
             GolemEntity destGolem = MakeGolem("Golem1");
 
             Assert.DoesNotThrow(() => SaveLoadService.RestoreState(
-                data, new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                data, new StorageBufferRegistry(), new PatentRegistry(),
                 new List<GolemEntity> { destGolem },
                 new DefinitionCatalog(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0])));
 
@@ -329,7 +307,7 @@ namespace GolemFactory.Tests.EditMode
             };
 
             Assert.DoesNotThrow(() => SaveLoadService.RestoreState(
-                data, new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"), new PatentRegistry(),
+                data, new StorageBufferRegistry(), new PatentRegistry(),
                 new List<GolemEntity>(), new DefinitionCatalog(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0])));
         }
     }

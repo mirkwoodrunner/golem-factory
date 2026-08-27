@@ -35,7 +35,7 @@ namespace GolemFactory.Tests.PlayMode
             }
         }
 
-        private (WorkbenchController controller, GolemEntity golem, ArtificerFocusMeterHolder focus, PatentRegistryHolder patents)
+        private (WorkbenchController controller, GolemEntity golem, PatentRegistryHolder patents)
             Build(ChassisDefinition[] chassisRoster, LogicCoreDefinition[] logicCoreRoster, AppendageActionDefinition[] appendageRoster)
         {
             _root = new GameObject("Root");
@@ -43,9 +43,6 @@ namespace GolemFactory.Tests.PlayMode
             var golem = new GameObject("Golem").AddComponent<GolemEntity>();
             golem.transform.SetParent(_root.transform);
             golem.Configure("Golem", null);
-
-            var focus = new GameObject("Focus").AddComponent<ArtificerFocusMeterHolder>();
-            focus.transform.SetParent(_root.transform);
 
             var patents = new GameObject("Patents").AddComponent<PatentRegistryHolder>();
             patents.transform.SetParent(_root.transform);
@@ -86,11 +83,11 @@ namespace GolemFactory.Tests.PlayMode
             var controller = new GameObject("Controller").AddComponent<WorkbenchController>();
             controller.transform.SetParent(_root.transform);
             controller.ConfigureGolem(golem);
-            controller.ConfigureSystems(focus, patents);
+            controller.ConfigureSystems(patents);
             controller.ConfigureRoster(chassisRoster, logicCoreRoster, appendageRoster);
             controller.ConfigureUI(vault, chassisRow, dragLayer, logicSlot, appendageZones, tapeTicker, status, engageButton, patentButton);
 
-            return (controller, golem, focus, patents);
+            return (controller, golem, patents);
         }
 
         private static TextMeshProUGUI AddCaption(Transform row)
@@ -157,7 +154,7 @@ namespace GolemFactory.Tests.PlayMode
             ChassisDefinition chassis = MakeChassis(3);
             LogicCoreDefinition logicCore = MakeLogicCore();
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, golem, _, _) = Build(new[] { chassis }, new[] { logicCore }, new[] { appendage });
+            var (controller, golem, _) = Build(new[] { chassis }, new[] { logicCore }, new[] { appendage });
             yield return null;
             SelectChassisViaButton(controller, 0);
 
@@ -171,39 +168,11 @@ namespace GolemFactory.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator EngageGears_InsufficientFocus_DoesNotCommit()
-        {
-            AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, golem, focus, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new[] { appendage });
-            yield return null;
-
-            // Drain focus to below the default reprogram cost (10).
-            while (focus.Meter.TryConsume(10f)) { }
-
-            controller.HandleDrop(VaultCard(null, appendage), MakeZone(DropZoneKind.Appendage, 0));
-            EngageViaButton(controller);
-
-            Assert.AreEqual(0, golem.Program.appendages.Count);
-        }
-
-        [UnityTest]
-        public IEnumerator EngageGears_SufficientFocus_ConsumesFocus()
-        {
-            var (controller, _, focus, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
-            yield return null;
-            float before = focus.Meter.CurrentFocus;
-
-            EngageViaButton(controller);
-
-            Assert.Less(focus.Meter.CurrentFocus, before);
-        }
-
-        [UnityTest]
         public IEnumerator HandleDrop_DraggedFromOneAppendageSlotToAnother_MovesIt()
         {
             ChassisDefinition chassis = MakeChassis(3);
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, golem, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
+            var (controller, golem, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
             SelectChassisViaButton(controller, 0);
 
@@ -219,7 +188,7 @@ namespace GolemFactory.Tests.PlayMode
         {
             ChassisDefinition chassis = MakeChassis(3);
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, golem, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
+            var (controller, golem, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
             SelectChassisViaButton(controller, 0);
 
@@ -235,7 +204,7 @@ namespace GolemFactory.Tests.PlayMode
         {
             ChassisDefinition chassis = MakeChassis(1);
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, golem, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
+            var (controller, golem, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
             SelectChassisViaButton(controller, 0);
 
@@ -247,11 +216,11 @@ namespace GolemFactory.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator Patent_SufficientFocus_RegistersBlueprint()
+        public IEnumerator Patent_RegistersBlueprint()
         {
             ChassisDefinition chassis = MakeChassis(3);
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, _, _, patents) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
+            var (controller, _, patents) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
             SelectChassisViaButton(controller, 0);
 
@@ -264,25 +233,13 @@ namespace GolemFactory.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator Patent_InsufficientFocus_DoesNotRegister()
-        {
-            var (controller, _, focus, patents) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
-            yield return null;
-            while (focus.Meter.TryConsume(10f)) { }
-
-            PatentViaButton(controller);
-
-            Assert.AreEqual(0, patents.Registry.Blueprints.Count);
-        }
-
-        [UnityTest]
         public IEnumerator SelectChassis_TooFewSlotsForCurrentDraft_IsRejected()
         {
             ChassisDefinition bigChassis = MakeChassis(3);
             ChassisDefinition smallChassis = MakeChassis(1);
             AppendageActionDefinition a1 = MakeAppendage();
             AppendageActionDefinition a2 = MakeAppendage();
-            var (controller, golem, _, _) = Build(new[] { bigChassis, smallChassis }, new LogicCoreDefinition[0], new[] { a1, a2 });
+            var (controller, golem, _) = Build(new[] { bigChassis, smallChassis }, new LogicCoreDefinition[0], new[] { a1, a2 });
             yield return null;
             SelectChassisViaButton(controller, 0);
 
@@ -301,7 +258,7 @@ namespace GolemFactory.Tests.PlayMode
         {
             ChassisDefinition chassis = MakeChassis(3);
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, golemA, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
+            var (controller, golemA, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
 
             var golemB = new GameObject("GolemB").AddComponent<GolemEntity>();
@@ -322,7 +279,7 @@ namespace GolemFactory.Tests.PlayMode
         public IEnumerator RetargetGolem_NewGolemAlreadyHasAProgram_ReloadsDraftFromIt()
         {
             ChassisDefinition chassis = MakeChassis(3);
-            var (controller, _, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            var (controller, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
             yield return null;
 
             var golemB = new GameObject("GolemB").AddComponent<GolemEntity>();
@@ -342,7 +299,7 @@ namespace GolemFactory.Tests.PlayMode
             ChassisDefinition chassis = MakeChassis(3);
             LogicCoreDefinition logicCore = MakeLogicCore();
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, golem, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            var (controller, golem, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
             yield return null;
             var blueprint = new Blueprint("BP-001", "LocalPlayer", chassis, logicCore, new System.Collections.Generic.List<AppendageActionDefinition> { appendage });
 
@@ -358,7 +315,7 @@ namespace GolemFactory.Tests.PlayMode
         [UnityTest]
         public IEnumerator LoadBlueprintIntoDraft_NullBlueprint_IsNoOp()
         {
-            var (controller, golem, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            var (controller, golem, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
             yield return null;
 
             controller.LoadBlueprintIntoDraft(null);
@@ -374,7 +331,7 @@ namespace GolemFactory.Tests.PlayMode
             // Build() (used by every other test in this file) never wires canvasRoot --
             // Open()/Close() must stay pure IsOpen bookkeeping with no visual side effects
             // there, so every pre-existing test above keeps passing unmodified.
-            var (controller, _, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            var (controller, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
             yield return null;
 
             Assert.IsFalse(controller.IsOpen);
@@ -437,7 +394,7 @@ namespace GolemFactory.Tests.PlayMode
         public IEnumerator FailedDrag_ReleasedOverNothing_DestroysTheCardInsteadOfOrphaningIt()
         {
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, _, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new[] { appendage });
+            var (controller, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
 
             Transform dragLayer = FindSibling(controller, "DragLayer");
@@ -468,7 +425,7 @@ namespace GolemFactory.Tests.PlayMode
         public IEnumerator RepeatedFailedDrags_DoNotAccumulateOrphans()
         {
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, _, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new[] { appendage });
+            var (controller, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
 
             Transform dragLayer = FindSibling(controller, "DragLayer");
@@ -490,7 +447,7 @@ namespace GolemFactory.Tests.PlayMode
         public IEnumerator FailedDrag_LeavesNoGhostPlaceholderBehindInTheVault()
         {
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, _, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new[] { appendage });
+            var (controller, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
 
             Transform vault = FindSibling(controller, "Vault");
@@ -514,7 +471,7 @@ namespace GolemFactory.Tests.PlayMode
         public IEnumerator FailedDrag_OrphansAreGoneAfterCloseOpenAndRetarget()
         {
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, _, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new[] { appendage });
+            var (controller, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
 
             Transform dragLayer = FindSibling(controller, "DragLayer");
@@ -543,7 +500,7 @@ namespace GolemFactory.Tests.PlayMode
             // its mid-drag highlight.
             ChassisDefinition chassis = MakeChassis(3);
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, _, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
+            var (controller, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
             SelectChassisViaButton(controller, 0);
 
@@ -568,7 +525,7 @@ namespace GolemFactory.Tests.PlayMode
         {
             ChassisDefinition chassis = MakeChassis(3);
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, golem, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
+            var (controller, golem, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
             SelectChassisViaButton(controller, 0);
 
@@ -592,7 +549,7 @@ namespace GolemFactory.Tests.PlayMode
         {
             ChassisDefinition chassis = MakeChassis(3);
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, golem, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
+            var (controller, golem, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
             SelectChassisViaButton(controller, 0);
             controller.HandleDrop(VaultCard(null, appendage), MakeZone(DropZoneKind.Appendage, 0));
@@ -627,7 +584,7 @@ namespace GolemFactory.Tests.PlayMode
             // genuine "this one would reject the card" case.
             ChassisDefinition chassis = MakeChassis(2);
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, _, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
+            var (controller, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
             SelectChassisViaButton(controller, 0);
 
@@ -649,7 +606,7 @@ namespace GolemFactory.Tests.PlayMode
         {
             ChassisDefinition chassis = MakeChassis(3);
             LogicCoreDefinition logicCore = MakeLogicCore();
-            var (controller, _, _, _) = Build(new[] { chassis }, new[] { logicCore }, new AppendageActionDefinition[0]);
+            var (controller, _, _) = Build(new[] { chassis }, new[] { logicCore }, new AppendageActionDefinition[0]);
             yield return null;
             SelectChassisViaButton(controller, 0);
 
@@ -667,7 +624,7 @@ namespace GolemFactory.Tests.PlayMode
         public IEnumerator EngageGears_Succeeds_PullsTheLeverForReal()
         {
             ChassisDefinition chassis = MakeChassis(3);
-            var (controller, _, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            var (controller, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
             yield return null;
             WorkbenchLever lever = AttachLever(controller);
             SelectChassisViaButton(controller, 0);
@@ -679,24 +636,9 @@ namespace GolemFactory.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator EngageGears_InsufficientFocus_RefusesTheLeverInsteadOfPullingIt()
-        {
-            var (controller, _, focus, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
-            yield return null;
-            WorkbenchLever lever = AttachLever(controller);
-            while (focus.Meter.TryConsume(10f)) { }
-
-            EngageViaButton(controller);
-
-            Assert.IsTrue(lever.IsRefusing,
-                "the lever used to run a full satisfying pull on every failure path -- positive feedback for a no-op");
-            Assert.AreEqual(WorkbenchStatusReason.InsufficientFocusEngage, controller.StatusReason);
-        }
-
-        [UnityTest]
         public IEnumerator EngageGears_NoTargetGolem_ReportsItInsteadOfFailingSilently()
         {
-            var (controller, _, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            var (controller, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
             yield return null;
             WorkbenchLever lever = AttachLever(controller);
             controller.ConfigureGolem(null);
@@ -711,40 +653,26 @@ namespace GolemFactory.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator EngageButton_GoesNonInteractableWhenFocusCannotCoverTheCost()
+        public IEnumerator EngageButton_GoesNonInteractableWithNoGolemToProgram()
         {
-            var (controller, _, focus, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            var (controller, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
             yield return null;
             Button engage = FindSibling(controller, "Engage").GetComponent<Button>();
-            Assert.IsTrue(engage.interactable, "a full Focus meter should leave the lever live");
+            Assert.IsTrue(engage.interactable, "a targeted golem should leave the lever live");
 
-            while (focus.Meter.TryConsume(10f)) { }
+            controller.ConfigureGolem(null);
             yield return null;
 
+            // Focus used to be the other half of this readout. It is gone, so having
+            // something to program is the only thing the lever's state now reports -- and
+            // it must still report it, rather than leaving a live lever that does nothing.
             Assert.IsFalse(engage.interactable,
-                "unaffordability used to be discoverable only by clicking and hunting for a message");
+                "a lever that cannot commit anything used to look identical to one that could");
         }
 
         // ---------------------------------------------------------------------------
         // Status line retires itself when the condition it describes resolves.
         // ---------------------------------------------------------------------------
-
-        [UnityTest]
-        public IEnumerator Status_InsufficientFocus_RetiresItselfOnceFocusRegenerates()
-        {
-            var (controller, _, focus, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
-            yield return null;
-            while (focus.Meter.TryConsume(10f)) { }
-            EngageViaButton(controller);
-            Assert.AreEqual(WorkbenchStatusReason.InsufficientFocusEngage, controller.StatusReason);
-
-            focus.Meter.Refund(100f);
-            yield return null;
-
-            Assert.AreEqual(WorkbenchStatusReason.None, controller.StatusReason,
-                "'Not enough Focus' used to stay on screen while the tape ticker read FOCUS 42/100");
-            Assert.IsEmpty(StatusLabel(controller).text);
-        }
 
         [UnityTest]
         public IEnumerator Status_ChassisTooSmall_RetiresItselfOnceTheAppendagesAreRemoved()
@@ -753,7 +681,7 @@ namespace GolemFactory.Tests.PlayMode
             ChassisDefinition smallChassis = MakeChassis(1);
             AppendageActionDefinition a1 = MakeAppendage();
             AppendageActionDefinition a2 = MakeAppendage();
-            var (controller, _, _, _) = Build(new[] { bigChassis, smallChassis }, new LogicCoreDefinition[0], new[] { a1, a2 });
+            var (controller, _, _) = Build(new[] { bigChassis, smallChassis }, new LogicCoreDefinition[0], new[] { a1, a2 });
             yield return null;
             SelectChassisViaButton(controller, 0);
             controller.HandleDrop(VaultCard(null, a1), MakeZone(DropZoneKind.Appendage, 0));
@@ -785,7 +713,7 @@ namespace GolemFactory.Tests.PlayMode
             // showing a draft that had nothing to do with the golem it pointed at.
             ChassisDefinition chassis = MakeChassis(2);
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, golem, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
+            var (controller, golem, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
 
             golem.Program.TryAssignChassis(chassis);
@@ -805,7 +733,7 @@ namespace GolemFactory.Tests.PlayMode
             ChassisDefinition chassis = MakeChassis(3);
             AppendageActionDefinition a1 = MakeAppendage();
             AppendageActionDefinition a2 = MakeAppendage();
-            var (controller, golemA, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { a1, a2 });
+            var (controller, golemA, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { a1, a2 });
             yield return null;
             SelectChassisViaButton(controller, 0);
             controller.HandleDrop(VaultCard(null, a1), MakeZone(DropZoneKind.Appendage, 0));
@@ -833,7 +761,7 @@ namespace GolemFactory.Tests.PlayMode
             // Exactly Main.unity's old demo-golem state: steps appended straight onto the
             // list, past GolemProgram.TryAddAppendage's no-chassis guard.
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, golem, _, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new[] { appendage });
+            var (controller, golem, _) = Build(new ChassisDefinition[0], new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
             golem.Program.appendages.Add(appendage);
 
@@ -865,7 +793,7 @@ namespace GolemFactory.Tests.PlayMode
         public IEnumerator EngageGears_ProgramHasMoreAppendagesThanSockets_RefusesInsteadOfTruncating()
         {
             ChassisDefinition chassis = MakeChassis(6);
-            var (controller, _, focus, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            var (controller, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
             yield return null;
             WorkbenchLever lever = AttachLever(controller);
 
@@ -880,22 +808,19 @@ namespace GolemFactory.Tests.PlayMode
             Assert.AreEqual(1, controller.DraftOverflowCount,
                 "the rig has 3 sockets and the program has 4 steps");
 
-            float focusBefore = focus.Meter.CurrentFocus;
             EngageViaButton(controller);
 
             Assert.AreEqual(4, wide.Program.appendages.Count,
                 "engaging a truncated draft used to silently discard the steps the UI could not show");
             Assert.AreEqual(WorkbenchStatusReason.DraftTruncated, controller.StatusReason);
             Assert.IsTrue(lever.IsRefusing);
-            Assert.AreEqual(focusBefore, focus.Meter.CurrentFocus,
-                "a refusal the player cannot act on must not also cost Focus");
         }
 
         [UnityTest]
         public IEnumerator Patent_TruncatedDraft_DoesNotRegisterAPartialBlueprint()
         {
             ChassisDefinition chassis = MakeChassis(6);
-            var (controller, _, _, patents) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            var (controller, _, patents) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
             yield return null;
 
             GolemEntity wide = NewGolem("WideGolem");
@@ -918,7 +843,7 @@ namespace GolemFactory.Tests.PlayMode
         public IEnumerator Status_DraftTruncated_RetiresOnceRetargetedOntoAGolemThatFits()
         {
             ChassisDefinition chassis = MakeChassis(6);
-            var (controller, _, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            var (controller, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
             yield return null;
 
             GolemEntity wide = NewGolem("WideGolem");
@@ -952,7 +877,7 @@ namespace GolemFactory.Tests.PlayMode
             // The guard must fire on overflow only. Three steps in three sockets is the
             // boundary case, and it has to stay a normal commit.
             ChassisDefinition chassis = MakeChassis(6);
-            var (controller, _, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            var (controller, _, _) = Build(new[] { chassis }, new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
             yield return null;
 
             GolemEntity exact = NewGolem("ExactGolem");
@@ -1058,7 +983,7 @@ namespace GolemFactory.Tests.PlayMode
             ChassisDefinition chassis = MakeChassis(3);
             AppendageActionDefinition first = MakeAppendage();
             AppendageActionDefinition second = MakeAppendage();
-            var (controller, _, _, _) = Build(
+            var (controller, _, _) = Build(
                 new[] { chassis }, new LogicCoreDefinition[0], new[] { first, second });
             yield return null;
             SelectChassisViaButton(controller, 0);
@@ -1082,7 +1007,7 @@ namespace GolemFactory.Tests.PlayMode
         {
             ChassisDefinition chassis = MakeChassis(3);
             AppendageActionDefinition appendage = MakeAppendage();
-            var (controller, _, _, _) = Build(
+            var (controller, _, _) = Build(
                 new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
             yield return null;
 
@@ -1101,7 +1026,7 @@ namespace GolemFactory.Tests.PlayMode
             // The real prefab's rows all carry one, but a Workbench assembled without them must
             // be a no-op rather than an exception in the middle of a rebuild.
             ChassisDefinition chassis = MakeChassis(3);
-            var (controller, _, _, _) = Build(
+            var (controller, _, _) = Build(
                 new[] { chassis }, new LogicCoreDefinition[0], new[] { MakeAppendage() });
             yield return null;
 
@@ -1109,6 +1034,78 @@ namespace GolemFactory.Tests.PlayMode
             SelectChassisViaButton(controller, 0);
 
             Assert.AreEqual("STEP 1  ·  unused", SlotCaption(0), "the surviving rows still update");
+        }
+
+        // ---------------------------------------------------------------------------
+        // The TARGET header. Untested until now, which is exactly why it spent the whole
+        // project naming golems wrong: the rig never called ConfigureBlueprintPane, so no
+        // test ever rendered this label and a play-mode screenshot was the only thing that
+        // could catch it.
+        // ---------------------------------------------------------------------------
+
+        // Call this AFTER a `yield return null`, never before: Start() is what sizes
+        // _draftAppendages to appendageSlotZones.Length, and RebuildUI walks the zones indexing
+        // that array. Retargeting on the same frame as Build() throws IndexOutOfRange from
+        // RebuildUI rather than doing anything useful.
+        private static TextMeshProUGUI AttachTargetLabel(WorkbenchController controller)
+        {
+            var label = new GameObject("TargetLabel", typeof(RectTransform), typeof(TextMeshProUGUI))
+                .GetComponent<TextMeshProUGUI>();
+            label.transform.SetParent(controller.transform, false);
+            controller.ConfigureBlueprintPane(null, null, null, label);
+            return label;
+        }
+
+        [UnityTest]
+        public IEnumerator TargetHeader_NamesTheGolemById_NotByItsGameObjectName()
+        {
+            var (controller, _, _) = Build(
+                new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            yield return null;
+            TextMeshProUGUI label = AttachTargetLabel(controller);
+
+            // The shape a station-built golem really has: Instantiate names the clone after the
+            // PREFAB, and the id it is Configured with is the only thing that identifies it.
+            GolemEntity golem = NewGolem("PlayerGolem-003");
+            golem.gameObject.name = "GolemPrefab(Clone)";
+            controller.RetargetGolem(golem);
+            yield return null;
+
+            StringAssert.Contains("PlayerGolem-003", label.text);
+            StringAssert.DoesNotContain("Clone", label.text,
+                "the header used to show Unity's Instantiate suffix on the one screen that names a golem");
+        }
+
+        [UnityTest]
+        public IEnumerator TargetHeader_GolemWithNoId_FallsBackToTheObjectNameRatherThanGoingBlank()
+        {
+            var (controller, _, _) = Build(
+                new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            yield return null;
+            TextMeshProUGUI label = AttachTargetLabel(controller);
+
+            // Never Configured, so GolemId is empty. A blank TARGET line reads as the screen
+            // being broken, which is worse than a clumsy name.
+            var unnamed = new GameObject("LooseGolem").AddComponent<GolemEntity>();
+            unnamed.transform.SetParent(_root.transform);
+            controller.RetargetGolem(unnamed);
+            yield return null;
+
+            StringAssert.Contains("LooseGolem", label.text);
+        }
+
+        [UnityTest]
+        public IEnumerator TargetHeader_NoGolem_SaysNone()
+        {
+            var (controller, _, _) = Build(
+                new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            yield return null;
+            TextMeshProUGUI label = AttachTargetLabel(controller);
+
+            controller.RetargetGolem(null);
+            yield return null;
+
+            StringAssert.Contains("none", label.text);
         }
     }
 }

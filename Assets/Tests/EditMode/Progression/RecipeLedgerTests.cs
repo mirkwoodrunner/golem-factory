@@ -189,6 +189,30 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void FormatBundle_NamesEveryGood_NotJustTheFirst()
+        {
+            // The Assembly Line panel shares this: it used to print only a bundle's Scrap
+            // component, so a card costing 8 Scrap + 4 Coke advertised "8 Scrap", lit its
+            // Claim button off a Scrap-only check, and then refused the sale.
+            string text = RecipeLedger.FormatBundle(new List<RecipeIngredient>
+            {
+                new RecipeIngredient(ItemType.Scrap, 8),
+                new RecipeIngredient(ItemType.Coke, 4)
+            });
+
+            Assert.AreEqual("8 Scrap + 4 Coke", text);
+            Assert.AreEqual("nothing", RecipeLedger.FormatBundle(null));
+            Assert.AreEqual("nothing", RecipeLedger.FormatBundle(new List<RecipeIngredient>()));
+        }
+
+        [Test]
+        public void FormatBundle_SplitsCamelCaseItemIds()
+        {
+            Assert.AreEqual("5 Iron Plate", RecipeLedger.FormatBundle(
+                new List<RecipeIngredient> { new RecipeIngredient(ItemType.IronPlate, 5) }));
+        }
+
+        [Test]
         public void TheArrowIsAscii()
         {
             // TMP's default LiberationSans SDF atlas has no U+2192, the constraint

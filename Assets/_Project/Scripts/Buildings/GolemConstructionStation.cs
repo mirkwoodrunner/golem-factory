@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using UnityEngine;
 using GolemFactory.Belts;
 using GolemFactory.Economy;
+using GolemFactory.Events;
 using GolemFactory.Golems;
 using GolemFactory.PunchCards;
 using GolemFactory.UI;
@@ -15,7 +17,7 @@ namespace GolemFactory.Buildings
     // GolemEntity and hand it straight to the Workbench so the player programs it exactly like
     // any other golem.
     [RequireComponent(typeof(PlaceableBuilding))]
-    public sealed class GolemConstructionStation : MonoBehaviour
+    public sealed class GolemConstructionStation : MonoBehaviour, IGolemDismantler
     {
         [SerializeField] private ChassisDefinition[] chassisRoster = new ChassisDefinition[0];
         [SerializeField] private GolemEntity golemPrefab;
@@ -418,7 +420,167 @@ namespace GolemFactory.Buildings
                 clockRunner.Register(golem);
             }
 
+            // A golem that exists but that the player cannot walk up to is not in the game.
+            // PlayerInteractor caches its interactables once at OnEnable, so without this every
+            // golem the player ever built was unreachable for the rest of the session: [G]
+            // refused to carry it, [R] refused to turn it, and [E] would not re-open the
+            // Workbench on it, all while the player stood on its tile. Published from SpawnGolem
+            // rather than from its two callers so a build and a save-restore cannot diverge.
+            EventBus.Publish(new WorldInteractablesChangedEvent("golem spawned"));
+
             return golem;
+        }
+
+        /// <summary>
+        /// The inverse of <see cref="SpawnGolem"/>: takes a golem out of the world and pays back
+        /// what it is owed. The wrecking bar's golem branch, reached through
+        /// <see cref="IGolemDismantler"/>.
+        ///
+        /// <para>
+        /// <b>It undoes the birth sequence in reverse, and the order matters as much there as it
+        /// does going forward.</b> The bay slot and the clock registration are released while the
+        /// golem still exists to be identified by; the steam consumer and the node-extractor
+        /// claim are released by <c>GolemEntity.OnDisable</c>, which <c>Destroy</c> runs — so
+        /// they are deliberately NOT repeated here. Duplicating them would be a second writer
+        /// for state that already has exactly one.
+        /// </para>
+        ///
+        /// <para>
+        /// <b>Room for the payout is checked before a single thing is torn down</b>, so a full
+        /// stockpile costs the player nothing at all. This is <c>BuildModeController
+        /// .RefundWouldFit</c>'s rule, and it matters more here: a building's refund is its cost,
+        /// while a golem's is its cost <em>plus its cargo</em>, so a partial payout would
+        /// destroy goods that were never the price of anything.
+        /// </para>
+        /// </summary>
+        public bool TryDismantleGolem(
+            GolemEntity golem,
+            out IReadOnlyList<RecipeIngredient> refunded,
+            out string refusalReason)
+        {
+            refunded = System.Array.Empty<RecipeIngredient>();
+            refusalReason = "";
+
+            if (golem == null)
+            {
+                refusalReason = "Nothing to dismantle there.";
+                return false;
+            }
+
+            // A golem in the player's hands is mid-reposition, and PlayerInteractor is holding a
+            // reference to it. Destroying it underneath the carry would leave the player walking
+            // around holding nothing, with no way to put it down. Refusing is one sentence; the
+            // alternative is teaching the carry about deletion.
+            if (golem.IsHeld)
+            {
+                refusalReason = $"Put {golem.GolemId} down before dismantling it.";
+                return false;
+            }
+
+            // Only what the player paid for. A scene-authored golem still gives its cargo back
+            // (real goods, wherever the golem came from) but not a chassis nobody bought --
+            // refunding that would mint goods out of the scenery, exactly as refunding authored
+            // furniture would. See GolemDismantleRules.
+            IReadOnlyList<RecipeIngredient> chassisCost =
+                golem.IsRuntimeSpawned && golem.Program != null && golem.Program.chassis != null
+                    ? golem.Program.chassis.cost
+                    : null;
+
+            List<RecipeIngredient> payout = GolemDismantleRules.ComposeRefund(
+                chassisCost,
+                StockAsBundle(golem.Inventory != null ? golem.Inventory.Input : null),
+                StockAsBundle(golem.Inventory != null ? golem.Inventory.Output : null));
+
+            if (!PayoutWouldFit(payout))
+            {
+                refusalReason =
+                    $"Not dismantled: the stockpile has no room for {golem.GolemId}'s refund. " +
+                    "Make space first.";
+                return false;
+            }
+
+            // Released before the GameObject goes, while there is still a golem to match on.
+            if (assemblyBay != null)
+            {
+                assemblyBay.ReleaseGolem(golem);
+            }
+
+            // A destroyed MonoBehaviour left registered would keep being ticked through a
+            // Unity-null reference, which throws rather than no-ops.
+            if (clockRunner != null)
+            {
+                clockRunner.Unregister(golem);
+            }
+
+            // The Workbench holds its target in a field. Left pointing at a destroyed golem it
+            // would show that golem's program and let the lever try to commit onto it.
+            if (workbenchController != null && workbenchController.TargetGolem == golem)
+            {
+                workbenchController.RetargetGolem(null);
+            }
+
+            Destroy(golem.gameObject);
+
+            // Paid after the teardown, matching the order a demolition uses, and safe because
+            // the bundle was composed from the golem's own stock before anything was touched.
+            if (bufferRegistryHolder != null)
+            {
+                for (int i = 0; i < payout.Count; i++)
+                {
+                    bufferRegistryHolder.Registry.Deposit(
+                        stockpileBufferId, payout[i].itemType, payout[i].quantity);
+                }
+            }
+
+            // Same reason SpawnGolem publishes it: PlayerInteractor caches its interactables, so
+            // without this the player keeps being offered a golem that is gone.
+            EventBus.Publish(new WorldInteractablesChangedEvent("golem dismantled"));
+
+            refunded = payout;
+            return true;
+        }
+
+        // One Stock flattened into an ingredient bundle, in TypesInOrder rather than dictionary
+        // order -- the same determinism Push relies on, so two identically-loaded golems quote
+        // the same refund.
+        private static IReadOnlyList<RecipeIngredient> StockAsBundle(GolemInventory.Stock stock)
+        {
+            if (stock == null)
+            {
+                return null;
+            }
+
+            var bundle = new List<RecipeIngredient>(stock.TypesInOrder.Count);
+            for (int i = 0; i < stock.TypesInOrder.Count; i++)
+            {
+                string itemType = stock.TypesInOrder[i];
+                bundle.Add(new RecipeIngredient(itemType, stock.Get(itemType)));
+            }
+
+            return bundle;
+        }
+
+        // Answers true when there is nothing to pay or nowhere to pay it, so the check never
+        // blocks a removal it has no stake in -- Sandbox's stockpile is Unlimited, so in the
+        // shipping scene this always passes. It exists for the capped buffers a later scene may
+        // use, exactly like BuildModeController.RefundWouldFit.
+        private bool PayoutWouldFit(IReadOnlyList<RecipeIngredient> payout)
+        {
+            if (bufferRegistryHolder == null || payout == null || payout.Count == 0)
+            {
+                return true;
+            }
+
+            for (int i = 0; i < payout.Count; i++)
+            {
+                if (bufferRegistryHolder.Registry.RoomFor(stockpileBufferId, payout[i].itemType)
+                    < payout[i].quantity)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         // "PlayerGolem-007" -> reserve 7, so the next build is 008. Anything that does not match

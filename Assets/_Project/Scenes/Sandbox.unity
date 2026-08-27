@@ -645,8 +645,8 @@ MonoBehaviour:
   m_ShadowVolumeIntensityEnabled: 0
   m_ShadowVolumeIntensity: 0.75
   m_LocalBounds:
-    m_Center: {x: 0, y: 0, z: 0}
-    m_Extent: {x: 0, y: 0, z: 0}
+    m_Center: {x: 0, y: -0.00000011920929, z: 0}
+    m_Extent: {x: 0.9985302, y: 0.99853027, z: 0}
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.5
@@ -2282,8 +2282,8 @@ MonoBehaviour:
   m_ShadowVolumeIntensityEnabled: 0
   m_ShadowVolumeIntensity: 0.75
   m_LocalBounds:
-    m_Center: {x: 0, y: 0, z: 0}
-    m_Extent: {x: 0, y: 0, z: 0}
+    m_Center: {x: 0, y: -0.00000011920929, z: 0}
+    m_Extent: {x: 0.9985302, y: 0.99853027, z: 0}
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.5
@@ -10050,8 +10050,8 @@ MonoBehaviour:
   m_ShadowVolumeIntensityEnabled: 0
   m_ShadowVolumeIntensity: 0.75
   m_LocalBounds:
-    m_Center: {x: 0, y: 0, z: 0}
-    m_Extent: {x: 0, y: 0, z: 0}
+    m_Center: {x: 0, y: -0.00000011920929, z: 0}
+    m_Extent: {x: 0.9985302, y: 0.99853027, z: 0}
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.5
@@ -17011,8 +17011,8 @@ MonoBehaviour:
   m_ShadowVolumeIntensityEnabled: 0
   m_ShadowVolumeIntensity: 0.75
   m_LocalBounds:
-    m_Center: {x: 0, y: 0, z: 0}
-    m_Extent: {x: 0, y: 0, z: 0}
+    m_Center: {x: 0, y: -0.00000011920929, z: 0}
+    m_Extent: {x: 0.9985302, y: 0.99853027, z: 0}
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.5
@@ -17112,8 +17112,8 @@ MonoBehaviour:
   m_ShadowVolumeIntensityEnabled: 0
   m_ShadowVolumeIntensity: 0.75
   m_LocalBounds:
-    m_Center: {x: 0, y: 0, z: 0}
-    m_Extent: {x: 0, y: 0, z: 0}
+    m_Center: {x: 0, y: -0.00000011920929, z: 0}
+    m_Extent: {x: 0.9985302, y: 0.99853027, z: 0}
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.5
@@ -20921,10 +20921,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 46579717721619768, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
-      propertyPath: m_TextStyleHashCode
-      value: -1183493901
-      objectReference: {fileID: 0}
     - target: {fileID: 118445849262687279, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_TextStyleHashCode
       value: -1183493901
@@ -20945,18 +20941,6 @@ PrefabInstance:
       propertyPath: m_TextStyleHashCode
       value: -1183493901
       objectReference: {fileID: 0}
-    - target: {fileID: 1445253665954228377, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
-      propertyPath: m_fontColor32.rgba
-      value: 4286226104
-      objectReference: {fileID: 0}
-    - target: {fileID: 1445253665954228377, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
-      propertyPath: m_TextStyleHashCode
-      value: -1183493901
-      objectReference: {fileID: 0}
-    - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
-      propertyPath: focusMeterHolder
-      value: 
-      objectReference: {fileID: 2049142408}
     - target: {fileID: 1538586056348160429, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: constructionPanel
       value: 
@@ -21082,10 +21066,6 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 11400000, guid: 6da79034e65819b40a1cd4d0a6199f31, type: 2}
     - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
-      propertyPath: focusMeterHolder
-      value: 
-      objectReference: {fileID: 2049142408}
-    - target: {fileID: 1650660284604540022, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: bufferRegistryHolder
       value: 
       objectReference: {fileID: 2049142409}
@@ -21209,10 +21189,6 @@ PrefabInstance:
       propertyPath: 'appendageRoster.Array.data[25]'
       value: 
       objectReference: {fileID: 11400000, guid: aa3aa5e3d17e670499fb0a29be14c465, type: 2}
-    - target: {fileID: 1739638850736082168, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
-      propertyPath: m_TextStyleHashCode
-      value: -1183493901
-      objectReference: {fileID: 0}
     - target: {fileID: 2016066765249939843, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_fontColor32.rgba
       value: 4284905612
@@ -21353,19 +21329,11 @@ PrefabInstance:
       propertyPath: m_TextStyleHashCode
       value: -1183493901
       objectReference: {fileID: 0}
-    - target: {fileID: 4481754425096634612, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
-      propertyPath: m_SizeDelta.y
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 4619722594659222888, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_fontColor32.rgba
       value: 4286631152
       objectReference: {fileID: 0}
     - target: {fileID: 4619722594659222888, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
-      propertyPath: m_TextStyleHashCode
-      value: -1183493901
-      objectReference: {fileID: 0}
-    - target: {fileID: 5328569722019788056, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_TextStyleHashCode
       value: -1183493901
       objectReference: {fileID: 0}
@@ -21401,14 +21369,6 @@ PrefabInstance:
       propertyPath: m_TextStyleHashCode
       value: -1183493901
       objectReference: {fileID: 0}
-    - target: {fileID: 6107109867890115708, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
-      propertyPath: m_fontColor32.rgba
-      value: 4280892748
-      objectReference: {fileID: 0}
-    - target: {fileID: 6107109867890115708, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
-      propertyPath: m_TextStyleHashCode
-      value: -1183493901
-      objectReference: {fileID: 0}
     - target: {fileID: 6289899389323594880, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_fontColor32.rgba
       value: 4291947514
@@ -21428,10 +21388,6 @@ PrefabInstance:
     - target: {fileID: 6701433906560166205, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_AdditionalShaderChannelsFlag
       value: 25
-      objectReference: {fileID: 0}
-    - target: {fileID: 6703903570003446627, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
-      propertyPath: m_TextStyleHashCode
-      value: -1183493901
       objectReference: {fileID: 0}
     - target: {fileID: 7076758433116003756, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: lineHolder
@@ -21470,10 +21426,6 @@ PrefabInstance:
       value: 4292263308
       objectReference: {fileID: 0}
     - target: {fileID: 8228492892532744018, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
-      propertyPath: m_TextStyleHashCode
-      value: -1183493901
-      objectReference: {fileID: 0}
-    - target: {fileID: 8515045029510062974, guid: f440f4e68dc7acf4ca56cbaba6ae725b, type: 3}
       propertyPath: m_TextStyleHashCode
       value: -1183493901
       objectReference: {fileID: 0}
@@ -22938,8 +22890,8 @@ MonoBehaviour:
   m_ShadowVolumeIntensityEnabled: 0
   m_ShadowVolumeIntensity: 0.75
   m_LocalBounds:
-    m_Center: {x: 0, y: 0, z: 0}
-    m_Extent: {x: 0, y: 0, z: 0}
+    m_Center: {x: 0, y: -0.00000011920929, z: 0}
+    m_Extent: {x: 0.9985302, y: 0.99853027, z: 0}
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.5
@@ -26053,8 +26005,8 @@ MonoBehaviour:
   m_ShadowVolumeIntensityEnabled: 0
   m_ShadowVolumeIntensity: 0.75
   m_LocalBounds:
-    m_Center: {x: 0, y: 0, z: 0}
-    m_Extent: {x: 0, y: 0, z: 0}
+    m_Center: {x: 0, y: -0.00000011920929, z: 0}
+    m_Extent: {x: 0.9985302, y: 0.99853027, z: 0}
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.5
@@ -37889,17 +37841,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e0b79f3a649f897479404760c6762090, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Blueprints.PatentRegistryHolder
---- !u!114 &2049142408 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 747199131115056301, guid: d9a69809c839d0741a1698e2d0f22ae3, type: 3}
-  m_PrefabInstance: {fileID: 2049142403}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7e9b8dd9d0f315c4e8df15ba6f201e54, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Player.ArtificerFocusMeterHolder
 --- !u!114 &2049142409 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 4483225577306697376, guid: d9a69809c839d0741a1698e2d0f22ae3, type: 3}

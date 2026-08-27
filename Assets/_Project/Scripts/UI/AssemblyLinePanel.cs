@@ -5,6 +5,7 @@ using TMPro;
 using GolemFactory.AssemblyLine;
 using GolemFactory.Buildings;
 using GolemFactory.Economy;
+using GolemFactory.Progression;
 using GolemFactory.PunchCards;
 
 namespace GolemFactory.UI
@@ -50,6 +51,10 @@ namespace GolemFactory.UI
         private static readonly Color DimTextColor = new Color(0.55f, 0.52f, 0.47f, 1f);
         private static readonly Color AffordableCostColor = new Color(1f, 0.76f, 0.30f, 1f);
         private static readonly Color RowTint = new Color(1f, 1f, 1f, 0.035f);
+
+        // How many locked cards the waiting readout names before it summarises the rest.
+        // See CreateWaitingRows: this panel does not scroll.
+        private const int MaxWaitingRowsShown = 4;
 
         private string _statusMessage = "";
 
@@ -149,8 +154,10 @@ namespace GolemFactory.UI
             for (int i = 0; i < line.SlotCount; i++)
             {
                 DraftableCardDefinition card = line.GetCard(i);
-                CreateSlotRow(i, card, line, wallet);
+                CreateSlotRow(i, card, line);
             }
+
+            CreateWaitingRows(line);
 
             if (statusText != null)
             {
@@ -333,7 +340,7 @@ namespace GolemFactory.UI
             return row;
         }
 
-        private void CreateSlotRow(int slotIndex, DraftableCardDefinition card, AssemblyLineState line, int wallet)
+        private void CreateSlotRow(int slotIndex, DraftableCardDefinition card, AssemblyLineState line)
         {
             var row = new GameObject("Slot", typeof(RectTransform), typeof(LayoutElement), typeof(Image), typeof(HorizontalLayoutGroup));
             row.transform.SetParent(content, false);
@@ -371,16 +378,24 @@ namespace GolemFactory.UI
                 return;
             }
 
-            int cost = line.GetCurrentCost(slotIndex);
-            bool affordable = wallet >= cost;
+            // THE WHOLE PRICE, not its Scrap component. GetCurrentCost answers in Scrap so
+            // every pre-§8 caller keeps working, and this row took it literally: R4 Iron
+            // Smelting costs 8 Scrap + 4 Coke and advertised "8 Scrap", lit its Claim button
+            // off a Scrap-only wallet check, and then had TryClaimSlot refuse the sale with
+            // "Not enough Scrap" while the player was looking at enough Scrap. A legacy
+            // Scrap-priced card comes back through the same method as a one-entry bundle, so
+            // this is one path for both authoring styles rather than a branch.
+            IReadOnlyList<RecipeIngredient> price = line.GetCurrentCostBundle(slotIndex);
+            bool affordable = CanAfford(price);
 
-            CreateLabel(row.transform, card.DisplayName, RowTextColor);
+            CreateLabel(row.transform, WorkbenchDiagnostics.Humanize(card.DisplayName), RowTextColor);
             // Cost gets its own fixed-width right-aligned column so the numbers line up
             // vertically -- a cost buried at the end of a variable-length name is not
             // scannable. Affordability is carried by brightness (bright brass vs dim),
             // which is the channel that survives this palette, and the Claim button's own
             // interactable state carries it a second time.
-            CreateCostLabel(row.transform, cost + " Scrap", affordable ? AffordableCostColor : DimTextColor);
+            CreateCostLabel(row.transform, RecipeLedger.FormatBundle(price),
+                affordable ? AffordableCostColor : DimTextColor);
 
             var buttonGo = new GameObject("Claim", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
             buttonGo.transform.SetParent(row.transform, false);
@@ -434,11 +449,13 @@ namespace GolemFactory.UI
             var go = new GameObject("Cost", typeof(RectTransform), typeof(LayoutElement), typeof(TextMeshProUGUI));
             go.transform.SetParent(parent, false);
             LayoutElement element = go.GetComponent<LayoutElement>();
-            // Wide enough for the longest cost string ("999 Scrap") at this font size --
-            // a right-aligned label narrower than its own text overflows leftward and,
-            // at 82f, ran straight into the Claim button beside it.
-            element.preferredWidth = 112f;
-            element.minWidth = 112f;
+            // Wide enough for the longest cost string at this font size -- a right-aligned
+            // label narrower than its own text overflows leftward and, at 82f, ran straight
+            // into the Claim button beside it. Widened again for §8.2's bundles: the longest
+            // real price is the Brass Presser's "15 Scrap + 5 Iron Plate + 2 Gear", which 112f
+            // clipped, and the waiting rows' "needs ..." shares this column.
+            element.preferredWidth = 260f;
+            element.minWidth = 260f;
             element.flexibleWidth = 0f;
             element.flexibleHeight = 0f;
 
@@ -451,12 +468,106 @@ namespace GolemFactory.UI
             label.raycastTarget = false;
         }
 
+        /// <summary>
+        /// Whether the wallet holds every good in a claim price. Reads the SAME buffer
+        /// <see cref="ClaimSlot"/> withdraws from, so the button's lit state and the sale's
+        /// outcome cannot disagree.
+        /// </summary>
+        private bool CanAfford(IReadOnlyList<RecipeIngredient> price)
+        {
+            if (price == null || price.Count == 0)
+            {
+                return true;
+            }
+
+            if (bufferRegistryHolder == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < price.Count; i++)
+            {
+                if (bufferRegistryHolder.Registry.GetQuantity(walletBufferId, price[i].itemType)
+                    < price[i].quantity)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// §8.3's waiting list, on the screen. A locked card is deliberately kept out of the
+        /// slots -- that is the mechanism -- but until now nothing said so, which turns the
+        /// gate into an absence: the player sees three cards, has no idea a fourth exists, and
+        /// reads a tech tree as a slot machine. Naming what is coming and what it is waiting
+        /// for is the difference between progression and being blocked.
+        ///
+        /// <para>
+        /// Capped, and the cap is not cosmetic: this panel has no ScrollRect (slot count was
+        /// small and fixed when it was written), and the deck holds two dozen locked cards in
+        /// the opening minutes. The nearest few plus a count is the readout; the whole list is
+        /// the Ledger's job.
+        /// </para>
+        /// </summary>
+        private void CreateWaitingRows(AssemblyLineState line)
+        {
+            IReadOnlyList<DraftableCardDefinition> waiting = line.WaitingCards;
+            if (waiting == null || waiting.Count == 0)
+            {
+                return;
+            }
+
+            CreateLabel(CreateSlotRoot().transform, "Waiting on prerequisites: " + waiting.Count, DimTextColor);
+
+            int shown = 0;
+            for (int i = 0; i < waiting.Count && shown < MaxWaitingRowsShown; i++)
+            {
+                DraftableCardDefinition card = waiting[i];
+                if (card == null)
+                {
+                    continue;
+                }
+
+                // Through the Workbench's humaniser, so this list reads the way the vault the
+                // card is destined for reads: "Assemble Scrap Reclamation ... needs Iron Plate",
+                // not "AssembleScrapReclamation ... needs IronPlate". Asset ids are an authoring
+                // artifact and the player should never meet one.
+                var row = CreateSlotRoot();
+                CreateLabel(row.transform, WorkbenchDiagnostics.Humanize(card.DisplayName), DimTextColor);
+                CreateCostLabel(
+                    row.transform,
+                    "needs " + WorkbenchDiagnostics.Humanize(line.DescribeMissingPrerequisites(card)),
+                    DimTextColor);
+                shown++;
+            }
+
+            if (waiting.Count > shown)
+            {
+                CreateLabel(CreateSlotRoot().transform,
+                    "... and " + (waiting.Count - shown) + " more further up the tree", DimTextColor);
+            }
+        }
+
         private void ClaimSlot(int slotIndex, DraftableCardDefinition card)
         {
             AssemblyLineState line = lineHolder.State;
-            _statusMessage = line.TryClaimSlot(slotIndex, PlaceableBuilding.LocalPlayerOwnerId, bufferRegistryHolder.Registry, walletBufferId)
-                ? $"Claimed {card.DisplayName}."
-                : "Not enough Scrap to claim that card.";
+            string name = WorkbenchDiagnostics.Humanize(card.DisplayName);
+            if (line.TryClaimSlot(slotIndex, PlaceableBuilding.LocalPlayerOwnerId, bufferRegistryHolder.Registry, walletBufferId))
+            {
+                _statusMessage = $"Claimed {name}.";
+            }
+            else
+            {
+                // Two ways to be refused now, and they need different answers from the player:
+                // go and make something, or go and afford something.
+                string missing = line.DescribeMissingPrerequisites(card);
+                _statusMessage = string.IsNullOrEmpty(missing)
+                    ? $"Cannot afford {name}: it costs {RecipeLedger.FormatBundle(line.GetCurrentCostBundle(slotIndex))}."
+                    : $"{name} is still locked. Needs: {WorkbenchDiagnostics.Humanize(missing)}.";
+            }
+
             Refresh();
         }
 

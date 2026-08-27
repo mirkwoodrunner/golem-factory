@@ -284,6 +284,21 @@ namespace GolemFactory.AssemblyLine
                 return false;
             }
 
+            // §8.3, ENFORCED AT THE TILL AS WELL AS AT THE DOOR. Keeping a locked card out of
+            // the slots is the mechanism; refusing to sell one that got into a slot anyway is
+            // what makes the gate a gate. Without this the whole of §8.3 was advisory -- a
+            // scene that seeded its pool before wiring the unlock context (which SandboxBootstrap
+            // did) put the entire deck on the line, and payment was the only thing standing
+            // between the player and a recipe four tiers ahead of them.
+            //
+            // Safe only because the unlock context is MONOTONE: it answers from
+            // TechTreeProgressLedger, which never forgets. Pointed at live buffer contents
+            // instead, spending your last Scrap would take a card off the market mid-decision.
+            if (!IsUnlocked(card))
+            {
+                return false;
+            }
+
             // Atomic with a full refund on shortfall, exactly as a chassis, a building and a
             // bay upgrade are: a bundle-priced card that took the Scrap and refused on the Iron
             // Plate would be theft at the panel.
@@ -413,7 +428,7 @@ namespace GolemFactory.AssemblyLine
             {
                 if (_slots[i] == null && _refillQueue.Count > 0)
                 {
-                    DraftableCardDefinition next = _refillQueue.Dequeue();
+                    DraftableCardDefinition next = DequeueNextOffer();
                     _slots[i] = next;
                     _secondsOnLine[i] = 0f;
 
@@ -427,6 +442,46 @@ namespace GolemFactory.AssemblyLine
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// The next card worth OFFERING: the first candidate nobody already owns, with the
+        /// owned ones rotated to the back of the queue rather than dropped.
+        ///
+        /// <para>
+        /// §8.4 already says this about unique cards -- "the line goes on offering the player
+        /// something they already own", the slot-wasting it exists to stop -- and the argument
+        /// never depended on uniqueness. The three movement verbs are non-unique and granted at
+        /// t=0, and they appear in the deck TWICE, so a plain <c>Dequeue</c> spent most of the
+        /// line's throughput re-offering Extract, Haul and Push to a player already holding
+        /// them. With §8.3's gating actually working, that is the difference between a card
+        /// track and a slot machine: measured against the shipping deck, the first real recipe
+        /// card sat NINE claims deep, eight of which bought nothing.
+        /// </para>
+        ///
+        /// <para>
+        /// The fallback matters as much as the rule: if every candidate is already owned the
+        /// head is offered anyway, so the line is never blank. A non-unique card therefore still
+        /// cycles -- it just yields to anything the player has not got yet.
+        /// </para>
+        /// </summary>
+        private DraftableCardDefinition DequeueNextOffer()
+        {
+            int count = _refillQueue.Count;
+            for (int i = 0; i < count; i++)
+            {
+                DraftableCardDefinition next = _refillQueue.Dequeue();
+                if (!IsClaimedByAnyone(next))
+                {
+                    return next;
+                }
+
+                // Rotated, not discarded, and the rotation preserves the queue's relative
+                // order -- the skipped cards come back round behind whatever is offered now.
+                _refillQueue.Enqueue(next);
+            }
+
+            return _refillQueue.Dequeue();
         }
     }
 }

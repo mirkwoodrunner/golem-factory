@@ -103,8 +103,8 @@ Editor (or a live MCP-for-Unity bridge, if connected):
 
 As of the last full run (progression pass, Editor passes, the Hand-Crank Bench, the
 isometric→top-down projection switch, the market street, the tech tree chart, the backlog
-pass, the Director's pass, and the cozy automation pass): **1380/1380 tests passing**
-(1220 EditMode + 160 PlayMode).
+pass, the Director's pass, the cozy automation pass, and the playtest-session-3 fixes):
+**1422/1422 tests passing** (1234 EditMode + 188 PlayMode).
 
 **Two ways to run the tests, and which one depends on whether the Editor is open.**
 
@@ -167,14 +167,13 @@ Everything golem/belt-related runs off one fixed-tick loop, not `Update()`:
 Every plain-C# manager class (that needs to live in a scene) gets a thin, single-purpose
 `MonoBehaviour` wrapper suffixed `Holder` that just owns an instance and exposes it as a property
 — e.g. `GridMapHolder` owns a `GridMap`, `ConveyorSystemHolder` owns a `ConveyorSystem`,
-`StorageBufferRegistryHolder`, `ResourceNodeRegistryHolder`, `ArtificerFocusMeterHolder`,
-`PatentRegistryHolder`. This keeps simulation logic engine-decoupled and unit-testable while still
-giving it a scene presence other components can reference in the Inspector. When adding a new
+`StorageBufferRegistryHolder`, `ResourceNodeRegistryHolder`, `PatentRegistryHolder`. This keeps
+simulation logic engine-decoupled and unit-testable while still giving it a scene presence other components can reference in the Inspector. When adding a new
 manager-style system, follow this pattern rather than making the logic itself a `MonoBehaviour`.
 
-### Late-wiring seams (`IGolemRespawner`, `IBuildingRebuilder`, `IPlacedStationConfigurator`)
+### Late-wiring seams (`IGolemRespawner`, `IBuildingRebuilder`, `IPlacedStationConfigurator`, `IGolemDismantler`)
 
-Three interfaces, one shape: something enters the world *after* the scene's one-shot bootstrap
+Four interfaces, one shape: something enters the world *after* the scene's one-shot bootstrap
 sweep — a golem a save restores, a building a save rebuilds, a construction station the player
 places — and needs scene references a prefab cannot carry. In every case the implementor is the
 component that **already** knows how to do that job (`GolemConstructionStation`,
@@ -185,6 +184,12 @@ be holding the reference at the time.
 The station case is the one with teeth: before it existed, a station the player paid 25 Scrap +
 5 Brass for silently built nothing, because `SandboxBootstrap.WireSpatialGameplay` sweeps the
 scene once at startup and by definition cannot see a station built later.
+
+`IGolemDismantler` is the newest and runs the shape in the other direction: the *caller*
+(`BuildModeController`) is the thing on a prefab, and the implementor is again
+`GolemConstructionStation` — because dismantling has to undo exactly what `SpawnGolem` did (the
+bay slot, the clock registration, the Workbench target), and the only way to keep birth and death
+from drifting is to keep them in one file.
 
 ### Golem execution model
 
@@ -298,7 +303,7 @@ an actual playable front door, reusing `Main.unity`'s systems unchanged via two 
   **A belt can only hand off to another belt** — getting items into a buffer needs a golem doing
   `LoadIntoBuffer` at the end of the run.
 - **Known gap**: `Scripts/Save/` now exists (`SaveLoadService`, `SaveData`, `SaveFileIO`,
-  `DefinitionCatalog`) and persists buffers, blueprints, focus, and golem programs (including
+  `DefinitionCatalog`) and persists buffers, blueprints, and golem programs (including
   each golem's cell/facing). But it only ever restores a program onto an **already-existing**
   `GolemEntity` — there is no concept of respawning a player-built golem, so golems the player
   constructed do not survive a fresh session.
@@ -347,7 +352,6 @@ multiplayer board game later without a rewrite:
   single `LocalPlayer`.
 - `PatentRegistry.TryUseBlueprint(blueprintId, userId)` already has the royalty-charge branch,
   no-op'd when `userId == OwnerId`.
-- `ArtificerFocusMeter` is per-player from the start (the seam for later competitive turn order).
 - Purely global systems (`SimulationClock`, `GridMap`) are allowed to stay simple singletons —
   don't over-engineer those into per-player state.
 
@@ -380,6 +384,88 @@ future second owner would need a rewrite instead of a parameter.
   `IFilteredEndpoint` exists so `GolemEntity.PushStockInto` can tell "this crate is full" from
   "this crate is for something else" on the failure path; it is not part of `IItemEndpoint` and
   should not become part of it.
+- **The Assembly Line's unlock context is wired BEFORE the pool is seeded, and it is monotone.**
+  `AssemblyLineState.SeedCandidates` asks `IsUnlocked` of every card on the way in, and an
+  *unanswerable* prerequisite deliberately passes (that is what keeps pre-§8 scenes working). So
+  seeding first makes every prerequisite unanswerable and §8.3's gating **inert** — which is
+  exactly what `SandboxBootstrap` did from the day it shipped: the whole deck went into the refill
+  queue, `R1 Coking` sat in a claimable slot in a factory that had never seen coal, and the gating
+  was authored, unit-tested and doing nothing in the only scene that ships it. Two more rules hold
+  it shut: `TryClaimSlot` refuses a locked card (the gate at the till, not just at the door), and
+  the context is answered from `TechTreeProgressLedger.HasItem` — which **only ever grows** —
+  rather than from live buffer contents, so spending your last Scrap cannot re-lock a card you had
+  already unlocked. `TechTreeProgressTracker.Poll` calls `PromoteUnlockedCards` when its ledger
+  version changes, because the line otherwise only re-checks its waiting list on a *claim*.
+  A slot is a purchase offer, so `RefillEmptySlots` also skips a card the player already owns
+  (rotating it to the back rather than dropping it) — the movement verbs are non-unique, granted
+  at t=0 *and* listed twice in the deck, so without that the first real recipe card sat nine
+  claims deep, eight of which bought nothing.
+- **Demolition refunds the full cost. This is a settled design call: the game is cozy, so
+  placement and reorganising must not be punitive.** It was raised as a tuning question in
+  playtest and answered — **do not reintroduce a salvage fraction as "balance"**. A percentage is
+  a tax on changing your mind in a game whose loop is laying something down and moving it, and a
+  full refund makes "move a building" free with the tools that already exist (remove, then place)
+  rather than needing a pick-up-and-carry mode. Three rules keep it honest, and each one is load-
+  bearing:
+  - **Only what the player paid for.** `RefundBuilding` gates on `PlaceableBuilding
+    .IsRuntimePlaced`, or demolishing the scene's own authored furniture would mint goods.
+  - **Only a player's own click.** `DemolishBuilding` takes an explicit `refund` flag, and
+    `ClearRuntimePlacedBuildings` passes `false`. A load *replaces* the built world and sweeps
+    exactly the buildings a refund pays out on, so refunding there hands the player their whole
+    factory's cost on every load, on top of the buffers the save then restores — save/load/save
+    /load is an infinite duplicator. This was a real regression, caught before it shipped.
+  - **Never destroy what it cannot hand back.** `RefundWouldFit` is asked *before* anything is
+    torn down; with no room in the stockpile the building stays standing and says why. A
+    demolition that ate the overflow is precisely the punishment the full refund removes.
+  **Removal has its own mode** (`BuildModeController.IsDemolishActive`, the build menu's last
+  row): every click is gated on `BuildClickPolicy.ShouldPlace`, which demands a tool in hand, so
+  before the wrecking bar existed removal was reachable *only while holding a placeable* —
+  invisible while build mode had no exit, and silently broken for anyone who pressed Escape once
+  that shipped.
+  - **The wrecking bar takes golems too**, through `IGolemDismantler` →
+    `GolemConstructionStation.TryDismantleGolem`, under the same three rules plus one of its own:
+    **a golem's cargo is refunded as well as its chassis** (`GolemDismantleRules.ComposeRefund`).
+    The golem a player most wants rid of is usually the stalled one holding something, so
+    destroying its load would put the sting back into exactly the case the full refund exists
+    for. Only the chassis is gated on `GolemEntity.IsRuntimeSpawned`; the cargo is real goods
+    whoever built the golem.
+  - **Golems are NOT `GridMap` occupants** — only buildings are, and the two `TryOccupy` calls in
+    `BuildModeController` are the only ones in the project. A golem knows its own cell instead, so
+    the wrecking bar finds one by scanning (`TryFindGolemAt`), not by a map lookup. Anything else
+    that wants "what is standing here" has to do the same; there is no golem-by-cell registry.
+  - **A held golem is refused, not destroyed.** `PlayerInteractor` holds the reference during a
+    `[G]` carry, so deleting it mid-carry leaves the player holding nothing they can put down.
+- **There is no Artificer Focus meter, and patenting is free. This is a settled design call.**
+  `ArtificerFocusMeter`, its holder, and `WorkbenchFocusPolicy` (§8's `8 + 6 × appendageCount`
+  reprogram cost, flat 10 for a stamped patent) were **deleted rather than retuned**, along with
+  `focusCurrent` in the save and the `FOCUS n/100` segment of the Workbench tape. The meter
+  regenerated 5/s against a 100 cap, so the longest program in the game cost about six seconds of
+  standing still — `progression-design.md` §12 had already written it off as "**Clear.**
+  Regenerates at 5/s". Its only real job was being the currency a patent discounted, which made
+  the patent system's entire justification a tax that same system owned.
+  - **What survives is the half that does something**: the Patent Registry is a **named-program
+    library** — patent a draft, load it back from the Patents tab, engage it. Free, and still
+    worth having, because retyping a six-card program is the cost it actually removes.
+  - **Do not reintroduce a Workbench currency to "give patents a purpose."** If reprogramming
+    should cost something, it should be something the *factory* pays in goods, not something the
+    player pays in waiting — the same argument that settled the demolition refund above.
+  - `WorkbenchStatusReason` lost `InsufficientFocusEngage`/`InsufficientFocusPatent`, so it is one
+    of the rare **non**-append-only enum edits in the repo. That is safe only because it is
+    serialized nowhere (unlike `StallReason`/`AppendageActionType`); keep it that way.
+  - The lever's readout survives as availability only (`UpdateEngageAvailability`): no targeted
+    golem, no pull. It used to also mean "no Focus", and it did that **wrong** — it gated on a
+    flat serialized `reprogramFocusCost = 10` while the lever charged `8 + 6n`, so the prefab's
+    label read "10 focus" and a 3-step commit then refused for needing 26.
+- **A golem is named by its `GolemId`, never by its GameObject name.** `Instantiate` names a
+  clone after the *prefab*, so a station-built golem's object is `GolemPrefab(Clone)` while the
+  only thing that identifies it — to the save file, the stall events, the steam and extractor
+  registries — is the id `SpawnGolem` configured. `AlertsPanel`, `GolemStallIndicator` and
+  `StallTracker` all read `GolemId`; the Workbench's TARGET header read `.name` and so was the
+  one screen in the game that called `PlayerGolem-003` "GolemPrefab(Clone)". Fixed via
+  `WorkbenchController.GolemDisplayName`, which falls back to the object name only for a golem
+  that never got an id. **It was found in a play-mode screenshot, not by a test**, because the
+  test rig never wired `ConfigureBlueprintPane` and so nothing ever rendered that label — which
+  is the argument for taking screenshots, and the reason there are now three tests on it.
 - **Item tiers are data now.** `Economy/ItemTiers.cs` transcribes §5.1's grouping (which previously
   lived only in `ItemType`'s comments) so code can ask a good's depth. `ItemTiersTests` pins it by
   **reflection over `ItemType`**, so a new good cannot be added without being given a tier.
@@ -411,12 +497,31 @@ future second owner would need a rewrite instead of a parameter.
   Node identity must be the *sprite*. This had already bitten once before it was noticed: the
   Aether marker wore the brass ingot under a teal tint and rendered as plain brass in every play
   session, while `item_aether.png` sat unused.
-- **TMP text is ASCII or Latin-1 only.** The default `LiberationSans SDF` atlas has no arrows
-  (`U+2192`), no em dash (`U+2014`) and no `U+26A0`; they render as missing-glyph boxes. `·`
-  (U+00B7) is in the atlas and is the project's separator. **This has bitten for real**: fourteen
+- **TMP text is Latin-1 plus four baked glyphs — nothing else.** The allowlist is
+  `→` (U+2192), `≥` (U+2265), `█` (U+2588) and `░` (U+2591), and `·` (U+00B7) is the project's
+  separator. Anything else above `U+00FF` is forbidden. **This has bitten for real**: fourteen
   arrows sat in `TechTreeCatalog`'s node details from the day the chart was written, so every
-  recipe node on the Ledger drew a box. `TechTreeCatalogTests` now walks every catalog string and
-  refuses anything above `U+00FF`; do the same for any new authored UI text.
+  recipe node on the Ledger drew a box. `TechTreeCatalogTests` walks every catalog string and
+  refuses anything above `U+00FF` — keep that guard exactly as it is, because catalog strings are
+  *baked* and the allowlist below does not apply to them.
+  - **Why an allowlist and not the old blanket ban.** This rule used to say the four glyphs
+    "render as missing-glyph boxes". That was true of the baked Ledger strings and **is not true
+    of live TMP text**: `LiberationSans SDF - Fallback.asset` is `m_AtlasPopulationMode: 1`
+    (Dynamic), so TMP resolves an unknown character from an OS font at runtime and caches it. A
+    game-view screenshot confirms `1 Coal → 1 Coke` and `[█████░░░░░] 50%` both draw correctly.
+  - **The real hazard was version-control churn, and it is fixed.** Because that atlas is a
+    *committed asset*, every session that rendered a new glyph rewrote it — a clean tree dirtied
+    itself just by pressing Play, differently on each machine depending on its OS fonts. All four
+    glyphs are now baked into the asset, so it is stable: a full play session that renders every
+    one of them leaves the file byte-identical (verified by hash).
+  - **Adding a fifth glyph is therefore a two-part change**: bake it into the fallback asset
+    (`TMP_FontAsset.TryAddCharacters` + `SaveAssets`, committed with the code) *and* add it here.
+    Ship the code alone and it renders on your machine, boxes on someone else's, and re-dirties
+    the atlas for everyone.
+  - The four in use live in exactly two files: `Buildings/HandCrankReadout.cs` (the conversion
+    line and `ProgressBar` — whose doc comment still says `[####------]`, i.e. it was authored
+    ASCII and drifted to blocks later) and `UI/WorkbenchController.cs` (the threshold and routing
+    captions).
 - **Verify a UI change by looking at the game view, not just its serialized properties.** Both §8
   HUD readouts were once parented to `WorkbenchCanvas.prefab`'s *root* — which is a plain
   `Transform` that happens to share its name with the `Canvas` child — so they were present,

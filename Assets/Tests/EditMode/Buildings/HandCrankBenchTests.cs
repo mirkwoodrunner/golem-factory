@@ -116,6 +116,51 @@ namespace GolemFactory.Tests.EditMode
         // --- Cranking --------------------------------------------------------------------
 
         [Test]
+        public void AFinishedCraftNamesWhatItMade()
+        {
+            // What the player's "+1 Iron Plate" confirmation is built from. The bench used to
+            // bank its output in silence, so the only way to tell a minute of cranking had
+            // produced anything was to open the Management panel and compare numbers.
+            RecipeDefinition r2 = MakeRecipe("IronPlate", 1, 24, ("Scrap", 1));
+            var (bench, stock) = Build(r2);
+            stock.Deposit("Scrap", 10);
+
+            Assert.IsNull(bench.LastCompletedRecipe, "nothing has been made yet");
+
+            bench.IsCranking = true;
+            for (int tick = 0; tick < HandCrankRules.CrankTicks(24); tick++)
+            {
+                bench.Tick(tick);
+            }
+
+            Assert.AreEqual(1, bench.CompletedCrafts);
+            Assert.AreSame(r2, bench.LastCompletedRecipe);
+        }
+
+        [Test]
+        public void TheFinishedCraftSurvivesCyclingTheDialAwayFromIt()
+        {
+            // Why it is recorded rather than read back off SelectedRecipe: [R] can cycle the
+            // dial in the same frame the craft lands, and a caption reading the selection would
+            // then credit the goods to whatever is now under the handle.
+            RecipeDefinition coke = MakeRecipe("Coke", 1, 12, ("Coal", 1));
+            RecipeDefinition plate = MakeRecipe("IronPlate", 1, 24, ("Scrap", 1));
+            var (bench, stock) = Build(coke, plate);
+            stock.Deposit("Coal", 5);
+
+            bench.IsCranking = true;
+            for (int tick = 0; tick < HandCrankRules.CrankTicks(12); tick++)
+            {
+                bench.Tick(tick);
+            }
+
+            bench.CycleRecipe();
+
+            Assert.AreSame(plate, bench.SelectedRecipe, "the dial moved on");
+            Assert.AreSame(coke, bench.LastCompletedRecipe, "but Coke is what was actually made");
+        }
+
+        [Test]
         public void HoldingTheCrankForTheFullDurationProducesExactlyOneCraft()
         {
             RecipeDefinition r2 = MakeRecipe("IronPlate", 1, 24, ("Scrap", 1));

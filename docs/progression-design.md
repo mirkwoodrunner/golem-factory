@@ -63,7 +63,7 @@ Verified against live code, not docs.
 | `AssemblyBayStructure` | `MaxGolemSlots` + `TryUpgrade` implemented. **Not in the loop.** |
 | `FloorLayout` | `public const int HalfExtent = 12` → a **25 × 25** floor. Read by `PlayerController.ClampToFloor` at runtime and by `SandboxFloorGenerator`, which is **Editor-only**. |
 | `BeltPlacementRules.ShouldLink` | **Directional** — requires `TargetCell(from, facing) == to` and rejects head-on pairs. |
-| `PatentRegistry` / `ArtificerFocusMeter` | Implemented, wired to the Workbench. |
+| `PatentRegistry` | Implemented, wired to the Workbench. **`ArtificerFocusMeter` no longer exists** — cut after this doc was written; see the annotation on §8's "Patents become the scaling tool". |
 | Tick rate | `TicksPerSecond = 10` → **1 tick = 0.1 s**. All durations below are ticks. |
 
 ---
@@ -632,6 +632,15 @@ and gives the player something to spend surplus on while a stage grinds.
   golems** and ~12 identical smelters; patenting once and stamping is then obviously correct — the
   Factorio blueprint arc, built entirely from mechanics already in the repo.
 
+  > **REVERSED — built, then cut.** This shipped exactly as written and was later removed along
+  > with the whole Focus meter. The argument above is circular: it justifies patents by a cost
+  > that only patents pay, and the cost never bound anyway — see §12's own "Focus exhaustion:
+  > **Clear.** Regenerates at 5/s". At 5/s against a 100 cap, the most expensive program in the
+  > game (44) was under nine seconds of standing still, so "obviously correct by the 23rd golem"
+  > was true of the *typing*, not of the Focus. Patents survive as a free named-program library;
+  > the scaling, the flat stamp and the meter are gone. See
+  > `unity-implementation-plan.md` § "Cutting the Artificer Focus meter".
+
 ### Legibility surfaces
 
 Every one extends something that exists.
@@ -706,7 +715,8 @@ or Glass line. Meanwhile Brass demands copper and zinc in one golem's input stoc
 The Overclocker opens Mechanisms, the Tier-5 goods and `Repeat` — and immediately poses its own
 question, since `Repeat` and a third ingredient compete for the same fifth slot. Then the long haul
 for the Zeppelin, roughly **12–18 minutes** of a mature factory's full output, during which the
-player patents the Coke, Smelter and carrier programs and stamps out copies at a flat 10 Focus. The
+player patents the Coke, Smelter and carrier programs and stamps out copies (free — the flat-10
+Focus stamp this sentence assumed was reversed; see §8). The
 first Zeppelin opens Regulators and Chronometer Cores, but the bigger change is the **Freight
 Link**: distant copper and aether sites get local boilers and a mast, and two long belt corridors
 plus their pipe runs get torn out and their tiles reclaimed. Ends: **~44 golems**.
@@ -751,7 +761,7 @@ the alerts strip tells you exactly which tile.*
 | **Coke death spiral under proportional burn** | **Clear.** A coal cluster of 1 extractor + 4 cokers + 2 loaders = 7 golems produces 140 Coke/min and consumes 42 — **3.3 : 1**. Convergent at every scale. A player who over-builds into a deficit can delete golems (freeing both bay slots and upkeep instantly), or hand-crank coke. |
 | **All Scrap spent on belts/floor** | **Clear.** Scrap is always hand-harvestable and the crank bench always works. |
 | **Total blackout with no golems to recover** | **Clear.** The Hand-Crank Bench runs R1 without steam, so the player can always hand-crank coke to restart. **The bench must be explicitly unpowered.** |
-| **Focus exhaustion** | **Clear.** Regenerates at 5/s. |
+| **Focus exhaustion** | **Moot.** This row is why: "clear" at 5/s meant the resource never bound, and the meter was cut. |
 | **Clock Tower failure** | **Clear.** Progress freezes at 0, never negative. |
 | **Wasted Assembly Line claims** | **Low.** Prerequisites prevent claiming far-future cards; claim costs are small relative to a phase's output. |
 
@@ -805,7 +815,7 @@ Ordered by blocking-ness.
     > re-placement. This is more work than "purchasable growth" suggests. Acceptable fallback: a
     > larger fixed floor whose outer region is gated by a one-time unlock. The design needs land to
     > be finite and expensive, not continuously paveable.
-16. **Focus cost scaling** on `EngageGears`; flat cost for patented commits.
+16. ~~**Focus cost scaling** on `EngageGears`; flat cost for patented commits.~~ **Built, then reversed** — see the annotation in §8.
 17. **Legibility surfaces** — the eight rows in §8. Not polish; the fuel gauge and the coke/slag
     lines are how the player perceives the entire scarcity system.
 

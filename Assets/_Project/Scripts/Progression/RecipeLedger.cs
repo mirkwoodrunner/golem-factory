@@ -302,22 +302,39 @@ namespace GolemFactory.Progression
             return digits > 1 ? nodeDisplayName.Substring(0, digits) + "_" : null;
         }
 
-        private static void AppendInputs(StringBuilder text, List<RecipeIngredient> inputs)
+        /// <summary>
+        /// A list of goods as one line, e.g. <c>2 Scrap + 1 Coke</c>, with every name through
+        /// <see cref="ItemTiers.DisplayName"/>. Public because a recipe's inputs and an Assembly
+        /// Line card's claim price are the same shape and must read the same way -- the panel
+        /// used to print only the Scrap component of a bundle, so a card costing 8 Scrap and
+        /// 4 Coke advertised itself as "8 Scrap" and then refused the sale.
+        /// </summary>
+        public static string FormatBundle(IReadOnlyList<RecipeIngredient> goods)
         {
-            if (inputs == null || inputs.Count == 0)
+            var text = new StringBuilder(48);
+            AppendGoods(text, goods);
+            return text.ToString();
+        }
+
+        private static void AppendInputs(StringBuilder text, List<RecipeIngredient> inputs) =>
+            AppendGoods(text, inputs);
+
+        private static void AppendGoods(StringBuilder text, IReadOnlyList<RecipeIngredient> goods)
+        {
+            if (goods == null || goods.Count == 0)
             {
                 text.Append("nothing");
                 return;
             }
 
-            for (int i = 0; i < inputs.Count; i++)
+            for (int i = 0; i < goods.Count; i++)
             {
                 if (i > 0)
                 {
                     text.Append(" + ");
                 }
 
-                AppendQuantity(text, inputs[i].itemType, inputs[i].quantity);
+                AppendQuantity(text, goods[i].itemType, goods[i].quantity);
             }
         }
 

@@ -69,13 +69,15 @@ turn-based and competitive:
   - **Signal (chained)** — fires when another named golem completes its cycle,
     recreating chain-reaction automation between golems.
   - **AlwaysOn** — loops continuously as fast as its program's step durations allow.
-- **Artificer Focus meter** — a distinct resource, separate from the passive
-  simulation clock, that gates *intellectual* Artificer actions (reprogramming a
-  golem's punch cards, filing a blueprint, swapping a chassis) while keeping raw
-  building/placement free and instant. This preserves the core asymmetry from the
-  design brief — golems run rigidly and automatically on the world clock; Artificers
-  act flexibly but are resource-gated — and doubles as the seam for later "furthest
-  behind goes next" competitive turn order.
+- ~~**Artificer Focus meter**~~ — **CUT.** It was built in M8 and deleted; see
+  "Cutting the Artificer Focus meter" at the end of this file. The idea was a
+  resource, separate from the passive simulation clock, gating *intellectual*
+  Artificer actions (reprogramming a golem's punch cards, filing a blueprint,
+  swapping a chassis) while raw building/placement stayed free and instant. The
+  asymmetry it was meant to preserve — golems rigid and automatic, Artificers
+  flexible but resource-gated — turned out not to need a meter: at 5/s regen against
+  a 100 cap it never bound, and the half that carried the asymmetry is the *rigidity
+  of golems*, which is structural and still there.
 - Treat v1 as an open-ended sandbox with no forced end condition; the "Clock Tower"
   end-game is a good candidate for a later optional mega-project goal system, not a
   v1 requirement.
@@ -131,8 +133,6 @@ check. Chassis capacity is enforced only at authoring time in the programming UI
   the royalty-charge branch, no-op'd when `userId == OwnerId`.
 - `AssemblyLineState` (drip-feeds new unlocks over time) exposes `ClaimSlot(userId)`
   from the start, even though only one user calls it in v1.
-- The Artificer Focus meter is per-player from the start, so it can flip into
-  competitive turn order later.
 - No Netcode/Mirror packages, no client-authority split — just avoid hardcoding
   singleton "the player" access inside ownable entities. Purely global systems
   (`SimulationClock`, `GridMap`) can stay simple singletons.
@@ -149,7 +149,7 @@ Assets/_Project/Scripts/
   Blueprints/   Blueprint, PatentRegistry, OwnerId
   AssemblyLine/ AssemblyLineState, DraftableCardDefinition
   Economy/      ResourceInventory, ItemType definitions
-  Player/       ArtificerController, BuildModeController, ArtificerFocusMeter
+  Player/       ArtificerController, BuildModeController
   UI/           WorkbenchPanel (blueprint viewport + Card Vault + Engage Gears
                  lever), GolemStatusPanel, HUD, BuildMenu
   Events/       event bus for triggers
@@ -3283,3 +3283,222 @@ overwriting them depending on which loop happened to run second.
 - **Floor variation** was already built (four plank variants plus two rare hash-placed accents) and
   was not touched. If the floor still reads as monotone in play, that is a tuning question about
   `FloorTileVariant`'s rarities, not a missing feature.
+
+## Cutting the Artificer Focus meter
+
+**M8's Focus meter is gone.** Not retuned, not disabled — `ArtificerFocusMeter`,
+`ArtificerFocusMeterHolder`, `WorkbenchFocusPolicy` and `ArtificerFocusMeterTests` are deleted, and
+so are the `FOCUS n/100` segment of the Workbench tape, the two `Cost` labels on the lever and the
+Patent button, `SaveData.focusCurrent`, and the `focus` parameters of `SaveLoadService
+.CaptureState`/`RestoreState`, `WorkbenchStatusPolicy.ShouldClear` and
+`WorkbenchDiagnostics.ComposeTicker`. Everything above stays: the Workbench, the draft model, the
+lever, the Patent Registry and its browser tab.
+
+### Why
+
+The question that started it was whether Focus and Patents were board-game residue. Half of that is
+true and half is not, and the answer differs per system.
+
+- **Focus never bound.** 100 cap, 5/s regen, two spend sites in the entire game (`EngageGears` at
+  `8 + 6 × appendageCount`, `Patent` at a flat 20), and nothing else — building, placing,
+  demolishing, harvesting, cranking and claiming Assembly Line cards were all free. A six-step
+  program cost 44, i.e. **8.8 seconds of standing still**. `progression-design.md` §12's own risk
+  table had already scored it "**Clear.** Regenerates at 5/s."
+- **Its only job was to be the thing a patent discounted.** §8 made stamping a patented blueprint
+  a flat 10 specifically so patenting would pay off from three appendages up. That is circular: the
+  patent system's justification was a tax the patent system also owned. Remove the tax and the
+  patent system loses an argument, not a feature.
+- **Patents are not residue.** The *royalty* branch in `TryUseBlueprint` is (it is the tabletop's
+  "pay the patent holder", and it is still one empty `if` reserved for multiplayer), but the
+  registry itself is real single-player QoL: a named, saved, reloadable program. It keeps working,
+  and now it is free.
+
+### A bug found on the way out
+
+The affordability readout and the lever charged **different numbers**. `UpdateAffordability` gated
+`engageGearsButton.interactable` and wrote its label from the serialized flat `reprogramFocusCost
+= 10`, while `EngageGears` charged `CurrentEngageFocusCost` (`8 + 6n`). The prefab's labels — read
+back out of `WorkbenchCanvas.prefab` during this pass — literally said `10 focus` and `20 focus`.
+So any program with at least one appendage advertised a price it would then refuse to accept:
+"Not enough Focus to reprogram (need 26)" under a live-looking lever labelled 10. The serialized
+field was a leftover from before §8's scaling landed, and only two of its three call sites were
+updated. It is moot now, but it is the kind of drift a flat serialized "legacy floor" invites.
+
+### What replaced the affordability readout
+
+`UpdateAffordability` → `UpdateEngageAvailability`, which now reports the one remaining thing that
+can stop a pull: no targeted golem. That half was always there and was worth keeping — a live lever
+that commits nothing is the failure the original readout existed to prevent. The PlayMode test that
+pinned the Focus half was rewritten to pin this one rather than deleted.
+
+### Enum note
+
+`WorkbenchStatusReason` lost two *middle* values (`InsufficientFocusEngage`,
+`InsufficientFocusPatent`), which makes it the repo's one non-append-only enum edit. It is safe
+only because that enum is serialized nowhere — unlike `StallReason` and `AppendageActionType`,
+which are written into `.asset` files and events by integer index. Keep it unserialized.
+
+### Editor-side work, and one self-inflicted scare
+
+Prefab and scene surgery ran through the MCP bridge (`PrefabUtility.LoadPrefabContents` /
+`SaveAsPrefabAsset`), removing the `FocusMeter` GameObject from `ManagerHolders.prefab` and the two
+`Cost` labels from `WorkbenchCanvas.prefab`. Both lever and Patent button use **absolute anchors,
+not a layout group**, so removing the labels left no hole to reflow.
+
+`Sandbox.unity` then held twelve dangling `m_Modifications` — ten pointing at the deleted `Cost`
+objects, two setting `focusMeterHolder` on a script that no longer has the field. The first attempt
+to prune them filtered by "does this propertyPath still resolve on the target", which **also
+dropped 48 legitimate array-element overrides** (`availableAppendages.Array.data[4..23]`,
+`appendageRoster[4..25]`, the station's whole `chassisRoster`) because array-element paths do not
+resolve that way. Caught by diffing the scene, fixed by `git checkout` on the scene, reloading it
+in the Editor, and re-running with an explicit two-condition filter (`target == null ||
+propertyPath == "focusMeterHolder"`). Result verified by counting `propertyPath` occurrences in the
+YAML: 188 → 176, and a diff showing only the twelve intended lines gone. **The lesson is the
+project's existing one, from the other direction**: verify scene changes by reading the scene back
+— here, by diffing it — because a scripted "cleanup" is as capable of silent damage as a hand edit.
+
+### Tests
+
+1415 → **1397, all passing** (1228 EditMode + 169 PlayMode). Eighteen tests went with the feature:
+eight `ArtificerFocusMeterTests`, two status-policy retirement tests, three `WorkbenchFocusPolicy`
+scaling tests in `AssemblyLineGatingTests`, and five PlayMode Workbench tests that existed only to
+pin a charge or a refusal-for-insufficient-Focus. No test was weakened to make the cut pass.
+
+### Not done
+
+- **`progression-design.md` §8's Focus paragraphs are annotated, not rewritten.** The doc is the
+  spec as it was argued; the annotation records that the call was reversed and why.
+- **No play-mode screenshot.** The change was verified structurally (prefab read-back, scene diff,
+  both suites) but nobody has looked at the Workbench in the game view since the labels came off.
+
+## Dismantling a golem: the wrecking bar's other half
+
+**You could buy a golem and never get rid of it.** Buildings had a settled full-refund removal
+(their own build-menu row, their own three rules); golems had nothing — no delete, no refund, and
+a bay that filled up permanently. `TryConstructGolem`'s own refusal has been telling players to
+*"Upgrade the bays, or dismantle a golem"* since §8 shipped, naming an action that did not exist.
+
+### The placeholder that was already there
+
+`BuildModeController.PlaceOrRemove` had this branch:
+
+```csharp
+else if (IsDemolishActive)
+{
+    // A golem, not a building. Says so rather than doing nothing, because a
+    // silent click on the wrecking bar reads as the tool being broken.
+    LastStatusMessage = "Nothing to remove there -- that tile is not a building.";
+}
+```
+
+It named the case and refused it. **It also could not fire**, and finding out why decided the
+implementation: **golems are not `GridMap` occupants.** The only two `TryOccupy` calls in the
+entire project are in this file, and both place a `PlaceableBuilding`. A golem carries its own
+`Cell` instead. So that `else` was reachable only via a test object, and the wrecking bar needed a
+*scan* (`TryFindGolemAt`) rather than a map lookup — done on click and on the hovered cell, never
+per golem per frame, and deliberately uncached: a cache would need invalidating on every dismantle
+to save one `Vector2Int` comparison.
+
+### Where the rules live
+
+A fourth late-wiring seam, `IGolemDismantler`, implemented by `GolemConstructionStation`. The
+split is strict and it is the point:
+
+- **`BuildModeController` owns the tool** — the cursor, the ghost tint, the status line, the
+  popup — and knows nothing about assembly bays, the tick clock or the Workbench.
+- **`GolemConstructionStation` owns the mechanism**, because `TryDismantleGolem` has to undo
+  exactly what `SpawnGolem` did. Keeping them in one file is the same argument that put
+  construction and save-respawn through one `SpawnGolem` to begin with.
+
+The teardown is the birth sequence backwards, and two of its steps are deliberately **absent**:
+the steam consumer and the node-extractor claim are released by `GolemEntity.OnDisable`, which
+`Destroy` runs. Repeating them here would be a second writer for state that already has exactly
+one. What *is* here: release the bay slot, unregister from the clock, blank the Workbench if it
+was pointed at this golem, destroy, pay out, publish `WorldInteractablesChangedEvent`.
+
+### The one new rule: cargo comes back too
+
+`GolemDismantleRules.ComposeRefund` merges the chassis cost with **both** of the golem's stocks,
+summing duplicate item types so one good produces one refund line. This is a direct extension of
+the settled "never destroy what it cannot hand back" rule, and it matters more for golems than for
+buildings: **the golem a player most wants to remove is usually the stalled one holding
+something**, so eating its load would put the sting back into precisely the case a full refund
+exists to remove.
+
+The chassis and the cargo are separate arguments on purpose. Only the chassis is gated on
+`IsRuntimeSpawned` — refunding a scene-authored golem's chassis would mint goods out of the
+scenery, exactly as refunding authored furniture would. Its cargo is real goods either way.
+
+**A held golem is refused rather than destroyed.** `PlayerInteractor` holds the reference through
+a `[G]` carry, so deleting it mid-carry leaves the player walking around holding nothing they can
+put down. One sentence of refusal beat teaching the carry about deletion.
+
+### A leak this pass caused, and what it cost
+
+`SpawnGolem` calls `Instantiate` with **no parent**, so a constructed golem lands at the scene
+root. The new PlayMode tests tore down their own `_root` and left those golems standing — and
+PlayMode tests share one play session, so half a dozen unrelated suites (`PlayerInteractorTests`,
+`GolemInteractableRefreshTests`, `SaveLoadPanelTests`) started failing on golem counts they were
+right about. Eleven red tests, none of them in the new file. The fix is a sweep in `TearDown`; the
+lesson is that `Instantiate` without a parent is a test-isolation hazard in PlayMode specifically,
+and the existing EditMode station tests have the same shape without the same consequence.
+
+### Verified in a play session, not just in tests
+
+Play mode on `Sandbox.unity`, driving the real objects:
+
+- The bootstrap wires the seam: `_golemDismantler` resolves to `StarterConstructionStation`.
+- Built a Clockwork Scavenger (12 Scrap), loaded it with 8 Coal + 3 Coke.
+- Wrecking bar over its tile: `HasRemovableBuilding` **false**, `HasRemovableThing` **true**,
+  ghost classifies `Removable` — the tile lights up for a golem where it previously read inert.
+- `PlaceOrRemove` on that tile: Scrap 60 → 72, Coal 0 → 8, Coke 0 → 3, bay 1 → 0, golem count
+  1 → 0. The refund popup renders **`+12 Scrap + 6 Coal`** on a second run.
+- The interaction prompt re-pointed from the golem to the station by itself, which is
+  `WorldInteractablesChangedEvent` doing its job — the player is not offered a golem that is gone.
+- Held golem: *"Put PlayerGolem-003 down before dismantling it."*, still standing.
+- Dismantling the Workbench's target cleared the target rather than leaving the screen pointed at
+  a destroyed golem.
+- `CancelPlacement()` returns true and clears `IsBuildToolActive` — cancelling build mode already
+  worked and is bound to Escape and right-click; nothing there needed fixing.
+
+### Also confirmed here: the Workbench after the Focus cut
+
+The play session closed out the verification the Focus pass deferred. The tape reads
+`CHASSIS Clockwork Scavenger   SLOTS 0/2   TRIGGER -- none --   CYCLE --   STEAM 0 psi` with no
+`FOCUS` segment and no truncation, and the ENGAGE GEARS lever and PATENT button sit with no
+orphaned cost labels and no hole where they were — both are absolutely anchored, so nothing had to
+reflow.
+
+### The TARGET header, which the screenshot caught and a test could not
+
+The play-mode screenshot showed the Workbench header reading **`TARGET · GolemPrefab(Clone)`** —
+Unity's `Instantiate` suffix, on the one screen whose entire job is telling you which golem you
+are editing. `RefreshBlueprintPane` read `targetGolem.name` where `AlertsPanel`,
+`GolemStallIndicator`, `StallTracker` and every stall event read `GolemId`. Fixed with
+`GolemDisplayName`, which prefers the id and falls back to the object name only for a golem that
+never got one (a bare test rig): a blank `TARGET` line reads as the screen being broken, which is
+worse than a clumsy name.
+
+**Why no test caught it.** `WorkbenchControllerTests.Build()` never called
+`ConfigureBlueprintPane`, so no test in the project had ever rendered that label — the header was
+untested surface from the day it shipped. Three tests now pin it: the id wins over the object
+name, an id-less golem falls back rather than going blank, and no target says `none`.
+
+**Writing them turned up the rig's own load-bearing rule.** All three failed with
+`IndexOutOfRangeException` from `RebuildUI` until they yielded a frame after `Build(...)`:
+`Start()` is what sizes `_draftAppendages` to `appendageSlotZones.Length`, and `RebuildUI` walks
+the zones indexing that array. Every other test in the file already yielded first; these did not,
+and the failure names neither cause. There is now a comment on the helper saying so.
+
+Verified the same way it was found — back in play mode, the header reads `TARGET ·
+PlayerGolem-001` while the GameObject is still `GolemPrefab(Clone)`.
+
+### Tests
+
+1397 → **1422, all passing** (1234 EditMode + 188 PlayMode). Six `GolemDismantleRulesTests` for
+the payout arithmetic, eight PlayMode `GolemDismantleTests` for the station's death sequence
+(PlayMode because `Destroy` is deferred and `OnDisable` does not run in EditMode), and eight
+PlayMode `WreckingBarGolemTests` driving the tool through a **fake** `IGolemDismantler` — what the
+refund is worth belongs to one file and what the tool does belongs to the other, so a change to
+one cannot silently rewrite the other's expectations. Plus three `WorkbenchControllerTests` on the
+TARGET header, covering surface that had never been rendered by a test at all.

@@ -12,7 +12,6 @@ namespace GolemFactory.Save
     public sealed class SaveData
     {
         public List<BufferEntry> buffers = new List<BufferEntry>();
-        public float focusCurrent;
         public List<BlueprintEntry> blueprints = new List<BlueprintEntry>();
         public List<GolemEntry> golems = new List<GolemEntry>();
 

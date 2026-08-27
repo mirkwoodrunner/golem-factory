@@ -125,7 +125,7 @@ namespace GolemFactory.UI
         // Update().
         public static string ComposeTicker(
             string chassisName, int usedSlots, int maxSlots, string triggerName,
-            int cycleTicks, int steamDraw, float cyclesPerMinute, float focus, float maxFocus)
+            int cycleTicks, int steamDraw, float cyclesPerMinute)
         {
             var sb = new StringBuilder(160);
             sb.Append("CHASSIS ").Append(string.IsNullOrEmpty(chassisName) ? "-- none --" : Humanize(chassisName));
@@ -158,7 +158,6 @@ namespace GolemFactory.UI
                 sb.Append("--");
             }
             sb.Append("   STEAM ").Append(steamDraw).Append(" psi");
-            sb.Append("   FOCUS ").Append(focus.ToString("F0")).Append('/').Append(maxFocus.ToString("F0"));
             return sb.ToString();
         }
     }

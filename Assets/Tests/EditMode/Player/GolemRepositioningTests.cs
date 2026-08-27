@@ -64,6 +64,72 @@ namespace GolemFactory.Tests.EditMode
             return interactor;
         }
 
+        // --- Telling the player the keys exist --------------------------------------------
+        // The third bug of the same family as the two above, and the one that made carrying
+        // look unimplemented rather than merely awkward: a freshly built golem stands on the
+        // tile its station faces, so at the spot the player is standing when it appears the
+        // STATION wins the [E] pick -- and the golem's own caption, the only line in the game
+        // that has ever mentioned [G], is not the line being drawn.
+
+        [Test]
+        public void ThePromptOffersToCarryTheGolem_EvenWhenItsStationWonThePick()
+        {
+            GolemEntity golem = NewGolem("G1", new Vector2Int(0, 0), Facing.North, new Vector3(0.4f, 0f, 0f));
+            GameObject stationGo = NewObject("Station", new Vector3(0.05f, 0f, 0f));
+            stationGo.AddComponent<GolemFactory.Buildings.PlaceableBuilding>();
+            stationGo.AddComponent<GolemFactory.Buildings.GolemConstructionStation>();
+
+            PlayerInteractor interactor = NewPlayerAt(Vector3.zero, null);
+            interactor.RefreshAffordance();
+
+            Assert.AreEqual(InteractionKind.Construct, interactor.CurrentPick.Kind,
+                "the station is nearer -- that is the whole premise of this test");
+            StringAssert.Contains("[G]", interactor.CurrentPrompt,
+                "standing at the station is where the player learns the golem can be moved");
+            StringAssert.Contains(golem.GolemId, interactor.CurrentPrompt,
+                "with several golems about, the aside has to name the one [G] would lift");
+        }
+
+        [Test]
+        public void ThePromptDoesNotRepeatTheAsideOnTheGolemsOwnCaption()
+        {
+            NewGolem("G1", new Vector2Int(0, 0), Facing.North, new Vector3(0.2f, 0f, 0f));
+            PlayerInteractor interactor = NewPlayerAt(Vector3.zero, null);
+
+            interactor.RefreshAffordance();
+
+            Assert.AreEqual(InteractionKind.Program, interactor.CurrentPick.Kind);
+            StringAssert.Contains("[G]", interactor.CurrentPrompt);
+            Assert.AreEqual(
+                1, CountOccurrences(interactor.CurrentPrompt, "[G]"),
+                "the golem's own caption already says [G]; appending the aside would say it twice");
+        }
+
+        [Test]
+        public void ThePromptSaysHowToPutTheGolemDownWhileCarryingIt()
+        {
+            NewGolem("G1", new Vector2Int(0, 0), Facing.North, new Vector3(0.2f, 0f, 0f));
+            PlayerInteractor interactor = NewPlayerAt(Vector3.zero, null);
+
+            Assert.IsTrue(interactor.TryPickUpNearestGolem());
+            interactor.RefreshAffordance();
+
+            StringAssert.Contains("[G]", interactor.CurrentPrompt);
+            StringAssert.DoesNotContain("carry", interactor.CurrentPrompt,
+                "a player already holding a golem must not be told to pick it up");
+        }
+
+        private static int CountOccurrences(string text, string needle)
+        {
+            int count = 0;
+            for (int i = text.IndexOf(needle); i >= 0; i = text.IndexOf(needle, i + needle.Length))
+            {
+                count++;
+            }
+
+            return count;
+        }
+
         // --- Rotation ---------------------------------------------------------------------
 
         [Test]

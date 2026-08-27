@@ -13,7 +13,7 @@ namespace GolemFactory.Save
     public static class SaveLoadService
     {
         public static SaveData CaptureState(
-            StorageBufferRegistry buffers, ArtificerFocusMeter focus,
+            StorageBufferRegistry buffers,
             PatentRegistry patents, IEnumerable<GolemEntity> golems,
             IEnumerable<GolemFactory.Buildings.PlaceableBuilding> buildings = null)
         {
@@ -29,8 +29,6 @@ namespace GolemFactory.Save
                 }
                 data.buffers.Add(entry);
             }
-
-            data.focusCurrent = focus.CurrentFocus;
 
             foreach (Blueprint blueprint in patents.Blueprints.Values)
             {
@@ -219,7 +217,7 @@ namespace GolemFactory.Save
         // that handles a golem which was already alive; there is deliberately no second restore
         // path for a respawned golem to drift away from.
         public static RestoreReport RestoreState(
-            SaveData data, StorageBufferRegistry buffers, ArtificerFocusMeter focus,
+            SaveData data, StorageBufferRegistry buffers,
             PatentRegistry patents, IEnumerable<GolemEntity> golems, DefinitionCatalog catalog,
             IGolemRespawner respawner = null, IBuildingRebuilder buildingRebuilder = null)
         {
@@ -234,8 +232,6 @@ namespace GolemFactory.Save
                     buffers.Deposit(entry.bufferId, entry.itemTypes[i], entry.quantities[i]);
                 }
             }
-
-            focus.SetCurrent(data.focusCurrent);
 
             foreach (BlueprintEntry entry in data.blueprints)
             {

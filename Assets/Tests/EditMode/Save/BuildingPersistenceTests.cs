@@ -94,12 +94,12 @@ namespace GolemFactory.Tests.EditMode
 
         private static SaveData Capture(params PlaceableBuilding[] buildings) =>
             SaveLoadService.CaptureState(
-                new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"),
+                new StorageBufferRegistry(),
                 new PatentRegistry(), new List<GolemEntity>(), buildings);
 
         private static SaveLoadService.RestoreReport Restore(SaveData data, IBuildingRebuilder rebuilder) =>
             SaveLoadService.RestoreState(
-                data, new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"),
+                data, new StorageBufferRegistry(),
                 new PatentRegistry(), new List<GolemEntity>(),
                 new DefinitionCatalog(
                     new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]),

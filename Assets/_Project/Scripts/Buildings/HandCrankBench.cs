@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using GolemFactory.Economy;
 using GolemFactory.PunchCards;
@@ -76,6 +76,21 @@ namespace GolemFactory.Buildings
 
         /// <summary>How many crafts this bench has completed. Exposed for tests and the HUD.</summary>
         public int CompletedCrafts { get; private set; }
+
+        /// <summary>
+        /// The recipe the most recently completed craft made, or null before the first one.
+        ///
+        /// <para>
+        /// Recorded rather than left for an observer to infer from <see cref="SelectedRecipe"/>,
+        /// which the player can cycle away from with [R] in the very frame a craft lands -- so a
+        /// reader of the selection would attribute the goods to whatever is now on the dial. It
+        /// pairs with <see cref="CompletedCrafts"/>: the counter says a craft happened, this says
+        /// what of. Together they are enough for the player's "+1 Coke" confirmation without this
+        /// class -- which must stay buildable in an EditMode test with no Canvas -- knowing that
+        /// a UI exists.
+        /// </para>
+        /// </summary>
+        public RecipeDefinition LastCompletedRecipe { get; private set; }
 
         /// <summary>Test/bootstrap-friendly wiring, matching the Configure(...) idiom.</summary>
         public void Configure(
@@ -238,6 +253,7 @@ namespace GolemFactory.Buildings
                 buffer.Deposit(recipe.byproductItemType, recipe.byproductQuantity);
             }
 
+            LastCompletedRecipe = recipe;
             CompletedCrafts++;
             return true;
         }

@@ -52,7 +52,7 @@ If you only have half an hour, answer 1–3. They are the ones no test can reach
 | **Escape** *or* **right-click** | **Put the placeable down / leave build mode.** New. |
 | **G** | Pick up the golem you are standing next to; press again to set it down on your own tile. It refuses to drop onto an occupied tile. |
 | **Tab** | Management menu (Inventory · Assembly Line · Patents · Save/Load · **Ledger**) |
-| **Left click** | Place or remove a building |
+| **Left click** | Place a building, or — with the **Demolish** row picked up — remove one and get its **whole cost back**. Removing needs a tool in hand: with nothing selected, clicking the world does nothing. |
 | **Mouse wheel / drag** | Zoom / pan |
 
 Speed controls are bottom-centre: `PAUSE 0.5x 1x 2x 4x`. Cranking, golems, boilers, **market
@@ -112,6 +112,11 @@ longer an empty box.
 | HandCrankBench | Free |
 | **FreightMast** | 20 Brass + 10 Casing |
 | **SlagHeap** | 20 Scrap + 10 Iron Plate *(TUNING)* |
+| **Demolish** | free — **refunds the full cost** |
+
+> **Ten rows now, not nine.** The panel was authored with room for exactly nine (308px of space
+> against 302px of rows); it grows itself to fit from code now, so check nothing is clipped at the
+> bottom.
 
 - [All those options work, but ESC and Right Click don't unhighlight the build option in the list, so to reactivate, you have to click twice] **NEW — leaving build mode.** Click a row, then get out of build mode three ways: **Escape**,
       **right-click**, and **clicking the same row again**. After each, the ghost should vanish and
@@ -249,13 +254,31 @@ market moved the goods 16 cells away.
 
 ## Part C — Automate it (~15 min) — **question 3**
 
+> **READ THIS FIRST — the script was wrong, and it sent you looking for a card you do not own.**
+> `Assemble R2` is **not in your opening hand**. §8's gating means the Workbench vault shows only
+> cards you have **claimed**, and a fresh save grants exactly three: Extract, Haul, Push. The
+> Assemble cards are bought from the draft — which is **Part G**, printed after this one. Part C
+> as written was unplayable from a fresh start.
+>
+> **Do this first:** **Tab → Assembly Line**, and claim your way down to
+> `Assemble Scrap Reclamation` (4 Scrap, and it gets cheaper the longer it sits). Measured against
+> the real deck it now surfaces on the **6th claim** — five of those are free cards, and one is
+> the Clockwork Scavenger at 3 Scrap. Then reopen the Workbench and it will be in the vault under
+> `APPENDAGES · actions`. **That is the card this step calls "Assemble R2"** (1 Scrap → 1 Iron
+> Plate). Part G's own steps still work afterwards.
+
 - [ ] Place a **Depot**, position a golem so the stall is the tile **behind** it and the depot the
       tile **in front** (`Extract` pulls from behind, `Push` delivers in front).
-- [ ] Program `Extract → Assemble R2 → Push`, pull **ENGAGE GEARS**.
-- [ ] **Focus now scales with program length** — `8 + 6 × steps`, so that 3-step program costs 26,
-      not the old flat 10. Does that read as a cost worth managing?
-- [ ] Patent the program, then stamp it onto a second golem: a patented commit is a **flat 10**.
-      Does the saving land — does stamping feel obviously right by the third identical golem?
+- [ ] Program `Extract → Assemble Scrap Reclamation → Push`, pull **ENGAGE GEARS**.
+- [ ] Patent the program, then load it onto a second golem from the **Patents** tab. Patenting is
+      free now (Focus is gone), so the only thing it buys is not rebuilding the program by hand.
+      **Is that enough to make you use it?** If you rebuild the second golem card-by-card out of
+      habit, the Patents tab is not carrying its screen.
+- [ ] **Dismantle it.** Open the build menu, click **Demolish (full refund)**, then click the
+      golem's tile. It should vanish and pay back its chassis cost **plus whatever it was
+      carrying** in one popup. Press **Escape** or right-click to put the wrecking bar away.
+      The question to answer: does having a free undo change how freely you build golems in the
+      first place, or is it a tool you never reach for?
 - [ ] **RETEST (moved here from B2) — `R` should rotate golems again.** Stand next to a golem and
       press **R**: it should turn, and a popup should name the new facing. If it does not, you are
       still holding a placeable — press **Escape** or right-click first. That arbitration was the
@@ -264,6 +287,33 @@ market moved the goods 16 cells away.
       on its own when turned back.
 - [ ] **Stand two stalled golems one cell apart.** Their badges should stack vertically, not
       overprint. Same for the interaction caption.
+- [ ] **NEW — Demolish, with a full refund.** The build menu has a **tenth row**: `Demolish
+      (full refund)`. Pick it up, and the ghost turns a steady deep red over anything removable
+      and inert steel over everything else. Click a Depot you placed: it comes down and **the
+      whole 15 Scrap comes back**, with a green `+15 Scrap` popup where the grey `-15 Scrap`
+      appeared when you built it. Escape / right-click / clicking the row again all put the bar
+      down, same as a placeable.
+  - [ ] **This is the answer to "the ability to pick up depots goes away at some point."** It was
+        real, and it was caused by last session's fix: removal was only ever reachable from a
+        click *while holding a placeable*, which was invisible while build mode had no exit and
+        broke the moment Escape shipped. Removal now has its own tool.
+  - [ ] **Check the refund is not free money.** Demolish a depot that was **authored into the
+        scene** rather than placed by you — it should still come down and pay **nothing**.
+  - [ ] **Check "move" works out of it:** demolish a building and re-place it somewhere else. Your
+        stockpile should end exactly where it started. That is the whole reason there is no
+        separate pick-up-and-carry mode.
+  - [x] ~~**Your call:** is a full refund right, or does free relocation take the sting out of
+        placing badly?~~ **DECIDED — full refund, and it is not a tuning knob.** The game is
+        cozy; placement and reorganising must not be punitive. Recorded in `CLAUDE.md` so it is
+        not re-litigated as "balance" later.
+  - [ ] **Two consequences of that decision, both worth a click.** Demolish a building when your
+        stockpile has **no room** for the refund: it should **refuse and stay standing** rather
+        than come down and eat the goods. (Sandbox's stockpile is Unlimited, so you will only
+        see this in a capped scene — it is covered by a test.) And **save, then load**: your
+        stockpile must be exactly what you saved. A load sweeps the same runtime-placed
+        buildings a refund pays out on, so refunding there would have handed you your whole
+        factory's cost on every load — save/load/save/load as a resource duplicator. Caught and
+        fixed before it shipped; worth one confirming pass in **Part H**.
 
 ---
 
@@ -330,6 +380,27 @@ real arc, not arithmetic.
       Claim one and check it appears in the Workbench vault.
 - [ ] A recipe card should not appear at all until its prerequisite is met (you have made its first
       input). Does "the card I need is not offered yet" read as progression or as being blocked?
+  - [ ] **RETEST — FIXED, and it had never once worked.** `SandboxBootstrap` seeded the card pool
+        *before* wiring the question "has the player produced X", and an unanswerable prerequisite
+        deliberately passes — so the whole deck went straight into the offer queue and nothing was
+        ever gated. `R1 Coking` sat in a claimable slot in a factory that had never seen coal.
+        The order is swapped, the till refuses a locked card as well as the door, and the question
+        is now asked of the tech tree's ledger (which only ever grows) instead of live stock, so
+        spending your last Scrap cannot re-lock something you had already unlocked.
+        **Check:** from a fresh save the line should offer **only** the three movement verbs, with
+        **24 cards waiting**. Harvest Scrap and the Scrap-gated cards should join the queue on
+        their own, without you having to claim anything to shake them loose.
+- [ ] **NEW — the panel says what is coming and why it is not here yet.** Under the three slots
+      there should be a `Waiting on prerequisites: N` line and a few named cards with `needs ...`.
+      Without it the gate is an *absence* — you see three cards and cannot tell a fourth exists.
+      **Does that turn "blocked" into "progression", or is it just a wall with a label?**
+- [ ] **NEW — prices show the WHOLE bundle.** A card costing 8 Scrap + 4 Coke used to advertise
+      "8 Scrap", light its Claim button off a Scrap-only check, and then refuse the sale saying
+      "Not enough Scrap" while you were staring at plenty of Scrap. Claim something with a
+      multi-good price and check the row, the button and the refusal all agree.
+- [ ] **NEW — the line stops re-selling you what you own.** The movement verbs are free, granted at
+      the start, *and* listed twice in the deck, so slots used to be spent re-offering Extract,
+      Haul and Push. Claiming an owned card should now bring up something new instead.
 - [ ] Recipe and chassis cards **leave the pool** once claimed; the movement verbs keep cycling.
 - [ ] **Tab → Ledger.** The tech tree chart should light nodes up as you produce, build and claim.
       Nothing on it should read as "planned" any more — every node is a shipped feature.
@@ -343,6 +414,11 @@ real arc, not arithmetic.
 - [ ] Buildings come back — belts, depots, boilers, pipes, the tower, masts, heaps.
 - [ ] Clock Tower stage progress comes back. Its *rate windows* deliberately do not — the readout
       should rebuild within a minute rather than resuming at the old rate.
+- [ ] **NEW — write down your Scrap before you save, and check it after you load.** It must match
+      exactly. A load replaces the built world by demolishing every runtime-placed building, and
+      demolition now refunds — so the two features together nearly turned save/load into an
+      infinite resource duplicator. The refund is now gated to the player's own click; this is the
+      pass that proves it. **Load twice in a row** and check again.
 
 ---
 
@@ -471,7 +547,8 @@ Severity: **blocker** (can't proceed) / **bad** (playable but wrong) / **note** 
 
 > 
 
-**3. Workbench —** a decision, or paperwork? Did Focus scaling and patent-stamping change that?
+**3. Workbench —** a decision, or paperwork? With Focus cut, the only lever left on that
+question is the per-slot `Haul` batch dial. Does one dial per logistics slot carry the screen?
 
 > 
 
@@ -502,7 +579,6 @@ Mark any that felt wrong, with a direction.
 | Bay cap / upgrade | 10 slots · +6 for 40 Scrap + 20 Plate | |
 | Floor expansion | +2 rows, rising cost, capped at +12 | |
 | Freight launch | flat 24 ticks | |
-| Focus | `8 + 6 × steps`, patent stamp flat 10 | |
 | **Recycler: points per Scrap** | 4 | |
 | **Recycler: value by tier** | 1 / 2 / 3 / 5 / 8 / 13 (raw → megaproject) | |
 | **Recycler: Coke per Scrap** | 1 | |

@@ -22,7 +22,7 @@ namespace GolemFactory.UI
     // The entire hierarchy is assembled in code (Awake) rather than authored in the scene, for
     // two concrete reasons: it needs no per-scene wiring, so Main.unity and Sandbox.unity get
     // identical chrome from one source; and it cannot fall into the cross-prefab-reference
-    // landmine that left WorkbenchController.focusMeterHolder null in Sandbox. Only the
+    // landmine that left WorkbenchController's holder references null in Sandbox. Only the
     // steampunk sprites and the two sibling screens are serialized, and every one of them is
     // optional. Rows are destroyed and rebuilt from data on every Refresh, the same
     // "always re-render from data" idiom as WorkbenchController.RebuildUI/InventoryPanel.

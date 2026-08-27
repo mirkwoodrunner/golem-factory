@@ -10,8 +10,7 @@ namespace GolemFactory.Tests.EditMode
 {
     /// <summary>
     /// §8's four changes: bundle claim costs, prerequisites, unique cards leaving the pool, and
-    /// the vault showing only what has been claimed -- plus the Focus scaling that turns patents
-    /// into the repetition tool.
+    /// the vault showing only what has been claimed.
     /// </summary>
     public class AssemblyLineGatingTests
     {
@@ -228,6 +227,57 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreSame(card, line.GetCard(0));
         }
 
+        [Test]
+        public void ALockedCardThatReachedASlotAnyway_CannotBeBought()
+        {
+            // The gate at the till, and it is not belt-and-braces -- it is the half that was
+            // missing. Keeping locked cards out of the slots is enforced on the way IN, so a
+            // scene that seeded its pool BEFORE wiring the unlock context (which SandboxBootstrap
+            // did) put the whole deck on the line with an unanswerable prerequisite, and payment
+            // was all that stood between the player and a recipe four tiers ahead. TryClaimSlot
+            // never asked.
+            DraftableCardDefinition locked = MakeCard("AetherContainment");
+            locked.prerequisiteItemProduced = ItemType.Lens;
+
+            var line = new AssemblyLineState(1);
+            line.SeedCandidates(new[] { locked });
+            Assume.That(line.GetCard(0), Is.SameAs(locked),
+                "seeded with no context, exactly as the broken bootstrap order did");
+
+            bool lensMade = false;
+            line.ConfigureUnlockContext(item => lensMade);
+            var buffers = new StorageBufferRegistry();
+
+            Assert.IsFalse(line.TryClaimSlot(0, User, buffers, Wallet),
+                "a free card is still not for sale while its prerequisite is unmet");
+            Assert.AreEqual(0, line.GetClaimedCards(User).Count);
+
+            lensMade = true;
+            Assert.IsTrue(line.TryClaimSlot(0, User, buffers, Wallet),
+                "and it sells the moment the prerequisite is satisfied");
+        }
+
+        [Test]
+        public void ContextWiredBeforeSeeding_KeepsTheLockedCardOutOfThePool()
+        {
+            // The order SandboxBootstrap now uses, pinned as a rule rather than as scene wiring:
+            // seeding asks IsUnlocked of every card on the way in, so the answer has to be
+            // answerable by then.
+            // Unique, so it fills slot 0 and does NOT cycle back into the queue -- otherwise
+            // slot 1 gets a second copy of it and the assertion below tests nothing.
+            DraftableCardDefinition open = MakeCard("Coking", unique: true);
+            DraftableCardDefinition locked = MakeCard("AetherContainment");
+            locked.prerequisiteItemProduced = ItemType.Lens;
+
+            var line = new AssemblyLineState(2);
+            line.ConfigureUnlockContext(item => false);
+            line.SeedCandidates(new[] { open, locked });
+
+            Assert.AreSame(open, line.GetCard(0));
+            Assert.IsNull(line.GetCard(1), "the locked card never reaches the second slot");
+            CollectionAssert.Contains(line.WaitingCards, locked);
+        }
+
         // --- §8.4 unique cards ------------------------------------------------------------------
 
         [Test]
@@ -263,7 +313,31 @@ namespace GolemFactory.Tests.EditMode
 
             line.TryClaimSlot(0, User, buffers, Wallet);
 
+            // With nothing else in the pool it comes straight back: the line is never blank.
             Assert.AreSame(cycling, line.GetCard(0));
+        }
+
+        [Test]
+        public void AnAlreadyOwnedCard_YieldsItsSlotToOneThePlayerHasNot()
+        {
+            // §8.4's argument, applied where it always belonged. The three movement verbs are
+            // non-unique, granted at t=0, AND listed twice in the shipping deck, so a plain
+            // dequeue spent most of the line's throughput re-offering cards the player was
+            // already holding -- the first real recipe card sat nine claims deep, eight of
+            // which bought nothing.
+            DraftableCardDefinition owned = MakeCard("PushOutput", unique: false);
+            DraftableCardDefinition fresh = MakeCard("Coking", unique: true);
+
+            var line = new AssemblyLineState(1);
+            line.SeedCandidates(new[] { owned, fresh });
+            Assume.That(line.GetCard(0), Is.SameAs(owned));
+
+            line.GrantClaim(User, owned);
+            var buffers = new StorageBufferRegistry();
+            line.TryClaimSlot(0, User, buffers, Wallet);
+
+            Assert.AreSame(fresh, line.GetCard(0),
+                "a slot is a purchase offer; spending one on something already owned wastes it");
         }
 
         [Test]
@@ -315,33 +389,6 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsTrue(workbench.IsRosterGated);
             Assert.IsTrue(workbench.IsCardAvailable(claimed.appendage));
             Assert.IsFalse(workbench.IsCardAvailable(unclaimed.appendage));
-        }
-
-        // --- §8 Focus scaling ---------------------------------------------------------------
-
-        [Test]
-        public void EngageCost_ScalesWithProgramLength()
-        {
-            Assert.AreEqual(8f, WorkbenchFocusPolicy.EngageCost(0, false));
-            Assert.AreEqual(14f, WorkbenchFocusPolicy.EngageCost(1, false));
-            Assert.AreEqual(26f, WorkbenchFocusPolicy.EngageCost(3, false));
-            Assert.AreEqual(44f, WorkbenchFocusPolicy.EngageCost(6, false));
-        }
-
-        [Test]
-        public void AStampedBlueprint_IsFlatTen()
-        {
-            Assert.AreEqual(10f, WorkbenchFocusPolicy.EngageCost(6, true));
-            Assert.AreEqual(10f, WorkbenchFocusPolicy.EngageCost(1, true));
-        }
-
-        [Test]
-        public void StampingPaysOffFromThreeAppendagesUp()
-        {
-            // The arc §8 is buying: by stage 4 the player needs ~23 identical coking golems, and
-            // patenting once then stamping becomes obviously correct rather than merely tidy.
-            Assert.IsFalse(WorkbenchFocusPolicy.StampingIsCheaper(0));
-            Assert.IsTrue(WorkbenchFocusPolicy.StampingIsCheaper(3));
         }
     }
 }

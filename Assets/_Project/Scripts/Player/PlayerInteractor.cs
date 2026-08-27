@@ -4,8 +4,10 @@ using UnityEngine.InputSystem;
 using GolemFactory.Belts;
 using GolemFactory.Buildings;
 using GolemFactory.Economy;
+using GolemFactory.Events;
 using GolemFactory.Steam;
 using GolemFactory.Golems;
+using GolemFactory.PunchCards;
 using GolemFactory.UI;
 using GolemFactory.World;
 
@@ -48,6 +50,13 @@ namespace GolemFactory.Player
         private static readonly Color HarvestPopupColor = new Color(1f, 0.86f, 0.50f, 1f);
         private static readonly Color RefusedPopupColor = new Color(0.72f, 0.75f, 0.78f, 1f);
 
+        // How high above a target a popup starts. The default clears the interaction caption,
+        // which anchors to the same transform. The second height exists for the one case that
+        // spawns two captions in the same frame (a recipe with a byproduct): at one height they
+        // rise as a single smudge, a line apart they read as two goods.
+        private const float PopupHeight = 1.5f;
+        private const float SecondaryPopupHeight = 0.95f;
+
         // Rotating an already-placed golem. "Golems cannot pivot" is a rule about *runtime
         // execution* -- nothing in a program may turn the golem mid-cycle -- not about the
         // player repositioning one between runs, which is the core spatial puzzle. GolemEntity
@@ -71,6 +80,11 @@ namespace GolemFactory.Player
         private GolemEntity[] _golems = new GolemEntity[0];
         private GolemFactory.Buildings.HandCrankBench[] _benches =
             new GolemFactory.Buildings.HandCrankBench[0];
+        // The bench whose completed-craft tally is mirrored in _watchedCraftCount, held
+        // alongside it so walking from one bench to another cannot make the second bench's
+        // standing total look like a craft that just finished under the player's hand.
+        private GolemFactory.Buildings.HandCrankBench _watchedBench;
+        private int _watchedCraftCount;
         private PlaceableBoiler[] _boilers =
             new PlaceableBoiler[0];
         // §1's labelled crates. Cached like every other interactable kind rather than found on
@@ -229,6 +243,10 @@ namespace GolemFactory.Player
         private void OnEnable()
         {
             RefreshInteractables();
+            // The cache above is a snapshot of a world that keeps changing. Without this
+            // subscription it was never taken again, so nothing the player built was ever
+            // interactable -- see WorldInteractablesChangedEvent for the full symptom list.
+            EventBus.WorldInteractablesChanged += OnWorldInteractablesChanged;
             if (_interactAction != null)
             {
                 _interactAction.Enable();
@@ -250,6 +268,8 @@ namespace GolemFactory.Player
 
         private void OnDisable()
         {
+            EventBus.WorldInteractablesChanged -= OnWorldInteractablesChanged;
+
             if (_interactAction != null)
             {
                 _interactAction.performed -= OnInteractPerformed;
@@ -275,6 +295,12 @@ namespace GolemFactory.Player
         }
 
         private void OnInteractPerformed(InputAction.CallbackContext context) => Interact();
+
+        // Re-scan wholesale rather than apply a delta: the arrays are small, this fires only
+        // when the player builds or demolishes something, and a delta protocol would be a
+        // second source of truth about what exists in the scene.
+        private void OnWorldInteractablesChanged(WorldInteractablesChangedEvent e) =>
+            RefreshInteractables();
 
         // R is shared three ways, all decided by context rather than by a mode the player has to
         // remember: with a placeable in hand it turns the ghost, standing at a bench it changes
@@ -502,6 +528,7 @@ namespace GolemFactory.Player
         {
             HandCrankBench nearest = SelectNearestBench(_interactRange);
             NearestBench = nearest;
+            ReportFinishedCrafts(nearest);
             bool held = _interactAction != null && _interactAction.IsPressed();
 
             for (int i = 0; i < _benches.Length; i++)
@@ -511,6 +538,77 @@ namespace GolemFactory.Player
                 {
                     bench.IsCranking = bench == nearest && held;
                 }
+            }
+        }
+
+        /// <summary>
+        /// The "+1 Coke" confirmation a finished hand-crank gives, matching the one harvesting a
+        /// node gives -- the bench used to bank its output in total silence, so the only way to
+        /// know a minute of cranking had produced anything was to open the Management panel.
+        /// </summary>
+        /// <remarks>
+        /// Watched from here rather than announced by the bench, for the same reason the harvest
+        /// popup lives here and not on ResourceNodeMarker. The bench is a simulation object: it
+        /// advances on ticks, and it has to stay constructible in an EditMode test with no Canvas
+        /// and no Play mode. The popup, by contrast, belongs to whoever is standing at the
+        /// handle, which is exactly what this class already tracks.
+        ///
+        /// <para>
+        /// A batch COUNT, not a bool: at 4x speed several simulation ticks land between two
+        /// Updates, so a short recipe can finish more than once in one frame. Collapsing those
+        /// into a single "+2 Coke" is both truthful and quieter than a stack of identical
+        /// captions drawn on top of each other.
+        /// </para>
+        ///
+        /// <para>
+        /// Only the NEAREST bench is watched, which is not a shortcut: a bench only advances
+        /// while <c>IsCranking</c>, and only the nearest bench is ever cranking, so no other
+        /// bench in the factory can have finished anything since the last frame.
+        /// </para>
+        /// </remarks>
+        private void ReportFinishedCrafts(HandCrankBench bench)
+        {
+            // Arriving at a bench (or leaving one) re-seeds the tally instead of reporting it.
+            // Whatever this bench made before the player walked up is history, not news.
+            if (bench != _watchedBench)
+            {
+                _watchedBench = bench;
+                _watchedCraftCount = bench != null ? bench.CompletedCrafts : 0;
+                return;
+            }
+
+            if (bench == null)
+            {
+                return;
+            }
+
+            int batches = bench.CompletedCrafts - _watchedCraftCount;
+            _watchedCraftCount = bench.CompletedCrafts;
+
+            // LastCompletedRecipe, not SelectedRecipe: [R] can cycle the dial in the same frame
+            // the craft lands, and the caption has to name what was actually made.
+            RecipeDefinition recipe = bench.LastCompletedRecipe;
+            if (batches <= 0 || recipe == null)
+            {
+                return;
+            }
+
+            Vector3 at = bench.transform.position;
+            SpawnPopup(
+                at,
+                YieldPopupText.Gain(recipe.outputItemType, recipe.outputQuantity * batches),
+                HarvestPopupColor);
+
+            // The byproduct gets its own line rather than sharing one. It is a different good
+            // arriving in the same stockpile, and R4's Slag is the case the player most needs
+            // told plainly, since a backed-up Slag slot is what stalls a smelter later.
+            if (recipe.HasByproduct)
+            {
+                SpawnPopup(
+                    at,
+                    YieldPopupText.Gain(recipe.byproductItemType, recipe.byproductQuantity * batches),
+                    RefusedPopupColor,
+                    SecondaryPopupHeight);
             }
         }
 
@@ -626,6 +724,29 @@ namespace GolemFactory.Player
             string targetName;
             string detail;
             DescribeTarget(pick, target, CarriedGolem != null, out targetName, out detail);
+
+            // [G] AND [R] ACT ON THE NEAREST GOLEM, NOT ON THE WINNER OF THE [E] PICK, and the
+            // two differ at exactly the moment the player most needs to be told the keys exist.
+            // A freshly built golem is emitted onto the tile the station faces, so standing
+            // where you were when you built it, the STATION is nearest -- the caption reads
+            // "[E] Build Golem", and the golem's own caption, the only line in the game that
+            // mentions [G], is not the one being drawn. A player who never wanders off the
+            // station therefore never learns that a golem can be moved at all.
+            //
+            // Only ever appended to a Ready caption in practice: a golem inside interact range
+            // would have won the pick outright unless something else was nearer still, and
+            // anything nearer is in range too.
+            if (pick.Kind != InteractionKind.Program)
+            {
+                GolemEntity handled = SelectNearestGolem(_interactRange);
+                if (handled != null)
+                {
+                    detail = InteractionTargeting.AppendDetail(
+                        detail,
+                        InteractionTargeting.GolemHandlingHint(handled.GolemId, CarriedGolem != null));
+                }
+            }
+
             CurrentPrompt = InteractionTargeting.BuildPrompt(
                 pick.Kind, targetName, detail, CurrentAffordance, _interactKeyLabel);
 
@@ -775,8 +896,10 @@ namespace GolemFactory.Player
                     // said louder by the stall badge floating over the same golem, and the two
                     // captions plus the badge were physically overlapping on screen. Keeping
                     // only what nothing else shows.
-                    detail = "faces " + FacingVisuals.Describe(golem.Facing)
-                        + " · [R] turn · [G] " + (isCarrying ? "drop" : "carry");
+                    detail = InteractionTargeting.AppendDetail(
+                        "faces " + FacingVisuals.Describe(golem.Facing) + " · [R] turn",
+                        // No id: the golem is already this caption's subject.
+                        InteractionTargeting.GolemHandlingHint(null, isCarrying));
                     break;
                 }
             }
@@ -896,7 +1019,10 @@ namespace GolemFactory.Player
 
             boiler.Boiler.AddCoke(amount);
             LastStatusMessage = $"Loaded {amount} Coke.";
-            SpawnPopup(boiler.transform.position, "+" + amount + " Coke", HarvestPopupColor);
+            SpawnPopup(
+                boiler.transform.position,
+                YieldPopupText.Gain(ItemType.Coke, amount),
+                HarvestPopupColor);
             return true;
         }
 
@@ -926,7 +1052,8 @@ namespace GolemFactory.Player
             }
 
             LastStatusMessage = $"Harvested {item.ItemType}.";
-            SpawnPopup(marker.transform.position, "+1 " + item.ItemType, HarvestPopupColor);
+            SpawnPopup(
+                marker.transform.position, YieldPopupText.Gain(item.ItemType, 1), HarvestPopupColor);
             return true;
         }
 
@@ -959,7 +1086,8 @@ namespace GolemFactory.Player
 
         // Popups are skipped outside Play mode: FloatingPopup drives itself from Update and
         // would never tick (nor ever be destroyed) in an EditMode test.
-        private static void SpawnPopup(Vector3 worldPosition, string text, Color color)
+        private static void SpawnPopup(
+            Vector3 worldPosition, string text, Color color, float height = PopupHeight)
         {
             if (!Application.isPlaying)
             {
@@ -969,7 +1097,7 @@ namespace GolemFactory.Player
             // Above the interaction caption, not on top of it: both anchor to the same target,
             // and at the caption's own height the two lines rendered straight through each
             // other ("+1 Aether" over "[E] Harvest Aether").
-            FloatingPopup.Spawn(worldPosition + new Vector3(0f, 1.5f, 0f), text, color);
+            FloatingPopup.Spawn(worldPosition + new Vector3(0f, height, 0f), text, color);
         }
     }
 }

@@ -113,11 +113,28 @@ namespace GolemFactory.Progression
         /// <summary>Sweeps every source once. Public so a test or a panel can force a read.</summary>
         public void Poll()
         {
+            int before = Ledger.Version;
+
             SweepBuffers();
             SweepChassis();
             SweepBuildings();
             SweepClockTower();
             SweepClaimedCards();
+
+            // §8.3's other half. The Assembly Line only re-checks its waiting list when
+            // something is CLAIMED, so with the ledger as its unlock context a card whose
+            // prerequisite the player has just satisfied would sit in the waiting list until
+            // some unrelated claim happened to shake it loose -- "I made the Iron Plate, why is
+            // the card still not offered". This tracker is already the thing that notices the
+            // world changed, so it is the thing that tells the line.
+            //
+            // Gated on the ledger's version rather than run every poll: promotion walks the
+            // whole waiting list, and nothing can newly unlock in a tick where nothing was
+            // recorded.
+            if (Ledger.Version != before && assemblyLineHolder != null && assemblyLineHolder.State != null)
+            {
+                assemblyLineHolder.State.PromoteUnlockedCards();
+            }
         }
 
         // Swept rather than event-driven, exactly as the buffers are, and for the same reason

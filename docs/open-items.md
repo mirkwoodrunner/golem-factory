@@ -518,7 +518,7 @@ steam adjacency still fits.
 - **The Workbench loses its decisions.** With every program reduced to `N × Haul + Assemble + Push`,
   a recipe plus a chassis fully determines the program — the signature drag-and-drop UI has nothing
   left to decide, and the patent system's main use becomes skipping boilerplate the game forces on
-  you. The design's mitigation is player-set `Haul` batch quantities (throughput traded against
+  you. (Since Focus was cut, skipping boilerplate is the patent system's *only* use.) The design's mitigation is player-set `Haul` batch quantities (throughput traded against
   buffer pressure) — **now built and playable** (§3), so this is no longer waiting on code. What
   is left is the judgement: play a factory and decide whether one dial per logistics slot is
   enough to carry the game's signature screen, or whether the Workbench needs a larger job.
@@ -746,9 +746,9 @@ decision §2 reserves. Nothing mechanical blocks it any more.
   the whole bundle (legacy Scrap cards untouched, so M9's demo deck is unrepriced), prerequisites
   that keep a locked card out of the pool entirely rather than offering something unbuyable,
   `isUnique` so recipe and chassis cards leave the pool (defaulting **false**, so cards authored
-  before §8 keep cycling), and a vault filtered to claimed cards. Plus §8's Focus scaling
-  (`8 + 6 × appendageCount`, flat 10 for a stamped patent, stamp cleared by any hand edit) and
-  the tech tree's `Card` signal with a claimed-card ledger.
+  before §8 keep cycling), and a vault filtered to claimed cards, plus the tech tree's `Card`
+  signal with a claimed-card ledger. §8's **Focus scaling** was built here too and has since been
+  **cut with the rest of the Focus meter** — see "Focus is gone" below.
 
   Two things it needed that the design does not spell out. A **deck** -- gating is half a feature
   until the thing it gates exists, so `ProgressionAssetAuthoring` generates one card per recipe
@@ -914,13 +914,13 @@ decision §2 reserves. Nothing mechanical blocks it any more.
   *refuse* rather than committing a program the player cannot see. Committing the visible five was
   data loss with no warning and no undo; committing four of six would be the same thing with extra
   steps. With the socket authored this should never fire in normal play — it is the guard that
-  makes a future 7-slot chassis a refusal instead of a silent discard. The refusal costs no Focus,
-  and its status line is deliberately not time-based (the program is still unrepresentable after
-  six seconds), retiring only when retargeted onto a golem that fits.
+  makes a future 7-slot chassis a refusal instead of a silent discard. Its status line is
+  deliberately not time-based (the program is still unrepresentable after six seconds), retiring
+  only when retargeted onto a golem that fits.
 - ~~**No UI for `Haul` batch quantity.**~~ **DONE.** Each `Haul`/`ExtractFromNode` slot card now
   carries a `[−] ×4 · 10t [+]` stepper, clamped 1…12 (the golem's own per-item-type stock cap, not
   a number picked for the UI). It edits the **draft**, so trying 8 and putting it back costs
-  nothing and no Focus, exactly like picking a card up and setting it down.
+  nothing at all, exactly like picking a card up and setting it down.
 
   **The tick cost is shown because it is half the decision.** §2's trade is throughput against
   buffer pressure; a stepper showing only the number would hide the part that makes it a choice.
@@ -1171,6 +1171,135 @@ test had reached, one was the script being wrong about the game, and one was a l
 Every one of these has a `RETEST` sub-task under the item that found it in
 `testscript/phase-1-playtest.md`.
 
+## 3y2. Playtest session 2 — findings and dispositions
+
+Two findings, both feedback rather than mechanics, and both of the same shape as session 1's "how
+do I move a golem": the game *could* already do the thing, and never said so.
+
+- **A finished hand-crank said nothing — FIXED.** Harvesting a node pops "+1 Scrap" over it;
+  finishing a craft at the Hand-Crank Bench banked the output in total silence, so the only way to
+  learn that a minute of cranking had produced anything was to open Management and compare
+  numbers. The bench now records `LastCompletedRecipe` alongside `CompletedCrafts`, and
+  `PlayerInteractor` — which already tracks which bench the player is turning — watches that pair
+  and spawns the same `FloatingPopup`. Kept out of `Buildings/` deliberately: the bench advances
+  on simulation ticks and must stay constructible in an EditMode test with no Canvas, and the
+  confirmation belongs to whoever is standing at the handle. A byproduct (only R4's Slag) gets its
+  own caption a line lower rather than sharing one.
+  - It is a batch **count**, not a bool. At 4x several ticks land in one frame, so a short recipe
+    can finish twice between two `Update`s; those collapse into one "+2 Coke".
+- **The wording of all three gain popups was unified.** They were written months apart and had
+  drifted: the harvest line printed the raw buffer key, so copper ore read "+1 CopperOre" while
+  every panel in the game called it Copper Ore, and the boiler's line hard-coded the word "Coke".
+  All three now go through `UI/YieldPopupText.Gain`, which names the good via
+  `ItemTiers.DisplayName`. A test walks the whole item roster against the TMP atlas rule.
+- **"I can't figure out how to pick up and place the golem" — FIXED, and it was discoverability,
+  not a missing feature.** `[G]` carry/drop and `[R]` rotate have both existed since the
+  repositioning pass. The problem is *where the player is standing when they first want them*: a
+  freshly built golem is emitted onto the tile its station faces, so at that spot the **station**
+  wins the `[E]` pick, the caption reads "[E] Build Golem", and the golem's own caption — the only
+  line in the game that has ever mentioned `[G]` — is not the line being drawn. A player who never
+  wanders off the station never learns a golem can be moved at all.
+    - The fix is the same one rotation already got, applied to the *prompt* instead of the action:
+      the aside is keyed off the nearest **golem**, not off the winner of the combined pick, so
+      "[E] Build Golem · [G] carry PlayerGolem-001" appears at the station. `GolemHandlingHint`
+      is one shared function precisely because those are the only two places the key is ever
+      named and they had to agree.
+    - This is the **third** symptom of session 1's root cause to be closed: that one was `R` being
+      swallowed by a stuck build mode, this one is `[G]` never being offered where it is needed.
+
+### The golem could never be picked up at all — **FIXED**, and the prompt work above was inert
+
+The player reported, after the prompt fix shipped, that they *still* could not pick up or move a
+golem. They were right, and the cause was not discoverability at all.
+
+**`PlayerInteractor.RefreshInteractables()` was called from exactly one non-test place: `OnEnable`.**
+Nothing in the game ever called it again. It caches all six interactable kinds with
+`FindObjectsByType` — correctly, because `RefreshAffordance` runs every frame and
+`FindObjectsByType` must not — but that snapshot was never invalidated. And **`Sandbox.unity`
+starts with zero golems**, because every golem in the game is built by the player. So the array
+stayed empty for the whole session:
+
+| Standing directly on the golem | Result |
+|---|---|
+| `[G]` carry | *"No golem in range to pick up."* |
+| `[R]` rotate | *"No golem in range to rotate."* |
+| `[E]` re-program | prompt reads `[E]  Build Golem` — the golem is not a candidate |
+
+It was never golem-specific. A depot placed from the build menu was in the scene and
+`cachedDepots=0`; standing on it the prompt was **empty**, so it could never be labelled. Same for
+a boiler (never fuelled), a placed construction station (never built from), a placed bench.
+`RefreshInteractables`' own comment already claimed a station built mid-session could "make
+itself/new golems interactable" — that was an intention nobody ever wired up.
+
+- **The fix** is `WorldInteractablesChangedEvent` on the existing `EventBus`, published from the
+  three chokepoints every runtime-created interactable passes through —
+  `GolemConstructionStation.SpawnGolem` (covering both a fresh build and a save restore),
+  `BuildModeController.PlaceInternal`/`DemolishBuilding` (covering place, remove and
+  `ClearRuntimePlacedBuildings`), and `TryRebuildSavedBuilding`, which instantiates directly.
+  `PlayerInteractor` subscribes in `OnEnable` and re-scans wholesale. An event rather than a
+  direct reference because the station and the build controller have no business knowing the
+  player exists — and `RoutingFocusController` has the same re-scan problem and can now subscribe
+  too.
+- **The publish is last in `PlaceInternal`, after every endpoint registration**, or a listener
+  would find a depot that is interactable and routing-invisible at the same time.
+- **HOW THIS HID, and it is the lesson worth keeping.** The live verification of the prompt fix
+  called `interactor.RefreshInteractables()` by hand immediately after building the golem — so it
+  drove a door the game never opens, and reported success on a feature that did nothing. Verifying
+  through the real entry point is not the same as verifying in Play mode. The regression tests
+  therefore publish the **event** and never call `RefreshInteractables` themselves.
+- **The tests are PlayMode, and that is load-bearing.** Written first as EditMode, they failed
+  against a working fix: the subscription lives in `OnEnable`, which does not run outside Play
+  mode (CLAUDE.md's `[ExecuteAlways]` gotcha, the same one that forced the Signal-trigger tests
+  across). One of the three asserts the *unsubscribe*, since the bus is static and a leaked
+  handler would re-scan for a scene that is gone.
+
+### Verified in the live Sandbox, not just in tests
+
+Driven through the MCP-for-Unity bridge in Play mode, because both fixes are about what a player
+*sees* and neither could be settled by a passing assertion.
+
+- Standing at the station, prompt = `[E]  Build Golem  -  [G] carry PlayerGolem-001`.
+  Standing at the golem = `... faces N · [R] turn · [G] carry`. Carrying it = `... [G] set down`.
+- Every crankable recipe produced exactly one popup at the bench, `y+1.50`:
+  `+1 Coke`, `+1 Iron Plate`, `+1 Glass`, `+1 Gear`, `+3 Copper Wire`. Two crafts landing between
+  one pair of frames produced a single `+2 Coke`, as the batching intends.
+- **The byproduct branch is currently unreachable and was kept anyway.** All 19 authored recipes
+  were checked: 5 are crankable, and none of those 5 has a byproduct. It is kept because
+  `HandCrankBench.TryCompleteCraft` *already* deposits a byproduct, so dropping the caption would
+  reintroduce the exact bug this pass fixes the moment a single-input recipe gains one.
+
+### Found on the way: the TMP "Latin-1 only" rule is out of date
+
+Cranking the bench made TMP write three glyphs into
+`LiberationSans SDF - Fallback.asset` — `U+2192 →`, `U+2588 █`, `U+2591 ░`. They come from
+`HandCrankReadout`: the conversion line (`1 Coal → 1 Coke`) and the progress bar
+(`[█████░░░░░] 50%`). A game-view screenshot confirms **all three render correctly** — the atlas
+is `m_AtlasPopulationMode: 1` (dynamic), so TMP resolves them from an OS fallback rather than
+drawing the missing-glyph box the rule predicts.
+
+Both consequences were then taken:
+
+1. **`CLAUDE.md`'s rule is now an allowlist**, not a blanket ban. Its old claim that `U+2192`
+   "renders as a missing-glyph box" is **not true for a dynamic atlas** — it was true of the baked
+   Ledger strings, and was never a law of the project. `TechTreeCatalogTests`' `> U+00FF` guard is
+   explicitly kept as-is, because catalog strings *are* baked and the allowlist does not reach them.
+2. **The churn is fixed by completing the set, not by reverting it.** Reverting the asset would
+   only have reset the counter: the atlas is dynamic, so the next session to render any of the four
+   would dirty it again. Instead `U+2265` — the one the accidental bake had missed, since reaching
+   the Workbench's threshold caption needs an authored Threshold core — was added deliberately via
+   `TMP_FontAsset.TryAddCharacters` + `SaveAssets`. All four now live in the committed asset.
+   - **Verified by hash**: a full play session that renders the crank readout *and* all four
+     glyphs through a live TMP label leaves the file byte-identical. The set is closed, and
+     provably so — a grep of `Assets/_Project/Scripts` for anything above `U+00FF` outside
+     comments returns exactly four sites, in two files.
+   - The aesthetic call went with the blocks: `[█████░░░░░]` and `1 Coal → 1 Coke` read better than
+     `[#####-----]` and `->` on a cozy pixel UI. **The counter-argument is on the record**: for an
+     eventual standalone build, OS-font fallback is less dependable than in the Editor, which is
+     exactly why the glyphs are baked into the asset rather than left to resolve at runtime.
+     `HandCrankReadout.ProgressBar`'s doc comment still says `[####------]` and is now wrong about
+     its own code; left alone rather than fixed blind, since it is a one-line comment on a
+     screen somebody should look at first.
+
 ## 3z. WHAT IS ACTUALLY LEFT
 
 Every coded item on this file is built, and no node on the tech tree chart is flagged as planned
@@ -1186,9 +1315,10 @@ build. Nothing below can be produced by a test.
 | **The boiler fuel ratio** | §12: "the single most important number to playtest first -- mis-tuned, this becomes a coal simulator." |
 | **The manual era** | Budgeted at 12-15 min; measured at ~7.5 min of cranking *before* the market street doubled the walk to a stall (16 cells against 7). |
 | **Golem counts per phase** | §7/§9's figures, flagged ±25 % by the design itself. |
-| **Whether the Workbench still decides anything** | The design's own deferred judgement, now with Focus scaling and patent-stamping on top of it. |
+| **Whether the Workbench still decides anything** | The design's own deferred judgement. Focus scaling and patent-stamping were the two things layered on top of it, and both are gone -- the `Haul` batch dial is now the only answer in the build. |
 | **Whether the market is a good idea** | Truckloads are priced and bursty. Does that create a storage problem worth solving, or a toll booth? |
 | **The lighting** | Retuned from an even 1.8x to a pooled 3.4x. The ratio argument is sound; **nobody has looked at it.** |
+| **Whether a free golem undo changes how you build** | Golems are now dismantlable with a full refund (chassis + cargo), so a mis-programmed golem costs nothing but time. Does that make you build golems more freely, or is the wrecking bar a tool you never reach for? |
 
 **And every number either pass invented.** They are listed as a table at the end of the playtest
 script: truckload prices and sizes, Assembly Line card costs (derived as 4x a recipe's own inputs),
@@ -1258,8 +1388,12 @@ Nothing here blocks anything. All of it is felt-not-measured.
 ### D. Deliberate cuts, unchanged
 
 `Refine` stays id-routed; Pixel Perfect Camera stays off (it fights the free-zoom camera); no player
-collision; no refund on demolishing a building; a one-card `ExtractFromNode` program jams by design.
-See §4.
+collision; a one-card `ExtractFromNode` program jams by design. See §4.
+
+**The no-refund cut is gone from this list on purpose.** It read "no refund on demolishing a
+building" from the day the list was written, and that was **reversed rather than deferred**:
+removal now refunds the full cost, for buildings and for golems, and CLAUDE.md carries it as a
+settled design call with the three rules that keep it honest.
 
 ---
 
@@ -1295,7 +1429,14 @@ imports fine). It is noise rather than breakage, and nothing this pass touched.
   at all. `IItemEndpoint` did grow a typed take — for `Haul` — but the exemption stands as written.
 - Pixel Perfect Camera installed but not enabled — conflicts with the free-zoom `CameraRigController`.
 - No player collision; the player walks through buildings and golems.
-- No refund on removing a placed building.
+- ~~No refund on removing a placed building.~~ **REVERSED, not deferred.** Removal refunds the
+  **full** cost -- the game is cozy, so placement and reorganising must not be punitive, and a
+  full refund makes "move a building" free with the tools that already exist rather than needing
+  a pick-up-and-carry mode. It extends to golems (chassis **and** cargo) via the wrecking bar.
+  Three rules hold it honest: only what the player paid for (`IsRuntimePlaced`), only a player's
+  own click (a load sweeps *without* refunding, or save/load/save is an infinite duplicator), and
+  never destroy what it cannot hand back (`RefundWouldFit` is asked before anything is torn
+  down). **Do not reintroduce a salvage fraction as "balance".**
 - ~~`AssemblyBayStructure` ... is implemented and tested but still not wired into the Sandbox
   loop.~~ **WIRED**, with §8's numbers: bays start at **10** slots ("above the natural Phase-2
   count of ~8") and upgrade **+6 for 40 Scrap + 20 Iron Plate**. That price is Presser-tier goods

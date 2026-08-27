@@ -52,8 +52,6 @@ namespace GolemFactory.Tests.PlayMode
             golem.transform.SetParent(_root.transform);
             golem.Configure("Golem", null);
 
-            var focus = new GameObject("Focus").AddComponent<ArtificerFocusMeterHolder>();
-            focus.transform.SetParent(_root.transform);
             var patents = new GameObject("Patents").AddComponent<PatentRegistryHolder>();
             patents.transform.SetParent(_root.transform);
 
@@ -92,7 +90,7 @@ namespace GolemFactory.Tests.PlayMode
             var controller = new GameObject("Controller").AddComponent<WorkbenchController>();
             controller.transform.SetParent(_root.transform);
             controller.ConfigureGolem(golem);
-            controller.ConfigureSystems(focus, patents);
+            controller.ConfigureSystems(patents);
             controller.ConfigureRoster(chassisRoster, new LogicCoreDefinition[0], appendageRoster);
             controller.ConfigureUI(vault, chassisRow, dragLayer, logicSlot, zones, ticker, status, engage, patent);
 
@@ -261,7 +259,7 @@ namespace GolemFactory.Tests.PlayMode
         }
 
         // Nothing reaches the golem until the lever is pulled -- the same contract dragging a
-        // card already honours, so trying 8 and putting it back costs nothing and no Focus.
+        // card already honours, so trying 8 and putting it back costs nothing at all.
         [UnityTest]
         public IEnumerator AdjustingTheDial_DoesNotTouchTheGolemUntilTheLeverIsPulled()
         {
