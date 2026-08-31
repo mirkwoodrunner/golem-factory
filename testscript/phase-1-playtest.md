@@ -7,10 +7,16 @@ the bay cap, and a lighting pass). **None of it has been played.** Tests prove t
 the spec; they say nothing about whether any of it is any good, and every number marked *TUNING*
 below was invented by a developer and has never been felt.
 
-**Time:** ~20 min for the smoke test (Part A), ~60–90 min for the full run (Parts B–H).
+**Time:** ~20 min for the smoke test (Part A), ~60–90 min for the full run (Parts B–I).
 
-**Build under test:** branch `claude/artificer-walk-animation`, **1380/1380 tests green**
-(1220 EditMode + 160 PlayMode).
+**Read "The critical path" before Part B.** Parts A–I are grouped by feature, not by what unlocks
+what, and following them in printed order used to walk you into a golem that could not move
+(`requireSteamPower` is on, and the boiler was printed in Part E) and a three-card program that
+does not fit the two-slot chassis you can afford. That section is the real order, start to finish,
+from hand-harvesting to one golem running unattended.
+
+**Build under test:** branch `passes/market-street-to-wrecking-bar`, **1422/1422 tests green**
+(1234 EditMode + 188 PlayMode).
 
 ---
 
@@ -61,6 +67,79 @@ unit per key press regardless of speed.
 
 ---
 
+## The critical path — manual collection to one automated golem
+
+**Read this before Part B. It is the thing every previous draft of this script did not say.**
+Parts A–I are organised by *feature*, not by *dependency*, so following them in printed order
+walks you into a golem that cannot move and a program that does not fit. This table is the real
+order. Every number in it was read out of the shipped assets, not out of the design docs.
+
+**Three facts hold from the first frame, and each one used to be buried three parts away:**
+
+1. **`requireSteamPower` is ON in `Sandbox.unity`** (it is `1` in the scene file). A golem with
+   no Boiler orthogonally adjacent to it — or to a Steam Pipe run back to one — never takes a
+   single step. It stalls `NoSteam` the instant you pull the lever. **The boiler is not Part E.
+   It is step 7 of the opening**, and you cannot automate anything without it.
+2. **The 12-Scrap Clockwork Scavenger has exactly TWO appendage slots.** So your first golem's
+   whole program is `Extract → Push`. `Extract → Assemble → Push` is three cards and needs the
+   **Brass Presser** (3 slots, 60 Scrap + 20 Iron Plate + 10 Gear) — which is the *entire* manual
+   era, not a step in it. Part C used to open by telling you to build the three-card program on
+   whatever golem you had. On a Scavenger there is no third socket to drop it into.
+3. **Every stall except Scrap starts EMPTY.** The Scrap stall is seeded with 60 units; Coal,
+   Copper, Zinc and Aether all start at zero, so your first Coal is an *order*, not a harvest.
+
+| # | Do this | Costs | Where |
+|---|---|---|---|
+| 1 | Harvest the **Scrap** stall dry — it holds **60**, one unit per `E` | free | B1 |
+| 2 | `E` on the now-empty stall: order a **free** Scrap truckload (30 units, ~4 s) | free | B1 |
+| 3 | `E` on the **Coal** stall — it starts empty — and order a truckload (40 units, ~6 s) | **10 Scrap** | B1 |
+| 4 | Harvest ~20 Coal off it when the cart lands | free | B1 |
+| 5 | At the bench: `R` to **R1 Coking**, crank ×20 (1 Coal → 1 Coke, 2.4 s each) | 20 Coal | B2 |
+| 6 | `R` to **R2 Scrap Reclamation**, crank ×10 (1 Scrap → 1 Iron Plate, 4.8 s each) | 10 Scrap | B2 |
+| 7 | Build a **Boiler** *out on the street*, on the tile beside where the golem will stand | 30 Scrap + 10 Iron Plate | B3 |
+| 8 | `E` on the boiler to **hand-load 20 Coke** | 20 Coke | B3 |
+| 9 | Build a **Depot** on the tile the golem will face | 15 Scrap | B3 |
+| 10 | `E` on the **construction station already standing in the shop** → build a **Clockwork Scavenger** | 12 Scrap | B4 |
+| 11 | `G` to pick the golem up, walk it to the street, `G` to set it down, `R` until the **stall is behind it** | free | B4 |
+| 12 | `E` on the golem → **AlwaysOn** into TRIGGER, **Extract** into STEP 1, **Push** into STEP 2, raise Extract's dial to **12** | free | B5 |
+| 13 | **ENGAGE GEARS** | free | B5 |
+
+**Total: ~77 Scrap, ~20 Coal, and about two minutes of cranking.** You start with 60 Scrap on the
+stall, so exactly one free truckload covers the lot.
+
+**The three cards in step 12 need no claim.** Extract, Haul and Push are granted outright at t=0
+(they are the catalogue's opening hand), and both Logic Cores are ungated. **You do not need the
+Assembly Line at all to build your first automated golem** — that is Part C's business, and the
+last draft put it in front of this one.
+
+**The layout, since "behind" and "in front" decide whether any of it works.** A golem pulls from
+the tile *behind* it and pushes to the tile *in front*, on one straight line. So you want:
+
+```
+  (-8,-16)  [ Scrap stall ]                 <- the golem's SOURCE (behind it)
+  (-8,-17)  [    golem    ] [ Boiler ]      <- boiler orthogonally adjacent, (-7,-17)
+  (-8,-18)  [    Depot    ]                 <- the golem's TARGET (in front)
+```
+
+Those exact cells work: the Scrap stalls sit at `(-8,-16)` and `(-16,-16)`, and the street runs
+from `y = -13` down to `y = -20`, so there is room on either side of a stall. The construction
+station is at `(3,-1)` inside the shop. **You can build on the street** — the boiler and the depot
+both go out there, and a placement that refuses with `off the ground` means you have walked past
+the kerb.
+
+**What you should see at the end.** The golem takes 12 Scrap out of the stall (18 ticks), turns
+round, and puts 12 into the Depot (14 ticks) — about 3 seconds a round trip at 1x. **The Depot is
+your stockpile**: it writes into `FactoryStockpile`, the same wallet the build menu spends from,
+so your Inventory number climbs with nobody pressing anything. That is the whole point, and it is
+the first moment in the game where the factory pays you while you stand still.
+
+**It will stop twice, and both are the loop rather than a bug.** The stall runs dry (walk over,
+`E`, free truckload) and the boiler burns out after **200 seconds** — 20 Coke at 1 Coke per 100
+ticks per powered golem. If you want it to run longer, crank more Coke and hand-load again;
+a hand-load moves 20 at a time on purpose.
+
+---
+
 ## Retests from session 1
 
 Your first session produced four findings. Two were real bugs, one was this script being wrong, and
@@ -99,7 +178,7 @@ longer an empty box.
 - [Done] **Top-left:** fuel gauge, `0 Coke · 0/min · idle`.
 - [Done] **Top-right:** `Clock Tower dormant` — *dormant*, not a stage or a starvation warning.
 - [Done] **Top-centre:** `All golems running.`
-- [Done] **Bottom-left:** a Build menu with **nine** rows, all costs legible, none cut off:
+- [Done] **Bottom-left:** a Build menu with **eleven** rows, all costs legible, none cut off:
 
 | Row | Cost |
 |---|---|
@@ -112,11 +191,18 @@ longer an empty box.
 | HandCrankBench | Free |
 | **FreightMast** | 20 Brass + 10 Casing |
 | **SlagHeap** | 20 Scrap + 10 Iron Plate *(TUNING)* |
+| **ScrapRecycler** | 20 Scrap + 10 Iron Plate *(TUNING)* |
 | **Demolish** | free — **refunds the full cost** |
 
-> **Ten rows now, not nine.** The panel was authored with room for exactly nine (308px of space
-> against 302px of rows); it grows itself to fit from code now, so check nothing is clipped at the
-> bottom.
+> **Eleven rows now, not nine.** The panel was authored with room for exactly nine (308px of
+> space against 302px of rows); it grows itself to fit from code now, so check nothing is clipped
+> at the bottom. Ten of those rows are placeables and the eleventh is the wrecking bar.
+>
+> **Note what you cannot build yet, and why it matters below:** the
+> **GolemConstructionStation costs 5 Brass**, and Brass is R7 (2 Copper Ingot + 1 Zinc Ingot),
+> which is two smelts away and not hand-crankable. **There is already one standing in the shop**
+> — that is the one you will use for hours, and building a second is a mid-game move, not an
+> opening one.
 
 - [All those options work, but ESC and Right Click don't unhighlight the build option in the list, so to reactivate, you have to click twice] **NEW — leaving build mode.** Click a row, then get out of build mode three ways: **Escape**,
       **right-click**, and **clicking the same row again**. After each, the ghost should vanish and
@@ -212,15 +298,38 @@ after Part B if you have none.
 
 ---
 
-## Part B — The manual era (~15 min at 1x) — **question 2**
+## Part B — From a cold start to your first automated golem (~20 min) — **question 2**
 
-**Time it.** The design budgets 12–15 minutes. It was measured at ~7.5 min of cranking *before* the
-market moved the goods 16 cells away.
+**Time it.** The design budgets 12–15 minutes of hand-work before your first machine. It was
+measured at ~7.5 min of cranking *before* the market moved the goods 16 cells away, and the bench
+has since been halved.
 
-- [Done] Harvest **100 Scrap** from a Scrap stall (one press each). Note how long, and how it feels —
-      100 discrete presses plus the walk is a candidate finding on its own.
-- [How do I change the bench? I can only do coking, pressing R changes orientation of item it wants to place, but doesn't change recipe] Crank **R2 Scrap Reclamation** at the bench for 40 Iron Plate (~9.6 s each at 1x), then **R8
-      Gear Cutting** for 10 Gears.
+**Follow the critical-path table above in order.** The five sub-parts below are those same
+thirteen steps with the things to actually look at. **Part B now ends with a golem running on its
+own** — that is the change. It used to end with a chassis you could not afford and no way to power
+it.
+
+### B1. Buy and harvest the raw goods
+
+- [Done] Harvest a **Scrap** stall (one press each). Note how long, and how it feels — discrete
+      presses plus the walk is a candidate finding on its own.
+  - [ ] **CORRECTION — there are 60 units there, not 100.** This step used to say "harvest 100
+        Scrap", which is not a thing you can do: `SandboxBootstrap` seeds the centre Scrap stall
+        with exactly **60** and starts every other stall in the market at **zero**. The remaining
+        Scrap comes from the free truckload below. If you stood there pressing `E` at an empty
+        stall waiting for a hundredth unit, that was this script's fault.
+- [ ] With the stall empty, press **E** on it again: that is an **order**, and the Scrap stall is
+      the **free** one. 30 units, ~4 s. (Scrap is free by design — §10 forbids a soft-lock, and a
+      priced market with an empty wallet is one.)
+- [ ] Press **E** on the **Coal** stall. It is empty from the first frame, so this is also an
+      order: **10 Scrap** for 40 Coal, ~6 s. Harvest ~20 Coal off it when the cart lands.
+  - [ ] **You need the Coal now, not in Part E.** The old script did not mention Coal until the
+        steam part, twenty minutes further down. With `requireSteamPower` on, no Coal means no
+        Coke, means no lit boiler, means **no golem in the game moves at all**.
+
+### B2. Crank the two things the boiler needs
+
+- [How do I change the bench? I can only do coking, pressing R changes orientation of item it wants to place, but doesn't change recipe] Crank at the bench. Press **R** to change recipe.
   - [Done] **RETEST — FIXED, and the bench was never the problem.** `R` is arbitrated on "am I
         holding a placeable?", and **there was no way to stop holding one** — the build menu only
         ever selected. So after you opened the build menu once, `R` turned the ghost and returned
@@ -231,13 +340,16 @@ market moved the goods 16 cells away.
   - [What is this test?] ~~**RETEST — and the same fix should give you R on golems back**~~
         *(My fault — that said nothing useful, and you have no golem yet at this point in the
         script. It belongs in Part C, where it now is. Skip it here.)*
+- [ ] **R1 Coking ×20** — 1 Coal → 1 Coke, 24 ticks (2.4 s) each. That is your boiler's first
+      tank.
+- [ ] **R2 Scrap Reclamation ×10** — 1 Scrap → 1 Iron Plate, 48 ticks (4.8 s) each. That is the
+      boiler's build cost. *(Note it eats the Scrap: 10 plates cost you 10 Scrap.)*
 - [Done] Let go of **E** mid-craft: progress **is kept**, and no goods are lost. Walk away and come
       back and it resumes where it was — that is deliberate (a pause, not an exploit: the inputs
       are only charged at completion). Press **R** mid-craft to change recipe: progress resets to
       zero, still no goods lost.
       *(An earlier draft of this script said progress "abandons" on release. That was the script
       being wrong, not the game.)*
-- [Hand Crank is too long.  Let's halve the time, then we'll retest] Build the **Brass Presser** (60 Scrap + 20 Iron Plate + 10 Gear).
   - [ ] **RETEST — HALVED, as asked.** The bench ran at §11 item 7's authored **25 %** of machine
         speed; it now runs at **50 %**. Every hand-cranked craft is twice as fast: R2 Scrap
         Reclamation 96 ticks → **48** (9.6 s → 4.8 s at 1x), R8 Gear Cutting 64 → **32**, R1 Coking
@@ -248,28 +360,130 @@ market moved the goods 16 cells away.
         replaces it (a test pins it at every duration), so automating is still the point of
         automating. It is twice as slow now rather than four times.*
 
-> **Record total elapsed time.** Note separately how much of it was *walking*.
+### B3. Light a boiler, out on the street
+
+- [ ] Build a **Boiler** (30 Scrap + 10 Iron Plate) **on the market street**, on the tile that
+      will sit *beside* your golem. The street is buildable — placement is bounded by the world,
+      not by the workshop.
+  - [ ] **The reach rule, and it is the one that catches people:** a boiler powers **only its own
+        four orthogonal neighbours**. No diagonals. If you want the golem further away than one
+        tile, that is a run of **Steam Pipes at 1 Iron Plate each**, and a single cell's gap ends
+        the run. Building the boiler in the shop and the golem at the stall is **16 pipes**, so
+        do not — put the boiler on the street.
+- [ ] Press **E** on the boiler to **hand-load Coke**. It moves **20 at a time**, capped
+      deliberately: hand-loading is how you restart a dead factory, not how you run a live one.
+      The top-left gauge should come off `idle`.
+- [ ] Build a **Depot** (15 Scrap) on the tile the golem will face. **A Depot writes into
+      `FactoryStockpile` — your own wallet** — so this is what turns a golem's work into money you
+      can spend.
+
+### B4. Build the golem and stand it in the line
+
+- [ ] Walk to the **construction station already standing in the shop** (cell `(3,-1)`) and press
+      **E**. Build a **Clockwork Scavenger, 12 Scrap** — the only chassis you can afford, and the
+      right one.
+  - [ ] **Do not try to build a second station.** It costs 25 Scrap + **5 Brass**, and Brass is
+        R7 (2 Copper Ingot + 1 Zinc Ingot), two smelts deep and not hand-crankable. The starter
+        station is the one you use for hours.
+  - [ ] It arrives **bare** — chassis fitted, no logic core, no cards. That is expected; the
+        Workbench opens next.
+- [ ] Press **G** to pick it up, walk it out to the street, and **G** again to set it down on your
+      own tile. It refuses to drop onto an occupied tile.
+  - [ ] **Golems do not walk.** They act on the tiles beside them and stay put, so carrying is the
+        only way one gets from the shop to the market. **Is a 16-cell carry per golem acceptable,
+        or does this want a way to build them where they work?** That is a real question about the
+        opening and nothing in the game answers it.
+- [ ] Press **R** until the **stall is behind it and the Depot in front**. A popup should name the
+      new facing.
+
+### B5. Program it, and let go
+
+- [ ] Press **E** on the golem to open the Workbench. Drop **AlwaysOn** into TRIGGER, **Extract**
+      into STEP 1, **Push** into STEP 2.
+  - [ ] **These three cards are already yours** — Extract, Haul and Push are granted outright at
+        t=0, and both Logic Cores are ungated. **You do not need the Assembly Line for this
+        golem.** If the vault is empty of those three, that is a blocker: say so immediately.
+  - [ ] **Steps 3–6 are greyed out**, because a Scavenger has **two** appendage slots. That is
+        correct, not a bug — and it is why the three-card `Extract → Assemble → Push` program is
+        Part C's business and not this one's.
+- [ ] Raise **Extract**'s batch dial from **1 to 12** with the `+` stepper, and watch the tick
+      cost it quotes climb with it (`6 + qty`). At 1 it moves one unit a trip and looks broken;
+      at 12 it is a real hauler. **Is that dial discoverable, or did you have to be told?**
+- [ ] Pull **ENGAGE GEARS**.
+- [ ] **Watch it work without you.** Extract 12 (18 ticks) then Push 12 (14 ticks), about 3 s a
+      round trip at 1x, and your Inventory number climbing on its own. **This is the moment the
+      whole opening exists to reach. Did it land, and did you understand why it worked?**
+- [ ] **It stops twice, and both are the loop:** the stall runs dry (walk over, `E`, free
+      truckload) and the boiler burns out after **200 s** (20 Coke divided by 1 Coke per 100 ticks
+      per powered golem). Check the badge tells the two apart — `NodeEmpty` and a **blue**
+      `NoSteam`.
+
+> **Record total elapsed time**, from Play to the golem running unattended. Note separately how
+> much of it was *walking* and how much was *cranking*.
 
 ---
 
-## Part C — Automate it (~15 min) — **question 3**
+## Part C — Automate a *recipe* (~20 min) — **question 3**
 
-> **READ THIS FIRST — the script was wrong, and it sent you looking for a card you do not own.**
-> `Assemble R2` is **not in your opening hand**. §8's gating means the Workbench vault shows only
-> cards you have **claimed**, and a fresh save grants exactly three: Extract, Haul, Push. The
-> Assemble cards are bought from the draft — which is **Part G**, printed after this one. Part C
-> as written was unplayable from a fresh start.
+**Part B automated hauling. This part automates production**, and it is a genuinely bigger step
+than the last draft made it look — it needs a different chassis and a bought card.
+
+> **READ THIS FIRST — two things the old draft got wrong, and either one stops you dead.**
+>
+> **1. `Assemble R2` is not in your opening hand.** §8's gating means the Workbench vault shows
+> only cards you have **claimed**, and a fresh save grants exactly three: Extract, Haul, Push.
 >
 > **Do this first:** **Tab → Assembly Line**, and claim your way down to
-> `Assemble Scrap Reclamation` (4 Scrap, and it gets cheaper the longer it sits). Measured against
-> the real deck it now surfaces on the **6th claim** — five of those are free cards, and one is
-> the Clockwork Scavenger at 3 Scrap. Then reopen the Workbench and it will be in the vault under
-> `APPENDAGES · actions`. **That is the card this step calls "Assemble R2"** (1 Scrap → 1 Iron
-> Plate). Part G's own steps still work afterwards.
+> `Assemble Scrap Reclamation` (**4 Scrap** — 4× the recipe's own 1 Scrap input — and it gets
+> cheaper the longer it sits). Its prerequisite is "you have produced Scrap", which Part B already
+> satisfied. Then reopen the Workbench and it will be in the vault under `APPENDAGES · actions`.
+> **That is the card this step calls "Assemble R2"** (1 Scrap → 1 Iron Plate).
+>
+> **2. It does not fit on the golem you have.** `Extract → Assemble → Push` is **three appendage
+> cards**, and a Clockwork Scavenger has **two slots**. There is no third socket to drop it into,
+> and no amount of claiming will make one. You need the **Brass Presser** — 3 slots, and this is
+> its cost:
+>
+> | For | Needs | Which costs |
+> |---|---|---|
+> | Brass Presser chassis | 60 Scrap + 20 Iron Plate + 10 Gear | — |
+> | 10 Gear | R8 Gear Cutting ×10, at 2 Iron Plate each | 20 Iron Plate |
+> | 40 Iron Plate total | R2 Scrap Reclamation ×40 | 40 Scrap |
+> | **Running total** | | **100 Scrap + ~5 min of cranking** |
+>
+> **That is the manual era's actual payoff, and it is the number question 2 is really asking
+> about.** Budget for it: 100 Scrap is three and a bit free truckloads on top of everything Part B
+> already spent, and you have to walk to the stall for each one.
 
-- [ ] Place a **Depot**, position a golem so the stall is the tile **behind** it and the depot the
-      tile **in front** (`Extract` pulls from behind, `Push` delivers in front).
-- [ ] Program `Extract → Assemble Scrap Reclamation → Push`, pull **ENGAGE GEARS**.
+- [ ] **Crank the Presser's parts.** `R` to **R2 Scrap Reclamation** ×40 (48 ticks each), then
+      `R` to **R8 Gear Cutting** ×10 (32 ticks each, eating 2 Plate apiece). You should end with
+      **20 Iron Plate and 10 Gear** left over — the Gears consume half the plates.
+  - [Hand Crank is too long.  Let's halve the time, then we'll retest] *(Your session-2 finding
+        lives here now — this is the block of cranking you were complaining about, and it has been
+        halved. The retest note is under B2.)*
+- [ ] Build the **Brass Presser** at the construction station (60 Scrap + 20 Iron Plate + 10
+      Gear). **Was that worth it?** It is the single largest spend in the opening and it buys you
+      exactly one extra program slot.
+- [ ] Place a **Depot**, position the Presser so the stall is the tile **behind** it and the depot
+      the tile **in front** (`Extract` pulls from behind, `Push` delivers in front). **And put it
+      in reach of a boiler** — the same rule as B3, and it is still the easiest thing to forget.
+- [ ] **Set Extract's dial to 1, not 12 — and this is the interesting bit.** R2 is a 1:1 recipe
+      and `Assemble` runs **once per cycle**, so an Extract batch of 12 fills the golem's input
+      stock to its 12-per-type cap and then only ever spends one of them a cycle. It does not
+      deadlock (Extract takes `min(qty, room)`, so it self-limits to topping up by 1), but the
+      golem then carries a permanently full hold — **and the amber `hold nearly full` badge fires
+      at 9 of 12 and never goes out.** A golem that is working perfectly wears a warning forever.
+  - [ ] **Try it wrong on purpose**, at 12, and watch the badge stick. **Then set it to 1.**
+        Two questions, and they are the ones the Workbench lives or dies on: **did you work out
+        why on your own?** And **is a permanent amber badge on a correctly-tuned production golem
+        the right behaviour**, or should `Straining` only fire on a stock that is not draining?
+        *(This is the same 9-of-12 number I1 asks you to judge — here is the case that tests it.)*
+- [ ] Program `Extract → Assemble Scrap Reclamation → Push`, pull **ENGAGE GEARS**. It should now
+      pull raw Scrap out of the stall and bank **Iron Plate** without you touching the bench
+      again. **That is the bench being replaced, which is the whole arc.**
+  - [ ] **Compare it to cranking.** The machine runs R2 at 24 ticks against the bench's 48. Does
+        automating *feel* twice as fast, and does the Presser earn its 100 Scrap back at a rate
+        you can perceive?
 - [ ] Patent the program, then load it onto a second golem from the **Patents** tab. Patenting is
       free now (Focus is gone), so the only thing it buys is not rebuilding the program by hand.
       **Is that enough to make you use it?** If you rebuild the second golem card-by-card out of
@@ -287,7 +501,7 @@ market moved the goods 16 cells away.
       on its own when turned back.
 - [ ] **Stand two stalled golems one cell apart.** Their badges should stack vertically, not
       overprint. Same for the interaction caption.
-- [ ] **NEW — Demolish, with a full refund.** The build menu has a **tenth row**: `Demolish
+- [ ] **NEW — Demolish, with a full refund.** The build menu's **last row** is `Demolish
       (full refund)`. Pick it up, and the ghost turns a steady deep red over anything removable
       and inert steel over everything else. Click a Depot you placed: it comes down and **the
       whole 15 Scrap comes back**, with a green `+15 Scrap` popup where the grey `-15 Scrap`
@@ -341,9 +555,15 @@ pay for it, and it arrives as one burst after a delay.
 **`requireSteamPower` is ON now.** Golems stall `NoSteam` without a boiler in reach, so this is the
 real arc, not arithmetic.
 
-- [ ] From a cold start: hand-harvest Scrap and Coal → crank R2 for Iron Plate and R1 for Coke →
-      build a **Boiler** (30 Scrap + 10 Iron Plate) → **press E on it to hand-load 20 Coke** → build
-      golems within its reach.
+> **You already did the cold start — it is B1–B3 now.** This part used to open by walking you
+> through harvesting Coal, cranking Coke and lighting your first boiler, which is why the opening
+> arc read as optional: the one thing without which *no golem in the game moves* was printed
+> twenty minutes after the part that told you to build golems. That sequence has moved up into
+> Part B where it belongs. **What is left here is the question**, which is about the burn rate
+> rather than about the steps.
+
+- [ ] By now you have one lit boiler from B3. Build **a second**, or run three or four golems off
+      the first, and watch what fuel actually costs once the factory is not one golem.
 - [ ] A golem out of reach should stall **`NoSteam` naming its own tile**. Lay a **Steam Pipe** to
       it and it should resume.
 - [ ] Watch the gauge: `N Coke · N/min · M:SS left`, with an alert at 25% of the most it has held.
@@ -465,7 +685,7 @@ has handled, so the list stays short and grows with your factory.
 
 ### I3. The Scrap Recycler — 20 Scrap + 10 Iron Plate *(TUNING)*
 
-New building, tenth row of the build menu. Throw **anything** in, get **Scrap** out, and it burns
+New building, the **tenth placeable** in the build menu (the eleventh row is Demolish). Throw **anything** in, get **Scrap** out, and it burns
 **Coke** doing it. Deeper goods are worth more: a Casing comes back worth more than a lump of Coal.
 
 - [ ] Build one, push Coke into it as fuel, then push junk in. Haul the Scrap back out with a golem
@@ -520,8 +740,13 @@ New building, tenth row of the build menu. Throw **anything** in, get **Scrap** 
   procedural grain that repeats, text-only cards with no icons, dead space in both lists. *(The
   step captions are no longer part of this — see A4.)*
 - **No player collision** — you walk through everything.
-- **No refund** on removing a placed building.
+- ~~**No refund** on removing a placed building~~ — **stale, and the opposite is now true.**
+  Demolition refunds the **full** cost and it is a settled design call, not a tuning knob. See
+  Part C.
 - **A one-card `ExtractFromNode` program jams** by design (a Scavenger needs Extract + Push).
+- **Golems cannot walk to their post.** They are built at a construction station and carried
+  there one at a time with `G`. With the market 16 cells outside the shop, that is a real walk per
+  golem — deliberate today, but say if it grates.
 - **Placeholder art throughout** — the buildings all have their own sprites now, but they are
   generated placeholders, not final art.
 
