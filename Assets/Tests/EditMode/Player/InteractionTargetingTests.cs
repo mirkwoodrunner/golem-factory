@@ -212,5 +212,68 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual("Program", InteractionTargeting.Verb(InteractionKind.Program));
             Assert.IsEmpty(InteractionTargeting.Verb(InteractionKind.None));
         }
+
+        // --- The golem-handling aside ----------------------------------------------------
+
+        [Test]
+        public void GolemHandlingHint_NamesTheGolemWhenTheCaptionIsAboutSomethingElse()
+        {
+            // The case this exists for: the caption belongs to the construction station, and
+            // the golem it just emitted has to be named or the player cannot tell which one
+            // [G] would lift.
+            string hint = InteractionTargeting.GolemHandlingHint("PlayerGolem-001", false);
+
+            StringAssert.Contains("[G]", hint);
+            StringAssert.Contains("PlayerGolem-001", hint);
+        }
+
+        [Test]
+        public void GolemHandlingHint_OmitsTheNameWhenTheGolemIsAlreadyTheSubject()
+        {
+            string hint = InteractionTargeting.GolemHandlingHint(null, false);
+
+            StringAssert.Contains("[G]", hint);
+            Assert.AreEqual("[G] carry", hint);
+        }
+
+        [Test]
+        public void GolemHandlingHint_SaysTheOppositeWhileCarrying()
+        {
+            // Same key, opposite meaning. A player holding a golem must not be told to carry it.
+            string carrying = InteractionTargeting.GolemHandlingHint("PlayerGolem-001", true);
+
+            StringAssert.Contains("[G]", carrying);
+            StringAssert.DoesNotContain("carry", carrying);
+        }
+
+        [Test]
+        public void GolemHandlingHint_IsRenderableByTheProjectAtlas()
+        {
+            // docs/cozy-automation-design.md's TMP rule: nothing above U+00FF, or it draws as a
+            // missing-glyph box. This string is appended to captions, so it inherits the rule.
+            foreach (bool carrying in new[] { false, true })
+            {
+                foreach (char c in InteractionTargeting.GolemHandlingHint("PlayerGolem-001", carrying))
+                {
+                    Assert.Less((int)c, 0x100, "unrenderable glyph in the golem-handling hint");
+                }
+            }
+
+            foreach (char c in InteractionTargeting.DetailSeparator)
+            {
+                Assert.Less((int)c, 0x100, "unrenderable glyph in the detail separator");
+            }
+        }
+
+        [Test]
+        public void AppendDetail_SuppliesTheSeparatorOnlyBetweenTwoClauses()
+        {
+            Assert.AreEqual("holds Coke", InteractionTargeting.AppendDetail("", "holds Coke"));
+            Assert.AreEqual("holds Coke", InteractionTargeting.AppendDetail("holds Coke", ""));
+            Assert.AreEqual("", InteractionTargeting.AppendDetail("", null));
+            Assert.AreEqual(
+                "holds Coke" + InteractionTargeting.DetailSeparator + "[G] carry",
+                InteractionTargeting.AppendDetail("holds Coke", "[G] carry"));
+        }
     }
 }

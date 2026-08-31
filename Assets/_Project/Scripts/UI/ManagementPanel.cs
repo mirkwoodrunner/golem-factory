@@ -9,7 +9,12 @@ namespace GolemFactory.UI
         Inventory,
         AssemblyLine,
         Patents,
-        SaveLoad
+        SaveLoad,
+
+        // Appended, not inserted. Nothing serializes this enum today, but ActiveTab is the kind
+        // of field a save pass reaches for, and the project's other player-facing enums
+        // (AppendageActionType, StallReason) are append-only for exactly that reason.
+        TechTree
     }
 
     // Consolidates the four small always-on HUD panels (Inventory/AssemblyLine/Patents/
@@ -27,16 +32,19 @@ namespace GolemFactory.UI
         [SerializeField] private GameObject assemblyLineTab;
         [SerializeField] private GameObject patentsTab;
         [SerializeField] private GameObject saveLoadTab;
+        [SerializeField] private GameObject techTreeTab;
 
         [SerializeField] private InventoryPanel inventoryPanel;
         [SerializeField] private AssemblyLinePanel assemblyLinePanel;
         [SerializeField] private PatentBrowserPanel patentBrowserPanel;
         [SerializeField] private SaveLoadPanel saveLoadPanel;
+        [SerializeField] private TechTreePanel techTreePanel;
 
         [SerializeField] private Button inventoryTabButton;
         [SerializeField] private Button assemblyLineTabButton;
         [SerializeField] private Button patentsTabButton;
         [SerializeField] private Button saveLoadTabButton;
+        [SerializeField] private Button techTreeTabButton;
         [SerializeField] private Button closeButton;
 
         [SerializeField] private WorkbenchController workbenchController;
@@ -87,6 +95,19 @@ namespace GolemFactory.UI
             constructionPanel = construction;
         }
 
+        /// <summary>
+        /// Wires the Tech Tree tab. Deliberately a second method rather than three more arguments
+        /// on <see cref="Configure"/>: that signature already carries seventeen, every existing
+        /// caller and test would have to be edited to pass three nulls, and a tab is exactly the
+        /// kind of thing a scene should be able to add without the others knowing.
+        /// </summary>
+        public void ConfigureTechTreeTab(GameObject tabRoot, TechTreePanel panel, Button tabButton)
+        {
+            techTreeTab = tabRoot;
+            techTreePanel = panel;
+            techTreeTabButton = tabButton;
+        }
+
         private void Awake()
         {
             if (actions != null)
@@ -119,6 +140,7 @@ namespace GolemFactory.UI
             assemblyLineTabButton?.onClick.AddListener(() => SelectTab(ManagementTab.AssemblyLine));
             patentsTabButton?.onClick.AddListener(() => SelectTab(ManagementTab.Patents));
             saveLoadTabButton?.onClick.AddListener(() => SelectTab(ManagementTab.SaveLoad));
+            techTreeTabButton?.onClick.AddListener(() => SelectTab(ManagementTab.TechTree));
             closeButton?.onClick.AddListener(Close);
 
             Close();
@@ -155,6 +177,8 @@ namespace GolemFactory.UI
             }
             workbenchController?.Close();
             constructionPanel?.Close();
+            // Close() above restores the world HUD, so this has to follow it, not precede it.
+            workbenchController?.SetWorldHudVisible(false);
             SelectTab(ActiveTab);
         }
 
@@ -165,6 +189,7 @@ namespace GolemFactory.UI
             {
                 screenRoot.SetActive(false);
             }
+            workbenchController?.SetWorldHudVisible(true);
         }
 
         public void SelectTab(ManagementTab tab)
@@ -174,6 +199,7 @@ namespace GolemFactory.UI
             assemblyLineTab?.SetActive(tab == ManagementTab.AssemblyLine);
             patentsTab?.SetActive(tab == ManagementTab.Patents);
             saveLoadTab?.SetActive(tab == ManagementTab.SaveLoad);
+            techTreeTab?.SetActive(tab == ManagementTab.TechTree);
             ApplyTabHighlight();
             RefreshActiveTab();
         }
@@ -188,6 +214,7 @@ namespace GolemFactory.UI
             Tint(assemblyLineTabButton, ActiveTab == ManagementTab.AssemblyLine);
             Tint(patentsTabButton, ActiveTab == ManagementTab.Patents);
             Tint(saveLoadTabButton, ActiveTab == ManagementTab.SaveLoad);
+            Tint(techTreeTabButton, ActiveTab == ManagementTab.TechTree);
         }
 
         private static void Tint(Button button, bool selected)
@@ -225,6 +252,9 @@ namespace GolemFactory.UI
                     break;
                 case ManagementTab.SaveLoad:
                     saveLoadPanel?.Refresh();
+                    break;
+                case ManagementTab.TechTree:
+                    techTreePanel?.Refresh();
                     break;
             }
         }

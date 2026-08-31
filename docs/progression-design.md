@@ -63,7 +63,7 @@ Verified against live code, not docs.
 | `AssemblyBayStructure` | `MaxGolemSlots` + `TryUpgrade` implemented. **Not in the loop.** |
 | `FloorLayout` | `public const int HalfExtent = 12` → a **25 × 25** floor. Read by `PlayerController.ClampToFloor` at runtime and by `SandboxFloorGenerator`, which is **Editor-only**. |
 | `BeltPlacementRules.ShouldLink` | **Directional** — requires `TargetCell(from, facing) == to` and rejects head-on pairs. |
-| `PatentRegistry` / `ArtificerFocusMeter` | Implemented, wired to the Workbench. |
+| `PatentRegistry` | Implemented, wired to the Workbench. **`ArtificerFocusMeter` no longer exists** — cut after this doc was written; see the annotation on §8's "Patents become the scaling tool". |
 | Tick rate | `TicksPerSecond = 10` → **1 tick = 0.1 s**. All durations below are ticks. |
 
 ---
@@ -632,6 +632,15 @@ and gives the player something to spend surplus on while a stage grinds.
   golems** and ~12 identical smelters; patenting once and stamping is then obviously correct — the
   Factorio blueprint arc, built entirely from mechanics already in the repo.
 
+  > **REVERSED — built, then cut.** This shipped exactly as written and was later removed along
+  > with the whole Focus meter. The argument above is circular: it justifies patents by a cost
+  > that only patents pay, and the cost never bound anyway — see §12's own "Focus exhaustion:
+  > **Clear.** Regenerates at 5/s". At 5/s against a 100 cap, the most expensive program in the
+  > game (44) was under nine seconds of standing still, so "obviously correct by the 23rd golem"
+  > was true of the *typing*, not of the Focus. Patents survive as a free named-program library;
+  > the scaling, the flat stamp and the meter are gone. See
+  > `unity-implementation-plan.md` § "Cutting the Artificer Focus meter".
+
 ### Legibility surfaces
 
 Every one extends something that exists.
@@ -706,7 +715,8 @@ or Glass line. Meanwhile Brass demands copper and zinc in one golem's input stoc
 The Overclocker opens Mechanisms, the Tier-5 goods and `Repeat` — and immediately poses its own
 question, since `Repeat` and a third ingredient compete for the same fifth slot. Then the long haul
 for the Zeppelin, roughly **12–18 minutes** of a mature factory's full output, during which the
-player patents the Coke, Smelter and carrier programs and stamps out copies at a flat 10 Focus. The
+player patents the Coke, Smelter and carrier programs and stamps out copies (free — the flat-10
+Focus stamp this sentence assumed was reversed; see §8). The
 first Zeppelin opens Regulators and Chronometer Cores, but the bigger change is the **Freight
 Link**: distant copper and aether sites get local boilers and a mast, and two long belt corridors
 plus their pipe runs get torn out and their tiles reclaimed. Ends: **~44 golems**.
@@ -751,7 +761,7 @@ the alerts strip tells you exactly which tile.*
 | **Coke death spiral under proportional burn** | **Clear.** A coal cluster of 1 extractor + 4 cokers + 2 loaders = 7 golems produces 140 Coke/min and consumes 42 — **3.3 : 1**. Convergent at every scale. A player who over-builds into a deficit can delete golems (freeing both bay slots and upkeep instantly), or hand-crank coke. |
 | **All Scrap spent on belts/floor** | **Clear.** Scrap is always hand-harvestable and the crank bench always works. |
 | **Total blackout with no golems to recover** | **Clear.** The Hand-Crank Bench runs R1 without steam, so the player can always hand-crank coke to restart. **The bench must be explicitly unpowered.** |
-| **Focus exhaustion** | **Clear.** Regenerates at 5/s. |
+| **Focus exhaustion** | **Moot.** This row is why: "clear" at 5/s meant the resource never bound, and the meter was cut. |
 | **Clock Tower failure** | **Clear.** Progress freezes at 0, never negative. |
 | **Wasted Assembly Line claims** | **Low.** Prerequisites prevent claiming far-future cards; claim costs are small relative to a phase's output. |
 
@@ -805,7 +815,7 @@ Ordered by blocking-ness.
     > re-placement. This is more work than "purchasable growth" suggests. Acceptable fallback: a
     > larger fixed floor whose outer region is gated by a one-time unlock. The design needs land to
     > be finite and expensive, not continuously paveable.
-16. **Focus cost scaling** on `EngageGears`; flat cost for patented commits.
+16. ~~**Focus cost scaling** on `EngageGears`; flat cost for patented commits.~~ **Built, then reversed** — see the annotation in §8.
 17. **Legibility surfaces** — the eight rows in §8. Not polish; the fuel gauge and the coke/slag
     lines are how the player perceives the entire scarcity system.
 
@@ -917,3 +927,54 @@ items — the same 24-item tree is deep because coke, node access and floor spac
    is narrower than Factorio, and it should be, because rigid local determinism is this game's
    identity rather than a limitation. It is Factorio-*shaped* at roughly a fifth of the mechanical
    surface area, sized for a 4–5 hour prototype campaign rather than a 40-hour game.
+
+---
+
+## 13. Director's amendments (post-review)
+
+The design below §12 passed its three-round review before any code existed. These two decisions
+were taken later, by the project's Game Director, against questions the review left open. They are
+recorded here rather than edited into the sections above, so the reviewed text stays the reviewed
+text and a reader can see what changed after it.
+
+### 13.1 The market street extends east and west (amends §3.2)
+
+§3.2 wants **~8 node sites at endgame**. The street as built is the workshop's width (25 cells) and
+holds five stalls at a four-cell pitch, with no room for three more.
+
+**Decision: extend the road east and west, past the building, keeping ONE stall row.**
+
+The reasoning is the player's factory layout rather than the map's tidiness. A single row of stalls
+lets a player run **clean parallel vertical buses** north into the workshop -- one belt lane per
+good, no crossings. A second stall row would sit in front of those lanes and force every one of
+them to route around it, and it would also eat the approach clearance §3.2's **two-extractor cap**
+depends on: a stall needs free tiles in front of it for two extractors to stand.
+
+What the decision costs, accepted knowingly:
+
+- **The world is no longer as wide as the workshop.** The side walls stop bounding it in a single
+  run, so wall placement is now per-region rather than one rectangle.
+- `FloorLayout` grows a street half-extent distinct from the workshop's, and everything that reads
+  "the world" has to mean the wider shape -- including the player's `ClampToFloor` and the build
+  bound added in the backlog pass.
+
+### 13.2 The market sells full truckloads, and Creative Mode bypasses it (amends §5.1)
+
+`docs/game-design.md` promises "full truckload shipments" and the street shipped as five `Infinite`
+`ResourceNode`s: buying from a trader was presentation, and extraction was byte-for-byte what it
+had been when the stalls were boulders.
+
+**Decision: a market order is paid for, and arrives as a batch burst.**
+
+- **Priced**, so raw goods are a late-game **economic sink** rather than free input. The player
+  spends to buy, which is the counterweight §3.1's steam upkeep has and the raw supply never did.
+- **Delivered in bursts**, so a line fed from the market has to absorb a lump rather than a
+  trickle. That is what gives **buffer chests and accumulator lines** a job: smoothing a bursty
+  supply into a steady one is a factory problem the game did not previously pose.
+
+**Architecture requirement, and it is a state rather than a build flag: `isCreativeMode`.** With
+creative mode on, the payment and the burst are bypassed and the stall behaves exactly as it did --
+infinite, free, steady. The old boulder behaviour is therefore **a state the game can be put into**,
+not a version of the game that was deleted, which is what keeps every pre-existing test, `Main.unity`,
+and any save made before the change valid.
+

@@ -30,6 +30,13 @@ namespace GolemFactory.Economy
         {
             public readonly List<float> Times = new List<float>();
             public readonly List<int> Quantities = new List<int>();
+
+            // The two cumulative counters, sampled in lockstep with the level so all four
+            // lists share one index. Slope of a monotone total IS a gross rate, which is the
+            // one thing a level cannot tell you: 60 in and 60 out is a fully loaded line and
+            // reads identically to a dead one when all you sample is the number in the box.
+            public readonly List<int> Deposited = new List<int>();
+            public readonly List<int> Withdrawn = new List<int>();
         }
 
         // Nested rather than a concatenated "bufferId|itemType" key: both are free-form
@@ -62,7 +69,8 @@ namespace GolemFactory.Economy
             {
                 foreach (KeyValuePair<string, int> entry in buffer.Quantities)
                 {
-                    Sample(time, buffer.BufferId, entry.Key, entry.Value);
+                    Sample(time, buffer.BufferId, entry.Key, entry.Value,
+                        buffer.TotalDeposited(entry.Key), buffer.TotalWithdrawn(entry.Key));
                 }
             }
         }
@@ -72,6 +80,25 @@ namespace GolemFactory.Economy
         /// exact synthetic series without standing up a registry.
         /// </summary>
         public void Sample(float time, string bufferId, string itemType, int quantity)
+        {
+            // Carries the last known totals forward rather than recording zeroes, so the four
+            // lists stay index-aligned and a synthetic level-only series simply reports no
+            // gross movement -- which is the honest reading of "nobody told us about any".
+            Series existing = FindSeries(bufferId, itemType);
+            int lastIn = existing != null && existing.Deposited.Count > 0
+                ? existing.Deposited[existing.Deposited.Count - 1] : 0;
+            int lastOut = existing != null && existing.Withdrawn.Count > 0
+                ? existing.Withdrawn[existing.Withdrawn.Count - 1] : 0;
+            Sample(time, bufferId, itemType, quantity, lastIn, lastOut);
+        }
+
+        /// <summary>
+        /// Records one (bufferId, itemType) level together with the buffer's lifetime deposit
+        /// and withdrawal totals, which is what makes a GROSS throughput reading possible.
+        /// </summary>
+        public void Sample(
+            float time, string bufferId, string itemType, int quantity,
+            int totalDeposited, int totalWithdrawn)
         {
             if (bufferId == null || itemType == null)
             {
@@ -92,6 +119,8 @@ namespace GolemFactory.Economy
 
             series.Times.Add(time);
             series.Quantities.Add(quantity);
+            series.Deposited.Add(totalDeposited);
+            series.Withdrawn.Add(totalWithdrawn);
             Prune(series, time);
         }
 
@@ -110,6 +139,46 @@ namespace GolemFactory.Economy
             }
 
             return BufferTrendUtility.TryComputeRatePerMinute(series.Times, series.Quantities, out ratePerMinute);
+        }
+
+        /// <summary>
+        /// Gross flow through a stock, in units per minute each way, fitted over the same
+        /// window the net rate uses. Returns false when there is not enough history, exactly
+        /// as <see cref="TryGetRatePerMinute"/> does.
+        ///
+        /// <para>
+        /// Clamped at zero on both sides: the counters are monotone, so a negative fitted
+        /// slope is fit noise on a flat line rather than a buffer that un-deposited something.
+        /// </para>
+        /// </summary>
+        public bool TryGetFlowPerMinute(
+            string bufferId, string itemType, out float inPerMinute, out float outPerMinute)
+        {
+            inPerMinute = 0f;
+            outPerMinute = 0f;
+
+            Series series = FindSeries(bufferId, itemType);
+            if (series == null)
+            {
+                return false;
+            }
+
+            bool gotIn = BufferTrendUtility.TryComputeRatePerMinute(
+                series.Times, series.Deposited, out inPerMinute);
+            bool gotOut = BufferTrendUtility.TryComputeRatePerMinute(
+                series.Times, series.Withdrawn, out outPerMinute);
+
+            if (inPerMinute < 0f)
+            {
+                inPerMinute = 0f;
+            }
+
+            if (outPerMinute < 0f)
+            {
+                outPerMinute = 0f;
+            }
+
+            return gotIn && gotOut;
         }
 
         /// <summary>
@@ -155,6 +224,8 @@ namespace GolemFactory.Economy
 
             series.Times.RemoveRange(0, drop);
             series.Quantities.RemoveRange(0, drop);
+            series.Deposited.RemoveRange(0, drop);
+            series.Withdrawn.RemoveRange(0, drop);
         }
 
         private Series FindSeries(string bufferId, string itemType)

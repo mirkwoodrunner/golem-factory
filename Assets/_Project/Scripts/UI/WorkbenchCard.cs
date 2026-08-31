@@ -23,8 +23,68 @@ namespace GolemFactory.UI
     // comment-only no-op. Orphans survived Close()/Open() and RetargetGolem() and
     // accumulated for the whole session. There are now two independent guards: RebuildUI
     // clears DragLayer first, and OnEndDrag below destroys anything still sitting there.
-    public sealed class WorkbenchCard : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+    public sealed class WorkbenchCard : MonoBehaviour,
+        IBeginDragHandler, IDragHandler, IEndDragHandler,
+        IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
     {
+        // --- Hover and press ---------------------------------------------------------------
+        // A card is NOT a Button -- it is a drag handle -- so it gets no Selectable transition
+        // for free and had no hover state at all. The four pointer interfaces below are the
+        // whole of it; the colours come from WorkbenchInteractionColors, shared with the chassis
+        // buttons so the two controls on one screen cannot drift apart.
+        private Color _baseColor = Color.white;
+        private bool _hovered;
+        private bool _pressed;
+
+        /// <summary>
+        /// The card's own tint (copper for an appendage, teal for a logic core), captured before
+        /// any state is applied. Set by the controller right after it colours the Image.
+        /// </summary>
+        public void SetBaseColor(Color color)
+        {
+            _baseColor = color;
+            ApplyInteractionState();
+        }
+
+        public void OnPointerEnter(PointerEventData eventData)
+        {
+            _hovered = true;
+            ApplyInteractionState();
+        }
+
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            _hovered = false;
+            ApplyInteractionState();
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            _pressed = true;
+            ApplyInteractionState();
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            _pressed = false;
+            ApplyInteractionState();
+        }
+
+        /// <summary>State as the pointer currently has it. Public so a test can read it without
+        /// simulating an EventSystem.</summary>
+        public WorkbenchInteractionState InteractionState =>
+            _pressed ? WorkbenchInteractionState.Pressed
+                : _hovered ? WorkbenchInteractionState.Hovered
+                : WorkbenchInteractionState.Normal;
+
+        private void ApplyInteractionState()
+        {
+            if (_image != null)
+            {
+                _image.color = WorkbenchInteractionColors.Apply(_baseColor, InteractionState);
+            }
+        }
+
         public LogicCoreDefinition LogicCore;
         public AppendageActionDefinition Appendage;
         public bool IsVaultOrigin;

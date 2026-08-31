@@ -12,7 +12,13 @@ namespace GolemFactory.Player
     {
         Valid = 0,
         Blocked = 1,
-        Unaffordable = 2
+        Unaffordable = 2,
+
+        /// <summary>Demolish mode, over a building: this click takes it back.</summary>
+        Removable = 3,
+
+        /// <summary>Demolish mode, over anything else: this click does nothing.</summary>
+        NothingToRemove = 4
     }
 
     /// <summary>
@@ -49,6 +55,15 @@ namespace GolemFactory.Player
         /// </summary>
         public static readonly Color UnaffordableTint = new Color(0.60f, 0.64f, 0.70f, 0.70f);
 
+        /// <summary>
+        /// Demolish mode over a building. Deep red and STEADY, where <see cref="BlockedTint"/>
+        /// is hot red and pulses: the pulse is what carries "refused" in this palette, and a
+        /// steady red is the same family saying "confirmed, and destructive" instead. Darker
+        /// than BlockedTint so the two do not read as one colour if they are ever seen a second
+        /// apart.
+        /// </summary>
+        public static readonly Color RemovableTint = new Color(0.86f, 0.22f, 0.16f, 0.80f);
+
         public const float BlockedPulsePeriod = 0.7f;
         public const float BlockedPulseMinAlpha = 0.45f;
 
@@ -61,6 +76,15 @@ namespace GolemFactory.Player
 
             return affordable ? BuildGhostState.Valid : BuildGhostState.Unaffordable;
         }
+
+        /// <summary>
+        /// The wrecking bar's version, where an occupied tile is the <em>wanted</em> one.
+        /// Separate from <see cref="Classify"/> rather than a flag on it, because the two
+        /// modes disagree about what "occupied" means and folding them together is how a
+        /// colour ends up meaning two opposite things.
+        /// </summary>
+        public static BuildGhostState ClassifyRemoval(bool hasRemovableBuilding) =>
+            hasRemovableBuilding ? BuildGhostState.Removable : BuildGhostState.NothingToRemove;
 
         /// <summary>
         /// Final ghost colour including the blocked state's pulse. <paramref name="time"/> is
@@ -79,7 +103,10 @@ namespace GolemFactory.Player
                     return c;
                 }
                 case BuildGhostState.Unaffordable:
+                case BuildGhostState.NothingToRemove:
                     return UnaffordableTint;
+                case BuildGhostState.Removable:
+                    return RemovableTint;
                 default:
                     return ValidTint;
             }

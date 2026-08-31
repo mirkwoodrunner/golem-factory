@@ -37,5 +37,20 @@ namespace GolemFactory.Golems
         /// the two verbs have different formulas rather than one shared one.
         /// </summary>
         public static int ExtractFromNode(int quantity) => 6 + quantity;
+
+        /// <summary>
+        /// What a <c>Repeat(n)</c> costs: n runs of the assembly it repeats
+        /// (docs/progression-design.md §6's table -- "n x the repeated Assemble").
+        ///
+        /// <para>
+        /// Takes the recipe's own duration rather than a fixed number, because one Assemble
+        /// card can point at R1 (12t) or R15 (90t) and a repeat of each costs what each costs.
+        /// The golem never calls this -- it runs n real assemblies and pays each duration as it
+        /// goes -- so this exists for the Workbench, which has to quote the cost of a decision
+        /// before the player commits to it.
+        /// </para>
+        /// </summary>
+        public static int Repeat(int iterations, int assembleDurationTicks) =>
+            (iterations < 1 ? 1 : iterations) * (assembleDurationTicks < 1 ? 1 : assembleDurationTicks);
     }
 }

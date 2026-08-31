@@ -1,5 +1,6 @@
 using System.IO;
 using NUnit.Framework;
+using GolemFactory.Economy;
 using GolemFactory.Save;
 
 namespace GolemFactory.Tests.EditMode
@@ -21,15 +22,19 @@ namespace GolemFactory.Tests.EditMode
         public void WriteThenRead_RoundTripsData()
         {
             _tempPath = Path.Combine(Path.GetTempPath(), "golem-factory-test-save.json");
-            var data = new SaveData { focusCurrent = 55f };
-            data.buffers.Add(new BufferEntry { bufferId = "ScrapBuffer" });
+            var data = new SaveData();
+            var buffer = new BufferEntry { bufferId = "ScrapBuffer" };
+            buffer.itemTypes.Add(ItemType.Scrap);
+            buffer.quantities.Add(55);
+            data.buffers.Add(buffer);
 
             SaveFileIO.WriteToFile(data, _tempPath);
             SaveData loaded = SaveFileIO.ReadFromFile(_tempPath);
 
             Assert.IsNotNull(loaded);
-            Assert.AreEqual(55f, loaded.focusCurrent);
             Assert.AreEqual("ScrapBuffer", loaded.buffers[0].bufferId);
+            Assert.AreEqual(ItemType.Scrap, loaded.buffers[0].itemTypes[0]);
+            Assert.AreEqual(55, loaded.buffers[0].quantities[0]);
         }
 
         [Test]

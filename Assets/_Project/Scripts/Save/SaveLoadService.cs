@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using GolemFactory.Blueprints;
 using GolemFactory.Economy;
@@ -13,7 +13,7 @@ namespace GolemFactory.Save
     public static class SaveLoadService
     {
         public static SaveData CaptureState(
-            StorageBufferRegistry buffers, ArtificerFocusMeter focus,
+            StorageBufferRegistry buffers,
             PatentRegistry patents, IEnumerable<GolemEntity> golems,
             IEnumerable<GolemFactory.Buildings.PlaceableBuilding> buildings = null)
         {
@@ -29,8 +29,6 @@ namespace GolemFactory.Save
                 }
                 data.buffers.Add(entry);
             }
-
-            data.focusCurrent = focus.CurrentFocus;
 
             foreach (Blueprint blueprint in patents.Blueprints.Values)
             {
@@ -113,6 +111,20 @@ namespace GolemFactory.Save
                 if (boiler != null && boiler.Boiler != null)
                 {
                     entry.cokeStock = boiler.Boiler.CokeStock;
+                }
+
+                var depot = building.GetComponent<GolemFactory.Buildings.PlaceableDepot>();
+                if (depot != null)
+                {
+                    entry.depotFilterItemType = depot.FilterItemType;
+                }
+
+                var recycler = building.GetComponent<GolemFactory.Buildings.PlaceableScrapRecycler>();
+                if (recycler != null && recycler.Recycler != null)
+                {
+                    entry.recyclerCokeStock = recycler.Recycler.CokeStock;
+                    entry.recyclerScrapStock = recycler.Recycler.ScrapStock;
+                    entry.recyclerPendingPoints = recycler.Recycler.PendingPoints;
                 }
 
                 var tower = building.GetComponent<GolemFactory.Buildings.PlaceableClockTower>();
@@ -205,7 +217,7 @@ namespace GolemFactory.Save
         // that handles a golem which was already alive; there is deliberately no second restore
         // path for a respawned golem to drift away from.
         public static RestoreReport RestoreState(
-            SaveData data, StorageBufferRegistry buffers, ArtificerFocusMeter focus,
+            SaveData data, StorageBufferRegistry buffers,
             PatentRegistry patents, IEnumerable<GolemEntity> golems, DefinitionCatalog catalog,
             IGolemRespawner respawner = null, IBuildingRebuilder buildingRebuilder = null)
         {
@@ -220,8 +232,6 @@ namespace GolemFactory.Save
                     buffers.Deposit(entry.bufferId, entry.itemTypes[i], entry.quantities[i]);
                 }
             }
-
-            focus.SetCurrent(data.focusCurrent);
 
             foreach (BlueprintEntry entry in data.blueprints)
             {
@@ -384,6 +394,25 @@ namespace GolemFactory.Save
                 // says it starts with, and adding to that would hand the player free fuel on
                 // every load.
                 boiler.Boiler.SetCoke(entry.cokeStock);
+            }
+
+            // SetFilter, not a bare field write: the rebuilder has already placed this depot and
+            // published an UNFILTERED endpoint on its cell, so the label has to re-register the
+            // tile to mean anything. That is exactly why PlaceableDepot.SetFilter re-publishes.
+            var depot = building.GetComponent<GolemFactory.Buildings.PlaceableDepot>();
+            if (depot != null)
+            {
+                depot.SetFilter(entry.depotFilterItemType);
+            }
+
+            // Restore, not Add: the rebuilt hopper was placed with whatever the prefab starts
+            // with, and adding to that would mint fuel and goods on every load -- the same
+            // reasoning SteamBoiler.SetCoke records above.
+            var recycler = building.GetComponent<GolemFactory.Buildings.PlaceableScrapRecycler>();
+            if (recycler != null && recycler.Recycler != null)
+            {
+                recycler.Recycler.Restore(
+                    entry.recyclerCokeStock, entry.recyclerScrapStock, entry.recyclerPendingPoints);
             }
 
             var tower = building.GetComponent<GolemFactory.Buildings.PlaceableClockTower>();

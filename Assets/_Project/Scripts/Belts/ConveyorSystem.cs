@@ -56,16 +56,13 @@ namespace GolemFactory.Belts
             // -- is never advanced a second time in this same tick, regardless of iteration order.
             foreach (BeltSegment segment in _segments.Values)
             {
-                if (segment.Next == null || !segment.TryPeekHead(out ItemStack head))
-                {
-                    continue;
-                }
-
-                if (segment.Next.TryEnqueue(head))
-                {
-                    segment.TryRemoveHead(out _);
-                }
-                // else: Next is full -- backpressure; head stays parked at Length.
+                // One call, whether the segment feeds one belt or several: BeltSegment.TryHandOff
+                // owns the round-robin, so a splitter and a plain belt take the identical path
+                // through this pass and cannot drift in their ordering guarantees.
+                //
+                // A refusal is backpressure, exactly as before -- the head stays parked at
+                // Length and the lane behind it backs up.
+                segment.TryHandOff();
             }
         }
     }

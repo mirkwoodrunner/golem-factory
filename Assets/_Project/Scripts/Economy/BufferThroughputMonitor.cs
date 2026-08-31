@@ -67,5 +67,13 @@ namespace GolemFactory.Economy
         /// </summary>
         public bool TryGetRatePerMinute(string bufferId, string itemType, out float ratePerMinute) =>
             Tracker.TryGetRatePerMinute(bufferId, itemType, out ratePerMinute);
+
+        /// <summary>
+        /// Gross flow each way, for the readout that has to tell a fully loaded line from a
+        /// dead one. Same passthrough shape as the net rate above.
+        /// </summary>
+        public bool TryGetFlowPerMinute(
+            string bufferId, string itemType, out float inPerMinute, out float outPerMinute) =>
+            Tracker.TryGetFlowPerMinute(bufferId, itemType, out inPerMinute, out outPerMinute);
     }
 }

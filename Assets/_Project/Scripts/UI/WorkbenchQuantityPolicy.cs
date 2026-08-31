@@ -35,15 +35,24 @@ namespace GolemFactory.UI
         public static int MaxQuantity => GolemInventory.CapacityPerType;
 
         /// <summary>
-        /// Whether this card's behaviour actually reads its slot's quantity. Only <c>Haul</c> and
-        /// <c>ExtractFromNode</c> do; every other verb ignores it, and showing a stepper on an
-        /// <c>Assemble</c> or a <c>Push</c> would advertise a decision that changes nothing --
-        /// worse than no control at all, because the player would spend attention on it.
+        /// Whether this card's behaviour actually reads its slot's quantity. <c>Haul</c> and
+        /// <c>ExtractFromNode</c> take a batch size; <c>Repeat</c> takes its n. Every other verb
+        /// ignores it, and showing a stepper on an <c>Assemble</c> or a <c>Push</c> would
+        /// advertise a decision that changes nothing -- worse than no control at all, because
+        /// the player would spend attention on it.
+        ///
+        /// <para>
+        /// <c>Repeat</c> shares the dial rather than getting one of its own because it shares
+        /// the CEILING for the same reason: n more assemblies have to be fed out of the same
+        /// 12-per-type input stock, which is precisely the bind §6 says makes Repeat on a
+        /// 10-Casing recipe impossible.
+        /// </para>
         /// </summary>
         public static bool TakesQuantity(AppendageActionDefinition card) =>
             card != null &&
             (card.actionType == AppendageActionType.Haul ||
-             card.actionType == AppendageActionType.ExtractFromNode);
+             card.actionType == AppendageActionType.ExtractFromNode ||
+             card.actionType == AppendageActionType.Repeat);
 
         /// <summary>Clamps to the playable range. Used for both the initial value and each step.</summary>
         public static int Clamp(int quantity) =>
@@ -73,9 +82,25 @@ namespace GolemFactory.UI
             }
 
             int clamped = Clamp(quantity);
-            int ticks = card.actionType == AppendageActionType.ExtractFromNode
-                ? StepDurationRules.ExtractFromNode(clamped)
-                : StepDurationRules.Haul(clamped);
+            int ticks;
+            switch (card.actionType)
+            {
+                case AppendageActionType.ExtractFromNode:
+                    ticks = StepDurationRules.ExtractFromNode(clamped);
+                    break;
+                case AppendageActionType.Repeat:
+                    // Quoted off the card's own recipe, so repeating a 90-tick Chronometer Core
+                    // does not advertise the same cost as repeating a 12-tick coking run. A
+                    // Repeat card carries no recipe of its own -- it borrows the assembly in
+                    // front of it -- so with none authored this quotes one iteration and the
+                    // real cost appears once the card sits behind an Assemble.
+                    ticks = StepDurationRules.Repeat(
+                        clamped, card.recipe != null ? card.recipe.durationTicks : 1);
+                    break;
+                default:
+                    ticks = StepDurationRules.Haul(clamped);
+                    break;
+            }
 
             return $"×{clamped} · {ticks}t";
         }

@@ -20,7 +20,13 @@ namespace GolemFactory.Player
         // That is the right end of the order for it -- a boiler is a large obvious building the
         // player walks up to deliberately, while a node or a golem sharing its tile is the thing
         // they are more likely to have meant.
-        Refuel = 4
+        Refuel = 4,
+
+        // Labelling a depot (docs/cozy-automation-design.md §1). Appended for the same reason
+        // Refuel was, and it belongs at this end of the order for a stronger reason than the
+        // boiler does: a golem almost always stands beside the depot it pushes into, and a crate
+        // that beat that golem on a distance tie would make it unprogrammable.
+        Sort = 5
     }
 
     /// <summary>
@@ -101,7 +107,8 @@ namespace GolemFactory.Player
             IReadOnlyList<Vector3> harvestables,
             IReadOnlyList<Vector3> stations,
             IReadOnlyList<Vector3> golems,
-            IReadOnlyList<Vector3> boilers = null)
+            IReadOnlyList<Vector3> boilers = null,
+            IReadOnlyList<Vector3> depots = null)
         {
             InteractionPick best = InteractionPick.None;
             // Evaluated in enum order with a strict less-than, so an exact distance tie keeps
@@ -112,6 +119,7 @@ namespace GolemFactory.Player
             // Optional and last, so every existing three-list caller (Main.unity's scenes and the
             // whole pre-existing targeting suite) picks exactly what it always did.
             Consider(origin, boilers, InteractionKind.Refuel, ref best);
+            Consider(origin, depots, InteractionKind.Sort, ref best);
             return best;
         }
 
@@ -169,8 +177,61 @@ namespace GolemFactory.Player
                 // been lit, and a player told to RE-fuel one looks for the fuel they must have
                 // spilled.
                 case InteractionKind.Refuel: return "Fuel Boiler";
+                // "Label", not "Filter" or "Sort": the fantasy is chalking a word on a crate,
+                // and the verb has to say that pressing the key CHANGES something. "Sort Depot"
+                // would read as an action the depot performs on its contents.
+                case InteractionKind.Sort: return "Label Depot";
                 default: return "";
             }
+        }
+
+        /// <summary>
+        /// The separator between two clauses of a prompt's detail. U+00B7, deliberately: the
+        /// project's TMP atlas has no em dash and no arrow, and both draw as a missing-glyph box.
+        /// </summary>
+        public const string DetailSeparator = " · ";
+
+        /// <summary>
+        /// What [G] would do to the golem within arm's reach: pick it up, or set down the one
+        /// already in hand.
+        /// </summary>
+        /// <remarks>
+        /// Here rather than spelled out at its two call sites because those two sites are the
+        /// ONLY places the game ever tells the player that [G] exists, and they had to agree.
+        /// One is the golem's own caption; the other is the aside appended to whatever else won
+        /// the [E] pick -- which is the case that matters, because a freshly built golem stands
+        /// on the tile in front of its station, so at the spot the player is standing when it
+        /// appears the *station* is nearest and the golem's caption is not the one being drawn.
+        /// Without the aside, a player who never wanders off the station never learns the key.
+        /// </remarks>
+        /// <param name="golemId">
+        /// Named only when the caption is not already about that golem; pass null from the
+        /// golem's own prompt, where the name is the prompt's subject.
+        /// </param>
+        public static string GolemHandlingHint(string golemId, bool isCarrying)
+        {
+            if (isCarrying)
+            {
+                // "Set down", not "drop": dropping is what happens to something you were not
+                // being careful with, and this places the golem on a chosen tile.
+                return "[G] set down";
+            }
+
+            return string.IsNullOrEmpty(golemId) ? "[G] carry" : "[G] carry " + golemId;
+        }
+
+        /// <summary>
+        /// Joins another clause onto a prompt's detail, supplying the separator only when there
+        /// is something on both sides of it.
+        /// </summary>
+        public static string AppendDetail(string detail, string addition)
+        {
+            if (string.IsNullOrEmpty(addition))
+            {
+                return detail;
+            }
+
+            return string.IsNullOrEmpty(detail) ? addition : detail + DetailSeparator + addition;
         }
 
         /// <summary>

@@ -833,6 +833,297 @@ STALL_WOOD_LIGHT = (120, 90, 62, 255)
 SETT_W, SETT_H = 16, 8          # both divide 64 exactly -- see the note in make_cobbles
 
 
+# =========================================================================================
+# INTERIOR FURNITURE (docs/cozy-automation-design.md, Phase 2)
+# =========================================================================================
+# §3z C called the empty box "the biggest remaining gap against cozy, detailed". The room had
+# crates and barrels hugging its edges and nothing else -- clutter, not furniture, and the two
+# read completely differently: clutter says "goods are stored here", furniture says "somebody
+# WORKS here". Four pieces, all of them things an artificer would own.
+#
+# EVERY ONE STANDS ON THE WALL RING, never on playable floor. The interior has to stay clear for
+# the factory, and a hearth occupying a cell the player wanted for a smelter would be a
+# decoration that cost them a machine. Same rule the crates already follow, and the same reason
+# BuildProps' street clutter stays off the stalls' approach tiles.
+#
+# All four are 56 tall like the crate, so they share its BottomCenter pivot and its ground
+# shadow without a second entry in the pivot table.
+
+
+def make_shelf_unit():
+    """A tall open shelf, three loaded racks in a plank frame.
+
+    READS AS STORAGE WITH CONTENTS, which is the whole difference from a crate: you can see what
+    is on it. The jars and ingots are drawn in the item palette rather than the room palette so
+    they register as GOODS at a glance, even at gameplay zoom where individual pixels do not.
+    """
+    w, h = 52, 56
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    px = img.load()
+    rng = random.Random(4411)
+
+    frame = _shade(ROOM_CRATE, -0.30)
+    back = _shade(ROOM_CRATE, -0.46)
+
+    # Back panel first, so the uprights and shelves read as in front of it.
+    for y in range(2, h - 1):
+        for x in range(3, w - 3):
+            px[x, y] = back
+
+    # Two uprights.
+    for y in range(0, h):
+        for x in range(0, 4):
+            px[x, y] = frame
+            px[w - 1 - x, y] = frame
+
+    # Three shelf boards, each with a lit top edge so it reads as a horizontal surface.
+    shelves = (12, 28, 44)
+    for sy in shelves:
+        for x in range(2, w - 2):
+            px[x, sy] = _shade(ROOM_CRATE, 0.16)
+            px[x, sy + 1] = _shade(ROOM_CRATE, -0.10)
+            px[x, sy + 2] = _shade(ROOM_CRATE, -0.24)
+
+    # What is ON the shelves. Jars on top, ingots in the middle, sacks at the bottom -- the
+    # heaviest thing lowest, which is how a real shelf is loaded and reads as considered.
+    jar = (86, 104, 92, 255)
+    jar_lid = (72, 57, 33, 255)
+    for i, x0 in enumerate((8, 18, 28, 38)):
+        top = shelves[0] - 8
+        for y in range(top, shelves[0]):
+            for x in range(x0, x0 + 7):
+                px[x, y] = jar if (x + y) % 5 else _shade(jar, 0.18)
+        for x in range(x0 + 1, x0 + 6):
+            px[x, top - 1] = jar_lid
+
+    for x0 in (7, 21, 35):
+        top = shelves[1] - 6
+        for y in range(top, shelves[1]):
+            for x in range(x0, x0 + 11):
+                px[x, y] = BRASS_LIGHT if y == top else BRASS
+        for x in range(x0, x0 + 11):
+            px[x, shelves[1] - 1] = BRASS_DARK
+
+    sack = _shade(ROOM_STAVE, -0.14)
+    for x0 in (8, 26):
+        top = shelves[2] - 9
+        for y in range(top, shelves[2]):
+            for x in range(x0, x0 + 17):
+                # A sack sags: narrower at the top than the bottom.
+                inset = max(0, (shelves[2] - y) // 4 - 1)
+                if x0 + inset <= x < x0 + 17 - inset:
+                    px[x, y] = _shade(sack, rng.uniform(-0.06, 0.06))
+
+    for x in range(w):
+        px[x, h - 1] = (24, 15, 10, 140)
+    return img
+
+
+def make_hearth():
+    """A brick hearth with a live fire and a hanging pot.
+
+    THE ROOM'S ONE WARM LIGHT SOURCE that is not a wall sconce, and the piece that does the most
+    for "cozy" per pixel. The fire is drawn in a three-stop ramp rather than one orange so it
+    reads as flame rather than as a painted triangle, and the surround is BRICK -- the only
+    masonry in an otherwise plank-and-plaster room, which is what makes it read as built rather
+    than as placed.
+    """
+    w, h = 56, 56
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    px = img.load()
+    rng = random.Random(9021)
+
+    brick = (96, 62, 50, 255)
+    brick_dark = (64, 40, 33, 255)
+    mortar = ROOM_MORTAR
+
+    # Brick surround, coursed with a half-brick offset every other row.
+    for y in range(4, h - 1):
+        for x in range(0, w):
+            row = (y - 4) // 6
+            offset = 0 if row % 2 == 0 else 7
+            joint = ((x + offset) % 14 == 0) or ((y - 4) % 6 == 0)
+            px[x, y] = mortar if joint else _shade(brick, rng.uniform(-0.09, 0.09))
+
+    # Mantel: a plank shelf across the top, so the hearth has a silhouette above the brick.
+    for y in range(0, 5):
+        for x in range(0, w):
+            px[x, y] = _shade(ROOM_CRATE, 0.10 if y < 2 else -0.18)
+
+    # The firebox: a dark arch cut into the brick.
+    fx0, fx1, fy0 = 13, 43, 20
+    for y in range(fy0, h - 4):
+        for x in range(fx0, fx1):
+            # Arch the top corners so it is not a rectangle.
+            dy = y - fy0
+            inset = max(0, 5 - dy * 2)
+            if fx0 + inset <= x < fx1 - inset:
+                px[x, y] = (22, 14, 12, 255)
+
+    # Fire: three stops from ember to flame tip, hottest at the base.
+    ember = (150, 44, 20, 255)
+    flame = (214, 116, 34, 255)
+    tip = (240, 190, 96, 255)
+    base = h - 6
+    for x in range(fx0 + 3, fx1 - 3):
+        # A ragged flame profile from a hash rather than a smooth curve.
+        centre = (fx0 + fx1) // 2
+        span = (fx1 - fx0) // 2 - 3
+        height = int(14 * (1.0 - abs(x - centre) / float(span)) ** 0.7)
+        height = max(0, height + rng.randint(-2, 2))
+        for y in range(base - height, base + 1):
+            up = (base - y) / float(max(1, height))
+            px[x, y] = ember if up < 0.35 else (flame if up < 0.75 else tip)
+
+    # Logs across the firebox floor.
+    for x in range(fx0 + 2, fx1 - 2):
+        px[x, base + 1] = _shade(ROOM_CRATE, -0.34)
+        px[x, base + 2] = _shade(ROOM_CRATE, -0.44)
+
+    # A pot on a hook, hanging into the top of the firebox.
+    for x in range(26, 31):
+        px[x, fy0 - 1] = IRON_DARK
+    for y in range(fy0, fy0 + 9):
+        for x in range(21, 36):
+            r = (x - 28) ** 2 / 49.0 + (y - fy0 - 4) ** 2 / 16.0
+            if r <= 1.0:
+                px[x, y] = IRON if y > fy0 + 2 else IRON_DARK
+
+    for x in range(w):
+        px[x, h - 1] = (24, 15, 10, 140)
+    return img
+
+
+def make_workbench():
+    """A work table: a plank top on trestles, with tools left out on it.
+
+    THE ARTIFICER'S OWN BENCH, and deliberately NOT the Hand-Crank Bench -- that one is a
+    building the player interacts with, and this is furniture. It says the room is somebody's
+    workplace without offering anything to press, which is the entire job of set dressing.
+    """
+    w, h = 56, 56
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    px = img.load()
+    rng = random.Random(3317)
+
+    top_y = 18
+
+    # Trestle legs, splayed, with a stretcher between them.
+    for y in range(top_y + 6, h - 1):
+        lean = (y - top_y) // 10
+        for x in range(6 - lean, 12 - lean):
+            px[x, y] = _shade(ROOM_CRATE, -0.30)
+        for x in range(w - 12 + lean, w - 6 + lean):
+            px[x, y] = _shade(ROOM_CRATE, -0.34)
+    for x in range(9, w - 9):
+        px[x, h - 14] = _shade(ROOM_CRATE, -0.26)
+        px[x, h - 13] = _shade(ROOM_CRATE, -0.36)
+
+    # The top: four boards, lit along the front edge so it reads as a surface with thickness.
+    for y in range(top_y, top_y + 7):
+        for x in range(0, w):
+            board = (x // 14)
+            tone = rng_board_tone(board, 3317)
+            if y == top_y:
+                px[x, y] = _shade(ROOM_CRATE, 0.20)
+            elif y >= top_y + 5:
+                px[x, y] = _shade(ROOM_CRATE, -0.30)
+            else:
+                px[x, y] = _shade(ROOM_CRATE, tone)
+        px[0, y] = _shade(ROOM_CRATE, -0.34)
+        px[w - 1, y] = _shade(ROOM_CRATE, -0.34)
+
+    # A vice at the left end -- the one silhouette that says "bench" rather than "table".
+    for y in range(top_y - 7, top_y):
+        for x in range(3, 14):
+            px[x, y] = IRON_DARK if (x < 5 or x > 11 or y < top_y - 5) else IRON
+    for y in range(top_y - 5, top_y - 2):
+        for x in range(14, 17):
+            px[x, y] = BRASS
+
+    # Tools left out: a hammer and two rods, in brass and iron so they separate from the wood.
+    for x in range(24, 38):
+        px[x, top_y - 2] = IRON
+        px[x, top_y - 1] = IRON_DARK
+    for x in range(36, 42):
+        for y in range(top_y - 5, top_y - 1):
+            px[x, y] = IRON_DARK
+    for x in range(43, 52):
+        px[x, top_y - 3] = BRASS_LIGHT
+        px[x, top_y - 2] = BRASS
+        px[x, top_y - 1] = BRASS_DARK
+
+    # Scraps underneath, so the space below the top is not a clean void.
+    for x0 in (16, 32):
+        for y in range(h - 9, h - 2):
+            for x in range(x0, x0 + 10):
+                if rng.random() > 0.25:
+                    px[x, y] = _shade(ROOM_STAVE, rng.uniform(-0.20, 0.05))
+
+    for x in range(w):
+        px[x, h - 1] = (24, 15, 10, 140)
+    return img
+
+
+def make_tool_rack():
+    """A pegboard of hung tools against the wall.
+
+    THE ONLY PIECE THAT IS MOSTLY NEGATIVE SPACE, on purpose: three solid objects in a row along
+    the back wall would read as a barricade. A rack is wall-coloured with tools on it, so it
+    breaks the run without adding another mass.
+    """
+    w, h = 48, 56
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    px = img.load()
+
+    board_top, board_bottom = 8, 40
+
+    # The board: plank-coloured and darker than the props, so it sits back against the wall.
+    for y in range(board_top, board_bottom):
+        for x in range(0, w):
+            edge = min(x, w - 1 - x, y - board_top, board_bottom - 1 - y)
+            px[x, y] = _shade(ROOM_PANEL, -0.20 if edge < 2 else 0.04)
+
+    # Peg holes, a light grid, so it reads as a pegboard rather than a plank.
+    for y in range(board_top + 4, board_bottom - 3, 5):
+        for x in range(4, w - 3, 5):
+            px[x, y] = _shade(ROOM_PANEL_DARK, -0.20)
+
+    # Hung tools: a saw, two wrenches, a coil of wire. Each hangs from a peg, so they all start
+    # at the top of the board -- a rack where tools float would read as a poster.
+    for x in range(6, 20):
+        px[x, board_top + 4] = IRON_DARK
+    for x in range(6, 20):
+        for y in range(board_top + 5, board_top + 12):
+            # Saw teeth along the lower edge.
+            if y == board_top + 11:
+                px[x, y] = IRON_DARK if x % 2 == 0 else IRON
+            else:
+                px[x, y] = IRON
+
+    for x0 in (24, 33):
+        px[x0 + 2, board_top + 3] = IRON_DARK
+        for y in range(board_top + 4, board_top + 18):
+            px[x0 + 2, y] = BRASS
+            px[x0 + 3, y] = BRASS_DARK
+        for x in range(x0, x0 + 6):
+            px[x, board_top + 4] = BRASS_LIGHT
+            px[x, board_top + 17] = BRASS_LIGHT
+
+    for y in range(board_top + 20, board_top + 28):
+        for x in range(8, 24):
+            r = (x - 16) ** 2 / 64.0 + (y - board_top - 24) ** 2 / 16.0
+            if 0.35 <= r <= 1.0:
+                px[x, y] = BRASS_LIGHT if (x + y) % 3 else BRASS
+
+    for x in range(28, 42):
+        for y in range(board_top + 21, board_top + 27):
+            if (x + y) % 4 == 0:
+                px[x, y] = IRON
+
+    return img
+
+
 def make_cobbles(variant=0):
     """Street setts. Cool and slightly darker than the plank floor, so the street reads as
     outside from the tile alone with no walls to help.
@@ -888,6 +1179,46 @@ def make_cobbles(variant=0):
                 sett(x + TILE, row * SETT_H, w, tone, False, *shape)
             x += w
             i += 1
+    return img
+
+
+def make_street_edge():
+    """The street's far kerb seen front-on: the kerbstone's worn top and its face below.
+
+    THE STONE COUNTERPART OF make_floor_edge, AND IT HAS TO BE ITS OWN ASSET. floor_edge_sw is a
+    JOIST FACE -- the plank deck's thickness, in the plank palette, divided on the plank's own
+    16px board pitch. That is exactly right where the workshop's raised floor stops against the
+    road, and exactly wrong at the far side of a cobbled street, where it reads as a timber sill
+    holding back the pavement. Reusing it was the obvious shortcut and it is the one that would
+    have undone the whole point of paving the street in a different material.
+
+    Same 64x24 geometry and the same top-of-canvas pivot as the joist face, so the road's two
+    edges -- near, at the shop front; far, at the kerb -- hang the same distance below their
+    boundary lines and frame the street symmetrically.
+    """
+    h, lip, face = 24, 3, 13
+    img = Image.new("RGBA", (TILE, h), (0, 0, 0, 0))
+    px = img.load()
+    # Paler than any sett in COBBLE_TONES on purpose: a kerb is a dressed stone, cut and set,
+    # not one of the rubble setts laid between them. The value difference is what makes the
+    # line read as an edge at gameplay zoom, where 24px is three or four screen pixels.
+    kerb = (78, 76, 83, 255)
+    for y in range(h):
+        for x in range(TILE):
+            if y < lip:
+                # The worn top, catching the same top key the deck chamfer does.
+                px[x, y] = _shade(kerb, 0.22 if y == 0 else 0.09)
+            elif y < lip + face:
+                # Joints on the setts' own 16px pitch, so the kerb reads as the ends of the same
+                # stonework rather than as an applied trim -- the rule make_floor_edge follows
+                # against the planks.
+                joint = x % SETT_W
+                tone = -0.24 if joint == 0 else (0.07 if joint == 1 else 0.0)
+                # A kerb face is in its own shadow toward the bottom.
+                px[x, y] = _shade(kerb, tone - 0.013 * (y - lip))
+            else:
+                k = y - (lip + face)
+                px[x, y] = (18, 17, 22, max(0, 175 - k * 22))
     return img
 
 
@@ -1068,6 +1399,7 @@ def make_stall_aether():
 def main():
     _save(make_cobbles(0), "street_cobble.png")
     _save(make_cobbles(1), "street_cobble_b.png")
+    _save(make_street_edge(), "street_edge.png")
     _save(make_stall_scrap(), "stall_scrap.png")
     _save(make_stall_coal(), "stall_coal.png")
     _save(make_stall_ore(green=True), "stall_copper_ore.png")
@@ -1106,6 +1438,13 @@ def main():
     _save(edge, "floor_edge_se.png")
     _save(edge, "floor_edge_sw.png")
     _save(make_corner_post(), "wall_corner_post.png")
+
+    # Interior furniture. Not clutter: clutter says goods are stored here, furniture says
+    # somebody works here, and the room had only the first.
+    _save(make_shelf_unit(), "prop_shelf.png")
+    _save(make_hearth(), "prop_hearth.png")
+    _save(make_workbench(), "prop_workbench.png")
+    _save(make_tool_rack(), "prop_tool_rack.png")
 
     _save(make_crate(), "prop_crate.png")
     _save(make_barrel(), "prop_barrel.png")

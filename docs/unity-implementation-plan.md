@@ -69,13 +69,15 @@ turn-based and competitive:
   - **Signal (chained)** — fires when another named golem completes its cycle,
     recreating chain-reaction automation between golems.
   - **AlwaysOn** — loops continuously as fast as its program's step durations allow.
-- **Artificer Focus meter** — a distinct resource, separate from the passive
-  simulation clock, that gates *intellectual* Artificer actions (reprogramming a
-  golem's punch cards, filing a blueprint, swapping a chassis) while keeping raw
-  building/placement free and instant. This preserves the core asymmetry from the
-  design brief — golems run rigidly and automatically on the world clock; Artificers
-  act flexibly but are resource-gated — and doubles as the seam for later "furthest
-  behind goes next" competitive turn order.
+- ~~**Artificer Focus meter**~~ — **CUT.** It was built in M8 and deleted; see
+  "Cutting the Artificer Focus meter" at the end of this file. The idea was a
+  resource, separate from the passive simulation clock, gating *intellectual*
+  Artificer actions (reprogramming a golem's punch cards, filing a blueprint,
+  swapping a chassis) while raw building/placement stayed free and instant. The
+  asymmetry it was meant to preserve — golems rigid and automatic, Artificers
+  flexible but resource-gated — turned out not to need a meter: at 5/s regen against
+  a 100 cap it never bound, and the half that carried the asymmetry is the *rigidity
+  of golems*, which is structural and still there.
 - Treat v1 as an open-ended sandbox with no forced end condition; the "Clock Tower"
   end-game is a good candidate for a later optional mega-project goal system, not a
   v1 requirement.
@@ -131,8 +133,6 @@ check. Chassis capacity is enforced only at authoring time in the programming UI
   the royalty-charge branch, no-op'd when `userId == OwnerId`.
 - `AssemblyLineState` (drip-feeds new unlocks over time) exposes `ClaimSlot(userId)`
   from the start, even though only one user calls it in v1.
-- The Artificer Focus meter is per-player from the start, so it can flip into
-  competitive turn order later.
 - No Netcode/Mirror packages, no client-authority split — just avoid hardcoding
   singleton "the player" access inside ownable entities. Purely global systems
   (`SimulationClock`, `GridMap`) can stay simple singletons.
@@ -149,7 +149,7 @@ Assets/_Project/Scripts/
   Blueprints/   Blueprint, PatentRegistry, OwnerId
   AssemblyLine/ AssemblyLineState, DraftableCardDefinition
   Economy/      ResourceInventory, ItemType definitions
-  Player/       ArtificerController, BuildModeController, ArtificerFocusMeter
+  Player/       ArtificerController, BuildModeController
   UI/           WorkbenchPanel (blueprint viewport + Card Vault + Engage Gears
                  lever), GolemStatusPanel, HUD, BuildMenu
   Events/       event bus for triggers
@@ -2505,3 +2505,1000 @@ clicking through the Editor is why the previous attempt had been left half-conve
 4. **`Main.unity` drifts further from being representative** with every pass. Its seven golems are
    hand-placed at positions that were arbitrary before the switch and are still arbitrary after
    it; they were moved to preserve how they look, not to mean anything.
+
+---
+
+## The market street
+
+The first time the map grew since M1 drew the room. Until this pass the workshop **was** the map:
+one 25×25 square of planks, walls on three sides, and nothing beyond them. `docs/game-design.md` —
+the tabletop source of truth — describes something the digital adaptation had quietly lost:
+*"Loading Docks: resource markets on the edge of the board where raw materials arrive in full
+truckload shipments."* There was no edge of the board to put one on.
+
+So raw goods are **bought from stalls**, not dug out of boulders standing on the factory floor.
+Five traders, one per raw good, on a cobbled street outside the shop front.
+
+### The load-bearing idea: two regions, not one
+
+`FloorLayout` now describes two rectangles, and conflating them is precisely what had made
+"grow the world" look impossible:
+
+| | What it is | What reads it |
+|---|---|---|
+| **Workshop** | the plank floor that gets walls. **Still 25×25** | the tile painter, the wall runs, the prop scatter |
+| **World** | every cell of ground, workshop *and* street | `PlayerController.ClampToFloor` |
+
+The workshop does not shrink, because progression-design §3.3 sizes the 44-golem Phase-5 factory
+against exactly 25×25 and taking cells back would be a silent difficulty change. The street is
+`StreetDepth = 8` rows hung off the south edge, so the world is 25×33.
+
+`GetFloorCells` **keeps its name and its meaning** — the workshop only. Every existing caller means
+the room by it, and widening it in place would have painted planks down the street.
+
+The clamp is the part that makes it real: `ClampToFloor` now stops at the far kerb rather than the
+shop front. A clamp still pinned at the workshop wall would have left the market visible and
+unreachable, which is the one movement rule that would quietly undo the whole design. Only the
+south side opens up; north, east and west are still the building.
+
+### The workshop stays open-fronted
+
+No south wall, no door — an owner decision, and it is also what the top-down switch had already
+settled for a different reason (breakage 3 and 4 above): the south edge is the one the camera looks
+in through, and a front-on elevation placed there rises *into* the room and draws over everything,
+because sorting order is baked from world Y. An open front costs nothing and pays for itself twice.
+
+### What broke, in the order it hurt
+
+1. **Painting the street from `FloorTileVariant` would have littered the road with workshop
+   fittings.** That selector hashes for rare brass plates and floor grates; in a street they read
+   as debris. Cobbles pick between two variants on their own stride instead. Both surfaces share
+   one Tilemap — they provably never overlap, and a second Tilemap means a second renderer,
+   sorting order and `tileAnchor`, three more things to keep in step for nothing.
+2. **Quadrants put five ore boulders on the factory floor.** The corner-per-resource layout was
+   right while the workshop was the whole map and wrong the moment there was an outside — a market
+   inside the building is not a market, and the four corner cells are floor the factory wanted.
+   All five traders now stand on `y = -16`, four cells apart. Both numbers do work: the row leaves
+   three clear rows behind and four in front so a stall is approachable from both flanks (§3.2 caps
+   a node at two extractors and needs two free approach tiles — a stall backed against anything
+   silently caps at one), and the four-cell pitch keeps the 96px carts' overhang clear of the tiles
+   between them, which is where golems actually stand.
+3. **`AddNodeMarkers` had grown three mechanisms for one job**: two markers created by
+   `EnsureNodeMarker`, three only repositioned, and two more with bespoke sprite-repointing blocks
+   bolted on afterwards to undo art they had inherited. That is how the Aether marker spent months
+   wearing a brass ingot under a teal tint that `RefreshVisualState` overwrites white on the first
+   frame. One table, one loop, no special cases.
+4. **`renderer.size = 0.5 × 0.5` on the marker setup was a trap, not a bug.** It only applies to
+   Sliced/Tiled draw modes, so on a Simple sprite it had always been a no-op — but it encoded the
+   *old* item icon's world size, and left sitting beside a 96×120 cart it was a standing
+   instruction to squash a trader into half a cell the moment anything touched `drawMode`.
+5. **The street had no edges, and this is the one that only a screenshot could find.** Every wall
+   run walked `GetEdgeIndices` — the *workshop's* extent, because until now the workshop was the
+   map. So the side walls stopped dead in mid-air at the shop front and the road's west, east and
+   south edges cut straight into background. Read back from disk it was flawless; in Play mode it
+   did not read as "outside", it read as an unfinished tilemap. `GetWorldEdgeIndices` /
+   `GetWorldEdgeAnchor` describe the world's boundary alongside the room's, and the side runs go to
+   33 pieces a side. Capping the walls' dangling south ends fell out for free.
+6. **Reusing `floor_edge_sw` as the far kerb would have undone paving the street in stone.** It is
+   a **joist face** — the plank deck's thickness, on the plank palette, divided on the plank's own
+   16px board pitch. Under cobbles it reads as a timber sill holding back the pavement.
+   `make_street_edge` is its stone counterpart: dressed kerbstone, deliberately paler than any sett
+   in `COBBLE_TONES`, jointed on the setts' pitch, same 64×24 geometry and top-of-canvas pivot so
+   the road's near and far edges hang alike and frame it.
+
+   At the shop front the same slab is **correct** and was left alone — the workshop floor is a
+   raised wooden deck and the road is below it, so a joist face is exactly what the player should
+   see there.
+7. **The road's southern half was a hundred blank cobbles.** Five stalls all stand on one row and
+   nothing else was out there. 14 crates and barrels now, on the scatter idiom the room already
+   uses, confined to the two southernmost rows and the side walls beside them — the emptiest part,
+   and the part *provably* clear of the stalls four rows north, so the approach tiles stay open
+   without the floor generator having to know where `ProgressionSceneAuthoring` put them.
+
+### Three things that were expected to be broken and were not
+
+Worth recording as **checked**, because each was a live suspicion and "we looked" is the only thing
+that retires one:
+
+- **Y-sorting of the carts.** `ResourceNodeMarker` adds `YSortSpriteRenderer` in `Awake()`, which
+  does not run in EditMode — so the carts sort correctly only at runtime, and this was the single
+  most likely defect. It is correct: markers read order 1600 at `y = -16`, and a player at
+  `y = -16.6` draws in front of the cart. Screenshotted.
+- **The carts' overhang.** 96px sprites on 64px cells is 1.5 cells wide; at a four-cell pitch that
+  leaves 2.5 cells clear between neighbours and both approach tiles open.
+- **The Aether stall looking unlike the other four.** It is a glazed vitrine rather than a barrow,
+  and that is authored, not an accident — a rare good sold from a locked case. It is also the
+  marker that most needed its own silhouette, having previously rendered as a second brass ingot.
+
+### Rejected, and why
+
+- **Shrinking the workshop to pay for the street.** §3.3 sizes the endgame factory against 25×25.
+  Cells taken back are a difficulty change disguised as a layout change.
+- **Widening `GetFloorCells` to mean the whole world.** Every caller means the room by it. The
+  street would have been planked and the walls would have run round it.
+- **A south wall with a door.** The camera looks in through that edge, and a front-on elevation
+  anchored there draws over the room (breakage 4 of the projection switch). Open-fronted is both
+  the owner's call and the only one the art supports.
+- **Opting `Main.unity` out of the street.** Tempting — Main is a diorama with no market, so it now
+  carries 200 cobbles and no stalls. But Main has a Player, and `ClampToFloor` reads `FloorLayout`,
+  which is **global, not per-scene**: leaving Main unpaved while the clamp still allows `y = -20`
+  reproduces in Main the exact walk-into-the-void regression the paving was written to prevent.
+  Main keeps the shared shell until `FloorLayout` becomes per-scene or Main is retired.
+- **Extending the kerb run one index past each end** to close the sub-cell notch of background at
+  the two far corners, where the side wall's body reaches 0.39 of a cell past the kerb. One more
+  64px piece overshoots the wall by 0.61 of a cell, which trades a notch for a spur. The
+  shop-front corners have carried the identical notch since the top-down switch for the identical
+  reason; closing it properly needs a corner piece, not a longer run.
+
+### Verification
+
+- **1001 pass (869 EditMode + 132 PlayMode), zero failures.** Via the MCP bridge with the Editor
+  open, which is the only way to run them without closing it.
+- Both scenes read back from disk, not trusted from the authoring log: tilemap origin `(-12,-20)`,
+  size 25×33, 825 tile entries, `tileAnchor` still zero; 33/33 side pieces, 25 kerb pieces spanning
+  `x = -12..12`, kerb at `y = -20.5` on `street_edge` at PPU 64 with a top-of-canvas pivot; five
+  markers on painted street rows wearing stall art at 4/4/4/4 spacing.
+- `RebuildEnvironmentAllScenes` re-run on a clean tree leaves `git diff` **empty**, so the ~22k-line
+  scene diff is real content and not fileID churn.
+- **Looked at in Play mode** at gameplay zoom, at the shop front, at both far corners and at each
+  stall. The three commits before this one were explicitly handed off as *"STILL NOT LOOKED AT"*,
+  and breakage 5 is what that cost.
+
+### Still open
+
+1. **The street is the workshop's width and holds five stalls; §3.2 wants ~8 node sites at
+   endgame.** Extending the road east/west past the building, or adding a second stall row, is a
+   map-shape call for the owner.
+2. **`BuildModeController` still bounds placement by `GridMap` occupancy alone**, so §3.3's
+   "buildable area is the rendered floor" is unimplemented — and now more visible, because there
+   is ground outside the workshop to build on.
+3. **Nothing about the market is priced.** Stalls are `ResourceNode`s with `Infinite` quantity
+   behind a market-shaped sprite; "bought" is presentation. Making a trade cost something is the
+   design work this pass sets up and does not do.
+4. **The walk to a raw good has more than doubled, and nobody has timed it.** Measured from the
+   `(0,0)` spawn: every stall is **16 cells Chebyshev** (Manhattan 16 for Copper, 20 for Coal and
+   Zinc, 24 for Scrap and Aether), against Quadrants' 7 Chebyshev / 14 Manhattan. §9's manual era
+   is 12–15 minutes of hand-gathering — i.e. of walking to a node and back, repeatedly — and §12
+   already flags that estimate as ±25 %. Doubling the round trip is very likely outside that band.
+   This is now the **first** number a playtest should take, ahead of the boiler fuel ratio, because
+   it is the one this pass changed. If it bites, the lever is the stall row: moving it from
+   `y = -16` to `y = -14` costs two rows of approach clearance and buys back two cells each way.
+
+---
+
+## The Artificer's Ledger: an in-game tech tree chart
+
+The research track of `docs/progression-design.md` as a chart the player can open mid-game, on a
+fifth Management tab, with every node showing whether it is researched, available now, locked, or
+designed-but-unbuilt. 44 nodes across §9's six phases, ~76 prerequisite routes.
+
+### The load-bearing decision: the chart is drawn from data, not baked
+
+The obvious build is a poster PNG with the tree painted on it and markers overlaid at authored
+positions. That was rejected. A baked chart is a **second copy of §5.2 and §6** that no test can
+hold to the assets, and it goes stale the first time a recipe is retuned or a chassis cost changes
+— the exact failure mode this repo has been bitten by twice (the isometric world literals; the tint
+table that was "the whole of the problem" and was not).
+
+So the split is:
+
+- **Pixel art is chrome only** (`Tools/Art/generate_tech_tree_art.py` → `Art/UI/TechTree/`, 13
+  sprites): four node plaques, five kind badges, a phase banner, the drafting field, two dashed
+  rules. Nothing with a node name on it.
+- **Content** is `Progression/TechTreeCatalog.cs` — 44 nodes, transcribed from §5.2/§6/§9.
+- **Arrangement** is `Progression/TechTreeChartLayout.cs` — pure `Rect` math over a chart space
+  with y running *down*, unit-tested without a Canvas, the same idiom as `GridCoordinateConverter`.
+- **State** is `TechTreeStatusRules` over a `TechTreeProgressLedger`.
+
+`TechTreeCatalogTests` then pins the transcription against the assets on disk: every recipe node
+must unlock on a good some authored `RecipeDefinition` actually produces, all five chassis must
+appear, and the recipe-node count must equal the authored recipe count. A recipe added and not
+placed on the track fails the suite.
+
+### State comes from the world, not from a claim ledger
+
+§8's Assembly-Line gating (§11 item 12) is **spec only**. A chart keyed to claimed cards would read
+empty in the game as it ships. So a node is `Researched` when its unlock has been *observed*: an
+item produced, a chassis carried by some golem, a building placed, a tower stage completed. That is
+the same ordering §8 will later enforce, arrived at from the other end, and it works today.
+
+`TechTreeProgressTracker` (Holder-shaped, on `ManagerHolders.prefab`) collects it from two sources
+because neither alone is honest: `ItemAssembledEvent` catches a good the moment a golem makes it,
+including one that goes straight into another golem; the buffer sweep catches hand-cranked output,
+the opening stock, and everything a **loaded save** restores (a load restores buffers, not events).
+Chassis and buildings are polled on a 1 s timer rather than evented — there is no "golem built"
+signal on the bus, and inventing one to serve a read-only chart would mean editing
+`GolemConstructionStation` and `BuildModeController`.
+
+**The ledger only ever grows.** Deleting the last Presser does not un-invent the Presser, and a
+stockpile running dry does not un-discover Iron Plate. It is also what keeps the chart still: read
+live from buffer contents, half the track would flicker every time a golem emptied a depot.
+
+### Planned nodes, and why they cannot be researched
+
+Six nodes describe things the design specifies and the build does not have — `Repeat`, the Freight
+Link and its mast, the Slag Heap, Floor Expansion, the Assembly Bay cap (`docs/open-items.md`).
+They are drawn as blue drafting sketches and **stop at `Available`**, never `Researched`: no signal
+for them can ever arrive, and promoting them on prerequisites alone would have the chart report an
+unlock that does not exist. `TechTreeCatalogTests` pins the exact six *by name*, so building one
+fails the suite — which is the reminder to clear the flag rather than leave the chart calling a
+shipped feature "planned".
+
+### Built once, tinted often
+
+`ManagementPanel` refreshes its active tab **every frame while open**. The destroy-and-recreate
+idiom `WorkbenchController.RebuildUI` and `AssemblyLinePanel.Refresh` use is right for a handful of
+rows and would be hundreds of allocations a frame for 44 cards and ~228 line segments. So the
+chart's shape is built once from data and its state is re-applied only when the ledger's version
+moves. `TechTreeProgressLedger.Version` exists for exactly that gate.
+
+### Three things found by looking at the game view, not the properties
+
+Each of these passed every serialized-property check and was wrong on screen.
+
+1. **The detail line on every researched card was invisible** — warm parchment text on a bright
+   brass plaque. The ink now inverts with the plate (dark on brass, light on iron), which is the
+   rule `ManagementPanel`'s tab captions already followed and this screen had not.
+2. **The badges were brass on brass.** They are now tinted to a dark silhouette; each is drawn with
+   an outline, so shape — the channel the badge was carrying anyway — survives the tint.
+3. **"Done" and "do this next" read identically.** Both plaques are brass and the seal-versus-notch
+   silhouette was too quiet for the chart's single most important read. Researched is now knocked
+   back to a muted tint and available keeps full brass, so the few live cards are the brightest
+   thing on the page.
+
+### A pre-existing overlap this exposed and fixed
+
+`hideWhileOpen` — the list that hides the world HUD behind a full screen — lives on
+`WorkbenchController` only, and its comment claims it covers "the Workbench and Management modals".
+It did not: `ManagementPanel` had no such list, so the steam gauge and Clock Tower panel drew
+straight over the Management screen. Visible the first time the Ledger was opened in Play mode.
+`WorkbenchController.SetWorldHudVisible(bool)` is now public and `ManagementPanel.Open`/`Close`
+call it, so there is still exactly **one** authored list rather than a second copy to drift.
+
+### Manual Editor setup
+
+None. **Tools > Golem Factory > Author Tech Tree Chart** imports the 13 sprites (PPU 64, point,
+uncompressed, 10px 9-slice border on the plaques), adds `TechTreeProgressTracker` to
+`ManagerHolders.prefab`, clones the Save/Load tab button into a fifth `Ledger` button, builds the
+`TechTreeTab` (header, legend, `ScrollRect` + `RectMask2D` + chart), wires `ManagementPanel`, and
+then **reads `Sandbox.unity` back** — because the scene carries prefab overrides, and an authoring
+pass reports what it wrote rather than what the game will load.
+
+### Verification
+
+- **1071/1071 tests passing** (931 EditMode + 140 PlayMode), of which 37 are new.
+- **Opened in Play mode and looked at**, against both a fresh save (1/44, "Next: Clockwork
+  Scavenger") and a seeded mid-game ledger (12/44, "Next: Aether-Hauler"). All three visual defects
+  above were found that way and only that way.
+- Chart measured live at 1720×940 with 266 child objects under a clipping viewport.
+
+### Still open
+
+1. **No scrollbars.** The chart is 1720px wide, phases V and VI start off-screen, and panning is
+   drag-only — the headline carries a "drag the chart to pan" hint because nothing else on screen
+   says so. Real scrollbars, or a fit-to-width zoom, would be better.
+2. **Detail lines truncate** on the longer costs (the Zeppelin's five-item bundle). The card is
+   196px; the alternatives are a taller card or a hover readout, and there is no hover state on
+   this screen yet.
+3. **The alerts strip still draws over the Management screen.** It is not in `hideWhileOpen` at
+   all, so it does the same over the Workbench. Pre-existing, and left alone here.
+4. **Prerequisites are the readable gate, not the full ingredient list** — at most three per node,
+   chosen as the structural gate plus the ingredients whose arrival is the actual wait. R17's four
+   inputs are all real; four inbound lines per card turns the chart into a wiring diagram.
+5. **When §8's gating lands**, `TechTreeUnlockSignal` should grow a `Card` case and the ledger a
+   claimed-card set, so the chart reads the claim ledger *as well as* the world.
+
+
+## The backlog pass: eight items off `open-items.md`
+
+A sweep through the actionable backlog rather than one system: two functional bugs the player pays
+for, one unimplemented design rule, two readouts that were lying, an art job, and the two designed
+verbs that were still spec. What follows is ordered by how much of it a player would notice.
+
+### 1. A player-built construction station was a decorative box
+
+`GolemConstructionStationPrefab` is in Sandbox's build menu at 25 Scrap + 5 Brass and **every
+serialized reference on it is null** — no chassis roster, no golem prefab, no buffer registry — so
+`TryConstructGolem` early-outed on the null registry and built nothing, silently. The player paid
+and got a crate.
+
+The cause was structural rather than a missed field: stations are wired by
+`SandboxBootstrap.WireSpatialGameplay`, which sweeps the scene **once at startup** and therefore
+cannot ever see a station built afterwards. The comment there claiming newly built stations
+"configure themselves via `PlaceableBuilding`'s own wiring path" described a path that does not
+exist.
+
+**The fix is a seam, not a second set of holders.** `Buildings/IPlacedStationConfigurator` follows
+`Save/IGolemRespawner` and `Save/IBuildingRebuilder` exactly: the thing that already knows how to
+wire a station is the scene's bootstrap, so it implements the interface and
+`BuildModeController.RegisterPlacedEndpoints` asks it — rather than the controller growing its own
+copy of six holder references. `SandboxBootstrap.ConfigureStation` is now the **one** definition of
+"a station, fully wired into this scene", used by the startup sweep and by placement alike, so the
+two can never drift.
+
+Two smaller decisions inside it:
+
+- **The station's wiring is split in half.** `ConfigureSceneServices` takes the registries, clock
+  and Workbench; `ConfigureBuildRoster` takes the chassis list and golem prefab. The split exists
+  so the sweep can hand out scene references without being able to *blank* the assets an authored
+  station already carries — a single `Configure` that took everything would do exactly that the
+  first time a caller passed a null roster.
+- **The roster is captured from the scene, not duplicated onto the bootstrap.** The first station
+  found with a roster becomes the template every later one is built from. A serialized copy on
+  `SandboxBootstrap` would have been a second authored roster to drift.
+
+A save's rebuilt station comes back wired too, because `TryRebuildSavedBuilding` goes through the
+same `RegisterPlacedEndpoints`.
+
+### 2. The buildable area is now the ground that is drawn
+
+§3.3 asks for it and `BuildModeController` bounded placement by `GridMap` occupancy alone, so the
+player could build out past the kerb into nothing. Always true; finally *visible* once the map had
+an outside.
+
+**The bound is the WORLD, not the workshop**, and `docs/open-items.md` named the wrong predicate.
+`FloorLayout.IsInsideWorkshop` would forbid building on the market street — where all five traders
+stand — so no belt or depot could ever reach them, which is a worse bug than the one being fixed.
+`FloorLayout.IsInsideWorld` is the predicate form of `GetWorldCells` (and a test holds the two
+together over the whole neighbourhood rather than restating the arithmetic).
+
+- Unbounded by default (`-1`, following `ResourceNode.Infinite`'s sentinel idiom), turned on by
+  `SandboxBootstrap` next to the identical call that bounds the *player* — one boundary for "I can
+  walk there" and "I can build there".
+- **Removal is deliberately not bounded.** A building standing off the ground (an old save, a
+  bound that moved) must always be removable, or it is litter the player cannot clear.
+- Off the ground reads as `Blocked` on the ghost rather than as a fourth state: the player's move
+  is the same one an occupied tile asks for.
+
+### 3. The alerts strip: the last thing drawing over the full-screen modals
+
+Recorded twice as still-open. It is now in `hideWhileOpen`, in the prefab **and** in the scene's
+override of it — and confirmed by reading `Sandbox.unity` back rather than by trusting the
+authoring log:
+
+```
+hideWhileOpen = 5
+   [0] BuildMenuPanel  [1] SteamGauge  [2] ClockTowerPanel  [3] HandCrankPanel  [4] AlertsStrip
+```
+
+### 4. Two economy readouts that were lying
+
+**The stock bars were relative-only.** §1.2 added `CapacityPerType`/`RoomFor` and nothing read it,
+so a capped buffer's bar still measured against the biggest row on screen and buffer backpressure —
+which §5.3(c)'s whole Slag economy runs on — stayed invisible until a golem stalled.
+`Economy/StockBarPolicy` is the pure split: a capped buffer's bar is a real fill fraction with its
+own colour ramp and a `84/100` label; an uncapped one (the player's deliberately `Unlimited`
+stockpile) keeps the honest relative comparison. The two modes are kept apart rather than blended
+because a half-length bar means two different things in them. Near-full trips at five sixths —
+about one player reaction before the stall, which is what a warning is for.
+
+**The rate column was net stock change**, so a line running 60/min in and 60/min out — fully loaded
+— printed "0/min, Steady", identical to a line dead for ten minutes. That is unfixable from levels
+alone: sampling a quantity can only ever see net change. `StorageBuffer` now keeps two **monotone
+lifetime counters** (deposited/withdrawn per type); `BufferRateTracker` samples them alongside the
+level and fits both slopes, and `BufferFlowUtility` asks the second question — with the level flat,
+is anything passing through? Throughput is `min(in, out)`, because the surplus of either side is
+already reported as net movement and counting it twice reads as double the traffic there is.
+
+The counters are bookkeeping, not rate tracking: every derivation stays in the presentation-side
+tracker, and they are cleared by `ClearContents` because that is the load path, and fitting a slope
+across a discontinuity is precisely what the Clock Tower's rate windows are deliberately not
+restored to avoid.
+
+### 5. Belts: the arrows were wrong in both directions
+
+The arrows scrolled at `speed × (1 − congestion)`, which measures how **full** a lane is rather
+than how fast it is running.
+
+- Two of four queue slots blocked behind a parked head, tail still running free: arrows halved,
+  while the lane was keeping up at the front.
+- A lane whose single item cannot move at all: congestion is **zero** (a parked head is
+  deliberately not counted as a jam, or every terminal belt in the factory is permanently red), so
+  the arrows ran at *full* speed over cargo that was not moving.
+
+`BeltFlowUtility.ComputeFlowFactor` replaces it, and it is the **maximum** over the cargo rather
+than the mean. The mean freezes the arrows whenever the head is parked — and a terminal segment
+parks its head permanently while items behind it keep advancing; frozen arrows over visibly moving
+cargo is a worse lie than the one being fixed. The max is always a speed something on the lane is
+really travelling at, and reaches zero only when nothing is moving. Congestion keeps the alarm
+channel, unchanged.
+
+> A first attempt at this added a combined `ComputeStallLevel` = `max(congestion, 1 − flow)` and it
+> was wrong: it would have made every terminal belt permanently red, which is the exact thing
+> `IsQueuedBehindAnother` was written to prevent. The test suite caught it as a contradiction with
+> the pinned congestion behaviour.
+
+**A placed belt now has a jam readout at all.** A one-cell belt has no room for scrolling arrows,
+so `ConfigureCargoOnly` switches that whole channel off — a backed-up player belt was
+distinguishable from a working one only by staring at the cargo. It now lends its own static
+direction arrow to the visual as a flow lamp (`ConfigureFlowSignalTarget`), which captures the
+authored colour as the resting state, so a free-flowing belt looks exactly as authored and only a
+jammed one changes.
+
+**`ComputeItemScale`'s clamp turned out to be already fixed** — by the projection switch, not by
+anyone. Measured at the real geometry (a placed belt is one cell = 1.0 world units, `BeltNetwork`'s
+default 4-tick segment, item sprites 32 px at PPU 64 = 0.5 units): the fit lands at 0.625, strictly
+inside both clamps, and cargo draws at exactly the authored 1.25× of slot spacing. A test now pins
+that geometry so the claim cannot silently become true again.
+
+### 6. Art: the floor, and the last three crates
+
+**24 character sprites were floating.** BottomCenter puts the pivot on the bottom row of the
+*canvas*, not of the drawing, so five of the eight golem sprites floated between 0.047 and 0.156 of
+a cell above their tile — the pivot fix put them on the right tile and the canvas padding lifted
+them off it again. `Tools/Art/trim_character_alpha.py` trims the transparent rows beneath the feet.
+
+> **The shared-minimum rule** is the one subtle thing in it. The Artificer's sixteen walk frames
+> are trimmed by the *same* number of rows, taken from the frame with the least padding — never per
+> frame. Per-frame trimming would manufacture a vertical bob out of art that deliberately has none,
+> and a procedurally invented bob is exactly what was rejected when the walk cycle landed.
+
+It is a script rather than an importer change because an importer that trimmed would silently
+disagree with the file on disk about where the sprite ends — and it could not live in
+`generate_placeholder_art.py`, whose chassis output was hand-replaced long ago (`--legacy` warns
+that regenerating clobbers the real art).
+
+**The last three `building_block` users have their own sprites** (`Tools/Art/generate_building_art.py`
+→ steam pipe, depot, construction station), and the awkward half of that problem is closed: `Depot`
+and `GolemConstructionStation` are authored by `ApplyCost`, which restored a cost and never touched
+the `SpriteRenderer` at all, so no amount of reading the tint table would have led anyone to them.
+`ApplyCost` takes a sprite now. Every tint in the table is white; the table is kept, because the
+reasoning on it — *a tint exists to tell identical boxes apart, so the moment a building has a
+silhouette the tint is what wrecks it* — is what stops the next building being tinted instead of
+drawn.
+
+**`player.png.meta`'s pivot trap is closed**: it recorded `alignment: 7` with a stored pivot of
+`{0.5, 0.5}`, behaving as BottomCenter while reading as centre to anyone auditing by eye.
+
+### 7. `Repeat(n)`: the Overclocker finally has a verb
+
+§6's replacement for the cut adjacency speed aura. Re-runs the immediately preceding `Assemble`
+n more times from the same input stock, at n × its duration, stalling on the same shortfall rules,
+Overclocker-only.
+
+**It is n sequential assemblies, not one step with multiplied quantities**, and that is the
+load-bearing choice. §1.3's atomicity is per assembly: each iteration checks room for its own
+output and holds its own inputs before consuming anything, so a repeat that runs out halfway leaves
+finished batches in output stock and the remaining inputs untouched — instead of stranding a
+part-consumed multi-batch withdrawal inside a golem that nothing can reach. It also makes §6's
+claim about the 12-per-type cap true for free: `Repeat` on R15 (10 Casing) stalls `MissingItem` on
+the second iteration, because 20 Casing cannot be held.
+
+Mechanically it rides the existing loop rather than adding a second kind of step: a repeat that
+owes another iteration rewinds `StepProgressTicks` instead of advancing the step index, so the
+stall guard, the resume event and the duration clamp all keep treating it as one ordinary step
+being begun again. The state is **self-correcting** rather than notified — any non-`Repeat` step
+clears it, and a captured card that no longer matches the preceding step restarts the count —
+because `EngageGears` rewrites the same `GolemProgram` instance under a running golem and nothing
+tells the entity that happened.
+
+The Overclocker-only rule is `ChassisDefinition.allowsRepeat`, a flag on the data written from the
+same authoring table that carries the costs — not a name comparison, which a renamed asset breaks
+silently. It is refused at **assembly** time (`GolemProgram.TryAddAppendage`), not stalled at run
+time, because a Scavenger will never grow the ability and the rigid-stall rule is for conditions
+the world can change.
+
+### 8. The Assembly Bay cap is in the loop
+
+`AssemblyBayStructure` had capacity and upgrade bookkeeping, tested, for several milestones — and
+no job. §8 gives it one: bays start at **10** slots ("above the natural Phase-2 count of ~8", so
+the cap is a middle-game decision rather than a Phase-1 wall) and upgrade **+6 for 40 Scrap + 20
+Iron Plate**.
+
+That price is **Presser-tier goods only, deliberately** — "so the cap can never gate on something
+the cap itself prevents you from making" — which is now a test rather than a sentence. The cost
+became an item bundle (§11 item 8) because the old `scrapCost`/`brassCost` int pair could not
+express a price in Iron Plate at all.
+
+`GolemConstructionStation` checks the cap **before** the cost, so a refusal never touches the
+stockpile, and reports `LastRefusalReason` so the panel stops printing a shortfall of nothing at a
+player whose stockpile is full. Occupancy is **derived**: destroyed golems are pruned on read
+rather than relying on every deletion path remembering to release a slot — §10's own recovery route
+from an over-built factory is "delete golems, freeing both bay slots and upkeep instantly", so a
+slot that never came back would break the escape hatch. The load path force-assigns past the cap,
+for the same reason a rebuilt building is not re-charged: a save describes a factory that was legal
+when it was built.
+
+### What this cost the tech tree chart, on purpose
+
+Two of the six `IsPlanned` nodes are cleared — `verb.repeat` and `bays.assembly` — and the test
+that pins the exact six **failed first**, which is what it was written to do: it is the reminder to
+clear the flag rather than leaving the chart quietly calling a shipped feature "planned". Four
+remain: the Freight Link, the Freight Mast, the Slag Heap, Floor Expansion.
+
+### Verification
+
+- **982/982 EditMode** and **149/149 PlayMode**, from a 931 + 140 baseline — 60 new tests.
+- Both authoring passes re-run headless and `SceneProbe.Verify` read `Sandbox.unity` back
+  afterwards, because the scene carries prefab overrides and an authoring pass reports what it
+  wrote rather than what the game will load.
+- **Not played.** Every claim here is from tests and a scene read-back; the arc remains
+  unplaytested, and the boiler fuel ratio is still the first number §12 says to time.
+
+## The Director's queue, and retiring Main.unity
+
+Ten queued items plus two Director decisions, built and validated in sequence. Each landed as its
+own commit with its own green run; the running total went 1071 → **1245** tests. What follows is
+only the part worth reading later: the decisions, and the four times the backlog turned out to be
+describing something that was not true.
+
+### The two Director decisions
+
+**The street extends east and west** (progression-design §13.1), so the world is a **T** rather than
+a rectangle: the road is 37 cells against the workshop's 25, and carries nine stalls. The
+alternative — a second stall row — was rejected for the player's factory rather than the map's
+tidiness: one row lets a player run clean parallel buses north into the shop, where a second row
+would sit across every one of them, and it would eat the free approach tiles §3.2's two-extractor
+cap needs. The cost accepted with it is that the side walls no longer bound the world in one run,
+which is what the two "shoulder" stubs beside the shop front are.
+
+**The market sells truckloads, with a Creative Mode bypass** (§13.2). A raw good is bought and
+arrives as one burst, which is what gives buffer chests and accumulator lines a job. It reuses
+`ResourceNode` rather than replacing it — a truckload is `Deliver`, and extraction, the extractor
+cap and the depletion tint are all untouched — and `GameMode.IsCreativeMode` restores the infinite,
+free, steady behaviour exactly. **No holder means creative**, which is how every pre-existing test
+keeps the world it was written against.
+
+### Four things the backlog was wrong about
+
+Worth recording as a class, because the same shape recurred four times: an entry described a defect
+that had already been fixed by something else, or described one gap where there were two.
+
+1. **`ComputeItemScale`'s clamp** was fixed by the projection switch. Measured at the real geometry,
+   the fit lands mid-range and cargo draws at exactly the authored ratio.
+2. **The mirrored belt-art pair** was an *isometric* requirement — a chevron rotated onto a diagonal
+   shears against a diamond. Top-down puts all four facings on exact quarter turns of one flat
+   sprite.
+3. **Belt merging already worked.** Two belts pointing at one cell have always both linked to it.
+   Only fan-out was missing, and fan-out is not something a belt can do — a belt has one facing, so
+   the splitter had to be its own placeable with no facing at all.
+4. **§11 assumed `FloorLayout.HalfExtent` had to stop being a `const`** for Floor Expansion. It did
+   not: every method there already took its extents as parameters, and a default argument must be
+   compile-time constant, so the live extent moved into `FloorBounds` and the layout math stayed
+   pure.
+
+In each case the honest deliverable was a measurement and a test pinning it, not an implementation.
+
+### Retiring Main.unity
+
+It was a diorama of seven hand-wired demos with no player, and the two scenes had been diverging for
+milestones. The thing that made it undeletable was that it was the only place the **id-routed** fork
+was exercised: a golem with no spatial endpoint holder routes by bare-string ids and charges the
+authored `durationTicks`.
+
+`IdRoutedDemoRegressionTests` rehouses that, and does it by driving the scene's **own**
+`HardcodedDemoProgram` builders rather than transcribing the programs — the same reason
+`TechTreeCatalogTests` reads the assets instead of restating them. Both suites then stayed green
+with the scene deleted, which is the evidence the rehousing held rather than the hope.
+
+> **It also found that one of the seven demos never worked.** `ExtractAndDeposit` describes
+> "extract from a node, deposit into a buffer", and the id-routed `ExtractFromNode` has never been
+> able to do that — it extracts onto a *belt* named by the card's `destinationId`, and that card
+> names none. So it refused at `CanEnqueue(null)` before touching the node, every tick, forever,
+> and the M2 demo golem stood there doing nothing while nothing asserted otherwise. Pinned rather
+> than repaired: giving it a belt changes what the demo demonstrates, which is a content decision.
+
+Deleted with it: `MainSceneBootstrap`, `GolemDemoBootstrap`, `BeltDemoBootstrap`,
+`TriggerDemoBootstrap`. Kept: `AssemblyLineDemoBootstrap` (Sandbox uses it) and
+`HardcodedDemoProgram` (now the definition of the reference programs the tests pin). Comments across
+the codebase still name Main.unity when explaining the fork; they are history, and CLAUDE.md says so.
+
+### Verification, and what it is not
+
+- **1245/1245** (1096 EditMode + 149 PlayMode), both authoring passes re-run headless, and
+  `SceneProbe.Verify` reading `Sandbox.unity` back afterwards.
+- The test runs earned their keep repeatedly: they caught the deck generator asking for
+  `AssembleAssembleCoking` and silently skipping all nineteen recipe cards, the movement verbs
+  quietly priced at 20 Scrap by a legacy default, a zero-cost claim refused by the one payment path
+  that never guarded it, and a world-HUD registry solving on the wrong frame.
+- **Nothing here has been played, and the lighting has not been looked at.** Every invented number
+  is tabulated at the end of `testscript/phase-1-playtest.md` for exactly that reason.
+
+---
+
+## The cozy automation pass
+
+Six tasks in one pass, designed up front in `docs/cozy-automation-design.md` before any of them
+was built. Two answer findings that were already on the board; the other two are new systems. The
+pass ran **1249 → 1380 tests** (1100 → 1220 EditMode, 149 → 160 PlayMode), console clean.
+
+**Read the design doc first.** It leads with eight invariants this pass was not allowed to break —
+integer determinism, the `IsSpatiallyPlaced` fork, append-only enums, no item loss, §10's per-type
+skip, opt-in-by-null, pure-function-plus-thin-applier, and the TMP atlas's missing glyphs — because
+three of the four Phase-1 features could plausibly have violated one, and one of them (the
+recycler's safety argument) turned out to be wrong in a way only implementing it revealed.
+
+### 1. Smart depot filtering — a crate can be labelled
+
+A `PlaceableDepot` had no settings at all, and every depot publishes the same `FactoryStockpile`,
+so a depot had no identity either. The half that was genuinely broken was the **output** side:
+`StorageBufferEndpoint` has carried a `PreferredItemType` field since it was written and **nothing
+has ever set it**, so a golem hauling from a depot pulled whichever good the shared buffer happened
+to enumerate first. You could not run two lines off one stockpile.
+
+- `World/FilteredBufferEndpoint.cs` **wraps** rather than flagging `StorageBufferEndpoint`, whose
+  own comments are careful about why its typed and untyped `CanGive` answer differently, and which
+  is published by masts and bootstrap buffers too.
+- Its untyped `CanGive()` **does** diverge — a labelled crate full of its own good can accept
+  nothing — and that is *not* §10's deadlock. The deadlock is one type blocking a **different**
+  type; a labelled crate has one type by construction.
+- `StallReason.FilterMismatch` is appended beside `NodeCrowded` and for the same reason it is not
+  folded into `NodeEmpty`: *"this crate is full"* and *"this crate is for something else"* have
+  opposite fixes, and waiting will never empty a Plate crate of the Slag it was never going to
+  take. `GolemEntity` asks which by type-testing through `IFilteredEndpoint` — the idiom
+  `EmptyReasonFor` already uses, on the failure path only, never per unit.
+- **`[E]` cycles the label, not `[R]`.** A golem almost always stands beside the depot it pushes
+  into, and a crate that beat that golem on a distance tie would make it unrotatable.
+- The cycle is built from **what the stockpile has actually handled**, so it is four to eight
+  entries rather than all twenty-four goods — and a label survives its good running out, or the
+  next press would silently retune a crate whose setting had dropped out of its own list.
+- `Economy/ItemTiers.cs` falls out of this and is pinned **by reflection over `ItemType`**, so a
+  25th good cannot be added without being given a tier.
+
+### 2. Golem moods — a sleeping golem stops looking broken
+
+A golem had two appearances: white and bobbing, or red and shaking. A golem asleep on an Interval
+trigger, a golem three units from backing up, and a golem running perfectly all read the same — and
+a factory-wide steam brownout read as *"lots of red badges"* rather than as one thing with one fix.
+
+Six moods at three volumes. `Working` draws **nothing**, deliberately: forty golems each wearing a
+"working" icon is a factory nobody can read, so silence is the state that means everything is fine.
+
+- **`Starved` is split out of `Stalled`** because `NoSteam` is the one stall whose fix is a
+  *building* rather than a rotation or a wait, and the one that hits everything at once.
+- **`Straining`** is the only predictive mood: a running golem at 9 of 12 with nobody collecting
+  will be stopped inside a minute, which is what makes a full-stock icon worth drawing at all.
+- **The badge polls rather than listens.** Four of the transitions that matter — `Idle → Running`,
+  stock filling toward the cap, a program being erased, a golem enabled while *already* stalled —
+  publish no event, and `GolemStallIndicator.OnEnable` already carried a hand-written
+  re-derivation for the last one with a comment saying the event stream could not cover it. The
+  stall event survives for exactly one job: the entry shake, which is a transition a poller cannot
+  see.
+- **Dwell is in the rules, not the view**, and it is the load-bearing part: an `AlwaysOn` golem is
+  `Idle` for a single tick at the end of every cycle, so without it the `zzz` badge would strobe at
+  cycle rate. A test pins the dwell against one tick *at the clock's real rate* rather than against
+  the constant itself.
+- **The class is still called `GolemStallIndicator`.** It is referenced by name from
+  `GolemPrefab.prefab`; renaming it compiles perfectly and orphans that reference silently.
+
+### 3. The Workbench says its steps are a loop
+
+Playtest §3y asked *"What are steps 1–6?"* and it was logged rather than fixed, because a Workbench
+redesign is not a thing to do while somebody is using it. The captions now carry a second clause
+driven from the live draft: `STEP 2 · loops back to 1`. Because the marker follows the **last
+filled** step it walks down as the player builds, which *demonstrates* the cycle rather than
+describing it. The trigger row is a progressive teacher — `fit a chassis first`, then `drop cards
+below to build a cycle`, then `when to start`.
+
+Written at runtime in `RebuildUI` rather than in the authoring pass that owns these captions on
+disk, because a hint about the cycle **cannot** be authored: it depends on a program that only
+exists while the screen is open. The separator is the Latin-1 middle dot the vault headings already
+use, not an arrow.
+
+### 4. The Scrap Recycler — and a safety argument that did not survive implementation
+
+Slag had two outlets; everything else in the game had none. A mis-ordered truckload, a
+decommissioned line's leftover Casings, a depot of Glass nobody wants — §10's escape hatch from an
+over-built factory is *deleting golems*, and goods had no equivalent.
+
+`ScrapRecycler` is `SlagHeap`'s pattern with the sign flipped: same integer accumulator, same
+carried remainder, same charge-on-the-crossing discipline, but it charges **and returns something**.
+Goods are priced by `ItemTiers` depth, four points buy one Scrap, one Coke is burnt per Scrap. Slag
+at tier 1 lands on **2 Slag per Coke** against the heap's 4 — half the disposal rate plus a good,
+so §5.3(c)'s decision survives intact. Unlike the heap's tile this one goes **both ways**: the
+Scrap is hauled out by a golem rather than teleporting to the stockpile, which makes it a machine
+in the logistics graph and gives it real backpressure.
+
+> **THE DESIGN DOC'S SAFETY ARGUMENT WAS WRONG, and a test caught it.** It reasoned in Scrap and
+> concluded every cycle was lossy. `Gear` broke the guard, and working out why showed the whole
+> argument was unsound: R4 turns 2 Scrap into 2 Iron Plate **plus** a Slag and R19 turns 1 Copper
+> Ingot into 3 Copper Wire, so any positive per-unit value *multiplies* across a recipe whose
+> output count exceeds its input count. No integer tier table can avoid that.
+>
+> What holds instead is better because it is **structural rather than numerical**: Scrap is free at
+> the market (§10 forbids a soft-lock), so a machine whose only output is Scrap cannot be an
+> economic exploit — what it saves is the *walk*; and the recycler is a strict **Coke sink**, so the
+> currency a loop would have to close in is spent monotonically. Three tests pin it. The design doc
+> records the correction rather than quietly editing it away.
+
+One rule deliberately differs from the heap: a **full** hopper refuses feedstock at any accumulator
+level. Points banked against a full output have no path to being paid out except collection, so
+accepting them would be taking in goods the machine cannot process.
+
+### 5. The Ledger says what a recipe costs — and fifteen glyphs it could not draw
+
+The Artificer's Ledger lit nodes up and said nothing about the recipe any of them named. Clicking a
+node now opens its full ratio, its byproduct **in lowest terms** (`1 Slag per 2 Iron Plate` is the
+sentence that sizes a Slag Heap; `byproductQuantity: 1` is not), its cycle time and theoretical
+rate, and — when the factory has been measured — its live one. The live line is **omitted rather
+than zeroed**, because `now: 0.0/min` for a branch nobody has built yet makes an unstarted line
+look broken.
+
+Two real bugs fell out of building it:
+
+- **Fifteen glyphs the TMP atlas cannot draw.** `TechTreeCatalog` carried fourteen `U+2192` arrows
+  and an em dash from the day the chart was written, so **every recipe node on the Ledger has been
+  rendering a missing-glyph box** where its arrow should be. The constraint is recorded in three
+  other files already; this one never heard about it because nothing was checking. A test now walks
+  every phase title, node name and detail and refuses anything above `U+00FF`.
+- **Resolving a node to its recipe by unlock signal is wrong, and quietly so.**
+  `r4.ironsmelting` signals on **Slag** rather than Iron Plate — deliberately, since R4 is the only
+  recipe that makes Slag while R2 also makes Plate. Looking up by output found nothing for R4 and
+  the readout fell back to the catalog's hand-written line, which *after the arrow fix was
+  byte-identical to the generated ratio* and so looked perfectly correct. It resolves by **recipe
+  number** now, and a test proves all nineteen resolve.
+
+The roster is authored onto the prefab (asset references survive that) while the throughput monitor
+is bootstrapped per scene (a prefab cannot hold a reference into another prefab), so the two
+`Configure` calls are deliberately separate and neither clears the other.
+
+### 6. Three dead nodes on the Ledger, found while wiring the recycler up
+
+`TechTreeCatalog` named **nine** building signals and `SweepBuildings` listed **six** component
+types, so `bldg.slagheap`, `bldg.freightmast` and `bldg.floorexpansion` could never light — for as
+long as those features had shipped. §3z's claim that *"nothing on the chart should read as planned
+any more, every node is a shipped feature"* was true of the catalog and quietly false of the
+readout: **a player who built a Slag Heap was told by the Ledger that they had not.**
+
+Nothing static could have caught it — the catalog and the sweep are two hand-written lists that
+never mention each other, and both compiled perfectly. `BuildingSignalCoverageTests` now stands one
+of every placeable in a scene, polls, and demands every Building-signalled node reach `Researched`,
+plus the opposite direction so it cannot pass by the ledger saying yes to everything. Floor
+Expansion needed its own answer: what the player buys is rows of floor, not an object, so it reads
+`FloorBounds` having grown past its starting shape.
+
+### 7. The dead M2 demo gets its belt
+
+`HardcodedDemoProgram.ExtractAndDeposit` was a fiction (`open-items.md` §3z B). It was pinned broken
+because a belt would have changed what `Main.unity` demonstrated — a content decision rather than a
+test's to make. The diorama is retired, so only the question about the *program* is left, and a file
+whose entire job is being the definition of the reference programs cannot afford a reference that
+does not run. The belt is a **required** argument rather than a defaulted magic string, so the
+fiction cannot be rebuilt by accident. The regression test now pins the two-step chain end to end;
+the invariant the fiction was accidentally documenting — an extract card with no belt must refuse
+*before* it touches the node — is kept as its own test, and now checks the seam is untouched.
+
+### 8. The workshop is furnished
+
+§3z C's *"biggest remaining gap against cozy, detailed"*. Four pieces — a hearth with a live fire, a
+loaded three-shelf unit, a trestle workbench with a vice, and a pegboard tool rack — along the
+**north** wall, which is the run the camera looks straight at because the shop front is open to the
+south. The other three walls keep their clutter, which is what stops the furniture reading as a
+showroom.
+
+Positions are **authored, not generated**. Every other prop run in `SandboxFloorGenerator` comes
+from a congruence because clutter should look scattered; furniture should look *arranged*, and an
+arrangement is exactly what a hash cannot produce. Offsets are from the room's centre line rather
+than absolute, so a wider workshop keeps the arrangement centred. Every piece stands on the wall
+ring, never on playable floor — a hearth occupying a cell the player wanted for a smelter would be
+a decoration that cost them a machine — and the clutter pass now yields those cells rather than
+overwriting them depending on which loop happened to run second.
+
+### What this pass did NOT do
+
+- **No playtesting.** Everything §3z A lists still needs a person in front of the running game, and
+  this pass *added* to the tuning table rather than shrinking it.
+- **Workbench slot styling, action icons and lever art** stay deferred with the rest of the
+  presentation polish. The loop labels are the part that answered a finding.
+- **Floor variation** was already built (four plank variants plus two rare hash-placed accents) and
+  was not touched. If the floor still reads as monotone in play, that is a tuning question about
+  `FloorTileVariant`'s rarities, not a missing feature.
+
+## Cutting the Artificer Focus meter
+
+**M8's Focus meter is gone.** Not retuned, not disabled — `ArtificerFocusMeter`,
+`ArtificerFocusMeterHolder`, `WorkbenchFocusPolicy` and `ArtificerFocusMeterTests` are deleted, and
+so are the `FOCUS n/100` segment of the Workbench tape, the two `Cost` labels on the lever and the
+Patent button, `SaveData.focusCurrent`, and the `focus` parameters of `SaveLoadService
+.CaptureState`/`RestoreState`, `WorkbenchStatusPolicy.ShouldClear` and
+`WorkbenchDiagnostics.ComposeTicker`. Everything above stays: the Workbench, the draft model, the
+lever, the Patent Registry and its browser tab.
+
+### Why
+
+The question that started it was whether Focus and Patents were board-game residue. Half of that is
+true and half is not, and the answer differs per system.
+
+- **Focus never bound.** 100 cap, 5/s regen, two spend sites in the entire game (`EngageGears` at
+  `8 + 6 × appendageCount`, `Patent` at a flat 20), and nothing else — building, placing,
+  demolishing, harvesting, cranking and claiming Assembly Line cards were all free. A six-step
+  program cost 44, i.e. **8.8 seconds of standing still**. `progression-design.md` §12's own risk
+  table had already scored it "**Clear.** Regenerates at 5/s."
+- **Its only job was to be the thing a patent discounted.** §8 made stamping a patented blueprint
+  a flat 10 specifically so patenting would pay off from three appendages up. That is circular: the
+  patent system's justification was a tax the patent system also owned. Remove the tax and the
+  patent system loses an argument, not a feature.
+- **Patents are not residue.** The *royalty* branch in `TryUseBlueprint` is (it is the tabletop's
+  "pay the patent holder", and it is still one empty `if` reserved for multiplayer), but the
+  registry itself is real single-player QoL: a named, saved, reloadable program. It keeps working,
+  and now it is free.
+
+### A bug found on the way out
+
+The affordability readout and the lever charged **different numbers**. `UpdateAffordability` gated
+`engageGearsButton.interactable` and wrote its label from the serialized flat `reprogramFocusCost
+= 10`, while `EngageGears` charged `CurrentEngageFocusCost` (`8 + 6n`). The prefab's labels — read
+back out of `WorkbenchCanvas.prefab` during this pass — literally said `10 focus` and `20 focus`.
+So any program with at least one appendage advertised a price it would then refuse to accept:
+"Not enough Focus to reprogram (need 26)" under a live-looking lever labelled 10. The serialized
+field was a leftover from before §8's scaling landed, and only two of its three call sites were
+updated. It is moot now, but it is the kind of drift a flat serialized "legacy floor" invites.
+
+### What replaced the affordability readout
+
+`UpdateAffordability` → `UpdateEngageAvailability`, which now reports the one remaining thing that
+can stop a pull: no targeted golem. That half was always there and was worth keeping — a live lever
+that commits nothing is the failure the original readout existed to prevent. The PlayMode test that
+pinned the Focus half was rewritten to pin this one rather than deleted.
+
+### Enum note
+
+`WorkbenchStatusReason` lost two *middle* values (`InsufficientFocusEngage`,
+`InsufficientFocusPatent`), which makes it the repo's one non-append-only enum edit. It is safe
+only because that enum is serialized nowhere — unlike `StallReason` and `AppendageActionType`,
+which are written into `.asset` files and events by integer index. Keep it unserialized.
+
+### Editor-side work, and one self-inflicted scare
+
+Prefab and scene surgery ran through the MCP bridge (`PrefabUtility.LoadPrefabContents` /
+`SaveAsPrefabAsset`), removing the `FocusMeter` GameObject from `ManagerHolders.prefab` and the two
+`Cost` labels from `WorkbenchCanvas.prefab`. Both lever and Patent button use **absolute anchors,
+not a layout group**, so removing the labels left no hole to reflow.
+
+`Sandbox.unity` then held twelve dangling `m_Modifications` — ten pointing at the deleted `Cost`
+objects, two setting `focusMeterHolder` on a script that no longer has the field. The first attempt
+to prune them filtered by "does this propertyPath still resolve on the target", which **also
+dropped 48 legitimate array-element overrides** (`availableAppendages.Array.data[4..23]`,
+`appendageRoster[4..25]`, the station's whole `chassisRoster`) because array-element paths do not
+resolve that way. Caught by diffing the scene, fixed by `git checkout` on the scene, reloading it
+in the Editor, and re-running with an explicit two-condition filter (`target == null ||
+propertyPath == "focusMeterHolder"`). Result verified by counting `propertyPath` occurrences in the
+YAML: 188 → 176, and a diff showing only the twelve intended lines gone. **The lesson is the
+project's existing one, from the other direction**: verify scene changes by reading the scene back
+— here, by diffing it — because a scripted "cleanup" is as capable of silent damage as a hand edit.
+
+### Tests
+
+1415 → **1397, all passing** (1228 EditMode + 169 PlayMode). Eighteen tests went with the feature:
+eight `ArtificerFocusMeterTests`, two status-policy retirement tests, three `WorkbenchFocusPolicy`
+scaling tests in `AssemblyLineGatingTests`, and five PlayMode Workbench tests that existed only to
+pin a charge or a refusal-for-insufficient-Focus. No test was weakened to make the cut pass.
+
+### Not done
+
+- **`progression-design.md` §8's Focus paragraphs are annotated, not rewritten.** The doc is the
+  spec as it was argued; the annotation records that the call was reversed and why.
+- **No play-mode screenshot.** The change was verified structurally (prefab read-back, scene diff,
+  both suites) but nobody has looked at the Workbench in the game view since the labels came off.
+
+## Dismantling a golem: the wrecking bar's other half
+
+**You could buy a golem and never get rid of it.** Buildings had a settled full-refund removal
+(their own build-menu row, their own three rules); golems had nothing — no delete, no refund, and
+a bay that filled up permanently. `TryConstructGolem`'s own refusal has been telling players to
+*"Upgrade the bays, or dismantle a golem"* since §8 shipped, naming an action that did not exist.
+
+### The placeholder that was already there
+
+`BuildModeController.PlaceOrRemove` had this branch:
+
+```csharp
+else if (IsDemolishActive)
+{
+    // A golem, not a building. Says so rather than doing nothing, because a
+    // silent click on the wrecking bar reads as the tool being broken.
+    LastStatusMessage = "Nothing to remove there -- that tile is not a building.";
+}
+```
+
+It named the case and refused it. **It also could not fire**, and finding out why decided the
+implementation: **golems are not `GridMap` occupants.** The only two `TryOccupy` calls in the
+entire project are in this file, and both place a `PlaceableBuilding`. A golem carries its own
+`Cell` instead. So that `else` was reachable only via a test object, and the wrecking bar needed a
+*scan* (`TryFindGolemAt`) rather than a map lookup — done on click and on the hovered cell, never
+per golem per frame, and deliberately uncached: a cache would need invalidating on every dismantle
+to save one `Vector2Int` comparison.
+
+### Where the rules live
+
+A fourth late-wiring seam, `IGolemDismantler`, implemented by `GolemConstructionStation`. The
+split is strict and it is the point:
+
+- **`BuildModeController` owns the tool** — the cursor, the ghost tint, the status line, the
+  popup — and knows nothing about assembly bays, the tick clock or the Workbench.
+- **`GolemConstructionStation` owns the mechanism**, because `TryDismantleGolem` has to undo
+  exactly what `SpawnGolem` did. Keeping them in one file is the same argument that put
+  construction and save-respawn through one `SpawnGolem` to begin with.
+
+The teardown is the birth sequence backwards, and two of its steps are deliberately **absent**:
+the steam consumer and the node-extractor claim are released by `GolemEntity.OnDisable`, which
+`Destroy` runs. Repeating them here would be a second writer for state that already has exactly
+one. What *is* here: release the bay slot, unregister from the clock, blank the Workbench if it
+was pointed at this golem, destroy, pay out, publish `WorldInteractablesChangedEvent`.
+
+### The one new rule: cargo comes back too
+
+`GolemDismantleRules.ComposeRefund` merges the chassis cost with **both** of the golem's stocks,
+summing duplicate item types so one good produces one refund line. This is a direct extension of
+the settled "never destroy what it cannot hand back" rule, and it matters more for golems than for
+buildings: **the golem a player most wants to remove is usually the stalled one holding
+something**, so eating its load would put the sting back into precisely the case a full refund
+exists to remove.
+
+The chassis and the cargo are separate arguments on purpose. Only the chassis is gated on
+`IsRuntimeSpawned` — refunding a scene-authored golem's chassis would mint goods out of the
+scenery, exactly as refunding authored furniture would. Its cargo is real goods either way.
+
+**A held golem is refused rather than destroyed.** `PlayerInteractor` holds the reference through
+a `[G]` carry, so deleting it mid-carry leaves the player walking around holding nothing they can
+put down. One sentence of refusal beat teaching the carry about deletion.
+
+### A leak this pass caused, and what it cost
+
+`SpawnGolem` calls `Instantiate` with **no parent**, so a constructed golem lands at the scene
+root. The new PlayMode tests tore down their own `_root` and left those golems standing — and
+PlayMode tests share one play session, so half a dozen unrelated suites (`PlayerInteractorTests`,
+`GolemInteractableRefreshTests`, `SaveLoadPanelTests`) started failing on golem counts they were
+right about. Eleven red tests, none of them in the new file. The fix is a sweep in `TearDown`; the
+lesson is that `Instantiate` without a parent is a test-isolation hazard in PlayMode specifically,
+and the existing EditMode station tests have the same shape without the same consequence.
+
+### Verified in a play session, not just in tests
+
+Play mode on `Sandbox.unity`, driving the real objects:
+
+- The bootstrap wires the seam: `_golemDismantler` resolves to `StarterConstructionStation`.
+- Built a Clockwork Scavenger (12 Scrap), loaded it with 8 Coal + 3 Coke.
+- Wrecking bar over its tile: `HasRemovableBuilding` **false**, `HasRemovableThing` **true**,
+  ghost classifies `Removable` — the tile lights up for a golem where it previously read inert.
+- `PlaceOrRemove` on that tile: Scrap 60 → 72, Coal 0 → 8, Coke 0 → 3, bay 1 → 0, golem count
+  1 → 0. The refund popup renders **`+12 Scrap + 6 Coal`** on a second run.
+- The interaction prompt re-pointed from the golem to the station by itself, which is
+  `WorldInteractablesChangedEvent` doing its job — the player is not offered a golem that is gone.
+- Held golem: *"Put PlayerGolem-003 down before dismantling it."*, still standing.
+- Dismantling the Workbench's target cleared the target rather than leaving the screen pointed at
+  a destroyed golem.
+- `CancelPlacement()` returns true and clears `IsBuildToolActive` — cancelling build mode already
+  worked and is bound to Escape and right-click; nothing there needed fixing.
+
+### Also confirmed here: the Workbench after the Focus cut
+
+The play session closed out the verification the Focus pass deferred. The tape reads
+`CHASSIS Clockwork Scavenger   SLOTS 0/2   TRIGGER -- none --   CYCLE --   STEAM 0 psi` with no
+`FOCUS` segment and no truncation, and the ENGAGE GEARS lever and PATENT button sit with no
+orphaned cost labels and no hole where they were — both are absolutely anchored, so nothing had to
+reflow.
+
+### The TARGET header, which the screenshot caught and a test could not
+
+The play-mode screenshot showed the Workbench header reading **`TARGET · GolemPrefab(Clone)`** —
+Unity's `Instantiate` suffix, on the one screen whose entire job is telling you which golem you
+are editing. `RefreshBlueprintPane` read `targetGolem.name` where `AlertsPanel`,
+`GolemStallIndicator`, `StallTracker` and every stall event read `GolemId`. Fixed with
+`GolemDisplayName`, which prefers the id and falls back to the object name only for a golem that
+never got one (a bare test rig): a blank `TARGET` line reads as the screen being broken, which is
+worse than a clumsy name.
+
+**Why no test caught it.** `WorkbenchControllerTests.Build()` never called
+`ConfigureBlueprintPane`, so no test in the project had ever rendered that label — the header was
+untested surface from the day it shipped. Three tests now pin it: the id wins over the object
+name, an id-less golem falls back rather than going blank, and no target says `none`.
+
+**Writing them turned up the rig's own load-bearing rule.** All three failed with
+`IndexOutOfRangeException` from `RebuildUI` until they yielded a frame after `Build(...)`:
+`Start()` is what sizes `_draftAppendages` to `appendageSlotZones.Length`, and `RebuildUI` walks
+the zones indexing that array. Every other test in the file already yielded first; these did not,
+and the failure names neither cause. There is now a comment on the helper saying so.
+
+Verified the same way it was found — back in play mode, the header reads `TARGET ·
+PlayerGolem-001` while the GameObject is still `GolemPrefab(Clone)`.
+
+### Tests
+
+1397 → **1422, all passing** (1234 EditMode + 188 PlayMode). Six `GolemDismantleRulesTests` for
+the payout arithmetic, eight PlayMode `GolemDismantleTests` for the station's death sequence
+(PlayMode because `Destroy` is deferred and `OnDisable` does not run in EditMode), and eight
+PlayMode `WreckingBarGolemTests` driving the tool through a **fake** `IGolemDismantler` — what the
+refund is worth belongs to one file and what the tool does belongs to the other, so a change to
+one cannot silently rewrite the other's expectations. Plus three `WorkbenchControllerTests` on the
+TARGET header, covering surface that had never been rendered by a test at all.

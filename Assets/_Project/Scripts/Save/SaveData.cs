@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace GolemFactory.Save
@@ -12,7 +12,6 @@ namespace GolemFactory.Save
     public sealed class SaveData
     {
         public List<BufferEntry> buffers = new List<BufferEntry>();
-        public float focusCurrent;
         public List<BlueprintEntry> blueprints = new List<BlueprintEntry>();
         public List<GolemEntry> golems = new List<GolemEntry>();
 
@@ -50,6 +49,29 @@ namespace GolemFactory.Save
 
         /// <summary>A boiler's remaining fuel. Dropping it would burn the player's Coke on load.</summary>
         public int cokeStock;
+
+        /// <summary>
+        /// A depot's label (docs/cozy-automation-design.md §1), empty for "any goods".
+        ///
+        /// <para>
+        /// Saved for the same reason a belt's facing is: it is routing, not decoration. A
+        /// factory restored with every crate unlabelled is a factory whose sorters have all been
+        /// wiped, and the player would find out one stalled golem at a time.
+        /// </para>
+        /// </summary>
+        public string depotFilterItemType;
+
+        /// <summary>
+        /// A Scrap Recycler's fuel, its uncollected Scrap, and its banked remainder
+        /// (docs/cozy-automation-design.md §4b). All three, because dropping the remainder would
+        /// silently round every hopper's ratio down on every load -- the exact thing the integer
+        /// accumulator exists to prevent.
+        /// </summary>
+        public int recyclerCokeStock;
+
+        public int recyclerScrapStock;
+
+        public int recyclerPendingPoints;
 
         /// <summary>
         /// Clock Tower progress: which stage is running and how far into it, in the same

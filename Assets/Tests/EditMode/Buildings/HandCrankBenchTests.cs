@@ -90,17 +90,75 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void CrankTicks_IsExactlyFourTimesTheMachineDuration()
+        public void CrankTicks_IsExactlyTwiceTheMachineDuration()
         {
             // 25 % speed. Exact in integers, so two players cranking the same recipe finish on
             // the same tick -- the discipline §1.4's burn accumulator established.
-            Assert.AreEqual(96, HandCrankRules.CrankTicks(24));
-            Assert.AreEqual(48, HandCrankRules.CrankTicks(12));
-            Assert.AreEqual(64, HandCrankRules.CrankTicks(16));
-            Assert.AreEqual(4, HandCrankRules.CrankTicks(0), "a zero duration must not mean a free craft");
+            // HALVED on the Game Director's call after playtest 1 ("Hand Crank is too long").
+            // §11 item 7 authored 25 %; nobody had ever felt it, and §9's manual era is on the
+            // design's own ±25 % list. R2 Scrap Reclamation goes 96 ticks -> 48.
+            Assert.AreEqual(48, HandCrankRules.CrankTicks(24));
+            Assert.AreEqual(24, HandCrankRules.CrankTicks(12));
+            Assert.AreEqual(32, HandCrankRules.CrankTicks(16));
+            Assert.AreEqual(2, HandCrankRules.CrankTicks(0), "a zero duration must not mean a free craft");
+
+            // THE PROPERTY THAT MATTERS, and it is what stops this being a slippery slope: a
+            // bench must stay strictly slower than the machine it stands in for, or automating
+            // stops being the point of automating.
+            foreach (int machineTicks in new[] { 1, 12, 16, 24, 90 })
+            {
+                Assert.Greater(
+                    HandCrankRules.CrankTicks(machineTicks), machineTicks,
+                    "hand-cranking must never be as fast as the machine, at " + machineTicks);
+            }
         }
 
         // --- Cranking --------------------------------------------------------------------
+
+        [Test]
+        public void AFinishedCraftNamesWhatItMade()
+        {
+            // What the player's "+1 Iron Plate" confirmation is built from. The bench used to
+            // bank its output in silence, so the only way to tell a minute of cranking had
+            // produced anything was to open the Management panel and compare numbers.
+            RecipeDefinition r2 = MakeRecipe("IronPlate", 1, 24, ("Scrap", 1));
+            var (bench, stock) = Build(r2);
+            stock.Deposit("Scrap", 10);
+
+            Assert.IsNull(bench.LastCompletedRecipe, "nothing has been made yet");
+
+            bench.IsCranking = true;
+            for (int tick = 0; tick < HandCrankRules.CrankTicks(24); tick++)
+            {
+                bench.Tick(tick);
+            }
+
+            Assert.AreEqual(1, bench.CompletedCrafts);
+            Assert.AreSame(r2, bench.LastCompletedRecipe);
+        }
+
+        [Test]
+        public void TheFinishedCraftSurvivesCyclingTheDialAwayFromIt()
+        {
+            // Why it is recorded rather than read back off SelectedRecipe: [R] can cycle the
+            // dial in the same frame the craft lands, and a caption reading the selection would
+            // then credit the goods to whatever is now under the handle.
+            RecipeDefinition coke = MakeRecipe("Coke", 1, 12, ("Coal", 1));
+            RecipeDefinition plate = MakeRecipe("IronPlate", 1, 24, ("Scrap", 1));
+            var (bench, stock) = Build(coke, plate);
+            stock.Deposit("Coal", 5);
+
+            bench.IsCranking = true;
+            for (int tick = 0; tick < HandCrankRules.CrankTicks(12); tick++)
+            {
+                bench.Tick(tick);
+            }
+
+            bench.CycleRecipe();
+
+            Assert.AreSame(plate, bench.SelectedRecipe, "the dial moved on");
+            Assert.AreSame(coke, bench.LastCompletedRecipe, "but Coke is what was actually made");
+        }
 
         [Test]
         public void HoldingTheCrankForTheFullDurationProducesExactlyOneCraft()
@@ -145,8 +203,13 @@ namespace GolemFactory.Tests.EditMode
             var (bench, stock) = Build(r2);
             stock.Deposit("Scrap", 5);
 
+            // PART WAY, expressed against the rule rather than as a magic number. This used to
+            // crank 50 ticks to sit inside a 96-tick craft; halving the bench's speed made 50
+            // ticks a COMPLETED craft, and the test failed for a reason that had nothing to do
+            // with what it was testing. Half the required ticks is "part way" at any speed.
+            int partWay = HandCrankRules.CrankTicks(24) / 2;
             bench.IsCranking = true;
-            for (int tick = 0; tick < 50; tick++)
+            for (int tick = 0; tick < partWay; tick++)
             {
                 bench.Tick(tick);
             }
@@ -370,8 +433,10 @@ namespace GolemFactory.Tests.EditMode
             var (bench, stock) = Build(coke, gear);
             stock.Deposit("Coal", 5);
 
+            // Part way through the COKE craft, against the rule -- see the note above.
+            int partWay = HandCrankRules.CrankTicks(12) / 2;
             bench.IsCranking = true;
-            for (int tick = 0; tick < 30; tick++)
+            for (int tick = 0; tick < partWay; tick++)
             {
                 bench.Tick(tick);
             }

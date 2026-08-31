@@ -1,9 +1,12 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using GolemFactory.Buildings;
 using GolemFactory.Economy;
+using GolemFactory.Events;
+using GolemFactory.Golems;
+using GolemFactory.PunchCards;
 using GolemFactory.World;
 
 namespace GolemFactory.Player
@@ -43,6 +46,7 @@ namespace GolemFactory.Player
         private GridCoordinateConverter _converter;
         private InputAction _clickAction;
         private InputAction _rotateAction;
+        private InputAction _cancelAction;
         private Vector2Int _hoveredCell;
 
         /// <summary>
@@ -59,11 +63,54 @@ namespace GolemFactory.Player
         /// </summary>
         public bool IsPlacementActive => _buildingPrefab != null;
 
+        /// <summary>
+        /// Whether the wrecking bar is in hand: clicks remove buildings and place nothing.
+        ///
+        /// <para>
+        /// <b>Why this had to exist.</b> Removal was only ever reachable by clicking an occupied
+        /// cell <em>while holding a placeable</em> -- see <see cref="OnClickPerformed"/>, which
+        /// gates every click on <c>BuildClickPolicy.ShouldPlace</c>. That was invisible while
+        /// there was no way out of build mode, because a placeable was then always in hand. The
+        /// moment Escape / right-click / re-clicking the row shipped, "click a depot to take it
+        /// back" quietly stopped working for anyone who had put their tool down -- found in
+        /// playtest as "the ability to pick up depots goes away at some point".
+        /// </para>
+        ///
+        /// <para>
+        /// A mode rather than a modifier key, and rather than simply letting any click demolish:
+        /// demolition is destructive and the cursor is already overloaded (harvest, interact,
+        /// place). It sits in the build menu beside the things it undoes.
+        /// </para>
+        /// </summary>
+        public bool IsDemolishActive { get; private set; }
+
+        /// <summary>
+        /// Whether a click belongs to build mode at all -- either tool counts. Distinct from
+        /// <see cref="IsPlacementActive"/>, which arbitrates <c>R</c>: there is nothing to
+        /// rotate while demolishing, so R must still reach a bench or a golem.
+        /// </summary>
+        public bool IsBuildToolActive => IsPlacementActive || IsDemolishActive;
+
+        /// <summary>
+        /// Picks up the wrecking bar, putting down any placeable first -- the two are one
+        /// cursor and cannot both be held.
+        /// </summary>
+        public void EnterDemolishMode()
+        {
+            _buildingPrefab = null;
+            IsDemolishActive = true;
+            LastStatusMessage = "";
+        }
+
         /// <summary>Turns the ghost one step clockwise. Public so a test can drive it directly.</summary>
         public void RotatePlacement() => PlacementFacing = FacingUtility.RotateClockwise(PlacementFacing);
 
         private static readonly Color RefusedPopupColor = new Color(1f, 0.52f, 0.40f, 1f);
         private static readonly Color SpentPopupColor = new Color(0.72f, 0.75f, 0.78f, 1f);
+
+        // Green where SpentPopupColor is grey: goods coming back read as a gain, and the
+        // refund popup fires on the same tile a "-15 Scrap" did when it was built.
+        private static readonly Color RefundPopupColor = new Color(0.56f, 0.86f, 0.50f, 1f);
 
         private int ReadStock(string itemType)
         {
@@ -132,6 +179,86 @@ namespace GolemFactory.Player
         public void ConfigureSteam(GolemFactory.Steam.SteamNetworkHolder steamNetworkHolder) =>
             _steamNetworkHolder = steamNetworkHolder;
 
+        // §6's Freight Mast. Optional in the same additive way steam is: unwired, a mast prefab
+        // places as a plain building that publishes its tile but joins no mast network, so no
+        // Zeppelin can bind to it.
+        [SerializeField] private FreightMastRegistryHolder _mastRegistryHolder;
+
+        public void ConfigureFreight(FreightMastRegistryHolder mastRegistryHolder) =>
+            _mastRegistryHolder = mastRegistryHolder;
+
+        // A placed GolemConstructionStation needs SCENE references a prefab cannot carry, so
+        // the scene's bootstrap hands itself over here and this asks it to wire each station
+        // as it is built. Runtime-only (no [SerializeField]) because an interface reference
+        // is not serializable and this is exactly the Configure(...) case the project's idiom
+        // exists for. Unwired, a station places as a plain building -- which is what it did
+        // before, decoratively.
+        private GolemFactory.Buildings.IPlacedStationConfigurator _stationConfigurator;
+
+        public void ConfigureStationWiring(GolemFactory.Buildings.IPlacedStationConfigurator configurator) =>
+            _stationConfigurator = configurator;
+
+        // --- The buildable area (docs/progression-design.md §3.3) -------------------------
+        // -1 means UNBOUNDED, following ResourceNode.Infinite and StorageBuffer.Unlimited's
+        // sentinel idiom, and it is the default: Main.unity and every existing test rig never
+        // call ConfigurePlacementBounds and place exactly where they always could. Sandbox
+        // turns it on from SandboxBootstrap, next to the identical call that bounds the player.
+        private int _placementHalfExtent = -1;
+        private int _placementStreetDepth;
+
+        /// <summary>
+        /// Bounds placement to the ground that is actually drawn. Separate from
+        /// <see cref="Configure"/> for the same reason ConfigureBelts is -- a scene that never
+        /// calls this keeps building anywhere.
+        ///
+        /// <para>
+        /// The bound is the WORLD (workshop + street), not the workshop: the five traders stand
+        /// out on the street, so bounding to the room would forbid the belts and depots that
+        /// reach them. See <see cref="FloorLayout.IsInsideWorld"/>.
+        /// </para>
+        /// </summary>
+        public void ConfigurePlacementBounds(int halfExtent, int streetDepth)
+        {
+            _placementHalfExtent = halfExtent;
+            _placementStreetDepth = streetDepth;
+        }
+
+        // The live room, for Floor Expansion (§11 item 15). Held rather than copied: new floor
+        // has to be buildable the moment it is paid for, without a second call to re-bound.
+        private FloorBounds _placementBounds;
+
+        public void ConfigurePlacementBounds(FloorBounds bounds, int streetDepth)
+        {
+            _placementBounds = bounds;
+            if (bounds != null)
+            {
+                _placementHalfExtent = bounds.HalfExtent;
+                _placementStreetDepth = streetDepth;
+            }
+        }
+
+        /// <summary>
+        /// Whether a building may stand on <paramref name="cell"/> at all. Public so the ghost,
+        /// the click and a test all read one answer -- a ghost that promises a tile placement
+        /// then refuses is the bug this replaced, not an improvement on it.
+        /// </summary>
+        public bool IsCellBuildable(Vector2Int cell)
+        {
+            if (_placementHalfExtent < 0)
+            {
+                return true;
+            }
+
+            if (_placementBounds != null)
+            {
+                return FloorLayout.IsInsideWorld(
+                    cell, _placementBounds.HalfExtent, _placementStreetDepth,
+                    FloorLayout.StreetHalfExtent, _placementBounds.NorthExtent);
+            }
+
+            return FloorLayout.IsInsideWorld(cell, _placementHalfExtent, _placementStreetDepth);
+        }
+
         // Called by UI/BuildMenuPanel when the player picks a different placeable type.
         public void SetActivePrefab(PlaceableBuilding prefab) => _buildingPrefab = prefab;
 
@@ -146,6 +273,7 @@ namespace GolemFactory.Player
                 InputActionMap gameplay = _actions.FindActionMap("Gameplay");
                 _clickAction = gameplay?.FindAction("Click");
                 _rotateAction = gameplay?.FindAction("Rotate");
+                _cancelAction = gameplay?.FindAction("CancelBuild");
             }
         }
 
@@ -162,6 +290,12 @@ namespace GolemFactory.Player
                 _rotateAction.Enable();
                 _rotateAction.performed += OnRotatePerformed;
             }
+
+            if (_cancelAction != null)
+            {
+                _cancelAction.Enable();
+                _cancelAction.performed += OnCancelPerformed;
+            }
         }
 
         private void OnDisable()
@@ -177,6 +311,53 @@ namespace GolemFactory.Player
                 _rotateAction.performed -= OnRotatePerformed;
                 _rotateAction.Disable();
             }
+
+            if (_cancelAction != null)
+            {
+                _cancelAction.performed -= OnCancelPerformed;
+                _cancelAction.Disable();
+            }
+        }
+
+        private void OnCancelPerformed(InputAction.CallbackContext context) => CancelPlacement();
+
+        /// <summary>
+        /// Puts the held placeable down -- leaves build mode. Public so the build menu, a test
+        /// and the key binding all take the same path.
+        ///
+        /// <para>
+        /// <b>Why this had to exist.</b> There was no way out of build mode at all: the menu only
+        /// ever called <see cref="SetActivePrefab"/>, so once a row was clicked
+        /// <see cref="IsPlacementActive"/> stayed true for the rest of the session. Every left
+        /// click went on placing or demolishing, and -- because R is arbitrated on exactly that
+        /// flag -- <b>R could never again reach the Hand-Crank Bench or a golem</b>. A player who
+        /// opened the build menu once could no longer change a bench recipe or turn a golem,
+        /// which is how this was found in play.
+        /// </para>
+        /// </summary>
+        public bool CancelPlacement()
+        {
+            if (_buildingPrefab == null && !IsDemolishActive)
+            {
+                return false;
+            }
+
+            _buildingPrefab = null;
+            // The wrecking bar leaves by the same three doors the placeables do. Anything else
+            // reintroduces the trap this method exists to close, with a more destructive tool
+            // stuck in the player's hand.
+            IsDemolishActive = false;
+            LastStatusMessage = "";
+
+            // The ghost hides itself on the next Update (BuildClickPolicy sees nothing in hand),
+            // but hiding it here too means the feedback lands on the frame of the key press
+            // rather than one frame later.
+            if (_ghost != null)
+            {
+                _ghost.gameObject.SetActive(false);
+            }
+
+            return true;
         }
 
         // R only turns the ghost when a placeable is actually in hand; otherwise it belongs to
@@ -235,7 +416,22 @@ namespace GolemFactory.Player
             UpdateGhostFacingArrow();
 
             bool occupied = _gridMapHolder != null && _gridMapHolder.Map.IsOccupied(_hoveredCell);
-            GhostState = BuildGhostVisuals.Classify(occupied, CanAffordActivePrefab());
+            if (IsDemolishActive)
+            {
+                // The wrecking bar inverts the ghost: an OCCUPIED tile is the good one. Reusing
+                // Blocked's red for "this will be destroyed" would be the same colour meaning
+                // opposite things one mode apart, so removal gets its own steady red and an
+                // empty tile gets the inert steel that already means "this click does nothing".
+                GhostState = BuildGhostVisuals.ClassifyRemoval(HasRemovableThing(_hoveredCell));
+            }
+            else
+            {
+                // Off the ground reads as Blocked rather than as a fourth state: the player's
+                // move is the same one an occupied tile asks for -- put the cursor somewhere
+                // else.
+                bool refused = occupied || !IsCellBuildable(_hoveredCell);
+                GhostState = BuildGhostVisuals.Classify(refused, CanAffordActivePrefab());
+            }
             // Colours and the blocked pulse come from BuildGhostVisuals, which documents the
             // measurements behind them -- the old inline green/red pair was tuned against the
             // pre-reskin cold grey floor and composited to a 1.06:1 contrast ratio against
@@ -244,7 +440,7 @@ namespace GolemFactory.Player
             // Hidden over UI as well as with nothing in hand, so the ghost and the click agree:
             // a tile that will not be built on must not be showing a "valid placement" square
             // under an open menu.
-            _ghost.gameObject.SetActive(BuildClickPolicy.ShouldPlace(_buildingPrefab != null, _pointerOverUi));
+            _ghost.gameObject.SetActive(BuildClickPolicy.ShouldPlace(IsBuildToolActive, _pointerOverUi));
         }
 
         // The ghost's facing arrow, created on demand as a child of the ghost so no scene or
@@ -270,6 +466,19 @@ namespace GolemFactory.Player
                 _ghostArrow.sortingOrder = _ghost.sortingOrder + 1;
             }
 
+            // Nothing to aim while demolishing: an arrow on the wrecking bar would say the
+            // removal has a direction.
+            if (IsDemolishActive)
+            {
+                _ghostArrow.gameObject.SetActive(false);
+                return;
+            }
+
+            if (!_ghostArrow.gameObject.activeSelf)
+            {
+                _ghostArrow.gameObject.SetActive(true);
+            }
+
             _ghostArrow.transform.localRotation =
                 Quaternion.Euler(0f, 0f, FacingVisuals.ScreenAngleDegrees(PlacementFacing, _cellSize));
             // Nudged along the facing so it reads as "out of this tile, that way" rather than
@@ -285,6 +494,62 @@ namespace GolemFactory.Player
         /// PlaceOrRemove's own cost check, so the ghost can never promise something placement
         /// will then refuse.
         /// </summary>
+        /// <summary>
+        /// Whether this cell holds something the wrecking bar can actually take. A golem
+        /// occupies the grid too and is not a building, so "occupied" is the wrong question.
+        /// </summary>
+        public bool HasRemovableBuilding(Vector2Int cell) =>
+            _gridMapHolder != null
+            && _gridMapHolder.Map.TryGetOccupant(cell, out object occupant)
+            && occupant is PlaceableBuilding;
+
+        /// <summary>
+        /// The golem standing on <paramref name="cell"/>, if any.
+        ///
+        /// <para>
+        /// <b>Golems are NOT <c>GridMap</c> occupants</b> — only buildings are (see the two
+        /// <c>TryOccupy</c> calls in this file, which are the only ones in the project). A golem
+        /// knows its own cell instead, so finding one is a scan rather than a lookup. That is
+        /// affordable here because this runs on a click and on the hovered cell, never per golem
+        /// per frame; <c>RoutingFocusController</c> and <c>PlayerInteractor</c> make the same
+        /// trade and cache, which this deliberately does not — a cache would have to be
+        /// invalidated by every dismantle, and the thing it would be caching is one comparison.
+        /// </para>
+        /// </summary>
+        public bool TryFindGolemAt(Vector2Int cell, out GolemEntity golem)
+        {
+            golem = null;
+            var golems = Object.FindObjectsByType<GolemEntity>(
+                FindObjectsSortMode.None);
+            for (int i = 0; i < golems.Length; i++)
+            {
+                if (golems[i] != null && golems[i].Cell == cell)
+                {
+                    golem = golems[i];
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Whether the wrecking bar has something to take back at this cell.</summary>
+        public bool HasRemovableThing(Vector2Int cell) =>
+            HasRemovableBuilding(cell)
+            || (_golemDismantler != null && TryFindGolemAt(cell, out _));
+
+        // The scene's golem dismantler. Optional in the same additive way every other holder on
+        // this component is: unwired, the wrecking bar behaves exactly as it did before golems
+        // were removable, refusing a golem's tile with "not a building".
+        private IGolemDismantler _golemDismantler;
+
+        /// <summary>
+        /// Late-wired by the scene bootstrap, for the same reason <c>ConfigureStationWiring</c>
+        /// is: the implementor is a component in the scene and this one is on a prefab.
+        /// </summary>
+        public void ConfigureGolemDismantling(IGolemDismantler dismantler) =>
+            _golemDismantler = dismantler;
+
         public bool CanAffordActivePrefab()
         {
             if (_buildingPrefab == null || _stockpileHolder == null)
@@ -301,7 +566,7 @@ namespace GolemFactory.Player
         // placeable immediately tried to place one.
         private void OnClickPerformed(InputAction.CallbackContext context)
         {
-            if (!BuildClickPolicy.ShouldPlace(IsPlacementActive, _pointerOverUi))
+            if (!BuildClickPolicy.ShouldPlace(IsBuildToolActive, _pointerOverUi))
             {
                 return;
             }
@@ -321,14 +586,47 @@ namespace GolemFactory.Player
             {
                 if (map.TryGetOccupant(cell, out object occupant) && occupant is PlaceableBuilding building)
                 {
-                    DemolishBuilding(building, cell);
+                    // The player's own click at a cell: a sale being reversed, so it pays back.
+                    DemolishBuilding(building, cell, refund: true);
+                }
+                else if (IsDemolishActive && !TryDismantleGolemAt(cell))
+                {
+                    // Not a building, and not a golem either. Says so rather than doing nothing,
+                    // because a silent click on the wrecking bar reads as the tool being broken.
+                    LastStatusMessage = "Nothing to remove there -- that tile is not a building.";
+                    SpawnPopup(_converter.CellToWorldCenter(cell), "not a building", RefusedPopupColor);
                 }
 
                 return;
             }
 
+            // A golem standing on an UNoccupied tile, which is the normal case: golems are not
+            // GridMap occupants, so the branch above only fires when a golem happens to share a
+            // tile with a building. Checked before the empty-tile refusal below, or the wrecking
+            // bar would say "nothing here" while the player is looking straight at a golem.
+            if (IsDemolishActive && TryDismantleGolemAt(cell))
+            {
+                return;
+            }
+
+            if (IsDemolishActive)
+            {
+                SpawnPopup(_converter.CellToWorldCenter(cell), "nothing here", RefusedPopupColor);
+                return;
+            }
+
             if (_buildingPrefab == null)
             {
+                return;
+            }
+
+            // REMOVAL is checked above and is deliberately NOT bounded: a building standing off
+            // the ground (an old save, a bound that moved) must always be removable, or it is
+            // litter the player cannot clear.
+            if (!IsCellBuildable(cell))
+            {
+                LastStatusMessage = "Can't build there -- that is outside the workshop and the street.";
+                SpawnPopup(_converter.CellToWorldCenter(cell), "off the ground", RefusedPopupColor);
                 return;
             }
 
@@ -374,6 +672,11 @@ namespace GolemFactory.Player
             instance.MarkRuntimePlaced(prefabKey);
             map.TryOccupy(cell, instance);
             RegisterPlacedEndpoints(instance, cell, facing);
+
+            // Its own publish: a save restore builds the instance here rather than through
+            // PlaceInternal, so it would otherwise be the one path that left a loaded factory
+            // full of buildings the player could not interact with.
+            EventBus.Publish(new WorldInteractablesChangedEvent("building restored"));
             return true;
         }
 
@@ -398,7 +701,13 @@ namespace GolemFactory.Player
 
             foreach (PlaceableBuilding building in placed)
             {
-                DemolishBuilding(building, building.Cell);
+                // refund: false, and this is NOT a detail. A load REPLACES the built world, and
+                // it sweeps exactly the buildings a refund pays out on -- the runtime-placed
+                // ones. Paying them back here would hand the player their whole factory's cost
+                // in goods on every single load, on top of the buffers the save is about to
+                // restore: save, load, save, load is an infinite resource duplicator. Only a
+                // player's own click at a cell is a sale being reversed.
+                DemolishBuilding(building, building.Cell, refund: false);
             }
 
             return placed.Count;
@@ -422,10 +731,64 @@ namespace GolemFactory.Player
             return null;
         }
 
+        /// <summary>
+        /// The wrecking bar's golem branch. Returns whether this click was <em>about</em> a
+        /// golem at all — true even when the dismantle was refused, because a refusal that
+        /// reported "that tile is not a building" over a visible golem would be a lie.
+        ///
+        /// <para>
+        /// Every rule here lives on the other side of <c>IGolemDismantler</c>: this method owns
+        /// the cursor, the status line and the popups, and nothing else. That split is why the
+        /// refund cannot diverge between a golem removed with the wrecking bar and a golem
+        /// removed by anything added later.
+        /// </para>
+        /// </summary>
+        private bool TryDismantleGolemAt(Vector2Int cell)
+        {
+            GolemEntity golem;
+            if (_golemDismantler == null || !TryFindGolemAt(cell, out golem))
+            {
+                return false;
+            }
+
+            IReadOnlyList<RecipeIngredient> refunded;
+            string refusalReason;
+            if (!_golemDismantler.TryDismantleGolem(golem, out refunded, out refusalReason))
+            {
+                LastStatusMessage = refusalReason;
+                SpawnPopup(_converter.CellToWorldCenter(cell), "kept", RefusedPopupColor);
+                return true;
+            }
+
+            LastStatusMessage = "";
+            // A golem that cost nothing and carried nothing still has to say something happened,
+            // or the click reads as the tool failing. "dismantled" is that floor.
+            SpawnPopup(
+                _converter.CellToWorldCenter(cell),
+                refunded != null && refunded.Count > 0
+                    ? "+" + GolemFactory.UI.ConstructionCostPolicy.FormatCost(refunded)
+                    : "dismantled",
+                RefundPopupColor);
+            return true;
+        }
+
         // Every registration a placement made, undone in one place, so removal and a save's
         // "replace the built world" sweep can never drift apart.
-        private void DemolishBuilding(PlaceableBuilding building, Vector2Int cell)
+        private void DemolishBuilding(PlaceableBuilding building, Vector2Int cell, bool refund)
         {
+            // COZY RULE: never take goods away as the price of tidying up. If the refund will
+            // not fit, the building stays standing and says so -- a demolition that destroyed
+            // what it could not hand back would be exactly the punishment a full refund exists
+            // to remove. Checked before anything is torn down, so the refusal leaves the world
+            // untouched rather than half-dismantled.
+            if (refund && !RefundWouldFit(building))
+            {
+                LastStatusMessage =
+                    "Not demolished: the stockpile has no room for the refund. Make space first.";
+                SpawnPopup(_converter.CellToWorldCenter(cell), "no room for refund", RefusedPopupColor);
+                return;
+            }
+
             // Tear the lane down BEFORE destroying the GameObject. BeltNetwork.TryRemove
             // is what clears any upstream belt's Next pointer; skipping it would leave a
             // live belt handing items to an unregistered segment that never ticks, so
@@ -443,9 +806,21 @@ namespace GolemFactory.Player
             if (_spatialEndpointHolder != null &&
                 (building.GetComponent<PlaceableDepot>() != null ||
                  building.GetComponent<PlaceableClockTower>() != null ||
-                 building.GetComponent<PlaceableBoiler>() != null))
+                 building.GetComponent<PlaceableBoiler>() != null ||
+                 building.GetComponent<PlaceableFreightMast>() != null ||
+                 building.GetComponent<PlaceableSlagHeap>() != null ||
+                 building.GetComponent<PlaceableScrapRecycler>() != null))
             {
                 _spatialEndpointHolder.Registry.Unregister(cell);
+            }
+
+            // A demolished mast must leave the registry too, or a Zeppelin stays bound to a cell
+            // with nothing on it. GolemEntity re-binds when its target vanishes, but only if the
+            // registry has stopped offering the dead mast.
+            PlaceableFreightMast removedMast = building.GetComponent<PlaceableFreightMast>();
+            if (removedMast != null)
+            {
+                removedMast.UnregisterFromMastNetwork(_mastRegistryHolder, cell);
             }
 
             // Steam has to come out of the grid before the GameObject goes, for the same
@@ -468,11 +843,110 @@ namespace GolemFactory.Player
                 }
             }
 
+            // Read the price back BEFORE the GameObject goes, and pay it back in full.
+            if (refund)
+            {
+                RefundBuilding(building, cell);
+            }
+
             if (_gridMapHolder != null)
             {
                 _gridMapHolder.Map.Free(cell);
             }
             Destroy(building.gameObject);
+
+            // Removal matters as much as placement: PlayerInteractor's cached arrays would
+            // otherwise keep offering a demolished depot. FillPositions parks destroyed entries
+            // at infinity so a stale cache is never *wrong*, but it stays one entry longer than
+            // it should and the prompt can still name a building that is gone.
+            EventBus.Publish(new WorldInteractablesChangedEvent("building demolished"));
+        }
+
+        /// <summary>
+        /// Pays a demolished building's cost back into the stockpile, in full.
+        ///
+        /// <para>
+        /// <b>Full, not a percentage, and that is a settled design call rather than a starting
+        /// value.</b> It was raised as a tuning question in playtest -- does free relocation take
+        /// the sting out of placing badly? -- and answered: <b>the game is cozy, so placing and
+        /// reorganising must not be punitive.</b> A salvage fraction is a tax on changing your
+        /// mind, in a game whose whole loop is laying something down, watching it be wrong, and
+        /// moving it. Do not reintroduce one as "balance". §10's rule against soft-locks points
+        /// the same way: a player who walls their stockpile into a building they can only destroy
+        /// is stuck for a reason that is not a decision. It also makes "move a building" something
+        /// the existing tools already do -- remove, then place -- at no cost, which is why there
+        /// is no separate pick-up-and-carry mode.
+        /// </para>
+        ///
+        /// <para>
+        /// <b>Only what the player actually paid for.</b> <see cref="PlaceableBuilding
+        /// .IsRuntimePlaced"/> is false for anything authored into the scene, and refunding those
+        /// would mint goods out of the furniture -- demolish the scene's own depots and the
+        /// stockpile grows. A restored save re-marks its buildings as runtime-placed, so loading
+        /// does not lose you the refund on something you did buy.
+        /// </para>
+        /// </summary>
+        private void RefundBuilding(PlaceableBuilding building, Vector2Int cell)
+        {
+            if (_stockpileHolder == null || building == null || !building.IsRuntimePlaced)
+            {
+                return;
+            }
+
+            IReadOnlyList<RecipeIngredient> cost = building.Cost;
+            if (cost == null || cost.Count == 0)
+            {
+                return;
+            }
+
+            // Room was checked before a single registration was torn down (RefundWouldFit), so
+            // every unit lands. Nothing here has to cope with a partial payout -- a refund that
+            // can silently come up short is the punishment this whole feature removes.
+            for (int i = 0; i < cost.Count; i++)
+            {
+                _stockpileHolder.Registry.Deposit(_stockpileBufferId, cost[i].itemType, cost[i].quantity);
+            }
+
+            LastStatusMessage = "";
+            SpawnPopup(_converter.CellToWorldCenter(cell),
+                "+" + GolemFactory.UI.ConstructionCostPolicy.FormatCost(cost), RefundPopupColor);
+        }
+
+        /// <summary>
+        /// Whether the stockpile can take back everything this building cost. Asked BEFORE the
+        /// demolition so a refusal is a no-op rather than a half-dismantled building and a hole
+        /// in the player's goods.
+        ///
+        /// <para>
+        /// Answers <c>true</c> for anything that would not be refunded anyway -- no stockpile
+        /// wired, scene-authored furniture, a free building -- so the check never blocks a
+        /// removal it has no stake in. Sandbox's stockpile is Unlimited, so in the shipping
+        /// scene this always passes; it exists for the capped buffers a later scene may use.
+        /// </para>
+        /// </summary>
+        private bool RefundWouldFit(PlaceableBuilding building)
+        {
+            if (_stockpileHolder == null || building == null || !building.IsRuntimePlaced)
+            {
+                return true;
+            }
+
+            IReadOnlyList<RecipeIngredient> cost = building.Cost;
+            if (cost == null || cost.Count == 0)
+            {
+                return true;
+            }
+
+            for (int i = 0; i < cost.Count; i++)
+            {
+                if (_stockpileHolder.Registry.RoomFor(_stockpileBufferId, cost[i].itemType)
+                    < cost[i].quantity)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private void PlaceInternal(Vector2Int cell, GridMap map)
@@ -529,8 +1003,12 @@ namespace GolemFactory.Player
             PlaceableBelt belt = instance.GetComponent<PlaceableBelt>();
             if (belt != null && _beltNetworkHolder != null)
             {
+                // A splitter is placed through the identical call with one flag -- it IS a belt
+                // as far as the lane, the capacity and the handoff pass are concerned, and only
+                // its outputs differ.
+                bool isSplitter = instance.GetComponent<PlaceableBeltSplitter>() != null;
                 PlacedBelt placed;
-                if (_beltNetworkHolder.Network.TryPlace(cell, facing, out placed))
+                if (_beltNetworkHolder.Network.TryPlace(cell, facing, isSplitter, out placed))
                 {
                     belt.BindSegment(placed.Segment, facing, _conveyorHolder, _cellSize);
                 }
@@ -542,6 +1020,18 @@ namespace GolemFactory.Player
                 depot.RegisterAsSpatialEndpoint(_spatialEndpointHolder, _stockpileHolder, cell);
             }
 
+            //   * a construction station: gets the scene registries, clock and Workbench that
+            //     let it actually build a golem. Without this a station the player PAID for
+            //     was inert -- TryConstructGolem early-outs on a null buffer registry and says
+            //     nothing, so the money went and the building did not work. Stations were only
+            //     ever wired by the bootstrap's one-shot startup sweep, which by definition
+            //     cannot see one built afterwards.
+            GolemConstructionStation station = instance.GetComponent<GolemConstructionStation>();
+            if (station != null && _stationConfigurator != null)
+            {
+                _stationConfigurator.ConfigureStation(station);
+            }
+
             //   * a clock tower: publishes its input tile, giving the megaproject somewhere for
             //     a golem to Push into. Without this a placed tower was inert -- the win
             //     condition could be built and then never delivered to.
@@ -549,6 +1039,34 @@ namespace GolemFactory.Player
             if (tower != null)
             {
                 tower.RegisterAsSpatialEndpoint(_spatialEndpointHolder, tower.SiteHolder, cell);
+            }
+
+            //   * a slag heap: publishes its tile, which accepts Slag to void and Coke to burn
+            //     it with. §5.3(c)'s costed sink -- without a published tile it is a building
+            //     the smelter cannot reach, which is the whole of its job.
+            PlaceableSlagHeap slagHeap = instance.GetComponent<PlaceableSlagHeap>();
+            if (slagHeap != null)
+            {
+                slagHeap.RegisterAsSpatialEndpoint(_spatialEndpointHolder, cell);
+            }
+
+            //   * a scrap recycler: publishes its tile, which takes junk and Coke in and hands
+            //     Scrap back out. BOTH directions matter -- it is a machine in the middle of the
+            //     logistics graph rather than a sink, so a golem has to be able to haul from it.
+            PlaceableScrapRecycler recycler = instance.GetComponent<PlaceableScrapRecycler>();
+            if (recycler != null)
+            {
+                recycler.RegisterAsSpatialEndpoint(_spatialEndpointHolder, cell);
+            }
+
+            //   * a freight mast: publishes its tile like a depot AND joins the mast registry,
+            //     which is the half a Zeppelin binds to. Both, because §6's link has to deliver
+            //     goods somewhere real as well as be findable.
+            PlaceableFreightMast mast = instance.GetComponent<PlaceableFreightMast>();
+            if (mast != null)
+            {
+                mast.RegisterAsSpatialEndpoint(_spatialEndpointHolder, _stockpileHolder, cell);
+                mast.RegisterWithMastNetwork(_mastRegistryHolder, cell);
             }
 
             //   * a boiler or a steam pipe: publishes itself into the SteamNetwork, which
@@ -571,6 +1089,16 @@ namespace GolemFactory.Player
                     pipe.RegisterWithSteamNetwork(_steamNetworkHolder, cell);
                 }
             }
+
+            // LAST, after every registration above. A listener re-scans the scene on this, and
+            // the thing it will find must already be fully wired -- a depot found before
+            // RegisterAsSpatialEndpoint would be interactable and routing-invisible at once.
+            //
+            // This is the same class of bug the station wiring above fixed, one level out: a
+            // depot the player placed could never be labelled with [E], a boiler never fuelled,
+            // a placed station never built from, because the interactor had cached its lists at
+            // startup and nothing ever told it the world had changed.
+            EventBus.Publish(new WorldInteractablesChangedEvent("building placed"));
         }
     }
 }

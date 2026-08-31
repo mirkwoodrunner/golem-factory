@@ -41,7 +41,6 @@ namespace GolemFactory.Tests.PlayMode
         {
             _root = new GameObject("Root");
             var buffers = _root.AddComponent<StorageBufferRegistryHolder>();
-            var focus = _root.AddComponent<ArtificerFocusMeterHolder>();
             var patents = _root.AddComponent<PatentRegistryHolder>();
 
             var saveButton = new GameObject("Save", typeof(RectTransform), typeof(Image), typeof(Button)).GetComponent<Button>();
@@ -52,7 +51,7 @@ namespace GolemFactory.Tests.PlayMode
             status.transform.SetParent(_root.transform);
 
             var panel = _root.AddComponent<SaveLoadPanel>();
-            panel.Configure(buffers, focus, patents, new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
+            panel.Configure(buffers, patents, new ChassisDefinition[0], new LogicCoreDefinition[0], new AppendageActionDefinition[0]);
             panel.ConfigureUI(saveButton, loadButton, status);
             return (panel, status);
         }

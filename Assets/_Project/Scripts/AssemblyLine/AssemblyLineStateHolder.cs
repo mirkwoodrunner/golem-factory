@@ -3,9 +3,9 @@ using UnityEngine;
 namespace GolemFactory.AssemblyLine
 {
     // Thin scene-resident owner for the plain-C# AssemblyLineState, mirroring
-    // ArtificerFocusMeterHolder's ownership of ArtificerFocusMeter. Ticks on wall-clock
+    // GridMapHolder's ownership of GridMap. Ticks on wall-clock
     // time (Update), not simulation ticks -- drafting cost decay is a real-time economy
-    // concern, same reasoning as Focus's regen.
+    // concern, not a simulation one.
     // State is built via a field initializer, not Awake() -- Awake doesn't run outside
     // Play Mode for a plain MonoBehaviour (the same gotcha M7/the graphics-wiring pass
     // both hit), and tests need a working State immediately after AddComponent in

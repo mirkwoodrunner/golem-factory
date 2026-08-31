@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using GolemFactory.Simulation;
 using GolemFactory.Events;
 using GolemFactory.PunchCards;
@@ -93,6 +93,34 @@ namespace GolemFactory.Golems
 
         /// <summary>Tile this golem pushes to -- directly in front of it.</summary>
         public Vector2Int TargetCell => FacingUtility.TargetCell(cell, facing);
+
+        // --- Moods (docs/cozy-automation-design.md §2) ---------------------------------------
+        // A READ-ONLY CLASSIFICATION OF STATE THIS GOLEM ALREADY HAS. Nothing here is simulation
+        // state, nothing writes it, and the tick loop never asks -- it exists so the badge and
+        // the sprite tint agree about what this golem is doing without each deriving it a
+        // slightly different way. The rules themselves are engine-free in GolemMoodRules.
+
+        /// <summary>
+        /// Whether this golem could ever do anything: it has a trigger and at least one step.
+        ///
+        /// <para>
+        /// Deliberately not "has a chassis". A chassis governs CAPACITY, not runnability -- a
+        /// golem with steps and no chassis executes them perfectly well -- whereas a null logic
+        /// core makes <c>ShouldTrigger</c> return false forever and an empty step list has
+        /// nothing to run. Those two are the honest definition of "nobody has told it what to
+        /// do", and they are also exactly the state a golem sits in between leaving the
+        /// construction station and being committed at the Workbench.
+        /// </para>
+        /// </summary>
+        public bool HasRunnableProgram =>
+            program != null && program.logicCore != null && program.appendages.Count > 0;
+
+        /// <summary>What this golem is doing, as the player reads it.</summary>
+        public GolemMood Mood => GolemMoodRules.Classify(
+            program != null ? program.State : GolemState.Idle,
+            StallReason,
+            HasRunnableProgram,
+            _inventory.FullestTypeUnits);
 
         // Runtime-only diagnostics (deliberately not on GolemProgram, which is savable state):
         // why the current step is blocked and which belt/node/buffer id blocked it. Read by the
@@ -417,6 +445,20 @@ namespace GolemFactory.Golems
             }
 
             CompleteStep(step);
+
+            // A Repeat owing further iterations restarts the SAME step instead of advancing.
+            // Rewinding the progress counter (rather than adding a second kind of step index)
+            // means every other part of the loop -- the stall guard, the resume event, the
+            // duration clamp -- keeps treating this as one ordinary step being begun again,
+            // which is exactly what it is.
+            if (step.actionType == AppendageActionType.Repeat && _repeatIterationsLeft > 1)
+            {
+                _repeatIterationsLeft--;
+                program.StepProgressTicks = 0;
+                return;
+            }
+
+            ClearRepeatState();
             program.AdvanceStep();
             if (program.CurrentStepIndex == 0)
             {
@@ -523,6 +565,14 @@ namespace GolemFactory.Golems
                 return steamStall;
             }
 
+            // Any step that is not a Repeat ends whatever repeat was in flight. Reprogramming
+            // is the case that needs this: nothing tells a golem its program was rewritten, so
+            // the state has to be self-correcting rather than notified.
+            if (step.actionType != AppendageActionType.Repeat)
+            {
+                ClearRepeatState();
+            }
+
             switch (step.actionType)
             {
                 case AppendageActionType.ExtractFromNode:
@@ -537,6 +587,10 @@ namespace GolemFactory.Golems
                     return BeginPush(out blockedResourceId);
                 case AppendageActionType.Assemble:
                     return BeginAssemble(step, out blockedResourceId);
+                case AppendageActionType.Repeat:
+                    return BeginRepeat(out blockedResourceId);
+                case AppendageActionType.FreightLaunch:
+                    return BeginFreightLaunch(out blockedResourceId);
                 default:
                     return StallReason.None;
             }
@@ -544,6 +598,17 @@ namespace GolemFactory.Golems
 
         /// <summary>Player-set batch size for the step currently executing.</summary>
         private int CurrentStepQuantity() => program.GetQuantityAt(program.CurrentStepIndex);
+
+        /// <summary>
+        /// Forgets any repeat in flight. Called when the step advances, and whenever the
+        /// program itself is replaced -- a counter left over from the old program would make
+        /// the first step of the new one run several times.
+        /// </summary>
+        private void ClearRepeatState()
+        {
+            _repeatIterationsLeft = 0;
+            _repeatedAssemble = null;
+        }
 
         /// <summary>
         /// Whether steam reaches this golem, or <see cref="StallReason.NoSteam"/> naming its
@@ -642,11 +707,18 @@ namespace GolemFactory.Golems
             return endpoint;
         }
 
-        private IItemEndpoint ResolveSpatialTarget()
+        private IItemEndpoint ResolveSpatialTarget() => ResolveEndpointAt(TargetCell);
+
+        /// <summary>
+        /// The endpoint published on any cell. Split out of ResolveSpatialTarget because §6's
+        /// Freight Link reaches a cell that is deliberately NOT the tile in front -- the one
+        /// place in the game where a golem touches a tile it is not standing beside.
+        /// </summary>
+        private IItemEndpoint ResolveEndpointAt(Vector2Int targetCell)
         {
             IItemEndpoint endpoint;
             if (spatialEndpointHolder == null ||
-                !spatialEndpointHolder.Registry.TryGetEndpoint(TargetCell, out endpoint))
+                !spatialEndpointHolder.Registry.TryGetEndpoint(targetCell, out endpoint))
             {
                 return null;
             }
@@ -677,6 +749,19 @@ namespace GolemFactory.Golems
         // no-op for them.
         private void CompleteStep(AppendageActionDefinition step)
         {
+            // A Repeat iteration finishing IS the borrowed Assemble finishing, products,
+            // ItemAssembledEvent and all -- the Clock Tower's fresh-production window must
+            // count a repeated batch exactly as it counts a single one.
+            if (step.actionType == AppendageActionType.Repeat)
+            {
+                if (_repeatedAssemble != null)
+                {
+                    CompleteStep(_repeatedAssemble);
+                }
+
+                return;
+            }
+
             if (step.actionType == AppendageActionType.Refine && bufferRegistryHolder != null)
             {
                 bufferRegistryHolder.Registry.Deposit(step.destinationId, step.outputItemType);
@@ -1017,6 +1102,108 @@ namespace GolemFactory.Golems
         // honest Unconfigured stall rather than the no-op success Haul had to keep for
         // compatibility. There is no id-routed meaning of "the tile in front" to fall back to,
         // and inventing one would be a worse lie than the one Haul's stub used to tell.
+        // --- §6's Freight Link ---------------------------------------------------------------
+
+        /// <summary>
+        /// §6: 24 ticks, flat, "regardless of distance". A fixed cost is the whole character of
+        /// the link -- it is a rigid pair of authored points, not a vehicle, so nothing about it
+        /// may vary with where the mast is.
+        /// </summary>
+        public const int FreightLaunchTicks = 24;
+
+        /// <summary>
+        /// The mast this golem was bound to at placement, or null if it never found one. A
+        /// FIXED PAIR: §6 binds a Zeppelin to exactly one mast and never re-decides, so a mast
+        /// built closer later changes nothing, and no per-tick search can make two identical
+        /// factories diverge.
+        /// </summary>
+        public Vector2Int? BoundMastCell { get; private set; }
+
+        private FreightMastRegistryHolder _mastRegistryHolder;
+
+        /// <summary>
+        /// Wires the freight side and binds this golem to its mast, once. Optional in the same
+        /// additive way spatial routing and steam are: a golem that never gets a registry keeps
+        /// no binding and stalls if it is ever asked to launch.
+        /// </summary>
+        public void ConfigureFreight(FreightMastRegistryHolder mastRegistry)
+        {
+            _mastRegistryHolder = mastRegistry;
+            BindToNearestMast();
+        }
+
+        /// <summary>
+        /// Picks this golem's mast: nearest by Chebyshev distance, ties broken by cell order.
+        /// Called at placement and never again -- see <see cref="BoundMastCell"/>.
+        /// </summary>
+        public bool BindToNearestMast()
+        {
+            if (_mastRegistryHolder == null)
+            {
+                return false;
+            }
+
+            Vector2Int mast;
+            if (!_mastRegistryHolder.Registry.TryFindNearest(Cell, out mast))
+            {
+                return false;
+            }
+
+            BoundMastCell = mast;
+            return true;
+        }
+
+        private StallReason BeginFreightLaunch(out string blockedResourceId)
+        {
+            blockedResourceId = null;
+
+            if (!IsSpatiallyPlaced)
+            {
+                return StallReason.Unconfigured;
+            }
+
+            // A Zeppelin with no mast is not misconfigured in the "unfinished program" sense --
+            // the player can go and build one -- so this names the tile it has nothing to reach,
+            // exactly as a Push into an empty tile does, and clears when a mast appears.
+            if (BoundMastCell == null && !BindToNearestMast())
+            {
+                blockedResourceId = "no Freight Mast";
+                return StallReason.NoTargetAtTile;
+            }
+
+            IItemEndpoint target = ResolveEndpointAt(BoundMastCell.Value);
+            if (target == null)
+            {
+                // The mast was demolished out from under the binding. Re-bind rather than stall
+                // forever at a cell that no longer holds anything.
+                BoundMastCell = null;
+                if (!BindToNearestMast())
+                {
+                    blockedResourceId = "no Freight Mast";
+                    return StallReason.NoTargetAtTile;
+                }
+
+                target = ResolveEndpointAt(BoundMastCell.Value);
+                if (target == null)
+                {
+                    blockedResourceId = BoundMastCell.Value.ToString();
+                    return StallReason.NoTargetAtTile;
+                }
+            }
+
+            StallReason reason = PushStockInto(target, out blockedResourceId);
+            if (reason != StallReason.None)
+            {
+                return reason;
+            }
+
+            // FLAT 24, overwriting the 2 + unitCount a Push charges. A launch is one flight
+            // whatever it carries; charging per unit would make the link cheaper for a light
+            // hold, which is a throughput dial §6 never gave it.
+            _stepDuration = FreightLaunchTicks;
+            return StallReason.None;
+        }
+
         private StallReason BeginPush(out string blockedResourceId)
         {
             blockedResourceId = null;
@@ -1032,6 +1219,23 @@ namespace GolemFactory.Golems
                 blockedResourceId = TargetCell.ToString();
                 return StallReason.NoTargetAtTile;
             }
+
+            return PushStockInto(target, out blockedResourceId);
+        }
+
+        /// <summary>
+        /// Empties this golem's push stock into <paramref name="target"/>, wherever that is.
+        ///
+        /// <para>
+        /// EXTRACTED SO FREIGHTLAUNCH CANNOT DRIFT FROM PUSH. The per-type skip below is not a
+        /// detail -- it is §10's deadlock fix, and a second copy of this loop is a second place
+        /// for a full Slag slot to start blocking Iron Plate. The two verbs differ in exactly
+        /// two ways: where the target comes from, and what the step costs.
+        /// </para>
+        /// </summary>
+        private StallReason PushStockInto(IItemEndpoint target, out string blockedResourceId)
+        {
+            blockedResourceId = null;
 
             GolemInventory.Stock stock = PushStock;
             if (stock.TotalUnits <= 0)
@@ -1049,8 +1253,7 @@ namespace GolemFactory.Golems
 
             if (!target.CanGive())
             {
-                blockedResourceId = target.DisplayName;
-                return StallReason.BeltFull;
+                return RefusalFor(target, stock, out blockedResourceId);
             }
 
             // Unit at a time, and each unit is removed from stock only AFTER the destination
@@ -1106,14 +1309,52 @@ namespace GolemFactory.Golems
 
             if (pushed <= 0)
             {
-                blockedResourceId = target.DisplayName;
-                return StallReason.BeltFull;
+                return RefusalFor(target, stock, out blockedResourceId);
             }
 
             // 2 + unitCount, on what actually left the golem rather than on what it hoped to
             // push -- a partial push must not also be charged for the units still held.
             _stepDuration = 2 + pushed;
             return StallReason.None;
+        }
+
+        /// <summary>
+        /// Why a push that moved nothing moved nothing: the destination is <b>full</b>, or it is
+        /// <b>labelled for something else</b> (docs/cozy-automation-design.md §1).
+        ///
+        /// <para>
+        /// Those have opposite fixes -- wait for the crate to drain, versus take this load
+        /// somewhere else -- so they are separate stall reasons, and a golem told the wrong one
+        /// sends the player to drain a depot that was never going to accept the good anyway.
+        /// </para>
+        ///
+        /// <para>
+        /// Asked by type-testing the endpoint, the same idiom <see cref="EmptyReasonFor"/> uses
+        /// to pick the right "it's empty" reason (<c>endpoint is ResourceNodeEndpoint</c>), and
+        /// on the failure path only -- never per unit.
+        /// </para>
+        /// </summary>
+        private static StallReason RefusalFor(
+            IItemEndpoint target, GolemInventory.Stock stock, out string blockedResourceId)
+        {
+            var filtered = target as IFilteredEndpoint;
+            if (filtered != null && !string.IsNullOrEmpty(filtered.AcceptedItemType))
+            {
+                // A labelled crate that is merely FULL of its own good is still a "full" stall:
+                // the good is right, the room is not, and waiting genuinely fixes it. Only a
+                // hold with none of the accepted type is a mismatch.
+                if (stock.Get(filtered.AcceptedItemType) <= 0)
+                {
+                    // The first type in the golem's deterministic drain order, so two
+                    // identically-programmed golems name the same good. Null when the hold is
+                    // empty, which the phrasing already falls back for.
+                    blockedResourceId = stock.TypesInOrder.Count > 0 ? stock.TypesInOrder[0] : null;
+                    return StallReason.FilterMismatch;
+                }
+            }
+
+            blockedResourceId = target.DisplayName;
+            return StallReason.BeltFull;
         }
 
         // --- Assemble (docs/progression-design.md §5.2, §11 item 2) ---------------------------
@@ -1129,6 +1370,83 @@ namespace GolemFactory.Golems
         // IT READS ONLY step.recipe. The step's own inputItemType/outputItemType were an
         // explicit §1.1 placeholder for a single-input Assemble and are no longer consulted here
         // at all; they stay on the asset because Refine and Haul still mean something by them.
+        /// <summary>
+        /// How many more iterations the running <c>Repeat</c> owes. Zero when no repeat is in
+        /// flight, which is also how <see cref="BeginRepeat"/> knows an iteration is the first
+        /// one rather than a retry of a stalled one.
+        /// </summary>
+        private int _repeatIterationsLeft;
+
+        /// <summary>
+        /// The <c>Assemble</c> card a running <c>Repeat</c> is re-running. Captured when the
+        /// repeat starts so a mid-repeat stall retries the same recipe, and so
+        /// <c>CompleteStep</c> knows what to deposit.
+        /// </summary>
+        private AppendageActionDefinition _repeatedAssemble;
+
+        /// <summary>
+        /// The step immediately before the one running, or null at index 0.
+        /// <c>Repeat</c> is defined against it and nothing else.
+        /// </summary>
+        private AppendageActionDefinition PrecedingStep()
+        {
+            int index = program.CurrentStepIndex - 1;
+            return index >= 0 && index < program.appendages.Count ? program.appendages[index] : null;
+        }
+
+        /// <summary>
+        /// <c>Repeat(n)</c> -- docs/progression-design.md §6, "The Overclocker's verb":
+        /// re-runs the immediately preceding <c>Assemble</c> n more times from the same input
+        /// stock, taking n x that Assemble's duration and stalling on the same shortfall rules.
+        ///
+        /// <para>
+        /// Implemented as n SEQUENTIAL runs of <see cref="BeginAssemble"/> rather than as one
+        /// step that multiplies quantities, and that is the load-bearing choice. §1.3's
+        /// atomicity is per assembly: each iteration checks room for its own output and holds
+        /// its own inputs before consuming anything, so a repeat that runs out halfway leaves
+        /// completed batches in output stock and the remaining inputs untouched, instead of
+        /// stranding a part-consumed multi-batch withdrawal inside a golem nothing can reach.
+        /// It is also what makes §6's claim about the 12-per-type cap true for free: Repeat on
+        /// R15 (10 Casing) simply stalls MissingItem on the second iteration, because 20 Casing
+        /// cannot be held.
+        /// </para>
+        ///
+        /// <para>
+        /// A <c>Repeat</c> that follows anything but an <c>Assemble</c> stalls
+        /// <see cref="StallReason.Unconfigured"/>, alongside the missing/malformed recipe: all
+        /// three are "this program was never finished being written", which is an authoring
+        /// mistake rather than a condition the world can clear.
+        /// </para>
+        /// </summary>
+        private StallReason BeginRepeat(out string blockedResourceId)
+        {
+            blockedResourceId = null;
+
+            AppendageActionDefinition preceding = PrecedingStep();
+            if (preceding == null || preceding.actionType != AppendageActionType.Assemble)
+            {
+                return StallReason.Unconfigured;
+            }
+
+            // Restarted when the captured card no longer matches what precedes this step: the
+            // player can reprogram a golem mid-cycle (EngageGears rewrites the SAME
+            // GolemProgram instance under it), and a count left over from the old program
+            // would silently multiply the new one's first assembly.
+            if (_repeatIterationsLeft <= 0 || _repeatedAssemble != preceding)
+            {
+                // The player-set n, from this slot's own quantity -- the same per-slot dial
+                // Haul uses, for the same reason it lives on GolemProgram rather than on the
+                // shared card asset.
+                _repeatIterationsLeft = Mathf.Max(1, CurrentStepQuantity());
+                _repeatedAssemble = preceding;
+            }
+
+            // Everything else -- duration, the room check, the atomic ingredient withdrawal,
+            // the shortfall report -- is BeginAssemble's, unchanged. Repeat adds a count and
+            // nothing else, so the two verbs can never disagree about what an assembly costs.
+            return BeginAssemble(_repeatedAssemble, out blockedResourceId);
+        }
+
         private StallReason BeginAssemble(AppendageActionDefinition step, out string blockedResourceId)
         {
             blockedResourceId = null;

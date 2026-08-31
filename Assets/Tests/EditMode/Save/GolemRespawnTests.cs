@@ -89,14 +89,14 @@ namespace GolemFactory.Tests.EditMode
 
         private static SaveData Capture(params GolemEntity[] golems) =>
             SaveLoadService.CaptureState(
-                new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"),
+                new StorageBufferRegistry(),
                 new PatentRegistry(), golems);
 
         private static SaveLoadService.RestoreReport Restore(
             SaveData data, IEnumerable<GolemEntity> live, DefinitionCatalog catalog,
             IGolemRespawner respawner) =>
             SaveLoadService.RestoreState(
-                data, new StorageBufferRegistry(), new ArtificerFocusMeter("LocalPlayer"),
+                data, new StorageBufferRegistry(),
                 new PatentRegistry(), live, catalog, respawner);
 
         [Test]

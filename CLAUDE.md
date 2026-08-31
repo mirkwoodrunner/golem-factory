@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 `golem-factory` is a solo-play Unity prototype of "Golem Factory: The Clockwork Metropolis" — a
-Factorio/Satisfactory-style automation game (cozy isometric pixel art) where the player places
+Factorio/Satisfactory-style automation game (cozy top-down pixel art) where the player places
 "golems" programmed with punch-card-style Logic Core / Appendage / Chassis combinations that run
 rigidly on a world tick clock. It began as a tabletop board-game design (`docs/game-design.md`)
 and is being adapted into a digital prototype; read the docs below before making design calls, not
@@ -28,6 +28,12 @@ just the code.
 - `docs/progression-design.md` — the gameplay progression: a 4+ tier tech tree, steam-power
   scarcity, chassis unlock sequencing, and the Clock Tower endgame. Passed a three-round review
   against a 9-point rubric. **Entirely unimplemented** — it is a spec, not a record of what exists.
+- `docs/cozy-automation-design.md` — the technical design for the cozy automation pass (smart
+  depot filtering, golem moods, the Workbench's loop labels, the Scrap Recycler, the Ledger's
+  recipe readout). Written **before** any of it was built and kept as-written afterwards: §4b's
+  safety argument turned out to be wrong and the doc records the correction rather than hiding it.
+  Its §0 is the list of eight invariants a pass touching golems, endpoints or TMP text must not
+  break, and is the most reusable part of the file.
 - `docs/open-items.md` — **read this before planning any work.** Consolidated backlog: what the
   progression pass still needs (in dependency order), the decisions still awaiting a human call,
   known functional gaps, and deliberate scope cuts. Distinguishes what is built from what is only
@@ -40,7 +46,8 @@ There is no `.cursor/rules`, `.github/copilot-instructions.md`, or CI config in 
 - **Unity 6000.5.4f1** (Unity 6 LTS), 2D URP template. Version pinned in
   `ProjectSettings/ProjectVersion.txt`.
 - New Input System (not legacy), Cinemachine v3 (installed but not yet wired into the camera — see
-  M1 notes), 2D Tilemap + Extras (isometric grid layout), Test Framework (EditMode + PlayMode).
+  M1 notes), 2D Tilemap + Extras (rectangular grid layout since the top-down switch), Test
+  Framework (EditMode + PlayMode).
 - No DOTS/ECS, no Addressables, no netcode package. Simulation is deliberately plain,
   data-oriented C# driven by a single fixed-tick loop, not per-object `Update()`.
 - `ProjectSettings/` and `Packages/` are committed, so a fresh clone opens directly in Unity Hub
@@ -55,9 +62,20 @@ Editor (or a live MCP-for-Unity bridge, if connected):
   `PlayMode` tab. There's no headless/CLI test runner wired up (Unity batch-mode `-runTests` is
   noted in the implementation plan as a "nice-to-have," not implemented).
 - **Run a single test**: right-click it in the Test Runner window → Run, or filter by name there.
-- **Play the game**: open `Assets/_Project/Scenes/Main.unity` (all milestone demos, hand-wired,
-  running automatically) or `Assets/_Project/Scenes/Sandbox.unity` (the actual player-driven
-  scenario — move around, harvest, build, construct+program golems) and hit Play.
+- **Play the game**: open `Assets/_Project/Scenes/Sandbox.unity` — **the only scene now** — and hit
+  Play. Move around, harvest, build, construct and program golems.
+
+  > **`Main.unity` was retired.** It was a diorama of seven hand-wired M2–M7 demos with no player,
+  > and it kept diverging from the playable scene. What it was load-bearing FOR was the id-routed
+  > fork -- a golem with no spatial endpoint holder routes by bare-string ids and charges the
+  > authored `durationTicks` -- and that is now pinned by
+  > `Assets/Tests/EditMode/Golems/IdRoutedDemoRegressionTests.cs`, which drives the same
+  > `HardcodedDemoProgram` builders the scene's bootstraps used. **Comments across the codebase
+  > still say "Main.unity" when explaining that fork; read them as history.** The scene, and the
+  > four bootstraps that only fed it (`MainSceneBootstrap`, `GolemDemoBootstrap`,
+  > `BeltDemoBootstrap`, `TriggerDemoBootstrap`), are in git history if the diorama is ever
+  > wanted back. `HardcodedDemoProgram` stays: it is the definition of the reference programs the
+  > regression suite pins.
 - **Regenerate art**: there are now **two** generators, and which one owns a file matters.
   - `python Tools/Art/generate_topdown_environment.py` — the floor, walls, props, belt and
     cursor overlays. Square, top-down, PPU 64. **This is the one that owns the environment.**
@@ -65,13 +83,28 @@ Editor (or a live MCP-for-Unity bridge, if connected):
     UI). Still contains the old 2:1 isometric versions of the environment sprites, so it
     refuses to write any filename the top-down generator owns (see `TOP_DOWN_OWNED`); running
     it used to silently revert the whole projection switch.
-  - Both write to `Assets/_Project/Art/`. Importing them is **no longer a manual Editor pass**:
+  - `python Tools/Art/generate_workbench_ui_art.py` — the Workbench screen's mahogany-and-brass
+    UI chrome, and `python Tools/Art/generate_tech_tree_art.py` — the tech tree chart's plaques,
+    badges and rules. Both write under `Art/UI/`, are 9-sliced, and are imported by their own
+    Editor pass (**Tools > Golem Factory > Author Tech Tree Chart** for the latter).
+  - `python Tools/Art/generate_building_art.py` — the steam pipe, depot, construction station,
+    freight mast, slag heap and **scrap recycler**. Imported by the progression scene
+    authoring pass, BottomCenter at PPU 64.
+  - `python Tools/Art/trim_character_alpha.py --apply` — trims the transparent rows beneath a
+    standing sprite's feet, which BottomCenter would otherwise render as a float above the tile.
+    **The sixteen walk frames are trimmed by a shared minimum, never per frame** — per-frame
+    trimming would invent a vertical bob the art deliberately does not have. Re-runnable; a
+    trimmed sprite reports nothing to do.
+  - The environment and placeholder generators write to `Assets/_Project/Art/`. Importing them is
+    **no longer a manual Editor pass**:
     run **Tools > Golem Factory > Rebuild Environment (All Scenes)**, or headless via
     `-executeMethod GolemFactory.Editor.SandboxFloorGenerator.RebuildEnvironmentAllScenes`,
     which applies PPU/pivots, builds the Tile assets, and repaints and re-walls both scenes.
 
-As of the last full run (progression pass, Editor passes, the Hand-Crank Bench, and the
-isometric→top-down projection switch): **934/934 tests passing** (824 EditMode + 110 PlayMode).
+As of the last full run (progression pass, Editor passes, the Hand-Crank Bench, the
+isometric→top-down projection switch, the market street, the tech tree chart, the backlog
+pass, the Director's pass, the cozy automation pass, and the playtest-session-3 fixes):
+**1422/1422 tests passing** (1234 EditMode + 188 PlayMode).
 
 **Two ways to run the tests, and which one depends on whether the Editor is open.**
 
@@ -134,10 +167,29 @@ Everything golem/belt-related runs off one fixed-tick loop, not `Update()`:
 Every plain-C# manager class (that needs to live in a scene) gets a thin, single-purpose
 `MonoBehaviour` wrapper suffixed `Holder` that just owns an instance and exposes it as a property
 — e.g. `GridMapHolder` owns a `GridMap`, `ConveyorSystemHolder` owns a `ConveyorSystem`,
-`StorageBufferRegistryHolder`, `ResourceNodeRegistryHolder`, `ArtificerFocusMeterHolder`,
-`PatentRegistryHolder`. This keeps simulation logic engine-decoupled and unit-testable while still
-giving it a scene presence other components can reference in the Inspector. When adding a new
+`StorageBufferRegistryHolder`, `ResourceNodeRegistryHolder`, `PatentRegistryHolder`. This keeps
+simulation logic engine-decoupled and unit-testable while still giving it a scene presence other components can reference in the Inspector. When adding a new
 manager-style system, follow this pattern rather than making the logic itself a `MonoBehaviour`.
+
+### Late-wiring seams (`IGolemRespawner`, `IBuildingRebuilder`, `IPlacedStationConfigurator`, `IGolemDismantler`)
+
+Four interfaces, one shape: something enters the world *after* the scene's one-shot bootstrap
+sweep — a golem a save restores, a building a save rebuilds, a construction station the player
+places — and needs scene references a prefab cannot carry. In every case the implementor is the
+component that **already** knows how to do that job (`GolemConstructionStation`,
+`BuildModeController`, `SandboxBootstrap`), so the caller asks rather than growing a second copy
+of the wiring. Reach for this rather than adding half a dozen holder fields to whoever happens to
+be holding the reference at the time.
+
+The station case is the one with teeth: before it existed, a station the player paid 25 Scrap +
+5 Brass for silently built nothing, because `SandboxBootstrap.WireSpatialGameplay` sweeps the
+scene once at startup and by definition cannot see a station built later.
+
+`IGolemDismantler` is the newest and runs the shape in the other direction: the *caller*
+(`BuildModeController`) is the thing on a prefab, and the implementor is again
+`GolemConstructionStation` — because dismantling has to undo exactly what `SpawnGolem` did (the
+bay slot, the clock registration, the Workbench target), and the only way to keep birth and death
+from drifting is to keep them in one file.
 
 ### Golem execution model
 
@@ -175,6 +227,13 @@ This is the mechanical core of the game and the part most milestones touch:
   skip/reorder/substitute — the golem stalls and retries the same step every tick until conditions
   clear, publishing `GolemStalledEvent`/`GolemResumedEvent`. There is no branching in the model;
   rigidity is structural.
+  - `Repeat(n)` (progression-design §6) re-runs the **immediately preceding** `Assemble` n more
+    times from the same input stock, at n × its duration. It is implemented as n *sequential*
+    assemblies (rewinding `StepProgressTicks` rather than adding a second kind of step index), so
+    §1.3's per-assembly atomicity holds: a repeat that runs dry keeps its finished batches and
+    strands nothing. Overclocker-only via `ChassisDefinition.allowsRepeat`, refused at assembly
+    time in `GolemProgram.TryAddAppendage` rather than stalled at run time — a Scavenger will
+    never grow the ability, and the rigid-stall rule is for conditions the world can change.
   - Trigger types: `AlwaysOn`, `Interval` (evaluated generically), `Threshold` (edge-triggered
     poll of a `StorageBufferRegistry` quantity — fires once per crossing, not every tick above
     threshold), `Signal` (subscribes to `EventBus.GolemCompleted`, latches a pending fire if it
@@ -187,11 +246,23 @@ This is the mechanical core of the game and the part most milestones touch:
 
 ### Spatial systems
 
+- **The projection is TOP-DOWN (rectangular), not isometric.** It was switched, and there is a
+  full milestone entry for it in `docs/unity-implementation-plan.md`. Both scenes are
+  `m_CellLayout: 0` with a 1×1 cell, and environment art is PPU 64. Any comment or doc saying
+  "isometric" is describing history — read it as such rather than as the current state.
 - `World/GridMap.cs` — simulation truth for occupancy, `Vector2Int`-indexed. **Decoupled from
-  rendering** — the Tilemap is purely visual. Isometric presentation only affects the
-  `Grid`/`Tilemap` components and camera; grid math stays as if it were a top-down grid.
-- `World/GridCoordinateConverter.cs` — pure C# isometric world↔cell math, independent of Unity's
-  `Tilemap` component so it's unit-testable without a scene.
+  rendering** — the Tilemap is purely visual. Projection affects only the `Grid`/`Tilemap`
+  components and the camera; grid math has always been a plain rectangular grid.
+- `World/GridCoordinateConverter.cs` — pure C# world↔cell math, independent of Unity's `Tilemap`
+  component so it's unit-testable without a scene. Its two `Fraction` methods are **the only place
+  the game decides how a cell maps to a screen position**, which is why the projection switch cost
+  six lines here and nothing at the 20-odd call sites.
+- `World/FloorLayout.cs` — the shape of the ground, and it describes **two rectangles**. The
+  *workshop* (25×25, `GetFloorCells`) is what gets plank floor and walls; the *world*
+  (`GetWorldCells`, 25×33) adds the eight-row market street south of the open shop front and is
+  what bounds the **player** via `ClampToFloor`. Keep them distinct: every caller of
+  `GetFloorCells` means the room by it, and widening it paints planks down the street. Wall runs
+  along the world's boundary use `GetWorldEdgeIndices`/`GetWorldEdgeAnchor`.
 - `Belts/BeltSegment.cs` / `ConveyorSystem.cs` — **performance-critical: no GameObject per belt
   item.** Items are `ItemStack{ItemType, Progress}` structs in a `List<ItemStack>` per segment.
   `ConveyorSystem.Tick` runs two full passes (advance-all, then handoff-all) specifically so a
@@ -232,7 +303,7 @@ an actual playable front door, reusing `Main.unity`'s systems unchanged via two 
   **A belt can only hand off to another belt** — getting items into a buffer needs a golem doing
   `LoadIntoBuffer` at the end of the run.
 - **Known gap**: `Scripts/Save/` now exists (`SaveLoadService`, `SaveData`, `SaveFileIO`,
-  `DefinitionCatalog`) and persists buffers, blueprints, focus, and golem programs (including
+  `DefinitionCatalog`) and persists buffers, blueprints, and golem programs (including
   each golem's cell/facing). But it only ever restores a program onto an **already-existing**
   `GolemEntity` — there is no concept of respawning a player-built golem, so golems the player
   constructed do not survive a fresh session.
@@ -247,6 +318,14 @@ an actual playable front door, reusing `Main.unity`'s systems unchanged via two 
   sort order**, so an IMGUI panel could never be made to respect the other screens. That was the
   root cause of the Sandbox HUD overlap, not a cosmetic leftover — mutual exclusion is now
   centralised in `UI/HudScreenPolicy.cs` and covered by a PlayMode exclusivity suite.
+- **The Artificer's Ledger** (`UI/TechTreePanel.cs` + `Scripts/Progression/`) is the tech tree
+  chart, a fifth Management tab. Its content (`TechTreeCatalog`), arrangement
+  (`TechTreeChartLayout`) and state rules (`TechTreeStatusRules`) are engine-free and tested; the
+  generated pixel art is chrome only, never a baked chart — a baked one would be a second copy of
+  `progression-design.md` §5.2/§6 that no test could hold to the assets. It is a **readout**, not a
+  gate: §8's Assembly-Line gating is still unbuilt, so nodes light up from what the player has
+  produced, built and completed. Nodes flagged `IsPlanned` describe unbuilt design and can never
+  reach `Researched`; a test pins exactly which six those are.
 - The Workbench (`UI/WorkbenchController.cs` + `WorkbenchCard.cs`/`WorkbenchDropZone.cs`) is the
   one real **UGUI** system (Canvas + EventSystem + `InputSystemUIInputModule` — the project's
   Input System setting is New-Input-System-only, so the legacy `StandaloneInputModule` won't
@@ -273,7 +352,6 @@ multiplayer board game later without a rewrite:
   single `LocalPlayer`.
 - `PatentRegistry.TryUseBlueprint(blueprintId, userId)` already has the royalty-charge branch,
   no-op'd when `userId == OwnerId`.
-- `ArtificerFocusMeter` is per-player from the start (the seam for later competitive turn order).
 - Purely global systems (`SimulationClock`, `GridMap`) are allowed to stay simple singletons —
   don't over-engineer those into per-player state.
 
@@ -298,6 +376,104 @@ future second owner would need a rewrite instead of a parameter.
   caused real bugs (golem sprites invisible until Play mode; Signal-trigger tests needing to be
   PlayMode not EditMode). If something works in Play mode but not when just viewing the scene,
   check this first.
+- **A labelled depot publishes a different endpoint.** `PlaceableDepot` with an empty
+  `filterItemType` publishes the `StorageBufferEndpoint` it always did; with one set it publishes
+  `FilteredBufferEndpoint`, which accepts and dispenses only that good. Its **untyped** `CanGive()`
+  deliberately diverges from the unfiltered one — a labelled crate full of its own good can accept
+  nothing — and that is not §10's deadlock, which is about one type blocking a *different* type.
+  `IFilteredEndpoint` exists so `GolemEntity.PushStockInto` can tell "this crate is full" from
+  "this crate is for something else" on the failure path; it is not part of `IItemEndpoint` and
+  should not become part of it.
+- **The Assembly Line's unlock context is wired BEFORE the pool is seeded, and it is monotone.**
+  `AssemblyLineState.SeedCandidates` asks `IsUnlocked` of every card on the way in, and an
+  *unanswerable* prerequisite deliberately passes (that is what keeps pre-§8 scenes working). So
+  seeding first makes every prerequisite unanswerable and §8.3's gating **inert** — which is
+  exactly what `SandboxBootstrap` did from the day it shipped: the whole deck went into the refill
+  queue, `R1 Coking` sat in a claimable slot in a factory that had never seen coal, and the gating
+  was authored, unit-tested and doing nothing in the only scene that ships it. Two more rules hold
+  it shut: `TryClaimSlot` refuses a locked card (the gate at the till, not just at the door), and
+  the context is answered from `TechTreeProgressLedger.HasItem` — which **only ever grows** —
+  rather than from live buffer contents, so spending your last Scrap cannot re-lock a card you had
+  already unlocked. `TechTreeProgressTracker.Poll` calls `PromoteUnlockedCards` when its ledger
+  version changes, because the line otherwise only re-checks its waiting list on a *claim*.
+  A slot is a purchase offer, so `RefillEmptySlots` also skips a card the player already owns
+  (rotating it to the back rather than dropping it) — the movement verbs are non-unique, granted
+  at t=0 *and* listed twice in the deck, so without that the first real recipe card sat nine
+  claims deep, eight of which bought nothing.
+- **Demolition refunds the full cost. This is a settled design call: the game is cozy, so
+  placement and reorganising must not be punitive.** It was raised as a tuning question in
+  playtest and answered — **do not reintroduce a salvage fraction as "balance"**. A percentage is
+  a tax on changing your mind in a game whose loop is laying something down and moving it, and a
+  full refund makes "move a building" free with the tools that already exist (remove, then place)
+  rather than needing a pick-up-and-carry mode. Three rules keep it honest, and each one is load-
+  bearing:
+  - **Only what the player paid for.** `RefundBuilding` gates on `PlaceableBuilding
+    .IsRuntimePlaced`, or demolishing the scene's own authored furniture would mint goods.
+  - **Only a player's own click.** `DemolishBuilding` takes an explicit `refund` flag, and
+    `ClearRuntimePlacedBuildings` passes `false`. A load *replaces* the built world and sweeps
+    exactly the buildings a refund pays out on, so refunding there hands the player their whole
+    factory's cost on every load, on top of the buffers the save then restores — save/load/save
+    /load is an infinite duplicator. This was a real regression, caught before it shipped.
+  - **Never destroy what it cannot hand back.** `RefundWouldFit` is asked *before* anything is
+    torn down; with no room in the stockpile the building stays standing and says why. A
+    demolition that ate the overflow is precisely the punishment the full refund removes.
+  **Removal has its own mode** (`BuildModeController.IsDemolishActive`, the build menu's last
+  row): every click is gated on `BuildClickPolicy.ShouldPlace`, which demands a tool in hand, so
+  before the wrecking bar existed removal was reachable *only while holding a placeable* —
+  invisible while build mode had no exit, and silently broken for anyone who pressed Escape once
+  that shipped.
+  - **The wrecking bar takes golems too**, through `IGolemDismantler` →
+    `GolemConstructionStation.TryDismantleGolem`, under the same three rules plus one of its own:
+    **a golem's cargo is refunded as well as its chassis** (`GolemDismantleRules.ComposeRefund`).
+    The golem a player most wants rid of is usually the stalled one holding something, so
+    destroying its load would put the sting back into exactly the case the full refund exists
+    for. Only the chassis is gated on `GolemEntity.IsRuntimeSpawned`; the cargo is real goods
+    whoever built the golem.
+  - **Golems are NOT `GridMap` occupants** — only buildings are, and the two `TryOccupy` calls in
+    `BuildModeController` are the only ones in the project. A golem knows its own cell instead, so
+    the wrecking bar finds one by scanning (`TryFindGolemAt`), not by a map lookup. Anything else
+    that wants "what is standing here" has to do the same; there is no golem-by-cell registry.
+  - **A held golem is refused, not destroyed.** `PlayerInteractor` holds the reference during a
+    `[G]` carry, so deleting it mid-carry leaves the player holding nothing they can put down.
+- **There is no Artificer Focus meter, and patenting is free. This is a settled design call.**
+  `ArtificerFocusMeter`, its holder, and `WorkbenchFocusPolicy` (§8's `8 + 6 × appendageCount`
+  reprogram cost, flat 10 for a stamped patent) were **deleted rather than retuned**, along with
+  `focusCurrent` in the save and the `FOCUS n/100` segment of the Workbench tape. The meter
+  regenerated 5/s against a 100 cap, so the longest program in the game cost about six seconds of
+  standing still — `progression-design.md` §12 had already written it off as "**Clear.**
+  Regenerates at 5/s". Its only real job was being the currency a patent discounted, which made
+  the patent system's entire justification a tax that same system owned.
+  - **What survives is the half that does something**: the Patent Registry is a **named-program
+    library** — patent a draft, load it back from the Patents tab, engage it. Free, and still
+    worth having, because retyping a six-card program is the cost it actually removes.
+  - **Do not reintroduce a Workbench currency to "give patents a purpose."** If reprogramming
+    should cost something, it should be something the *factory* pays in goods, not something the
+    player pays in waiting — the same argument that settled the demolition refund above.
+  - `WorkbenchStatusReason` lost `InsufficientFocusEngage`/`InsufficientFocusPatent`, so it is one
+    of the rare **non**-append-only enum edits in the repo. That is safe only because it is
+    serialized nowhere (unlike `StallReason`/`AppendageActionType`); keep it that way.
+  - The lever's readout survives as availability only (`UpdateEngageAvailability`): no targeted
+    golem, no pull. It used to also mean "no Focus", and it did that **wrong** — it gated on a
+    flat serialized `reprogramFocusCost = 10` while the lever charged `8 + 6n`, so the prefab's
+    label read "10 focus" and a 3-step commit then refused for needing 26.
+- **A golem is named by its `GolemId`, never by its GameObject name.** `Instantiate` names a
+  clone after the *prefab*, so a station-built golem's object is `GolemPrefab(Clone)` while the
+  only thing that identifies it — to the save file, the stall events, the steam and extractor
+  registries — is the id `SpawnGolem` configured. `AlertsPanel`, `GolemStallIndicator` and
+  `StallTracker` all read `GolemId`; the Workbench's TARGET header read `.name` and so was the
+  one screen in the game that called `PlayerGolem-003` "GolemPrefab(Clone)". Fixed via
+  `WorkbenchController.GolemDisplayName`, which falls back to the object name only for a golem
+  that never got an id. **It was found in a play-mode screenshot, not by a test**, because the
+  test rig never wired `ConfigureBlueprintPane` and so nothing ever rendered that label — which
+  is the argument for taking screenshots, and the reason there are now three tests on it.
+- **Item tiers are data now.** `Economy/ItemTiers.cs` transcribes §5.1's grouping (which previously
+  lived only in `ItemType`'s comments) so code can ask a good's depth. `ItemTiersTests` pins it by
+  **reflection over `ItemType`**, so a new good cannot be added without being given a tier.
+- **A golem's `Mood` is a read-only classification, not state.** `GolemMoodRules.Classify` derives
+  it from `Program.State` + `StallReason` + the inventory; nothing writes it and the tick loop
+  never asks. Presentation **polls** it rather than listening, because four of the transitions that
+  matter publish no event at all. Add new visual feedback by widening the mood, not by adding a
+  second floating component — one badge, one anchor, one `WorldHudRegistry` slot.
 - **Bare-string ids** (not enums or object references) identify belts, buffers, and nodes across
   systems (e.g. `"ScrapBuffer"`, `"ScrapBeltA"`) — `Economy/ItemType.cs` holds canonical item-type
   id constants so recipes don't restate raw literals, but node/buffer/belt *instance* ids are
@@ -321,6 +497,31 @@ future second owner would need a rewrite instead of a parameter.
   Node identity must be the *sprite*. This had already bitten once before it was noticed: the
   Aether marker wore the brass ingot under a teal tint and rendered as plain brass in every play
   session, while `item_aether.png` sat unused.
+- **TMP text is Latin-1 plus four baked glyphs — nothing else.** The allowlist is
+  `→` (U+2192), `≥` (U+2265), `█` (U+2588) and `░` (U+2591), and `·` (U+00B7) is the project's
+  separator. Anything else above `U+00FF` is forbidden. **This has bitten for real**: fourteen
+  arrows sat in `TechTreeCatalog`'s node details from the day the chart was written, so every
+  recipe node on the Ledger drew a box. `TechTreeCatalogTests` walks every catalog string and
+  refuses anything above `U+00FF` — keep that guard exactly as it is, because catalog strings are
+  *baked* and the allowlist below does not apply to them.
+  - **Why an allowlist and not the old blanket ban.** This rule used to say the four glyphs
+    "render as missing-glyph boxes". That was true of the baked Ledger strings and **is not true
+    of live TMP text**: `LiberationSans SDF - Fallback.asset` is `m_AtlasPopulationMode: 1`
+    (Dynamic), so TMP resolves an unknown character from an OS font at runtime and caches it. A
+    game-view screenshot confirms `1 Coal → 1 Coke` and `[█████░░░░░] 50%` both draw correctly.
+  - **The real hazard was version-control churn, and it is fixed.** Because that atlas is a
+    *committed asset*, every session that rendered a new glyph rewrote it — a clean tree dirtied
+    itself just by pressing Play, differently on each machine depending on its OS fonts. All four
+    glyphs are now baked into the asset, so it is stable: a full play session that renders every
+    one of them leaves the file byte-identical (verified by hash).
+  - **Adding a fifth glyph is therefore a two-part change**: bake it into the fallback asset
+    (`TMP_FontAsset.TryAddCharacters` + `SaveAssets`, committed with the code) *and* add it here.
+    Ship the code alone and it renders on your machine, boxes on someone else's, and re-dirties
+    the atlas for everyone.
+  - The four in use live in exactly two files: `Buildings/HandCrankReadout.cs` (the conversion
+    line and `ProgressBar` — whose doc comment still says `[####------]`, i.e. it was authored
+    ASCII and drifted to blocks later) and `UI/WorkbenchController.cs` (the threshold and routing
+    captions).
 - **Verify a UI change by looking at the game view, not just its serialized properties.** Both §8
   HUD readouts were once parented to `WorkbenchCanvas.prefab`'s *root* — which is a plain
   `Transform` that happens to share its name with the `Canvas` child — so they were present,

@@ -1,9 +1,12 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using GolemFactory.AssemblyLine;
 using GolemFactory.Buildings;
 using GolemFactory.Economy;
+using GolemFactory.Progression;
+using GolemFactory.PunchCards;
 
 namespace GolemFactory.UI
 {
@@ -24,6 +27,23 @@ namespace GolemFactory.UI
         // Refresh() -- left unset, the button falls back to its default flat Image color.
         [SerializeField] private Sprite claimButtonSprite;
 
+        // --- The Assembly Bay cap (progression-design 8) -----------------------------------
+        // Wired at RUNTIME by SandboxBootstrap, never authored: the bay lives on
+        // ManagerHolders.prefab and this panel on WorkbenchCanvas.prefab, and a prefab cannot
+        // hold a reference into another prefab. Left unwired the row simply does not appear,
+        // which is what every scene without a bay wants.
+        //
+        // Its own buffer id, NOT walletBufferId: the Assembly Line claims cards from a wallet
+        // buffer, while a bay upgrade is paid out of the player's stockpile -- the same buffer
+        // the construction station and the build menu spend from.
+        [SerializeField] private AssemblyBayStructure assemblyBay;
+
+        // §11 item 15's Floor Expansion. It shares this tab with the bay row because they are
+        // the same kind of decision -- spend goods to raise a cap the factory is pressing
+        // against -- and a player looking for "why can I not build more" finds both in one place.
+        [SerializeField] private GolemFactory.World.FloorExpansionService floorExpansion;
+        [SerializeField] private string stockpileBufferId = "FactoryStockpile";
+
         // Warm parchment, not Color.black: these rows sit on ManagementScreen's near-black
         // iron panel (0.08 grey), where the original black text was effectively invisible.
         // Button labels stay black, since those sit on a light brass button sprite.
@@ -31,6 +51,10 @@ namespace GolemFactory.UI
         private static readonly Color DimTextColor = new Color(0.55f, 0.52f, 0.47f, 1f);
         private static readonly Color AffordableCostColor = new Color(1f, 0.76f, 0.30f, 1f);
         private static readonly Color RowTint = new Color(1f, 1f, 1f, 0.035f);
+
+        // How many locked cards the waiting readout names before it summarises the rest.
+        // See CreateWaitingRows: this panel does not scroll.
+        private const int MaxWaitingRowsShown = 4;
 
         private string _statusMessage = "";
 
@@ -48,6 +72,50 @@ namespace GolemFactory.UI
         }
 
         public void ConfigureSprites(Sprite claimButton) => claimButtonSprite = claimButton;
+
+        /// <summary>
+        /// Wires the bay row. Separate from <see cref="Configure"/> for the same reason every
+        /// other Configure* split in this project is: a scene with no bay never calls it and
+        /// this panel behaves exactly as it did.
+        /// </summary>
+        public void ConfigureBays(
+            AssemblyBayStructure bay, StorageBufferRegistryHolder stockpile, string stockpileBuffer)
+        {
+            assemblyBay = bay;
+            if (stockpile != null)
+            {
+                bufferRegistryHolder = bufferRegistryHolder != null ? bufferRegistryHolder : stockpile;
+                _bayStockpileHolder = stockpile;
+            }
+
+            if (!string.IsNullOrEmpty(stockpileBuffer))
+            {
+                stockpileBufferId = stockpileBuffer;
+            }
+        }
+
+        // The bay spends from the stockpile, which need not be the same registry holder the
+        // Assembly Line's wallet lives in. Held separately rather than overwriting
+        // bufferRegistryHolder, which would silently re-point every Claim button.
+        private StorageBufferRegistryHolder _bayStockpileHolder;
+
+        public void ConfigureFloorExpansion(GolemFactory.World.FloorExpansionService expansion) =>
+            floorExpansion = expansion;
+
+        /// <summary>Stock reader for the bay's cost, matching GolemConstructionStation.StockOf.</summary>
+        private int BayStockOf(string itemType)
+        {
+            StorageBufferRegistryHolder holder = _bayStockpileHolder != null
+                ? _bayStockpileHolder
+                : bufferRegistryHolder;
+            StorageBuffer buffer;
+            if (holder == null || !holder.Registry.TryGetBuffer(stockpileBufferId, out buffer))
+            {
+                return 0;
+            }
+
+            return buffer.GetQuantity(itemType);
+        }
 
         public void Refresh()
         {
@@ -76,17 +144,179 @@ namespace GolemFactory.UI
 
             CreateLabel(CreateSlotRoot().transform, "Wallet: " + wallet + " Scrap (" + walletBufferId + ")", AffordableCostColor);
 
+            // FIRST, above the card rows. The cap governs whether a claimed card can ever be
+            // put on a golem at all, so a player who cannot build is looking for this line
+            // rather than scrolling past the draft to find it.
+            CreateBayRow();
+            CreateFloorExpansionRow();
+
             AssemblyLineState line = lineHolder.State;
             for (int i = 0; i < line.SlotCount; i++)
             {
                 DraftableCardDefinition card = line.GetCard(i);
-                CreateSlotRow(i, card, line, wallet);
+                CreateSlotRow(i, card, line);
             }
+
+            CreateWaitingRows(line);
 
             if (statusText != null)
             {
                 statusText.text = _statusMessage;
             }
+        }
+
+        /// <summary>
+        /// The bay occupancy readout and its Upgrade button: "Bays 7/10 · +6 slots ·
+        /// 40 Scrap + 20 Iron Plate · [Upgrade]".
+        ///
+        /// <para>
+        /// Rendered only when a bay is wired. Before this row existed, §8's cap was a hard wall
+        /// at ten golems: <c>AssemblyBayStructure.TryUpgrade</c> was implemented, tested, and
+        /// called by nothing in the game.
+        /// </para>
+        /// </summary>
+        private void CreateBayRow()
+        {
+            if (assemblyBay == null)
+            {
+                return;
+            }
+
+            GameObject row = CreateSlotRoot();
+            IReadOnlyList<RecipeIngredient> cost = assemblyBay.UpgradeCost;
+            bool affordable = AssemblyBayRowPolicy.CanAfford(BayStockOf, cost);
+
+            CreateLabel(
+                row.transform,
+                AssemblyBayRowPolicy.FormatOccupancy(assemblyBay.OccupiedSlots, assemblyBay.MaxGolemSlots)
+                + "  ·  " + AssemblyBayRowPolicy.FormatUpgradeEffect(AssemblyBayStructure.SlotsPerUpgrade),
+                assemblyBay.HasFreeSlot ? RowTextColor : AffordableCostColor);
+
+            CreateCostLabel(
+                row.transform, AssemblyBayRowPolicy.FormatCost(cost),
+                affordable ? AffordableCostColor : DimTextColor);
+
+            var buttonGo = new GameObject("Upgrade", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+            buttonGo.transform.SetParent(row.transform, false);
+            LayoutElement buttonLayout = buttonGo.GetComponent<LayoutElement>();
+            buttonLayout.preferredWidth = 74f;
+            buttonLayout.preferredHeight = 24f;
+            if (claimButtonSprite != null)
+            {
+                Image buttonImage = buttonGo.GetComponent<Image>();
+                buttonImage.sprite = claimButtonSprite;
+                buttonImage.type = Image.Type.Sliced;
+            }
+
+            Button upgradeButton = buttonGo.GetComponent<Button>();
+            // Wrapped, not passed directly: UpgradeBays returns a bool so a test can assert
+            // on the outcome, and UnityAction takes none.
+            upgradeButton.onClick.AddListener(() => UpgradeBays());
+            upgradeButton.interactable = affordable;
+            CreateButtonLabel(buttonGo.transform, "Upgrade");
+        }
+
+        /// <summary>
+        /// Buys one bay upgrade. Public so a test can drive the decision without clicking a
+        /// Button, exactly as <c>ClaimSlot</c> and <c>BuildModeController.PlaceOrRemove</c> are.
+        /// </summary>
+        public bool UpgradeBays()
+        {
+            if (assemblyBay == null)
+            {
+                _statusMessage = "No assembly bays in this scene.";
+                return false;
+            }
+
+            StorageBufferRegistryHolder holder = _bayStockpileHolder != null
+                ? _bayStockpileHolder
+                : bufferRegistryHolder;
+            IReadOnlyList<RecipeIngredient> cost = assemblyBay.UpgradeCost;
+
+            bool upgraded = holder != null
+                && assemblyBay.TryUpgrade(holder.Registry, stockpileBufferId);
+
+            _statusMessage = AssemblyBayRowPolicy.DescribeResult(
+                upgraded, BayStockOf, cost, AssemblyBayStructure.SlotsPerUpgrade);
+
+            // Re-render from data rather than patching the row in place -- the same idiom the
+            // rest of this panel and WorkbenchController.RebuildUI follow.
+            Refresh();
+            return upgraded;
+        }
+
+        /// <summary>
+        /// "Workshop 25x27 · +2 rows north · 80 Scrap + 40 Iron Plate · [Extend]".
+        ///
+        /// <para>
+        /// The room's CURRENT size is stated, not just the purchase, because the number the
+        /// player is deciding against is how much floor they already have.
+        /// </para>
+        /// </summary>
+        private void CreateFloorExpansionRow()
+        {
+            if (floorExpansion == null || floorExpansion.Bounds == null)
+            {
+                return;
+            }
+
+            GolemFactory.World.FloorBounds bounds = floorExpansion.Bounds;
+            GameObject row = CreateSlotRoot();
+
+            int width = bounds.HalfExtent * 2 + 1;
+            int depth = bounds.NorthExtent + bounds.HalfExtent + 1;
+            string label = "Workshop " + width + "x" + depth;
+
+            if (!bounds.CanExpand)
+            {
+                // Land is finite (§11): when it runs out the row says so rather than offering a
+                // button that always refuses.
+                CreateLabel(row.transform, label + "  ·  fully extended", DimTextColor);
+                return;
+            }
+
+            IReadOnlyList<RecipeIngredient> cost = floorExpansion.NextCost();
+            bool affordable = floorExpansion.CanAfford();
+
+            CreateLabel(
+                row.transform,
+                label + "  ·  +" + floorExpansion.RowsPerPurchase + " rows north",
+                RowTextColor);
+            CreateCostLabel(
+                row.transform, ConstructionCostPolicy.FormatCost(cost),
+                affordable ? AffordableCostColor : DimTextColor);
+
+            var buttonGo = new GameObject("Extend", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+            buttonGo.transform.SetParent(row.transform, false);
+            LayoutElement buttonLayout = buttonGo.GetComponent<LayoutElement>();
+            buttonLayout.preferredWidth = 74f;
+            buttonLayout.preferredHeight = 24f;
+            if (claimButtonSprite != null)
+            {
+                Image buttonImage = buttonGo.GetComponent<Image>();
+                buttonImage.sprite = claimButtonSprite;
+                buttonImage.type = Image.Type.Sliced;
+            }
+
+            Button extendButton = buttonGo.GetComponent<Button>();
+            extendButton.onClick.AddListener(() => ExtendFloor());
+            extendButton.interactable = affordable;
+            CreateButtonLabel(buttonGo.transform, "Extend");
+        }
+
+        /// <summary>Buys one expansion. Public so a test drives the same path the button does.</summary>
+        public bool ExtendFloor()
+        {
+            if (floorExpansion == null)
+            {
+                _statusMessage = "No expandable floor in this scene.";
+                return false;
+            }
+
+            bool expanded = floorExpansion.TryPurchaseExpansion();
+            _statusMessage = expanded ? "" : floorExpansion.LastStatusMessage;
+            Refresh();
+            return expanded;
         }
 
         private GameObject CreateSlotRoot()
@@ -110,7 +340,7 @@ namespace GolemFactory.UI
             return row;
         }
 
-        private void CreateSlotRow(int slotIndex, DraftableCardDefinition card, AssemblyLineState line, int wallet)
+        private void CreateSlotRow(int slotIndex, DraftableCardDefinition card, AssemblyLineState line)
         {
             var row = new GameObject("Slot", typeof(RectTransform), typeof(LayoutElement), typeof(Image), typeof(HorizontalLayoutGroup));
             row.transform.SetParent(content, false);
@@ -148,16 +378,24 @@ namespace GolemFactory.UI
                 return;
             }
 
-            int cost = line.GetCurrentCost(slotIndex);
-            bool affordable = wallet >= cost;
+            // THE WHOLE PRICE, not its Scrap component. GetCurrentCost answers in Scrap so
+            // every pre-§8 caller keeps working, and this row took it literally: R4 Iron
+            // Smelting costs 8 Scrap + 4 Coke and advertised "8 Scrap", lit its Claim button
+            // off a Scrap-only wallet check, and then had TryClaimSlot refuse the sale with
+            // "Not enough Scrap" while the player was looking at enough Scrap. A legacy
+            // Scrap-priced card comes back through the same method as a one-entry bundle, so
+            // this is one path for both authoring styles rather than a branch.
+            IReadOnlyList<RecipeIngredient> price = line.GetCurrentCostBundle(slotIndex);
+            bool affordable = CanAfford(price);
 
-            CreateLabel(row.transform, card.DisplayName, RowTextColor);
+            CreateLabel(row.transform, WorkbenchDiagnostics.Humanize(card.DisplayName), RowTextColor);
             // Cost gets its own fixed-width right-aligned column so the numbers line up
             // vertically -- a cost buried at the end of a variable-length name is not
             // scannable. Affordability is carried by brightness (bright brass vs dim),
             // which is the channel that survives this palette, and the Claim button's own
             // interactable state carries it a second time.
-            CreateCostLabel(row.transform, cost + " Scrap", affordable ? AffordableCostColor : DimTextColor);
+            CreateCostLabel(row.transform, RecipeLedger.FormatBundle(price),
+                affordable ? AffordableCostColor : DimTextColor);
 
             var buttonGo = new GameObject("Claim", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
             buttonGo.transform.SetParent(row.transform, false);
@@ -211,11 +449,13 @@ namespace GolemFactory.UI
             var go = new GameObject("Cost", typeof(RectTransform), typeof(LayoutElement), typeof(TextMeshProUGUI));
             go.transform.SetParent(parent, false);
             LayoutElement element = go.GetComponent<LayoutElement>();
-            // Wide enough for the longest cost string ("999 Scrap") at this font size --
-            // a right-aligned label narrower than its own text overflows leftward and,
-            // at 82f, ran straight into the Claim button beside it.
-            element.preferredWidth = 112f;
-            element.minWidth = 112f;
+            // Wide enough for the longest cost string at this font size -- a right-aligned
+            // label narrower than its own text overflows leftward and, at 82f, ran straight
+            // into the Claim button beside it. Widened again for §8.2's bundles: the longest
+            // real price is the Brass Presser's "15 Scrap + 5 Iron Plate + 2 Gear", which 112f
+            // clipped, and the waiting rows' "needs ..." shares this column.
+            element.preferredWidth = 260f;
+            element.minWidth = 260f;
             element.flexibleWidth = 0f;
             element.flexibleHeight = 0f;
 
@@ -228,12 +468,106 @@ namespace GolemFactory.UI
             label.raycastTarget = false;
         }
 
+        /// <summary>
+        /// Whether the wallet holds every good in a claim price. Reads the SAME buffer
+        /// <see cref="ClaimSlot"/> withdraws from, so the button's lit state and the sale's
+        /// outcome cannot disagree.
+        /// </summary>
+        private bool CanAfford(IReadOnlyList<RecipeIngredient> price)
+        {
+            if (price == null || price.Count == 0)
+            {
+                return true;
+            }
+
+            if (bufferRegistryHolder == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < price.Count; i++)
+            {
+                if (bufferRegistryHolder.Registry.GetQuantity(walletBufferId, price[i].itemType)
+                    < price[i].quantity)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// §8.3's waiting list, on the screen. A locked card is deliberately kept out of the
+        /// slots -- that is the mechanism -- but until now nothing said so, which turns the
+        /// gate into an absence: the player sees three cards, has no idea a fourth exists, and
+        /// reads a tech tree as a slot machine. Naming what is coming and what it is waiting
+        /// for is the difference between progression and being blocked.
+        ///
+        /// <para>
+        /// Capped, and the cap is not cosmetic: this panel has no ScrollRect (slot count was
+        /// small and fixed when it was written), and the deck holds two dozen locked cards in
+        /// the opening minutes. The nearest few plus a count is the readout; the whole list is
+        /// the Ledger's job.
+        /// </para>
+        /// </summary>
+        private void CreateWaitingRows(AssemblyLineState line)
+        {
+            IReadOnlyList<DraftableCardDefinition> waiting = line.WaitingCards;
+            if (waiting == null || waiting.Count == 0)
+            {
+                return;
+            }
+
+            CreateLabel(CreateSlotRoot().transform, "Waiting on prerequisites: " + waiting.Count, DimTextColor);
+
+            int shown = 0;
+            for (int i = 0; i < waiting.Count && shown < MaxWaitingRowsShown; i++)
+            {
+                DraftableCardDefinition card = waiting[i];
+                if (card == null)
+                {
+                    continue;
+                }
+
+                // Through the Workbench's humaniser, so this list reads the way the vault the
+                // card is destined for reads: "Assemble Scrap Reclamation ... needs Iron Plate",
+                // not "AssembleScrapReclamation ... needs IronPlate". Asset ids are an authoring
+                // artifact and the player should never meet one.
+                var row = CreateSlotRoot();
+                CreateLabel(row.transform, WorkbenchDiagnostics.Humanize(card.DisplayName), DimTextColor);
+                CreateCostLabel(
+                    row.transform,
+                    "needs " + WorkbenchDiagnostics.Humanize(line.DescribeMissingPrerequisites(card)),
+                    DimTextColor);
+                shown++;
+            }
+
+            if (waiting.Count > shown)
+            {
+                CreateLabel(CreateSlotRoot().transform,
+                    "... and " + (waiting.Count - shown) + " more further up the tree", DimTextColor);
+            }
+        }
+
         private void ClaimSlot(int slotIndex, DraftableCardDefinition card)
         {
             AssemblyLineState line = lineHolder.State;
-            _statusMessage = line.TryClaimSlot(slotIndex, PlaceableBuilding.LocalPlayerOwnerId, bufferRegistryHolder.Registry, walletBufferId)
-                ? $"Claimed {card.DisplayName}."
-                : "Not enough Scrap to claim that card.";
+            string name = WorkbenchDiagnostics.Humanize(card.DisplayName);
+            if (line.TryClaimSlot(slotIndex, PlaceableBuilding.LocalPlayerOwnerId, bufferRegistryHolder.Registry, walletBufferId))
+            {
+                _statusMessage = $"Claimed {name}.";
+            }
+            else
+            {
+                // Two ways to be refused now, and they need different answers from the player:
+                // go and make something, or go and afford something.
+                string missing = line.DescribeMissingPrerequisites(card);
+                _statusMessage = string.IsNullOrEmpty(missing)
+                    ? $"Cannot afford {name}: it costs {RecipeLedger.FormatBundle(line.GetCurrentCostBundle(slotIndex))}."
+                    : $"{name} is still locked. Needs: {WorkbenchDiagnostics.Humanize(missing)}.";
+            }
+
             Refresh();
         }
 

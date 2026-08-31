@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
@@ -17,8 +17,8 @@ namespace GolemFactory.UI
     // Supersedes M3's GolemProgrammingPanel (OnGUI, apply-immediately) with a real UGUI
     // drag-and-drop staging workflow: dragging cards only edits a local *draft* copy of
     // the program; nothing touches the real GolemEntity.Program until the "Engage Gears"
-    // lever (EngageGears()) commits it, gated by ArtificerFocusMeter -- matching "pulling
-    // it locks in the current card configuration and boots the golem into the game world."
+    // lever (EngageGears()) commits it -- matching "pulling it locks in the current card
+    // configuration and boots the golem into the game world."
     // Chassis selection stays button-based (not a draggable card) since the design doc's
     // card color coding only covers Logic Cores/Appendages.
     public sealed class WorkbenchController : MonoBehaviour
@@ -56,16 +56,12 @@ namespace GolemFactory.UI
         // Cost readouts on the lever / patent button: the *persistent* affordability
         // signal, so unaffordability is visible before clicking rather than discovered by
         // clicking and hunting for a message.
-        private static readonly Color AffordableCostColor = new Color(0.86f, 0.70f, 0.40f);
-        private static readonly Color UnaffordableCostColor = new Color(0.95f, 0.36f, 0.30f);
-
         private const float CardHeight = 44f;
         private const float CardWidth = 250f;
         private const float ChassisButtonHeight = 52f;
         private const float VaultHeadingHeight = 26f;
 
         [SerializeField] private GolemEntity targetGolem;
-        [SerializeField] private ArtificerFocusMeterHolder focusMeterHolder;
         [SerializeField] private PatentRegistryHolder patentRegistryHolder;
         [SerializeField] private ChassisDefinition[] availableChassis = new ChassisDefinition[0];
         [SerializeField] private LogicCoreDefinition[] availableLogicCores = new LogicCoreDefinition[0];
@@ -107,8 +103,24 @@ namespace GolemFactory.UI
         // no-op.
         [SerializeField] private GameObject[] hideWhileOpen = new GameObject[0];
 
-        [SerializeField] private float reprogramFocusCost = 10f;
-        [SerializeField] private float patentFocusCost = 20f;
+        private int CountDraftAppendages()
+        {
+            if (_draftAppendages == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int i = 0; i < _draftAppendages.Length; i++)
+            {
+                if (_draftAppendages[i] != null)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
 
         // Only used to turn a cycle length in ticks into the "cycles per minute" figure on
         // the diagnostic tape. Mirrors SimulationClock's default rate; the Workbench is a
@@ -137,17 +149,7 @@ namespace GolemFactory.UI
         // a full satisfying throw (see WorkbenchLever's class comment).
         [SerializeField] private WorkbenchLever engageLever;
 
-        // Persistent cost readouts recolored by affordability each frame.
-        [SerializeField] private TextMeshProUGUI engageCostText;
-        [SerializeField] private TextMeshProUGUI patentCostText;
-
         public void ConfigureLever(WorkbenchLever lever) => engageLever = lever;
-
-        public void ConfigureCostLabels(TextMeshProUGUI engageCost, TextMeshProUGUI patentCost)
-        {
-            engageCostText = engageCost;
-            patentCostText = patentCost;
-        }
 
         private ChassisDefinition _draftChassis;
         private LogicCoreDefinition _draftLogicCore;
@@ -178,9 +180,8 @@ namespace GolemFactory.UI
         // references for every one of this component's many fields.
         public void ConfigureGolem(GolemEntity golem) => targetGolem = golem;
 
-        public void ConfigureSystems(ArtificerFocusMeterHolder focus, PatentRegistryHolder patents)
+        public void ConfigureSystems(PatentRegistryHolder patents)
         {
-            focusMeterHolder = focus;
             patentRegistryHolder = patents;
         }
 
@@ -190,6 +191,94 @@ namespace GolemFactory.UI
             availableChassis = chassisRoster ?? new ChassisDefinition[0];
             availableLogicCores = logicCoreRoster ?? new LogicCoreDefinition[0];
             availableAppendages = appendageRoster ?? new AppendageActionDefinition[0];
+        }
+
+        // --- §8.1: the vault shows what the player has CLAIMED ------------------------------
+        // Optional, and that is the whole compatibility story: with no line wired the roster is
+        // the authored one and every card is available from the start, which is the state this
+        // screen shipped in for four milestones. Wiring it turns the authored roster into the
+        // full CATALOGUE and the claimed set into what is actually offered.
+        [SerializeField] private GolemFactory.AssemblyLine.AssemblyLineStateHolder assemblyLineHolder;
+        [SerializeField] private string claimUserId = "LocalPlayer";
+
+        public void ConfigureCardGating(
+            GolemFactory.AssemblyLine.AssemblyLineStateHolder line, string userId)
+        {
+            assemblyLineHolder = line;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                claimUserId = userId;
+            }
+
+            // The vault is rebuilt from data on every open, so a claim made while this screen is
+            // shut is picked up with no event plumbing -- "always re-render from data", the
+            // idiom RebuildUI already follows.
+            if (IsOpen)
+            {
+                RebuildUI();
+            }
+        }
+
+        /// <summary>
+        /// Whether card gating is in play at all. False in every scene that never wires a line,
+        /// which is what keeps the ungated roster valid rather than deprecated.
+        /// </summary>
+        public bool IsRosterGated =>
+            assemblyLineHolder != null && assemblyLineHolder.State != null;
+
+        /// <summary>
+        /// Whether this appendage is offered right now: always, when ungated; only when claimed,
+        /// when gated. Public so a test can ask the question the vault asks.
+        /// </summary>
+        public bool IsCardAvailable(AppendageActionDefinition card)
+        {
+            if (card == null)
+            {
+                return false;
+            }
+
+            if (!IsRosterGated)
+            {
+                return true;
+            }
+
+            System.Collections.Generic.IReadOnlyList<GolemFactory.AssemblyLine.DraftableCardDefinition>
+                claimed = assemblyLineHolder.State.GetClaimedCards(claimUserId);
+            for (int i = 0; i < claimed.Count; i++)
+            {
+                if (claimed[i] != null && claimed[i].appendage == card)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Same question for a chassis, which the Assembly Line also drafts.</summary>
+        public bool IsChassisAvailable(ChassisDefinition chassis)
+        {
+            if (chassis == null)
+            {
+                return false;
+            }
+
+            if (!IsRosterGated)
+            {
+                return true;
+            }
+
+            System.Collections.Generic.IReadOnlyList<GolemFactory.AssemblyLine.DraftableCardDefinition>
+                claimed = assemblyLineHolder.State.GetClaimedCards(claimUserId);
+            for (int i = 0; i < claimed.Count; i++)
+            {
+                if (claimed[i] != null && claimed[i].chassis == chassis)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public void ConfigureUI(
@@ -269,6 +358,18 @@ namespace GolemFactory.UI
             SetHiddenChromeActive(true);
         }
 
+        /// <summary>
+        /// Shows or hides the always-on world HUD -- the build menu, the fuel gauge, the tower
+        /// panel, the alerts strip. Public because the <b>Management</b> screen needs the same
+        /// thing and there must not be a second list: <c>hideWhileOpen</c> is authored once, on
+        /// this component, and <see cref="HudScreenPolicy.ShouldShowWorldHud"/> already says the
+        /// rule is per-screen-open rather than per-screen-identity. Without this the fuel gauge
+        /// and the alerts strip drew straight over the Management modal -- the same class of
+        /// overlap the UGUI conversion was done to kill, surviving in the one screen that never
+        /// got the list.
+        /// </summary>
+        public void SetWorldHudVisible(bool visible) => SetHiddenChromeActive(visible);
+
         private void SetHiddenChromeActive(bool active)
         {
             for (int i = 0; i < hideWhileOpen.Length; i++)
@@ -308,7 +409,7 @@ namespace GolemFactory.UI
         {
             UpdateTapeTicker();
             UpdateStatusLifetime();
-            UpdateAffordability();
+            UpdateEngageAvailability();
             UpdateChassisFlash();
         }
 
@@ -499,6 +600,14 @@ namespace GolemFactory.UI
         // Lets a PlayerInteractor point this already-built Workbench at a different golem at
         // runtime -- e.g. a freshly constructed one, or reprogramming an earlier one -- without
         // re-running Start()'s one-time setup (BuildChassisButtons, button listener wiring).
+        /// <summary>
+        /// The golem this screen is currently pointed at, or null. Exposed so a caller that is
+        /// about to destroy a golem (<c>GolemConstructionStation.TryDismantleGolem</c>) can tell
+        /// whether it is the one on screen, rather than blanking the Workbench every time any
+        /// golem anywhere is removed.
+        /// </summary>
+        public GolemEntity TargetGolem => targetGolem;
+
         public void RetargetGolem(GolemEntity golem)
         {
             targetGolem = golem;
@@ -521,9 +630,6 @@ namespace GolemFactory.UI
                 return;
             }
 
-            // Checked BEFORE Focus is consumed, like the NoTarget path above and unlike the
-            // chassis-rejection path below, which has already spent and therefore has to
-            // refund. A refusal the player cannot act on must not also cost them anything.
             if (_draftOverflowCount > 0)
             {
                 SetStatus(
@@ -531,16 +637,6 @@ namespace GolemFactory.UI
                     $"appendage{(_draftOverflowCount == 1 ? "" : "s")} than this Workbench has " +
                     $"sockets ({_draftAppendages.Length}). Engaging would discard them.",
                     WorkbenchStatusReason.DraftTruncated);
-                RefuseLever();
-                return;
-            }
-
-            ArtificerFocusMeter meter = focusMeterHolder != null ? focusMeterHolder.Meter : null;
-            if (meter == null || !meter.TryConsume(reprogramFocusCost))
-            {
-                SetStatus(
-                    $"Not enough Focus to reprogram (need {reprogramFocusCost:F0}).",
-                    WorkbenchStatusReason.InsufficientFocusEngage);
                 RefuseLever();
                 return;
             }
@@ -554,8 +650,7 @@ namespace GolemFactory.UI
             if (_draftChassis != null && !program.TryAssignChassis(_draftChassis))
             {
                 // Shouldn't happen -- the draft's own appendage count is already gated to
-                // fit _draftChassis via SlotActive -- but refund and report if it does.
-                meter.Refund(reprogramFocusCost);
+                // fit _draftChassis via SlotActive -- but report it if it does.
                 SetStatus("Cannot engage: chassis rejected the current appendage count.", WorkbenchStatusReason.Info);
                 RefuseLever();
                 return;
@@ -618,15 +713,6 @@ namespace GolemFactory.UI
                 return;
             }
 
-            ArtificerFocusMeter meter = focusMeterHolder != null ? focusMeterHolder.Meter : null;
-            if (meter == null || !meter.TryConsume(patentFocusCost))
-            {
-                SetStatus(
-                    $"Not enough Focus to patent (need {patentFocusCost:F0}).",
-                    WorkbenchStatusReason.InsufficientFocusPatent);
-                return;
-            }
-
             string blueprintId = $"BP-{_nextBlueprintNumber:D3}";
             _nextBlueprintNumber++;
 
@@ -640,8 +726,8 @@ namespace GolemFactory.UI
         // M9: the other half of Patent() -- loads a previously-patented blueprint back
         // into the draft (called by UI/PatentBrowserPanel's "Load" button). Like every
         // other draft mutation, this doesn't touch the real GolemEntity.Program; the
-        // loaded config still has to go through Engage Gears (and its Focus cost) to
-        // take effect, same as a manually-dragged configuration would.
+        // loaded config still has to go through Engage Gears to take effect, same as a
+        // manually-dragged configuration would.
         public void LoadBlueprintIntoDraft(Blueprint blueprint)
         {
             if (blueprint == null)
@@ -711,14 +797,10 @@ namespace GolemFactory.UI
         // retires itself) rather than string-matching the message.
         public WorkbenchStatusReason StatusReason => _statusReason;
 
-        private float CurrentFocus() =>
-            focusMeterHolder != null && focusMeterHolder.Meter != null ? focusMeterHolder.Meter.CurrentFocus : 0f;
-
-        // The status line was previously write-only: nothing ever cleared it, so a stale
-        // "Not enough Focus (need 10)" sat on screen while the tape ticker read FOCUS
-        // 42/100, and "remove appendages to fit its slot count first" survived removing
-        // every appendage. The staleness rule itself is the engine-free
-        // WorkbenchStatusPolicy; this is the applier that feeds it live numbers.
+        // The status line was previously write-only: nothing ever cleared it, so
+        // "remove appendages to fit its slot count first" survived removing every
+        // appendage. The staleness rule itself is the engine-free WorkbenchStatusPolicy;
+        // this is the applier that feeds it live numbers.
         private void UpdateStatusLifetime()
         {
             if (_statusReason == WorkbenchStatusReason.None)
@@ -730,9 +812,6 @@ namespace GolemFactory.UI
             if (WorkbenchStatusPolicy.ShouldClear(
                     _statusReason,
                     _statusShownSeconds,
-                    CurrentFocus(),
-                    reprogramFocusCost,
-                    patentFocusCost,
                     CountAssignedAppendages(),
                     _statusChassisSlotLimit,
                     targetGolem != null,
@@ -742,38 +821,15 @@ namespace GolemFactory.UI
             }
         }
 
-        // Affordability is a *persistent* readout, not something to discover by clicking:
-        // the lever and Patent button go non-interactable and their cost labels turn red
-        // the moment the action can't be paid for.
-        private void UpdateAffordability()
+        // Whether the lever can be pulled at all is a *persistent* readout, not something
+        // to discover by clicking. With Focus cut there is exactly one thing left that can
+        // stop a pull from here -- nothing to pull it onto -- so the button says so rather
+        // than waiting for the click to explain.
+        private void UpdateEngageAvailability()
         {
-            float focus = CurrentFocus();
-            bool canEngage = targetGolem != null && focus >= reprogramFocusCost;
-            bool canPatent = focus >= patentFocusCost;
-
             if (engageGearsButton != null)
             {
-                engageGearsButton.interactable = canEngage;
-            }
-            if (patentButton != null)
-            {
-                patentButton.interactable = canPatent;
-            }
-            // Spell out the shortfall rather than just recoloring: a disabled lever that
-            // only turns its cost label red still leaves the player guessing by how much.
-            if (engageCostText != null)
-            {
-                engageCostText.color = canEngage ? AffordableCostColor : UnaffordableCostColor;
-                engageCostText.text = focus >= reprogramFocusCost
-                    ? $"{reprogramFocusCost:F0} focus"
-                    : $"{reprogramFocusCost:F0} focus · have {focus:F0}";
-            }
-            if (patentCostText != null)
-            {
-                patentCostText.color = canPatent ? AffordableCostColor : UnaffordableCostColor;
-                patentCostText.text = canPatent
-                    ? $"{patentFocusCost:F0} focus"
-                    : $"{patentFocusCost:F0} focus · have {focus:F0}";
+                engageGearsButton.interactable = targetGolem != null;
             }
 
             // A disabled lever with no explanation is its own dead end, so say why once
@@ -856,8 +912,6 @@ namespace GolemFactory.UI
             int cycleTicks = DraftCycleTicks();
             int tier = _draftChassis != null ? _draftChassis.tier : 1;
             int maxSlots = _draftChassis != null ? _draftChassis.maxAppendageSlots : 0;
-            float focus = focusMeterHolder != null ? focusMeterHolder.Meter.CurrentFocus : 0f;
-            float maxFocus = focusMeterHolder != null ? focusMeterHolder.Meter.MaxFocus : 0f;
 
             tapeTickerText.text = WorkbenchDiagnostics.ComposeTicker(
                 _draftChassis != null ? _draftChassis.name : null,
@@ -869,9 +923,7 @@ namespace GolemFactory.UI
                 _draftLogicCore != null ? CardDisplayName(_draftLogicCore, null) : null,
                 cycleTicks,
                 WorkbenchDiagnostics.ComputeSteamDraw(stepCount, tier),
-                WorkbenchDiagnostics.ComputeCyclesPerMinute(cycleTicks, ticksPerSecondForReadout),
-                focus,
-                maxFocus);
+                WorkbenchDiagnostics.ComputeCyclesPerMinute(cycleTicks, ticksPerSecondForReadout));
         }
 
         private void BuildChassisButtons()
@@ -883,6 +935,14 @@ namespace GolemFactory.UI
 
             foreach (ChassisDefinition chassis in availableChassis)
             {
+                // §8.1: the authored roster is the CATALOGUE; what the player has claimed is
+                // what is offered. Ungated (no Assembly Line wired) every entry passes, which
+                // is the state this screen shipped in.
+                if (!IsChassisAvailable(chassis))
+                {
+                    continue;
+                }
+
                 var go = new GameObject(chassis.name, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
                 go.transform.SetParent(chassisButtonRow, false);
                 var rect = go.GetComponent<RectTransform>();
@@ -907,7 +967,12 @@ namespace GolemFactory.UI
                 _chassisButtonImages[chassis] = image;
 
                 ChassisDefinition captured = chassis;
-                go.GetComponent<Button>().onClick.AddListener(() => SelectChassis(captured));
+                Button chassisButton = go.GetComponent<Button>();
+                // Measured states rather than Unity's defaults, whose highlighted multiplier
+                // composites to a 3.9 % luminance shift on this sprite -- the "effectively
+                // invisible" hover the backlog recorded.
+                chassisButton.colors = WorkbenchInteractionColors.ButtonColors();
+                chassisButton.onClick.AddListener(() => SelectChassis(captured));
 
                 CreateLabel(go.transform, WorkbenchDiagnostics.Humanize(chassis.name), 15f,
                     ChassisInkColor, TextAlignmentOptions.Left, new Vector2(0.05f, 0.44f), new Vector2(0.97f, 0.96f));
@@ -956,6 +1021,14 @@ namespace GolemFactory.UI
             CreateVaultHeading(vaultContent, "APPENDAGES  ·  actions");
             foreach (AppendageActionDefinition appendage in availableAppendages)
             {
+                // §8.1, the vault half. Filtered here rather than by rewriting the roster, so
+                // one authored list stays the catalogue and a claim shows up on the next
+                // rebuild with no roster surgery.
+                if (!IsCardAvailable(appendage))
+                {
+                    continue;
+                }
+
                 CreateCard(vaultContent, null, appendage, isVaultOrigin: true, sourceAppendageIndex: -1);
             }
 
@@ -986,6 +1059,8 @@ namespace GolemFactory.UI
                     CreateCard(zone.transform, null, _draftAppendages[i], isVaultOrigin: false, sourceAppendageIndex: i);
                 }
             }
+
+            RefreshSlotCaptions();
 
             foreach (var entry in _chassisButtonImages)
             {
@@ -1034,10 +1109,32 @@ namespace GolemFactory.UI
             if (targetGolemText != null)
             {
                 targetGolemText.text = targetGolem != null
-                    ? $"TARGET  ·  {targetGolem.name}"
+                    ? $"TARGET  ·  {GolemDisplayName(targetGolem)}"
                     : "TARGET  ·  none";
             }
         }
+
+        /// <summary>
+        /// What to call the targeted golem. Its <c>GolemId</c>, not its GameObject name.
+        ///
+        /// <para>
+        /// Every other readout in the project names a golem by <c>GolemId</c> --
+        /// <c>AlertsPanel</c>, <c>GolemStallIndicator</c>, <c>StallTracker</c>, the stall events
+        /// themselves. This one read <c>.name</c>, so the Workbench header was the only screen in
+        /// the game that called <c>PlayerGolem-003</c> "GolemPrefab(Clone)" -- Unity's Instantiate
+        /// suffix, on the one screen whose entire job is telling you which golem you are editing.
+        /// Caught in a play-mode screenshot, not by a test, which is the point of taking them.
+        /// </para>
+        ///
+        /// <para>
+        /// Falls back to the object name for a golem that never got an id (a bare test rig, a
+        /// prefab dropped into a scene by hand): a blank <c>TARGET</c> line reads as the screen
+        /// being broken, which is worse than a clumsy name. Same shape as the vault cards'
+        /// unnamed-runtime-instance fallback.
+        /// </para>
+        /// </summary>
+        private static string GolemDisplayName(GolemEntity golem) =>
+            !string.IsNullOrEmpty(golem.GolemId) ? golem.GolemId : golem.name;
 
         private static void CreateVaultHeading(Transform parent, string text)
         {
@@ -1090,7 +1187,8 @@ namespace GolemFactory.UI
             }
 
             Image cardImage = go.GetComponent<Image>();
-            cardImage.color = logicCore != null ? TealColor : CopperColor;
+            Color cardBase = logicCore != null ? TealColor : CopperColor;
+            cardImage.color = cardBase;
             if (vaultCardSprite != null)
             {
                 cardImage.sprite = vaultCardSprite;
@@ -1113,6 +1211,9 @@ namespace GolemFactory.UI
             }
 
             WorkbenchCard card = go.GetComponent<WorkbenchCard>();
+            // Told its resting colour so hover and press modulate the card's OWN tint rather
+            // than replacing it -- a hovered logic core has to stay teal.
+            card.SetBaseColor(cardBase);
             card.LogicCore = logicCore;
             card.Appendage = appendage;
             card.IsVaultOrigin = isVaultOrigin;
@@ -1188,7 +1289,7 @@ namespace GolemFactory.UI
         /// <summary>
         /// Changes one slot's batch size in the DRAFT. Nothing reaches the golem until the lever
         /// is pulled, exactly like moving a card -- so a player can try 8, look at the tick cost,
-        /// and put it back without having reprogrammed anything or spent any Focus.
+        /// and put it back without having reprogrammed anything.
         /// </summary>
         public void AdjustDraftQuantity(int slotIndex, int delta)
         {
@@ -1306,6 +1407,83 @@ namespace GolemFactory.UI
         // rebuild would strip a slot down to a bare rectangle the first time anything
         // was dropped into it. Drag placeholders go too: a ghost has no WorkbenchCard, so
         // an interrupted drag would otherwise leave a permanent translucent stripe.
+        /// <summary>
+        /// Writes the socket captions from the live draft (docs/cozy-automation-design.md §3):
+        /// <c>TRIGGER · when to start</c>, <c>STEP 1 · then</c>, <c>STEP 3 · loops back to 1</c>.
+        ///
+        /// <para>
+        /// THIS IS THE ANSWER TO §3y'S "What are steps 1-6?". They are the golem's program, run
+        /// top to bottom once per cycle, and the screen numbered them without ever saying so.
+        /// Driving the captions from the draft means the loop marker walks down as the player
+        /// builds -- demonstrating the cycle rather than describing it.
+        /// </para>
+        ///
+        /// <para>
+        /// Done at RUNTIME rather than in the scene authoring pass that currently writes these
+        /// captions, because a hint depends on the draft program and a draft only exists while
+        /// the screen is open. One owner, no prefab round-trip, and no chance of a scene
+        /// override silently winning -- which has bitten this project before.
+        /// </para>
+        ///
+        /// <para>
+        /// Every lookup is null-tolerant: a Workbench built by a test wires drop zones without
+        /// caption children, and a missing caption must be a no-op rather than an exception in
+        /// the middle of a rebuild.
+        /// </para>
+        /// </summary>
+        private void RefreshSlotCaptions()
+        {
+            int capacity = DraftMaxSlots;
+            int lastFilled = WorkbenchLoopLabels.LastFilledStep(
+                _draftAppendages.Length,
+                step => step >= 1 && step <= _draftAppendages.Length && _draftAppendages[step - 1] != null);
+
+            if (logicCoreSlotZone != null)
+            {
+                SetSlotCaption(
+                    logicCoreSlotZone.transform,
+                    WorkbenchLoopLabels.Compose(
+                        WorkbenchLoopLabels.TriggerRow, _draftLogicCore != null, lastFilled, capacity));
+            }
+
+            for (int i = 0; i < appendageSlotZones.Length; i++)
+            {
+                WorkbenchDropZone zone = appendageSlotZones[i];
+                if (zone == null)
+                {
+                    continue;
+                }
+
+                // The socket at array index i is STEP i+1 on screen -- the same off-by-one the
+                // authoring pass makes when it captions row i as "STEP " + i, counting the
+                // trigger as row 0.
+                SetSlotCaption(
+                    zone.transform,
+                    WorkbenchLoopLabels.Compose(
+                        i + 1, _draftAppendages[i] != null, lastFilled, capacity));
+            }
+        }
+
+        private static void SetSlotCaption(Transform row, string text)
+        {
+            if (row == null)
+            {
+                return;
+            }
+
+            Transform caption = row.Find("Caption");
+            if (caption == null)
+            {
+                return;
+            }
+
+            var label = caption.GetComponent<TextMeshProUGUI>();
+            if (label != null)
+            {
+                label.text = text;
+            }
+        }
+
         private static void ClearCards(Transform parent)
         {
             if (parent == null)

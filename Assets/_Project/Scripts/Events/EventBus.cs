@@ -119,7 +119,19 @@ namespace GolemFactory.Events
         // has a full crew" have opposite fixes -- wait/expand versus relocate -- and the node
         // in question is visibly still full of ore, so reporting it as empty would read as a
         // bug. Appended, because StallReason is serialized by index (see above).
-        NodeCrowded
+        NodeCrowded,
+
+        // Push: the destination is LABELLED for a good this golem is not carrying
+        // (docs/cozy-automation-design.md §1). ResourceId carries the item type the golem is
+        // holding and could not place, matching the InputFull/OutputFull/MissingItem convention
+        // -- the fix is to re-route that good, and the player cannot do it without knowing which.
+        //
+        // Deliberately NOT folded into BeltFull, for exactly the reason NodeCrowded is not
+        // folded into NodeEmpty: "this crate is full" and "this crate is for something else"
+        // have opposite fixes. Waiting will never empty a Plate crate of the Slag it was never
+        // going to take, and a player told "full" would go and drain a depot that is not the
+        // problem. Appended, because StallReason is serialized by index.
+        FilterMismatch
     }
 
     // Which kind of trigger fired. Mirrors PunchCards.TriggerType minus AlwaysOn, which is
@@ -270,6 +282,34 @@ namespace GolemFactory.Events
         }
     }
 
+    // Something the player can walk up to and press a key at has entered or left the world
+    // after the scene's one-shot startup sweep -- a golem the construction station just built,
+    // a depot the build menu just placed, a building just demolished.
+    //
+    // THIS EXISTS BECAUSE PlayerInteractor CACHES ITS INTERACTABLES. It calls
+    // FindObjectsByType once, in OnEnable, because RefreshAffordance runs every frame and
+    // FindObjectsByType does not belong in a frame loop. That cache was never invalidated, so
+    // for the whole session the player could not carry, rotate or re-program a golem they had
+    // built, label a depot they had placed, or fuel a boiler they had built: every one of them
+    // reported "nothing in range" while the player stood on top of it. The comment on
+    // RefreshInteractables already claimed a station built mid-session could "make itself/new
+    // golems interactable" -- that was an intention nothing ever wired up.
+    //
+    // An event rather than a direct reference, per the bus's own rule: the construction station
+    // and the build controller have no business knowing the player exists, and a scene may hold
+    // any number of listeners (the routing highlight has the same re-scan problem).
+    //
+    // Carries only a Cause, for diagnostics. A listener re-scans wholesale rather than trying to
+    // apply a delta -- the arrays are small, this fires when the player builds something, and a
+    // delta protocol would be a second source of truth about what exists.
+    public readonly struct WorldInteractablesChangedEvent
+    {
+        /// <summary>Short human-readable origin ("golem built", "building placed").</summary>
+        public readonly string Cause;
+
+        public WorldInteractablesChangedEvent(string cause) => Cause = cause;
+    }
+
     public static class EventBus
     {
         public static event Action<TickAdvancedEvent> TickAdvanced;
@@ -280,6 +320,7 @@ namespace GolemFactory.Events
         public static event Action<GolemTriggerFiredEvent> GolemTriggerFired;
         public static event Action<ItemAssembledEvent> ItemAssembled;
         public static event Action<ClockTowerStageCompletedEvent> ClockTowerStageCompleted;
+        public static event Action<WorldInteractablesChangedEvent> WorldInteractablesChanged;
 
         public static void Publish(TickAdvancedEvent e) => TickAdvanced?.Invoke(e);
         public static void Publish(ThresholdCrossedEvent e) => ThresholdCrossed?.Invoke(e);
@@ -289,5 +330,6 @@ namespace GolemFactory.Events
         public static void Publish(GolemTriggerFiredEvent e) => GolemTriggerFired?.Invoke(e);
         public static void Publish(ItemAssembledEvent e) => ItemAssembled?.Invoke(e);
         public static void Publish(ClockTowerStageCompletedEvent e) => ClockTowerStageCompleted?.Invoke(e);
+        public static void Publish(WorldInteractablesChangedEvent e) => WorldInteractablesChanged?.Invoke(e);
     }
 }

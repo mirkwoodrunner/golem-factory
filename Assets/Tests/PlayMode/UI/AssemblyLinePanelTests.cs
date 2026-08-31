@@ -42,6 +42,10 @@ namespace GolemFactory.Tests.PlayMode
             // The line starts with no candidates seeded (production seeds it via
             // AssemblyLineDemoBootstrap) -- seed one so slot 0 has a real card to claim.
             var card = ScriptableObject.CreateInstance<DraftableCardDefinition>();
+            // DisplayName reads the WRAPPED asset's name, not the card's -- an appendage-less
+            // card reports itself as "(empty)".
+            card.appendage = ScriptableObject.CreateInstance<AppendageActionDefinition>();
+            card.appendage.name = "Coking";
             card.baseCost = 10;
             card.minCost = 2;
             card.decayPerSecond = 0f;
@@ -96,7 +100,13 @@ namespace GolemFactory.Tests.PlayMode
             Assume.That(claimButton, Is.Not.Null, "Fresh AssemblyLineState should have a card in slot 0 to claim.");
             claimButton.onClick.Invoke();
 
-            Assert.AreEqual("Not enough Scrap to claim that card.", status.text);
+            // The refusal names the PRICE, not just the fact of it. The old message said
+            // "Not enough Scrap" for every failure, including a card whose price is partly
+            // Coke -- which is how a player ends up staring at a full Scrap wallet wondering
+            // what the panel means.
+            StringAssert.Contains("Cannot afford", status.text);
+            StringAssert.Contains("Coking", status.text);
+            StringAssert.Contains("10 Scrap", status.text);
         }
 
         [UnityTest]

@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: efa45ace3e6a8b0408fcae49135248aa, type: 3}
+  m_Name: Card_ZeppelinFreightLoader
+  m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.AssemblyLine.DraftableCardDefinition
+  chassis: {fileID: 11400000, guid: 10d38008910e4a44acacb5390fe17dc4, type: 2}
+  logicCore: {fileID: 0}
+  appendage: {fileID: 0}
+  baseCost: 20
+  decayPerSecond: 1
+  minCost: 2
+  claimCost:
+  - itemType: Mainspring
+    quantity: 1
+  - itemType: Lens
+    quantity: 2
+  - itemType: AetherCell
+    quantity: 1
+  - itemType: Casing
+    quantity: 7
+  - itemType: Brass
+    quantity: 10
+  decayFractionPerSecond: 0.01
+  minCostFraction: 0.25
+  prerequisiteCards: []
+  prerequisiteItemProduced: Mainspring
+  isUnique: 1

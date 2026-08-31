@@ -39,6 +39,17 @@ namespace GolemFactory.Economy
         public int CapacityPerType { get; private set; }
 
         private readonly Dictionary<string, int> _quantities = new Dictionary<string, int>();
+
+        // --- Gross flow bookkeeping (presentation) ------------------------------------
+        // Monotone lifetime totals, NOT rates: the derivation stays in Economy/BufferRateTracker
+        // exactly as it always has, and nothing in the simulation reads these back.
+        //
+        // They exist because a LEVEL cannot answer the question the rate readout is asked.
+        // Sampling quantities can only ever see net change, so a line running 60/min in and
+        // 60/min out -- a healthy, fully loaded line -- reads as "Steady 0/min", which is the
+        // one case the player most wants to distinguish from a dead one.
+        private readonly Dictionary<string, int> _deposited = new Dictionary<string, int>();
+        private readonly Dictionary<string, int> _withdrawn = new Dictionary<string, int>();
         public IReadOnlyDictionary<string, int> Quantities => _quantities;
 
         public StorageBuffer(string bufferId) : this(bufferId, Unlimited) { }
@@ -118,6 +129,12 @@ namespace GolemFactory.Economy
 
             _quantities.TryGetValue(itemType, out int current);
             _quantities[itemType] = current + accepted;
+
+            // The ACCEPTED units, not the requested ones: a clamped deposit moved only what
+            // it moved, and counting the refusal as throughput would make a jammed buffer
+            // read as the busiest thing on screen.
+            _deposited.TryGetValue(itemType, out int totalIn);
+            _deposited[itemType] = totalIn + accepted;
             return accepted;
         }
 
@@ -137,7 +154,28 @@ namespace GolemFactory.Economy
         /// (InventoryPanel lists Quantities.Keys, and zeroed keys would render as 0-rows where
         /// the "nothing here" state belongs).
         /// </summary>
-        public void ClearContents() => _quantities.Clear();
+        public void ClearContents()
+        {
+            _quantities.Clear();
+
+            // The flow totals go with the contents. Clear() is the LOAD path, and carrying a
+            // previous session's totals across it would have the rate tracker fit a slope over
+            // a discontinuity -- the same reason the Clock Tower's rate windows are deliberately
+            // not restored.
+            _deposited.Clear();
+            _withdrawn.Clear();
+        }
+
+        /// <summary>
+        /// Units of <paramref name="itemType"/> ever accepted by this buffer. Monotone, so a
+        /// sampler can difference two readings into a gross INFLOW rate.
+        /// </summary>
+        public int TotalDeposited(string itemType) =>
+            itemType != null && _deposited.TryGetValue(itemType, out int total) ? total : 0;
+
+        /// <summary>Units of <paramref name="itemType"/> ever taken out. The outflow half.</summary>
+        public int TotalWithdrawn(string itemType) =>
+            itemType != null && _withdrawn.TryGetValue(itemType, out int total) ? total : 0;
 
         public bool TryWithdraw(string itemType, int amount = 1)
         {
@@ -147,6 +185,8 @@ namespace GolemFactory.Economy
             }
 
             _quantities[itemType] = current - amount;
+            _withdrawn.TryGetValue(itemType, out int totalOut);
+            _withdrawn[itemType] = totalOut + amount;
             return true;
         }
 

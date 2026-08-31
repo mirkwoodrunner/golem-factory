@@ -122,6 +122,37 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void DemolishGhost_ReadsOccupiedAsTheWantedTile()
+        {
+            // The wrecking bar inverts the question Classify answers, which is exactly why it
+            // gets its own classifier: "occupied" is refusal in one mode and the target in the
+            // other, and one method answering both is how a colour ends up meaning two
+            // opposite things.
+            Assert.AreEqual(BuildGhostState.Removable, BuildGhostVisuals.ClassifyRemoval(true));
+            Assert.AreEqual(BuildGhostState.NothingToRemove, BuildGhostVisuals.ClassifyRemoval(false));
+        }
+
+        [Test]
+        public void RemovableGhost_IsSteady_AndNotTheBlockedRed()
+        {
+            float period = BuildGhostVisuals.BlockedPulsePeriod;
+
+            // Steady: the pulse is what carries "refused" in this palette, so a confirmed
+            // destructive click must not borrow it.
+            Assert.AreEqual(
+                BuildGhostVisuals.Evaluate(BuildGhostState.Removable, 0f),
+                BuildGhostVisuals.Evaluate(BuildGhostState.Removable, period * 0.25f));
+
+            Color removable = BuildGhostVisuals.Evaluate(BuildGhostState.Removable, 0f);
+            Color blocked = BuildGhostVisuals.BlockedTint;
+            Assert.Greater(
+                Mathf.Abs(removable.r - blocked.r) + Mathf.Abs(removable.g - blocked.g)
+                    + Mathf.Abs(removable.b - blocked.b),
+                0.1f,
+                "removable and blocked must not read as the same red");
+        }
+
+        [Test]
         public void BlockedGhost_NeverFadesOutCompletely()
         {
             for (float t = 0f; t < BuildGhostVisuals.BlockedPulsePeriod * 2f; t += 0.02f)

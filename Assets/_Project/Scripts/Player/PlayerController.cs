@@ -18,6 +18,11 @@ namespace GolemFactory.Player
         private int _floorBoundsHalfExtent;
         private bool _hasFloorBounds;
 
+        // What the player asked for this frame, before the floor bounds got a say. ArtificerWalkAnimator
+        // takes his FACING from this and his frame from the distance actually covered, so pushing into
+        // a wall turns him to face it without walking him on the spot.
+        public Vector2 LastMoveInput { get; private set; }
+
         // Programmatic setup used by tests (and available for runtime bootstrapping),
         // mirroring BuildModeController.Configure -- avoids requiring Inspector-assigned
         // references.
@@ -34,6 +39,19 @@ namespace GolemFactory.Player
         {
             _floorBoundsConverter = converter;
             _floorBoundsHalfExtent = halfExtent;
+            _hasFloorBounds = true;
+        }
+
+        // Floor Expansion moves the back wall at runtime (§11 item 15), so the clamp cannot read
+        // a constant. Held as the live state object rather than as a copied int, because a copy
+        // taken at Start would still be the old room the moment the player bought a row.
+        private FloorBounds _floorBounds;
+
+        public void SetFloorBounds(GridCoordinateConverter converter, FloorBounds bounds)
+        {
+            _floorBoundsConverter = converter;
+            _floorBounds = bounds;
+            _floorBoundsHalfExtent = bounds != null ? bounds.HalfExtent : _floorBoundsHalfExtent;
             _hasFloorBounds = true;
         }
 
@@ -74,10 +92,16 @@ namespace GolemFactory.Player
         // simulating Input System events, same pattern as BuildModeController.PlaceOrRemove.
         public void MoveBy(Vector2 moveInput, float deltaTime)
         {
+            LastMoveInput = moveInput;
             transform.position += PlayerMovement.ComputeDisplacement(moveInput, _moveSpeed, deltaTime);
             if (_hasFloorBounds)
             {
-                transform.position = FloorLayout.ClampToFloor(transform.position, _floorBoundsConverter, _floorBoundsHalfExtent);
+                transform.position = _floorBounds != null
+                    ? FloorLayout.ClampToFloor(
+                        transform.position, _floorBoundsConverter, _floorBounds.HalfExtent,
+                        FloorLayout.StreetDepth, _floorBounds.NorthExtent)
+                    : FloorLayout.ClampToFloor(
+                        transform.position, _floorBoundsConverter, _floorBoundsHalfExtent);
             }
         }
     }
