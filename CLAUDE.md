@@ -323,9 +323,14 @@ an actual playable front door, reusing `Main.unity`'s systems unchanged via two 
   (`TechTreeChartLayout`) and state rules (`TechTreeStatusRules`) are engine-free and tested; the
   generated pixel art is chrome only, never a baked chart — a baked one would be a second copy of
   `progression-design.md` §5.2/§6 that no test could hold to the assets. It is a **readout**, not a
-  gate: §8's Assembly-Line gating is still unbuilt, so nodes light up from what the player has
-  produced, built and completed. Nodes flagged `IsPlanned` describe unbuilt design and can never
-  reach `Researched`; a test pins exactly which six those are.
+  gate: it never withholds anything, so nodes light up from what the player has produced, built
+  and completed. (§8's Assembly-Line gating **has** since shipped and is on in `Sandbox.unity`
+  — `gateWorkbenchRoster: 1` — but it gates the *Workbench vault*, not this chart.) Nodes flagged
+  `IsPlanned` describe unbuilt design and can never reach `Researched`.
+  **That set is now EMPTY** — every node on the chart is a shipped feature — and
+  `PlannedNodesAreTheOnesTheBuildDoesNotHave` pins it that way. The flag and the test stay:
+  the next designed-but-unbuilt thing should be marked the same way rather than quietly drawn
+  as though it existed.
 - The Workbench (`UI/WorkbenchController.cs` + `WorkbenchCard.cs`/`WorkbenchDropZone.cs`) is the
   one real **UGUI** system (Canvas + EventSystem + `InputSystemUIInputModule` — the project's
   Input System setting is New-Input-System-only, so the legacy `StandaloneInputModule` won't

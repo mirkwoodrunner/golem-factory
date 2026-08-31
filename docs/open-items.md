@@ -1379,8 +1379,8 @@ Nothing here blocks anything. All of it is felt-not-measured.
   answer is a picker panel rather than a longer cycle.
 - **Is `Straining` useful or is it noise?** It is the only predictive mood, and the only one whose
   value depends entirely on whether 9-of-12 is far enough ahead of the jam to act on.
-- **Ten rows in the build menu.** The menu's height is derived from the row count so nothing is cut
-  off, but ten is worth a look on a real screen.
+- **Eleven rows in the build menu** — ten placeables plus the Demolish row. The menu's height is
+  derived from the row count so nothing is cut off, but eleven is worth a look on a real screen.
 - **The recycler's art is a placeholder** like every other building's, and it carries more weight
   than most: its silhouette is the only thing saying "this one gives something back, go and collect
   it".
@@ -1408,10 +1408,10 @@ person in front of the running game.
 | **Pricing the market** (§2) | `docs/game-design.md`'s "full truckload shipments" implies a cost and a delivery that no design doc specifies. Inventing an economy for it would be design work wearing an implementation hat. |
 | **Whether the Workbench needs a larger job** (§2) | Explicitly a judgement to be made after playing a factory, and the mitigation it was waiting on (per-slot `Haul` quantities) is already built. |
 | **Playtesting the arc** (§3) | The boiler fuel ratio, §9's 12-15 minute manual era, every golem count at ±25 %. Nothing here can be measured from a test suite. |
-| **§8's Assembly-Line gating** (§4) | The standing "every card available from the start" deferral. It is a whole system (a claimed-card ledger, a gating rule, the Workbench roster becoming dynamic) rather than a backlog item, and the tech tree chart was built to absorb it in one place when it lands. |
+| **§8's Assembly-Line gating** (§4) | ~~The standing "every card available from the start" deferral~~ — **it has since landed and is ON in `Sandbox.unity`** (`gateWorkbenchRoster: 1`). The vault shows claimed cards only, with the movement verbs granted at t=0 so a fresh save can still program a golem. Row kept as the record of why the pass left it. |
 | **Belt merges and splitters** (§3) | A deliberate design constraint the progression leans on, not a defect. |
-| **Retiring `Main.unity`** (§3) | It is load-bearing as the id-routed regression bed -- every pre-machine-model semantic is pinned there. Retiring it needs somewhere else for those tests to live. |
-| **Floor Expansion, the Freight Link and Mast, the Slag Heap** | Still `IsPlanned` on the tech tree, and the chart's pinned-six test now pins four. Each is a feature, not a gap. |
+| **Retiring `Main.unity`** (§3) | ~~It is load-bearing as the id-routed regression bed~~ — **done: the scene is gone and those tests were rehoused** into `Assets/Tests/EditMode/Golems/IdRoutedDemoRegressionTests.cs`, which drives the same `HardcodedDemoProgram` builders the scene's bootstraps used. Row kept as the record of what had to exist first. |
+| **Floor Expansion, the Freight Link and Mast, the Slag Heap** | ~~Still `IsPlanned` on the tech tree~~ — **all three are now built and light up when you build them**, and the pinned-planned test asserts an **empty** set. Left in this table as the record of why they were deferred at the time. |
 | **Presentation polish** (§3) | Workbench hover states, the empty interior, dramatic lighting, the mirrored belt-art pair. Reviewed and judged non-blocking, and unchanged by this pass. |
 
 One pre-existing oddity noticed on the way through and left alone: every Unity run logs a YAML
