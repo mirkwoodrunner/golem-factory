@@ -124,6 +124,7 @@ MonoBehaviour:
     quantity: 20
   - itemType: IronPlate
     quantity: 10
+  dragPlaceable: 0
 --- !u!114 &2663855796742386309
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -109,5 +109,25 @@ namespace GolemFactory.Tests.EditMode
                     FacingUtility.RotateClockwise(FacingUtility.RotateClockwise(facing)));
             }
         }
+
+        [Test]
+        public void RotatingAnticlockwise_UndoesAClockwiseTurn()
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                var facing = (Facing)i;
+                Assert.AreEqual(facing,
+                    FacingUtility.RotateCounterClockwise(FacingUtility.RotateClockwise(facing)));
+            }
+        }
+
+        [Test]
+        public void AnticlockwiseIsNorthWestSouthEast()
+        {
+            Assert.AreEqual(Facing.West, FacingUtility.RotateCounterClockwise(Facing.North));
+            Assert.AreEqual(Facing.South, FacingUtility.RotateCounterClockwise(Facing.West));
+            Assert.AreEqual(Facing.East, FacingUtility.RotateCounterClockwise(Facing.South));
+            Assert.AreEqual(Facing.North, FacingUtility.RotateCounterClockwise(Facing.East));
+        }
     }
 }

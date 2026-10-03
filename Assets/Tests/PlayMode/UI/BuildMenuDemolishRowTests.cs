@@ -66,6 +66,29 @@ namespace GolemFactory.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator PickingAPlaceable_PutsTheWreckingBarDown()
+        {
+            // The MIRROR of the assertion above, and it was missing -- which is exactly how the
+            // bug shipped. The test pinned "the bar puts the placeable down" and nothing pinned
+            // the other direction, so selecting Demolish and then a placeable left BOTH in hand.
+            (BuildMenuPanel panel, RectTransform container) = Build(placeables: 2);
+            yield return null;
+
+            BuildModeController controller = _root.GetComponentInChildren<BuildModeController>();
+            Button demolish = container.GetChild(container.childCount - 1).GetComponent<Button>();
+            Button firstPlaceable = container.GetChild(0).GetComponent<Button>();
+
+            demolish.onClick.Invoke();
+            Assert.IsTrue(controller.IsDemolishActive, "precondition: the bar is in hand");
+
+            firstPlaceable.onClick.Invoke();
+
+            Assert.IsFalse(controller.IsDemolishActive,
+                "picking a placeable must put the wrecking bar down");
+            Assert.IsNotNull(controller.ActivePrefab);
+        }
+
+        [UnityTest]
         public IEnumerator TheMenu_GrowsToFitTheExtraRow()
         {
             // The authored panel had exactly enough room for nine rows. The tenth would have

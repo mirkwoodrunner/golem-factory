@@ -120,6 +120,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Buildings.PlaceableBuilding
   cost: []
+  dragPlaceable: 0
 --- !u!114 &8417418267294178222
 MonoBehaviour:
   m_ObjectHideFlags: 0

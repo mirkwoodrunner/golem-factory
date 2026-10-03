@@ -124,6 +124,7 @@ MonoBehaviour:
     quantity: 20
   - itemType: Casing
     quantity: 10
+  dragPlaceable: 0
 --- !u!114 &8423622246570455901
 MonoBehaviour:
   m_ObjectHideFlags: 0

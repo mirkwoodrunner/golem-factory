@@ -212,6 +212,13 @@ could not be reused: a pipe has no facing and cycles in a steam graph are meanin
 harmful. `SteamPipeRules` is a plain undirected BFS instead — a much smaller component than
 `BeltNetwork`, as §11 item 4 predicted.
 
+**They now DRAW as joints, and that did not give them a facing.** `Steam/PipeShapeRules` picks one
+of five pieces (end, straight, corner, tee, cross) from the same four-neighbour adjacency the
+flood fill walks, and rotates it — so a north-south column of pipe stops rendering as a stack of
+disconnected rungs while being, correctly, one connected network. It is presentation read off the
+topology; nothing about reachability moved. `R` decides exactly one thing for a pipe: which way an
+**isolated** stub points, which is the one case adjacency cannot answer.
+
 **The three determinism decisions §3.1 leaves open, each pinned by a test:**
 
 - **Which 8**, when more than 8 golems reach one boiler: golems in a **total order by cell**
@@ -1134,6 +1141,13 @@ Each of these was reviewed and judged non-blocking:
   outline with no baked light, so rotating it contradicts no light direction. A test pins the
   quarter-turn property, because if it ever stops holding (a projection change, eight-way facing)
   the rotated chevron stops working and the mirrored pair becomes real work again.
+- **Corner pieces have since landed, and they vindicate the entry above rather than reversing
+  it.** `belt_tile_corner_left/right` are one drawing and its top-to-bottom flip, rotated into all
+  eight bends by the same `FacingVisuals.ScreenAngleDegrees` the chevron uses. The flip is
+  allowed for the same reason the rotation is: the belt set bakes no light direction. What
+  changed is that the lane sprite is now on a `Lane` **child** of `BeltPrefab` and is actually
+  rotated — before this, only the direction arrow turned, so *every* belt drew an east-west lane
+  no matter which way it ran.
 
 ---
 

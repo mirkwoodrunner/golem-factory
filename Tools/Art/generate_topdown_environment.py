@@ -14,6 +14,7 @@ Output: Assets/_Project/Art/, overwriting the diamond tiles of the same name.
 """
 
 import colorsys
+import math
 import os
 import random
 
@@ -428,6 +429,95 @@ def make_belt_tile():
                 if rail <= y < TILE - rail:
                     px[x, y] = _shade(BELT_RAIL, 0.26)
     return img
+
+
+def make_belt_corner():
+    """Belt surface for one cell where the lane TURNS: in at the south edge, out at the east.
+
+    Canonical for a belt whose Facing is East and which is fed from its right-hand side, i.e.
+    World/BeltShapeRules' CornerRight. The other three rotations are quarter turns applied by
+    Buildings/PlaceableBelt (FacingVisuals owns the angle, as everywhere else), and CornerLeft is
+    this image flipped top-to-bottom -- see make_belt_corner_left, which is why the chevrons are
+    drawn as geometry rather than stamped: a flip has to reverse them, and it does.
+
+    WHY THE DECK STILL FILLS THE WHOLE TILE. A straight belt occupies its cell edge to edge, so
+    an L-shaped corner drawn as two half-width arms would neck down to half the lane exactly
+    where a run turns, and read as a break in the belt rather than a bend in it. The lane keeps
+    its full width and it is the RAILS that turn: the outer pair wrap the two closed edges as one
+    L, and the inner pair collapse to the nub at the corner they turn around, which is what a
+    64px-wide lane bending 90 degrees geometrically is.
+    """
+    img = Image.new("RGBA", (TILE, TILE), (0, 0, 0, 0))
+    px = img.load()
+    rail = 5
+    # PIL's y grows DOWNWARD, so row 0 is the tile's NORTH edge. The turn runs from the south
+    # (bottom) edge to the east (right) edge, which leaves north and west closed.
+    inner = (TILE - 1, TILE - 1)  # the corner the lane bends around, in PIL coordinates
+
+    for y in range(TILE):
+        for x in range(TILE):
+            dx, dy = x - inner[0], y - inner[1]
+            radius = (dx * dx + dy * dy) ** 0.5
+            if radius < rail:
+                # The inner rail: a full-width lane turning a right angle has an inside radius
+                # of nothing, so its inner rail is a nub rather than an arc.
+                px[x, y] = _shade(BELT_RAIL, -0.30)
+                continue
+
+            if y < rail or x < rail:
+                # The outer rail, wrapped round both closed edges as one continuous L so a run
+                # of belts reads as one lane bending, not as two lanes meeting.
+                edge = y == 0 or x == 0
+                lip = y == rail - 1 or x == rail - 1
+                px[x, y] = (_shade(BELT_FRAME, -0.20) if edge
+                            else _shade(BELT_RAIL, -0.30 if lip else 0.0))
+                continue
+
+            # Slats run ACROSS the lane, which on a bend means concentric arcs about the inner
+            # corner. Period 8, the same cadence the straight tile uses, so a corner dropped into
+            # a straight run does not visibly change gear.
+            band = int(radius) // 8
+            tone = rng_board_tone(band, 5150)
+            px[x, y] = (_shade(BELT_SLAT, tone) if (int(radius) % 8) < 3
+                        else _shade(BELT_DECK, tone * 0.6))
+
+    # Direction chevrons along the mid-lane arc, pointing the way an item travels (up the south
+    # arm, round, and out east). Plotted point by point rather than with ImageDraw.line, for the
+    # same reason the straight tile's are: a two-pixel-wide antialiased-free diagonal line still
+    # lands as a ragged pair, while stepping the V one pixel at a time gives the crisp single-
+    # pixel arms the rest of the set is drawn with.
+    chevron = _shade(BELT_RAIL, 0.26)
+    mid = TILE / 2.0
+    for t in (0.18, 0.5, 0.82):
+        angle = math.pi + t * (math.pi / 2.0)   # from due-west of the corner round to due-north
+        cx = inner[0] + mid * math.cos(angle)
+        cy = inner[1] + mid * math.sin(angle)
+        # Travel is the tangent, taken in the direction of increasing angle.
+        tx, ty = -math.sin(angle), math.cos(angle)
+        nx, ny = -ty, tx
+        # Half-pixel steps along the arms. A whole-pixel walk is fine for the straight tile,
+        # whose chevrons are axis-aligned, but on the bend the arms land at every angle and a
+        # whole-pixel walk leaves them as dotted lines with gaps.
+        for half in range(13):
+            k = half * 0.5
+            for side in (1.0, -1.0):
+                x = int(round(cx + (3.0 - k) * tx + side * k * nx))
+                y = int(round(cy + (3.0 - k) * ty + side * k * ny))
+                if 0 <= x < TILE and 0 <= y < TILE and img.getpixel((x, y))[3] > 0:
+                    px[x, y] = chevron
+    return img
+
+
+def make_belt_corner_left():
+    """The mirror of make_belt_corner: in at the NORTH edge, out at the east.
+
+    A flip rather than a second drawing, and that is a claim about the art as much as a saving:
+    the belt set carries no baked light direction (the outline is flat and the deck's shading
+    runs across the lane, not down it), so a mirrored belt contradicts nothing. The same argument
+    already settled the rotated chevron in docs/open-items.md 2's belt-art entry -- and it fails
+    the moment either half stops being true, which is what the shape test pins.
+    """
+    return make_belt_corner().transpose(Image.FLIP_TOP_BOTTOM)
 
 
 def make_ground_shadow():
@@ -1418,6 +1508,8 @@ def main():
     _save(make_build_ghost(), "build_ghost_tile.png")
     _save(make_interaction_ring(), "interaction_ring.png")
     _save(make_belt_tile(), "belt_tile.png")
+    _save(make_belt_corner(), "belt_tile_corner_right.png")
+    _save(make_belt_corner_left(), "belt_tile_corner_left.png")
     _save(make_ground_shadow(), "ground_shadow.png")
 
     # Room boundary. ne/nw are the same image under top-down (see make_wall) -- the mirrored

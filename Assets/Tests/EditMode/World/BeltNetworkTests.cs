@@ -200,6 +200,49 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void TurningAPlacedBelt_KeepsItsLaneAndRelinks()
+        {
+            // What a click-and-drag does to every cell but the last: the run only learns which
+            // way a belt should point once it reaches the NEXT cell.
+            PlacedBelt corner = Place(0, 0, Facing.East);
+            PlacedBelt north = Place(0, 1, Facing.North);
+            Assert.IsNull(corner.Segment.Next, "an east-facing belt must not feed the one above");
+
+            GolemFactory.Belts.BeltSegment before = corner.Segment;
+            Assert.IsTrue(_network.TrySetFacing(new Vector2Int(0, 0), Facing.North));
+
+            Assert.AreSame(before, corner.Segment,
+                "turning a belt must not mint a new segment -- that would drop its cargo");
+            Assert.AreEqual(Facing.North, corner.Facing);
+            Assert.AreSame(north.Segment, corner.Segment.Next,
+                "the turn has to relink, or the lane graph still describes the old direction");
+        }
+
+        [Test]
+        public void TurningABeltAwayFromItsNeighbour_DropsTheLink()
+        {
+            PlacedBelt a = Place(0, 0, Facing.North);
+            Place(0, 1, Facing.North);
+            Assert.IsNotNull(a.Segment.Next);
+
+            Assert.IsTrue(_network.TrySetFacing(new Vector2Int(0, 0), Facing.East));
+            Assert.IsNull(a.Segment.Next, "a stale Next is worse than a dead end -- see TryRemove");
+        }
+
+        [Test]
+        public void TurningToTheFacingItAlreadyHas_ReportsNoChange()
+        {
+            Place(4, 4, Facing.West);
+            Assert.IsFalse(_network.TrySetFacing(new Vector2Int(4, 4), Facing.West));
+        }
+
+        [Test]
+        public void TurningACellWithNoBelt_IsRefused()
+        {
+            Assert.IsFalse(_network.TrySetFacing(new Vector2Int(9, 9), Facing.North));
+        }
+
+        [Test]
         public void ANetworkWithNoCollaborators_StillPlacesWithoutThrowing()
         {
             // A BeltNetwork that was never Configured (or was given nulls) must degrade

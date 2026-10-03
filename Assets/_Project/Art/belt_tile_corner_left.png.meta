@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 205b9d6271f0abb42801366e7b0e9c33
+guid: a5eb87e38bc86574ea27aad3741d17bd
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 7678536743585720322
-    second: steam_pipe_0
+      213: -331449697946267875
+    second: belt_tile_corner_left_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: steam_pipe_0
+      name: belt_tile_corner_left_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
         width: 64
-        height: 30
+        height: 64
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 20826345c74af8a60800000000000000
-      internalID: 7678536743585720322
+      spriteID: d1f800d7144766bf0800000000000000
+      internalID: -331449697946267875
       vertices: []
       indices: 
       edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      steam_pipe_0: 7678536743585720322
+      belt_tile_corner_left_0: -331449697946267875
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

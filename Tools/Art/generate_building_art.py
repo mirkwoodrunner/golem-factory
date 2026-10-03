@@ -122,36 +122,109 @@ def _contact_shadow(draw, box):
     draw.rectangle([x0, y0, x1, y1], fill=(38, 24, 26, 190))
 
 
-def make_steam_pipe() -> Image.Image:
-    """A low brass pipe run lying across the tile.
+PIPE_TILE = 64          # one cell at PPU 64 -- these are FLOOR TILES, not standing buildings
+PIPE_HALF = 11          # half the bore's width, so the run is 22px across
+PIPE_COLLAR = 16        # half-width of the flange collar at a tile edge
+PIPE_CENTRE = 31.5      # the axis, in the middle of a 64px tile
 
-    Deliberately the SHORTEST of the three. A pipe is the one placeable a player lays in long
-    runs, and anything tall would wall off the room it is threaded through -- steam pipes are
-    plumbing, not architecture, and they have to read as something you can see over.
+
+def save_tile(image: Image.Image, name: str) -> None:
+    """Writes a 64x64 tile UNTRIMMED, unlike save() above.
+
+    The difference is the whole reason this exists. save() crops to the alpha bounds because a
+    standing building is pivoted BottomCenter on its own footprint. A pipe is a floor tile
+    pivoted at its CENTRE, rotated in quarter turns at runtime, and it has to line up with the
+    tile next to it -- so cropping an end cap to its ink would move its axis off the cell centre
+    and shear the run.
     """
-    width, height = 64, 34
-    image = Image.new("RGBA", (width, height), TRANSPARENT)
+    os.makedirs(OUT_DIR, exist_ok=True)
+    path = os.path.join(OUT_DIR, name)
+    image.save(path)
+    print(f"wrote {path} ({image.width}x{image.height})")
+
+
+def _pipe_arm(draw, image, side: str) -> None:
+    """One run of pipe from the tile's centre out to the named edge, with its end flange.
+
+    `side` is in SCREEN terms ("n" is up), and PIL's y grows downward, so north is the low rows.
+    The flange sits a few pixels in from the edge rather than on it: two neighbouring tiles then
+    show a pair of collars at their shared boundary, which is what makes a joint read as bolted
+    rather than as a seam in a texture.
+    """
+    lo, hi = int(PIPE_CENTRE - PIPE_HALF), int(PIPE_CENTRE + PIPE_HALF)
+    if side in ("e", "w"):
+        x0, x1 = (int(PIPE_CENTRE), PIPE_TILE - 1) if side == "e" else (0, int(PIPE_CENTRE))
+        draw.rectangle([x0, lo, x1, hi], fill=BRASS)
+        # A cylinder needs a specular line and a shadow line, or it is a plank. Both run ALONG
+        # the axis, which is the one direction that survives the runtime quarter turns: rotate a
+        # lengthwise highlight and it is still lengthwise. A baked top-light would not be.
+        draw.line([(x0, lo + 3), (x1, lo + 3)], fill=_shade(BRASS_LIGHT, 0.10))
+        draw.line([(x0, hi - 2), (x1, hi - 2)], fill=BRASS_DARK)
+        draw.line([(x0, lo), (x1, lo)], fill=OUTLINE)
+        draw.line([(x0, hi), (x1, hi)], fill=OUTLINE)
+        fx = PIPE_TILE - 8 if side == "e" else 3
+        draw.rectangle([fx, int(PIPE_CENTRE - PIPE_COLLAR), fx + 4,
+                        int(PIPE_CENTRE + PIPE_COLLAR)], fill=BRASS_DARK, outline=OUTLINE)
+        _rivets(draw, (fx + 1,), (int(PIPE_CENTRE) - 12, int(PIPE_CENTRE) + 9))
+    else:
+        y0, y1 = (0, int(PIPE_CENTRE)) if side == "n" else (int(PIPE_CENTRE), PIPE_TILE - 1)
+        draw.rectangle([lo, y0, hi, y1], fill=BRASS)
+        draw.line([(lo + 3, y0), (lo + 3, y1)], fill=_shade(BRASS_LIGHT, 0.10))
+        draw.line([(hi - 2, y0), (hi - 2, y1)], fill=BRASS_DARK)
+        draw.line([(lo, y0), (lo, y1)], fill=OUTLINE)
+        draw.line([(hi, y0), (hi, y1)], fill=OUTLINE)
+        fy = 3 if side == "n" else PIPE_TILE - 8
+        draw.rectangle([int(PIPE_CENTRE - PIPE_COLLAR), fy,
+                        int(PIPE_CENTRE + PIPE_COLLAR), fy + 4],
+                       fill=BRASS_DARK, outline=OUTLINE)
+        _rivets(draw, (int(PIPE_CENTRE) - 12, int(PIPE_CENTRE) + 9), (fy + 1,))
+
+
+def _pipe_hub(draw, image) -> None:
+    """The junction casting the arms meet in.
+
+    Only drawn where more than two arms meet or where they meet at an angle -- a straight run
+    has no casting, so a long pipe reads as one length rather than as a row of couplings.
+    """
+    lo, hi = int(PIPE_CENTRE - PIPE_HALF - 2), int(PIPE_CENTRE + PIPE_HALF + 2)
+    # Flat, not speckled. The speckle _panel offers is what stops a large building face reading
+    # as a flat rectangle; on a 26px casting it just reads as grit, and a casting a shade darker
+    # than the bore already separates the junction from the runs meeting in it.
+    _panel(draw, (lo, lo, hi, hi), _shade(BRASS, -0.13), BRASS_LIGHT, BRASS_DARK, 0.0, 71, image)
+    _rivets(draw, (lo + 3, hi - 3), (lo + 3, hi - 5))
+
+
+def make_steam_pipe_piece(sides: str) -> Image.Image:
+    """One pipe tile, open on the given SCREEN sides ("e", "ew", "ne", "nes", "nesw").
+
+    THE FIVE PIECES AND WHY THEY ARE FIVE. Steam/PipeShapeRules picks one of these from a cell's
+    four neighbours and then rotates it, so the set only has to cover the shapes a quarter turn
+    cannot reach: one open side, two opposite, two adjacent, three, four. Sixteen baked masks
+    would be the same five pictures written sixteen times, and the rotation is exact -- these are
+    axis-aligned at 64px with no baked light direction, which is the same property that lets the
+    belt chevron be one sprite rather than four (docs/open-items.md 2).
+    """
+    image = Image.new("RGBA", (PIPE_TILE, PIPE_TILE), TRANSPARENT)
     draw = ImageDraw.Draw(image)
 
-    _contact_shadow(draw, (4, 28, 59, 31))
+    for side in sides:
+        _pipe_arm(draw, image, side)
 
-    # The run itself, edge to edge, so two pipes on neighbouring cells read as one line.
-    _panel(draw, (0, 13, 63, 27), BRASS, BRASS_LIGHT, BRASS_DARK, 0.12, 11, image)
-    # A cylinder needs a specular line, or it is a plank.
-    draw.line([(1, 16), (62, 16)], fill=_shade(BRASS_LIGHT, 0.25))
-    draw.line([(1, 25), (62, 25)], fill=_shade(BRASS_DARK, -0.2))
+    if sides not in ("ew", "ns"):
+        _pipe_hub(draw, image)
 
-    # Flanges at both ends: what makes the join between two cells look deliberate.
-    for x in (2, 55):
-        _panel(draw, (x, 9, x + 6, 31), BRASS_DARK, BRASS, (60, 40, 22, 255), 0.10, 5, image)
-        _rivets(draw, (x + 2,), (12, 26))
-
-    # A pressure gauge on the crown, the one detail that says "steam" rather than "drainpipe".
-    draw.ellipse([26, 2, 38, 14], fill=IRON, outline=OUTLINE)
-    draw.ellipse([28, 4, 36, 12], fill=_shade(IRON, -0.25))
-    draw.ellipse([29, 5, 35, 11], fill=BRASS_LIGHT)
-    draw.line([(32, 8), (34, 6)], fill=OUTLINE)
-    draw.point([(30, 5)], fill=(255, 246, 226, 255))
+    if sides == "e":
+        # The capped end, and the one place the pressure gauge survives the move to tiles. It was
+        # on every pipe when a pipe was a single hero sprite; on a laid run that repeated the same
+        # dial every 64 pixels. A terminus is exactly where a gauge belongs, and it doubles as the
+        # readable difference between "the run stops here" and "the run continues off-screen".
+        _panel(draw, (10, 14, 20, 49), BRASS_DARK, BRASS, _shade(BRASS_DARK, -0.3), 0.0, 5, image)
+        _rivets(draw, (13, 17), (18, 42))
+        draw.ellipse([25, 20, 41, 36], fill=IRON, outline=OUTLINE)
+        draw.ellipse([27, 22, 39, 34], fill=_shade(IRON, -0.25))
+        draw.ellipse([28, 23, 38, 33], fill=BRASS_LIGHT)
+        draw.line([(33, 28), (36, 24)], fill=OUTLINE)
+        draw.point([(30, 24)], fill=(255, 246, 226, 255))
 
     return image
 
@@ -402,7 +475,15 @@ def main() -> None:
     save(make_scrap_recycler(), "scrap_recycler.png")
     save(make_slag_heap(), "slag_heap.png")
     save(make_freight_mast(), "freight_mast.png")
-    save(make_steam_pipe(), "steam_pipe.png")
+    # The pipe is now a FLOOR TILE FAMILY, not one standing sprite: five pieces, centre-pivoted
+    # and square, rotated in quarter turns by Buildings/PlaceableSteamPipe. See
+    # Steam/PipeShapeRules for which piece a cell gets. "steam_pipe.png" keeps its name and
+    # stays the straight run, so every existing reference to it still resolves.
+    save_tile(make_steam_pipe_piece("ew"), "steam_pipe.png")
+    save_tile(make_steam_pipe_piece("e"), "steam_pipe_end.png")
+    save_tile(make_steam_pipe_piece("ne"), "steam_pipe_corner.png")
+    save_tile(make_steam_pipe_piece("nes"), "steam_pipe_tee.png")
+    save_tile(make_steam_pipe_piece("nesw"), "steam_pipe_cross.png")
     save(make_depot(), "depot.png")
     save(make_construction_station(), "golem_construction_station.png")
 

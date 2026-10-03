@@ -39,6 +39,30 @@ namespace GolemFactory.Buildings
         // BuildModeController has exactly one thing to write after Instantiate.
         public GolemFactory.World.Facing Facing { get; set; } = GolemFactory.World.Facing.North;
 
+        // --- Can this be laid in a RUN? -----------------------------------------------------
+        /// <summary>
+        /// Whether holding the mouse down and dragging lays a line of these rather than one.
+        ///
+        /// <para>
+        /// Authored per prefab rather than derived from "has a PlaceableBelt or a
+        /// PlaceableSteamPipe", because the question is about the PLAYER'S GESTURE, not about
+        /// the component: a belt and a pipe are the two things anyone lays fifteen of in a row
+        /// today, but so is a fence, and a Clock Tower with a belt bolted to it would not be. A
+        /// flag also fails safe -- anything nobody has thought about places one at a time, which
+        /// is what every placeable did before this existed.
+        /// </para>
+        ///
+        /// <para>
+        /// Defaults to false, so every prefab authored before the field existed is unchanged.
+        /// </para>
+        /// </summary>
+        [SerializeField] private bool dragPlaceable;
+
+        public bool IsDragPlaceable => dragPlaceable;
+
+        /// <summary>Test/bootstrap setter, matching the <c>Configure(...)</c> idiom.</summary>
+        public void ConfigureDragPlaceable(bool value) => dragPlaceable = value;
+
         public string OwnerId { get; set; } = LocalPlayerOwnerId;
 
         // --- Was this building placed during play, or authored into the scene? ---------------
