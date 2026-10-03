@@ -1,0 +1,152 @@
+using Godot;
+using GolemFactory.Player;
+using GolemFactory.World;
+using CoreVector2 = GolemFactory.Compat.Vector2;
+using CoreVector3 = GolemFactory.Compat.Vector3;
+
+namespace GolemFactory.Nodes
+{
+    /// <summary>
+    /// The Artificer. Moves in Core's frame -- one unit per cell, +y north -- with Core's
+    /// <see cref="PlayerMovement"/>, <see cref="FloorLayout.ClampToFloor(CoreVector3, GridCoordinateConverter, int, int)"/>
+    /// and <see cref="ArtificerWalkAnimation"/>, and converts to pixels only to draw. That is
+    /// the same split Unity's PlayerController and ArtificerWalkAnimator made, so all three
+    /// rules are the ported, tested ones rather than a Godot rewrite.
+    /// </summary>
+    public partial class PlayerNode : Node2D
+    {
+        public const string MoveLeft = "move_left";
+        public const string MoveRight = "move_right";
+        public const string MoveUp = "move_up";
+        public const string MoveDown = "move_down";
+        public const string Interact = "interact";
+
+        /// <summary>Cells per second, Unity's PlayerController default.</summary>
+        [Export] public float MoveSpeed { get; set; } = 4f;
+
+        /// <summary>Starting cell, in Core's frame (north = +y).</summary>
+        [Export] public Vector2I StartCell { get; set; }
+
+        /// <summary>How far an interactable may be and still answer [E], in cells.</summary>
+        [Export] public float InteractRange { get; set; } = 1.6f;
+
+        private static readonly GridCoordinateConverter UnitConverter = new GridCoordinateConverter(new CoreVector2(1f, 1f));
+
+        private readonly Texture2D[] _frames = new Texture2D[ArtificerWalkAnimation.DirectionCount * ArtificerWalkAnimation.FramesPerDirection];
+        private Sprite2D _sprite;
+        private CoreVector3 _corePosition;
+        private float _distanceTravelled;
+        private ArtificerFacing _facing = ArtificerFacing.Down;
+
+        /// <summary>The interactable [E] would use right now, or null.</summary>
+        public IInteractable Focus { get; private set; }
+
+        public override void _Ready()
+        {
+            RegisterInputActions();
+
+            string[] rows = { "down", "left", "right", "up" }; // ArtificerFacing's order
+            for (int row = 0; row < rows.Length; row++)
+            {
+                for (int frame = 0; frame < ArtificerWalkAnimation.FramesPerDirection; frame++)
+                {
+                    _frames[ArtificerWalkAnimation.ComputeSpriteIndex((ArtificerFacing)row, frame)] =
+                        GD.Load<Texture2D>($"res://art/artificer_walk_{rows[row]}_{frame}.png");
+                }
+            }
+
+            _sprite = new Sprite2D { Texture = _frames[0] };
+            GridConversions.StandOnCell(_sprite);
+            AddChild(_sprite);
+            AddChild(new Camera2D());
+
+            _corePosition = new CoreVector3(StartCell.X, StartCell.Y, 0f);
+            Position = ToPixels(_corePosition);
+        }
+
+        public override void _Process(double delta)
+        {
+            Vector2 input = Input.GetVector(MoveLeft, MoveRight, MoveDown, MoveUp); // +y = north
+            var move = new CoreVector2(input.X, input.Y);
+
+            CoreVector3 before = _corePosition;
+            _corePosition += PlayerMovement.ComputeDisplacement(move, MoveSpeed, (float)delta);
+            _corePosition = FloorLayout.ClampToFloor(_corePosition, UnitConverter);
+            Position = ToPixels(_corePosition);
+
+            float moved = (_corePosition - before).magnitude;
+            _facing = ArtificerWalkAnimation.ComputeFacing(move.x, move.y, _facing);
+            _distanceTravelled = ArtificerWalkAnimation.AdvanceDistance(
+                _distanceTravelled, moved, ArtificerWalkAnimation.DefaultStrideLength);
+            int frame = ArtificerWalkAnimation.IsWalking(moved)
+                ? ArtificerWalkAnimation.ComputeFrameIndex(_distanceTravelled, ArtificerWalkAnimation.DefaultStrideLength)
+                : ArtificerWalkAnimation.StandingFrameIndex;
+            _sprite.Texture = _frames[ArtificerWalkAnimation.ComputeSpriteIndex(_facing, frame)];
+
+            Focus = FindNearestInteractable();
+            if (Focus != null && Input.IsActionJustPressed(Interact))
+            {
+                Focus.Interact();
+            }
+        }
+
+        private IInteractable FindNearestInteractable()
+        {
+            IInteractable best = null;
+            float bestDistance = InteractRange * GridConversions.CellPixels;
+            foreach (Node node in GetTree().GetNodesInGroup(InteractableGroup.Name))
+            {
+                if (node is IInteractable candidate && node is Node2D placed)
+                {
+                    float distance = placed.GlobalPosition.DistanceTo(GlobalPosition);
+                    if (distance <= bestDistance)
+                    {
+                        best = candidate;
+                        bestDistance = distance;
+                    }
+                }
+            }
+            return best;
+        }
+
+        private static Vector2 ToPixels(CoreVector3 p) =>
+            new Vector2(p.x * GridConversions.CellPixels, -p.y * GridConversions.CellPixels);
+
+        // Registered in code rather than in project.godot's [input] block, whose serialized
+        // InputEvent objects are not something to hand-write. Still Godot's own InputMap, so the
+        // editor's Input Map tab shows and can rebind them at runtime.
+        private static void RegisterInputActions()
+        {
+            Bind(MoveLeft, Key.A, Key.Left);
+            Bind(MoveRight, Key.D, Key.Right);
+            Bind(MoveUp, Key.W, Key.Up);
+            Bind(MoveDown, Key.S, Key.Down);
+            Bind(Interact, Key.E);
+        }
+
+        private static void Bind(string action, params Key[] keys)
+        {
+            if (InputMap.HasAction(action))
+            {
+                return;
+            }
+            InputMap.AddAction(action);
+            foreach (Key key in keys)
+            {
+                InputMap.ActionAddEvent(action, new InputEventKey { PhysicalKeycode = key });
+            }
+        }
+    }
+
+    /// <summary>Something the Artificer can use with [E].</summary>
+    public interface IInteractable
+    {
+        string Prompt { get; }
+        void Interact();
+    }
+
+    public static class InteractableGroup
+    {
+        public const string Name = "interactable";
+    }
+}
