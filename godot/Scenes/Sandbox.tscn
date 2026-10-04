@@ -1,67 +1,52 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://Scripts/WorldNode.cs" id="1_world"]
 [ext_resource type="Script" path="res://Scripts/FloorLayer.cs" id="2_floor"]
-[ext_resource type="Script" path="res://Scripts/ResourceNodeMarker.cs" id="3_node"]
-[ext_resource type="Script" path="res://Scripts/BeltRun.cs" id="4_belt"]
-[ext_resource type="Script" path="res://Scripts/DepotNode.cs" id="5_depot"]
-[ext_resource type="Script" path="res://Scripts/GolemNode.cs" id="6_golem"]
-[ext_resource type="Script" path="res://Scripts/ConstructionStationNode.cs" id="7_station"]
-[ext_resource type="Script" path="res://Scripts/PlayerNode.cs" id="8_player"]
-[ext_resource type="Script" path="res://Scripts/Hud.cs" id="9_hud"]
-[ext_resource type="Script" path="res://Scripts/Scenarios/ScenarioRunner.cs" id="10_check"]
-[ext_resource type="Texture2D" path="res://art/item_scrap.png" id="11_scrap"]
+[ext_resource type="Script" path="res://Scripts/World/ShellNode.cs" id="3_shell"]
+[ext_resource type="Script" path="res://Scripts/World/SandboxNode.cs" id="4_sandbox"]
+[ext_resource type="Script" path="res://Scripts/ConstructionStationNode.cs" id="5_station"]
+[ext_resource type="Script" path="res://Scripts/PlayerNode.cs" id="6_player"]
+[ext_resource type="Script" path="res://Scripts/Player/CameraRigNode.cs" id="7_camera"]
+[ext_resource type="Script" path="res://Scripts/Hud.cs" id="8_hud"]
+[ext_resource type="Script" path="res://Scripts/Scenarios/ScenarioRunner.cs" id="9_scenarios"]
 
 [node name="Sandbox" type="Node2D"]
 
 [node name="World" type="Node" parent="."]
 script = ExtResource("1_world")
+ApplySandboxSetup = true
 
 [node name="Floor" type="TileMapLayer" parent="."]
 script = ExtResource("2_floor")
-
-[node name="Belts" type="Node2D" parent="."]
-script = ExtResource("4_belt")
-StartCell = Vector2i(-2, 0)
-Length = 5
-Facing = 1
+PaintStreet = true
 
 [node name="Entities" type="Node2D" parent="."]
 y_sort_enabled = true
 
-[node name="ScrapNode" type="Node2D" parent="Entities"]
-script = ExtResource("3_node")
-Cell = Vector2i(-4, 0)
-Icon = ExtResource("11_scrap")
+[node name="Shell" type="Node2D" parent="Entities"]
+script = ExtResource("3_shell")
 
-[node name="Depot" type="Node2D" parent="Entities"]
-script = ExtResource("5_depot")
-Cell = Vector2i(4, 0)
-StartingScrap = 12
+[node name="Sandbox" type="Node2D" parent="Entities"]
+y_sort_enabled = true
+script = ExtResource("4_sandbox")
 
-[node name="Unloader" type="Node2D" parent="Entities"]
-script = ExtResource("6_golem")
-GolemId = "Unloader-001"
-Cell = Vector2i(3, 0)
-Facing = 1
-ProgramKind = 1
-
-[node name="Station" type="Node2D" parent="Entities"]
-script = ExtResource("7_station")
-Cell = Vector2i(-4, -3)
-PostCell = Vector2i(-3, 0)
-PostFacing = 1
+[node name="StarterConstructionStation" type="Node2D" parent="Entities"]
+script = ExtResource("5_station")
+Cell = Vector2i(3, -1)
+Roster = PackedStringArray("all")
 
 [node name="Player" type="Node2D" parent="Entities"]
-script = ExtResource("8_player")
-StartCell = Vector2i(-3, -2)
+script = ExtResource("6_player")
+OwnCamera = false
+
+[node name="Camera" type="Camera2D" parent="."]
+script = ExtResource("7_camera")
+TargetPath = NodePath("../Entities/Player")
 
 [node name="Hud" type="CanvasLayer" parent="."]
-script = ExtResource("9_hud")
+script = ExtResource("8_hud")
 PlayerPath = NodePath("../Entities/Player")
-DepotPath = NodePath("../Entities/Depot")
 
 [node name="Scenarios" type="Node" parent="."]
-script = ExtResource("10_check")
-StationPath = NodePath("../Entities/Station")
-DepotPath = NodePath("../Entities/Depot")
+script = ExtResource("9_scenarios")
+StationPath = NodePath("../Entities/StarterConstructionStation")

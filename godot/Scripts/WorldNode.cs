@@ -42,6 +42,22 @@ namespace GolemFactory.Nodes
         public BeltNetwork Belts { get; } = new BeltNetwork();
 
         /// <summary>
+        /// Whether to apply <c>res://data/sandbox.json</c>: the stalls, the market, the buffer
+        /// policy and the room's bounds. On in Sandbox.tscn; off in test scenes (LoopSlice) that
+        /// author their own world.
+        /// </summary>
+        [Export] public bool ApplySandboxSetup { get; set; }
+
+        /// <summary>The applied setup, or null when <see cref="ApplySandboxSetup"/> is off.</summary>
+        public SandboxSetup Setup { get; private set; }
+
+        /// <summary>The truckload market, when the setup built one.</summary>
+        public TruckloadMarket Market { get; private set; }
+
+        /// <summary>The room's live extent (Floor Expansion grows it northward).</summary>
+        public FloorBounds Bounds { get; private set; } = new FloorBounds();
+
+        /// <summary>
         /// The authored definitions (chassis, cards, recipes, ...) from <c>res://data/</c>,
         /// loaded once in <see cref="_Ready"/> before any sibling asks for them.
         /// </summary>
@@ -65,10 +81,25 @@ namespace GolemFactory.Nodes
 
             Belts.Configure(Conveyor, Endpoints, BeltSegmentLengthTicks);
 
+            if (ApplySandboxSetup)
+            {
+                // SandboxBootstrap.Start's rules, in its order: buffer policy, then the stalls,
+                // then the market that trades in them.
+                Setup = SandboxSetup.Parse(FileAccess.GetFileAsString("res://data/sandbox.json"));
+                Setup.ApplyBufferPolicy(Buffers);
+                Setup.RegisterNodes(Nodes);
+                Market = Setup.BuildMarket(Nodes);
+                Bounds = new FloorBounds(FloorLayout.HalfExtent, Setup.startingNorthExtent);
+            }
+
             // Same registration order as SandboxBootstrap: belts advance before any golem
             // ticks, so a golem sees this tick's belt state.
             Clock.TicksPerSecond = TicksPerSecond;
             Clock.Register(Conveyor);
+            if (Market != null)
+            {
+                Clock.Register(Market);
+            }
             Clock.Play();
         }
 

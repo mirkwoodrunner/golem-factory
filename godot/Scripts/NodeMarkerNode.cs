@@ -4,11 +4,12 @@ using GolemFactory.World;
 namespace GolemFactory.Nodes
 {
     /// <summary>
+    /// (LoopSlice.tscn's hand-placed node; the real Sandbox builds its stalls in SandboxNode.)
     /// A resource node on the floor: registers a Core <see cref="ResourceNode"/> and publishes
     /// its endpoint on its cell, which is what lets a golem facing away from it ExtractFromNode.
     /// Same two calls Unity's ResourceNodeMarker made.
     /// </summary>
-    public partial class ResourceNodeMarker : Node2D
+    public partial class NodeMarkerNode : Node2D
     {
         [Export] public string NodeId { get; set; } = "ScrapNode";
         [Export] public string ItemType { get; set; } = Economy.ItemType.Scrap;

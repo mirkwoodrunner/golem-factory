@@ -8,7 +8,7 @@ namespace GolemFactory.Nodes
 {
     /// <summary>
     /// The Artificer. Moves in Core's frame -- one unit per cell, +y north -- with Core's
-    /// <see cref="PlayerMovement"/>, <see cref="FloorLayout.ClampToFloor(CoreVector3, GridCoordinateConverter, int, int)"/>
+    /// <see cref="PlayerWalker"/> (movement, the world clamp and the walk frame)
     /// and <see cref="ArtificerWalkAnimation"/>, and converts to pixels only to draw. That is
     /// the same split Unity's PlayerController and ArtificerWalkAnimator made, so all three
     /// rules are the ported, tested ones rather than a Godot rewrite.
@@ -30,13 +30,23 @@ namespace GolemFactory.Nodes
         /// <summary>How far an interactable may be and still answer [E], in cells.</summary>
         [Export] public float InteractRange { get; set; } = 1.6f;
 
+        /// <summary>Carry a plain Camera2D. Off where a CameraRigNode follows the player instead.</summary>
+        [Export] public bool OwnCamera { get; set; } = true;
+
+        /// <summary>
+        /// When set, replaces keyboard input -- how a scenario walks the player. Core frame:
+        /// +y is north.
+        /// </summary>
+        public Vector2? ScriptedMove { get; set; }
+
+        /// <summary>Where the player stands, in cells (Core frame).</summary>
+        public CoreVector3 CorePosition => _walker.Position;
+
         private static readonly GridCoordinateConverter UnitConverter = new GridCoordinateConverter(new CoreVector2(1f, 1f));
 
         private readonly Texture2D[] _frames = new Texture2D[ArtificerWalkAnimation.DirectionCount * ArtificerWalkAnimation.FramesPerDirection];
         private Sprite2D _sprite;
-        private CoreVector3 _corePosition;
-        private float _distanceTravelled;
-        private ArtificerFacing _facing = ArtificerFacing.Down;
+        private PlayerWalker _walker;
 
         /// <summary>The interactable [E] would use right now, or null.</summary>
         public IInteractable Focus { get; private set; }
@@ -58,30 +68,27 @@ namespace GolemFactory.Nodes
             _sprite = new Sprite2D { Texture = _frames[0] };
             GridConversions.StandOnCell(_sprite);
             AddChild(_sprite);
-            AddChild(new Camera2D());
+            if (OwnCamera)
+            {
+                AddChild(new Camera2D());
+            }
 
-            _corePosition = new CoreVector3(StartCell.X, StartCell.Y, 0f);
-            Position = ToPixels(_corePosition);
+            _walker = new PlayerWalker(MoveSpeed) { Position = new CoreVector3(StartCell.X, StartCell.Y, 0f) };
+            _walker.SetFloorBounds(UnitConverter, FloorLayout.HalfExtent);
+            Position = ToPixels(_walker.Position);
         }
 
         public override void _Process(double delta)
         {
-            Vector2 input = Input.GetVector(MoveLeft, MoveRight, MoveDown, MoveUp); // +y = north
-            var move = new CoreVector2(input.X, input.Y);
+            Vector2 input = ScriptedMove ?? Input.GetVector(MoveLeft, MoveRight, MoveDown, MoveUp); // +y = north
 
-            CoreVector3 before = _corePosition;
-            _corePosition += PlayerMovement.ComputeDisplacement(move, MoveSpeed, (float)delta);
-            _corePosition = FloorLayout.ClampToFloor(_corePosition, UnitConverter);
-            Position = ToPixels(_corePosition);
-
-            float moved = (_corePosition - before).magnitude;
-            _facing = ArtificerWalkAnimation.ComputeFacing(move.x, move.y, _facing);
-            _distanceTravelled = ArtificerWalkAnimation.AdvanceDistance(
-                _distanceTravelled, moved, ArtificerWalkAnimation.DefaultStrideLength);
-            int frame = ArtificerWalkAnimation.IsWalking(moved)
-                ? ArtificerWalkAnimation.ComputeFrameIndex(_distanceTravelled, ArtificerWalkAnimation.DefaultStrideLength)
-                : ArtificerWalkAnimation.StandingFrameIndex;
-            _sprite.Texture = _frames[ArtificerWalkAnimation.ComputeSpriteIndex(_facing, frame)];
+            // Bounded by the WORLD (workshop + street), with the north wall wherever Floor
+            // Expansion has pushed it -- the clamp Unity's PlayerController applied.
+            FloorBounds bounds = WorldNode.Find(this)?.Bounds ?? new FloorBounds();
+            _walker.SetNorthExtent(bounds.NorthExtent);
+            _walker.MoveBy(new CoreVector2(input.X, input.Y), (float)delta);
+            Position = ToPixels(_walker.Position);
+            _sprite.Texture = _frames[_walker.SpriteIndex];
 
             Focus = FindNearestInteractable();
             if (Focus != null && Input.IsActionJustPressed(Interact))

@@ -33,7 +33,7 @@ dotnet test godot/GolemFactory.sln            # Core tests: ~0.6 s, no engine in
 
 G=".../Godot_v4.7.2-stable_mono_win64_console.exe"
 "$G" --headless --path godot --build-solutions --quit             # compile the Godot project
-"$G" --headless --path godot --fixed-fps 60 -- --scenario loop    # an end-to-end scenario, exit 0/1
+"$G" --headless --path godot --fixed-fps 60 -- --scenario world   # an end-to-end scenario, exit 0/1
 "$G" --path godot --fixed-fps 60 --quit-after 240 \
      --write-movie <dir>/frame.png -- --demo                       # render frames to look at
 ```
@@ -41,11 +41,17 @@ G=".../Godot_v4.7.2-stable_mono_win64_console.exe"
 `--fixed-fps 60` makes every frame 1/60 s of game time, so headless runs are deterministic
 and as fast as the machine allows.
 
+**Scenes.** `Scenes/Sandbox.tscn` is the game world (the main scene). `Scenes/LoopSlice.tscn`
+is the spike's hand-built slice, kept as the `loop` scenario's fixture; run it by passing
+`res://Scenes/LoopSlice.tscn` before `--`.
+
 **Scenarios** (`Scripts/Scenarios/`) are the scene-level checks. `ScenarioRunner` is a node in
-`Sandbox.tscn`; `-- --scenario <name>` runs one to a verdict, prints
+each scene; `-- --scenario <name>` runs one to a verdict, prints
 `[scenario <name>] PASS|FAIL …` and exits 0/1. An unknown name fails and lists the known
 ones. Current scenarios:
-- `loop`: the station builds a Scavenger, which mines onto the belt, which the unloader hauls
+- `world` (Sandbox): the shell matches `SandboxLayout`, all nine stalls publish endpoints, and
+  the player walks to the street's far edge and back with the camera following.
+- `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
   into the stockpile, over 600 ticks. `--spike-check` is an alias.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
 
@@ -70,6 +76,14 @@ To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scen
   (`gui/theme/custom_font`). Game text is printable Latin-1 plus → ≥ █ ░, with · as the
   separator, and the `font-glyphs` scenario pins that. To use a new character, check that
   the font has it; if not, add a fallback font and widen the scenario in the same change.
+
+## The world is built from rules at load
+
+`Sandbox.tscn` is mostly empty. `ShellNode` builds walls, props and sconces from
+`Core/World/SandboxLayout`, and `SandboxNode` builds the stalls and the starter bench from
+`data/sandbox.json` (via `WorldNode.Setup`). Change the room in Core, where
+`SandboxLayoutTests` pins it to Unity's numbers. Don't hand-place walls in the scene.
+Sprite pivots, Unity's import pivots, live in `Scripts/World/SpritePivots`.
 
 ## Authored data (`godot/data/*.json`)
 
