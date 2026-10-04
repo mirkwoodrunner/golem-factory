@@ -352,8 +352,35 @@ namespace GolemFactory.Tests.EditMode
         }
 
         // --- §8.1 the gated vault ---------------------------------------------------------------
-        // HELD FOR G7: Unity's AnUngatedWorkbench_OffersEverything and
-        // AGatedWorkbench_OffersOnlyClaimedCards drive WorkbenchController's card gating, which
-        // ports with the Workbench itself (docs/godot-test-ledger.md lists them).
+        // --- §8.1 the gated vault (ported in G7, onto WorkbenchSession) -------------------------
+
+        [Test]
+        public void AnUngatedWorkbench_OffersEverything()
+        {
+            var workbench = new GolemFactory.UI.WorkbenchSession(5);
+            var card = new AppendageActionDefinition();
+
+            Assert.IsFalse(workbench.IsRosterGated);
+            Assert.IsTrue(workbench.IsCardAvailable(card),
+                "four milestones shipped with every card available; that stays valid unwired");
+        }
+
+        [Test]
+        public void AGatedWorkbench_OffersOnlyClaimedCards()
+        {
+            var workbench = new GolemFactory.UI.WorkbenchSession(5);
+            var line = new AssemblyLineState(5);
+
+            DraftableCardDefinition claimed = MakeCard("Claimed", unique: false);
+            DraftableCardDefinition unclaimed = MakeCard("Unclaimed", unique: false);
+            line.SeedCandidates(new[] { claimed, unclaimed });
+            line.GrantClaim(User, claimed);
+
+            workbench.ConfigureCardGating(line, User);
+
+            Assert.IsTrue(workbench.IsRosterGated);
+            Assert.IsTrue(workbench.IsCardAvailable(claimed.appendage));
+            Assert.IsFalse(workbench.IsCardAvailable(unclaimed.appendage));
+        }
     }
 }
