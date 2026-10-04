@@ -1,0 +1,14 @@
+{
+  "AlwaysOnCore": {
+    "triggerType": 3,
+    "intervalTicks": 10,
+    "thresholdQuantity": 100,
+    "signalGolemId": ""
+  },
+  "IntervalCore10": {
+    "triggerType": 0,
+    "intervalTicks": 10,
+    "thresholdQuantity": 100,
+    "signalGolemId": ""
+  }
+}

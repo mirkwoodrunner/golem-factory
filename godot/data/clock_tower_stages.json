@@ -1,0 +1,66 @@
+{
+  "Stage1_Foundation": {
+    "stageNumber": 1,
+    "stageName": "Foundation",
+    "nominalSeconds": 360,
+    "demands": [
+      {
+        "itemType": "FrameSection",
+        "ratePerMinute": 6
+      }
+    ]
+  },
+  "Stage2_TheMovement": {
+    "stageNumber": 2,
+    "stageName": "The Movement",
+    "nominalSeconds": 480,
+    "demands": [
+      {
+        "itemType": "GreatCog",
+        "ratePerMinute": 3
+      },
+      {
+        "itemType": "FrameSection",
+        "ratePerMinute": 3
+      }
+    ]
+  },
+  "Stage3_AetherIllumination": {
+    "stageNumber": 3,
+    "stageName": "Aether Illumination",
+    "nominalSeconds": 480,
+    "demands": [
+      {
+        "itemType": "AetherConduit",
+        "ratePerMinute": 3
+      },
+      {
+        "itemType": "Lens",
+        "ratePerMinute": 24
+      },
+      {
+        "itemType": "FrameSection",
+        "ratePerMinute": 2
+      }
+    ]
+  },
+  "Stage4_TheChronometer": {
+    "stageNumber": 4,
+    "stageName": "The Chronometer",
+    "nominalSeconds": 600,
+    "demands": [
+      {
+        "itemType": "ChronometerCore",
+        "ratePerMinute": 2
+      },
+      {
+        "itemType": "GreatCog",
+        "ratePerMinute": 2
+      },
+      {
+        "itemType": "AetherConduit",
+        "ratePerMinute": 1
+      }
+    ]
+  }
+}

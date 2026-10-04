@@ -1,5 +1,15 @@
 # Full conversion: golem-factory from Unity to Godot
 
+## Status
+
+Updated by each milestone's PR. The first row that isn't **done** is the current milestone.
+
+| Milestone | Status |
+|---|---|
+| G0: Land the spike | **done**: PR #28, merged 2026-10-04 |
+| G1: Authored data as JSON | in review |
+| G2–G10 | not started |
+
 ## Context
 
 The spike (`spike/godot`, `docs/godot-spike.md`) proved the port is cheap where it matters.
@@ -91,6 +101,20 @@ Open a PR merging `spike/godot` into `main`.
 
 **Exit:** all catalog tests pass, and `HardcodedDemoProgram` and the slice load definitions
 from JSON.
+
+**As built:**
+- Seven JSON files, not six. The deck (`assembly_line_decks.json`) is its own type,
+  `DraftableCardCatalog`, now a plain Core class.
+- The parity check is a round trip: every loaded field must equal its JSON value. Together
+  with the loader refusing unknown keys, that covers what a second YAML parse would, without
+  a second parser.
+- Two items moved to later milestones:
+  - `SaveCatalogCoverageTests` opens the Sandbox scene's save panel, so it moved to **G9**.
+  - `HardcodedDemoProgram` stays code-defined. It *is* the definition of the reference
+    programs the regression suite pins, and pointing it at the data would make those
+    programs change whenever the data changes.
+- The slice loads its golems' chassis, core and cards from the JSON.
+- The test ledger (`Tools/Godot/test_ledger.py` → `docs/godot-test-ledger.md`) started here.
 
 ### G2: Extract the gameplay services into Core (the big refactor)
 New engine-free services, each fed the registries directly the way `GolemEntity` now is:

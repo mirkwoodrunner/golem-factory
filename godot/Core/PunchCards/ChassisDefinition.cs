@@ -67,5 +67,10 @@ namespace GolemFactory.PunchCards
         /// </summary>
         public bool allowsFreightLaunch;
 
+        // The chassis art's FILE NAME (e.g. "chassis_aether_hauler.png"), not a sprite. Unity
+        // held a Sprite reference here; Core cannot, so the Godot layer loads
+        // res://art/<chassisSprite> itself. Data, so a new chassis needs no code to look right.
+        public string chassisSprite;
+
     }
 }

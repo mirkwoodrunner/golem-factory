@@ -1,0 +1,660 @@
+{
+  "Card_AetherHauler": {
+    "chassis": "AetherHauler",
+    "logicCore": null,
+    "appendage": null,
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "IronPlate",
+        "quantity": 20
+      },
+      {
+        "itemType": "Gear",
+        "quantity": 10
+      },
+      {
+        "itemType": "Coke",
+        "quantity": 7
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "IronPlate",
+    "isUnique": 1
+  },
+  "Card_BrassPresser": {
+    "chassis": "BrassPresser",
+    "logicCore": null,
+    "appendage": null,
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "Scrap",
+        "quantity": 15
+      },
+      {
+        "itemType": "IronPlate",
+        "quantity": 5
+      },
+      {
+        "itemType": "Gear",
+        "quantity": 2
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "Scrap",
+    "isUnique": 1
+  },
+  "Card_ClockworkScavenger": {
+    "chassis": "ClockworkScavenger",
+    "logicCore": null,
+    "appendage": null,
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "Scrap",
+        "quantity": 3
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "Scrap",
+    "isUnique": 1
+  },
+  "Card_ExtractScrap": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "ExtractScrap",
+    "baseCost": 0,
+    "decayPerSecond": 0,
+    "minCost": 0,
+    "claimCost": [],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "",
+    "isUnique": 0
+  },
+  "Card_FreightLaunch": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "FreightLaunch",
+    "baseCost": 0,
+    "decayPerSecond": 0,
+    "minCost": 0,
+    "claimCost": [],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "",
+    "isUnique": 0
+  },
+  "Card_HaulScrap": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "HaulScrap",
+    "baseCost": 0,
+    "decayPerSecond": 0,
+    "minCost": 0,
+    "claimCost": [],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "",
+    "isUnique": 0
+  },
+  "Card_MainspringOverclocker": {
+    "chassis": "MainspringOverclocker",
+    "logicCore": null,
+    "appendage": null,
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "Mainspring",
+        "quantity": 1
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 5
+      },
+      {
+        "itemType": "Casing",
+        "quantity": 6
+      },
+      {
+        "itemType": "Gear",
+        "quantity": 3
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "Mainspring",
+    "isUnique": 1
+  },
+  "Card_PushOutput": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "PushOutput",
+    "baseCost": 0,
+    "decayPerSecond": 0,
+    "minCost": 0,
+    "claimCost": [],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "",
+    "isUnique": 0
+  },
+  "Card_R10_LensGrinding": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleLensGrinding",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "Glass",
+        "quantity": 8
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 4
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "Glass",
+    "isUnique": 1
+  },
+  "Card_R11_MainspringWinding": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleMainspringWinding",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "Brass",
+        "quantity": 12
+      },
+      {
+        "itemType": "Gear",
+        "quantity": 8
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "Brass",
+    "isUnique": 1
+  },
+  "Card_R12_AetherContainment": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleAetherContainment",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "Aether",
+        "quantity": 4
+      },
+      {
+        "itemType": "Lens",
+        "quantity": 8
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "Aether",
+    "isUnique": 1
+  },
+  "Card_R13_MechanismAssembly": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleMechanismAssembly",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "Mainspring",
+        "quantity": 4
+      },
+      {
+        "itemType": "Gear",
+        "quantity": 12
+      },
+      {
+        "itemType": "Casing",
+        "quantity": 4
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "Mainspring",
+    "isUnique": 1
+  },
+  "Card_R14_Regulator": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleRegulator",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "AetherCell",
+        "quantity": 4
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 8
+      },
+      {
+        "itemType": "Gear",
+        "quantity": 4
+      },
+      {
+        "itemType": "CopperWire",
+        "quantity": 16
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "AetherCell",
+    "isUnique": 1
+  },
+  "Card_R15_FrameSection": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleFrameSection",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "Casing",
+        "quantity": 40
+      },
+      {
+        "itemType": "IronPlate",
+        "quantity": 24
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 16
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "Casing",
+    "isUnique": 1
+  },
+  "Card_R16_GreatCog": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleGreatCog",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "Mechanism",
+        "quantity": 16
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 24
+      },
+      {
+        "itemType": "Mainspring",
+        "quantity": 8
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "Mechanism",
+    "isUnique": 1
+  },
+  "Card_R17_ChronometerCore": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleChronometerCore",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "Regulator",
+        "quantity": 8
+      },
+      {
+        "itemType": "Mechanism",
+        "quantity": 8
+      },
+      {
+        "itemType": "Lens",
+        "quantity": 8
+      },
+      {
+        "itemType": "CopperWire",
+        "quantity": 8
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "Regulator",
+    "isUnique": 1
+  },
+  "Card_R18_AetherConduit": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleAetherConduit",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "AetherCell",
+        "quantity": 12
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 16
+      },
+      {
+        "itemType": "CopperWire",
+        "quantity": 24
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "AetherCell",
+    "isUnique": 1
+  },
+  "Card_R19_WireDrawing": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleWireDrawing",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "CopperIngot",
+        "quantity": 4
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "CopperIngot",
+    "isUnique": 1
+  },
+  "Card_R1_Coking": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleCoking",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "Coal",
+        "quantity": 4
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "Coal",
+    "isUnique": 1
+  },
+  "Card_R2_ScrapReclamation": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleScrapReclamation",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "Scrap",
+        "quantity": 4
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "Scrap",
+    "isUnique": 1
+  },
+  "Card_R3_Glassmaking": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleGlassmaking",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "Slag",
+        "quantity": 4
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "Slag",
+    "isUnique": 1
+  },
+  "Card_R4_IronSmelting": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleIronSmelting",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "Scrap",
+        "quantity": 8
+      },
+      {
+        "itemType": "Coke",
+        "quantity": 4
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "Scrap",
+    "isUnique": 1
+  },
+  "Card_R5_CopperSmelting": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleCopperSmelting",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "CopperOre",
+        "quantity": 8
+      },
+      {
+        "itemType": "Coke",
+        "quantity": 4
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "CopperOre",
+    "isUnique": 1
+  },
+  "Card_R6_ZincSmelting": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleZincSmelting",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "ZincOre",
+        "quantity": 8
+      },
+      {
+        "itemType": "Coke",
+        "quantity": 4
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "ZincOre",
+    "isUnique": 1
+  },
+  "Card_R7_BrassAlloying": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleBrassAlloying",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "CopperIngot",
+        "quantity": 8
+      },
+      {
+        "itemType": "ZincIngot",
+        "quantity": 4
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "CopperIngot",
+    "isUnique": 1
+  },
+  "Card_R8_GearCutting": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleGearCutting",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "IronPlate",
+        "quantity": 8
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "IronPlate",
+    "isUnique": 1
+  },
+  "Card_R9_CasingPress": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "AssembleCasingPress",
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "IronPlate",
+        "quantity": 16
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 4
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "IronPlate",
+    "isUnique": 1
+  },
+  "Card_RepeatAssembly": {
+    "chassis": null,
+    "logicCore": null,
+    "appendage": "RepeatAssembly",
+    "baseCost": 0,
+    "decayPerSecond": 0,
+    "minCost": 0,
+    "claimCost": [],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "",
+    "isUnique": 0
+  },
+  "Card_ZeppelinFreightLoader": {
+    "chassis": "ZeppelinFreightLoader",
+    "logicCore": null,
+    "appendage": null,
+    "baseCost": 20,
+    "decayPerSecond": 1,
+    "minCost": 2,
+    "claimCost": [
+      {
+        "itemType": "Mainspring",
+        "quantity": 1
+      },
+      {
+        "itemType": "Lens",
+        "quantity": 2
+      },
+      {
+        "itemType": "AetherCell",
+        "quantity": 1
+      },
+      {
+        "itemType": "Casing",
+        "quantity": 7
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 10
+      }
+    ],
+    "decayFractionPerSecond": 0.01,
+    "minCostFraction": 0.25,
+    "prerequisiteCards": [],
+    "prerequisiteItemProduced": "Mainspring",
+    "isUnique": 1
+  }
+}

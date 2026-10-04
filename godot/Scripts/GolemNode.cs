@@ -1,5 +1,5 @@
 using Godot;
-using GolemFactory.Economy;
+using GolemFactory.Data;
 using GolemFactory.Events;
 using GolemFactory.Golems;
 using GolemFactory.PunchCards;
@@ -53,13 +53,14 @@ namespace GolemFactory.Nodes
             Entity.ConfigureEconomy(_world.Nodes, _world.Buffers);
             Entity.ConfigureSpatial(_world.Endpoints, GridConversions.ToCore(Cell), Facing);
             Entity.MarkRuntimeSpawned();
-            BuildProgram(Entity.Program, ProgramKind);
+            BuildProgram(Entity.Program, ProgramKind, _world.Definitions);
             Entity.Attach();
             _world.Clock.Register(Entity);
             EventBus.GolemCompleted += OnGolemCompleted;
 
             Position = GridConversions.CellToWorld(Cell);
-            var body = new Sprite2D { Texture = GD.Load<Texture2D>("res://art/chassis_clockwork_scavenger.png") };
+            string sprite = Entity.Program.chassis.chassisSprite;
+            var body = new Sprite2D { Texture = GD.Load<Texture2D>("res://art/" + sprite) };
             GridConversions.StandOnCell(body);
             AddChild(body);
 
@@ -107,30 +108,14 @@ namespace GolemFactory.Nodes
             }
         }
 
-        private static void BuildProgram(GolemProgram program, SliceProgram kind)
+        // The authored cards, not copies: definitions are shared, as Unity's assets were, and
+        // a golem's per-slot quantity lives on its own GolemProgram (TryAddAppendage seeds it).
+        private static void BuildProgram(GolemProgram program, SliceProgram kind, DefinitionSet definitions)
         {
-            var chassis = new ChassisDefinition { name = "ClockworkScavenger", maxAppendageSlots = 3 };
-            program.TryAssignChassis(chassis);
-            program.logicCore = new LogicCoreDefinition { name = "AlwaysOn", triggerType = TriggerType.AlwaysOn };
-
-            if (kind == SliceProgram.Extractor)
-            {
-                program.TryAddAppendage(new AppendageActionDefinition
-                {
-                    name = "ExtractScrap",
-                    actionType = AppendageActionType.ExtractFromNode,
-                });
-            }
-            else
-            {
-                program.TryAddAppendage(new AppendageActionDefinition
-                {
-                    name = "HaulScrap",
-                    actionType = AppendageActionType.Haul,
-                    inputItemType = ItemType.Scrap,
-                });
-            }
-            program.TryAddAppendage(new AppendageActionDefinition { name = "Push", actionType = AppendageActionType.Push });
+            program.TryAssignChassis(definitions.Chassis["ClockworkScavenger"]);
+            program.logicCore = definitions.LogicCores["AlwaysOnCore"];
+            program.TryAddAppendage(definitions.Appendages[kind == SliceProgram.Extractor ? "ExtractScrap" : "HaulScrap"]);
+            program.TryAddAppendage(definitions.Appendages["PushOutput"]);
         }
     }
 }

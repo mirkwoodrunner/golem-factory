@@ -1,5 +1,6 @@
 using Godot;
 using GolemFactory.Belts;
+using GolemFactory.Data;
 using GolemFactory.Economy;
 using GolemFactory.Simulation;
 using GolemFactory.World;
@@ -40,6 +41,12 @@ namespace GolemFactory.Nodes
         public StorageBufferRegistry Buffers { get; } = new StorageBufferRegistry();
         public BeltNetwork Belts { get; } = new BeltNetwork();
 
+        /// <summary>
+        /// The authored definitions (chassis, cards, recipes, ...) from <c>res://data/</c>,
+        /// loaded once in <see cref="_Ready"/> before any sibling asks for them.
+        /// </summary>
+        public DefinitionSet Definitions { get; private set; }
+
         public static WorldNode Find(Node from) =>
             from.GetTree().GetFirstNodeInGroup(GroupName) as WorldNode;
 
@@ -52,6 +59,9 @@ namespace GolemFactory.Nodes
             Compat.Debug.Logged += message => GD.Print(message);
             Compat.Debug.Warned += message => GD.PushWarning(message);
             Compat.Debug.Errored += message => GD.PushError(message);
+
+            // Strict loader: a bad data file throws here, at startup, naming the file and field.
+            Definitions = DefinitionLoader.Load(file => FileAccess.GetFileAsString("res://data/" + file));
 
             Belts.Configure(Conveyor, Endpoints, BeltSegmentLengthTicks);
 
