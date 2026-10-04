@@ -8,6 +8,7 @@
   "freeStallSeedNode": "ScrapNode",
   "freeStallSeedQuantity": 60,
   "playerStart": { "x": 0, "y": 0 },
+  "floorExpansion": { "scrapPerRow": 40, "ironPlatePerRow": 20, "rowsPerPurchase": 2 },
   "nodes": [
     { "id": "ScrapNodeWest", "itemType": "Scrap", "sprite": "stall_scrap", "x": -16, "y": -16 },
     { "id": "CoalNodeWest", "itemType": "Coal", "sprite": "stall_coal", "x": -12, "y": -16 },

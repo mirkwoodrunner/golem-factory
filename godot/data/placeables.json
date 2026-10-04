@@ -1,0 +1,343 @@
+[
+  {
+    "name": "DepotPrefab",
+    "sprite": "depot.png",
+    "parts": {
+      "PlaceableBuilding": {
+        "cost": [
+          {
+            "itemType": "Scrap",
+            "quantity": 15
+          }
+        ],
+        "dragPlaceable": 0
+      },
+      "YSortSpriteRenderer": {},
+      "PlaceableDepot": {
+        "bufferId": "FactoryStockpile",
+        "filterItemType": ""
+      }
+    }
+  },
+  {
+    "name": "GolemConstructionStationPrefab",
+    "sprite": "golem_construction_station.png",
+    "parts": {
+      "PlaceableBuilding": {
+        "cost": [
+          {
+            "itemType": "Scrap",
+            "quantity": 25
+          },
+          {
+            "itemType": "Brass",
+            "quantity": 5
+          }
+        ],
+        "dragPlaceable": 0
+      },
+      "GolemConstructionStation": {
+        "chassisRoster": [],
+        "stockpileBufferId": "FactoryStockpile",
+        "cellSize": {
+          "x": 1,
+          "y": 1
+        }
+      },
+      "YSortSpriteRenderer": {}
+    }
+  },
+  {
+    "name": "BeltPrefab",
+    "sprite": null,
+    "parts": {
+      "PlaceableBuilding": {
+        "cost": [
+          {
+            "itemType": "Scrap",
+            "quantity": 1
+          }
+        ],
+        "dragPlaceable": 1
+      },
+      "PlaceableBelt": {
+        "straightSprite": "belt_tile.png",
+        "cornerLeftSprite": "belt_tile_corner_left.png",
+        "cornerRightSprite": "belt_tile_corner_right.png",
+        "itemSprites": [
+          {
+            "itemType": "Scrap",
+            "sprite": "item_scrap.png"
+          },
+          {
+            "itemType": "Coal",
+            "sprite": "item_coal.png"
+          },
+          {
+            "itemType": "CopperOre",
+            "sprite": "item_copper_ore.png"
+          },
+          {
+            "itemType": "ZincOre",
+            "sprite": "item_zinc_ore.png"
+          },
+          {
+            "itemType": "Aether",
+            "sprite": "item_aether.png"
+          },
+          {
+            "itemType": "Coke",
+            "sprite": "item_coke.png"
+          },
+          {
+            "itemType": "IronPlate",
+            "sprite": "item_iron_plate.png"
+          },
+          {
+            "itemType": "Slag",
+            "sprite": "item_slag.png"
+          },
+          {
+            "itemType": "Glass",
+            "sprite": "item_glass.png"
+          },
+          {
+            "itemType": "CopperIngot",
+            "sprite": "item_copper_ingot.png"
+          },
+          {
+            "itemType": "ZincIngot",
+            "sprite": "item_zinc_ingot.png"
+          },
+          {
+            "itemType": "Brass",
+            "sprite": "item_brass.png"
+          },
+          {
+            "itemType": "CopperWire",
+            "sprite": "item_copper_wire.png"
+          },
+          {
+            "itemType": "Gear",
+            "sprite": "item_gear.png"
+          },
+          {
+            "itemType": "Casing",
+            "sprite": "item_casing.png"
+          },
+          {
+            "itemType": "Lens",
+            "sprite": "item_lens.png"
+          },
+          {
+            "itemType": "Mainspring",
+            "sprite": "item_mainspring.png"
+          },
+          {
+            "itemType": "AetherCell",
+            "sprite": "item_aether_cell.png"
+          },
+          {
+            "itemType": "Mechanism",
+            "sprite": "item_mechanism.png"
+          },
+          {
+            "itemType": "Regulator",
+            "sprite": "item_regulator.png"
+          },
+          {
+            "itemType": "FrameSection",
+            "sprite": "item_frame_section.png"
+          },
+          {
+            "itemType": "GreatCog",
+            "sprite": "item_great_cog.png"
+          },
+          {
+            "itemType": "AetherConduit",
+            "sprite": "item_aether_conduit.png"
+          },
+          {
+            "itemType": "ChronometerCore",
+            "sprite": "item_chronometer_core.png"
+          }
+        ],
+        "fallbackItemSprite": "ghost_placeholder.png"
+      }
+    }
+  },
+  {
+    "name": "BoilerPrefab",
+    "sprite": "steam_boiler.png",
+    "parts": {
+      "YSortSpriteRenderer": {},
+      "PlaceableBuilding": {
+        "cost": [
+          {
+            "itemType": "Scrap",
+            "quantity": 30
+          },
+          {
+            "itemType": "IronPlate",
+            "quantity": 10
+          }
+        ],
+        "dragPlaceable": 0
+      },
+      "PlaceableBoiler": {
+        "boilerId": "",
+        "startingCoke": 0
+      }
+    }
+  },
+  {
+    "name": "SteamPipePrefab",
+    "sprite": "steam_pipe.png",
+    "parts": {
+      "YSortSpriteRenderer": {},
+      "PlaceableBuilding": {
+        "cost": [
+          {
+            "itemType": "IronPlate",
+            "quantity": 1
+          }
+        ],
+        "dragPlaceable": 1
+      },
+      "PlaceableSteamPipe": {
+        "endSprite": "steam_pipe_end.png",
+        "straightSprite": "steam_pipe.png",
+        "cornerSprite": "steam_pipe_corner.png",
+        "teeSprite": "steam_pipe_tee.png",
+        "crossSprite": "steam_pipe_cross.png"
+      }
+    }
+  },
+  {
+    "name": "ClockTowerPrefab",
+    "sprite": "clock_tower.png",
+    "parts": {
+      "YSortSpriteRenderer": {},
+      "PlaceableBuilding": {
+        "cost": [],
+        "dragPlaceable": 0
+      },
+      "PlaceableClockTower": {
+        "displayName": "Clock Tower",
+        "stages": [
+          "Stage1_Foundation",
+          "Stage2_TheMovement",
+          "Stage3_AetherIllumination",
+          "Stage4_TheChronometer"
+        ]
+      }
+    }
+  },
+  {
+    "name": "HandCrankBenchPrefab",
+    "sprite": "hand_crank_bench.png",
+    "parts": {
+      "YSortSpriteRenderer": {},
+      "PlaceableBuilding": {
+        "cost": [],
+        "dragPlaceable": 0
+      },
+      "HandCrankBench": {
+        "stockpileBufferId": "FactoryStockpile",
+        "candidateRecipes": [
+          "R1_Coking",
+          "R2_ScrapReclamation",
+          "R3_Glassmaking",
+          "R4_IronSmelting",
+          "R5_CopperSmelting",
+          "R6_ZincSmelting",
+          "R7_BrassAlloying",
+          "R8_GearCutting",
+          "R9_CasingPress",
+          "R10_LensGrinding",
+          "R11_MainspringWinding",
+          "R12_AetherContainment",
+          "R13_MechanismAssembly",
+          "R14_Regulator",
+          "R15_FrameSection",
+          "R16_GreatCog",
+          "R17_ChronometerCore",
+          "R18_AetherConduit",
+          "R19_WireDrawing"
+        ]
+      }
+    }
+  },
+  {
+    "name": "FreightMastPrefab",
+    "sprite": "freight_mast.png",
+    "parts": {
+      "YSortSpriteRenderer": {},
+      "PlaceableBuilding": {
+        "cost": [
+          {
+            "itemType": "Brass",
+            "quantity": 20
+          },
+          {
+            "itemType": "Casing",
+            "quantity": 10
+          }
+        ],
+        "dragPlaceable": 0
+      },
+      "PlaceableFreightMast": {
+        "bufferId": "FactoryStockpile",
+        "mastId": ""
+      }
+    }
+  },
+  {
+    "name": "SlagHeapPrefab",
+    "sprite": "slag_heap.png",
+    "parts": {
+      "YSortSpriteRenderer": {},
+      "PlaceableBuilding": {
+        "cost": [
+          {
+            "itemType": "Scrap",
+            "quantity": 20
+          },
+          {
+            "itemType": "IronPlate",
+            "quantity": 10
+          }
+        ],
+        "dragPlaceable": 0
+      },
+      "PlaceableSlagHeap": {
+        "heapId": "",
+        "startingCoke": 0
+      }
+    }
+  },
+  {
+    "name": "ScrapRecyclerPrefab",
+    "sprite": "scrap_recycler.png",
+    "parts": {
+      "YSortSpriteRenderer": {},
+      "PlaceableBuilding": {
+        "cost": [
+          {
+            "itemType": "Scrap",
+            "quantity": 20
+          },
+          {
+            "itemType": "IronPlate",
+            "quantity": 10
+          }
+        ],
+        "dragPlaceable": 0
+      },
+      "PlaceableScrapRecycler": {
+        "recyclerId": "",
+        "startingCoke": 0
+      }
+    }
+  }
+]

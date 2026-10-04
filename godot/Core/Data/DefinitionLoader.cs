@@ -43,6 +43,7 @@ namespace GolemFactory.Data
     public sealed class DefinitionLoadException : Exception
     {
         public DefinitionLoadException(string message) : base(message) { }
+        public DefinitionLoadException(string message, Exception inner) : base(message, inner) { }
     }
 
     /// <summary>
