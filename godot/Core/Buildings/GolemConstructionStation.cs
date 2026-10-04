@@ -28,7 +28,7 @@ namespace GolemFactory.Buildings
     //   * Destroy(golem.gameObject) -> golem.Remove(), then GolemDismantled for the host.
     //   * SimulationClockRunner / WorkbenchController / the Holders -> the plain objects they
     //     owned, and IWorkbenchTarget.
-    public sealed class GolemConstructionStation : IGolemDismantler
+    public sealed class GolemConstructionStation : IGolemDismantler, IBuildingPart
     {
         private ChassisDefinition[] chassisRoster = new ChassisDefinition[0];
         private Func<GolemEntity> golemSource;
@@ -108,6 +108,24 @@ namespace GolemFactory.Buildings
         /// the direction that golem starts facing. The player orients it with R at placement.
         /// </summary>
         public Facing StationFacing { get; private set; } = Facing.North;
+
+        /// <summary>
+        /// A station for a newly placed building -- what Unity's Instantiate did to the
+        /// station component on a prefab. Everything the prefab was authored or wired with
+        /// carries over (roster, golem source, services); runtime state does not: the golem
+        /// counter restarts, nobody is subscribed yet, and placement is set by build mode.
+        /// </summary>
+        public IBuildingPart CloneForInstance()
+        {
+            var clone = (GolemConstructionStation)MemberwiseClone();
+            clone.GolemSpawned = null;
+            clone.GolemDismantled = null;
+            clone._nextGolemNumber = 1;
+            clone.LastRefusalReason = "";
+            clone.Cell = Vector2Int.zero;
+            clone.StationFacing = Facing.North;
+            return clone;
+        }
 
         /// <summary>Where the station stands and which way it points. Unity read both off the
         /// sibling PlaceableBuilding and the transform.</summary>
