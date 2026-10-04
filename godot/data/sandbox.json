@@ -1,0 +1,35 @@
+{
+  "_source": "Lifted from Unity's Sandbox.unity, ManagerHolders.prefab and SandboxBootstrap.cs at the G4 port (2026-10-04). Unity is frozen until cutover; after it, edit this file directly.",
+  "creativeMode": false,
+  "requireSteamPower": true,
+  "stockpileBufferId": "FactoryStockpile",
+  "productionBufferCapacityPerType": 100,
+  "startingNorthExtent": 12,
+  "freeStallSeedNode": "ScrapNode",
+  "freeStallSeedQuantity": 60,
+  "playerStart": { "x": 0, "y": 0 },
+  "nodes": [
+    { "id": "ScrapNodeWest", "itemType": "Scrap", "sprite": "stall_scrap", "x": -16, "y": -16 },
+    { "id": "CoalNodeWest", "itemType": "Coal", "sprite": "stall_coal", "x": -12, "y": -16 },
+    { "id": "ScrapNode", "itemType": "Scrap", "sprite": "stall_scrap", "x": -8, "y": -16 },
+    { "id": "CoalNode", "itemType": "Coal", "sprite": "stall_coal", "x": -4, "y": -16 },
+    { "id": "CopperOreNode", "itemType": "CopperOre", "sprite": "stall_copper_ore", "x": 0, "y": -16 },
+    { "id": "ZincOreNode", "itemType": "ZincOre", "sprite": "stall_zinc_ore", "x": 4, "y": -16 },
+    { "id": "AetherNode", "itemType": "Aether", "sprite": "stall_aether", "x": 8, "y": -16 },
+    { "id": "CopperOreNodeEast", "itemType": "CopperOre", "sprite": "stall_copper_ore", "x": 12, "y": -16 },
+    { "id": "ZincOreNodeEast", "itemType": "ZincOre", "sprite": "stall_zinc_ore", "x": 16, "y": -16 }
+  ],
+  "market": [
+    { "nodeId": "ScrapNode", "price": [], "truckloadSize": 30, "deliveryTicks": 40 },
+    { "nodeId": "ScrapNodeWest", "price": [], "truckloadSize": 30, "deliveryTicks": 40 },
+    { "nodeId": "CoalNode", "price": [{ "itemType": "Scrap", "quantity": 10 }], "truckloadSize": 40, "deliveryTicks": 60 },
+    { "nodeId": "CoalNodeWest", "price": [{ "itemType": "Scrap", "quantity": 10 }], "truckloadSize": 40, "deliveryTicks": 60 },
+    { "nodeId": "CopperOreNode", "price": [{ "itemType": "Scrap", "quantity": 20 }], "truckloadSize": 40, "deliveryTicks": 80 },
+    { "nodeId": "CopperOreNodeEast", "price": [{ "itemType": "Scrap", "quantity": 20 }], "truckloadSize": 40, "deliveryTicks": 80 },
+    { "nodeId": "ZincOreNode", "price": [{ "itemType": "Scrap", "quantity": 20 }], "truckloadSize": 40, "deliveryTicks": 80 },
+    { "nodeId": "ZincOreNodeEast", "price": [{ "itemType": "Scrap", "quantity": 20 }], "truckloadSize": 40, "deliveryTicks": 80 },
+    { "nodeId": "AetherNode", "price": [{ "itemType": "Scrap", "quantity": 40 }], "truckloadSize": 20, "deliveryTicks": 120 }
+  ],
+  "starterBench": { "x": 0, "y": 3, "recipes": "all" },
+  "starterStation": { "x": 3, "y": -1, "facing": "North", "roster": "all" }
+}
