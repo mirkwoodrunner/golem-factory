@@ -59,7 +59,6 @@ HELD = {
     "UI/WorkbenchQuantityTests.cs": ("G7", "WorkbenchSession"),
     "UI/AlertsPanelReconcileTests.cs": ("G8", "Alerts panel"),
     "UI/AssemblyLinePanelTests.cs": ("G8", "Assembly Line panel"),
-    "UI/BuildMenuDemolishRowTests.cs": ("G5", "Build menu panel"),
     "UI/HudScreenExclusivityTests.cs": ("G8", "HudScreenPolicy scenario"),
     "UI/InventoryPanelTests.cs": ("G8", "Inventory panel"),
     "UI/ManagementPanelTests.cs": ("G8", "Management panel"),
@@ -75,6 +74,19 @@ HELD = {
 MOVED = {
     "PlayMode/Golems/GolemSignalTriggerTests.cs": "Golems/GolemSignalTriggerTests.cs",
 }
+
+
+# Unity files whose tests drive a screen or a scene, so the Godot side checks them in a
+# headless scenario (godot/Scripts/Scenarios/) instead of a unit test.
+# rel -> (scenario file under godot/Scripts/Scenarios, what it checks).
+# --check fails if the scenario file is missing, so an entry cannot point at nothing.
+REPLACED = {
+    "UI/BuildMenuDemolishRowTests.cs": (
+        "BuildScenario.cs",
+        "`build` scenario: Demolish is the last of 11 rows; its row toggles the bar; picking a "
+        "placeable puts the bar down; the panel is tall enough for every row"),
+}
+SCENARIOS = os.path.join(REPO, "godot", "Scripts", "Scenarios")
 
 
 # Ported files that deliberately left some tests behind, or swapped one for its replacement.
@@ -124,6 +136,12 @@ def build():
                         totals["ported"] += n
                     where = f"`Core.Tests/{target}`" + (f" -- {note}" if note else "")
                     rows.append((suite, rel, n, status, where))
+                elif rel in REPLACED:
+                    scenario, how = REPLACED[rel]
+                    if not os.path.exists(os.path.join(SCENARIOS, scenario)):
+                        problems.append(f"{suite}/{rel} is replaced by a missing scenario {scenario}")
+                    totals["ported"] += n
+                    rows.append((suite, rel, n, "replaced by a scenario", how))
                 elif rel in HELD:
                     milestone, how = HELD[rel]
                     totals["held"] += n

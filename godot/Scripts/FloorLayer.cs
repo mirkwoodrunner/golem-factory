@@ -40,6 +40,9 @@ namespace GolemFactory.Nodes
 
         private int[] _floorSources;
 
+        /// <summary>The floor's z. Everything drawn on the floor uses -1, above this.</summary>
+        public const int FloorZ = -10;
+
         public override void _Ready()
         {
             var tileSet = new TileSet { TileSize = new Vector2I(GridConversions.CellPixels, GridConversions.CellPixels) };
@@ -47,6 +50,11 @@ namespace GolemFactory.Nodes
             int[] streetIds = AddSources(tileSet, StreetPaths);
             TileSet = tileSet;
             _floorSources = sourceIds;
+
+            // Z-index is global within a canvas layer, so the floor sits well below the -1 that
+            // floor-level things use (belts, pipes, the build ghost, prop contact shadows).
+            // At z 0 it drew over all of them.
+            ZIndex = FloorZ;
 
             // A TileMapLayer cell's square starts at its top-left corner; GridConversions puts a
             // cell's CENTRE on the cell coordinate. Shift by half a tile so they agree.

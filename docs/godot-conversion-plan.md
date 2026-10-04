@@ -11,7 +11,8 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 | G2: Gameplay services into Core | **built**, in review as stacked sub-PRs: G2a station + assembly bay, G2b build mode, G2c interactions, G2d save + the rest |
 | G3: Art and fonts pipeline | in review |
 | G4: The world scene | in review |
-| G5–G10 | not started |
+| G5: Buildings and build mode | in review; **waiting on your hands-on check** |
+| G6–G10 | not started |
 
 ## Context
 
@@ -320,6 +321,61 @@ services. The four seams existed because a Unity prefab couldn't hold scene refe
 
 **Exit:** scenarios place, drag, rotate, demolish and refund every placeable; frames are
 reviewed.
+
+**As built (G5):**
+- **The build menu is data.** `godot/data/placeables.json` holds the ten prefabs Unity's
+  Sandbox build menu offered, in its order. `convert_unity_assets.py` gained a prefab pass that
+  reads them through `Sandbox.unity`'s `_availablePrefabs`, and its `--check` covers them.
+  `Core/Data/PlaceableCatalog` loads them into `PlaceableBuilding` prefabs with their parts,
+  as strictly as `DefinitionLoader` does. There is no `.tscn` per placeable: a building is a
+  Core object, and one `BuildingView` draws any of them from its catalog entry.
+- **The plan said 11 placeables; Unity's Sandbox offers 10.** The belt splitter exists in
+  Core (`PlaceableBeltSplitter`, with tests), but no Unity prefab was ever authored for it, so
+  it isn't in the build menu. Adding it is a design call, not a port, and is left for you.
+- **`SandboxBootstrap` is now Core.** `Core/World/SandboxWorld` owns:
+  - every registry
+  - steam, masts, the clock tower site
+  - the extractor and bay caps
+  - floor expansion and the market
+  - the starter bench and station
+  - `BuildModeController`, wired the way the bootstrap wired it
+
+  `ConfigureStation` is the one station-wiring path, for the starter station and for a placed
+  one. `WorldNode` just owns a `SandboxWorld` and forwards to it. The late-wiring seams remain
+  as the interfaces `BuildModeController` asks through; the world implements them directly.
+- **Godot side:**
+  - `BuildingsLayer` draws every placed building: belts and pipes as rotated floor tiles
+    shaped by Core's shape rules, and belt cargo drawn per item rather than as a node each.
+  - `BuildCursorNode` turns the mouse into `Click`/`Hover`/`Release` and handles R, Escape and
+    right-click. It draws the ghost from `GhostStateFor`.
+  - `BuildMenuNode` is Unity's panel with the same art and measurements: rows toggle, the
+    highlight is polled, and Demolish is the last row.
+- **Z-order:** the floor moved to z −10. Z-index is global within a canvas layer, so at 0 the
+  floor drew over everything floor-level (belts, pipes, the ghost, prop shadows), which G4's
+  frames hadn't revealed.
+- **Scenario `build`:** drives the real menu and the world with synthetic mouse and key
+  events. It checks that the menu has 11 rows, Demolish is last, the Demolish row toggles, and
+  the two tools are exclusive. It places 8 placeables by row and click, turning the depot with
+  R first, checks the ghost, and checks that selecting a row builds nothing underneath. It
+  drags a belt run and a pipe run off a boiler (checking the network and the pieces), then
+  Escape, then demolishes by drag and by click. The stockpile ends exactly where it started.
+  `BuildMenuDemolishRowTests` is replaced by this scenario in the ledger's new `REPLACED`
+  table.
+- **Headless window:** headless runs got a 64×64 window, which put the menu off-screen.
+  `ScenarioRunner` now gives them the project's 1280×720.
+- **Frames reviewed:** the menu with a tool lit, every building standing, the pipe and belt
+  runs, and the ghost with its arrow. The first frame caught dark text on dark plates (the
+  row tint also darkened the caption). It was fixed by making the caption a child Label, as
+  Unity's was.
+- **Not in G5, deliberately:**
+  - Player interactions with placed buildings (refuelling a boiler by hand, relabelling a
+    depot, cranking a placed bench). They go through Core's `PlayerInteractor`, which is wired
+    in G6 together with the `[G]` carry.
+  - The steam gauge and the floor-expansion purchase button are UI, and come in G8.
+- **Unity parity, noted:** the starter bench and station aren't `GridMap` occupants, so a
+  building can be placed on top of them, as in Unity. Registering them would make a click
+  with a placeable demolish them, since a click on an occupied tile demolishes, and with no
+  refund. Fixing this is a design call.
 
 ### G6: Golems in full
 - The golem scene: mood tint and badge with `GolemMoodRules` dwell, facing indicator, stall

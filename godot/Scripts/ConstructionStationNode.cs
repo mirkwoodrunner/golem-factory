@@ -43,7 +43,13 @@ namespace GolemFactory.Nodes
         [Export] public Vector2I PostCell { get; set; }
         [Export] public Facing PostFacing { get; set; } = Facing.East;
 
-        public GolemConstructionStation Station { get; } = new GolemConstructionStation();
+        /// <summary>
+        /// Draw and drive the world's starter station (Sandbox) rather than building one of
+        /// this node's own (LoopSlice). The world wires it and hosts its golems.
+        /// </summary>
+        [Export] public bool UseStarterStation { get; set; }
+
+        public GolemConstructionStation Station { get; private set; } = new GolemConstructionStation();
 
         /// <summary>The most recent golem this station built, or null.</summary>
         public GolemNode Built { get; private set; }
@@ -54,7 +60,7 @@ namespace GolemFactory.Nodes
         {
             get
             {
-                if (Built != null)
+                if (SliceAutoProgram && Built != null)
                 {
                     return "Station idle (the slice builds one golem)";
                 }
@@ -75,6 +81,14 @@ namespace GolemFactory.Nodes
         public override void _Ready()
         {
             _world = WorldNode.Find(this);
+            if (UseStarterStation && _world.Sandbox.StarterStation != null)
+            {
+                Station = _world.Sandbox.StarterStation;
+                Cell = new Vector2I(Station.Cell.x, Station.Cell.y);
+                StationFacing = Station.StationFacing;
+                Draw();
+                return;
+            }
 
             ChassisDefinition[] roster = System.Array.IndexOf(Roster, "all") >= 0
                 ? System.Linq.Enumerable.ToArray(System.Linq.Enumerable.OrderBy(
@@ -86,7 +100,11 @@ namespace GolemFactory.Nodes
             Station.ConfigureSpatial(_world.Endpoints, null);
             Station.SetPlacement(GridConversions.ToCore(Cell), StationFacing);
             Station.GolemSpawned += OnGolemSpawned;
+            Draw();
+        }
 
+        private void Draw()
+        {
             Position = GridConversions.CellToWorld(Cell);
             var sprite = new Sprite2D { Texture = GD.Load<Texture2D>("res://art/golem_construction_station.png") };
             GridConversions.StandOnCell(sprite);
@@ -95,9 +113,12 @@ namespace GolemFactory.Nodes
 
         public override void _ExitTree() => Station.GolemSpawned -= OnGolemSpawned;
 
+        // (In Sandbox the world hosts golems, so this node never subscribed; -= on an unhooked
+        // handler is a no-op.)
+
         public void Interact()
         {
-            if (Built != null || Station.ChassisRoster.Length == 0)
+            if ((SliceAutoProgram && Built != null) || Station.ChassisRoster.Length == 0)
             {
                 return;
             }

@@ -1,10 +1,8 @@
 using System.Collections.Generic;
-using System.Linq;
 using Godot;
 using GolemFactory.Buildings;
+using GolemFactory.Golems;
 using GolemFactory.World;
-using CoreVector2 = GolemFactory.Compat.Vector2;
-using CoreVector3 = GolemFactory.Compat.Vector3;
 
 namespace GolemFactory.Nodes
 {
@@ -17,40 +15,36 @@ namespace GolemFactory.Nodes
     /// Each stall is a Core <see cref="ResourceNodeMarker"/> publishing its node on its cell,
     /// which is what lets a golem standing beside it ExtractFromNode; node identity is the cart
     /// SPRITE (root CLAUDE.md -- a tint never survives Play). The bench is a real building with
-    /// a <see cref="HandCrankBench"/> part, configured with every recipe (it filters to the
-    /// crankable ones itself) and ticked by the clock. (The starter construction station is its
-    /// own node in the scene, which already hosts the golems it builds.)
+    /// a <see cref="HandCrankBench"/>, configured with every recipe (it filters to the crankable
+    /// ones itself) and ticked by the clock. Since G5 all of that is built by Core's
+    /// SandboxWorld; this node draws it and hosts the golems the world's stations build.
     /// </para>
     /// </summary>
     public partial class SandboxNode : Node2D
     {
         public const string GroupName = "sandbox_world";
 
-        private static readonly GridCoordinateConverter UnitCells = new GridCoordinateConverter(new CoreVector2(1f, 1f));
+        public IReadOnlyList<ResourceNodeMarker> Markers => _world?.Sandbox.Markers ?? new List<ResourceNodeMarker>();
+        public HandCrankBench StarterBench => _world?.Sandbox.StarterBench;
 
-        public List<ResourceNodeMarker> Markers { get; } = new List<ResourceNodeMarker>();
-        public List<PlaceableBuilding> Buildings { get; } = new List<PlaceableBuilding>();
-        public HandCrankBench StarterBench { get; private set; }
+        private WorldNode _world;
 
         public override void _EnterTree() => AddToGroup(GroupName);
 
         public override void _Ready()
         {
-            WorldNode world = WorldNode.Find(this);
-            SandboxSetup setup = world.Setup;
+            _world = WorldNode.Find(this);
+            SandboxSetup setup = _world.Setup;
             if (setup == null)
             {
                 GD.PushWarning("SandboxNode: WorldNode.ApplySandboxSetup is off, so there is nothing to populate.");
                 return;
             }
 
+            // The stalls are Core markers the world already registered and published; this
+            // only draws them.
             foreach (SandboxSetup.NodeEntry entry in setup.nodes)
             {
-                var marker = new ResourceNodeMarker { Position = new CoreVector3(entry.x, entry.y, 0f) };
-                marker.Configure(world.Nodes, entry.id);
-                marker.RegisterAsSpatialEndpoint(world.Endpoints, UnitCells);
-                Markers.Add(marker);
-
                 var node = new Node2D { Name = entry.id, Position = GridConversions.CellToWorld(new Vector2I(entry.x, entry.y)) };
                 node.AddChild(SpritePivots.Make(entry.sprite));
                 AddChild(node);
@@ -58,16 +52,24 @@ namespace GolemFactory.Nodes
 
             if (setup.starterBench != null)
             {
-                var building = new PlaceableBuilding { name = "StarterHandCrankBench", Cell = SandboxSetup.CellOf(setup.starterBench) };
-                StarterBench = building.AddPart(new HandCrankBench());
-                StarterBench.Configure(world.Buffers, setup.stockpileBufferId, world.Definitions.Recipes.Values.OrderBy(r => r.name));
-                world.Clock.Register(StarterBench);
-                Buildings.Add(building);
-
-                var node = new Node2D { Name = building.name, Position = GridConversions.CellToWorld(building.Cell) };
+                var node = new Node2D { Name = "StarterHandCrankBench", Position = GridConversions.CellToWorld(SandboxSetup.CellOf(setup.starterBench)) };
                 node.AddChild(SpritePivots.Make("hand_crank_bench"));
                 AddChild(node);
             }
+
+            // Every golem any station builds -- the starter one, or one the player placed --
+            // gets a node in the y-sorted entity layer. A dismantled golem's node frees itself.
+            _world.Sandbox.GolemSpawned += OnGolemSpawned;
         }
+
+        public override void _ExitTree()
+        {
+            if (_world?.Sandbox != null)
+            {
+                _world.Sandbox.GolemSpawned -= OnGolemSpawned;
+            }
+        }
+
+        private void OnGolemSpawned(GolemEntity golem) => GetParent().AddChild(GolemNode.Host(golem));
     }
 }
