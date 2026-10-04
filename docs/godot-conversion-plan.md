@@ -12,6 +12,7 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 | G3: Art and fonts pipeline | in review |
 | G4: The world scene | in review |
 | G5: Buildings and build mode | in review; **waiting on your hands-on check** |
+| G5b: The player's hands (pulled forward from G6) | in review |
 | G6–G10 | not started |
 
 ## Context
@@ -377,7 +378,52 @@ reviewed.
   with a placeable demolish them, since a click on an occupied tile demolishes, and with no
   refund. Fixing this is a design call.
 
+### G5b: The player's hands (pulled forward from G6, after the G5 hands-on check)
+
+Your first look at G5 found that the carts said nothing and the bench had no interface. The
+Godot player still ran the spike's own `IInteractable` code, so only the station answered
+`[E]`. That made the build look broken, so the interaction layer moved ahead of the rest of G6.
+
+**As built (G5b):**
+- **Core's `PlayerInteractor` drives the Sandbox player.** `SandboxWorld` wires it the way
+  `SandboxBootstrap` did. `PlayerNode` feeds it the position and the held state of `[E]`,
+  polls it, and passes on `[E]`, `[R]` (after build mode has had its turn) and `[G]`. The
+  starter bench and station are now authored `PlaceableBuilding`s, so `[E]` finds them. They
+  still aren't grid occupants and aren't in `BuildModeController.Buildings`, which matches
+  Unity. `LoopSlice` keeps the spike's interactables.
+- **Views, all Unity's look:**
+  - `InteractionPromptNode`: the breathing ring under the target, and Core's prompt caption
+    above it ("[E] Harvest Scrap - 59 left"). It also draws the rising popups from the
+    interactor and from build mode: gains, refusals, spends and refunds. Captions and popups
+    are drawn in screen space, so they stay readable at every zoom.
+  - `HandCrankPanelNode`: the bench readout, shown while you stand at a bench. Hold `[E]` to
+    crank; `[R]` changes the recipe.
+  - `ConstructionPanelNode`: "Construct Golem". Each chassis row shows its portrait, tier and
+    slots or the shortfall, and its cost; an unaffordable row is disabled. A build closes the
+    panel, because the Workbench (G7) would open there. Escape or `[E]` closes it too.
+  - `ModalScreens`: an open screen holds the player still and hides the world prompt.
+- **A real bug found by the new scenario:** the station publishes "interactables changed"
+  before it raises `GolemSpawned`, so the interactor re-snapshotted a golem roster one short.
+  `[G]` next to a fresh golem then said "no golem in range". Unity's snapshot was a scene
+  scan, which had already seen the new object. `SandboxWorld` now refreshes again once its
+  roster has changed (`AFreshlyBuiltGolem_IsWithinReach_AndGCarriesIt`).
+- **Scenario `interact`,** with real key and mouse events:
+  - Scrap stall: the caption shows, `[E]` harvests one Scrap, and a popup rises.
+  - Empty Coal stall: `[E]` orders a truckload and pays for it.
+  - Bench: the panel shows, and holding `[E]` cranks.
+  - Station: `[E]` opens the panel with every chassis, the player is held while it's open,
+    and a row click builds a Scavenger.
+  - `[G]` carries the new golem and sets it down.
+  - Out of reach of everything: no prompt.
+- **Frames reviewed:**
+  - The stall prompt with "+1 Scrap", the crank readout, and the construction panel.
+  - The panel's first frame showed a bright brown window, because Unity's dark window tint
+    was missing, and costs clipped at the front. Both are fixed.
+
 ### G6: Golems in full
+
+(G5b already did the `[G]` carry, the interactor and the construction panel. What remains is
+the golem's own presentation and the assembly bay.)
 - The golem scene: mood tint and badge with `GolemMoodRules` dwell, facing indicator, stall
   indicator, ground shadow.
 - `[G]` carry and place, rotate.

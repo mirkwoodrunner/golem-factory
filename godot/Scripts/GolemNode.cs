@@ -129,7 +129,17 @@ namespace GolemFactory.Nodes
 
         private void SyncToEntity()
         {
-            Position = GridConversions.CellToWorld(Entity.Cell);
+            // A golem in the player's hands rides with them ([G]); Core says where.
+            Player.PlayerInteractor hands = _world.Setup != null ? _world.Sandbox.Interactor : null;
+            if (hands != null && hands.CarriedGolem == Entity)
+            {
+                Compat.Vector3 at = hands.PositionOf(Entity);
+                Position = new Vector2(at.x * GridConversions.CellPixels, -at.y * GridConversions.CellPixels);
+            }
+            else
+            {
+                Position = GridConversions.CellToWorld(Entity.Cell);
+            }
             _arrow.Rotation = GridConversions.FacingToRotation(Entity.Facing);
             _arrow.Position = GridConversions.FacingStep(Entity.Facing) * 0.45f;
         }

@@ -44,7 +44,9 @@ namespace GolemFactory.Nodes
                         .Append(", ").Append(golem.CompletedCycles).Append(" cycles");
                 }
             }
-            text.Append('\n').Append(_player.Focus != null ? _player.Focus.Prompt : "WASD to move · E to interact");
+            // In the Sandbox the [E] prompt floats over its target (InteractionPromptNode); the
+            // slice's interactables still report theirs here.
+            text.Append('\n').Append(_player.Focus != null ? _player.Focus.Prompt : "WASD move · E use · hold E crank · R turn · G carry");
             _label.Text = text.ToString();
         }
     }

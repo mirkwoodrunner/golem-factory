@@ -20,6 +20,7 @@ namespace GolemFactory.Nodes
         public const string MoveUp = "move_up";
         public const string MoveDown = "move_down";
         public const string Interact = "interact";
+        public const string Carry = "golem_carry";
 
         /// <summary>Cells per second, Unity's PlayerController default.</summary>
         [Export] public float MoveSpeed { get; set; } = 4f;
@@ -39,6 +40,13 @@ namespace GolemFactory.Nodes
         /// </summary>
         public Vector2? ScriptedMove { get; set; }
 
+        /// <summary>Puts the player at <paramref name="cells"/> (Core frame) -- a scenario's shortcut for a walk.</summary>
+        public void TeleportTo(CoreVector3 cells)
+        {
+            _walker.Position = cells;
+            Position = ToPixels(cells);
+        }
+
         /// <summary>Where the player stands, in cells (Core frame).</summary>
         public CoreVector3 CorePosition => _walker.Position;
 
@@ -47,6 +55,7 @@ namespace GolemFactory.Nodes
         private readonly Texture2D[] _frames = new Texture2D[ArtificerWalkAnimation.DirectionCount * ArtificerWalkAnimation.FramesPerDirection];
         private Sprite2D _sprite;
         private PlayerWalker _walker;
+        private PlayerInteractor _interactor;
 
         /// <summary>The interactable [E] would use right now, or null.</summary>
         public IInteractable Focus { get; private set; }
@@ -73,6 +82,11 @@ namespace GolemFactory.Nodes
                 AddChild(new Camera2D());
             }
 
+            // The Sandbox's [E] is Core's PlayerInteractor. LoopSlice has no composed world, so it
+            // keeps the spike's IInteractable nodes.
+            WorldNode world = WorldNode.Find(this);
+            _interactor = world?.Setup != null ? world.Sandbox.Interactor : null;
+
             _walker = new PlayerWalker(MoveSpeed) { Position = new CoreVector3(StartCell.X, StartCell.Y, 0f) };
             _walker.SetFloorBounds(UnitConverter, FloorLayout.HalfExtent);
             Position = ToPixels(_walker.Position);
@@ -80,7 +94,9 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
-            Vector2 input = ScriptedMove ?? Input.GetVector(MoveLeft, MoveRight, MoveDown, MoveUp); // +y = north
+            // A full screen owns the keys: the player does not walk off while choosing a chassis.
+            Vector2 input = ScriptedMove
+                ?? (ModalScreens.AnyOpen(GetTree()) ? Vector2.Zero : Input.GetVector(MoveLeft, MoveRight, MoveDown, MoveUp)); // +y = north
 
             // Bounded by the WORLD (workshop + street), with the north wall wherever Floor
             // Expansion has pushed it -- the clamp Unity's PlayerController applied.
@@ -90,10 +106,45 @@ namespace GolemFactory.Nodes
             Position = ToPixels(_walker.Position);
             _sprite.Texture = _frames[_walker.SpriteIndex];
 
+            if (_interactor != null)
+            {
+                // Core's PlayerInteractor, as Unity's Update drove it: where the player stands,
+                // whether [E] is held (the crank), then re-pick and refresh the prompt.
+                _interactor.Position = _walker.Position;
+                bool screenOpen = ModalScreens.AnyOpen(GetTree());
+                _interactor.SetInteractHeld(!screenOpen && Input.IsActionPressed(Interact));
+                _interactor.Poll();
+                if (!screenOpen && Input.IsActionJustPressed(Interact))
+                {
+                    _interactor.Interact();
+                }
+                return;
+            }
+
             Focus = FindNearestInteractable();
             if (Focus != null && Input.IsActionJustPressed(Interact))
             {
                 Focus.Interact();
+            }
+        }
+
+        public override void _UnhandledInput(InputEvent e)
+        {
+            if (_interactor == null || ModalScreens.AnyOpen(GetTree()))
+            {
+                return;
+            }
+
+            // R is shared with build mode, which hears it first (BuildCursorNode sits later in
+            // the tree, and _UnhandledInput runs last child first) and consumes it only while a
+            // placeable is in hand. Otherwise it turns the bench's dial or the nearest golem.
+            if (e.IsActionPressed(BuildCursorNode.RotateAction) && _interactor.RotateKey())
+            {
+                GetViewport().SetInputAsHandled();
+            }
+            else if (e.IsActionPressed(Carry) && _interactor.ToggleCarryGolem())
+            {
+                GetViewport().SetInputAsHandled();
             }
         }
 
@@ -129,6 +180,7 @@ namespace GolemFactory.Nodes
             Bind(MoveUp, Key.W, Key.Up);
             Bind(MoveDown, Key.S, Key.Down);
             Bind(Interact, Key.E);
+            Bind(Carry, Key.G);
         }
 
         private static void Bind(string action, params Key[] keys)

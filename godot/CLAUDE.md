@@ -54,6 +54,8 @@ ones. Current scenarios:
 - `build` (Sandbox): every placeable placed through the real build menu and cursor with
   synthetic mouse and key events, then drag runs, Escape, and a demolition that restores the
   stockpile exactly.
+- `interact` (Sandbox): the player's `[E]`, hold-`[E]`, and `[G]` at a stall, an empty stall,
+  the bench and the station, using real key and mouse events.
 - `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
   into the stockpile, over 600 ticks. `--spike-check` is an alias.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
@@ -98,6 +100,16 @@ there, not on a node, so a test can reach it.
 Buildings are Core `PlaceableBuilding`s. Godot draws them in `Scripts/Buildings/BuildingsLayer`,
 one `BuildingView` each, by listening to `BuildingPlaced`, `BuildingRemoved` and
 `ConnectedShapesChanged`. Don't give a building its own scene with logic in it.
+
+**The player's hands are Core's `PlayerInteractor`** (`SandboxWorld.Interactor`). `PlayerNode`
+only feeds it the position and the keys. A full screen joins the `ModalScreens` group and
+implements `IScreen`; while one is open the player stays still and the world prompt hides. A
+new screen gets that for free.
+
+**Scenario input:** `Input.ParseInputEvent` **without** `FlushBufferedEvents` for key presses,
+and a tap must hold the key down across at least one frame. A press and release in the same
+frame, or a flush from inside `_Process`, never reads as "just pressed" to a node that has
+already run that frame.
 
 **Z-order:** the floor is z −10 (`FloorLayer.FloorZ`), and floor-level things (belts, pipes,
 the ghost, shadows) are −1. Z-index is global within a canvas layer, so anything you add at a

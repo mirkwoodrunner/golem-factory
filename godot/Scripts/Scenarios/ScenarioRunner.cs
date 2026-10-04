@@ -59,6 +59,7 @@ namespace GolemFactory.Nodes.Scenarios
                 ["font-glyphs"] = () => new FontGlyphsScenario(),
                 ["world"] = () => new WorldScenario(),
                 ["build"] = () => new BuildScenario(),
+                ["interact"] = () => new InteractScenario(),
             };
 
         [Export] public NodePath StationPath { get; set; }

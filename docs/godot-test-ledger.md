@@ -161,6 +161,7 @@ ported, held for a named milestone, or retired with a reason.
 | `Core.Tests/Data/DefinitionLoaderTests.cs` | 16 |
 | `Core.Tests/Data/PlaceableCatalogTests.cs` | 18 |
 | `Core.Tests/Player/CameraRigRulesTests.cs` | 3 |
+| `Core.Tests/World/SandboxInteractionTests.cs` | 8 |
 | `Core.Tests/World/SandboxLayoutTests.cs` | 29 |
 | `Core.Tests/World/SandboxSetupTests.cs` | 6 |
 | `Core.Tests/World/SandboxWorldTests.cs` | 8 |
