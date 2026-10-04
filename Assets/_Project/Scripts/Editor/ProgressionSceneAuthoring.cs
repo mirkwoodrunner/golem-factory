@@ -59,10 +59,10 @@ namespace GolemFactory.Editor
 
         private const string BoilerPrefabPath = PrefabRoot + "BoilerPrefab.prefab";
         private const string SteamPipePrefabPath = PrefabRoot + "SteamPipePrefab.prefab";
+        private const string BeltPrefabPath = PrefabRoot + "BeltPrefab.prefab";
         private const string ClockTowerPrefabPath = PrefabRoot + "ClockTowerPrefab.prefab";
         private const string ManagerHoldersPath = PrefabRoot + "ManagerHolders.prefab";
         private const string HandCrankBenchPrefabPath = PrefabRoot + "HandCrankBenchPrefab.prefab";
-        private const string BeltPrefabPath = PrefabRoot + "BeltPrefab.prefab";
 
         /// <summary>
         /// Every ItemType paired with its icon, in section 5.1's ladder order.
@@ -165,6 +165,7 @@ namespace GolemFactory.Editor
             {
                 ImportItemIcons();
                 AuthorPlaceablePrefabs();
+                AuthorBeltPrefab();
                 AuthorManagerHolders();
                 AuthorWorkbenchCanvas();
                 AuthorSandboxScene();
@@ -198,16 +199,25 @@ namespace GolemFactory.Editor
             // The three building sprites ride along: same PPU, same point filter, same
             // no-compression rule. They differ only in pivot, which is applied below --
             // a building STANDS ON its cell, an item icon is centred on one.
+            //
+            // THE PIPE IS NO LONGER IN THIS SET, and that is the one deliberate change to a
+            // sprite that already worked. A pipe used to be a 64x34 sprite standing on its cell
+            // like a small building. It is now one of five square 64x64 FLOOR TILES rotated in
+            // quarter turns, and a quarter turn about a BottomCenter pivot swings the sprite out
+            // of its own cell -- so the pivot has to be the cell centre, which is also what makes
+            // two pipes on neighbouring cells line up.
             var bottomCenter = new System.Collections.Generic.HashSet<string>
             {
-                "steam_pipe.png", "depot.png", "golem_construction_station.png",
+                "depot.png", "golem_construction_station.png",
                 "freight_mast.png", "slag_heap.png", "scrap_recycler.png",
             };
 
             foreach (string file in new[]
                      {
                          "item_coal.png", "item_copper_ore.png", "item_zinc_ore.png",
-                         "steam_pipe.png", "depot.png", "golem_construction_station.png",
+                         "steam_pipe.png", "steam_pipe_end.png", "steam_pipe_corner.png",
+                         "steam_pipe_tee.png", "steam_pipe_cross.png",
+                         "depot.png", "golem_construction_station.png",
                          "freight_mast.png", "slag_heap.png", "scrap_recycler.png",
                      })
             {
@@ -227,21 +237,28 @@ namespace GolemFactory.Editor
                 importer.alphaIsTransparency = true;
                 importer.mipmapEnabled = false;
 
-                if (bottomCenter.Contains(file))
-                {
-                    // BOTH, and in this order, for the reason CharacterArtAuthoring gives:
-                    // Unity honours spriteAlignment and reads spritePivot only under Custom, so
-                    // writing just one leaves a .meta that behaves differently from how it reads.
-                    var settings = new TextureImporterSettings();
-                    importer.ReadTextureSettings(settings);
-                    settings.spriteAlignment = (int)SpriteAlignment.BottomCenter;
-                    settings.spritePivot = new Vector2(0.5f, 0f);
-                    importer.SetTextureSettings(settings);
-                }
+                // BOTH, and in this order, for the reason CharacterArtAuthoring gives: Unity
+                // honours spriteAlignment and reads spritePivot only under Custom, so writing
+                // just one leaves a .meta that behaves differently from how it reads.
+                //
+                // The CENTRE branch is written EXPLICITLY rather than left alone, and that is a
+                // scar. This method only ever *set* BottomCenter, so a sprite that had been in
+                // that set and then left it kept its old pivot -- which is exactly what happened
+                // to steam_pipe.png when the pipe became a floor tile. It imported, it looked
+                // fine standing still, and every quarter turn swung it half a cell out of its
+                // own tile. A pivot has to be stated by whoever owns it, in both directions.
+                bool standsOnItsCell = bottomCenter.Contains(file);
+                var settings = new TextureImporterSettings();
+                importer.ReadTextureSettings(settings);
+                settings.spriteAlignment = (int)(standsOnItsCell
+                    ? SpriteAlignment.BottomCenter : SpriteAlignment.Center);
+                settings.spritePivot = standsOnItsCell
+                    ? new Vector2(0.5f, 0f) : new Vector2(0.5f, 0.5f);
+                importer.SetTextureSettings(settings);
 
                 importer.SaveAndReimport();
-                Note(file + " imported at PPU 64, point filter"
-                     + (bottomCenter.Contains(file) ? ", BottomCenter" : ""));
+                Note(file + " imported at PPU 64, point filter, "
+                     + (standsOnItsCell ? "BottomCenter" : "Center"));
             }
         }
 
@@ -286,7 +303,28 @@ namespace GolemFactory.Editor
             BuildPlaceable(
                 SteamPipePrefabPath, "SteamPipePrefab", SteamPipeTint,
                 new[] { new RecipeIngredient(ItemType.IronPlate, SteamNetwork.SteamPipeIronPlateCost) },
-                go => Ensure<PlaceableSteamPipe>(go),
+                go =>
+                {
+                    PlaceableSteamPipe pipe = Ensure<PlaceableSteamPipe>(go);
+                    // The five pieces PipeShapeRules picks between. ConfigurePieces writes the
+                    // same private fields, but only SerializedObject makes a write survive to
+                    // disk -- the note WriteCost carries applies to every Configure(...) call in
+                    // this pass.
+                    var so = new SerializedObject(pipe);
+                    so.FindProperty("pipeRenderer").objectReferenceValue =
+                        go.GetComponent<SpriteRenderer>();
+                    so.FindProperty("endSprite").objectReferenceValue = LoadSprite("steam_pipe_end.png");
+                    so.FindProperty("straightSprite").objectReferenceValue = LoadSprite("steam_pipe.png");
+                    so.FindProperty("cornerSprite").objectReferenceValue = LoadSprite("steam_pipe_corner.png");
+                    so.FindProperty("teeSprite").objectReferenceValue = LoadSprite("steam_pipe_tee.png");
+                    so.FindProperty("crossSprite").objectReferenceValue = LoadSprite("steam_pipe_cross.png");
+                    so.ApplyModifiedPropertiesWithoutUndo();
+
+                    // Pipe is laid in runs, so holding the button lays a run. See
+                    // PlaceableBuilding.IsDragPlaceable for why this is a flag rather than a
+                    // component test.
+                    WriteDragPlaceable(go, true);
+                },
                 "steam_pipe.png");
 
             // NO COST, per PlaceableClockTower's own note: §7 places the tower in the world and
@@ -534,6 +572,82 @@ namespace GolemFactory.Editor
                 {
                     PrefabUtility.UnloadPrefabContents(root);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Turns click-and-drag on for one placeable. Through <see cref="SerializedObject"/> for
+        /// the same reason <see cref="WriteCost"/> is: a plain property write on prefab contents
+        /// does not reach disk.
+        /// </summary>
+        private static void WriteDragPlaceable(GameObject root, bool value)
+        {
+            var so = new SerializedObject(root.GetComponent<PlaceableBuilding>());
+            so.FindProperty("dragPlaceable").boolValue = value;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            Note("dragPlaceable = " + value);
+        }
+
+        // ===================================================================================
+        // 1b. The belt, which this pass did not previously touch at all.
+        // ===================================================================================
+
+        /// <summary>
+        /// Gives BeltPrefab its own <c>Lane</c> renderer and the three lane pictures.
+        ///
+        /// <para>
+        /// <b>Why the lane moves off the root.</b> The root renderer drew <c>belt_tile</c>
+        /// unrotated, so every belt in the game rendered an east-west lane no matter which way it
+        /// ran -- only the arrow child turned. The lane has to turn, and the root cannot: its
+        /// children are the direction arrow and (at runtime) the cargo visual, and
+        /// BeltSegmentVisual sets each item slot's world POSITION but never its rotation, so a
+        /// turned root would ride every crate on its side. One child turns, everything else stays
+        /// upright, and the root renderer keeps its sorting order while drawing nothing.
+        /// </para>
+        ///
+        /// <para>
+        /// Its own method rather than a <see cref="BuildPlaceable"/> call, because BeltPrefab
+        /// carries authored cargo bindings and a cost this pass has no business restating.
+        /// </para>
+        /// </summary>
+        private static void AuthorBeltPrefab()
+        {
+            Log.AppendLine("[BeltPrefab.prefab]");
+            GameObject root = PrefabUtility.LoadPrefabContents(BeltPrefabPath);
+            try
+            {
+                SpriteRenderer rootRenderer = Ensure<SpriteRenderer>(root);
+                GameObject laneGo = EnsureChild(root, "Lane");
+                SpriteRenderer lane = Ensure<SpriteRenderer>(laneGo);
+                lane.sprite = LoadSprite("belt_tile.png");
+                lane.color = rootRenderer.color;
+                lane.sortingLayerID = rootRenderer.sortingLayerID;
+                // The order the root used to draw at, so the lane sits exactly where the belt
+                // plate always did -- under the direction arrow, which is one higher.
+                lane.sortingOrder = rootRenderer.sortingOrder;
+
+                // Cleared, or the belt draws its old unrotated plate under the new lane and every
+                // corner shows a straight run poking out from beneath it.
+                rootRenderer.sprite = null;
+
+                PlaceableBelt belt = Ensure<PlaceableBelt>(root);
+                var so = new SerializedObject(belt);
+                so.FindProperty("laneRenderer").objectReferenceValue = lane;
+                so.FindProperty("straightSprite").objectReferenceValue = LoadSprite("belt_tile.png");
+                so.FindProperty("cornerLeftSprite").objectReferenceValue =
+                    LoadSprite("belt_tile_corner_left.png");
+                so.FindProperty("cornerRightSprite").objectReferenceValue =
+                    LoadSprite("belt_tile_corner_right.png");
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                WriteDragPlaceable(root, true);
+
+                PrefabUtility.SaveAsPrefabAsset(root, BeltPrefabPath);
+                Note("Lane child wired; corner pieces bound");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
             }
         }
 

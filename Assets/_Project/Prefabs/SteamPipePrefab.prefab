@@ -122,6 +122,7 @@ MonoBehaviour:
   cost:
   - itemType: IronPlate
     quantity: 1
+  dragPlaceable: 1
 --- !u!114 &3279615080079730282
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -134,3 +135,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c8efca34faa04b1aaaa9ce6a108ac542, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GolemFactory.Runtime::GolemFactory.Buildings.PlaceableSteamPipe
+  endSprite: {fileID: 21300000, guid: 7a2bd6d4814560948ae6eec49ea2f2a7, type: 3}
+  straightSprite: {fileID: 21300000, guid: 205b9d6271f0abb42801366e7b0e9c33, type: 3}
+  cornerSprite: {fileID: 21300000, guid: 0b4822d05a7f43241adf011d78d0501e, type: 3}
+  teeSprite: {fileID: 21300000, guid: e3d887b821efd8e429828fb9c36ef3f3, type: 3}
+  crossSprite: {fileID: 21300000, guid: 482488f2b79a96c41be6213b20be56ad, type: 3}
+  pipeRenderer: {fileID: 2057630380269151107}

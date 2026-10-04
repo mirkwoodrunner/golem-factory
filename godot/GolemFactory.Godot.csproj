@@ -1,0 +1,18 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RootNamespace>GolemFactory</RootNamespace>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <!-- Core and its tests are separate projects in subfolders; keep this project's
+       default glob from compiling their sources a second time. -->
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Core/**;Core.Tests/**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Core/GolemFactory.Core.csproj" />
+  </ItemGroup>
+</Project>

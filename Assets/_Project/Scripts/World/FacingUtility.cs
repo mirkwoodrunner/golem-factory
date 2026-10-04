@@ -51,5 +51,20 @@ namespace GolemFactory.World
         /// projection rotates that presentation but not the underlying cell math.
         /// </summary>
         public static Facing RotateClockwise(Facing facing) => (Facing)(((int)facing + 1) & 3);
+
+        /// <summary>
+        /// Next facing anticlockwise (N -> W -> S -> E -> N).
+        ///
+        /// <para>
+        /// The counterpart to <see cref="RotateClockwise"/>, and it earns a name rather than
+        /// three chained clockwise turns because the two shape rules that need it read as
+        /// direction claims, not as arithmetic: a belt turning LEFT and a pipe elbow's
+        /// canonical pair are both stated as "one step anticlockwise" in their own comments.
+        /// A quarter turn on screen is a quarter turn anticlockwise in grid terms too -- North
+        /// is straight up under the top-down projection -- so this is also the map from a
+        /// sprite rotated +90 degrees to the sides it now touches.
+        /// </para>
+        /// </summary>
+        public static Facing RotateCounterClockwise(Facing facing) => (Facing)(((int)facing + 3) & 3);
     }
 }

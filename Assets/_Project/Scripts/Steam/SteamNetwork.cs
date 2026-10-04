@@ -165,6 +165,31 @@ namespace GolemFactory.Steam
 
         public bool HasPipe(Vector2Int cell) => _pipes.Contains(cell);
 
+        /// <summary>
+        /// Whether a boiler stands on <paramref name="cell"/>. Linear over the boilers, which is
+        /// affordable because a factory has a handful of them and this is asked on placement, not
+        /// per tick -- the same trade BuildModeController.TryFindGolemAt documents.
+        ///
+        /// <para>
+        /// Exists for the PICTURE, not for the flood fill: <see cref="PipeShapeRules"/> has to
+        /// know that a pipe laid against a boiler joins on to it, or the run visibly stops one
+        /// cell short of the thing feeding it. The reachability walk never needs this -- it seeds
+        /// from the boiler's own neighbours rather than asking any cell what is on it.
+        /// </para>
+        /// </summary>
+        public bool HasBoilerAt(Vector2Int cell)
+        {
+            foreach (SteamBoiler boiler in _boilers.Values)
+            {
+                if (boiler.Cell == cell)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public bool AddPipe(Vector2Int cell)
         {
             if (!_pipes.Add(cell))

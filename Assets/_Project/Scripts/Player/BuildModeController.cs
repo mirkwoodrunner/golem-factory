@@ -100,6 +100,7 @@ namespace GolemFactory.Player
             _buildingPrefab = null;
             IsDemolishActive = true;
             LastStatusMessage = "";
+            EndDrag();
         }
 
         /// <summary>Turns the ghost one step clockwise. Public so a test can drive it directly.</summary>
@@ -259,8 +260,38 @@ namespace GolemFactory.Player
             return FloorLayout.IsInsideWorld(cell, _placementHalfExtent, _placementStreetDepth);
         }
 
-        // Called by UI/BuildMenuPanel when the player picks a different placeable type.
-        public void SetActivePrefab(PlaceableBuilding prefab) => _buildingPrefab = prefab;
+        /// <summary>
+        /// Called by UI/BuildMenuPanel when the player picks a placeable type. Takes the wrecking
+        /// bar out of the player's hand, because <b>the two are one cursor and cannot both be
+        /// held</b> — the exact mirror of what <see cref="EnterDemolishMode"/> already does to a
+        /// placeable.
+        ///
+        /// <para>
+        /// <b>That mirror was missing, and it did far more than leave a row highlighted.</b>
+        /// Every mode question in this file is asked as <c>IsDemolishActive</c> FIRST, so a
+        /// player who clicked Demolish and then clicked Depot got: no placement at all
+        /// (<c>PlaceOrRemove</c> answers an empty tile with "nothing here" and returns before it
+        /// ever reaches <c>PlaceInternal</c>), an inverted ghost that greens on occupied tiles,
+        /// no facing arrow — so <c>R</c> went silently invisible again — and any drag turned into
+        /// a demolition sweep. The build menu highlighted both rows, which was the only visible
+        /// symptom of four broken behaviours.
+        /// </para>
+        ///
+        /// <para>
+        /// Fixed HERE rather than in the menu that reported it. The panel is one caller; the
+        /// invariant belongs to the state, or the next caller — a hotkey, a test, the assembly
+        /// line — reintroduces it.
+        /// </para>
+        /// </summary>
+        public void SetActivePrefab(PlaceableBuilding prefab)
+        {
+            _buildingPrefab = prefab;
+            IsDemolishActive = false;
+            LastStatusMessage = "";
+            // A run in progress belonged to the tool being put down, exactly as it does when the
+            // bar is picked up.
+            EndDrag();
+        }
 
         public PlaceableBuilding ActivePrefab => _buildingPrefab;
         public IReadOnlyList<PlaceableBuilding> AvailablePrefabs => _availablePrefabs;
@@ -283,6 +314,7 @@ namespace GolemFactory.Player
             {
                 _clickAction.Enable();
                 _clickAction.performed += OnClickPerformed;
+                _clickAction.canceled += OnClickCanceled;
             }
 
             if (_rotateAction != null)
@@ -303,8 +335,11 @@ namespace GolemFactory.Player
             if (_clickAction != null)
             {
                 _clickAction.performed -= OnClickPerformed;
+                _clickAction.canceled -= OnClickCanceled;
                 _clickAction.Disable();
             }
+
+            EndDrag();
 
             if (_rotateAction != null)
             {
@@ -343,6 +378,7 @@ namespace GolemFactory.Player
             }
 
             _buildingPrefab = null;
+            EndDrag();
             // The wrecking bar leaves by the same three doors the placeables do. Anything else
             // reintroduces the trap this method exists to close, with a more destructive tool
             // stuck in the player's hand.
@@ -392,6 +428,14 @@ namespace GolemFactory.Player
             Vector3 worldPos = _camera.ScreenToWorldPoint(Pointer.current.position.ReadValue());
             worldPos.z = 0f;
             _hoveredCell = _converter.WorldToCell(worldPos);
+
+            // Belt-and-braces against a drag that outlives its button -- see OnClickCanceled.
+            if (_dragActive && !Pointer.current.press.isPressed)
+            {
+                EndDrag();
+            }
+
+            ExtendDrag(_hoveredCell);
             UpdateGhost();
         }
 
@@ -572,6 +616,253 @@ namespace GolemFactory.Player
             }
 
             PlaceOrRemove(_hoveredCell);
+            BeginDrag(_hoveredCell);
+        }
+
+        // Release ends the run. Button actions cancel on release, but Update carries a second
+        // check against the pointer's own state as well: a drag that outlived its button would
+        // keep laying belts wherever the cursor went, which is the one failure mode of this
+        // feature a player could not undo in a single gesture.
+        private void OnClickCanceled(InputAction.CallbackContext context) => EndDrag();
+
+        // ===================================================================================
+        // Click-and-drag: laying a RUN.
+        // ===================================================================================
+        //
+        // Belts and steam pipes are the two things a player lays fifteen of in a row, and until
+        // now that was fifteen clicks with an R in the middle of it. A drag lays the run and
+        // POINTS IT ALONG ITSELF, which is the half that matters: the facing of every belt but
+        // the last is only knowable once the drag has reached the next cell, so each cell is laid
+        // facing the cursor and then turned as the run goes on (PlaceableBelt.Reface /
+        // BeltNetwork.TrySetFacing, neither of which disturbs the lane or its cargo).
+        //
+        // Which placeables answer to this is a per-prefab flag, not a component test -- see
+        // PlaceableBuilding.IsDragPlaceable for why the question is about the gesture rather than
+        // about the thing.
+        //
+        // THE WRECKING BAR DRAGS TOO, and its run is deliberately not the mirror image of a
+        // placement run: it never stops, and it never takes a golem. Both differences have
+        // reasons, and both are argued at DemolishDragged rather than here.
+        private bool _dragActive;
+
+        /// <summary>
+        /// Whether this run is the wrecking bar's rather than a placeable's. The two runs are
+        /// deliberately NOT symmetric -- see <see cref="DemolishDragged"/>.
+        /// </summary>
+        private bool _dragDemolishing;
+
+        private Vector2Int _dragLastCell;
+        private readonly List<Vector2Int> _dragStepScratch = new List<Vector2Int>();
+
+        // Cells this drag laid. Purely so the player can wiggle back over their own run without
+        // it counting as "blocked": every OTHER occupied cell ends the drag, because a run that
+        // silently skipped a wall would leave the belt before the gap pointing into it.
+        private readonly HashSet<Vector2Int> _dragPlacedCells = new HashSet<Vector2Int>();
+
+        /// <summary>Whether a run is being laid right now. Public so a test can assert it.</summary>
+        public bool IsDragging => _dragActive;
+
+        /// <summary>
+        /// Starts a run at the cell the click just landed on. Public so a test can lay a run
+        /// without simulating a pointer, matching how <c>PlaceOrRemove</c> is already reachable.
+        /// </summary>
+        public void BeginDrag(Vector2Int anchor)
+        {
+            if (IsDemolishActive)
+            {
+                // The wrecking bar drags unconditionally -- there is no prefab to carry a flag,
+                // and the tool IS the flag. Safe to make destructive-by-the-gesture for the same
+                // reason removal is a full refund: a swept building comes back for nothing, so
+                // an over-long drag costs the player a re-place and not a single unit of goods.
+                _dragActive = true;
+                _dragDemolishing = true;
+                _dragLastCell = anchor;
+                _dragPlacedCells.Clear();
+                return;
+            }
+
+            if (_buildingPrefab == null || !_buildingPrefab.IsDragPlaceable)
+            {
+                return;
+            }
+
+            _dragActive = true;
+            _dragDemolishing = false;
+            _dragLastCell = anchor;
+            _dragPlacedCells.Clear();
+            // The anchor counts as ours whether or not the click actually placed anything: if it
+            // did, the run may need to turn it; if it did not (no room, no goods), the very first
+            // step will find it occupied or refused and end the drag there.
+            _dragPlacedCells.Add(anchor);
+        }
+
+        private void EndDrag()
+        {
+            _dragActive = false;
+            _dragDemolishing = false;
+            _dragPlacedCells.Clear();
+        }
+
+        /// <summary>
+        /// Carries a live drag up to <paramref name="cell"/>, laying every cell on the way.
+        /// Public so a test can drive a run without simulating a pointer.
+        /// </summary>
+        public void ExtendDrag(Vector2Int cell)
+        {
+            if (!_dragActive || cell == _dragLastCell || _gridMapHolder == null)
+            {
+                return;
+            }
+
+            _dragStepScratch.Clear();
+            BuildDragPath.AppendCells(_dragLastCell, cell, _dragStepScratch);
+
+            for (int i = 0; i < _dragStepScratch.Count; i++)
+            {
+                Vector2Int next = _dragStepScratch[i];
+                if (_dragDemolishing)
+                {
+                    DemolishDragged(next);
+                    _dragLastCell = next;
+                    continue;
+                }
+
+                Facing stepFacing = BuildDragPath.StepFacing(_dragLastCell, next, PlacementFacing);
+
+                if (_dragPlacedCells.Contains(next))
+                {
+                    // Wiggled back over our own run. Re-anchor and carry on, laying nothing --
+                    // and pointedly NOT re-facing the cell we came from, which would turn the
+                    // run backwards into itself. The next forward step re-faces it correctly.
+                    _dragLastCell = next;
+                    continue;
+                }
+
+                if (!TryPlaceDragged(next, stepFacing))
+                {
+                    // Blocked, off the ground, or unaffordable. The run stops where it stopped
+                    // rather than skipping the obstruction, because a run with a hole in it
+                    // leaves the belt before the hole pointing at nothing.
+                    EndDrag();
+                    return;
+                }
+
+                // Only now does the cell we came from know which way the run leaves it -- after
+                // the next cell is really there, so a refusal never leaves a belt aimed at a wall.
+                RefaceDragged(_dragLastCell, stepFacing);
+
+                _dragPlacedCells.Add(next);
+                _dragLastCell = next;
+
+                // The ghost keeps the direction the run is going, so letting go and clicking
+                // again continues the line rather than restarting it at whatever R last chose.
+                PlacementFacing = stepFacing;
+            }
+        }
+
+        /// <summary>
+        /// One cell of a wrecking-bar run: takes back the building standing here, if any.
+        ///
+        /// <para>
+        /// <b>It does NOT stop at an empty cell, and that is the deliberate asymmetry with the
+        /// placement run.</b> A run of belts must stop at an obstruction because a run with a
+        /// hole in it leaves the belt before the hole pointing at nothing -- a placed run has to
+        /// be CONTINUOUS to mean anything. A demolition has no such requirement: sweeping the bar
+        /// across a corner of the factory is meant to clear what is there and pass over what is
+        /// not, and an L-shaped drag crosses empty floor as a matter of course. Stopping on the
+        /// first gap would make the tool useless for the one gesture it exists for.
+        /// </para>
+        ///
+        /// <para>
+        /// <b>It does not take GOLEMS, and a click still does.</b> This is the one place the drag
+        /// is narrower than the click it repeats, and the reason is that the full refund does not
+        /// actually make a golem whole: demolishing a building and re-placing it restores it
+        /// exactly, while a dismantled golem hands back its chassis and its cargo and loses <em>the
+        /// program</em> -- six cards the player dragged one at a time, gone to a gesture aimed at
+        /// the crate beside it. (A patented program survives in the Patents tab; an unpatented one
+        /// does not.) Sweeping up a building is an undo away; sweeping up a golem is not, so a
+        /// golem still costs one deliberate click.
+        /// </para>
+        ///
+        /// <para>
+        /// Every other rule is the click's, unchanged, because this calls the same
+        /// <see cref="DemolishBuilding"/>: full refund, runtime-placed only, and refused outright
+        /// if the stockpile has no room to take the goods back. A refusal does not end the run --
+        /// it leaves that one building standing and says so, and the sweep carries on.
+        /// </para>
+        /// </summary>
+        private void DemolishDragged(Vector2Int cell)
+        {
+            object occupant;
+            if (_gridMapHolder.Map.TryGetOccupant(cell, out occupant)
+                && occupant is PlaceableBuilding building)
+            {
+                DemolishBuilding(building, cell, refund: true);
+            }
+        }
+
+        // One cell of a run. Deliberately NOT PlaceOrRemove: that method is the player's CLICK,
+        // and a click on an occupied cell demolishes what is there. Dragging a belt run across
+        // your own depot must never eat the depot.
+        private bool TryPlaceDragged(Vector2Int cell, Facing facing)
+        {
+            GridMap map = _gridMapHolder.Map;
+            if (map.IsOccupied(cell) || !IsCellBuildable(cell) || _buildingPrefab == null)
+            {
+                return false;
+            }
+
+            Facing previous = PlacementFacing;
+            PlacementFacing = facing;
+            PlaceInternal(cell, map);
+            PlacementFacing = previous;
+
+            // PlaceInternal reports a refusal by leaving the cell unoccupied (it withdraws the
+            // cost atomically and returns early on a shortfall), so occupancy is the honest
+            // answer to "did that work" without giving the method a return value its other two
+            // callers would have to start ignoring.
+            return map.IsOccupied(cell);
+        }
+
+        // Turns a cell the current drag already laid, so the run points along itself.
+        private void RefaceDragged(Vector2Int cell, Facing facing)
+        {
+            object occupant;
+            if (!_dragPlacedCells.Contains(cell) || _gridMapHolder == null
+                || !_gridMapHolder.Map.TryGetOccupant(cell, out occupant))
+            {
+                return;
+            }
+
+            var building = occupant as PlaceableBuilding;
+            if (building == null || building.Facing == facing)
+            {
+                return;
+            }
+
+            building.Facing = facing;
+
+            // A belt's facing IS its routing, so the lane graph has to be told before the
+            // picture is. Both are no-ops for a pipe, which has no direction to speak of --
+            // its Facing is read only as the orientation of an ISOLATED stub.
+            PlaceableBelt belt = building.GetComponent<PlaceableBelt>();
+            if (belt != null && _beltNetworkHolder != null)
+            {
+                _beltNetworkHolder.Network.TrySetFacing(cell, facing);
+                belt.Reface(facing);
+            }
+
+            RefreshConnectedShapes();
+        }
+
+        /// <summary>
+        /// Re-derives every belt and pipe picture from the networks that own them. Called
+        /// wherever the built world changes, and a no-op for a scene that wired neither.
+        /// </summary>
+        private void RefreshConnectedShapes()
+        {
+            PlaceableSteamPipe.RefreshAllShapes(_steamNetworkHolder);
+            PlaceableBelt.RefreshAllShapes(_beltNetworkHolder);
         }
 
         public void PlaceOrRemove(Vector2Int cell)
@@ -855,6 +1146,12 @@ namespace GolemFactory.Player
             }
             Destroy(building.gameObject);
 
+            // Same sweep as after a placement, and it matters MORE here: a tee whose third arm
+            // has just been lifted has to stop drawing an arm into an empty cell. The object
+            // being destroyed is still alive for the rest of the frame, which is why the two
+            // refreshes both skip anything that has already left its network.
+            RefreshConnectedShapes();
+
             // Removal matters as much as placement: PlayerInteractor's cached arrays would
             // otherwise keep offering a demolished depot. FillPositions parks destroyed entries
             // at infinity so a stale cache is never *wrong*, but it stays one entry longer than
@@ -1089,6 +1386,12 @@ namespace GolemFactory.Player
                     pipe.RegisterWithSteamNetwork(_steamNetworkHolder, cell);
                 }
             }
+
+            // Neighbours change shape when something is laid beside them: a straight pipe
+            // becomes a tee, a belt fed from its flank becomes a corner. Swept here rather than
+            // patched per cell for the reason BeltNetwork.Relink is recomputed wholesale -- see
+            // PlaceableSteamPipe's roster note. Both are no-ops with their network unwired.
+            RefreshConnectedShapes();
 
             // LAST, after every registration above. A listener re-scans the scene on this, and
             // the thing it will find must already be fully wired -- a depot found before

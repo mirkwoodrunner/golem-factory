@@ -89,7 +89,11 @@ Editor (or a live MCP-for-Unity bridge, if connected):
     Editor pass (**Tools > Golem Factory > Author Tech Tree Chart** for the latter).
   - `python Tools/Art/generate_building_art.py` — the steam pipe, depot, construction station,
     freight mast, slag heap and **scrap recycler**. Imported by the progression scene
-    authoring pass, BottomCenter at PPU 64.
+    authoring pass, BottomCenter at PPU 64 — **except the five steam-pipe pieces**
+    (`steam_pipe`, `_end`, `_corner`, `_tee`, `_cross`), which are square, centre-pivoted
+    64×64 floor tiles written by `save_tile` rather than the trimming `save`. A pipe is
+    rotated in quarter turns at runtime, and a quarter turn about a BottomCenter pivot swings
+    the sprite out of its own cell.
   - `python Tools/Art/trim_character_alpha.py --apply` — trims the transparent rows beneath a
     standing sprite's feet, which BottomCenter would otherwise render as a float above the tile.
     **The sixteen walk frames are trimmed by a shared minimum, never per frame** — per-frame
@@ -103,8 +107,8 @@ Editor (or a live MCP-for-Unity bridge, if connected):
 
 As of the last full run (progression pass, Editor passes, the Hand-Crank Bench, the
 isometric→top-down projection switch, the market street, the tech tree chart, the backlog
-pass, the Director's pass, the cozy automation pass, and the playtest-session-3 fixes):
-**1422/1422 tests passing** (1234 EditMode + 188 PlayMode).
+pass, the Director's pass, the cozy automation pass, the playtest-session-3 fixes, and the
+connected-tiles pass): **1473/1473 tests passing** (1264 EditMode + 209 PlayMode).
 
 **Two ways to run the tests, and which one depends on whether the Editor is open.**
 
@@ -301,7 +305,9 @@ an actual playable front door, reusing `Main.unity`'s systems unchanged via two 
   on its cell, and auto-chains into the belt it points at (`BeltPlacementRules.ShouldLink`).
   Wraps `BeltSegment` strictly from the outside, so `Belts/` still references nothing above it.
   **A belt can only hand off to another belt** — getting items into a buffer needs a golem doing
-  `LoadIntoBuffer` at the end of the run.
+  `LoadIntoBuffer` at the end of the run. `TrySetFacing` turns a belt that is already laid,
+  keeping its segment and its cargo — click-and-drag uses it, because a run only learns which way
+  a belt should point once the drag reaches the *next* cell.
 - **Known gap**: `Scripts/Save/` now exists (`SaveLoadService`, `SaveData`, `SaveFileIO`,
   `DefinitionCatalog`) and persists buffers, blueprints, and golem programs (including
   each golem's cell/facing). But it only ever restores a program onto an **already-existing**
@@ -426,14 +432,26 @@ future second owner would need a rewrite instead of a parameter.
   row): every click is gated on `BuildClickPolicy.ShouldPlace`, which demands a tool in hand, so
   before the wrecking bar existed removal was reachable *only while holding a placeable* —
   invisible while build mode had no exit, and silently broken for anyone who pressed Escape once
-  that shipped.
+  that shipped. **It drags, too** — see the click-and-drag entry below for the two ways its run
+  deliberately differs from a placement run.
+  - **The two tools are mutually exclusive in BOTH directions**, and only one of them used to be
+    written. `EnterDemolishMode` puts the placeable down; `SetActivePrefab` now puts the bar down.
+    Without the mirror, picking Demolish and then a placeable left both in hand — and because
+    every mode question in `BuildModeController` asks `IsDemolishActive` **first**, that meant no
+    placement at all (an empty tile answered "nothing here" and returned before `PlaceInternal`),
+    an inverted ghost, no facing arrow so `R` went invisible, and every drag became a demolition
+    sweep. The stale menu highlight was the only visible symptom of four broken behaviours. The
+    invariant lives on the controller, not in the panel that reported it: the menu is one caller,
+    and the next one would reintroduce it.
   - **The wrecking bar takes golems too**, through `IGolemDismantler` →
     `GolemConstructionStation.TryDismantleGolem`, under the same three rules plus one of its own:
     **a golem's cargo is refunded as well as its chassis** (`GolemDismantleRules.ComposeRefund`).
     The golem a player most wants rid of is usually the stalled one holding something, so
     destroying its load would put the sting back into exactly the case the full refund exists
     for. Only the chassis is gated on `GolemEntity.IsRuntimeSpawned`; the cargo is real goods
-    whoever built the golem.
+    whoever built the golem. **A CLICK takes a golem; a DRAG does not** — the refund makes a
+    swept building whole (re-place it and it is identical) but cannot restore a golem's program,
+    so a golem costs one deliberate click.
   - **Golems are NOT `GridMap` occupants** — only buildings are, and the two `TryOccupy` calls in
     `BuildModeController` are the only ones in the project. A golem knows its own cell instead, so
     the wrecking bar finds one by scanning (`TryFindGolemAt`), not by a map lookup. Anything else
@@ -502,6 +520,49 @@ future second owner would need a rewrite instead of a parameter.
   Node identity must be the *sprite*. This had already bitten once before it was noticed: the
   Aether marker wore the brass ingot under a teal tint and rendered as plain brass in every play
   session, while `item_aether.png` sat unused.
+- **A belt's and a pipe's PICTURE is derived from its links, never the other way round.**
+  `World/BeltShapeRules` and `Steam/PipeShapeRules` sit beside `BeltPlacementRules` and
+  `SteamPipeRules` rather than inside them: one pair owns where things GO, the other owns what
+  the player SEES, and neither shape rule can change a routing decision. `PlaceableBelt
+  .RefreshShape` asks the lane graph which segments actually feed it (`Segment.Outputs`), not the
+  neighbours' facings, so a splitter — which has no facing — answers the same question the same
+  way. Three belt pictures (straight, two corners) and five pipe pieces (end, straight, corner,
+  tee, cross), each authored pointing **East** and rotated through `FacingVisuals
+  .ScreenAngleDegrees`; five pieces cover all sixteen neighbour masks.
+  - **A steam pipe still has no facing**, and §11 item 4's argument stands unchanged. `R` decides
+    exactly one thing for a pipe: the orientation of an **isolated** stub, which is the one case
+    the topology cannot answer and the one the player cares about, since the next pipe is laid
+    off that open end.
+  - **The lane sprite is a `Lane` CHILD of `BeltPrefab`, not its root renderer.** Rotating the
+    root would take the cargo with it — `BeltSegmentVisual` sets each item slot's world position
+    but never its rotation — so crates would ride on their side, and the arrow and lane markers
+    would double-rotate. `ProgressionSceneAuthoring.AuthorBeltPrefab` also **clears the root's
+    sprite**; leave it and every corner shows a straight run poking out from under the bend.
+  - Refresh is a **wholesale sweep** over a static roster kept in `OnEnable`/`OnDisable`
+    (`RefreshAllShapes`), called from `BuildModeController` on every place and demolish — the
+    same "recompute rather than patch" trade `BeltNetwork.Relink` makes, for the same reason.
+    There is no cell→component lookup in this project to find the other four cells with.
+- **Click-and-drag lays a RUN, and the run points along itself.** `Player/BuildDragPath` is the
+  pure part: orthogonal and **axis-first** (an L, not a staircase — there is no diagonal facing).
+  Which placeables answer to it is a per-prefab flag, `PlaceableBuilding.IsDragPlaceable`, not a
+  component test: the question is about the player's gesture, and it fails safe at `false`.
+  Three rules with teeth:
+  - **A drag is not a click.** `TryPlaceDragged` deliberately bypasses `PlaceOrRemove`, whose
+    contract is that a click on an occupied cell *demolishes* it — dragging a belt line past your
+    own depot must never eat the depot.
+  - **It stops at an obstruction rather than skipping it**, because a run with a hole in it
+    leaves the belt before the hole pointing at nothing.
+  - **Wiggling back over your own run re-anchors and lays nothing**, and does not re-face the
+    cell it came from — that would turn the run backwards into itself.
+  - **The wrecking bar drags too, and its run is NOT the mirror image of a placement run.** It
+    needs no `IsDragPlaceable` flag (the tool is the flag), it **never stops at an empty cell**
+    (a demolition has no continuity to preserve, and an L-shaped sweep crosses bare floor as a
+    matter of course), and it **never takes a golem** — the one place the drag is narrower than
+    the click it repeats. A swept building is an undo away: re-place it and it is identical. A
+    dismantled golem hands back chassis and cargo and loses *the program*, which a full refund
+    cannot restore, so a golem still costs one deliberate click. Everything else is
+    `DemolishBuilding` unchanged: full refund, runtime-placed only, refused if the stockpile has
+    no room — and a refusal leaves that one building standing without ending the sweep.
 - **TMP text is Latin-1 plus four baked glyphs — nothing else.** The allowlist is
   `→` (U+2192), `≥` (U+2265), `█` (U+2588) and `░` (U+2591), and `·` (U+00B7) is the project's
   separator. Anything else above `U+00FF` is forbidden. **This has bitten for real**: fourteen

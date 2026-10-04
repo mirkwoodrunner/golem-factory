@@ -135,6 +135,47 @@ namespace GolemFactory.Tests.PlayMode
             Assert.IsTrue(gridMapHolder.Map.IsOccupied(cell));
         }
 
+        [UnityTest]
+        public IEnumerator PickingAPlaceableAfterDemolish_PlacesAgain()
+        {
+            // THE BUG, stated as the player met it: pick Demolish, then pick a placeable, then
+            // click bare floor -- and nothing is built. Every mode question in BuildModeController
+            // asks IsDemolishActive FIRST, so PlaceOrRemove answered an empty tile with "nothing
+            // here" and returned before it ever reached PlaceInternal. The stale menu highlight
+            // was the visible symptom; this was the behaviour.
+            (BuildModeController controller, GridMapHolder gridMapHolder) = Build();
+            PlaceableBuilding prefab = controller.ActivePrefab;
+
+            controller.EnterDemolishMode();
+            Assert.IsNull(controller.ActivePrefab, "precondition: the bar put the placeable down");
+
+            controller.SetActivePrefab(prefab);
+            controller.PlaceOrRemove(new Vector2Int(3, 3));
+            yield return null;
+
+            Assert.IsFalse(controller.IsDemolishActive);
+            Assert.IsTrue(gridMapHolder.Map.IsOccupied(new Vector2Int(3, 3)),
+                "the wrecking bar was still in hand, so the click removed nothing and built nothing");
+        }
+
+        [UnityTest]
+        public IEnumerator TheTwoToolsAreExclusiveInBothDirections()
+        {
+            // Pinned as one property rather than two tests, because the failure was precisely
+            // that one direction was pinned and the other was not.
+            (BuildModeController controller, GridMapHolder _) = Build();
+            PlaceableBuilding prefab = controller.ActivePrefab;
+
+            controller.EnterDemolishMode();
+            Assert.IsTrue(controller.IsDemolishActive);
+            Assert.IsNull(controller.ActivePrefab);
+
+            controller.SetActivePrefab(prefab);
+            Assert.IsFalse(controller.IsDemolishActive);
+            Assert.AreSame(prefab, controller.ActivePrefab);
+            yield return null;
+        }
+
         private (BuildModeController controller, GridMapHolder gridMapHolder) Build()
         {
             _root = new GameObject("Root");

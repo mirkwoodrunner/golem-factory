@@ -112,6 +112,7 @@ MonoBehaviour:
     quantity: 25
   - itemType: Brass
     quantity: 5
+  dragPlaceable: 0
 --- !u!114 &8404141519452679074
 MonoBehaviour:
   m_ObjectHideFlags: 0

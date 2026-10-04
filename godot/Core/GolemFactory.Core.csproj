@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    All game rules live here, and this project references NO engine. It is the
+    Godot-side successor to the Unity asmdef's noEngineReferences: true, except it
+    now covers every rule rather than only the tick clock. The compiler refuses a
+    Godot type here, so the boundary cannot drift.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GolemFactory</RootNamespace>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+</Project>

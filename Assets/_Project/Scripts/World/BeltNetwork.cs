@@ -15,7 +15,15 @@ namespace GolemFactory.World
         }
 
         public Vector2Int Cell { get; }
-        public Facing Facing { get; }
+
+        /// <summary>
+        /// Which way this belt runs. Settable only through
+        /// <see cref="BeltNetwork.TrySetFacing"/>, which relinks the whole network afterwards --
+        /// writing it directly would leave the lane graph describing the belt's OLD direction,
+        /// which is the one way a stale link can still be created now that Relink is wholesale.
+        /// </summary>
+        public Facing Facing { get; internal set; }
+
         public BeltSegment Segment { get; }
     }
 
@@ -102,6 +110,41 @@ namespace GolemFactory.World
                 _endpoints.Register(cell, new BeltSegmentEndpoint(segment));
             }
 
+            Relink();
+            return true;
+        }
+
+        /// <summary>
+        /// Turns a belt that is already laid, keeping its lane and everything riding on it.
+        ///
+        /// <para>
+        /// Exists for click-and-drag: a run only learns which way a belt should point once the
+        /// drag reaches the NEXT cell, so the cell under the cursor is laid facing the cursor and
+        /// then turned as the run goes on. Remove-and-replace would do the same job and cost the
+        /// segment its id and its contents -- nothing during a drag, but this is a public verb
+        /// and the next caller will not be dragging.
+        /// </para>
+        ///
+        /// <para>
+        /// Relinks wholesale afterwards, exactly as placing and removing do. A belt's facing IS
+        /// its routing, so a turn that did not relink would be a lane graph describing a belt
+        /// that no longer exists.
+        /// </para>
+        /// </summary>
+        public bool TrySetFacing(Vector2Int cell, Facing facing)
+        {
+            PlacedBelt placed;
+            if (!_belts.TryGetValue(cell, out placed))
+            {
+                return false;
+            }
+
+            if (placed.Facing == facing)
+            {
+                return false;
+            }
+
+            placed.Facing = facing;
             Relink();
             return true;
         }

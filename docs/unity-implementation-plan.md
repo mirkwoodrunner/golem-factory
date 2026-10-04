@@ -3502,3 +3502,191 @@ PlayMode `WreckingBarGolemTests` driving the tool through a **fake** `IGolemDism
 refund is worth belongs to one file and what the tool does belongs to the other, so a change to
 one cannot silently rewrite the other's expectations. Plus three `WorkbenchControllerTests` on the
 TARGET header, covering surface that had never been rendered by a test at all.
+
+---
+
+## Turning, joining and dragging: belts and pipes as connected tiles
+
+Three asks, one pass, and they turned out to be the same ask three times: **a directional thing
+should look like what it does.**
+
+1. Directional placeables — belts, steam pipes — must be turnable.
+2. Both should pick up **corner pieces automatically** when a run bends.
+3. Things laid in runs should be layable by **click and drag**, not fifteen clicks and an `R`
+   — and, once that shipped, removable the same way.
+
+### What was actually wrong before
+
+- **A belt only ever drew an east-west lane.** `BeltPrefab`'s root `SpriteRenderer` held
+  `belt_tile.png` and nothing rotated it; only the `DirectionArrow` child turned. So a belt
+  running north drew a horizontal lane with a north arrow on top of it, and every one of the game's
+  eight bends drew as a crossroads.
+- **A steam pipe had no picture of a joint at all.** Every pipe was the same 64×34 hero sprite of
+  a horizontal run, so a north-south column of pipe rendered as a stack of disconnected rungs —
+  while being, to `SteamPipeRules`' flood fill, one perfectly connected network. **The picture
+  contradicted the simulation**, which is the whole reason this got a pass rather than a nicer
+  sprite.
+- **`R` did nothing for a pipe**, because a pipe has no facing. It still has none; see below.
+
+### The shape is READ OFF the links, never the other way round
+
+Two new engine-free statics, deliberately sitting *beside* the two rule files that already own
+routing rather than inside them:
+
+| owns where things GO | owns what the player SEES |
+| --- | --- |
+| `World/BeltPlacementRules.ShouldLink` | `World/BeltShapeRules.Resolve` |
+| `Steam/SteamPipeRules` (undirected flood fill) | `Steam/PipeShapeRules.Resolve` |
+
+`PlaceableBelt.RefreshShape` asks the **lane graph** which segments actually hand items to this
+one (`neighbour.Segment.Outputs.Contains(mySegment)`) rather than re-deriving it from facings — so
+a splitter, which has no facing of its own, answers the same question the same way a belt does,
+and a corner can only ever be drawn where cargo genuinely turns. `PlaceableSteamPipe.RefreshShape`
+asks the `SteamNetwork` (plus the new `HasBoilerAt`, so a run does not visibly stop one cell short
+of the boiler feeding it). **Neither shape rule can change a single routing decision**, which is
+what makes the picture safe to derive.
+
+Three belt pictures (straight + two corners) and five pipe pieces (end, straight, corner, tee,
+cross), each authored pointing **East** and rotated through `FacingVisuals.ScreenAngleDegrees`
+like every other directional cue in the game. Five pieces cover sixteen neighbour masks; a test
+walks all sixteen and asserts the piece's arm count equals the neighbour count, because a tee
+drawn where a corner belongs is an arm reaching into an empty cell.
+
+**`R` still means something for a pipe, and exactly one thing**: the orientation of an *isolated*
+stub — the one case the topology cannot answer, and the one that matters, because the next pipe is
+usually laid off that open end.
+
+### The lane had to move off the belt's root, and could not just be rotated
+
+Rotating `BeltPrefab`'s root would have taken its children with it, and `BeltSegmentVisual` sets
+each item slot's world **position** but never its rotation — so every crate on a north-running
+belt would have ridden on its side, and the direction arrow and the two lane markers would have
+double-rotated. The lane is now its own `Lane` child (authored idempotently by
+`ProgressionSceneAuthoring.AuthorBeltPrefab`, which also **clears the root's sprite** — leave it
+and every corner shows a straight run poking out from under the bend). One child turns; everything
+else stays upright.
+
+`BeltSegmentVisual` gained `RelocateLane()` for the same reason: turning a placed belt moves its
+two lane markers, and calling `TryResolveSegment` again would have built a *second* set of pooled
+renderers. Geometry re-read, pool untouched.
+
+### Click and drag lays a run that points along itself
+
+`Player/BuildDragPath` is the pure part: orthogonal, **axis-first** (an L, not a staircase — there
+is no diagonal facing, and a staircase would be a corner every cell at four belts a turn), and
+predictable from the two endpoints alone, because nobody can hold a mouse to one pixel row while
+laying a run down a wall.
+
+The half that matters is the facing. **A belt's direction is only knowable once the drag reaches
+the next cell**, so each cell is laid facing the cursor and then *turned* as the run goes on —
+through `BeltNetwork.TrySetFacing` (which relinks wholesale, exactly as place and remove do) and
+`PlaceableBelt.Reface`, neither of which disturbs the segment. Remove-and-replace would have done
+the same job and cost the segment its id and its contents.
+
+Four rules that are each load-bearing:
+
+- **A drag is not a click.** `TryPlaceDragged` deliberately does not go through `PlaceOrRemove`,
+  whose whole contract is that a click on an occupied cell *demolishes* what is there — dragging a
+  belt line past your own depot must never eat the depot.
+- **It stops at an obstruction rather than skipping it.** A run with a hole in it leaves the belt
+  before the hole pointing at nothing.
+- **Wiggling back over your own run re-anchors and lays nothing**, and pointedly does not re-face
+  the cell you came from — that would turn the run backwards into itself.
+- **Which placeables answer to it is a per-prefab flag** (`PlaceableBuilding.IsDragPlaceable`),
+  not a component test, because the question is about the player's *gesture*: a fence would want
+  it, and a Clock Tower with a belt bolted to it would not. It fails safe at `false`.
+
+### The wrecking bar drags too, and deliberately not symmetrically
+
+Laying fifteen pipes became one gesture; removing them was still fifteen clicks. The sweep runs on
+the same machinery — same `BuildDragPath`, same press/extend/release — and then differs in two
+places, both on purpose:
+
+- **It never stops.** A placement run halts at the first cell it cannot use, because a run with a
+  hole in it leaves the belt before the hole pointing at nothing; a placed run has to be
+  *continuous* to mean anything. A demolition does not, and an L-shaped sweep crosses empty floor
+  as a matter of course — stopping on the first gap would make the tool useless for the one
+  gesture it exists for.
+- **It never takes a golem**, and this is the only place the drag is *narrower* than the click it
+  repeats. The full refund makes a swept building whole — re-place it and it is identical — but it
+  does not make a golem whole: dismantling hands back the chassis and the cargo and loses **the
+  program**, six cards dragged one at a time, to a gesture aimed at the crate beside it. (A
+  patented program survives in the Patents tab; an unpatented one does not.) A golem still costs
+  one deliberate click, and a test pins *both* halves of that — the sweep does not ask, and the
+  click still does.
+
+Everything else is `DemolishBuilding` called unchanged, so the settled full-refund rules reach the
+sweep without a second copy: runtime-placed only, refused outright when the stockpile has no room,
+and a refusal leaves that one building standing without ending the run. Being fully refunded is
+also what makes the gesture safe to be destructive in the first place — an over-long drag costs a
+re-place and not one unit of goods.
+
+Verified live in Sandbox rather than only in the rig: an L of pipe plus an island two cells past a
+deliberate gap, swept in one drag — **7 Iron Plate spent, 7 returned**, every cell freed, the
+`SteamNetwork` back to zero pipes, and the sweep still live after crossing the gap. Then a real
+station-built `PlayerGolem-001`: a sweep straight across its tile left it standing, and a
+deliberate click on the same tile took it.
+
+### The bug the tests could not have caught
+
+The pipe stopped being a standing 64×34 building and became a square 64×64 floor tile, so its
+pivot had to move from BottomCenter to Center — a quarter turn about a bottom pivot swings the
+sprite clean out of its own cell.
+
+`ImportItemIcons` **only ever set BottomCenter**. It never set Center, so `steam_pipe.png`, which
+had been in that set and then left it, silently kept its old pivot. The result imported without a
+warning, looked correct standing still, and every rotated piece sat half a cell off — **found in a
+play-mode screenshot, not by a test**, which is the same way the Workbench's `TARGET` header was
+found. `ImportItemIcons` now writes the pivot in *both* directions; a pivot has to be stated by
+whoever owns it.
+
+### Verified in play, not just in the Inspector
+
+Screenshots of a live Sandbox: a pipe ring with two tees, four elbows and two capped gauge ends
+joining flange-to-flange across every cell boundary; two dragged belt runs, one turning left and
+one right, each drawn with the lane bending and its rails wrapping the outside of the bend; and
+four isolated pipes laid with `R` between them, pointing four different ways.
+
+### The follow-up bug: two tools in one hand
+
+Reported from play: *"if I select demolish, then select another build option, it doesn't deselect
+demolish."* The stale highlight was the symptom; the cause was one missing line and the damage was
+four behaviours deep.
+
+`EnterDemolishMode` had always put the placeable down. `SetActivePrefab` never put the bar down —
+the mirror was simply never written. And because **every mode question in `BuildModeController`
+asks `IsDemolishActive` first**, holding both meant the bar won every one of them:
+
+- `PlaceOrRemove` answered an empty tile with "nothing here" and returned **before it ever reached
+  `PlaceInternal`** — so picking a Depot and clicking bare floor built nothing at all.
+- `UpdateGhost` took the removal branch, so the ghost greened on *occupied* tiles and went inert on
+  the free ones it was about to build on.
+- `UpdateGhostFacingArrow` hid the arrow, which put `R` back to being an invisible mode switch —
+  the exact failure that arrow was added to fix.
+- `BeginDrag` checks the bar first, so every drag became a demolition sweep.
+
+Fixed on the controller rather than in the panel that reported it: the build menu is one caller of
+`SetActivePrefab`, and the invariant belongs to the state or the next caller reintroduces it.
+`SetActivePrefab` now clears `IsDemolishActive`, blanks the status line and ends any live drag —
+the exact mirror of what `EnterDemolishMode` already did.
+
+**Why no test caught it.** `BuildMenuDemolishRowTests.TheDemolishRow_TogglesTheWreckingBar`
+asserted *"picking up the bar puts the placeable down"* and nothing anywhere asserted the other
+direction. A one-sided test on a two-sided invariant reads as coverage and is not. The four new
+tests were checked the only way a regression test is worth anything: **reverted the one-line fix
+and confirmed all four fail, and that nothing else does.**
+
+### Tests
+
+1422 → **1473, all passing** (1264 EditMode + 209 PlayMode). Ten `BeltShapeRulesTests`, seven
+`PipeShapeRulesTests` (one of which walks all sixteen masks), seven `BuildDragPathTests`, four
+`BeltNetworkTests` on `TrySetFacing`, two `FacingUtilityTests` on the new anticlockwise turn, and
+seventeen PlayMode tests — twelve `BuildDragRunTests` driving `ExtendDrag` directly (no simulated
+pointer, the same split every other `BuildModeController` suite makes) and five
+`ConnectedShapeTests` checking the components really do ask the right networks about the right
+cells. Five of the twelve are the wrecking bar's: it clears a run, it crosses a gap and keeps
+going, it refunds in full, it leaves a golem standing, and a click still takes one. Four more came
+from the follow-up bug above — two on `BuildModeController` (a placeable placed again after
+demolish; the tools exclusive in *both* directions), one on the drag (it lays rather than sweeps),
+and one on the build menu, sitting directly beneath the one-sided assertion that let the bug
+through.

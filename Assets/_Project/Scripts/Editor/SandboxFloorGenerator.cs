@@ -68,6 +68,11 @@ namespace GolemFactory.Editor
         private static readonly string[] CentrePivotOverlayNames =
         {
             "build_ghost_tile", "interaction_ring", "belt_tile",
+            // The two corner pieces, which are the same tile with the lane bent. They MUST share
+            // belt_tile's PPU and centre pivot: World/BeltShapeRules swaps between the three on
+            // one renderer, so a corner imported at a different size or pivot would jump out of
+            // its cell the moment a run turned.
+            "belt_tile_corner_left", "belt_tile_corner_right",
             // The market street's paving. Same treatment as the floor tiles it sits beside: one
             // cell, centre-pivoted, PPU 64.
             "street_cobble", "street_cobble_b",

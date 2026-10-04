@@ -365,6 +365,20 @@ namespace GolemFactory.Belts
                 return;
             }
 
+            RecomputeLaneGeometry();
+
+            BuildSpriteLookup();
+            BuildLane();
+            BuildArrows();
+            BuildItemPool();
+        }
+
+        // The cached geometry of the two lane markers, and nothing else. Split out of
+        // TryResolveSegment so a lane that MOVES can be re-read without also rebuilding the
+        // pooled renderers -- calling the whole resolve again would create a second set of
+        // children every time, which is the one thing a pooled visual must never do.
+        private void RecomputeLaneGeometry()
+        {
             _laneStart = startPoint.position;
             _laneEnd = endPoint.position;
             Vector3 delta = _laneEnd - _laneStart;
@@ -377,11 +391,47 @@ namespace GolemFactory.Belts
             // under the cargo in the first pass.
             _laneSortingOrder = BeltSignalUtility.ComputeLaneSortingOrder(_laneStart.y, _laneEnd.y);
             _flowSignalSortingOrder = BeltSignalUtility.ComputeFlowSignalSortingOrder(_laneStart.y, _laneEnd.y);
+        }
 
-            BuildSpriteLookup();
-            BuildLane();
-            BuildArrows();
-            BuildItemPool();
+        /// <summary>
+        /// Re-reads the lane markers after the caller has moved them, without rebuilding a
+        /// single pooled renderer.
+        ///
+        /// <para>
+        /// One caller: a placed belt being turned in place (<c>PlaceableBelt.Reface</c>), which a
+        /// click-and-drag run does to every cell but the last. The markers move, the lane's
+        /// LENGTH does not, so the arrow count and the item pool are still exactly right --
+        /// which is why this is a relocation rather than a re-resolve.
+        /// </para>
+        /// </summary>
+        public void RelocateLane()
+        {
+            if (_segment == null || startPoint == null || endPoint == null)
+            {
+                return;
+            }
+
+            RecomputeLaneGeometry();
+
+            // Both are null in the cargo-only mode a placed belt uses; guarded so a full lane
+            // visual (the idiom Main.unity's demos used) relocates correctly too.
+            if (_lane != null)
+            {
+                _lane.transform.position = (_laneStart + _laneEnd) * 0.5f;
+                _lane.transform.rotation = Quaternion.Euler(0f, 0f,
+                    BeltFlowUtility.ComputeLaneAngleDegrees(_laneStart, _laneEnd));
+                _lane.sortingOrder = _laneSortingOrder;
+            }
+
+            if (_rollerStart != null)
+            {
+                _rollerStart.transform.position = _laneStart;
+            }
+
+            if (_rollerEnd != null)
+            {
+                _rollerEnd.transform.position = _laneEnd;
+            }
         }
 
         private void BuildSpriteLookup()

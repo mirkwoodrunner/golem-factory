@@ -110,6 +110,7 @@ MonoBehaviour:
   cost:
   - itemType: Scrap
     quantity: 15
+  dragPlaceable: 0
 --- !u!114 &4377700952361245282
 MonoBehaviour:
   m_ObjectHideFlags: 0
