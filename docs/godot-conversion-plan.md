@@ -7,8 +7,9 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 | Milestone | Status |
 |---|---|
 | G0: Land the spike | **done**: PR #28, merged 2026-10-04 |
-| G1: Authored data as JSON | in review |
-| G2–G10 | not started |
+| G1: Authored data as JSON | in review: PR #29 |
+| G2: Gameplay services into Core | in progress, as stacked sub-PRs: **G2a** station + assembly bay (in review), **G2b** build mode, **G2c** interactions, **G2d** save + the rest |
+| G3–G10 | not started |
 
 ## Context
 
@@ -133,6 +134,25 @@ Buildings in Core are described by an `IPlacedBuilding` (cell, facing, prefab ke
 found missing.
 
 **Exit:** the ledger shows every non-UI Unity test ported or replaced, and the suite passes.
+
+**As built (G2a):**
+- **The Unity classes keep their names as plain Core classes**, the way `GolemEntity` did
+  (`GolemConstructionStation`, `AssemblyBayStructure`), rather than being renamed to
+  `StationService`. Tests and docs keep reading the same names, and a Node owns the object.
+- **The golem prefab became a golem factory** (`Func<GolemEntity>`). The station raises
+  `GolemSpawned` once a golem is fully wired, and the host gives it a Node
+  (`GolemNode.Host`). A test's factory records what it builds, which replaces the
+  `FindObjectsByType` sweep.
+- **`GolemEntity.Remove()` is Unity's `Destroy`.** It runs `Detach()` (`OnDisable`) and sets
+  `IsRemoved`, which the assembly bay prunes on. Unity's fake-null asserts (`golem == null`
+  after a destroy) translate to `golem.IsRemoved`. That is the same fact, not a weaker one.
+- **`IWorkbenchTarget`** replaces the concrete Workbench reference. G7's Workbench will
+  implement it.
+- **Held back:**
+  - `GolemRespawnTests` goes through `SaveLoadService`, so it moved to G2d.
+  - `PlacedStationConfigurationTests` is a build-mode test, so it moved to G2b.
+- **In the slice,** the station is Core's real one. It charges the Scavenger's 12 Scrap
+  from a seeded stockpile, and the spike check asserts that charge.
 
 ### G3: Art and fonts pipeline
 - Point the five generators' `OUT_DIR` (`Tools/Art/generate_*.py`) at `godot/art/`, keeping

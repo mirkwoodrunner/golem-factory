@@ -37,6 +37,7 @@ Icon = ExtResource("11_scrap")
 [node name="Depot" type="Node2D" parent="Entities"]
 script = ExtResource("5_depot")
 Cell = Vector2i(4, 0)
+StartingScrap = 12
 
 [node name="Unloader" type="Node2D" parent="Entities"]
 script = ExtResource("6_golem")
@@ -48,8 +49,8 @@ ProgramKind = 1
 [node name="Station" type="Node2D" parent="Entities"]
 script = ExtResource("7_station")
 Cell = Vector2i(-4, -3)
-SpawnCell = Vector2i(-3, 0)
-SpawnFacing = 1
+PostCell = Vector2i(-3, 0)
+PostFacing = 1
 
 [node name="Player" type="Node2D" parent="Entities"]
 script = ExtResource("8_player")
