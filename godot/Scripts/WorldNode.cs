@@ -87,7 +87,14 @@ namespace GolemFactory.Nodes
             Sandbox.Clock.Play();
         }
 
-        public override void _Process(double delta) => Sandbox.Advance((float)delta);
+        public override void _Process(double delta)
+        {
+            // Unity's WorldHudSolver: lay out last frame's floating labels (the mood badges)
+            // before any view asks where its own goes. This node is the scene's first child, so
+            // its _Process runs before every view's.
+            UI.WorldHudRegistry.Solve((int)Engine.GetProcessFrames());
+            Sandbox.Advance((float)delta);
+        }
 
         private static string Read(string file) => FileAccess.GetFileAsString("res://data/" + file);
     }
