@@ -67,8 +67,66 @@ namespace GolemFactory.Nodes.Scenarios
                 return;
             }
 
-            _staticReport = $"{walls} walls, {props} props, 7 sconces, {sandbox.Markers.Count} stalls published";
+            string depth = CheckSortPoints(tree.Root.FindChild("Entities", true, false));
+            if (depth != null)
+            {
+                _staticFailure = depth;
+                return;
+            }
+
+            _staticReport = $"{walls} walls, {props} props, 7 sconces, {sandbox.Markers.Count} stalls published, {_standingChecked} standing sprites sort at their feet";
             _player.ScriptedMove = new Vector2(0f, -1f);
+        }
+
+        private int _standingChecked;
+
+        // Pieces whose contact line is not their bottom edge: side walls stand on a VERTICAL
+        // line, and the skirting and kerb hang below theirs. Their pivots are Unity's, by design.
+        private static readonly string[] NotFeet = { "wall_side_", "floor_edge", "street_edge", "ground_shadow" };
+
+        /// <summary>
+        /// Y-sorting compares each item's origin, so a standing sprite whose feet are not at its
+        /// origin draws in front of things it stands behind (or the reverse). Checks every
+        /// standing sprite in the entity layer: feet within 4px of the node that is sorted.
+        /// </summary>
+        private string CheckSortPoints(Node entities)
+        {
+            var stack = new System.Collections.Generic.Stack<Node>();
+            stack.Push(entities);
+            while (stack.Count > 0)
+            {
+                Node node = stack.Pop();
+                foreach (Node child in node.GetChildren())
+                {
+                    stack.Push(child);
+                }
+
+                if (node is not Sprite2D sprite || sprite.Centered || sprite.Texture == null || sprite.ZIndex < 0)
+                {
+                    continue;
+                }
+                string file = sprite.Texture.ResourcePath.GetFile();
+                if (System.Array.Exists(NotFeet, prefix => file.StartsWith(prefix)))
+                {
+                    continue;
+                }
+
+                // The sorted item is the ancestor whose parent does the y-sorting.
+                Node2D sorted = sprite;
+                while (sorted.GetParent() is Node2D parent && !parent.YSortEnabled)
+                {
+                    sorted = parent;
+                }
+
+                float feet = sprite.GlobalPosition.Y + (sprite.Offset.Y + sprite.Texture.GetHeight()) * sprite.GlobalScale.Y;
+                float gap = feet - sorted.GlobalPosition.Y;
+                if (Mathf.Abs(gap) > 4f)
+                {
+                    return $"{sorted.Name} ({file}) draws its feet {gap:F0}px from its sort point";
+                }
+                _standingChecked++;
+            }
+            return null;
         }
 
         public ScenarioResult? Step(double delta)

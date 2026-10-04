@@ -111,6 +111,10 @@ and a tap must hold the key down across at least one frame. A press and release 
 frame, or a flush from inside `_Process`, never reads as "just pressed" to a node that has
 already run that frame.
 
+**Depth: a standing sprite's feet go on its node's origin.** Y-sort compares origins, so use
+`GridConversions.StandOnCell` or `SpritePivots` for anything that stands, and never offset a
+sprite's feet away from its node. The `world` scenario fails if one does.
+
 **Z-order:** the floor is z −10 (`FloorLayer.FloorZ`), and floor-level things (belts, pipes,
 the ghost, shadows) are −1. Z-index is global within a canvas layer, so anything you add at a
 negative z must stay above −10.

@@ -420,6 +420,15 @@ Godot player still ran the spike's own `IInteractable` code, so only the station
   - The panel's first frame showed a bright brown window, because Unity's dark window tint
     was missing, and costs clipped at the front. Both are fixed.
 
+- **Depth fix, also from your check ("background objects show up in front of the player"):**
+  the spike's `StandOnCell` put a standing sprite's feet half a cell below its node, and
+  y-sorting compares nodes. So the player, the golems and every building sorted by a point
+  above their own feet, while the G4 props sorted at theirs: just south of a crate, the crate
+  drew over the player. `StandOnCell` now puts the feet on the origin, as Unity's BottomCenter
+  pivot did, which also moves those sprites half a cell up to where Unity drew them. The
+  `world` scenario checks all 96 standing sprites, with each one's feet within 4px of its sort
+  point. Before the fix it failed with "Player draws its feet 32px from its sort point".
+
 ### G6: Golems in full
 
 (G5b already did the `[G]` carry, the interactor and the construction panel. What remains is
