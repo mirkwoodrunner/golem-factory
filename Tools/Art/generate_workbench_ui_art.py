@@ -15,13 +15,14 @@ Re-run to regenerate. Requires Pillow.
 """
 
 import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from art_paths import art_dir  # noqa: E402
 import random
 
 from PIL import Image, ImageDraw
 
-OUT_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "..", "Assets", "_Project", "Art", "UI", "Workbench"
-)
+OUT_DIR = art_dir("UI", "Workbench")
 
 # Mahogany-and-brass palette, extending generate_placeholder_art.py's warm wood/brass set.
 MAHOGANY_DEEP = (46, 24, 18, 255)

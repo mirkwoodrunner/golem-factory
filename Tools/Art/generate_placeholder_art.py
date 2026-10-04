@@ -7,9 +7,12 @@ Assets/_Project/Art/.
 """
 
 import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from art_paths import art_dir  # noqa: E402
 from PIL import Image, ImageDraw
 
-OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "Assets", "_Project", "Art")
+OUT_DIR = art_dir()
 
 # Warm wood-and-brass steampunk palette (docs/digital-design.md).
 WOOD_DARK = (74, 48, 33, 255)

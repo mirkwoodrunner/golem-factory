@@ -31,12 +31,13 @@ Reimport afterwards with Tools > Golem Factory > Reimport Character Art (BottomC
 
 import os
 import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from art_paths import art_dir  # noqa: E402
+import sys
 
 from PIL import Image
 
-ART_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "Assets", "_Project", "Art")
+ART_DIR = art_dir()
 
 # Trimmed independently: each is one sprite standing on its own, and nothing compares its
 # height to another's.

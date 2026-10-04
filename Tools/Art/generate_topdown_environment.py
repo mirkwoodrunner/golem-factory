@@ -16,11 +16,14 @@ Output: Assets/_Project/Art/, overwriting the diamond tiles of the same name.
 import colorsys
 import math
 import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from art_paths import art_dir  # noqa: E402
 import random
 
 from PIL import Image, ImageDraw
 
-OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "Assets", "_Project", "Art")
+OUT_DIR = art_dir()
 
 TILE = 64  # square, one cell, at PPU 64 => exactly 1 world unit
 
