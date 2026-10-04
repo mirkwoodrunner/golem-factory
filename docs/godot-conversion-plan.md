@@ -8,7 +8,7 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 |---|---|
 | G0: Land the spike | **done**: PR #28, merged 2026-10-04 |
 | G1: Authored data as JSON | in review: PR #29 |
-| G2: Gameplay services into Core | in progress, as stacked sub-PRs: **G2a** station + assembly bay (in review), **G2b** build mode (in review), **G2c** interactions, **G2d** save + the rest |
+| G2: Gameplay services into Core | in progress, as stacked sub-PRs: **G2a** station + assembly bay (in review), **G2b** build mode (in review), **G2c** interactions (in review), **G2d** save + the rest |
 | G3–G10 | not started |
 
 ## Context
@@ -178,6 +178,27 @@ found missing.
     findable by scene scan. Ported as-is, "the sweep made zero dismantle calls" passes
     because nothing is *findable*. Those tests now register their golems and furniture
     explicitly.
+
+**As built (G2c):**
+- **`PlayerInteractor`, `HandCrankBench` and `ResourceNodeMarker` are plain Core classes.**
+  The bench is a building part that ticks. The marker keeps its harvest, depletion and
+  endpoint logic and exposes `Visual`/`HarvestCount` for the scene to draw.
+  `HandCrankBenchTests` and `ResourceNodeMarkerTests` moved up from G2d, because the
+  interactor needs both.
+- **The world is handed over** (`ConfigureWorld`: markers, buildings, golems). Stations,
+  boilers, depots and benches are reached as parts of the buildings.
+- **Positions:** Unity read every interactable's *transform*, which isn't always its cell (a
+  carried golem rides with the player). `ConfigurePositions` keeps that separation. The
+  scene answers with node positions, and the default is the cell centre. Tests answer with
+  where their GameObjects stood.
+- **Lifecycle and input:** `OnEnable`/`OnDisable` became `Attach()`/`Detach()`, input became
+  verbs plus `SetInteractHeld` for the crank, and `Update` became `Poll()`. The screens
+  became `IScreen`, `IConstructionScreen` and `IWorkbenchScreen`.
+- **A third porting hazard: fixture reuse.** NUnit reuses one fixture instance per class, so
+  a world list in a test rig must be cleared in TearDown. Unity's TearDown destroyed every
+  GameObject, and without the clear, golems leak between tests.
+- **To do in G4:** the slice's `Nodes/ResourceNodeMarker` shares a name with Core's. Rename
+  it when G4 rebuilds the world on top of the Core marker.
 
 
 ### G3: Art and fonts pipeline
