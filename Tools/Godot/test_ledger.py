@@ -55,8 +55,6 @@ HELD = {
     "World/FloorExpansionTests.cs": ("G2d", "FloorExpansionService rules"),
     "World/ResourceNodeMarkerTests.cs": ("G2d", "SandboxSetup / node registration"),
     # G7/G8: the screens.
-    "UI/WorkbenchControllerTests.cs": ("G7", "WorkbenchSession"),
-    "UI/WorkbenchQuantityTests.cs": ("G7", "WorkbenchSession"),
     "UI/AlertsPanelReconcileTests.cs": ("G8", "Alerts panel"),
     "UI/AssemblyLinePanelTests.cs": ("G8", "Assembly Line panel"),
     "UI/HudScreenExclusivityTests.cs": ("G8", "HudScreenPolicy scenario"),
@@ -92,8 +90,14 @@ SCENARIOS = os.path.join(REPO, "godot", "Scripts", "Scenarios")
 # Ported files that deliberately left some tests behind, or swapped one for its replacement.
 # rel -> (tests held, milestone or "", note shown in the ledger).
 PARTIAL = {
-    "AssemblyLine/AssemblyLineGatingTests.cs": (
-        2, "G7", "the 2 WorkbenchController card-gating tests port with the Workbench"),
+    "UI/WorkbenchControllerTests.cs": (
+        0, "", "29 ported onto WorkbenchSession; 9 UGUI-plumbing tests (Open_ActivatesCanvasRoot, "
+               "Open_ClosesManagementPanelAndConstructionPanel, the four FailedDrag/RepeatedFailedDrags, "
+               "CardDestroyedMidDrag, the two RealDrag) checked by the `workbench` scenario against the "
+               "Godot screen; SlotCaptions_SurviveARowWithNoCaptionChild retired (captions are strings, "
+               "there is no child to be missing)"),
+    "UI/WorkbenchQuantityTests.cs": (
+        0, "", "9 ported onto WorkbenchSession; VaultCards_HaveNoStepper checked by the `workbench` scenario"),
     "Player/PlayerControllerTests.cs": (
         0, "", "ported onto PlayerWalker; Awake_AddsYSortSpriteRenderer retired (y-sort is the scene's "
                "y_sort_enabled); MoveBy_WithFloorBounds_FollowsTheNorthWallAsTheRoomGrows added"),

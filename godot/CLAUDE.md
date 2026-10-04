@@ -59,6 +59,9 @@ ones. Current scenarios:
 - `golems` (Sandbox): every chassis built, and every `AppendageActionType` run on real steam:
   extract, haul, push, load, assemble plus repeat, refine, and freight. A golem out of steam
   must stall and wear its badge.
+- `workbench` (Sandbox): program a golem end to end through the Workbench with real mouse
+  drags. Also covers socket highlights, the dial, failed drags leaving no orphans, Engage,
+  Patent, and close/reopen.
 - `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
   into the stockpile, over 600 ticks. `--spike-check` is an alias.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
@@ -108,6 +111,13 @@ one `BuildingView` each, by listening to `BuildingPlaced`, `BuildingRemoved` and
 only feeds it the position and the keys. A full screen joins the `ModalScreens` group and
 implements `IScreen`; while one is open the player stays still and the world prompt hides. A
 new screen gets that for free.
+
+**Screens are written from their Unity prefab's numbers** with `Scripts/UI/Ugui.cs`.
+`Ugui.Place` takes a RectTransform's anchorMin/anchorMax/anchoredPosition/sizeDelta/pivot.
+`Ugui.Image` gives a 9-sliced, tinted plate whose tint stays off its children. `Ugui.Text` is
+a single-line TMP-style label. Dump a prefab's tree first (anchors, sprites, borders, text
+sizes) and transcribe it; don't eyeball a layout. **A control has no size until the frame
+after it's built**, so a scenario must not click something in the same step that opened it.
 
 **Scenario input:** `Input.ParseInputEvent` **without** `FlushBufferedEvents` for key presses,
 and a tap must hold the key down across at least one frame. A press and release in the same

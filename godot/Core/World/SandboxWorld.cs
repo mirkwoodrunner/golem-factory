@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using GolemFactory.Belts;
+using GolemFactory.Blueprints;
 using GolemFactory.Buildings;
 using GolemFactory.ClockTower;
 using GolemFactory.Compat;
@@ -78,6 +79,19 @@ namespace GolemFactory.World
         /// with a placeable on an occupied tile demolishes, and these were never bought.
         /// </summary>
         public IReadOnlyList<PlaceableBuilding> AuthoredBuildings => _authoredBuildings;
+
+        /// <summary>
+        /// The Workbench's state and decisions (G7). Six sockets, as WorkbenchCanvas.prefab has.
+        /// Ungated until the Assembly Line panel exists to claim cards from (G8) -- Sandbox.unity
+        /// gates it (gateWorkbenchRoster: 1), but gating with no way to claim would leave the
+        /// player with the two starting verbs and nothing else.
+        /// </summary>
+        public WorkbenchSession Workbench { get; } = new WorkbenchSession(WorkbenchSockets);
+
+        public const int WorkbenchSockets = 6;
+
+        /// <summary>The named-program library the Workbench's Patent button stamps into.</summary>
+        public PatentRegistry Patents { get; } = new PatentRegistry();
 
         /// <summary>The player's hands: [E], hold-to-crank, [R], [G], the prompt. Wired to this world.</summary>
         public PlayerInteractor Interactor { get; } = new PlayerInteractor();
@@ -182,6 +196,20 @@ namespace GolemFactory.World
             }
 
             WireInteractor();
+            WireWorkbench(setup.workbench);
+        }
+
+        private void WireWorkbench(SandboxSetup.WorkbenchRoster roster)
+        {
+            Workbench.ConfigurePatents(Patents);
+            if (roster == null)
+            {
+                return;
+            }
+            Workbench.ConfigureRoster(
+                roster.chassis.Select(n => Definitions.Chassis[n]).ToArray(),
+                roster.logicCores.Select(n => Definitions.LogicCores[n]).ToArray(),
+                roster.appendages.Select(n => Definitions.Appendages[n]).ToArray());
         }
 
         /// <summary>
@@ -207,9 +235,21 @@ namespace GolemFactory.World
         /// </summary>
         public void ConfigureScreens(IConstructionScreen construction, IWorkbenchScreen workbench, IScreen management)
         {
-            Interactor.Configure(InteractRange, Buffers, _stockpileBufferId, construction, workbench);
-            Interactor.ConfigureAffordance(management, "E");
+            ConstructionScreen = construction ?? ConstructionScreen;
+            WorkbenchScreen = workbench ?? WorkbenchScreen;
+            ManagementScreen = management ?? ManagementScreen;
+            Interactor.Configure(InteractRange, Buffers, _stockpileBufferId, ConstructionScreen, WorkbenchScreen);
+            Interactor.ConfigureAffordance(ManagementScreen, "E");
         }
+
+        /// <summary>
+        /// The screens handed over so far. Each screen registers itself (passing null for the
+        /// others keeps theirs), so they can be built in any order and still find each other --
+        /// the construction panel opens the Workbench on a golem it just built.
+        /// </summary>
+        public IConstructionScreen ConstructionScreen { get; private set; }
+        public IWorkbenchScreen WorkbenchScreen { get; private set; }
+        public IScreen ManagementScreen { get; private set; }
 
         /// <summary>Unity PlayerInteractor's _interactRange in Sandbox.unity, in cells.</summary>
         public const float InteractRange = 1.5f;
@@ -281,7 +321,9 @@ namespace GolemFactory.World
                 station.ConfigureBuildRoster(_stationTemplate.ChassisRoster, _stationTemplate.GolemSource);
             }
 
-            station.ConfigureSceneServices(Conveyor, Nodes, Buffers, Clock, null, _stockpileBufferId);
+            // The Workbench session is the target a new golem is handed to, as Unity's station
+            // retargeted the WorkbenchController on spawn.
+            station.ConfigureSceneServices(Conveyor, Nodes, Buffers, Clock, Workbench, _stockpileBufferId);
             station.ConfigureSpatial(Endpoints, Grid);
 
             // THE ONE LINE THE SWITCH GATES: handing a station the steam network is what makes

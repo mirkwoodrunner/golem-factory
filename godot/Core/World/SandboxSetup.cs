@@ -54,6 +54,18 @@ namespace GolemFactory.World
             public int rowsPerPurchase;
         }
 
+        /// <summary>
+        /// The Workbench's roster: WorkbenchCanvas.prefab's chassis and logic cores, and the 24
+        /// cards Sandbox.unity overrode its vault to. Ungated, this is the whole vault; gated
+        /// (§8.3), a card must also be claimed on the Assembly Line.
+        /// </summary>
+        public sealed class WorkbenchRoster
+        {
+            public List<string> chassis = new List<string>();
+            public List<string> logicCores = new List<string>();
+            public List<string> appendages = new List<string>();
+        }
+
         public sealed class Point
         {
             public float x;
@@ -69,6 +81,7 @@ namespace GolemFactory.World
         public int freeStallSeedQuantity;
         public Point playerStart = new Point();
         public Expansion floorExpansion;
+        public WorkbenchRoster workbench;
         public List<NodeEntry> nodes = new List<NodeEntry>();
         public List<MarketEntry> market = new List<MarketEntry>();
         public Placement starterBench;

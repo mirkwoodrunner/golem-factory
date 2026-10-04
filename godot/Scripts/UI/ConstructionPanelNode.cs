@@ -21,8 +21,7 @@ namespace GolemFactory.Nodes
     /// </para>
     ///
     /// <para>
-    /// After a build Unity opened the Workbench on the new golem. The Workbench is G7; until then
-    /// the panel closes and the golem stands at the station's door, idle, to be carried with [G].
+    /// After a build the panel closes and the Workbench opens on the new golem, as Unity's did.
     /// </para>
     /// </summary>
     public partial class ConstructionPanelNode : CanvasLayer, IConstructionScreen
@@ -130,7 +129,15 @@ namespace GolemFactory.Nodes
             }
 
             LastBuilt = golem;
-            Close(); // the Workbench would open here (G7)
+            Close();
+            // Unity opened the Workbench on the new golem: it arrives bare, and fitting its
+            // logic core is the next thing to do.
+            IWorkbenchScreen workbench = WorldNode.Find(this).Sandbox.WorkbenchScreen;
+            if (workbench != null)
+            {
+                workbench.Open();
+                workbench.RetargetGolem(golem);
+            }
             return true;
         }
 

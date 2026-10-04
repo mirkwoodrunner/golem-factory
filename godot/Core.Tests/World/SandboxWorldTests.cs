@@ -172,5 +172,35 @@ namespace GolemFactory.Tests.World
             world.Advance(1f);
             Assert.That(world.Clock.CurrentTick, Is.GreaterThan(0));
         }
+
+        [Test]
+        public void TheWorkbenchOffersSandboxUnitysRoster()
+        {
+            SandboxWorld world = Compose();
+            Assert.AreEqual(SandboxWorld.WorkbenchSockets, world.Workbench.SocketCount);
+            Assert.AreEqual(5, world.Workbench.RackChassis.Count());
+            Assert.AreEqual(2, world.Workbench.VaultLogicCores.Count());
+            Assert.AreEqual(24, world.Workbench.VaultAppendages.Count(),
+                "WorkbenchCanvas.prefab's two verbs plus Sandbox.unity's 22-card override");
+            Assert.IsFalse(world.Workbench.IsRosterGated, "ungated until the Assembly Line panel (G8) can grant claims");
+        }
+
+        [Test]
+        public void AFreshlyBuiltGolem_BecomesTheWorkbenchsTarget()
+        {
+            // Unity's station retargeted the WorkbenchController on spawn; the session is the
+            // target the world hands every station.
+            SandboxWorld world = Compose();
+            ChassisDefinition scavenger = world.Definitions.Chassis["ClockworkScavenger"];
+            foreach (RecipeIngredient c in scavenger.cost)
+            {
+                world.Buffers.Deposit(world.StockpileBufferId, c.itemType, c.quantity);
+            }
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(scavenger, out GolemEntity golem));
+
+            Assert.AreSame(golem, world.Workbench.TargetGolem);
+            Assert.AreEqual(scavenger, world.Workbench.DraftChassis, "the draft was re-read from the new golem");
+        }
     }
 }
