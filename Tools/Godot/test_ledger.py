@@ -25,8 +25,7 @@ TEST_ATTR = re.compile(r"^\s*\[(?:Test|TestCase|UnityTest)\b", re.M)
 # named here; --check fails on one that is not, so nothing drops off the ledger silently.
 HELD = {
     # G2: the rules move into Core, and these become unit tests. G2a (station, assembly bay)
-    # G2b (build mode) and G2c (interactions, hand crank, node markers) are done; G2d save
-    # and the rest.
+    # G2 is done: G2a-G2d.
     "AssemblyLine/AssemblyLineGatingTests.cs": ("G2d", "AssemblyLineStateHolder rules"),
     "Buildings/AssemblyBayCapTests.cs": ("G2d", "StationService (assembly bay)"),
     "Buildings/AssemblyBayStructureTests.cs": ("G2d", "StationService (assembly bay)"),
@@ -81,6 +80,17 @@ MOVED = {
 }
 
 
+# Ported files that deliberately left some tests behind, or swapped one for its replacement.
+# rel -> (tests held, milestone or "", note shown in the ledger).
+PARTIAL = {
+    "AssemblyLine/AssemblyLineGatingTests.cs": (
+        2, "G7", "the 2 WorkbenchController card-gating tests port with the Workbench"),
+    "World/FloorExpansionTests.cs": (
+        0, "", "PaintingWritesATileOnEveryNewCell replaced by APurchaseAnnouncesExactlyTheRowsItAdded "
+               "(painting is the scene's job; Core owes it the rows)"),
+}
+
+
 def count(path):
     with open(path, encoding="utf-8-sig") as f:
         return len(TEST_ATTR.findall(f.read()))
@@ -101,9 +111,16 @@ def build():
                 target = MOVED.get(f"{suite}/{rel}", rel)
                 if os.path.exists(os.path.join(CORE, target)):
                     ported = count(os.path.join(CORE, target))
-                    status = "ported" if ported >= n else f"ported ({ported}/{n})"
-                    totals["ported"] += n
-                    rows.append((suite, rel, n, status, f"`Core.Tests/{target}`"))
+                    held_here, milestone, note = PARTIAL.get(rel, (0, "", ""))
+                    if held_here:
+                        status = f"ported {n - held_here}/{n}; {held_here} held: {milestone}"
+                        totals["ported"] += n - held_here
+                        totals["held"] += held_here
+                    else:
+                        status = "ported" if ported >= n else f"ported ({ported}/{n})"
+                        totals["ported"] += n
+                    where = f"`Core.Tests/{target}`" + (f" -- {note}" if note else "")
+                    rows.append((suite, rel, n, status, where))
                 elif rel in HELD:
                     milestone, how = HELD[rel]
                     totals["held"] += n
