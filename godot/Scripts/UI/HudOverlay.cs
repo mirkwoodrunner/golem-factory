@@ -189,7 +189,7 @@ namespace GolemFactory.Nodes
             _untilRefresh = 0.25f;
 
             SteamNetwork steam = _world.Sandbox.Steam;
-            SteamGaugeReading reading = SteamGaugeUtility.Compute(steam.TotalCokeStock, steam.LastEvaluatedPoweredCount, steam.TotalPeakCokeStock);
+            SteamGaugeReading reading = SteamGaugeUtility.Compute(steam.TotalCokeStock, steam.LastEvaluatedWorkingCount, steam.TotalPeakCokeStock);
             // Labelled: "0 Coke - 0/min - idle" alone did not say it was the boilers' fuel (G10).
             _gauge.Text = "Boiler fuel  " + SteamGaugeUtility.Format(reading);
             _gauge.AddThemeColorOverride("font_color", reading.IsLow ? Coral : reading.HasCountdown ? Amber : Dim);

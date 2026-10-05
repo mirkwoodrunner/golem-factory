@@ -77,9 +77,9 @@ namespace GolemFactory.Tests.Player
         [Test]
         public void TheBoilerCaption_SaysHowLongItsCokeLasts()
         {
-            Assert.AreEqual("18 Coke · 2 golems · 1:30 left", SteamGaugeUtility.FormatBoiler(18, 2));
-            Assert.AreEqual("18 Coke · no golems drawing", SteamGaugeUtility.FormatBoiler(18, 0));
-            Assert.AreEqual("3:20", SteamGaugeUtility.FormatLastsOneGolem(20));
+            Assert.AreEqual("18 Coke · 2 golems working · 3:00 left", SteamGaugeUtility.FormatBoiler(18, 2));
+            Assert.AreEqual("18 Coke · no golems working", SteamGaugeUtility.FormatBoiler(18, 0));
+            Assert.AreEqual("6:40", SteamGaugeUtility.FormatLastsOneGolem(20));
         }
     }
 }

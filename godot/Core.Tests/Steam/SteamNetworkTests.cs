@@ -15,17 +15,41 @@ namespace GolemFactory.Tests.EditMode
     {
         private SteamNetwork _network;
 
+        // The consumers registered through Consumer(): golems that are WORKING every tick. Since
+        // G10 only a working golem burns Coke (the user's call from playtest), so these tests
+        // report work for each of them before each tick, as a running GolemEntity does.
+        private readonly HashSet<string> _working = new HashSet<string>();
+
         [SetUp]
-        public void SetUp() => _network = new SteamNetwork();
+        public void SetUp()
+        {
+            _network = new SteamNetwork();
+            _working.Clear();
+        }
 
         private static Vector2Int C(int x, int y) => new Vector2Int(x, y);
 
-        /// <summary>Runs the network for n ticks starting at tick 1.</summary>
+        private void Consumer(string id, Vector2Int cell)
+        {
+            _network.RegisterConsumer(id, cell);
+            _working.Add(id);
+        }
+
+        private void TickWorking(long t)
+        {
+            foreach (string id in _working)
+            {
+                _network.ReportWorking(id, t);
+            }
+            _network.Tick(t);
+        }
+
+        /// <summary>Runs the network for n ticks starting at tick 1, every consumer working.</summary>
         private void Run(int ticks, long startTick = 1)
         {
             for (long t = startTick; t < startTick + ticks; t++)
             {
-                _network.Tick(t);
+                TickWorking(t);
             }
         }
 
@@ -35,8 +59,8 @@ namespace GolemFactory.Tests.EditMode
         public void AGolemNextToTheBoiler_IsPowered_AndOneDiagonallyAwayIsNot()
         {
             _network.RegisterBoiler("B", C(0, 0), 100);
-            _network.RegisterConsumer("Adjacent", C(0, 1));
-            _network.RegisterConsumer("Diagonal", C(1, 1));
+            Consumer("Adjacent", C(0, 1));
+            Consumer("Diagonal", C(1, 1));
 
             Assert.IsTrue(_network.IsPowered("Adjacent", 1));
             Assert.IsFalse(_network.IsPowered("Diagonal", 1));
@@ -49,7 +73,7 @@ namespace GolemFactory.Tests.EditMode
             _network.AddPipe(C(1, 0));
             _network.AddPipe(C(2, 0));
             _network.AddPipe(C(3, 0));
-            _network.RegisterConsumer("Far", C(4, 0));
+            Consumer("Far", C(4, 0));
 
             Assert.IsTrue(_network.IsPowered("Far", 1));
         }
@@ -66,8 +90,8 @@ namespace GolemFactory.Tests.EditMode
                 _network.AddPipe(C(x, 0));
             }
 
-            _network.RegisterConsumer("Near", C(1, 1));
-            _network.RegisterConsumer("Far", C(6, 0));
+            Consumer("Near", C(1, 1));
+            Consumer("Far", C(6, 0));
 
             Assert.IsTrue(_network.IsPowered("Near", 1));
             Assert.IsTrue(_network.IsPowered("Far", 1));
@@ -83,7 +107,7 @@ namespace GolemFactory.Tests.EditMode
         {
             _network.RegisterBoiler("B", C(0, 0), 100);
             _network.AddPipe(C(1, 0));
-            _network.RegisterConsumer("G", C(2, 0));
+            Consumer("G", C(2, 0));
             Assert.IsTrue(_network.IsPowered("G", 1));
 
             _network.RemoveBoiler("B");
@@ -105,7 +129,7 @@ namespace GolemFactory.Tests.EditMode
 
             for (int i = 0; i < 12; i++)
             {
-                _network.RegisterConsumer("G" + i, C(i - 6, 2));
+                Consumer("G" + i, C(i - 6, 2));
             }
 
             int powered = 0;
@@ -134,7 +158,7 @@ namespace GolemFactory.Tests.EditMode
             for (int x = -6; x <= 5; x++)
             {
                 string id = "G" + (x + 6);
-                _network.RegisterConsumer(id, C(x, 2));
+                Consumer(id, C(x, 2));
                 ids.Add(id);
             }
 
@@ -218,7 +242,7 @@ namespace GolemFactory.Tests.EditMode
             // 20 golems along the pipe run: more than one boiler can serve, fewer than two can.
             for (int i = 0; i < 20; i++)
             {
-                _network.RegisterConsumer("G" + i, C(i - 8, 1));
+                Consumer("G" + i, C(i - 8, 1));
             }
 
             int powered = 0;
@@ -256,7 +280,7 @@ namespace GolemFactory.Tests.EditMode
 
             for (int i = 0; i < 20; i++)
             {
-                _network.RegisterConsumer("G" + i, C(i - 8, 1));
+                Consumer("G" + i, C(i - 8, 1));
             }
 
             var before = new List<string>();
@@ -283,19 +307,19 @@ namespace GolemFactory.Tests.EditMode
         // --- Determinism decision 3: FRACTIONAL BURN ------------------------------------------
 
         [Test]
-        public void OneGolem_BurnsExactlyOneCokePerHundredTicks()
+        public void OneGolem_BurnsExactlyOneCokePerTwoHundredTicks()
         {
             SteamBoiler boiler = _network.RegisterBoiler("B", C(0, 0), 240);
-            _network.RegisterConsumer("G", C(0, 1));
+            Consumer("G", C(0, 1));
 
-            Run(100);
+            Run(200);
 
-            Assert.AreEqual(239, boiler.CokeStock, "§3.1: 1 Coke per powered golem per 10 s");
+            Assert.AreEqual(239, boiler.CokeStock, "G10: 1 Coke per working golem per 20 s (half §3.1's 10 s)");
             Assert.AreEqual(0, boiler.BurnAccumulator, "and it lands exactly on the boundary");
         }
 
         [Test]
-        public void FiveGolems_BurnFiveCokeInOneHundredTicks_AndFiftyInOneThousand()
+        public void FiveGolems_BurnFiveCokeInTwoHundredTicks_AndFiftyInTwoThousand()
         {
             SteamBoiler boiler = _network.RegisterBoiler("B", C(0, 0), 1000);
             for (int x = -1; x <= 3; x++)
@@ -305,41 +329,45 @@ namespace GolemFactory.Tests.EditMode
 
             for (int i = 0; i < 5; i++)
             {
-                _network.RegisterConsumer("G" + i, C(i - 1, 2));
+                Consumer("G" + i, C(i - 1, 2));
             }
 
             Assert.AreEqual(5, _network.PoweredGolemCount(1), "precondition: all five have steam");
 
-            Run(100);
-            Assert.AreEqual(1000 - 5, boiler.CokeStock, "5 golem-ticks x 100 = 500 = 5 Coke");
+            Run(200);
 
-            Run(900, 101);
-            Assert.AreEqual(1000 - 50, boiler.CokeStock, "1000 ticks is 100 s, so 50 Coke");
+            Assert.AreEqual(1000 - 5, boiler.CokeStock, "5 golem-ticks x 200 = 1000 = 5 Coke");
+
+            Run(1800, 201);
+
+            Assert.AreEqual(1000 - 50, boiler.CokeStock, "2000 ticks is 200 s, so 50 Coke");
         }
 
         [Test]
         public void TheRemainderCarries_RatherThanBeingLostOrDoubleCharged()
         {
-            // 3 golems: 3 golem-ticks per tick, so a Coke every 33 1/3 ticks. Nothing here
+            // 3 golems: 3 golem-ticks per tick, so a Coke every 66 2/3 ticks. Nothing here
             // divides evenly, which is exactly the case a float accumulator gets wrong.
             SteamBoiler boiler = _network.RegisterBoiler("B", C(0, 0), 1000);
             _network.AddPipe(C(0, 1));
-            _network.RegisterConsumer("A", C(0, 2));
-            _network.RegisterConsumer("B2", C(-1, 1));
-            _network.RegisterConsumer("C", C(1, 1));
+            Consumer("A", C(0, 2));
+            Consumer("B2", C(-1, 1));
+            Consumer("C", C(1, 1));
             Assert.AreEqual(3, _network.PoweredGolemCount(1));
 
-            Run(33);
-            Assert.AreEqual(1000, boiler.CokeStock, "99 golem-ticks is not yet a whole Coke");
-            Assert.AreEqual(99, boiler.BurnAccumulator);
+            Run(66);
 
-            Run(1, 34);
-            Assert.AreEqual(999, boiler.CokeStock, "the 34th tick crosses 100");
-            Assert.AreEqual(2, boiler.BurnAccumulator, "and 2 golem-ticks carry into the next");
+            Assert.AreEqual(1000, boiler.CokeStock, "198 golem-ticks is not yet a whole Coke");
+            Assert.AreEqual(198, boiler.BurnAccumulator);
+
+            Run(1, 67);
+
+            Assert.AreEqual(999, boiler.CokeStock, "the 67th tick crosses 200");
+            Assert.AreEqual(1, boiler.BurnAccumulator, "and 1 golem-tick carries into the next");
 
             // Over a long run the carry must keep the total exactly proportional: 3 golems for
-            // 3000 ticks is 9000 golem-ticks = 90 Coke, with nothing lost to rounding.
-            Run(2966, 35);
+            // 6000 ticks is 18000 golem-ticks = 90 Coke, with nothing lost to rounding.
+            Run(5933, 68);
             Assert.AreEqual(1000 - 90, boiler.CokeStock);
         }
 
@@ -358,10 +386,29 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void APoweredGolemThatIsNotWorking_BurnsNothing_AndStaysPowered()
+        {
+            // G10, the user's call: idle, unprogrammed and stalled golems in reach used to cost
+            // the same as working ones. Now only work burns -- but power is still granted, so the
+            // golem can start the moment it has something to do.
+            SteamBoiler boiler = _network.RegisterBoiler("B", C(0, 0), 240);
+            _network.RegisterConsumer("Idle", C(0, 1));
+
+            for (long t = 1; t <= 2000; t++)
+            {
+                _network.Tick(t);
+            }
+
+            Assert.AreEqual(240, boiler.CokeStock);
+            Assert.IsTrue(_network.IsPowered("Idle", 2001));
+            Assert.AreEqual(0, _network.LastEvaluatedWorkingCount);
+        }
+
+        [Test]
         public void AGolemOutOfReach_CostsNothing()
         {
             SteamBoiler boiler = _network.RegisterBoiler("B", C(0, 0), 240);
-            _network.RegisterConsumer("Distant", C(50, 50));
+            Consumer("Distant", C(50, 50));
 
             Run(1000);
 
@@ -374,18 +421,18 @@ namespace GolemFactory.Tests.EditMode
         public void WhenTheCokeRunsOut_TheBoilerPowersNothing_AndTheStockNeverGoesNegative()
         {
             SteamBoiler boiler = _network.RegisterBoiler("B", C(0, 0), 2);
-            _network.RegisterConsumer("G", C(0, 1));
+            Consumer("G", C(0, 1));
 
             Assert.IsTrue(_network.IsPowered("G", 1), "powered while there is fuel");
 
-            Run(200);
+            Run(400);
 
             Assert.AreEqual(0, boiler.CokeStock);
-            Assert.IsFalse(_network.IsPowered("G", 201), "no running on credit");
+            Assert.IsFalse(_network.IsPowered("G", 401), "no running on credit");
 
             // Keep ticking: a dry boiler must not dig a hole, and must not accrue upkeep for
             // golems it is no longer powering.
-            Run(1000, 201);
+            Run(1000, 401);
             Assert.AreEqual(0, boiler.CokeStock);
             Assert.AreEqual(0, boiler.PoweredGolemCount);
         }
@@ -394,25 +441,26 @@ namespace GolemFactory.Tests.EditMode
         public void RefuellingADryBoiler_BringsItsGolemsBack()
         {
             SteamBoiler boiler = _network.RegisterBoiler("B", C(0, 0), 1);
-            _network.RegisterConsumer("G", C(0, 1));
-            Run(150);
-            Assert.IsFalse(_network.IsPowered("G", 200));
+            Consumer("G", C(0, 1));
+            Run(300);
+
+            Assert.IsFalse(_network.IsPowered("G", 400));
 
             boiler.AddCoke(50);
 
-            Assert.IsTrue(_network.IsPowered("G", 201));
+            Assert.IsTrue(_network.IsPowered("G", 401));
         }
 
         // --- The number §10's soft-lock audit rests on ------------------------------------------
 
         [Test]
-        public void SevenGolems_ConsumeFortyTwoCokePerMinute()
+        public void SevenGolems_ConsumeTwentyOneCokePerMinute()
         {
             // progression-design §10, "Coke death spiral under proportional burn": a coal cluster
-            // of 1 extractor + 4 cokers + 2 loaders = 7 golems produces 140 Coke/min and consumes
-            // 42, a 3.3:1 ratio, "convergent at every scale". If a retune ever breaks this
-            // arithmetic the design's whole no-runaway argument goes with it, so it is pinned
-            // here rather than left implicit in the constants.
+            // of 1 extractor + 4 cokers + 2 loaders = 7 golems produces 140 Coke/min. At §3.1's
+            // rate it consumed 42 (3.3:1); at G10's halved rate it consumes 21 (6.7:1), so the
+            // "convergent at every scale" argument holds with more room, not less. Pinned here
+            // rather than left implicit in the constants.
             SteamBoiler boiler = _network.RegisterBoiler("B", C(0, 0), 1000);
             for (int x = -1; x <= 5; x++)
             {
@@ -421,7 +469,7 @@ namespace GolemFactory.Tests.EditMode
 
             for (int i = 0; i < 7; i++)
             {
-                _network.RegisterConsumer("G" + i, C(i - 1, 2));
+                Consumer("G" + i, C(i - 1, 2));
             }
 
             Assert.AreEqual(7, _network.PoweredGolemCount(1), "precondition: all seven have steam");
@@ -429,11 +477,11 @@ namespace GolemFactory.Tests.EditMode
             // 1 minute at 10 ticks/sec.
             Run(600);
 
-            Assert.AreEqual(42, 1000 - boiler.CokeStock,
-                "7 golems x 6 Coke/min = 42 Coke/min -- §10's convergence check");
+            Assert.AreEqual(21, 1000 - boiler.CokeStock,
+                "7 golems x 3 Coke/min = 21 Coke/min -- §10's convergence check");
 
             // And the gauge must quote the same figure the simulation actually charges.
-            Assert.AreEqual(42, SteamGaugeUtility.BurnPerMinute(7));
+            Assert.AreEqual(21, SteamGaugeUtility.BurnPerMinute(7));
         }
 
         [Test]
@@ -452,7 +500,7 @@ namespace GolemFactory.Tests.EditMode
                 for (int k = -3; k <= 4; k++)
                 {
                     _network.AddPipe(C(origin + k, 1));
-                    _network.RegisterConsumer("B" + b + "G" + (k + 3), C(origin + k, 2));
+                    Consumer("B" + b + "G" + (k + 3), C(origin + k, 2));
                 }
             }
 
@@ -462,7 +510,7 @@ namespace GolemFactory.Tests.EditMode
             int before = _network.TotalCokeStock;
             Run(600);
 
-            Assert.AreEqual(80 * 6, before - _network.TotalCokeStock, "80 golems x 6 Coke/min");
+            Assert.AreEqual(80 * 3, before - _network.TotalCokeStock, "80 golems x 3 Coke/min");
         }
 
         // --- Housekeeping -----------------------------------------------------------------------
@@ -471,12 +519,14 @@ namespace GolemFactory.Tests.EditMode
         public void UnregisteringAConsumer_StopsItsUpkeepImmediately()
         {
             SteamBoiler boiler = _network.RegisterBoiler("B", C(0, 0), 1000);
-            _network.RegisterConsumer("G", C(0, 1));
-            Run(100);
+            Consumer("G", C(0, 1));
+            Run(200);
+
             Assert.AreEqual(999, boiler.CokeStock);
 
             _network.UnregisterConsumer("G");
-            Run(1000, 101);
+            _working.Remove("G");
+            Run(1000, 201);
 
             Assert.AreEqual(999, boiler.CokeStock, "a removed golem costs nothing");
         }
@@ -485,10 +535,10 @@ namespace GolemFactory.Tests.EditMode
         public void MovingAGolemOffThePipe_UnpowersIt()
         {
             _network.RegisterBoiler("B", C(0, 0), 1000);
-            _network.RegisterConsumer("G", C(0, 1));
+            Consumer("G", C(0, 1));
             Assert.IsTrue(_network.IsPowered("G", 1));
 
-            _network.RegisterConsumer("G", C(9, 9));
+            Consumer("G", C(9, 9));
 
             Assert.IsFalse(_network.IsPowered("G", 2), "the grid is keyed by cell, so moving matters");
             Assert.AreEqual(1, _network.ConsumerCount, "and re-registering does not duplicate it");
@@ -498,12 +548,12 @@ namespace GolemFactory.Tests.EditMode
         public void TickIsIdempotentWithinOneTick_SoDoubleRegistrationCannotDoubleCharge()
         {
             SteamBoiler boiler = _network.RegisterBoiler("B", C(0, 0), 1000);
-            _network.RegisterConsumer("G", C(0, 1));
+            Consumer("G", C(0, 1));
 
-            for (long t = 1; t <= 100; t++)
+            for (long t = 1; t <= 200; t++)
             {
-                _network.Tick(t);
-                _network.Tick(t);
+                TickWorking(t);
+                TickWorking(t);
             }
 
             Assert.AreEqual(999, boiler.CokeStock);

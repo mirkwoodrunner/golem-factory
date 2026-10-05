@@ -51,9 +51,9 @@ namespace GolemFactory.Steam
     public static class SteamGaugeUtility
     {
         /// <summary>
-        /// 6 Coke/min per powered golem -- 1 per 10 s, straight out of §3.1. Derived here from
-        /// the tick constant rather than restated as a literal, so a retune of the burn rate can
-        /// never leave the gauge quoting the old figure: 60 s x 10 ticks / 100 ticks-per-Coke.
+        /// 3 Coke/min per working golem (G10; §3.1 had 6). Derived here from the tick constant
+        /// rather than restated as a literal, so a retune of the burn rate can never leave the
+        /// gauge quoting the old figure: 60 s x 10 ticks / 200 ticks-per-Coke.
         /// </summary>
         public const int CokePerMinutePerGolem =
             60 * 10 / SteamNetwork.TicksPerCokePerPoweredGolem;
@@ -140,7 +140,7 @@ namespace GolemFactory.Steam
         /// <summary>
         /// One boiler's line, for its [E] caption (G10, from playtest: "there isn't a good
         /// indication of how long coke lasts"): its Coke, who draws on it, and how long that
-        /// lasts -- "18 Coke · 2 golems · 1:30 left", or "18 Coke · no golems drawing".
+        /// lasts -- "18 Coke · 2 golems · 1:30 left", or "18 Coke · no golems working".
         /// </summary>
         public static string FormatBoiler(int cokeStock, int poweredGolems)
         {
@@ -148,9 +148,9 @@ namespace GolemFactory.Steam
             string head = reading.CokeStock.ToString(CultureInfo.InvariantCulture) + " Coke";
             if (!reading.HasCountdown)
             {
-                return head + " · no golems drawing";
+                return head + " · no golems working";
             }
-            string golems = reading.PoweredGolems == 1 ? "1 golem" : reading.PoweredGolems.ToString(CultureInfo.InvariantCulture) + " golems";
+            string golems = (reading.PoweredGolems == 1 ? "1 golem" : reading.PoweredGolems.ToString(CultureInfo.InvariantCulture) + " golems") + " working";
             return head + " · " + golems + " · " + FormatCountdown(reading.SecondsRemaining) + " left";
         }
 

@@ -763,6 +763,19 @@ buildings. Includes the "no refund on load" duplicator regression.
   - the boiler's [E] caption reads "18 Coke · 2 golems · 1:30 left"
   - loading Coke reports how long it lasts one golem
   - the HUD gauge is labelled "Boiler fuel"
+- **Coke burns only for WORKING golems, at half the rate** (your call, from playtest: "it seems
+  to burn very fast"). It was 6 Coke/min for every golem in a boiler's reach, working or not;
+  it's now 3 Coke/min per golem actually running a step.
+  - Idle, unprogrammed and stalled golems stay powered, so they start the moment they have
+    work, but cost nothing.
+  - A golem reports work each tick (`SteamNetwork.ReportWorking`), and a boiler pays only for
+    its powered golems that reported.
+  - `TicksPerCokePerPoweredGolem` is 200, and the gauge and captions derive 3/min from it.
+  - The ported burn tests now run their golems as working and assert the new numbers. The
+    hand-load bound moves from 30 s to 60 s, and `progression-design.md` §3.1 records the
+    change.
+  - Covered by `WorkingGolemBurnTests` through the real Sandbox, and by
+    `APoweredGolemThatIsNotWorking_BurnsNothing_AndStaysPowered`.
 - **The alerts strip lost the steam cause between reconciles.** Stall events carry no cause
   and overwrote the snapshot, so it is now read from the golem when the strip composes its
   text. Caught in the frames.

@@ -463,6 +463,11 @@ namespace GolemFactory.Golems
                 }
             }
 
+            // Past the stall check: this golem is doing work this tick, and only work burns Coke
+            // (G10, at the user's call -- an idle, unprogrammed or stalled golem in a boiler's
+            // reach used to cost the same 6 Coke/min as one producing).
+            steamNetwork?.ReportWorking(golemId, tick);
+
             // wasStalled can only be true here if StepProgressTicks was 0 (Stalled is only
             // ever set in the guard clause above, which requires StepProgressTicks == 0),
             // so reaching this point means TryBeginStep just succeeded -- a genuine recovery,

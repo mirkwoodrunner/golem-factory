@@ -874,7 +874,7 @@ namespace GolemFactory.Player
                     // The boiler's own stock, not the player's: what the player wants to know
                     // standing here is whether this firebox needs feeding.
                     detail = boiler.Boiler != null
-                        ? SteamGaugeUtility.FormatBoiler(boiler.Boiler.CokeStock, boiler.Boiler.PoweredGolemCount)
+                        ? SteamGaugeUtility.FormatBoiler(boiler.Boiler.CokeStock, boiler.Boiler.WorkingGolemCount)
                         : "cold";
                     break;
                 }
@@ -1026,7 +1026,7 @@ namespace GolemFactory.Player
             boiler.Boiler.AddCoke(amount);
             // How long it lasts, said at the moment the player pays for it (G10).
             LastStatusMessage = $"Loaded {amount} Coke: {SteamGaugeUtility.FormatLastsOneGolem(amount)} for one golem, "
-                + $"{SteamGaugeUtility.CokePerMinutePerGolem} Coke a minute per golem.";
+                + $"{SteamGaugeUtility.CokePerMinutePerGolem} Coke a minute per working golem.";
             Popup(at, YieldPopupText.Gain(ItemType.Coke, amount), InteractionPopupKind.Gain);
             return true;
         }
