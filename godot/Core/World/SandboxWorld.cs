@@ -197,6 +197,8 @@ namespace GolemFactory.World
 
             WireInteractor();
             WireWorkbench(setup.workbench);
+            Alerts = new AlertsStrip(() => _golems);
+            Alerts.Attach();
         }
 
         private void WireWorkbench(SandboxSetup.WorkbenchRoster roster)
@@ -375,7 +377,33 @@ namespace GolemFactory.World
         }
 
         /// <summary>Advances the simulation by real seconds (WorldNode calls this every frame).</summary>
-        public void Advance(float seconds) => Clock.Advance(seconds);
+        public void Advance(float seconds)
+        {
+            Clock.Advance(seconds);
+
+            // Unity's BufferThroughputMonitor and AlertsPanel ran on Update in real time, not on
+            // simulation ticks: the rate column reads "per minute of the player's time", and
+            // the strip must keep reconciling while the clock is paused.
+            _realSeconds += seconds;
+            if (_realSeconds >= _nextThroughputSample)
+            {
+                _nextThroughputSample = _realSeconds + BufferRateTracker.DefaultSampleIntervalSeconds;
+                Throughput.Sample(_realSeconds, Buffers);
+            }
+            Alerts?.Update(seconds);
+        }
+
+        private float _realSeconds;
+        private float _nextThroughputSample;
+
+        /// <summary>The Inventory tab's rate history (Unity's BufferThroughputMonitor), sampled in real time.</summary>
+        public BufferRateTracker Throughput { get; } = new BufferRateTracker();
+
+        /// <summary>The HUD's alerts strip. Null on the bare (slice) world.</summary>
+        public AlertsStrip Alerts { get; private set; }
+
+        /// <summary>The full screens, one up at a time.</summary>
+        public ScreenCoordinator Screens { get; } = new ScreenCoordinator();
 
         private sealed class TickAdapter : ITickable
         {
