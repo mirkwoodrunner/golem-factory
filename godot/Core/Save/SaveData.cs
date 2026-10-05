@@ -44,6 +44,8 @@ namespace GolemFactory.Save
         public int assemblyBayTier = 1;
         public float clockSpeed = 1f;
         public bool clockPaused;
+        public int tutorialStep;
+        public bool tutorialDismissed;
     }
 
     /// <summary>

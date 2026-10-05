@@ -97,6 +97,9 @@ namespace GolemFactory.World
         /// quick to watch in playtest, so the shipping Sandbox sets 1 (G10).
         /// </summary>
         public float beltCellsPerSecond;
+
+        /// <summary>Whether the step-by-step guide runs (G10). Off unless the setup asks.</summary>
+        public bool tutorial;
         public string freeStallSeedNode;
         public int freeStallSeedQuantity;
         public Point playerStart = new Point();

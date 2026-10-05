@@ -70,6 +70,12 @@ ones. Current scenarios:
   buildings, golems (with program and place) and stockpile must come back exactly, and two
   more rounds must change nothing. Then it extends the room after a save and loads, and the
   rows and back wall must go back. Writes `user://scenario-save.json`, never the player's save.
+- `tutorial` (Sandbox): the step-by-step guide's panel.
+  - It opens on step 1, with the arrow pinned to the screen edge toward the Scrap stall and
+    clear of the HUD bars.
+  - Gathering advances it, and the Boiler step outlines its build-menu row.
+  - F1 hides and shows it, it steps aside over Management, and Skip guide puts it away.
+  - In the Workbench on "Program it", it sits clear of the sockets, the lever and the vault.
 - `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
   into the stockpile, over 600 ticks. `--spike-check` is an alias.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
@@ -119,6 +125,11 @@ one `BuildingView` each, by listening to `BuildingPlaced`, `BuildingRemoved` and
 only feeds it the position and the keys. A full screen joins the `ModalScreens` group and
 implements `IScreen`; while one is open the player stays still and the world prompt hides. A
 new screen gets that for free.
+
+**The guide (`Core/Tutorial/TutorialGuide`) detects its steps from world state.** A new step
+gets a `Done` check that reads the world, never a call from the code that does the thing. A
+step that happens inside a full screen must also be placed clear of that screen's controls
+(see `TutorialPanel.Dock`).
 
 **Full screens report to `SandboxWorld.Screens`** (`ScreenCoordinator`). Implement
 `IClosableScreen`, `Register` in `_Ready`, and call `Screens.Opening(this)` in `Open`; every

@@ -716,6 +716,35 @@ buildings. Includes the "no refund on load" duplicator regression.
   and by the alerts strip, which also names the fix. A stall badge fades to 25% while the
   player stands within two cells, so it stops covering the golem's tile and pipe.
   `SteamShortageTests` covers this.
+- **A step-by-step guide** (you chose it over a checklist or contextual hints).
+  `Core/Tutorial/TutorialGuide` has eleven steps, following testscript Part E's cold start:
+  1. Scrap
+  2. a Coal truckload
+  3. Coke
+  4. Iron Plate at the bench
+  5. a boiler
+  6. fuelling it
+  7. a Scavenger
+  8. programming it
+  9. a depot
+  10. setting the golem to work
+  11. the Tab screens
+
+  **Every step is detected from the world, never ticked off by hand**, so doing things early
+  skips ahead, and advancing is one-way. It's on in `sandbox.json` (`"tutorial": true`) and
+  saved with progress.
+
+  `Scripts/UI/TutorialPanel` draws it:
+  - a plate under the Clock Tower panel showing the step and its count ("Coal 3 / 5")
+  - a bobbing arrow over the target, or pinned to the screen edge pointing at it when off
+    screen
+  - a pulsing outline on the build-menu row a step needs
+  - **Skip guide**; F1 hides it and brings it back
+
+  Over a full screen it shows only during "Program it", in the Workbench's empty viewport
+  space. Bottom right, it covered the ENGAGE lever, caught in frames. Tests are in
+  `TutorialGuideTests`, which play a cold start through to a working golem, and the new
+  `tutorial` scenario.
  (every milestone)
 
 - **`dotnet test godot/GolemFactory.sln`**: Core tests pass. The count only grows, and the

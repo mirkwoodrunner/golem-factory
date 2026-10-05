@@ -6,6 +6,7 @@
   "productionBufferCapacityPerType": 100,
   "startingNorthExtent": 12,
   "beltCellsPerSecond": 1.0,
+  "tutorial": true,
   "freeStallSeedNode": "ScrapNode",
   "freeStallSeedQuantity": 60,
   "playerStart": { "x": 0, "y": 0 },

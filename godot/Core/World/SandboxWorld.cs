@@ -106,6 +106,9 @@ namespace GolemFactory.World
         /// <summary>Every live golem, whichever station built it.</summary>
         public IReadOnlyList<GolemEntity> Golems => _golems;
 
+        /// <summary>The step-by-step guide (G10), when sandbox.json turns it on; else null.</summary>
+        public Tutorial.TutorialGuide Tutorial { get; private set; }
+
         /// <summary>A station built a golem. The scene hosts a node for it.</summary>
         public event Action<GolemEntity> GolemSpawned;
 
@@ -212,6 +215,10 @@ namespace GolemFactory.World
             Alerts = new AlertsStrip(() => _golems);
             Alerts.Attach();
             WireProgression(setup.assemblyLine);
+            if (setup.tutorial)
+            {
+                Tutorial = new Tutorial.TutorialGuide(this);
+            }
         }
 
         /// <summary>The tech tree's progress ledger, read by the Assembly Line's unlocks and the Ledger tab.</summary>
@@ -362,6 +369,8 @@ namespace GolemFactory.World
                 assemblyBayTier = AssemblyBay.Tier,
                 clockSpeed = Clock.Speed,
                 clockPaused = Clock.State == ClockState.Paused,
+                tutorialStep = Tutorial?.Index ?? 0,
+                tutorialDismissed = Tutorial?.Dismissed ?? false,
             };
             progress.ledgerItems.AddRange(TechTree.Ledger.Items.OrderBy(x => x));
             progress.ledgerChassis.AddRange(TechTree.Ledger.Chassis.OrderBy(x => x));
@@ -406,6 +415,8 @@ namespace GolemFactory.World
 
             AssemblyBay.RestoreTier(progress.assemblyBayTier);
             FloorExpansion.Restore(progress.floorNorthExtent);
+
+            Tutorial?.Restore(progress.tutorialStep, progress.tutorialDismissed);
 
             Clock.Speed = progress.clockSpeed > 0f ? progress.clockSpeed : 1f;
             if (progress.clockPaused)
@@ -592,6 +603,7 @@ namespace GolemFactory.World
             Alerts?.Update(seconds);
             AssemblyLine?.Tick(seconds);
             TechTree.Update(_realSeconds);
+            Tutorial?.Update();
         }
 
         private float _realSeconds;
