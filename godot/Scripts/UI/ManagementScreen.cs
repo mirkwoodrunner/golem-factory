@@ -65,6 +65,13 @@ namespace GolemFactory.Nodes
         public Control PatentList => _patents;
         public Control RootControl => _root;
         public AssemblyLineTab AssemblyLine { get; private set; }
+
+        /// <summary>Where Save writes and Load reads. A scenario points it at a scratch file.</summary>
+        public string SavePath { get; set; } = "user://" + Save.SaveFileIO.DefaultFileName;
+
+        public Button SaveButton { get; private set; }
+        public Button LoadButton { get; private set; }
+        public string SaveStatus => _saveStatus?.Text ?? "";
         public LedgerTab Ledger { get; private set; }
 
         public override void _EnterTree() => AddToGroup(ModalScreens.GroupName);
@@ -420,11 +427,21 @@ namespace GolemFactory.Nodes
                 Button button = PlateButton(name + "Button", Ui + "Steampunk/" + sprite, new Color(0.80f, 0.62f, 0.32f), name, 15, SelectedTabLabel, bold: true);
                 button.CustomMinimumSize = new Vector2(140f, 42f);
                 button.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-                button.Disabled = true;
-                button.Modulate = new Color(1f, 1f, 1f, 0.5f);
+                bool save = name == "Save";
+                button.Pressed += () => _saveStatus.Text = save
+                    ? _world.Sandbox.SaveTo(ProjectSettings.GlobalizePath(SavePath))
+                    : _world.Sandbox.LoadFrom(ProjectSettings.GlobalizePath(SavePath));
                 buttons.AddChild(button);
+                if (save)
+                {
+                    SaveButton = button;
+                }
+                else
+                {
+                    LoadButton = button;
+                }
             }
-            _saveStatus = Ugui.Place(Ugui.Text("StatusText", "Saving and loading arrive with the save milestone (G9).", 15, HeaderInk), 0.1f, 0.62f, 0.9f, 0.74f);
+            _saveStatus = Ugui.Place(Ugui.Text("StatusText", "", 15, HeaderInk), 0.1f, 0.62f, 0.9f, 0.74f);
             holder.AddChild(_saveStatus);
         }
 

@@ -55,10 +55,6 @@ HELD = {
     "World/FloorExpansionTests.cs": ("G2d", "FloorExpansionService rules"),
     "World/ResourceNodeMarkerTests.cs": ("G2d", "SandboxSetup / node registration"),
     # G7/G8: the screens.
-    "UI/SaveLoadPanelTests.cs": ("G9", "Save/load panel"),
-    # G9: save files on disk.
-    "Save/SaveCatalogCoverageTests.cs": ("G9", "Save panel's catalog vs the JSON data"),
-    "Save/SaveFileIOTests.cs": ("G9", "Godot SaveFileIO (user://)"),
 }
 
 # Ported to a different path than the original.

@@ -13,6 +13,7 @@ using GolemFactory.AssemblyLine;
 using GolemFactory.Progression;
 using GolemFactory.Player;
 using GolemFactory.PunchCards;
+using GolemFactory.Save;
 using GolemFactory.Simulation;
 using GolemFactory.Steam;
 using GolemFactory.UI;
@@ -288,6 +289,68 @@ namespace GolemFactory.World
         /// construction panel for a station, the Workbench for a golem (G7) and the Management
         /// screen whose being open hides the prompt (G8). Null for one not built yet.
         /// </summary>
+        // --- Save and load (G9) ---------------------------------------------------------------
+
+        /// <summary>
+        /// The SaveLoad tab's Save: the stockpile and every buffer, the patent library, every
+        /// golem's program and placement, and every building the player placed. Returns the
+        /// status line Unity's SaveLoadPanel printed.
+        /// </summary>
+        public string SaveTo(string path)
+        {
+            List<GolemEntity> live = LiveGolems();
+            SaveData data = SaveLoadService.CaptureState(Buffers, Patents, live, Build.Buildings);
+            SaveFileIO.WriteToFile(data, path);
+            return $"Saved {live.Count} golems and {data.buildings.Count} buildings.";
+        }
+
+        /// <summary>
+        /// The SaveLoad tab's Load: the built world first (cleared WITHOUT a refund -- a load
+        /// replaces the factory, and refunding the swept buildings on top of the restored buffers
+        /// would make save/load/save/load an infinite duplicator, root CLAUDE.md), then its
+        /// inhabitants: a golem still standing gets its program back in place, a player-built one
+        /// that is gone is rebuilt by the station, any other is reported as skipped. The status
+        /// line reports what the load DID, not how many entries the file held.
+        /// </summary>
+        public string LoadFrom(string path)
+        {
+            SaveData data = SaveFileIO.ReadFromFile(path);
+            if (data == null)
+            {
+                return "No save file found.";
+            }
+
+            IGolemRespawner respawner = _stationTemplate != null ? new StationGolemRespawner(_stationTemplate) : null;
+            SaveLoadService.RestoreReport report = SaveLoadService.RestoreState(
+                data, Buffers, Patents, LiveGolems(), Definitions.ToCatalog(), respawner,
+                new BuildModeBuildingRebuilder(Build));
+            Interactor.RefreshInteractables();
+
+            string golems = report.Skipped > 0
+                ? $"Loaded {report.Restored} golems, rebuilt {report.Respawned}, skipped {report.Skipped}"
+                : $"Loaded {report.Restored} golems, rebuilt {report.Respawned}";
+            string buildings = report.BuildingsSkipped > 0
+                ? $"{report.BuildingsRebuilt} buildings, {report.BuildingsSkipped} skipped"
+                : $"{report.BuildingsRebuilt} buildings";
+            return golems + "; " + buildings + ".";
+        }
+
+        private List<GolemEntity> LiveGolems() => _golems.Where(g => g != null && !g.IsRemoved).ToList();
+
+        /// <summary>
+        /// Adds a golem no station built -- a scene-authored one, as Unity's Main.unity demos and
+        /// LoopSlice's hand-placed golems are -- to the world's roster, so it is saved, loaded,
+        /// reachable by [E] and reported by the alerts strip like any other.
+        /// </summary>
+        public void AdoptGolem(GolemEntity golem)
+        {
+            if (golem != null && !_golems.Contains(golem))
+            {
+                _golems.Add(golem);
+                Interactor.RefreshInteractables();
+            }
+        }
+
         public void ConfigureScreens(IConstructionScreen construction, IWorkbenchScreen workbench, IScreen management)
         {
             ConstructionScreen = construction ?? ConstructionScreen;
