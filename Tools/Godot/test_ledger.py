@@ -25,7 +25,8 @@ TEST_ATTR = re.compile(r"^\s*\[(?:Test|TestCase|UnityTest)\b", re.M)
 # named here; --check fails on one that is not, so nothing drops off the ledger silently.
 HELD = {
     # G2: the rules move into Core, and these become unit tests. G2a (station, assembly bay)
-    # and G2b (build mode) are done; G2c interactions, G2d save and the rest.
+    # G2b (build mode) and G2c (interactions, hand crank, node markers) are done; G2d save
+    # and the rest.
     "AssemblyLine/AssemblyLineGatingTests.cs": ("G2d", "AssemblyLineStateHolder rules"),
     "Buildings/AssemblyBayCapTests.cs": ("G2d", "StationService (assembly bay)"),
     "Buildings/AssemblyBayStructureTests.cs": ("G2d", "StationService (assembly bay)"),

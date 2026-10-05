@@ -175,6 +175,9 @@ namespace GolemFactory.Compat
             this.a = a;
         }
 
+        /// <summary>Unity's perceived-luminance greyscale: 0.299 r + 0.587 g + 0.114 b.</summary>
+        public float grayscale => 0.299f * r + 0.587f * g + 0.114f * b;
+
         public static Color white => new Color(1f, 1f, 1f, 1f);
         public static Color black => new Color(0f, 0f, 0f, 1f);
         public static Color clear => new Color(0f, 0f, 0f, 0f);
