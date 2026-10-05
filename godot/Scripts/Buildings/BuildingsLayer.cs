@@ -142,6 +142,14 @@ namespace GolemFactory.Nodes
                 return;
             }
 
+            if (_belt != null && _building.GetPart<PlaceableBeltSplitter>() != null)
+            {
+                // A splitter has no facing: one picture, never rotated.
+                SetSprite(Shape("splitter", "belt_tile"), centred: true);
+                _sprite.Rotation = 0f;
+                return;
+            }
+
             if (_belt != null)
             {
                 // The lane is authored pointing East and rotated to the belt's facing; corners

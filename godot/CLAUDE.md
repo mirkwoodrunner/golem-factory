@@ -68,7 +68,8 @@ ones. Current scenarios:
   Load, the Ledger's plaques and recipe pane, and one screen at a time.
 - `save` (Sandbox): through the SaveLoad tab, build, save, wreck everything, and load. The
   buildings, golems (with program and place) and stockpile must come back exactly, and two
-  more rounds must change nothing. Writes `user://scenario-save.json`, never the player's save.
+  more rounds must change nothing. Then it extends the room after a save and loads, and the
+  rows and back wall must go back. Writes `user://scenario-save.json`, never the player's save.
 - `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
   into the stockpile, over 600 ticks. `--spike-check` is an alias.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
@@ -151,7 +152,8 @@ negative z must stay above −10.
 The chassis, logic cores, punch cards, recipes, Clock Tower stages and the Assembly Line
 deck: what Unity kept as ScriptableObject `.asset` files. Also `placeables.json` (the build
 menu, from the prefabs) and `sandbox.json` (the world's setup, hand-written from
-`Sandbox.unity` in G4).
+`Sandbox.unity` in G4). The belt splitter has no Unity prefab: the converter adds it after
+the belt (`belt_splitter_entry`), so edit it there, not in the JSON.
 
 - **Until cutover (G10) the Unity assets are the source of truth.** Regenerate the JSON with
   `python Tools/Data/convert_unity_assets.py`. `--check` exits 1 if the JSON is stale. After

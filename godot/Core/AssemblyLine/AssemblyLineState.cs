@@ -409,6 +409,30 @@ namespace GolemFactory.AssemblyLine
             }
         }
 
+        /// <summary>
+        /// A load: forget every claim, slot and queue, then rebuild the line as a fresh session
+        /// would -- the claims first (so the first fill skips what is owned), then the deck. A
+        /// load replaces progress rather than merging into it, or a card bought after the save
+        /// would survive a load that also handed back the goods it cost. The unlock context is
+        /// kept, and should already answer from the restored ledger.
+        /// </summary>
+        public void Restore(string userId, IEnumerable<DraftableCardDefinition> claimed, IEnumerable<DraftableCardDefinition> deck)
+        {
+            for (int i = 0; i < SlotCount; i++)
+            {
+                _slots[i] = null;
+                _secondsOnLine[i] = 0f;
+            }
+            _refillQueue.Clear();
+            _waiting.Clear();
+            _claimedByUser.Clear();
+            foreach (DraftableCardDefinition card in claimed)
+            {
+                GrantClaim(userId, card);
+            }
+            SeedCandidates(deck);
+        }
+
         public IReadOnlyList<DraftableCardDefinition> GetClaimedCards(string userId) =>
             _claimedByUser.TryGetValue(userId, out List<DraftableCardDefinition> claimed)
                 ? claimed

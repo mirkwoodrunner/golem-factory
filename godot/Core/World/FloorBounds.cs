@@ -27,6 +27,9 @@ namespace GolemFactory.World
 
         public int MaxNorthExtent { get; }
 
+        /// <summary>The authored back wall: the smallest the room can be.</summary>
+        public int MinNorthExtent { get; }
+
         /// <summary>
         /// Bumped on every successful expansion, so views and the wall rebuild can tell they are
         /// looking at a different room without diffing cells. Same idiom
@@ -42,6 +45,24 @@ namespace GolemFactory.World
             HalfExtent = halfExtent;
             NorthExtent = northExtent < halfExtent ? halfExtent : northExtent;
             MaxNorthExtent = maxNorthExtent < NorthExtent ? NorthExtent : maxNorthExtent;
+            MinNorthExtent = NorthExtent;
+        }
+
+        /// <summary>
+        /// A load: puts the back wall at <paramref name="northExtent"/>, clamped to the room's
+        /// authored and maximum rows. Unlike <see cref="Expand"/> it can move the wall back in,
+        /// for a save made before an expansion. Returns the previous extent.
+        /// </summary>
+        public int Restore(int northExtent)
+        {
+            int previous = NorthExtent;
+            int target = northExtent < MinNorthExtent ? MinNorthExtent : northExtent > MaxNorthExtent ? MaxNorthExtent : northExtent;
+            if (target != previous)
+            {
+                NorthExtent = target;
+                Version++;
+            }
+            return previous;
         }
 
         /// <summary>Rows of expansion still available. Zero means the land has run out.</summary>

@@ -167,6 +167,128 @@
     }
   },
   {
+    "name": "BeltSplitterPrefab",
+    "sprite": null,
+    "parts": {
+      "PlaceableBuilding": {
+        "cost": [
+          {
+            "itemType": "Scrap",
+            "quantity": 4
+          }
+        ],
+        "dragPlaceable": 0
+      },
+      "PlaceableBelt": {
+        "straightSprite": "belt_tile.png",
+        "cornerLeftSprite": "belt_tile_corner_left.png",
+        "cornerRightSprite": "belt_tile_corner_right.png",
+        "itemSprites": [
+          {
+            "itemType": "Scrap",
+            "sprite": "item_scrap.png"
+          },
+          {
+            "itemType": "Coal",
+            "sprite": "item_coal.png"
+          },
+          {
+            "itemType": "CopperOre",
+            "sprite": "item_copper_ore.png"
+          },
+          {
+            "itemType": "ZincOre",
+            "sprite": "item_zinc_ore.png"
+          },
+          {
+            "itemType": "Aether",
+            "sprite": "item_aether.png"
+          },
+          {
+            "itemType": "Coke",
+            "sprite": "item_coke.png"
+          },
+          {
+            "itemType": "IronPlate",
+            "sprite": "item_iron_plate.png"
+          },
+          {
+            "itemType": "Slag",
+            "sprite": "item_slag.png"
+          },
+          {
+            "itemType": "Glass",
+            "sprite": "item_glass.png"
+          },
+          {
+            "itemType": "CopperIngot",
+            "sprite": "item_copper_ingot.png"
+          },
+          {
+            "itemType": "ZincIngot",
+            "sprite": "item_zinc_ingot.png"
+          },
+          {
+            "itemType": "Brass",
+            "sprite": "item_brass.png"
+          },
+          {
+            "itemType": "CopperWire",
+            "sprite": "item_copper_wire.png"
+          },
+          {
+            "itemType": "Gear",
+            "sprite": "item_gear.png"
+          },
+          {
+            "itemType": "Casing",
+            "sprite": "item_casing.png"
+          },
+          {
+            "itemType": "Lens",
+            "sprite": "item_lens.png"
+          },
+          {
+            "itemType": "Mainspring",
+            "sprite": "item_mainspring.png"
+          },
+          {
+            "itemType": "AetherCell",
+            "sprite": "item_aether_cell.png"
+          },
+          {
+            "itemType": "Mechanism",
+            "sprite": "item_mechanism.png"
+          },
+          {
+            "itemType": "Regulator",
+            "sprite": "item_regulator.png"
+          },
+          {
+            "itemType": "FrameSection",
+            "sprite": "item_frame_section.png"
+          },
+          {
+            "itemType": "GreatCog",
+            "sprite": "item_great_cog.png"
+          },
+          {
+            "itemType": "AetherConduit",
+            "sprite": "item_aether_conduit.png"
+          },
+          {
+            "itemType": "ChronometerCore",
+            "sprite": "item_chronometer_core.png"
+          }
+        ],
+        "fallbackItemSprite": "ghost_placeholder.png"
+      },
+      "PlaceableBeltSplitter": {
+        "sprite": "belt_splitter.png"
+      }
+    }
+  },
+  {
     "name": "BoilerPrefab",
     "sprite": "steam_boiler.png",
     "parts": {

@@ -103,6 +103,10 @@ namespace GolemFactory.Data
                                 StripPng(item.GetProperty("sprite"));
                         }
                         break;
+                    case "PlaceableBeltSplitter":
+                        entry.Prefab.AddPart(new PlaceableBeltSplitter());
+                        entry.ShapeSprites["splitter"] = StripPng(fields.Raw("sprite"));
+                        break;
                     case "PlaceableBoiler":
                         entry.Prefab.AddPart(new PlaceableBoiler()).Configure(fields.String("boilerId"), fields.Int("startingCoke"));
                         break;

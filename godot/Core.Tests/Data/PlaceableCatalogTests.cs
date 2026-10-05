@@ -20,10 +20,12 @@ namespace GolemFactory.Tests.Data
                 definitions ?? AuthoredData.Load());
 
         [Test]
-        public void TheBuildMenuOffersUnitysTenPlaceables_InItsOrder()
+        public void TheBuildMenuOffersUnitysTenPlaceables_InItsOrder_PlusTheSplitter()
         {
+            // Unity's ten, in Sandbox.unity's order, with the belt splitter (G10, no Unity
+            // prefab) right after the belt.
             CollectionAssert.AreEqual(
-                new[] { "Depot", "GolemConstructionStation", "Belt", "Boiler", "SteamPipe", "ClockTower",
+                new[] { "Depot", "GolemConstructionStation", "Belt", "BeltSplitter", "Boiler", "SteamPipe", "ClockTower",
                         "HandCrankBench", "FreightMast", "SlagHeap", "ScrapRecycler" },
                 LoadReal().Select(e => e.DisplayName));
         }
@@ -32,6 +34,7 @@ namespace GolemFactory.Tests.Data
         [TestCase("DepotPrefab", "Scrap:15")]
         [TestCase("GolemConstructionStationPrefab", "Scrap:25 Brass:5")]
         [TestCase("BeltPrefab", "Scrap:1")]
+        [TestCase("BeltSplitterPrefab", "Scrap:4")]
         [TestCase("BoilerPrefab", "Scrap:30 IronPlate:10")]
         [TestCase("SteamPipePrefab", "IronPlate:1")]
         [TestCase("ClockTowerPrefab", "")]

@@ -394,6 +394,9 @@ def make_interaction_ring():
     return img
 
 
+SPLITTER_BRASS = (184, 140, 64, 255)
+
+
 def make_belt_tile():
     """Belt surface for one cell, running +X: a SQUARE lane. Was a 128x64 diamond.
 
@@ -431,6 +434,51 @@ def make_belt_tile():
                 x, y = (cx + 5 - k) % TILE, cy + dy
                 if rail <= y < TILE - rail:
                     px[x, y] = _shade(BELT_RAIL, 0.26)
+    return img
+
+
+def make_belt_splitter():
+    """The belt SPLITTER: one cell with no facing, handing goods to every belt that leads away.
+
+    So it draws no lane direction of its own -- a metal deck framed on all four sides (it is a
+    junction, not a run), a brass turntable in the middle, and a chevron pointing out of each
+    edge, because which edges actually carry goods is decided by the neighbouring belts, not by
+    the splitter. Godot-side addition (G10); Unity never authored a prefab for it.
+    """
+    img = Image.new("RGBA", (TILE, TILE), (0, 0, 0, 0))
+    px = img.load()
+    rail = 5
+    for y in range(TILE):
+        for x in range(TILE):
+            edge = min(x, y, TILE - 1 - x, TILE - 1 - y)
+            if edge < rail:
+                # Rails only at the corners: each edge stays open where a lane meets it.
+                mid = rail + 6 <= (x if y < rail or y >= TILE - rail else y) < TILE - rail - 6
+                if mid:
+                    px[x, y] = _shade(BELT_DECK, -0.10)
+                else:
+                    px[x, y] = _shade(BELT_RAIL, -0.30 if edge == rail - 1 else 0.0)
+                    if edge == 0:
+                        px[x, y] = _shade(BELT_FRAME, -0.20)
+            else:
+                tone = rng_board_tone((x // 8) + 7 * (y // 8), 5170)
+                px[x, y] = _shade(BELT_DECK, tone * 0.6)
+
+    # The turntable: a brass disc with a darker rim and a hub.
+    c = (TILE - 1) / 2.0
+    for y in range(TILE):
+        for x in range(TILE):
+            d = ((x - c) ** 2 + (y - c) ** 2) ** 0.5
+            if d <= 13.5:
+                px[x, y] = _shade(SPLITTER_BRASS, -0.35 if d > 11.5 else (0.18 if d < 3.5 else 0.0))
+
+    # An outward chevron on each side, between the turntable and the edge.
+    for k in range(6):
+        for dd in (-k, k):
+            o = 23 - k  # tip toward the edge at distance 23-? from centre
+            for (x, y) in ((int(c + o), int(c + dd)), (int(c - o) + 1, int(c + dd)),
+                           (int(c + dd), int(c + o)), (int(c + dd), int(c - o) + 1)):
+                px[x, y] = _shade(BELT_RAIL, 0.26)
     return img
 
 
@@ -1513,6 +1561,7 @@ def main():
     _save(make_belt_tile(), "belt_tile.png")
     _save(make_belt_corner(), "belt_tile_corner_right.png")
     _save(make_belt_corner_left(), "belt_tile_corner_left.png")
+    _save(make_belt_splitter(), "belt_splitter.png")
     _save(make_ground_shadow(), "ground_shadow.png")
 
     # Room boundary. ne/nw are the same image under top-down (see make_wall) -- the mirrored

@@ -45,7 +45,8 @@ namespace GolemFactory.Tests.World
         public void TheBuildMenuIsTheCatalog()
         {
             SandboxWorld world = Compose();
-            Assert.AreEqual(10, world.Build.AvailablePrefabs.Count);
+            Assert.AreEqual(world.Placeables.Count, world.Build.AvailablePrefabs.Count);
+            Assert.AreEqual(11, world.Build.AvailablePrefabs.Count, "Unity's ten plus the belt splitter");
         }
 
         [Test]

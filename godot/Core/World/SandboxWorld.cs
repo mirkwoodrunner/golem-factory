@@ -237,6 +237,8 @@ namespace GolemFactory.World
                 return;
             }
 
+            _deck = deck;
+            _claimUserId = setup.claimUserId;
             AssemblyLine = new AssemblyLineState(setup.slots);
             AssemblyLine.ConfigureUnlockContext(itemType => TechTree.Ledger.HasItem(itemType));
             // The opening hand BEFORE the deck. The line skips a card its player already owns
@@ -305,6 +307,7 @@ namespace GolemFactory.World
         {
             List<GolemEntity> live = LiveGolems();
             SaveData data = SaveLoadService.CaptureState(Buffers, Patents, live, Build.Buildings);
+            data.progress = CaptureProgress();
             SaveFileIO.WriteToFile(data, path);
             return $"Saved {live.Count} golems and {data.buildings.Count} buildings.";
         }
@@ -325,6 +328,8 @@ namespace GolemFactory.World
                 return "No save file found.";
             }
 
+            RestoreProgress(data.progress);
+
             IGolemRespawner respawner = _stationTemplate != null ? new StationGolemRespawner(_stationTemplate) : null;
             SaveLoadService.RestoreReport report = SaveLoadService.RestoreState(
                 data, Buffers, Patents, LiveGolems(), Definitions.ToCatalog(), respawner,
@@ -338,6 +343,74 @@ namespace GolemFactory.World
                 ? $"{report.BuildingsRebuilt} buildings, {report.BuildingsSkipped} skipped"
                 : $"{report.BuildingsRebuilt} buildings";
             return golems + "; " + buildings + ".";
+        }
+
+        private DraftableCardCatalog _deck;
+        private string _claimUserId;
+
+        private ProgressEntry CaptureProgress()
+        {
+            var progress = new ProgressEntry
+            {
+                ledgerTowerStages = TechTree.Ledger.CompletedTowerStages,
+                floorNorthExtent = Bounds.NorthExtent,
+                assemblyBayTier = AssemblyBay.Tier,
+                clockSpeed = Clock.Speed,
+                clockPaused = Clock.State == ClockState.Paused,
+            };
+            progress.ledgerItems.AddRange(TechTree.Ledger.Items.OrderBy(x => x));
+            progress.ledgerChassis.AddRange(TechTree.Ledger.Chassis.OrderBy(x => x));
+            progress.ledgerBuildings.AddRange(TechTree.Ledger.Buildings.OrderBy(x => x));
+            progress.ledgerCards.AddRange(TechTree.Ledger.ClaimedCards.OrderBy(x => x));
+            if (AssemblyLine != null)
+            {
+                progress.claimedCards.AddRange(AssemblyLine.GetClaimedCards(_claimUserId).Select(c => c.name));
+            }
+            return progress;
+        }
+
+        /// <summary>
+        /// Restores progress BEFORE the world: the ledger first (the Assembly Line's unlock
+        /// context reads it), then the line, the bay tier (respawned golems take bay slots) and
+        /// the floor (a building beyond the original back wall needs its row to rebuild on).
+        /// </summary>
+        private void RestoreProgress(ProgressEntry progress)
+        {
+            if (progress == null)
+            {
+                return; // a save from before progress was saved: leave it as it is
+            }
+
+            TechTreeProgressLedger ledger = TechTree.Ledger;
+            ledger.Clear();
+            progress.ledgerItems.ForEach(x => ledger.RecordItem(x));
+            progress.ledgerChassis.ForEach(x => ledger.RecordChassis(x));
+            progress.ledgerBuildings.ForEach(x => ledger.RecordBuilding(x));
+            progress.ledgerCards.ForEach(x => ledger.RecordClaimedCard(x));
+            ledger.RecordCompletedTowerStages(progress.ledgerTowerStages);
+
+            if (AssemblyLine != null)
+            {
+                var byName = _deck.Cards.Concat(_deck.OpeningHand).Where(c => c != null)
+                    .GroupBy(c => c.name).ToDictionary(g => g.Key, g => g.First());
+                AssemblyLine.Restore(
+                    _claimUserId,
+                    progress.claimedCards.Where(byName.ContainsKey).Select(n => byName[n]),
+                    _deck.Cards);
+            }
+
+            AssemblyBay.RestoreTier(progress.assemblyBayTier);
+            FloorExpansion.Restore(progress.floorNorthExtent);
+
+            Clock.Speed = progress.clockSpeed > 0f ? progress.clockSpeed : 1f;
+            if (progress.clockPaused)
+            {
+                Clock.Pause();
+            }
+            else
+            {
+                Clock.Play();
+            }
         }
 
         private List<GolemEntity> LiveGolems() => _golems.Where(g => g != null && !g.IsRemoved).ToList();

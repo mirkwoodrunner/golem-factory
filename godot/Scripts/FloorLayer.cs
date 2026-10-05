@@ -68,6 +68,7 @@ namespace GolemFactory.Nodes
             if (world?.Setup != null)
             {
                 world.Sandbox.FloorExpansion.RowsAdded += (from, to) => PaintRows(from, to, bounds.HalfExtent);
+                world.Sandbox.FloorExpansion.RowsRemoved += (from, to) => EraseRows(from, to, bounds.HalfExtent);
             }
 
             if (PaintStreet)
@@ -90,6 +91,21 @@ namespace GolemFactory.Nodes
                 for (int x = -halfExtent; x <= halfExtent; x++)
                 {
                     SetCell(new Vector2I(x, -y), _floorSources[FloorTileVariant.Select(x, y)], Vector2I.Zero);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Takes the planks off rows <paramref name="fromRow"/>..<paramref name="toRow"/>: a
+        /// load of a save made before those rows were bought.
+        /// </summary>
+        public void EraseRows(int fromRow, int toRow, int halfExtent)
+        {
+            for (int y = fromRow; y <= toRow; y++)
+            {
+                for (int x = -halfExtent; x <= halfExtent; x++)
+                {
+                    EraseCell(new Vector2I(x, -y));
                 }
             }
         }
