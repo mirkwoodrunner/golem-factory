@@ -71,11 +71,22 @@ namespace GolemFactory.Nodes
             int depotScrap = _depot.Buffer.GetQuantity(ItemType.Scrap);
             int onBelts = GetTree().GetNodesInGroup(BeltRun.GroupName).OfType<BeltRun>().Sum(r => r.ItemCount);
 
-            bool pass = extractor != null && extractor.CompletedCycles >= 10
-                && unloader != null && unloader.CompletedCycles >= 10
-                && depotScrap >= 10;
+            // The station is Core's real one: it must have named its first golem by the player
+            // pattern, and charged the Scavenger's 12 Scrap out of the 12 the stockpile started
+            // with -- so every Scrap now in the stockpile is one the unloader delivered, and
+            // nothing was minted or lost on the way. One delivery per cycle, but a Push deposits
+            // before its cycle completes, so the stockpile may be one ahead of the count.
+            bool stationDidItsJob = extractor != null && extractor.GolemId == "PlayerGolem-001"
+                && extractor.Entity.IsRuntimeSpawned
+                && unloader != null
+                && depotScrap - unloader.CompletedCycles is 0 or 1;
+
+            bool pass = stationDidItsJob
+                && extractor.CompletedCycles >= 10
+                && unloader.CompletedCycles >= 10;
 
             GD.Print($"[spike-check] {(pass ? "PASS" : "FAIL")} after {_world.Clock.CurrentTick} ticks: " +
+                     $"station built {extractor?.GolemId ?? "nothing"} and charged its cost: {stationDidItsJob}, " +
                      $"extractor cycles={extractor?.CompletedCycles ?? -1} ({extractor?.Entity.Mood}), " +
                      $"unloader cycles={unloader?.CompletedCycles ?? -1} ({unloader?.Entity.Mood}), " +
                      $"depot scrap={depotScrap}, scrap on belts={onBelts}");

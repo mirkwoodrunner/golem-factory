@@ -315,6 +315,29 @@ namespace GolemFactory.Golems
             ReleaseNodeClaim();
         }
 
+        /// <summary>
+        /// True once <see cref="Remove"/> has run: this golem has left the world.
+        /// </summary>
+        public bool IsRemoved { get; private set; }
+
+        /// <summary>
+        /// Takes this golem out of the world -- what Unity's <c>Destroy</c> did. Runs
+        /// <see cref="Detach"/> (Unity ran OnDisable on destroy, releasing the steam consumer and
+        /// the node claim) and marks the golem removed, which is how holders of a reference --
+        /// the assembly bay above all -- learn it is gone. In Unity they learned it from a
+        /// destroyed object comparing equal to null, which plain C# has no equivalent of.
+        /// One-way and idempotent.
+        /// </summary>
+        public void Remove()
+        {
+            if (IsRemoved)
+            {
+                return;
+            }
+            Detach();
+            IsRemoved = true;
+        }
+
         private void OnGolemCompletedForSignal(GolemCompletedEvent e)
         {
             LogicCoreDefinition logicCore = program.logicCore;
