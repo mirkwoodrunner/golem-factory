@@ -14,7 +14,8 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 | G5: Buildings and build mode | in review; **waiting on your hands-on check** |
 | G5b: The player's hands (pulled forward from G6) | in review |
 | G6: Golems in full | in review |
-| G7–G10 | not started |
+| G7: The Workbench | in review; **waiting on your screenshot review** |
+| G8–G10 | not started |
 
 ## Context
 
@@ -488,7 +489,58 @@ the golem's own presentation and the assembly bay.)
 **Exit:** program a golem end to end through the UI in a scenario. You review screenshots
 next to Unity's.
 
+**As built (G7):**
+- **`Core/UI/WorkbenchSession`** holds the logic of Unity's `WorkbenchController`, with the
+  UGUI taken out:
+  - The draft: chassis, trigger, six sockets and per-socket batch sizes. Dragging edits only
+    the draft.
+  - The target: Open and Retarget re-read the committed program.
+  - Card gating, and socket highlights while a card is held.
+  - Engage: refused, with a status, when there's no target or when the program has more steps
+    than there are sockets.
+  - Patent, loaded blueprints, chassis selection with the too-small refusal, and the status
+    line that retires itself.
+  - Every readout.
+
+  The lever's throw and the chassis flash are events, because they're presentation.
+  `GolemEntity` gained `name` (Unity's `Object.name`), used only as the header's fallback.
+- **`SandboxWorld`** owns the session and a `PatentRegistry`, and gives stations the session
+  as their Workbench target, so a new golem becomes the target, as in Unity. The roster is
+  `sandbox.json`'s `workbench`, read from the prefab and `Sandbox.unity`: 5 chassis, 2 cores
+  and 24 cards. Screens register through `ConfigureScreens`, each passing null for the others,
+  so the construction panel and the Workbench find each other. After a build, the panel opens
+  the Workbench on the new golem, as Unity's did.
+- **`Scripts/UI/WorkbenchScreen`** is the prefab rebuilt from its own numbers. `Ugui.Place`
+  converts a RectTransform's anchors, position, size and pivot into Godot anchors and offsets.
+  At the 1280×720 reference a UGUI pixel is a Godot pixel. Cards use Godot's drag and drop. A
+  drag with no taker is the session's "released over nothing". The screen re-renders from the
+  session whenever its `Version` moves, so a failed drag can't orphan a card.
+- **Card gating is off in the Sandbox for now.** `Sandbox.unity` gates the vault
+  (`gateWorkbenchRoster: 1`), but claiming happens in the Assembly Line panel, which is G8.
+  Gating before then would leave only the two starting verbs. The session supports gating
+  (both gating tests are ported), and it gets turned on with the panel in G8.
+- **Tests:** 29 of `WorkbenchControllerTests`, 9 of `WorkbenchQuantityTests` and the 2
+  Assembly Line gating tests are ported onto the session, plus 2 `SandboxWorld` wiring tests.
+  The other 10 Unity tests were about UGUI plumbing, and are checked by the new scenario.
+- **Scenario `workbench`,** with real mouse and keys:
+  - A Scavenger is built, and the Workbench opens on it with the panel closed.
+  - The vault shows 26 cards, and none of them carries a dial.
+  - Holding a card lights exactly the sockets that would take it.
+  - Real drags fill TRIGGER, STEP 1 and STEP 2, and the dial's + raises the batch size. The
+    golem is untouched until Engage.
+  - A vault card dropped on nothing, twice, leaves no orphan and no ghost. A socketed card
+    dropped on nothing leaves its socket.
+  - ENGAGE GEARS commits the core and both steps with batch size 2. PATENT stamps BP-001.
+  - CLOSE hides the screen. `[E]` at the golem reopens it, re-read from the program.
+  - With no target the lever goes dead.
+- **Frames reviewed.** One fix came from them: the socket captions were truncated to
+  "STEP 1 · t…". TMP had wrapped them onto two lines; they wrap now.
+- `interact` and `golems` now expect the Workbench to open after a build, and close it.
+
 ### G8: Management HUD and remaining screens
+
+(Also turns on the Workbench's card gating, together with the Assembly Line panel that grants
+claims. See G7's As built.)
 - Inventory, alerts, the Artificer's Ledger (`TechTreeChartLayout` in Core, `Art/UI/TechTree`
   chrome), Assembly Line panel, Hand-Crank, Clock Tower and steam gauge views, save/load panel,
   simulation control bar, floating popups.

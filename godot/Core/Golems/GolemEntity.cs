@@ -83,6 +83,19 @@ namespace GolemFactory.Golems
         public void MarkRuntimeSpawned() => _isRuntimeSpawned = true;
 
         public string GolemId => golemId;
+
+
+        /// <summary>
+
+        /// Unity's Object.name: what the golem's GameObject was called ("GolemPrefab(Clone)" for a
+
+        /// station-built one). Identity is <see cref="GolemId"/>, never this; it survives only as the
+
+        /// Workbench header's fallback for a golem that was never given an id.
+
+        /// </summary>
+
+        public string name = "";
         public GolemProgram Program => program;
 
         public Vector2Int Cell => cell;

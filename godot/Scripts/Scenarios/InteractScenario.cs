@@ -224,6 +224,19 @@ namespace GolemFactory.Nodes.Scenarios
                 _log.Add($"station: panel listed {_world.Definitions.Chassis.Count} chassis, row click built {_construction.LastBuilt.GolemId}");
                 return null;
             });
+            Do("the Workbench opened on the new golem", () =>
+            {
+                // Unity's order: a golem arrives bare, so the Workbench opens on it next.
+                var workbench = _world.WorkbenchScreen;
+                if (workbench == null || !workbench.IsOpen)
+                {
+                    return "the Workbench did not open after the build";
+                }
+                return workbench.TargetGolem == _construction.LastBuilt ? null : "the Workbench targets a different golem";
+            });
+            Do("Escape closes the Workbench", () => { Tap(Key.Escape); return null; });
+            Do("the Workbench is closed", () =>
+                _world.WorkbenchScreen.IsOpen ? "Escape left the Workbench open" : null);
             Do("stand by the golem and press G", () =>
             {
                 Compat.Vector2Int cell = _construction.LastBuilt.Cell;

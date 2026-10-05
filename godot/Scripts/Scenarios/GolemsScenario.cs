@@ -197,6 +197,10 @@ namespace GolemFactory.Nodes.Scenarios
             Program(g6, "G6", 5, 1, Facing.East, ("HaulScrap", 2), ("FreightLaunch", 0));
             Program(g7, "G7", 9, 6, Facing.East, ("HaulScrap", 1), ("PushOutput", 0)); // no steam here
 
+            // Each build opened the Workbench on its golem (Unity's order). The programs above
+            // were written directly, so put the screen away.
+            (_world.WorkbenchScreen as WorkbenchScreen)?.Close();
+
             _scrapStallBefore = _world.Nodes.TryGetNode("ScrapNode", out ResourceNode node) ? node.RemainingQuantity : 0;
             _cokeBefore = Stock(ItemType.Coke);
         }
