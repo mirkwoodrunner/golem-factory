@@ -135,7 +135,8 @@ namespace GolemFactory.Nodes.Scenarios
                     return $"target header '{_screen.TargetText}'";
                 }
                 _vaultCardCount = VaultCards().Count;
-                return _vaultCardCount == 26 ? null : $"vault shows {_vaultCardCount} cards, expected 2 cores + 24 appendages";
+                // Gated (Sandbox.unity's gateWorkbenchRoster): 2 logic cores + the 3 opening verbs.
+                return _vaultCardCount == 5 ? null : $"vault shows {_vaultCardCount} cards, expected 2 cores + the 3-card opening hand";
             });
             Do("vault cards carry no dial", () =>
                 VaultCards().Any(c => c.FindChild("Quantity", true, false) != null) ? "a vault card offers a batch size" : null);

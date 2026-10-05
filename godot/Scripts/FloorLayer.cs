@@ -60,8 +60,15 @@ namespace GolemFactory.Nodes
             // cell's CENTRE on the cell coordinate. Shift by half a tile so they agree.
             Position = new Vector2(-GridConversions.CellPixels / 2f, -GridConversions.CellPixels / 2f);
 
-            FloorBounds bounds = WorldNode.Find(this)?.Bounds ?? new FloorBounds();
+            WorldNode world = WorldNode.Find(this);
+            FloorBounds bounds = world?.Bounds ?? new FloorBounds();
             PaintRows(-bounds.HalfExtent, bounds.NorthExtent, bounds.HalfExtent);
+
+            // A Floor Expansion purchase announces exactly the rows it added; plank them.
+            if (world?.Setup != null)
+            {
+                world.Sandbox.FloorExpansion.RowsAdded += (from, to) => PaintRows(from, to, bounds.HalfExtent);
+            }
 
             if (PaintStreet)
             {

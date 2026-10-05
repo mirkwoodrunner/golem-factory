@@ -29,7 +29,7 @@ namespace GolemFactory.Nodes
     /// "always re-render from data", so a failed drag can never orphan a card.
     /// </para>
     /// </summary>
-    public partial class WorkbenchScreen : CanvasLayer, IWorkbenchScreen
+    public partial class WorkbenchScreen : CanvasLayer, IWorkbenchScreen, IClosableScreen
     {
         // WorkbenchController's palette.
         private static readonly Color Teal = new Color(0.42f, 0.80f, 0.75f);
@@ -124,6 +124,7 @@ namespace GolemFactory.Nodes
             Build();
             BuildChassisButtons();
             _root.Visible = false;
+            _world.Sandbox.Screens.Register(this);
             _world.Sandbox.ConfigureScreens(null, this, null);
         }
 
@@ -131,6 +132,7 @@ namespace GolemFactory.Nodes
 
         public void Open()
         {
+            _world.Sandbox.Screens.Opening(this);
             _session.Open();
             _root.Visible = true;
             Rebuild();

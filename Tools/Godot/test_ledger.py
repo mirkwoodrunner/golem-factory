@@ -55,14 +55,7 @@ HELD = {
     "World/FloorExpansionTests.cs": ("G2d", "FloorExpansionService rules"),
     "World/ResourceNodeMarkerTests.cs": ("G2d", "SandboxSetup / node registration"),
     # G7/G8: the screens.
-    "UI/AlertsPanelReconcileTests.cs": ("G8", "Alerts panel"),
-    "UI/AssemblyLinePanelTests.cs": ("G8", "Assembly Line panel"),
-    "UI/HudScreenExclusivityTests.cs": ("G8", "HudScreenPolicy scenario"),
-    "UI/InventoryPanelTests.cs": ("G8", "Inventory panel"),
-    "UI/ManagementPanelTests.cs": ("G8", "Management panel"),
-    "UI/PatentBrowserPanelTests.cs": ("G8", "Patents tab"),
     "UI/SaveLoadPanelTests.cs": ("G9", "Save/load panel"),
-    "UI/TechTreeRecipeReadoutTests.cs": ("G8", "Ledger recipe readout"),
     # G9: save files on disk.
     "Save/SaveCatalogCoverageTests.cs": ("G9", "Save panel's catalog vs the JSON data"),
     "Save/SaveFileIOTests.cs": ("G9", "Godot SaveFileIO (user://)"),
@@ -96,6 +89,12 @@ PARTIAL = {
                "CardDestroyedMidDrag, the two RealDrag) checked by the `workbench` scenario against the "
                "Godot screen; SlotCaptions_SurviveARowWithNoCaptionChild retired (captions are strings, "
                "there is no child to be missing)"),
+    "UI/HudScreenExclusivityTests.cs": (
+        0, "", "4 ported onto ScreenCoordinator; BuildMenu_HidesWhileAnyScreenIsOpenAndReturnsAfterwards "
+               "checked by the `management` scenario against the real build menu"),
+    "UI/TechTreeRecipeReadoutTests.cs": (
+        0, "", "4 ported onto TechTreeReadout; TheReadoutIsParentedOutsideTheChart and "
+               "EveryNodePlaqueIsClickable checked by the `management` scenario against the drawn Ledger"),
     "UI/WorkbenchQuantityTests.cs": (
         0, "", "9 ported onto WorkbenchSession; VaultCards_HaveNoStepper checked by the `workbench` scenario"),
     "Player/PlayerControllerTests.cs": (

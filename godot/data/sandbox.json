@@ -8,6 +8,7 @@
   "freeStallSeedNode": "ScrapNode",
   "freeStallSeedQuantity": 60,
   "playerStart": { "x": 0, "y": 0 },
+  "assemblyLine": { "deck": "AssemblyLineDeck", "slots": 3, "claimUserId": "LocalPlayer", "gateWorkbench": true },
   "workbench": {
     "chassis": ["ClockworkScavenger", "BrassPresser", "AetherHauler", "MainspringOverclocker", "ZeppelinFreightLoader"],
     "logicCores": ["AlwaysOnCore", "IntervalCore10"],

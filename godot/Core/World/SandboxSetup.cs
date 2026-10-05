@@ -66,6 +66,19 @@ namespace GolemFactory.World
             public List<string> appendages = new List<string>();
         }
 
+        /// <summary>
+        /// Sandbox.unity's Assembly Line: the deck its bootstrap seeded (AssemblyLineDeck), the
+        /// holder's three slots, the claim user, and gateWorkbenchRoster -- on, so the Workbench
+        /// vault offers only claimed cards.
+        /// </summary>
+        public sealed class AssemblyLineSetup
+        {
+            public string deck;
+            public int slots = 3;
+            public string claimUserId = "LocalPlayer";
+            public bool gateWorkbench;
+        }
+
         public sealed class Point
         {
             public float x;
@@ -82,6 +95,7 @@ namespace GolemFactory.World
         public Point playerStart = new Point();
         public Expansion floorExpansion;
         public WorkbenchRoster workbench;
+        public AssemblyLineSetup assemblyLine;
         public List<NodeEntry> nodes = new List<NodeEntry>();
         public List<MarketEntry> market = new List<MarketEntry>();
         public Placement starterBench;

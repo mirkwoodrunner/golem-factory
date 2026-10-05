@@ -24,7 +24,7 @@ namespace GolemFactory.Nodes
     /// After a build the panel closes and the Workbench opens on the new golem, as Unity's did.
     /// </para>
     /// </summary>
-    public partial class ConstructionPanelNode : CanvasLayer, IConstructionScreen
+    public partial class ConstructionPanelNode : CanvasLayer, IConstructionScreen, IClosableScreen
     {
         private static readonly Color WindowColor = new Color(0.13f, 0.11f, 0.09f, 0.99f);
         private static readonly Color BackdropColor = new Color(0.04f, 0.03f, 0.02f, 0.78f);
@@ -67,12 +67,14 @@ namespace GolemFactory.Nodes
         {
             Layer = 40; // Unity's sortingOrder 40: above the HUD and the build menu.
             Build();
+            WorldNode.Find(this).Sandbox.Screens.Register(this);
             WorldNode.Find(this).Sandbox.ConfigureScreens(this, null, null);
             _root.Visible = false;
         }
 
         public void Open(GolemConstructionStation station)
         {
+            WorldNode.Find(this).Sandbox.Screens.Opening(this);
             _station = station;
             _statusMessage = "";
             _renderedSignature = null;

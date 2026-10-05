@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://Scripts/WorldNode.cs" id="1_world"]
 [ext_resource type="Script" path="res://Scripts/FloorLayer.cs" id="2_floor"]
@@ -7,7 +7,7 @@
 [ext_resource type="Script" path="res://Scripts/ConstructionStationNode.cs" id="5_station"]
 [ext_resource type="Script" path="res://Scripts/PlayerNode.cs" id="6_player"]
 [ext_resource type="Script" path="res://Scripts/Player/CameraRigNode.cs" id="7_camera"]
-[ext_resource type="Script" path="res://Scripts/Hud.cs" id="8_hud"]
+[ext_resource type="Script" path="res://Scripts/UI/HudOverlay.cs" id="8_hud"]
 [ext_resource type="Script" path="res://Scripts/Scenarios/ScenarioRunner.cs" id="9_scenarios"]
 [ext_resource type="Script" path="res://Scripts/Buildings/BuildingsLayer.cs" id="10_buildings"]
 [ext_resource type="Script" path="res://Scripts/Player/BuildCursorNode.cs" id="11_cursor"]
@@ -17,6 +17,7 @@
 [ext_resource type="Script" path="res://Scripts/UI/ConstructionPanelNode.cs" id="15_construct"]
 [ext_resource type="Script" path="res://Scripts/Golems/RoutingFocusNode.cs" id="16_focus"]
 [ext_resource type="Script" path="res://Scripts/UI/WorkbenchScreen.cs" id="17_workbench"]
+[ext_resource type="Script" path="res://Scripts/UI/ManagementScreen.cs" id="18_management"]
 
 [node name="Sandbox" type="Node2D"]
 
@@ -66,7 +67,6 @@ TargetPath = NodePath("../Entities/Player")
 
 [node name="Hud" type="CanvasLayer" parent="."]
 script = ExtResource("8_hud")
-PlayerPath = NodePath("../Entities/Player")
 
 [node name="BuildMenu" type="CanvasLayer" parent="."]
 script = ExtResource("12_menu")
@@ -79,6 +79,9 @@ script = ExtResource("15_construct")
 
 [node name="Workbench" type="CanvasLayer" parent="."]
 script = ExtResource("17_workbench")
+
+[node name="Management" type="CanvasLayer" parent="."]
+script = ExtResource("18_management")
 
 [node name="Scenarios" type="Node" parent="."]
 script = ExtResource("9_scenarios")

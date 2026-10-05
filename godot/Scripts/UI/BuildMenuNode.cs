@@ -121,8 +121,14 @@ namespace GolemFactory.Nodes
             list.AddChild(_demolishRow);
         }
 
+        /// <summary>Whether the menu is drawn: hidden while any full screen is up, as Unity's was.</summary>
+        public bool IsBodyVisible => Panel.Visible;
+
         public override void _Process(double delta)
         {
+            // Unity's BuildMenuPanel asked HudScreenPolicy every frame: no world HUD over a
+            // full screen. HudScreenExclusivityTests' last case is the `management` scenario's.
+            Panel.Visible = !ModalScreens.AnyOpen(GetTree());
             foreach ((PlaceableBuilding prefab, Button row) in _rows)
             {
                 Highlight(row, _build.ActivePrefab == prefab);
