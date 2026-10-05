@@ -314,6 +314,23 @@ namespace GolemFactory.Steam
             return reached ? SteamShortage.BoilerOutOfCoke : SteamShortage.NoPipe;
         }
 
+        /// <summary>
+        /// Whether any boiler's pipes reach <paramref name="cell"/> -- a golem standing there
+        /// would be on the grid -- regardless of Coke or the 8-golem cap. For the guide (G10).
+        /// </summary>
+        public bool Reaches(Vector2Int cell, long tick)
+        {
+            Evaluate(tick);
+            foreach (HashSet<Vector2Int> reach in _poweredCellsByBoiler.Values)
+            {
+                if (reach.Contains(cell))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public bool TryGetPoweringBoiler(string consumerId, long tick, out string boilerId)
         {
             boilerId = null;

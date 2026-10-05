@@ -20,14 +20,25 @@ namespace GolemFactory.Tutorial
         /// <summary>The build-menu row the step needs (a placeable key), or null.</summary>
         public string MenuKey { get; }
 
+        /// <summary>
+        /// The tile the step wants something placed on, or null. The panel marks it on the floor;
+        /// with <see cref="SpotFacing"/> set, the marker also shows which way to face.
+        /// </summary>
+        public Vector2Int? Spot { get; }
+
+        public Facing? SpotFacing { get; }
+
         internal Func<SandboxWorld, bool> Done { get; }
         internal Func<SandboxWorld, string> ProgressText { get; }
         internal Func<SandboxWorld, Vector2Int?> Target { get; }
 
         internal TutorialStep(
             string id, string title, string body, Func<SandboxWorld, bool> done,
-            Func<SandboxWorld, Vector2Int?> target, Func<SandboxWorld, string> progress = null, string menuKey = null)
+            Func<SandboxWorld, Vector2Int?> target, Func<SandboxWorld, string> progress = null, string menuKey = null,
+            Vector2Int? spot = null, Facing? spotFacing = null)
         {
+            Spot = spot;
+            SpotFacing = spotFacing;
             Id = id;
             Title = title;
             Body = body;
@@ -174,6 +185,32 @@ namespace GolemFactory.Tutorial
         /// <summary>Points at the Scrap stall while the player is short of Scrap, else at <paramref name="then"/>.</summary>
         private Vector2Int? ScrapFirst(int need, Vector2Int? then) => Stock(ItemType.Scrap) < need ? Stall("ScrapNode") : then;
 
+        // --- The first golem's layout --------------------------------------------------------------
+        //
+        // Fixed, beside the free Scrap stall, so the three placements explain each other (G10,
+        // from playtest: "it would be good to specify where the boiler, depot and golem should
+        // be placed"):
+        //
+        //     depot        <- in front: the golem pushes into it
+        //     golem boiler <- the boiler beside it powers it, no pipe needed
+        //     Scrap stall  <- behind: the golem extracts from it
+        //
+        // The golem faces north, away from the stall. Every cell is a street cell the golems
+        // scenario has already built on.
+
+        private Vector2Int StallCell => Stall("ScrapNode") ?? new Vector2Int(0, 0);
+
+        /// <summary>Where the first golem stands: just north of the Scrap stall.</summary>
+        public Vector2Int GolemSpot => StallCell + new Vector2Int(0, 1);
+
+        /// <summary>In front of the golem.</summary>
+        public Vector2Int DepotSpot => StallCell + new Vector2Int(0, 2);
+
+        /// <summary>Beside the golem, east of it.</summary>
+        public Vector2Int BoilerSpot => StallCell + new Vector2Int(1, 1);
+
+        private bool SteamReachesGolemSpot => _world.Steam.Reaches(GolemSpot, _world.Clock.CurrentTick);
+
         private IEnumerable<PlaceableBuilding> Built => _world.Build.Buildings.Where(b => !b.IsRemoved);
 
         private IEnumerable<PlaceableBuilding> BoilerBuildings => Built.Where(b => b.GetPart<PlaceableBoiler>() != null);
@@ -227,18 +264,20 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "boiler", "Build a Boiler",
-                "Every golem runs on steam. Click Boiler in the build menu (30 Scrap + 10 Iron Plate), "
-                + "click a floor tile to place it, then press Escape to put the tool down.",
-                w => Boilers.Any(),
-                w => ScrapFirst(30, null),
+                "Every golem runs on steam. Click Boiler in the build menu (30 Scrap + 10 Iron Plate) and place it "
+                + "on the marked tile beside the Scrap stall, then press Escape. Your first golem will stand next to it.",
+                // Its own layout counts too, if steam from it already reaches the golem's tile.
+                w => BoilerBuildings.Any(b => b.Cell == BoilerSpot) || SteamReachesGolemSpot,
+                w => ScrapFirst(30, BoilerSpot),
                 w => Count(ItemType.Scrap, 30),
-                menuKey: "BoilerPrefab"),
+                menuKey: "BoilerPrefab",
+                spot: BoilerSpot),
 
             new TutorialStep(
                 "fuel", "Fuel the Boiler",
                 "Stand at the boiler and press E to load your Coke into it. A boiler with no Coke powers nothing.",
                 w => Boilers.Any(b => b.Boiler != null && b.Boiler.CokeStock > 0),
-                w => BoilerBuildings.Select(b => (Vector2Int?)b.Cell).FirstOrDefault()),
+                w => BoilerBuildings.OrderBy(b => b.Cell == BoilerSpot ? 0 : 1).Select(b => (Vector2Int?)b.Cell).FirstOrDefault()),
 
             new TutorialStep(
                 "golem", "Build a Golem",
@@ -256,18 +295,24 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "depot", "Build a Depot",
-                "A golem delivers into whatever is in front of it. Build a Depot (15 Scrap) for it to fill.",
-                w => Built.Any(b => b.GetPart<PlaceableDepot>() != null),
-                w => ScrapFirst(15, null),
+                "A golem delivers into whatever is in front of it. Build a Depot (15 Scrap) on the marked tile, "
+                + "two north of the Scrap stall: the golem will stand between them. Misplaced? Demolish refunds in full.",
+                w => Built.Any(b => b.Cell == DepotSpot && b.GetPart<PlaceableDepot>() != null),
+                w => ScrapFirst(15, DepotSpot),
                 w => Count(ItemType.Scrap, 15),
-                menuKey: "DepotPrefab"),
+                menuKey: "DepotPrefab",
+                spot: DepotSpot),
 
             new TutorialStep(
                 "work", "Put it to work",
-                "Press G by the golem to pick it up, and G again to set it down with the Scrap stall BEHIND it "
-                + "and the depot IN FRONT. R turns it. It must stand next to the boiler or a steam pipe.",
+                "Press G by the golem to pick it up, then G again to set it down on the marked tile, between the "
+                + "Scrap stall and the depot. Press R by it until it faces the depot (up): it takes Scrap from "
+                + "behind and pushes it forward.",
                 w => _cycleSeen,
-                w => LiveGolems.Where(IsProgrammed).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? Stall("ScrapNode")),
+                w => LiveGolems.Any(g => g.Cell == GolemSpot) ? GolemSpot
+                    : LiveGolems.Where(IsProgrammed).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? GolemSpot,
+                spot: GolemSpot,
+                spotFacing: Facing.North),
 
             new TutorialStep(
                 "done", "Your factory is running",

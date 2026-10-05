@@ -138,6 +138,70 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
+        public void TheFirstGolemsLayout_IsMarkedBesideTheScrapStall()
+        {
+            SandboxWorld world = Compose();
+            SandboxSetup.NodeEntry stall = world.Setup.nodes.Single(n => n.id == "ScrapNode");
+            var s = new Vector2Int(stall.x, stall.y);
+
+            // depot / golem + boiler / stall, the golem facing the depot.
+            Assert.AreEqual(s + new Vector2Int(0, 1), world.Tutorial.GolemSpot);
+            Assert.AreEqual(s + new Vector2Int(0, 2), world.Tutorial.DepotSpot);
+            Assert.AreEqual(s + new Vector2Int(1, 1), world.Tutorial.BoilerSpot);
+
+            TutorialStep boiler = world.Tutorial.Steps.Single(t => t.Id == "boiler");
+            TutorialStep depot = world.Tutorial.Steps.Single(t => t.Id == "depot");
+            TutorialStep work = world.Tutorial.Steps.Single(t => t.Id == "work");
+            Assert.AreEqual(world.Tutorial.BoilerSpot, boiler.Spot);
+            Assert.AreEqual(world.Tutorial.DepotSpot, depot.Spot);
+            Assert.AreEqual(world.Tutorial.GolemSpot, work.Spot);
+            Assert.AreEqual(Facing.North, work.SpotFacing, "facing the depot");
+        }
+
+        [Test]
+        public void ABoilerOnTheMarkedTile_CompletesTheStep_ButOneFarAwayDoesNot()
+        {
+            SandboxWorld world = Compose();
+            Give(world, ItemType.Scrap, 200);
+            Give(world, ItemType.Coal, 5);
+            Give(world, ItemType.Coke, 5);
+            Give(world, ItemType.IronPlate, 40);
+            Assert.AreEqual("boiler", StepId(world));
+            Assert.AreEqual(world.Tutorial.BoilerSpot, world.Tutorial.TargetCell, "the arrow points at the marked tile");
+
+            Place(world, "BoilerPrefab", 8, 8);
+            Assert.AreEqual("boiler", StepId(world), "a boiler whose steam cannot reach the golem's tile");
+
+            Place(world, "BoilerPrefab", world.Tutorial.BoilerSpot.x, world.Tutorial.BoilerSpot.y);
+            Assert.AreEqual("fuel", StepId(world));
+            Assert.AreEqual(world.Tutorial.BoilerSpot, world.Tutorial.TargetCell, "fuel the one beside the golem's tile");
+        }
+
+        [Test]
+        public void ADepotOffTheMarkedTile_DoesNotCompleteTheStep()
+        {
+            SandboxWorld world = Compose();
+            DefinitionSet defs = world.Definitions;
+            Give(world, ItemType.Scrap, 300);
+            Give(world, ItemType.Coal, 5);
+            Give(world, ItemType.Coke, 30); // 20 go into the boiler; the Coke step still sees 10
+            Give(world, ItemType.IronPlate, 20);
+            PlaceableBuilding boiler = Place(world, "BoilerPrefab", world.Tutorial.BoilerSpot.x, world.Tutorial.BoilerSpot.y);
+            world.Interactor.TryRefuelBoiler(boiler.GetPart<PlaceableBoiler>());
+            world.StarterStation.TryConstructGolem(defs.Chassis["ClockworkScavenger"], out GolemEntity golem);
+            golem.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            golem.Program.TryAddAppendage(defs.Appendages["ExtractScrap"]);
+            golem.Program.TryAddAppendage(defs.Appendages["PushOutput"]);
+            Assert.AreEqual("depot", StepId(world));
+
+            Place(world, "DepotPrefab", 8, 8);
+            Assert.AreEqual("depot", StepId(world));
+            Place(world, "DepotPrefab", world.Tutorial.DepotSpot.x, world.Tutorial.DepotSpot.y);
+            Assert.AreEqual("work", StepId(world));
+            Assert.AreEqual(world.Tutorial.GolemSpot, world.Tutorial.Current.Spot);
+        }
+
+        [Test]
         public void SkipAndReopen_AndTheStepIsSaved()
         {
             string path = Path.Combine(Path.GetTempPath(), "golem-factory-guide-" + System.Guid.NewGuid() + ".json");

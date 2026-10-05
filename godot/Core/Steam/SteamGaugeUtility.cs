@@ -137,6 +137,30 @@ namespace GolemFactory.Steam
         }
 
         /// <summary>mm:ss, with minutes uncapped so a long-lived boiler reads 102:30 rather than wrapping.</summary>
+        /// <summary>
+        /// One boiler's line, for its [E] caption (G10, from playtest: "there isn't a good
+        /// indication of how long coke lasts"): its Coke, who draws on it, and how long that
+        /// lasts -- "18 Coke · 2 golems · 1:30 left", or "18 Coke · no golems drawing".
+        /// </summary>
+        public static string FormatBoiler(int cokeStock, int poweredGolems)
+        {
+            SteamGaugeReading reading = Compute(cokeStock, poweredGolems, 0);
+            string head = reading.CokeStock.ToString(CultureInfo.InvariantCulture) + " Coke";
+            if (!reading.HasCountdown)
+            {
+                return head + " · no golems drawing";
+            }
+            string golems = reading.PoweredGolems == 1 ? "1 golem" : reading.PoweredGolems.ToString(CultureInfo.InvariantCulture) + " golems";
+            return head + " · " + golems + " · " + FormatCountdown(reading.SecondsRemaining) + " left";
+        }
+
+        /// <summary>
+        /// How long <paramref name="coke"/> lasts one golem, for the refuel popup: the player
+        /// learns the rate at the moment they pay it.
+        /// </summary>
+        public static string FormatLastsOneGolem(int coke) =>
+            FormatCountdown((int)((long)coke * 60L / CokePerMinutePerGolem));
+
         public static string FormatCountdown(int totalSeconds)
         {
             if (totalSeconds < 0)

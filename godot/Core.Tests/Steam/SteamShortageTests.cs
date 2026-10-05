@@ -1,4 +1,5 @@
 using GolemFactory.Compat;
+using GolemFactory.Golems;
 using GolemFactory.Events;
 using GolemFactory.Steam;
 using GolemFactory.UI;
@@ -78,6 +79,29 @@ namespace GolemFactory.Tests.Steam
             network.RegisterConsumer("G", new Vector2Int(2, 0));
 
             Assert.AreEqual(SteamShortage.None, network.Diagnose("G", 1));
+        }
+
+        [Test]
+        public void TheLiveStrip_KeepsTheCause_AfterAStallEventArrives()
+        {
+            // The tracker takes GolemStalled events between reconciles, and they carry no cause;
+            // each one used to put the vague line back on the live strip (caught in the frames).
+            var definitions = GolemFactory.Tests.AuthoredData.Load();
+            var world = GolemFactory.World.SandboxWorld.Compose(
+                definitions, World.SandboxSetupTests.LoadReal(), Data.PlaceableCatalogTests.LoadReal(definitions));
+            world.Buffers.Deposit(world.StockpileBufferId, Economy.ItemType.Scrap, 12);
+            world.StarterStation.TryConstructGolem(definitions.Chassis["ClockworkScavenger"], out GolemEntity golem);
+            golem.Program.logicCore = definitions.LogicCores["AlwaysOnCore"];
+            golem.Program.TryAddAppendage(definitions.Appendages["ExtractScrap"]);
+            world.Clock.Play();
+            for (int i = 0; i < 20; i++)
+            {
+                world.Advance(0.1f);
+            }
+
+            EventBus.Publish(new GolemStalledEvent(golem.GolemId, StallReason.NoSteam, golem.StallResourceId, 0));
+
+            StringAssert.Contains("no steam pipe reaches it", world.Alerts.Text);
         }
 
         [Test]

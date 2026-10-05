@@ -65,9 +65,9 @@ namespace GolemFactory.Nodes
             strip.AddChild(_alerts);
 
             // Steam gauge.
-            ColorRect gauge = Ugui.Place(Ugui.Rect("SteamGauge", Plate), 0f, 1f, 0f, 1f, 12f, -10f, 320f, 34f, 0f, 1f);
+            ColorRect gauge = Ugui.Place(Ugui.Rect("SteamGauge", Plate), 0f, 1f, 0f, 1f, 12f, -10f, 400f, 34f, 0f, 1f);
             _root.AddChild(gauge);
-            _gauge = Ugui.Place(Ugui.Text("GaugeText", "", 18, Amber), 0f, 0f, 1f, 1f, 0f, 0f, -16f, -8f);
+            _gauge = Ugui.Place(Ugui.Text("GaugeText", "", 16, Amber), 0f, 0f, 1f, 1f, 0f, 0f, -16f, -8f);
             gauge.AddChild(_gauge);
 
             // Clock Tower panel.
@@ -190,7 +190,8 @@ namespace GolemFactory.Nodes
 
             SteamNetwork steam = _world.Sandbox.Steam;
             SteamGaugeReading reading = SteamGaugeUtility.Compute(steam.TotalCokeStock, steam.LastEvaluatedPoweredCount, steam.TotalPeakCokeStock);
-            _gauge.Text = SteamGaugeUtility.Format(reading);
+            // Labelled: "0 Coke - 0/min - idle" alone did not say it was the boilers' fuel (G10).
+            _gauge.Text = "Boiler fuel  " + SteamGaugeUtility.Format(reading);
             _gauge.AddThemeColorOverride("font_color", reading.IsLow ? Coral : reading.HasCountdown ? Amber : Dim);
 
             ClockTowerReading tower = _world.Sandbox.ClockTower.Site.BuildReading();

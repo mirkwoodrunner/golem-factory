@@ -34,6 +34,8 @@ namespace GolemFactory.Nodes
         private Button _finish;
         private TextureRect _arrow;
         private Panel _rowHighlight;
+        private Panel _spot;
+        private TextureRect _spotFacing;
         private BuildMenuNode _menu;
         private WorkbenchScreen _workbench;
         private int _renderedVersion = -1;
@@ -50,6 +52,7 @@ namespace GolemFactory.Nodes
         public Button FinishButton => _finish;
         public TextureRect Arrow => _arrow;
         public Control RowHighlight => _rowHighlight;
+        public Control SpotMarker => _spot;
 
         public override void _Ready()
         {
@@ -76,6 +79,23 @@ namespace GolemFactory.Nodes
             _rowHighlight = new Panel { Name = "RowHighlight", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
             _rowHighlight.AddThemeStyleboxOverride("panel", outline);
             root.AddChild(_rowHighlight);
+
+            // "Place it here": a pulsing outline on the floor tile a step wants, with an arrow
+            // inside when the step also cares which way it faces. Drawn first, under the arrow.
+            var spotStyle = new StyleBoxFlat { BgColor = new Color(Amber, 0.18f), BorderColor = Amber };
+            spotStyle.SetBorderWidthAll(3);
+            _spot = new Panel { Name = "Spot", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
+            _spot.AddThemeStyleboxOverride("panel", spotStyle);
+            _spotFacing = new TextureRect
+            {
+                Name = "Facing",
+                Texture = GD.Load<Texture2D>("res://art/facing_arrow.png"),
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+                Modulate = Amber,
+            };
+            _spot.AddChild(_spotFacing);
+            root.AddChild(_spot);
+            root.MoveChild(_spot, 0);
 
             _plate = Ugui.Image("GuidePlate", Ugui.NineSlice("res://art/UI/Steampunk/steampunk_panel_iron_bolt.png", 12, 10, 12, 10), new Color(0.10f, 0.08f, 0.06f, 0.95f));
             _plate.MouseFilter = Control.MouseFilterEnum.Ignore; // only its buttons take clicks
@@ -176,6 +196,7 @@ namespace GolemFactory.Nodes
             {
                 _arrow.Visible = false;
                 _rowHighlight.Visible = false;
+                _spot.Visible = false;
                 return;
             }
 
@@ -199,6 +220,7 @@ namespace GolemFactory.Nodes
 
             PointArrow(guide, screenOpen);
             HighlightRow(guide, screenOpen);
+            MarkSpot(guide, screenOpen);
         }
 
         private void PointArrow(TutorialGuide guide, bool screenOpen)
@@ -259,6 +281,37 @@ namespace GolemFactory.Nodes
 
         /// <summary>Whether the arrow is pinned to the screen edge (target off screen). For scenarios.</summary>
         public bool OffScreen { get; private set; }
+
+        private void MarkSpot(TutorialGuide guide, bool screenOpen)
+        {
+            TutorialStep step = guide.Current;
+            if (step?.Spot == null || screenOpen)
+            {
+                _spot.Visible = false;
+                return;
+            }
+
+            // The tile's two corners through the canvas transform, so it follows the camera's
+            // zoom as well as its position.
+            Transform2D canvas = GetViewport().GetCanvasTransform();
+            Vector2 centre = GridConversions.CellToWorld(step.Spot.Value); // a floor tile's centre
+            Vector2 half = new Vector2(GridConversions.CellPixels, GridConversions.CellPixels) * 0.5f;
+            Vector2 topLeft = canvas * (centre - half);
+            Vector2 size = canvas * (centre + half) - topLeft;
+            _spot.Position = topLeft;
+            _spot.Size = size;
+            _spot.Modulate = new Color(1f, 1f, 1f, 0.6f + 0.4f * Mathf.Sin(_time * 5f));
+
+            _spotFacing.Visible = step.SpotFacing != null;
+            if (step.SpotFacing != null)
+            {
+                _spotFacing.Size = _spotFacing.Texture.GetSize();
+                _spotFacing.PivotOffset = _spotFacing.Size / 2f;
+                _spotFacing.Rotation = GridConversions.FacingToRotation(step.SpotFacing.Value);
+                _spotFacing.Position = size / 2f - _spotFacing.Size / 2f;
+            }
+            _spot.Visible = true;
+        }
 
         private void HighlightRow(TutorialGuide guide, bool screenOpen)
         {

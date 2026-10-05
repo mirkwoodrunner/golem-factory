@@ -33,6 +33,9 @@ namespace GolemFactory.Nodes.Scenarios
         private BuildMenuNode _menu;
         private int _wait;
         private Key? _heldTap;
+        private int _waited;
+        private const string Wait = "wait";
+        private PlayerNode _player;
 
         private TutorialGuide Guide => _world.Tutorial;
 
@@ -42,6 +45,7 @@ namespace GolemFactory.Nodes.Scenarios
             _world = runner.World.Sandbox;
             _panel = _tree.Root.FindChild("Tutorial", true, false) as TutorialPanel;
             _menu = _tree.Root.FindChild("BuildMenu", true, false) as BuildMenuNode;
+            _player = _tree.Root.FindChild("Player", true, false) as PlayerNode;
             if (_panel == null || _menu == null || _world?.Tutorial == null)
             {
                 Do("scene", () => "Sandbox.tscn is missing the Tutorial panel, the build menu, or the guide");
@@ -106,6 +110,40 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
 
+            // Walk down to the market street: the Boiler step marks its tile beside the Scrap stall.
+            Do("walk to the Scrap stall", () =>
+            {
+                var at = _world.Interactor.Position;
+                var goal = new Vector2(_world.Tutorial.GolemSpot.x + 1.5f, _world.Tutorial.GolemSpot.y + 2.5f);
+                var to = new Vector2(goal.X - at.x, goal.Y - at.y);
+                if (to.Length() < 0.3f)
+                {
+                    _player.ScriptedMove = null;
+                    return null;
+                }
+                _player.ScriptedMove = to.Normalized();
+                return Wait;
+            });
+            Do("the Boiler's tile is marked, on screen, and the arrow is over it", () =>
+            {
+                CoreVector2Int spot = _world.Tutorial.BoilerSpot;
+                if (_panel.SpotMarker == null || !_panel.SpotMarker.Visible)
+                {
+                    return "no marker";
+                }
+                Vector2 tile = _tree.Root.GetCanvasTransform() * GridConversions.CellToWorld(spot);
+                if (!_panel.SpotMarker.GetGlobalRect().HasPoint(tile))
+                {
+                    return $"the marker {_panel.SpotMarker.GetGlobalRect()} is not on the Boiler tile at {tile}";
+                }
+                if (_panel.OffScreen)
+                {
+                    return "the arrow still points off screen";
+                }
+                _log.Add($"Boiler tile {spot} marked beside the Scrap stall, arrow over it");
+                return null;
+            });
+
             Do("F1", () => { Tap(Key.F1); return null; });
             Do("F1 hid it", () => _panel.Plate.Visible ? "still showing" : null);
             Do("F1 again", () => { Tap(Key.F1); return null; });
@@ -123,9 +161,9 @@ namespace GolemFactory.Nodes.Scenarios
                 Give(ItemType.Scrap, 200);
                 Give(ItemType.IronPlate, 20);
                 _world.Build.SetActivePrefab(_world.Placeables.Single(p => p.Key == "BoilerPrefab").Prefab);
-                _world.Build.PlaceOrRemove(new CoreVector2Int(6, 6));
+                _world.Build.PlaceOrRemove(_world.Tutorial.BoilerSpot); // the marked tile
                 _world.Build.CancelPlacement();
-                PlaceableBoilerAt(new CoreVector2Int(6, 6));
+                PlaceableBoilerAt(_world.Tutorial.BoilerSpot);
                 return _world.StarterStation.TryConstructGolem(_world.Definitions.Chassis["ClockworkScavenger"], out _)
                     ? null : "the station built nothing";
             });
@@ -155,6 +193,40 @@ namespace GolemFactory.Nodes.Scenarios
             });
             Do("close the Workbench", () => { Tap(Key.Escape); return null; });
 
+            // Program it and give it its depot: the last placement step marks the golem's own
+            // tile, with an arrow showing which way it must face.
+            Do("program the golem and build the depot", () =>
+            {
+                var golem = _world.Golems.First(g => !g.IsRemoved);
+                golem.Program.logicCore = _world.Definitions.LogicCores["AlwaysOnCore"];
+                golem.Program.TryAddAppendage(_world.Definitions.Appendages["ExtractScrap"]);
+                golem.Program.TryAddAppendage(_world.Definitions.Appendages["PushOutput"]);
+                _world.Build.SetActivePrefab(_world.Placeables.Single(p => p.Key == "DepotPrefab").Prefab);
+                _world.Build.PlaceOrRemove(_world.Tutorial.DepotSpot);
+                _world.Build.CancelPlacement();
+                return null;
+            });
+            Do("the golem's tile is marked, facing the depot", () =>
+            {
+                if (_panel.TitleText != "Put it to work")
+                {
+                    return $"on '{_panel.TitleText}'";
+                }
+                Vector2 tile = _tree.Root.GetCanvasTransform() * GridConversions.CellToWorld(_world.Tutorial.GolemSpot);
+                if (!_panel.SpotMarker.Visible || !_panel.SpotMarker.GetGlobalRect().HasPoint(tile))
+                {
+                    return $"marker {_panel.SpotMarker.Visible} at {_panel.SpotMarker.GetGlobalRect()}, golem tile at {tile}";
+                }
+                // The station-built golem stands far from any pipe, so the strip must say so
+                // in the new words, not the old "no steam reaching tile".
+                if (!_world.Alerts.Text.Contains("no steam pipe reaches it"))
+                {
+                    return $"strip '{_world.Alerts.Text}'";
+                }
+                _log.Add($"'Put it to work' marks the golem tile {_world.Tutorial.GolemSpot}, facing north to the depot");
+                return null;
+            });
+
             Do("click Skip guide", () => { Click(_panel.SkipButton); return null; });
             Do("Skip put it away", () =>
             {
@@ -182,7 +254,7 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 return new ScenarioResult(true, string.Join("; ", _log));
             }
-            (string name, Func<string> step) = _steps.Dequeue();
+            (string name, Func<string> step) = _steps.Peek();
             string failure;
             try
             {
@@ -192,6 +264,17 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 failure = e.Message;
             }
+            if (failure == Wait)
+            {
+                // Not yet: run this step again next frame (a walk in progress).
+                if (++_waited > 1200)
+                {
+                    return new ScenarioResult(false, $"{name}: timed out");
+                }
+                return null;
+            }
+            _waited = 0;
+            _steps.Dequeue();
             if (failure != null)
             {
                 return new ScenarioResult(false, $"{name}: {failure}");

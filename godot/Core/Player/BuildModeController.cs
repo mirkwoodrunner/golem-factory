@@ -958,6 +958,10 @@ namespace GolemFactory.Player
                 return;
             }
 
+            // Read what goes back NOW, before anything is torn down: unregistering a boiler from
+            // the steam grid drops its SteamBoiler, and the Coke in it with it.
+            List<RecipeIngredient> refundBundle = refund ? RefundFor(building) : null;
+
             // Tear the lane down BEFORE removing the building. BeltNetwork.TryRemove is what
             // clears any upstream belt's Next pointer; skipping it would leave a live belt
             // handing items to an unregistered segment that never ticks.
@@ -994,10 +998,10 @@ namespace GolemFactory.Player
                 building.GetPart<PlaceableBoiler>()?.UnregisterFromSteamNetwork(_steamNetwork);
             }
 
-            // Read the price back BEFORE the building goes, and pay it back in full.
-            if (refund)
+            // Pay back, in full, what was read before the teardown began.
+            if (refundBundle != null)
             {
-                RefundBuilding(building, cell);
+                RefundBuilding(refundBundle, cell);
             }
 
             _gridMap?.Free(cell);
@@ -1032,56 +1036,102 @@ namespace GolemFactory.Player
         /// out of the furniture.
         /// </para>
         /// </summary>
-        private void RefundBuilding(PlaceableBuilding building, Vector2Int cell)
+        private void RefundBuilding(List<RecipeIngredient> refund, Vector2Int cell)
         {
-            if (_stockpile == null || building == null || !building.IsRuntimePlaced)
-            {
-                return;
-            }
-
-            IReadOnlyList<RecipeIngredient> cost = building.Cost;
-            if (cost == null || cost.Count == 0)
+            if (_stockpile == null || refund.Count == 0)
             {
                 return;
             }
 
             // Room was checked before a single registration was torn down (RefundWouldFit), so
             // every unit lands.
-            for (int i = 0; i < cost.Count; i++)
+            for (int i = 0; i < refund.Count; i++)
             {
-                _stockpile.Deposit(_stockpileBufferId, cost[i].itemType, cost[i].quantity);
+                _stockpile.Deposit(_stockpileBufferId, refund[i].itemType, refund[i].quantity);
             }
 
             LastStatusMessage = "";
-            Popup(cell, "+" + UI.ConstructionCostPolicy.FormatCost(cost), BuildPopupKind.Refund);
+            Popup(cell, "+" + UI.ConstructionCostPolicy.FormatCost(refund), BuildPopupKind.Refund);
         }
 
         /// <summary>
-        /// Whether the stockpile can take back everything this building cost. Asked BEFORE the
-        /// demolition so a refusal is a no-op rather than a half-dismantled building.
+        /// What demolishing <paramref name="building"/> hands back: its cost, if the player paid
+        /// for it, plus everything it holds -- whoever built it.
+        ///
+        /// <para>
+        /// <b>The contents are the G10 addition</b> (from playtest: "the coke is lost if you
+        /// demolish the boiler"). A boiler's firebox, a slag heap's and a recycler's Coke, and the
+        /// recycler's finished Scrap are real goods the player put in or the factory made, and the
+        /// same argument that refunds a dismantled golem's cargo applies: the building most worth
+        /// moving is often the one full of fuel, and burning that fuel as the price of moving it
+        /// puts back the sting the full refund exists to remove. Contents are refunded whether or
+        /// not the building was runtime-placed, exactly as golem cargo is; only the PRICE is gated
+        /// on <see cref="PlaceableBuilding.IsRuntimePlaced"/>, because only the price could be
+        /// minted out of scene furniture.
+        /// </para>
+        /// </summary>
+        public static List<RecipeIngredient> RefundFor(PlaceableBuilding building)
+        {
+            var refund = new List<RecipeIngredient>();
+            if (building == null)
+            {
+                return refund;
+            }
+
+            if (building.IsRuntimePlaced && building.Cost != null)
+            {
+                foreach (RecipeIngredient c in building.Cost)
+                {
+                    Add(refund, c.itemType, c.quantity);
+                }
+            }
+
+            Add(refund, ItemType.Coke, building.GetPart<PlaceableBoiler>()?.Boiler?.CokeStock ?? 0);
+            Add(refund, ItemType.Coke, building.GetPart<PlaceableSlagHeap>()?.Heap?.CokeStock ?? 0);
+            ScrapRecycler recycler = building.GetPart<PlaceableScrapRecycler>()?.Recycler;
+            Add(refund, ItemType.Coke, recycler?.CokeStock ?? 0);
+            Add(refund, ItemType.Scrap, recycler?.ScrapStock ?? 0);
+            return refund;
+        }
+
+        private static void Add(List<RecipeIngredient> bundle, string itemType, int quantity)
+        {
+            if (quantity <= 0)
+            {
+                return;
+            }
+            for (int i = 0; i < bundle.Count; i++)
+            {
+                if (bundle[i].itemType == itemType)
+                {
+                    bundle[i] = new RecipeIngredient(itemType, bundle[i].quantity + quantity);
+                    return;
+                }
+            }
+            bundle.Add(new RecipeIngredient(itemType, quantity));
+        }
+
+        /// <summary>
+        /// Whether the stockpile can take back everything <see cref="RefundFor"/> would hand
+        /// back. Asked BEFORE the demolition so a refusal is a no-op rather than a
+        /// half-dismantled building.
         ///
         /// <para>
         /// Answers <c>true</c> for anything that would not be refunded anyway -- no stockpile
-        /// wired, scene-authored furniture, a free building -- so the check never blocks a
-        /// removal it has no stake in.
+        /// wired, scene-authored furniture holding nothing, a free building -- so the check never
+        /// blocks a removal it has no stake in.
         /// </para>
         /// </summary>
         private bool RefundWouldFit(PlaceableBuilding building)
         {
-            if (_stockpile == null || building == null || !building.IsRuntimePlaced)
+            if (_stockpile == null)
             {
                 return true;
             }
 
-            IReadOnlyList<RecipeIngredient> cost = building.Cost;
-            if (cost == null || cost.Count == 0)
+            foreach (RecipeIngredient item in RefundFor(building))
             {
-                return true;
-            }
-
-            for (int i = 0; i < cost.Count; i++)
-            {
-                if (_stockpile.RoomFor(_stockpileBufferId, cost[i].itemType) < cost[i].quantity)
+                if (_stockpile.RoomFor(_stockpileBufferId, item.itemType) < item.quantity)
                 {
                     return false;
                 }

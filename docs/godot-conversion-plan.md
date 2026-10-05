@@ -745,6 +745,27 @@ buildings. Includes the "no refund on load" duplicator regression.
   space. Bottom right, it covered the ENGAGE lever, caught in frames. Tests are in
   `TutorialGuideTests`, which play a cold start through to a working golem, and the new
   `tutorial` scenario.
+
+  **The first golem has a marked layout** (from playtest), beside the free Scrap stall: the
+  golem one tile north of the stall facing north, the depot in front of it, and the boiler
+  beside it. The Boiler, Depot and Put it to work steps each mark their tile with a pulsing
+  floor outline, plus a facing arrow for the golem's.
+  - The depot must stand on its tile.
+  - The boiler step also accepts any boiler whose steam reaches the golem's tile, so a working
+    layout of the player's own still counts.
+- **Demolishing refunds what a building holds, not only what it cost** (from playtest: "the
+  coke is lost if you demolish the boiler"). `BuildModeController.RefundFor` adds a boiler's,
+  slag heap's or recycler's Coke and the recycler's Scrap to the price.
+  - Contents come back whoever built the building, like a golem's cargo; only the price is
+    gated on `IsRuntimePlaced`.
+  - The bundle is read before teardown, because unregistering a boiler drops its stock.
+- **How long Coke lasts is visible**:
+  - the boiler's [E] caption reads "18 Coke · 2 golems · 1:30 left"
+  - loading Coke reports how long it lasts one golem
+  - the HUD gauge is labelled "Boiler fuel"
+- **The alerts strip lost the steam cause between reconciles.** Stall events carry no cause
+  and overwrote the snapshot, so it is now read from the golem when the strip composes its
+  text. Caught in the frames.
  (every milestone)
 
 - **`dotnet test godot/GolemFactory.sln`**: Core tests pass. The count only grows, and the

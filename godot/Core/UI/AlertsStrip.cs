@@ -71,6 +71,22 @@ namespace GolemFactory.UI
             get
             {
                 _tracker.TryGetPrimaryStall(out StallSnapshot primary);
+
+                // A NoSteam stall's cause is read from the golem NOW, not from the snapshot: the
+                // tracker also takes GolemStalled events, which carry no cause, and each one
+                // overwrote the reconciled snapshot -- so the live strip kept the vague line
+                // while the golem's own badge said why (G10, caught in the frames).
+                if (primary.Reason == Events.StallReason.NoSteam)
+                {
+                    foreach (GolemEntity golem in _roster?.Invoke() ?? Array.Empty<GolemEntity>())
+                    {
+                        if (golem != null && golem.GolemId == primary.GolemId)
+                        {
+                            primary = new StallSnapshot(primary.GolemId, primary.Reason, primary.ResourceId, primary.Shortfall, golem.SteamShortage);
+                            break;
+                        }
+                    }
+                }
                 return StallDiagnostics.ComposeStripText(_tracker.Count, primary);
             }
         }
