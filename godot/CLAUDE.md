@@ -56,6 +56,9 @@ ones. Current scenarios:
   stockpile exactly.
 - `interact` (Sandbox): the player's `[E]`, hold-`[E]`, and `[G]` at a stall, an empty stall,
   the bench and the station, using real key and mouse events.
+- `golems` (Sandbox): every chassis built, and every `AppendageActionType` run on real steam:
+  extract, haul, push, load, assemble plus repeat, refine, and freight. A golem out of steam
+  must stall and wear its badge.
 - `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
   into the stockpile, over 600 ticks. `--spike-check` is an alias.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.

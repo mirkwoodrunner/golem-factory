@@ -13,7 +13,8 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 | G4: The world scene | in review |
 | G5: Buildings and build mode | in review; **waiting on your hands-on check** |
 | G5b: The player's hands (pulled forward from G6) | in review |
-| G6–G10 | not started |
+| G6: Golems in full | in review |
+| G7–G10 | not started |
 
 ## Context
 
@@ -441,7 +442,40 @@ the golem's own presentation and the assembly bay.)
 
 **Exit:** a scenario builds every chassis and runs a program through each `AppendageActionType`.
 
-### G7: The Workbench (largest UI piece)
+**As built (G6):**
+- **`GolemNode` now has Unity's golem presentation, in one node.** It combines four Unity
+  components:
+  - `GolemVisual`: the chassis art (a generic copper golem until a chassis is fitted), a mood
+    tint, an idle bob paced by the mood, and a short shake when a stall is published. Only the
+    body sprite moves, so the bob never changes the golem's depth.
+  - `GroundShadow`: a contact shadow under the feet.
+  - `GolemFacingIndicator`: the gold facing arrow, plus the teal source tile and gold target
+    tile.
+  - `GolemStallIndicator`: the mood badge, shown only after `GolemMoodRules`' dwell. A stopped
+    golem's badge names the reason ("[!] PlayerGolem-007 / no steam at (9, 6)").
+
+  The spike's "Working · 3" debug label is gone.
+- **`RoutingFocusNode`** (Unity's `RoutingFocusController`): only the golem nearest the player,
+  within 3.5 cells, lights its routing tiles.
+- **`WorldNode` calls `WorldHudRegistry.Solve` first thing each frame** (Unity's
+  `WorldHudSolver`), so mood badges are laid out without stacking.
+- **The assembly bay** is wired in Core (`SandboxWorld`, since G5) and caps construction. Its
+  rows in the Management screen are UI, and come in G8.
+- **Scenario `golems`:** every chassis is built through the construction panel's own build, and
+  each runs on steam in the live Sandbox. Three boilers are placed by the build controller and
+  refuelled with the player's own refuel action. Programs:
+  - Scavenger: Haul and Push onto a belt.
+  - Brass Presser: Haul off the belt, then LoadIntoBuffer.
+  - Scavenger: ExtractFromNode at the Scrap stall.
+  - Overclocker: Extract Coal from a truckload the player ordered, Assemble R1, Repeat,
+    then Push. That gives +3 Coke a cycle.
+  - Aether-Hauler: Refine.
+  - Zeppelin: Haul, then FreightLaunch to a mast.
+
+  A seventh golem placed out of steam must stall on `NoSteam` and wear the badge saying so.
+  Every golem must draw its own chassis art. It passed on the first run. Frames reviewed: the
+  row of working golems on the pipe main, and both stall badges.
+- `[G]` carry, rotate and the construction panel landed early, in G5b.: The Workbench (largest UI piece)
 - Control-node rebuild with the mahogany-and-brass theme from `Art/UI/Workbench`.
 - Card drag and drop (Godot's `_GetDragData`/`_DropData`), sockets, quantity steppers, loop
   labels, the lever, chassis buttons and the Patents tab.
