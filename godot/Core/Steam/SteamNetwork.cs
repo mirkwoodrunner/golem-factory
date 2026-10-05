@@ -280,6 +280,40 @@ namespace GolemFactory.Steam
             return _poweredBy.ContainsKey(consumerId);
         }
 
+        /// <summary>
+        /// Why <paramref name="consumerId"/> has no steam, for the stall badge and the alerts
+        /// strip: no boiler's pipes reach its tile, the boilers that do are out of Coke, or a
+        /// fuelled one does but is already at <see cref="MaxGolemsPerBoiler"/>.
+        /// </summary>
+        public SteamShortage Diagnose(string consumerId, long tick)
+        {
+            if (string.IsNullOrEmpty(consumerId) || !_consumerCells.TryGetValue(consumerId, out Vector2Int cell))
+            {
+                return SteamShortage.None;
+            }
+
+            Evaluate(tick);
+            if (_poweredBy.ContainsKey(consumerId))
+            {
+                return SteamShortage.None;
+            }
+
+            bool reached = false;
+            for (int b = 0; b < _boilerOrder.Count; b++)
+            {
+                SteamBoiler boiler = _boilerOrder[b];
+                if (_poweredCellsByBoiler.TryGetValue(boiler.BoilerId, out HashSet<Vector2Int> reach) && reach.Contains(cell))
+                {
+                    reached = true;
+                    if (boiler.CokeStock > 0)
+                    {
+                        return SteamShortage.BoilerAtCapacity;
+                    }
+                }
+            }
+            return reached ? SteamShortage.BoilerOutOfCoke : SteamShortage.NoPipe;
+        }
+
         public bool TryGetPoweringBoiler(string consumerId, long tick, out string boilerId)
         {
             boilerId = null;

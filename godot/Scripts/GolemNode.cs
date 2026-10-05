@@ -141,6 +141,7 @@ namespace GolemFactory.Nodes
         private StallReason _renderedReason;
         private string _renderedResource;
         private int _renderedShortfall;
+        private Steam.SteamShortage _renderedSteam;
         private float _shakeLeft;
         private float _time;
 
@@ -309,7 +310,8 @@ namespace GolemFactory.Nodes
             {
                 _moodHeld += delta;
                 if (GolemMoodRules.IsStopped(mood) &&
-                    (Entity.StallReason != _renderedReason || Entity.StallResourceId != _renderedResource || Entity.StallShortfall != _renderedShortfall))
+                    (Entity.StallReason != _renderedReason || Entity.StallResourceId != _renderedResource
+                     || Entity.StallShortfall != _renderedShortfall || Entity.SteamShortage != _renderedSteam))
                 {
                     RefreshCaption(mood);
                 }
@@ -328,6 +330,33 @@ namespace GolemFactory.Nodes
                 new Vector2(placed.x * GridConversions.CellPixels, -placed.y * GridConversions.CellPixels);
             _badge.ResetSize();
             _badge.Position = screen - new Vector2(_badge.Size.X * _badge.Scale.X / 2f, _badge.Size.Y * _badge.Scale.Y);
+
+            // Faded while the player stands close, so the badge stops hiding the very tiles it
+            // is about -- the golem's own cell and the pipe running into it (G10, from
+            // playtest). From across the room, where it is a call to come over, it stays solid.
+            _badge.Modulate = new Color(1f, 1f, 1f, BadgeAlphaFor(PlayerDistanceCells()));
+        }
+
+        /// <summary>Badge opacity at a player distance, in cells: solid far off, faint up close.</summary>
+        public static float BadgeAlphaFor(float distanceCells) =>
+            distanceCells < BadgeFadeNearCells ? BadgeFadedAlpha
+            : distanceCells > BadgeFadeFarCells ? 1f
+            : Mathf.Lerp(BadgeFadedAlpha, 1f, (distanceCells - BadgeFadeNearCells) / (BadgeFadeFarCells - BadgeFadeNearCells));
+
+        private const float BadgeFadeNearCells = 2f;
+        private const float BadgeFadeFarCells = 3.5f;
+        private const float BadgeFadedAlpha = 0.25f;
+
+        private float PlayerDistanceCells()
+        {
+            GolemFactory.World.SandboxWorld sandbox = WorldNode.Find(this)?.Sandbox;
+            if (sandbox?.Interactor == null)
+            {
+                return float.MaxValue;
+            }
+            Compat.Vector3 player = sandbox.Interactor.Position;
+            float dx = player.x - Entity.Cell.x, dy = player.y - Entity.Cell.y;
+            return Mathf.Sqrt(dx * dx + dy * dy);
         }
 
         private void RefreshCaption(GolemMood mood)
@@ -343,8 +372,9 @@ namespace GolemFactory.Nodes
             _renderedReason = Entity.StallReason;
             _renderedResource = Entity.StallResourceId;
             _renderedShortfall = Entity.StallShortfall;
+            _renderedSteam = Entity.SteamShortage;
             _badgeLabel.Text = "[!] " + Entity.GolemId + "\n" +
-                UI.StallDiagnostics.DescribeShort(_renderedReason, _renderedResource, _renderedShortfall);
+                UI.StallDiagnostics.DescribeShort(_renderedReason, _renderedResource, _renderedShortfall, _renderedSteam);
         }
 
         private void OnGolemStalled(GolemStalledEvent e)

@@ -59,7 +59,7 @@ namespace GolemFactory.UI
                 }
                 if (golem.Program.State == GolemState.Stalled)
                 {
-                    _snapshots.Add(new StallSnapshot(golem.GolemId, golem.StallReason, golem.StallResourceId, golem.StallShortfall));
+                    _snapshots.Add(new StallSnapshot(golem.GolemId, golem.StallReason, golem.StallResourceId, golem.StallShortfall, golem.SteamShortage));
                 }
             }
             _tracker.Reconcile(_snapshots);

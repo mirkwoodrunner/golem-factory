@@ -706,6 +706,16 @@ buildings. Includes the "no refund on load" duplicator regression.
   `beltCellsPerSecond`, applied as `ConveyorSystem.StepPerTick`, which keeps item spacing and
   capacity the same. `BeltCargoPathTests` covers this, and the `build` scenario now runs
   Scrap through a splitter into two dead-end branches.
+- **A no-steam stall says why.** It was always "no steam at (x, y)", even when the pipe ran
+  to the golem and the boiler was simply empty. `SteamNetwork.Diagnose` tells apart:
+  - no pipe reaching the tile
+  - every reaching boiler out of Coke
+  - a fuelled boiler at its 8-golem limit
+
+  The cause is `GolemEntity.SteamShortage`, read by the badge ("my boiler is out of Coke")
+  and by the alerts strip, which also names the fix. A stall badge fades to 25% while the
+  player stands within two cells, so it stops covering the golem's tile and pipe.
+  `SteamShortageTests` covers this.
  (every milestone)
 
 - **`dotnet test godot/GolemFactory.sln`**: Core tests pass. The count only grows, and the
