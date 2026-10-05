@@ -63,6 +63,7 @@ namespace GolemFactory.Nodes.Scenarios
                 ["golems"] = () => new GolemsScenario(),
                 ["workbench"] = () => new WorkbenchScenario(),
                 ["management"] = () => new ManagementScenario(),
+                ["save"] = () => new SaveScenario(),
             };
 
         [Export] public NodePath StationPath { get; set; }

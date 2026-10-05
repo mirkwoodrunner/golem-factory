@@ -66,6 +66,9 @@ ones. Current scenarios:
   with the HUD and build menu hidden. Covers the Inventory icons, the tab exclusivity, an
   Assembly Line claim reaching the Workbench, Extend planking and walling new rows, Patents
   Load, the Ledger's plaques and recipe pane, and one screen at a time.
+- `save` (Sandbox): through the SaveLoad tab, build, save, wreck everything, and load. The
+  buildings, golems (with program and place) and stockpile must come back exactly, and two
+  more rounds must change nothing. Writes `user://scenario-save.json`, never the player's save.
 - `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
   into the stockpile, over 600 ticks. `--spike-check` is an alias.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.

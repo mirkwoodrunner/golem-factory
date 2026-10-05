@@ -16,7 +16,8 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 | G6: Golems in full | in review |
 | G7: The Workbench | in review (you approved the screenshot) |
 | G8: Management HUD and remaining screens | in review |
-| G9–G10 | not started |
+| G9: Save and load end to end | in review |
+| G10: Parity playtest and cutover | not started; **needs you to play it** |
 
 ## Context
 
@@ -602,6 +603,40 @@ claims. See G7's As built.)
 buildings. Includes the "no refund on load" duplicator regression.
 
 **Exit:** a save/load/save/load scenario leaves the stockpile and world identical.
+
+**As built (G9):**
+- **`Core/Save/SaveFileIO`** stays engine-free, contrary to the plan's "moves to the Godot
+  layer". It's plain System.Text.Json over a path the caller passes; Godot hands it
+  `user://save.json`, globalized. Tests point it at a temp file.
+- **`SandboxWorld.SaveTo` and `LoadFrom`** do what Unity's SaveLoadPanel did, with its exact
+  status lines. A load works in this order:
+  1. Rebuild the placed buildings, clearing the old ones **with no refund**, so save/load can't
+     duplicate goods.
+  2. Restore golems still standing in place.
+  3. Rebuild player-built golems that are gone through the station, with the same id, program
+     and place.
+  4. Report golems no station built as skipped.
+
+  `AdoptGolem` adds scene-authored golems to the roster.
+- **The SaveLoad tab works.** Save and Load go through the world, and the file is
+  `ManagementScreen.SavePath`. Scenarios use a scratch file, never the player's save.
+- **Tests:** `SaveFileIOTests` (2), `SaveCatalogCoverageTests` (2) and `SaveLoadPanelTests` (4)
+  are ported, plus regression tests that a gone player-built golem is rebuilt and that
+  save/load/save/load doesn't duplicate goods. **The ledger is complete: 1473/1473 Unity tests
+  accounted for, none held.**
+- **Scenario `save`,** through the tab's own buttons:
+  - Build two depots, a belt and a programmed Scavenger, then save.
+  - Wreck everything: demolish, dismantle, spend.
+  - Load: the buildings and their views come back, the golem is rebuilt with its program and
+    place and its node is hosted, and the stockpile is exactly as saved.
+  - Two more rounds change nothing.
+- **Not saved, matching Unity's SaveData (yours to decide in G10):**
+  - Assembly Line claims and the tech-tree ledger.
+  - The floor's expanded extent. In a fresh session, a building past the starting north wall
+    would be skipped.
+  - Clock speed and the paused state.
+
+  None of these were in Unity's save either.
 
 ### G10: Parity playtest and cutover
 - Run `testscript/phase-1-playtest.md` against the Godot build. You play it too, since
