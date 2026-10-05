@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using CoreVector2 = GolemFactory.Compat.Vector2;
 using GolemFactory.Belts;
 using GolemFactory.Buildings;
 using GolemFactory.Data;
@@ -132,6 +133,13 @@ namespace GolemFactory.Nodes
                 // Floor tiles: under everything that stands, whatever its y.
                 ZIndex = -1;
             }
+            if (_belt != null)
+            {
+                // A belt's TILE goes one lower (-2) than its cargo (this node's _Draw, -1), so
+                // every lane is under every item: drawn at one z, an item crossing into the next
+                // cell vanished under that cell's tile.
+                _sprite.ZIndex = -1;
+            }
             RefreshShape();
         }
 
@@ -227,16 +235,24 @@ namespace GolemFactory.Nodes
                 return;
             }
 
-            Vector2 half = GridConversions.FacingStep(_belt.Facing) / 2f;
+            // In from the side that feeds it, through the centre, out of the side it hands to --
+            // or short of the edge at a dead end (Core's BeltCargoPath).
+            BeltNetwork network = _world.Sandbox?.Belts;
+            bool isSplitter = _building.GetPart<PlaceableBeltSplitter>() != null;
+            CoreVector2 entry = BeltCargoPath.Entry(network, _building.Cell, segment, _belt.Facing, isSplitter);
+            CoreVector2 exit = BeltCargoPath.Exit(network, _building.Cell, segment, _belt.Facing, isSplitter);
+            float step = _world.Sandbox?.Conveyor.StepPerTick ?? 1f;
             float tickFraction = _world.Clock.TickFraction;
             IReadOnlyList<ItemStack> items = segment.Items;
             for (int i = 0; i < items.Count; i++)
             {
-                float predicted = BeltFlowUtility.PredictProgressAfterAdvance(items, i, segment.Length, 1f);
+                float predicted = BeltFlowUtility.PredictProgressAfterAdvance(items, i, segment.Length, step);
                 float display = BeltFlowUtility.ComputeDisplayProgress(items[i].Progress, predicted, tickFraction);
-                float t = Mathf.Clamp(display / segment.Length, 0f, 1f);
+                CoreVector2 at = BeltCargoPath.Point(entry, exit, display / segment.Length);
                 Texture2D texture = ItemTexture(items[i].ItemType);
-                DrawTexture(texture, (-half).Lerp(half, t) - texture.GetSize() / 2f);
+                // Core's +y is north; Godot's is down.
+                var pixel = new Vector2(at.x, -at.y) * GridConversions.CellPixels;
+                DrawTexture(texture, pixel - texture.GetSize() / 2f);
             }
         }
 

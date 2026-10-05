@@ -4,6 +4,7 @@ using System.Linq;
 using Godot;
 using GolemFactory.Belts;
 using GolemFactory.Buildings;
+using GolemFactory.Economy;
 using GolemFactory.Data;
 using GolemFactory.PunchCards;
 using GolemFactory.Steam;
@@ -285,6 +286,33 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
             Do("put the splitter down", () => { _world.Build.CancelPlacement(); return null; });
+
+            // Cargo through the junction, at the Sandbox's belt speed: six Scrap fed onto the
+            // run's tail must reach both dead-end branches (and is what the frames are for).
+            for (int k = 0; k < 90; k++)
+            {
+                int beat = k;
+                Do("feed the run and let it flow", () =>
+                {
+                    if (beat % 10 == 0 && beat < 60)
+                    {
+                        BuildingAt(new CoreVector2Int(-6, -3)).GetPart<PlaceableBelt>().Segment
+                            .TryEnqueue(new ItemStack { ItemType = ItemType.Scrap });
+                    }
+                    return null;
+                });
+            }
+            Do("both branches received Scrap", () =>
+            {
+                int north = BuildingAt(new CoreVector2Int(-2, -2)).GetPart<PlaceableBelt>().Segment.Items.Count;
+                int east = BuildingAt(new CoreVector2Int(-1, -3)).GetPart<PlaceableBelt>().Segment.Items.Count;
+                if (north == 0 || east == 0)
+                {
+                    return $"branches hold {north} (north) and {east} (east)";
+                }
+                _log.Add($"Scrap through the splitter: {north} north, {east} east");
+                return null;
+            });
 
             // The boiler from the placement pass stands at one of the y=5 cells; lay a pipe run
             // off its east side.

@@ -5,6 +5,7 @@
   "stockpileBufferId": "FactoryStockpile",
   "productionBufferCapacityPerType": 100,
   "startingNorthExtent": 12,
+  "beltCellsPerSecond": 1.0,
   "freeStallSeedNode": "ScrapNode",
   "freeStallSeedQuantity": 60,
   "playerStart": { "x": 0, "y": 0 },

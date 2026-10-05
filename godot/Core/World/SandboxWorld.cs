@@ -141,6 +141,11 @@ namespace GolemFactory.World
             _stockpileBufferId = setup.stockpileBufferId;
             _requireSteamPower = setup.requireSteamPower;
             Bounds = new FloorBounds(FloorLayout.HalfExtent, setup.startingNorthExtent);
+            if (setup.beltCellsPerSecond > 0f)
+            {
+                // A cell is segmentLengthTicks progress units; at TicksPerSecond ticks a second.
+                Conveyor.StepPerTick = setup.beltCellsPerSecond * Belts.SegmentLengthTicks / Clock.TicksPerSecond;
+            }
 
             // SandboxBootstrap.Start, in its order.
             setup.ApplyBufferPolicy(Buffers);

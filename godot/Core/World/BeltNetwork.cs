@@ -43,6 +43,9 @@ namespace GolemFactory.World
         private ConveyorSystem _conveyor;
         private SpatialEndpointRegistry _endpoints;
         private int _segmentLengthTicks = 4;
+
+        /// <summary>A placed belt's lane length, in progress units (ticks at step 1).</summary>
+        public int SegmentLengthTicks => _segmentLengthTicks;
         private int _nextSegmentNumber = 1;
 
         public int Count => _belts.Count;

@@ -144,7 +144,8 @@ already run that frame.
 sprite's feet away from its node. The `world` scenario fails if one does.
 
 **Z-order:** the floor is z −10 (`FloorLayer.FloorZ`), and floor-level things (belts, pipes,
-the ghost, shadows) are −1. Z-index is global within a canvas layer, so anything you add at a
+the ghost, shadows) are −1. A belt's own tile is −2, so every lane sits under every item of
+cargo; at one z, an item crossing into the next cell vanished under that cell's tile. Z-index is global within a canvas layer, so anything you add at a
 negative z must stay above −10.
 
 ## Authored data (`godot/data/*.json`)

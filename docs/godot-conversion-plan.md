@@ -691,6 +691,21 @@ buildings. Includes the "no refund on load" duplicator regression.
   Item names use `ItemTiers.DisplayName`. `InteractionTargeting.BuildPrompt` takes an optional
   verb override. Tests are in `SandboxInteractionTests`, and the `interact` scenario checks
   the real caption before and after ordering.
+- **Belt cargo, from playtest ("looks weird", "too fast").** Unity drew cargo on a straight
+  back-to-front line, which went wrong in three places:
+  - corners drew cargo arriving from the wrong side
+  - the splitter's cargo ran along a facing it doesn't have
+  - a dead end's front item hung half off the belt
+
+  `World/BeltCargoPath` now draws entry edge → centre → exit edge. The entry is the side that
+  feeds the belt. The exit is the front, or for a splitter the branch its round-robin takes
+  next, and a dead end stops short of the edge. Cargo draws above all belt tiles (tile z −2,
+  cargo −1).
+
+  Belts ran at Unity's 2.5 cells a second. They now run at **1**: `sandbox.json`
+  `beltCellsPerSecond`, applied as `ConveyorSystem.StepPerTick`, which keeps item spacing and
+  capacity the same. `BeltCargoPathTests` covers this, and the `build` scenario now runs
+  Scrap through a splitter into two dead-end branches.
  (every milestone)
 
 - **`dotnet test godot/GolemFactory.sln`**: Core tests pass. The count only grows, and the

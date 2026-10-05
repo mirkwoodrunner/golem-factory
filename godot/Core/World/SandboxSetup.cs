@@ -90,6 +90,13 @@ namespace GolemFactory.World
         public string stockpileBufferId = "FactoryStockpile";
         public int productionBufferCapacityPerType = 100;
         public int startingNorthExtent = FloorLayout.DefaultNorthExtent;
+
+        /// <summary>
+        /// How fast cargo crosses a belt cell. 0 (absent) keeps Unity's rate: a cell in
+        /// segmentLengthTicks ticks, which at 10 ticks a second was 2.5 cells a second -- too
+        /// quick to watch in playtest, so the shipping Sandbox sets 1 (G10).
+        /// </summary>
+        public float beltCellsPerSecond;
         public string freeStallSeedNode;
         public int freeStallSeedQuantity;
         public Point playerStart = new Point();
