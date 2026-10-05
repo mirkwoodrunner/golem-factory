@@ -8,7 +8,7 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 |---|---|
 | G0: Land the spike | **done**: PR #28, merged 2026-10-04 |
 | G1: Authored data as JSON | in review: PR #29 |
-| G2: Gameplay services into Core | in progress, as stacked sub-PRs: **G2a** station + assembly bay (in review), **G2b** build mode (in review), **G2c** interactions (in review), **G2d** save + the rest |
+| G2: Gameplay services into Core | **built**, in review as stacked sub-PRs: G2a station + assembly bay, G2b build mode, G2c interactions, G2d save + the rest |
 | G3–G10 | not started |
 
 ## Context
@@ -199,6 +199,27 @@ found missing.
   GameObject, and without the clear, golems leak between tests.
 - **To do in G4:** the slice's `Nodes/ResourceNodeMarker` shares a name with Core's. Rename
   it when G4 rebuilds the world on top of the Core marker.
+
+**As built (G2d), which completes G2:**
+- **Save and load in Core.** `SaveLoadService` reads building state through `GetPart<T>()`.
+  `IBuildingRebuilder` and `IGolemRespawner` and their two adapters are ported, without the
+  `FindInScene` fallbacks, because the scene constructs them with the real objects.
+- **Four more classes ported:**
+  - `ClockTowerSiteHolder`, which ticks the site and relays `ItemAssembled`
+    (`Attach`/`Detach`).
+  - `TechTreeProgressTracker`, whose sweeps are unchanged; `Exists<T>` became "any building
+    has that part".
+  - `FloorExpansionService`'s rules. Painting and walls go to the scene, through
+    `RowsAdded`.
+  - `FloorBoundsHolder` and `AssemblyLineStateHolder` were pure holders, so callers use the
+    object.
+- **One replacement and one partial port,** both recorded in the ledger
+  (`Tools/Godot/test_ledger.py`'s `PARTIAL`):
+  - `FloorExpansionTests.PaintingWritesATileOnEveryNewCell` exercised Unity's Tilemap. It's
+    replaced by a test of what Core now owes the scene: exactly the rows a purchase added.
+  - Two `AssemblyLineGatingTests` drive the Workbench's card gating and are held for **G7**.
+- **G2 exit criterion met.** Every non-UI Unity test is ported or replaced. What remains is
+  held for the scene and UI milestones (G4, G5, G7–G9).
 
 
 ### G3: Art and fonts pipeline
