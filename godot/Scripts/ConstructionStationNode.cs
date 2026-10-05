@@ -29,7 +29,15 @@ namespace GolemFactory.Nodes
         [Export] public Vector2I Cell { get; set; }
         [Export] public Facing StationFacing { get; set; } = Facing.North;
         [Export] public string StockpileBufferId { get; set; } = "FactoryStockpile";
+        /// <summary>Chassis names this station builds; "all" means every authored chassis.</summary>
         [Export] public string[] Roster { get; set; } = { "ClockworkScavenger" };
+
+        /// <summary>
+        /// The slice's stand-ins for the [G] carry and the Workbench: move the built golem to
+        /// <see cref="PostCell"/> and give it the extractor program. On in LoopSlice.tscn only;
+        /// the real Sandbox leaves the golem where the station put it.
+        /// </summary>
+        [Export] public bool SliceAutoProgram { get; set; }
 
         /// <summary>Where the slice puts the built golem to work, standing in for the [G] carry.</summary>
         [Export] public Vector2I PostCell { get; set; }
@@ -68,11 +76,11 @@ namespace GolemFactory.Nodes
         {
             _world = WorldNode.Find(this);
 
-            var roster = new ChassisDefinition[Roster.Length];
-            for (int i = 0; i < Roster.Length; i++)
-            {
-                roster[i] = _world.Definitions.Chassis[Roster[i]];
-            }
+            ChassisDefinition[] roster = System.Array.IndexOf(Roster, "all") >= 0
+                ? System.Linq.Enumerable.ToArray(System.Linq.Enumerable.OrderBy(
+                    _world.Definitions.Chassis.Values, c => c.maxAppendageSlots))
+                : System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(
+                    Roster, name => _world.Definitions.Chassis[name]));
             Station.Configure(roster, () => new GolemEntity(), _world.Conveyor, _world.Nodes,
                 _world.Buffers, _world.Clock, null, StockpileBufferId);
             Station.ConfigureSpatial(_world.Endpoints, null);
@@ -99,9 +107,12 @@ namespace GolemFactory.Nodes
                 return;
             }
 
-            // Slice stand-ins for the carry and the Workbench; see the class comment.
-            golem.SetPlacement(GridConversions.ToCore(PostCell), PostFacing);
-            GolemNode.ApplySliceProgram(golem.Program, SliceProgram.Extractor, _world.Definitions);
+            if (SliceAutoProgram)
+            {
+                // Slice stand-ins for the carry and the Workbench; see the class comment.
+                golem.SetPlacement(GridConversions.ToCore(PostCell), PostFacing);
+                GolemNode.ApplySliceProgram(golem.Program, SliceProgram.Extractor, _world.Definitions);
+            }
         }
 
         private void OnGolemSpawned(GolemEntity golem)

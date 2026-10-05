@@ -19,7 +19,7 @@ namespace GolemFactory.Nodes
         {
             _world = WorldNode.Find(this);
             _player = GetNode<PlayerNode>(PlayerPath);
-            _depot = GetNode<DepotNode>(DepotPath);
+            _depot = DepotPath != null && !DepotPath.IsEmpty ? GetNode<DepotNode>(DepotPath) : null;
 
             var panel = new PanelContainer { Position = new Vector2(12f, 12f) };
             _label = new Label();
@@ -32,7 +32,10 @@ namespace GolemFactory.Nodes
         {
             var text = new StringBuilder();
             text.Append("Tick ").Append(_world.Clock.CurrentTick)
-                .Append(" · Depot Scrap: ").Append(_depot.Buffer.GetQuantity(ItemType.Scrap));
+                .Append(" · Stockpile Scrap: ")
+                .Append(_depot != null
+                    ? _depot.Buffer.GetQuantity(ItemType.Scrap)
+                    : _world.Buffers.GetQuantity("FactoryStockpile", ItemType.Scrap));
             foreach (Node node in GetTree().GetNodesInGroup(GolemNodeGroup.Name))
             {
                 if (node is GolemNode golem && golem.Entity != null)

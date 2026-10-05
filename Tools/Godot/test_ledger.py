@@ -54,9 +54,6 @@ HELD = {
     "UI/AssemblyBayRowPolicyTests.cs": ("G2d", "StationService (assembly bay)"),
     "World/FloorExpansionTests.cs": ("G2d", "FloorExpansionService rules"),
     "World/ResourceNodeMarkerTests.cs": ("G2d", "SandboxSetup / node registration"),
-    # G4: scene-level presentation.
-    "Player/ArtificerWalkAnimatorTests.cs": ("G4", "PlayerNode walk animation (rules already in Core)"),
-    "Player/PlayerControllerTests.cs": ("G4", "PlayerNode movement (rules already in Core)"),
     # G7/G8: the screens.
     "UI/WorkbenchControllerTests.cs": ("G7", "WorkbenchSession"),
     "UI/WorkbenchQuantityTests.cs": ("G7", "WorkbenchSession"),
@@ -85,6 +82,12 @@ MOVED = {
 PARTIAL = {
     "AssemblyLine/AssemblyLineGatingTests.cs": (
         2, "G7", "the 2 WorkbenchController card-gating tests port with the Workbench"),
+    "Player/PlayerControllerTests.cs": (
+        0, "", "ported onto PlayerWalker; Awake_AddsYSortSpriteRenderer retired (y-sort is the scene's "
+               "y_sort_enabled); MoveBy_WithFloorBounds_FollowsTheNorthWallAsTheRoomGrows added"),
+    "Player/ArtificerWalkAnimatorTests.cs": (
+        0, "", "ported onto PlayerWalker; UnwiredFrames_LeaveTheSpriteAlone retired (the node loads "
+               "its sixteen frames from res://art, so there is no half-wired array)"),
     "World/FloorExpansionTests.cs": (
         0, "", "PaintingWritesATileOnEveryNewCell replaced by APurchaseAnnouncesExactlyTheRowsItAdded "
                "(painting is the scene's job; Core owes it the rows)"),

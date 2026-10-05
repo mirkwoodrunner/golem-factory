@@ -10,7 +10,8 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 | G1: Authored data as JSON | in review: PR #29 |
 | G2: Gameplay services into Core | **built**, in review as stacked sub-PRs: G2a station + assembly bay, G2b build mode, G2c interactions, G2d save + the rest |
 | G3: Art and fonts pipeline | in review |
-| G4–G10 | not started |
+| G4: The world scene | in review |
+| G5–G10 | not started |
 
 ## Context
 
@@ -198,8 +199,8 @@ found missing.
 - **A third porting hazard: fixture reuse.** NUnit reuses one fixture instance per class, so
   a world list in a test rig must be cleared in TearDown. Unity's TearDown destroyed every
   GameObject, and without the clear, golems leak between tests.
-- **To do in G4:** the slice's `Nodes/ResourceNodeMarker` shares a name with Core's. Rename
-  it when G4 rebuilds the world on top of the Core marker.
+- **Done in G4:** the slice's `Nodes/ResourceNodeMarker`, which shared a name with Core's, is
+  now `NodeMarkerNode`.
 
 **As built (G2d), which completes G2:**
 - **Save and load in Core.** `SaveLoadService` reads building state through `GetPart<T>()`.
@@ -272,6 +273,43 @@ wiring (`IGolemRespawner`, `IBuildingRebuilder`, ...) becomes direct calls on `W
 services. The four seams existed because a Unity prefab couldn't hold scene references.
 
 **Exit:** a scenario run walks the street and back; frames match the Unity Sandbox layout.
+
+**As built (G4):**
+- **The layout is a Core function, not a baked scene.** Unity's `SandboxFloorGenerator` wrote
+  about 300 GameObjects into `Sandbox.unity`. `Core/World/SandboxLayout` holds the same
+  placement rules, and `Scripts/World/ShellNode` builds the walls, kerbs, posts, furniture,
+  clutter, contact shadows and seven sconces from it at load. `SandboxLayoutTests` checks
+  every count and a dozen positions against the numbers read from `Sandbox.unity`; all of
+  them matched on the first run.
+- **The setup is data.** `godot/data/sandbox.json` holds what was split across
+  `Sandbox.unity`, `ManagerHolders.prefab` and `SandboxBootstrap`: the nine stalls, the
+  market, the game mode, `requireSteamPower`, the buffer policy, the free scrap seed, and the
+  starter bench and station. `Core/World/SandboxSetup` applies `SandboxBootstrap`'s rules.
+  `WorldNode.ApplySandboxSetup` turns it on.
+- **The scenes split.** `Sandbox.tscn` is the real world: floor and street, shell, stalls,
+  the starter Hand-Crank Bench (a real ticking `HandCrankBench`), the starter station (every
+  chassis), and the player. `LoopSlice.tscn` keeps the spike's hand-built slice for the
+  `loop` scenario, behind `ConstructionStationNode.SliceAutoProgram`; the slice's
+  auto-programming stand-ins never run in the real Sandbox.
+- **Pivots** are Unity's import pivots, value for value, in `Scripts/World/SpritePivots`.
+- **Lighting:** a `CanvasModulate` at 0.95 plus a `PointLight2D` per sconce, in Unity's lamp
+  colour, sitting a quarter cell inside the room.
+- **Camera and walk rules moved into Core:** `CameraRigRules` (follow lerp 5/s, zoom clamp
+  3..15, starting size 10) and `PlayerWalker` (`PlayerController.MoveBy` plus
+  `ArtificerWalkAnimator`). The last two G4-held suites are ported onto `PlayerWalker`. Each
+  dropped one engine-only test, recorded in the ledger.
+- **Scenario `world`:** checks that the shell matches the layout, that every stall publishes
+  its endpoint, that the player reaches the street's far edge and is stopped there, that they
+  walk back inside, and that the camera settles on them. Frames reviewed: the workshop, and
+  the street with all nine carts.
+- **Floor expansion:** the hooks are in (`FloorLayer.PaintRows`, `ShellNode.RebuildWalls`,
+  `WorldNode.Bounds` read by the walk clamp), but nothing in the scene triggers a purchase
+  yet. The purchase action arrives with the build menu in G5.
+- **Not needed:** freight masts and extra benches have no starting placements in Unity's
+  Sandbox; they are placeables (G5). The four late-wiring seams are still Core interfaces,
+  as G2 ported them.
+- No Unity reference screenshot exists (the MCP bridge was down), so "frames match" was
+  checked against the scene's data instead.
 
 ### G5: Buildings and build mode
 - One `.tscn` per placeable (11), each a thin Node over its Core building plus `BuildService`.

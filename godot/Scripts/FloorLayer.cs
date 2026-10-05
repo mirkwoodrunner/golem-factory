@@ -28,31 +28,71 @@ namespace GolemFactory.Nodes
             "res://art/floor_tile_grate.png",
         };
 
+        // The street's two cobbles, chosen by SandboxLayout.StreetTileVariant.
+        private static readonly string[] StreetPaths =
+        {
+            "res://art/street_cobble.png",
+            "res://art/street_cobble_b.png",
+        };
+
+        /// <summary>Also pave the market street south of the shop front.</summary>
+        [Export] public bool PaintStreet { get; set; }
+
+        private int[] _floorSources;
+
         public override void _Ready()
         {
             var tileSet = new TileSet { TileSize = new Vector2I(GridConversions.CellPixels, GridConversions.CellPixels) };
-            var sourceIds = new int[TilePaths.Length];
-            for (int i = 0; i < TilePaths.Length; i++)
-            {
-                var atlas = new TileSetAtlasSource
-                {
-                    Texture = GD.Load<Texture2D>(TilePaths[i]),
-                    TextureRegionSize = tileSet.TileSize,
-                };
-                atlas.CreateTile(Vector2I.Zero);
-                sourceIds[i] = tileSet.AddSource(atlas);
-            }
+            int[] sourceIds = AddSources(tileSet, TilePaths);
+            int[] streetIds = AddSources(tileSet, StreetPaths);
             TileSet = tileSet;
+            _floorSources = sourceIds;
 
             // A TileMapLayer cell's square starts at its top-left corner; GridConversions puts a
             // cell's CENTRE on the cell coordinate. Shift by half a tile so they agree.
             Position = new Vector2(-GridConversions.CellPixels / 2f, -GridConversions.CellPixels / 2f);
 
-            foreach (CoreVector2Int cell in FloorLayout.GetFloorCells())
+            FloorBounds bounds = WorldNode.Find(this)?.Bounds ?? new FloorBounds();
+            PaintRows(-bounds.HalfExtent, bounds.NorthExtent, bounds.HalfExtent);
+
+            if (PaintStreet)
             {
-                int variant = FloorTileVariant.Select(cell.x, cell.y);
-                SetCell(new Vector2I(cell.x, -cell.y), sourceIds[variant], Vector2I.Zero);
+                foreach (CoreVector2Int cell in FloorLayout.GetStreetCells())
+                {
+                    SetCell(new Vector2I(cell.x, -cell.y), streetIds[SandboxLayout.StreetTileVariant(cell)], Vector2I.Zero);
+                }
             }
+        }
+
+        /// <summary>
+        /// Paints the workshop's plank floor on rows <paramref name="fromRow"/>..<paramref name="toRow"/>
+        /// (Core frame). Floor Expansion calls this for the rows a purchase added.
+        /// </summary>
+        public void PaintRows(int fromRow, int toRow, int halfExtent)
+        {
+            for (int y = fromRow; y <= toRow; y++)
+            {
+                for (int x = -halfExtent; x <= halfExtent; x++)
+                {
+                    SetCell(new Vector2I(x, -y), _floorSources[FloorTileVariant.Select(x, y)], Vector2I.Zero);
+                }
+            }
+        }
+
+        private static int[] AddSources(TileSet tileSet, string[] paths)
+        {
+            var ids = new int[paths.Length];
+            for (int i = 0; i < paths.Length; i++)
+            {
+                var atlas = new TileSetAtlasSource
+                {
+                    Texture = GD.Load<Texture2D>(paths[i]),
+                    TextureRegionSize = tileSet.TileSize,
+                };
+                atlas.CreateTile(Vector2I.Zero);
+                ids[i] = tileSet.AddSource(atlas);
+            }
+            return ids;
         }
     }
 }
