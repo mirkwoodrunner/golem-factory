@@ -61,6 +61,46 @@ namespace GolemFactory.Tests.World
             Assert.AreEqual(0, world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.Scrap), "the 10 Scrap price was paid");
         }
 
+        // G10, at the user's call: an empty stall's caption names what [E] does there.
+        [Test]
+        public void AnEmptyStall_OffersATruckloadAndItsPrice_NotAHarvest()
+        {
+            SandboxWorld world = Compose();
+            SandboxSetup.NodeEntry copper = Stall(world, "CopperOreNode");
+            StandAt(world, new Vector2Int(copper.x, copper.y));
+
+            Assert.AreEqual(InteractionAffordance.Ready, world.Interactor.CurrentAffordance);
+            Assert.AreEqual("[E]  Order a truckload of Copper Ore  -  20 Scrap", world.Interactor.CurrentPrompt);
+        }
+
+        [Test]
+        public void WithTheCartOnTheRoad_TheStallSaysSo_AndOffersNoKey()
+        {
+            SandboxWorld world = Compose();
+            SandboxSetup.NodeEntry coal = Stall(world, "CoalNode");
+            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 10);
+            StandAt(world, new Vector2Int(coal.x, coal.y));
+            Assert.IsTrue(world.Interactor.Interact(), "precondition: ordered");
+            world.Interactor.Poll();
+
+            Assert.AreEqual(InteractionAffordance.Unavailable, world.Interactor.CurrentAffordance);
+            Assert.AreEqual("Coal  -  cart on its way", world.Interactor.CurrentPrompt);
+        }
+
+        [Test]
+        public void AStallWithStock_StillOffersAHarvest_UnderItsEnglishName()
+        {
+            SandboxWorld world = Compose();
+            SandboxSetup.NodeEntry copper = Stall(world, "CopperOreNode");
+            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 20);
+            StandAt(world, new Vector2Int(copper.x, copper.y));
+            Assert.IsTrue(world.Interactor.Interact(), "precondition: ordered");
+            world.Market.Tick(1_000_000); // the cart arrives
+            world.Interactor.Poll();
+
+            StringAssert.StartsWith("[E]  Harvest Copper Ore  -  ", world.Interactor.CurrentPrompt);
+        }
+
         [Test]
         public void HarvestingRaisesAGainPopupAtTheStall()
         {

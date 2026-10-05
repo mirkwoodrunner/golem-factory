@@ -114,8 +114,12 @@ namespace GolemFactory.Nodes.Scenarios
                 Stand(coal.x, coal.y + 1f);
                 return null;
             });
-            Do("the empty stall offers a truckload", () =>
-                _prompt.Caption.Length > 0 ? null : "no caption at the Coal stall");
+            string offered = null;
+            Do("the empty stall offers a truckload and its price", () =>
+            {
+                offered = _prompt.Caption;
+                return offered.StartsWith("[E]  Order a truckload of Coal  -  10 Scrap") ? null : $"caption '{offered}'";
+            });
             Do("press E", () => { Tap(Key.E); return null; });
             Do("the truckload is ordered and paid for", () =>
             {
@@ -124,7 +128,15 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return $"{left} Scrap left; the 10 Scrap price was not paid";
                 }
-                _log.Add("Coal stall: E ordered a truckload for 10 Scrap");
+                return null;
+            });
+            Do("the stall says the cart is on its way, with no key", () =>
+            {
+                if (!_prompt.Caption.StartsWith("Coal  -  cart on its way"))
+                {
+                    return $"caption '{_prompt.Caption}'";
+                }
+                _log.Add($"Coal stall: '{offered}', E ordered it for 10 Scrap, then '{_prompt.Caption}'");
                 return null;
             });
         }

@@ -742,6 +742,7 @@ namespace GolemFactory.Player
             }
 
             DescribeTarget(pick, target, CarriedGolem != null, out string targetName, out string detail);
+            string verb = DescribeMarketStall(pick, target, ref detail);
 
             // [G] AND [R] ACT ON THE NEAREST GOLEM, NOT ON THE WINNER OF THE [E] PICK, and the two
             // differ at exactly the moment the player most needs to be told the keys exist. A
@@ -759,7 +760,7 @@ namespace GolemFactory.Player
             }
 
             CurrentPrompt = InteractionTargeting.BuildPrompt(
-                pick.Kind, targetName, detail, CurrentAffordance, _interactKeyLabel);
+                pick.Kind, targetName, detail, CurrentAffordance, _interactKeyLabel, verb);
             PromptPosition = targetPosition;
         }
 
@@ -822,6 +823,31 @@ namespace GolemFactory.Player
             }
         }
 
+        /// <summary>
+        /// An EMPTY market stall's caption (G10, at the user's call). [E] there orders a
+        /// truckload, so the line names that and its price -- "Harvest Copper Ore - depleted"
+        /// described an action the key would not take. With a cart already on the road the key
+        /// does nothing, and the line says why instead of "depleted". Returns the verb to use,
+        /// or null to keep the kind's own; a stall with stock is untouched.
+        /// </summary>
+        private string DescribeMarketStall(InteractionPick pick, object target, ref string detail)
+        {
+            if (pick.Kind != InteractionKind.Harvest || !(target is ResourceNodeMarker marker) || !marker.IsDepleted
+                || _market == null || !_market.TryGetOffer(marker.NodeId, out MarketOffer offer))
+            {
+                return null;
+            }
+
+            if (_market.IsInTransit(marker.NodeId))
+            {
+                detail = "cart on its way";
+                return null;
+            }
+
+            detail = ConstructionCostPolicy.FormatCost(offer.Price);
+            return "Order a truckload of";
+        }
+
         private int StockpileCoke =>
             _stockpile == null ? 0 : _stockpile.GetQuantity(_stockpileBufferId, ItemType.Coke);
 
@@ -836,7 +862,8 @@ namespace GolemFactory.Player
                 {
                     var marker = (ResourceNodeMarker)target;
                     string itemType = marker.ItemType;
-                    targetName = string.IsNullOrEmpty(itemType) ? marker.NodeId : itemType;
+                    // "Copper Ore", not "CopperOre": a caption is English, not an id.
+                    targetName = string.IsNullOrEmpty(itemType) ? marker.NodeId : ItemTiers.DisplayName(itemType);
                     detail = ResourceNodeVisualState.DescribeRemaining(marker.RemainingQuantity);
                     break;
                 }

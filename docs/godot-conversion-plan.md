@@ -682,6 +682,15 @@ buildings. Includes the "no refund on load" duplicator regression.
     ghost.
   - It isn't drag-placeable, is fully refunded, and saves and loads as a splitter.
   - The `build` scenario clicks one onto a run's end and checks that it feeds two branches.
+- **An empty market stall's caption names what [E] does there.** It used to say "Harvest
+  CopperOre - depleted" while the key ordered a truckload. The cases are now:
+  - empty: `[E]  Order a truckload of Copper Ore  -  20 Scrap`
+  - cart on the road: `Copper Ore  -  cart on its way`, with no key
+  - stocked: `[E]  Harvest Copper Ore  -  5 left`
+
+  Item names use `ItemTiers.DisplayName`. `InteractionTargeting.BuildPrompt` takes an optional
+  verb override. Tests are in `SandboxInteractionTests`, and the `interact` scenario checks
+  the real caption before and after ordering.
  (every milestone)
 
 - **`dotnet test godot/GolemFactory.sln`**: Core tests pass. The count only grows, and the
