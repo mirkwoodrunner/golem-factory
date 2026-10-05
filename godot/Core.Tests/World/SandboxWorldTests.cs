@@ -235,6 +235,24 @@ namespace GolemFactory.Tests.World
         }
 
         [Test]
+        public void TheAssemblyLineOpens_OnCardsThePlayerDoesNotOwn()
+        {
+            // The opening hand is granted before the deck is seeded, so the line's skip-owned
+            // rule applies to its very first fill. Seeded first, all three slots held the
+            // opening verbs -- free to claim and buying nothing.
+            SandboxWorld world = Compose();
+            var owned = world.AssemblyLine.GetClaimedCards("LocalPlayer");
+            Assert.AreEqual(3, owned.Count, "precondition: the opening hand is owned");
+
+            for (int i = 0; i < world.AssemblyLine.SlotCount; i++)
+            {
+                DraftableCardDefinition card = world.AssemblyLine.GetCard(i);
+                Assert.IsNotNull(card, "slot " + i + " is empty");
+                CollectionAssert.DoesNotContain(owned, card, "slot " + i + " offers an owned card");
+            }
+        }
+
+        [Test]
         public void TheBoardChargesTheStockpile()
         {
             SandboxWorld world = Compose();

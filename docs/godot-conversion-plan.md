@@ -590,10 +590,11 @@ claims. See G7's As built.)
   - A Ledger rebuild flashed unstyled plaques for one frame.
 - **The SaveLoad tab** is drawn as the prefab has it, with its buttons disabled and a line
   saying save/load arrives in G9.
-- **For your attention:** the Assembly Line opens with the three opening-hand verbs in its
-  slots, cards you already own. Claiming them is free and buys nothing. Unity seeds the slots
-  before granting the hand, and only a refill skips owned cards. This is faithful to Unity,
-  not fixed; it's yours to decide.
+- The Assembly Line opened with the three opening-hand verbs in its slots, cards the player
+  already owns, because Unity seeded the slots before granting the hand and only a refill
+  skips owned cards. **Fixed in G10 at the user's call:** the hand is granted first, so the
+  line opens on cards the player can use (`SandboxWorldTests
+  .TheAssemblyLineOpens_OnCardsThePlayerDoesNotOwn`, and the `management` scenario).
 - **Tests:** 7 held suites ported onto the Core models, plus regression tests for the fixes;
   4 tests were replaced by the new `management` scenario. Ledger 1465/1473; the 8 left are
   G9's save tests.

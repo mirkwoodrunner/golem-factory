@@ -239,11 +239,16 @@ namespace GolemFactory.World
 
             AssemblyLine = new AssemblyLineState(setup.slots);
             AssemblyLine.ConfigureUnlockContext(itemType => TechTree.Ledger.HasItem(itemType));
-            AssemblyLine.SeedCandidates(deck.Cards);
+            // The opening hand BEFORE the deck. The line skips a card its player already owns
+            // only when it fills a slot, so seeding first filled all three slots with the
+            // opening verbs -- free to claim, buying nothing -- and no real card appeared until
+            // the player had cleared them. (Unity's SandboxBootstrap had the same order; fixed
+            // in the port at the user's call.) The unlock context is still wired first.
             foreach (DraftableCardDefinition card in deck.OpeningHand)
             {
                 AssemblyLine.GrantClaim(setup.claimUserId, card);
             }
+            AssemblyLine.SeedCandidates(deck.Cards);
             if (setup.gateWorkbench)
             {
                 Workbench.ConfigureCardGating(AssemblyLine, setup.claimUserId);

@@ -182,24 +182,15 @@ namespace GolemFactory.Nodes.Scenarios
             Do("open the Assembly Line tab", () => { Click(_screen.TabButtons[ManagementTab.AssemblyLine]); return null; });
             int vaultBefore = 0;
             string claimed = null;
-            // The line opens on the three opening-hand verbs the player already owns (Unity seeds
-            // the slots before granting the hand, and only a REFILL skips owned cards). Claiming
-            // them is free and buys nothing; clear them so a card that matters comes up.
-            Do("clear the owned opening verbs off the line", () =>
+            // The line opens on cards the player can actually use: never the opening hand,
+            // which the player already owns (seeding before granting it once offered all three).
+            Do("the line offers nothing the player already owns", () =>
             {
                 var owned = new HashSet<DraftableCardDefinition>(_world.AssemblyLine.GetClaimedCards("LocalPlayer"));
-                for (int pass = 0; pass < 6; pass++)
-                {
-                    for (int i = 0; i < _world.AssemblyLine.SlotCount; i++)
-                    {
-                        DraftableCardDefinition card = _world.AssemblyLine.GetCard(i);
-                        if (card != null && owned.Contains(card))
-                        {
-                            _world.AssemblyLineBoard.Claim(i);
-                        }
-                    }
-                }
-                return null;
+                var offered = Enumerable.Range(0, _world.AssemblyLine.SlotCount).Select(_world.AssemblyLine.GetCard).ToList();
+                return offered.Any(c => c == null || owned.Contains(c))
+                    ? $"line offers [{string.Join(", ", offered.Select(c => c?.name ?? "empty"))}]"
+                    : null;
             });
             Do("click Claim on an affordable card", () =>
             {

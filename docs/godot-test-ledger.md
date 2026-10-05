@@ -164,4 +164,4 @@ ported, held for a named milestone, or retired with a reason.
 | `Core.Tests/World/SandboxInteractionTests.cs` | 8 |
 | `Core.Tests/World/SandboxLayoutTests.cs` | 29 |
 | `Core.Tests/World/SandboxSetupTests.cs` | 6 |
-| `Core.Tests/World/SandboxWorldTests.cs` | 14 |
+| `Core.Tests/World/SandboxWorldTests.cs` | 15 |
