@@ -8,7 +8,7 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 |---|---|
 | G0: Land the spike | **done**: PR #28, merged 2026-10-04 |
 | G1: Authored data as JSON | in review: PR #29 |
-| G2: Gameplay services into Core | in progress, as stacked sub-PRs: **G2a** station + assembly bay (in review), **G2b** build mode, **G2c** interactions, **G2d** save + the rest |
+| G2: Gameplay services into Core | in progress, as stacked sub-PRs: **G2a** station + assembly bay (in review), **G2b** build mode (in review), **G2c** interactions, **G2d** save + the rest |
 | G3–G10 | not started |
 
 ## Context
@@ -153,6 +153,32 @@ found missing.
   - `PlacedStationConfigurationTests` is a build-mode test, so it moved to G2b.
 - **In the slice,** the station is Core's real one. It charges the Scavenger's 12 Scrap
   from a seeded stockpile, and the spike check asserts that charge.
+
+**As built (G2b):**
+- **`BuildModeController` and `PlaceableBuilding` are plain Core classes under their Unity
+  names.** A building's kind is a list of `IBuildingPart`s (depot, belt, splitter, boiler,
+  pipe, mast, recycler, slag heap, clock tower, and the construction station itself).
+  `GetPart<T>()` replaces `GetComponent<T>()`, and `prefab.Instantiate()` clones authored
+  settings but not runtime state, so the place and demolish chains ported almost line for
+  line.
+- **Input became verbs** (`Click`, `Hover`, `Release`, `RotateKey`, `CancelPlacement`). The
+  ghost became `GhostStateFor(cell)`, the rule it was coloured by, so the ghost and the click
+  can't disagree.
+- **Popups, placements, removals and shape changes are events** (`PopupRaised`,
+  `BuildingPlaced`, `BuildingRemoved`, `ConnectedShapesChanged`). The belt and pipe parts
+  hold their `Shape` as state for the scene to draw.
+- **`FindObjectsByType` became explicit lists:**
+  - `Buildings`, the buildings build mode placed, plus scene furniture registered through
+    `RegisterExistingBuilding`.
+  - A golem roster the host supplies (`ConfigureGolemRoster`).
+  - Unity's **static** belt and pipe rosters are gone, because they would leak between tests.
+- **Two test-porting hazards were caught,** and they're worth knowing for the rest of G2:
+  - **Fake-null asserts.** `x != null` meant "not destroyed" and becomes `!x.IsRemoved`.
+  - **Implicit scene membership.** A golem or building the Unity test merely created was
+    findable by scene scan. Ported as-is, "the sweep made zero dismantle calls" passes
+    because nothing is *findable*. Those tests now register their golems and furniture
+    explicitly.
+
 
 ### G3: Art and fonts pipeline
 - Point the five generators' `OUT_DIR` (`Tools/Art/generate_*.py`) at `godot/art/`, keeping
