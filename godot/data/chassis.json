@@ -1,0 +1,111 @@
+{
+  "AetherHauler": {
+    "maxAppendageSlots": 4,
+    "tier": 2,
+    "cost": [
+      {
+        "itemType": "IronPlate",
+        "quantity": 80
+      },
+      {
+        "itemType": "Gear",
+        "quantity": 40
+      },
+      {
+        "itemType": "Coke",
+        "quantity": 30
+      }
+    ],
+    "allowsRepeat": 0,
+    "allowsFreightLaunch": 0,
+    "chassisSprite": "chassis_aether_hauler.png"
+  },
+  "BrassPresser": {
+    "maxAppendageSlots": 3,
+    "tier": 1,
+    "cost": [
+      {
+        "itemType": "Scrap",
+        "quantity": 60
+      },
+      {
+        "itemType": "IronPlate",
+        "quantity": 20
+      },
+      {
+        "itemType": "Gear",
+        "quantity": 10
+      }
+    ],
+    "allowsRepeat": 0,
+    "allowsFreightLaunch": 0,
+    "chassisSprite": "chassis_brass_presser.png"
+  },
+  "ClockworkScavenger": {
+    "maxAppendageSlots": 2,
+    "tier": 1,
+    "cost": [
+      {
+        "itemType": "Scrap",
+        "quantity": 12
+      }
+    ],
+    "allowsRepeat": 0,
+    "allowsFreightLaunch": 0,
+    "chassisSprite": "chassis_clockwork_scavenger.png"
+  },
+  "MainspringOverclocker": {
+    "maxAppendageSlots": 5,
+    "tier": 2,
+    "cost": [
+      {
+        "itemType": "Mainspring",
+        "quantity": 2
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 20
+      },
+      {
+        "itemType": "Casing",
+        "quantity": 24
+      },
+      {
+        "itemType": "Gear",
+        "quantity": 12
+      }
+    ],
+    "allowsRepeat": 1,
+    "allowsFreightLaunch": 0,
+    "chassisSprite": "chassis_mainspring_overclocker.png"
+  },
+  "ZeppelinFreightLoader": {
+    "maxAppendageSlots": 6,
+    "tier": 3,
+    "cost": [
+      {
+        "itemType": "Mainspring",
+        "quantity": 6
+      },
+      {
+        "itemType": "Lens",
+        "quantity": 8
+      },
+      {
+        "itemType": "AetherCell",
+        "quantity": 3
+      },
+      {
+        "itemType": "Casing",
+        "quantity": 30
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 40
+      }
+    ],
+    "allowsRepeat": 0,
+    "allowsFreightLaunch": 1,
+    "chassisSprite": "chassis_zeppelin_freight_loader.png"
+  }
+}

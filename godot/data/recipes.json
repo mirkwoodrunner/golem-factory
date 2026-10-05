@@ -1,0 +1,337 @@
+{
+  "R10_LensGrinding": {
+    "inputs": [
+      {
+        "itemType": "Glass",
+        "quantity": 2
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 1
+      }
+    ],
+    "outputItemType": "Lens",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 24
+  },
+  "R11_MainspringWinding": {
+    "inputs": [
+      {
+        "itemType": "Brass",
+        "quantity": 3
+      },
+      {
+        "itemType": "Gear",
+        "quantity": 2
+      }
+    ],
+    "outputItemType": "Mainspring",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 40
+  },
+  "R12_AetherContainment": {
+    "inputs": [
+      {
+        "itemType": "Aether",
+        "quantity": 1
+      },
+      {
+        "itemType": "Lens",
+        "quantity": 2
+      }
+    ],
+    "outputItemType": "AetherCell",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 36
+  },
+  "R13_MechanismAssembly": {
+    "inputs": [
+      {
+        "itemType": "Mainspring",
+        "quantity": 1
+      },
+      {
+        "itemType": "Gear",
+        "quantity": 3
+      },
+      {
+        "itemType": "Casing",
+        "quantity": 1
+      }
+    ],
+    "outputItemType": "Mechanism",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 60
+  },
+  "R14_Regulator": {
+    "inputs": [
+      {
+        "itemType": "AetherCell",
+        "quantity": 1
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 2
+      },
+      {
+        "itemType": "Gear",
+        "quantity": 1
+      },
+      {
+        "itemType": "CopperWire",
+        "quantity": 4
+      }
+    ],
+    "outputItemType": "Regulator",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 56
+  },
+  "R15_FrameSection": {
+    "inputs": [
+      {
+        "itemType": "Casing",
+        "quantity": 10
+      },
+      {
+        "itemType": "IronPlate",
+        "quantity": 6
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 4
+      }
+    ],
+    "outputItemType": "FrameSection",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 90
+  },
+  "R16_GreatCog": {
+    "inputs": [
+      {
+        "itemType": "Mechanism",
+        "quantity": 4
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 6
+      },
+      {
+        "itemType": "Mainspring",
+        "quantity": 2
+      }
+    ],
+    "outputItemType": "GreatCog",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 100
+  },
+  "R17_ChronometerCore": {
+    "inputs": [
+      {
+        "itemType": "Regulator",
+        "quantity": 2
+      },
+      {
+        "itemType": "Mechanism",
+        "quantity": 2
+      },
+      {
+        "itemType": "Lens",
+        "quantity": 2
+      },
+      {
+        "itemType": "CopperWire",
+        "quantity": 2
+      }
+    ],
+    "outputItemType": "ChronometerCore",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 120
+  },
+  "R18_AetherConduit": {
+    "inputs": [
+      {
+        "itemType": "AetherCell",
+        "quantity": 3
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 4
+      },
+      {
+        "itemType": "CopperWire",
+        "quantity": 6
+      }
+    ],
+    "outputItemType": "AetherConduit",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 80
+  },
+  "R19_WireDrawing": {
+    "inputs": [
+      {
+        "itemType": "CopperIngot",
+        "quantity": 1
+      }
+    ],
+    "outputItemType": "CopperWire",
+    "outputQuantity": 3,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 18
+  },
+  "R1_Coking": {
+    "inputs": [
+      {
+        "itemType": "Coal",
+        "quantity": 1
+      }
+    ],
+    "outputItemType": "Coke",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 12
+  },
+  "R2_ScrapReclamation": {
+    "inputs": [
+      {
+        "itemType": "Scrap",
+        "quantity": 1
+      }
+    ],
+    "outputItemType": "IronPlate",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 24
+  },
+  "R3_Glassmaking": {
+    "inputs": [
+      {
+        "itemType": "Slag",
+        "quantity": 1
+      }
+    ],
+    "outputItemType": "Glass",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 20
+  },
+  "R4_IronSmelting": {
+    "inputs": [
+      {
+        "itemType": "Scrap",
+        "quantity": 2
+      },
+      {
+        "itemType": "Coke",
+        "quantity": 1
+      }
+    ],
+    "outputItemType": "IronPlate",
+    "outputQuantity": 2,
+    "byproductItemType": "Slag",
+    "byproductQuantity": 1,
+    "durationTicks": 24
+  },
+  "R5_CopperSmelting": {
+    "inputs": [
+      {
+        "itemType": "CopperOre",
+        "quantity": 2
+      },
+      {
+        "itemType": "Coke",
+        "quantity": 1
+      }
+    ],
+    "outputItemType": "CopperIngot",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 30
+  },
+  "R6_ZincSmelting": {
+    "inputs": [
+      {
+        "itemType": "ZincOre",
+        "quantity": 2
+      },
+      {
+        "itemType": "Coke",
+        "quantity": 1
+      }
+    ],
+    "outputItemType": "ZincIngot",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 30
+  },
+  "R7_BrassAlloying": {
+    "inputs": [
+      {
+        "itemType": "CopperIngot",
+        "quantity": 2
+      },
+      {
+        "itemType": "ZincIngot",
+        "quantity": 1
+      }
+    ],
+    "outputItemType": "Brass",
+    "outputQuantity": 3,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 30
+  },
+  "R8_GearCutting": {
+    "inputs": [
+      {
+        "itemType": "IronPlate",
+        "quantity": 2
+      }
+    ],
+    "outputItemType": "Gear",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 16
+  },
+  "R9_CasingPress": {
+    "inputs": [
+      {
+        "itemType": "IronPlate",
+        "quantity": 4
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 1
+      }
+    ],
+    "outputItemType": "Casing",
+    "outputQuantity": 1,
+    "byproductItemType": "",
+    "byproductQuantity": 1,
+    "durationTicks": 28
+  }
+}

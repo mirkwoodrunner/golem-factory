@@ -1,0 +1,255 @@
+{
+  "AssembleAetherConduit": {
+    "actionType": 5,
+    "durationTicks": 80,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R18_AetherConduit",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleAetherContainment": {
+    "actionType": 5,
+    "durationTicks": 36,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R12_AetherContainment",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleBrassAlloying": {
+    "actionType": 5,
+    "durationTicks": 30,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R7_BrassAlloying",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleCasingPress": {
+    "actionType": 5,
+    "durationTicks": 28,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R9_CasingPress",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleChronometerCore": {
+    "actionType": 5,
+    "durationTicks": 120,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R17_ChronometerCore",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleCoking": {
+    "actionType": 5,
+    "durationTicks": 12,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R1_Coking",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleCopperSmelting": {
+    "actionType": 5,
+    "durationTicks": 30,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R5_CopperSmelting",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleFrameSection": {
+    "actionType": 5,
+    "durationTicks": 90,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R15_FrameSection",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleGearCutting": {
+    "actionType": 5,
+    "durationTicks": 16,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R8_GearCutting",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleGlassmaking": {
+    "actionType": 5,
+    "durationTicks": 20,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R3_Glassmaking",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleGreatCog": {
+    "actionType": 5,
+    "durationTicks": 100,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R16_GreatCog",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleIronSmelting": {
+    "actionType": 5,
+    "durationTicks": 24,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R4_IronSmelting",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleLensGrinding": {
+    "actionType": 5,
+    "durationTicks": 24,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R10_LensGrinding",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleMainspringWinding": {
+    "actionType": 5,
+    "durationTicks": 40,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R11_MainspringWinding",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleMechanismAssembly": {
+    "actionType": 5,
+    "durationTicks": 60,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R13_MechanismAssembly",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleRegulator": {
+    "actionType": 5,
+    "durationTicks": 56,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R14_Regulator",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleScrapReclamation": {
+    "actionType": 5,
+    "durationTicks": 24,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R2_ScrapReclamation",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleWireDrawing": {
+    "actionType": 5,
+    "durationTicks": 18,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R19_WireDrawing",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "AssembleZincSmelting": {
+    "actionType": 5,
+    "durationTicks": 30,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": "R6_ZincSmelting",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "ExtractScrap": {
+    "actionType": 1,
+    "durationTicks": 1,
+    "sourceId": "ScrapNode",
+    "destinationId": "ScrapBeltA",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "FreightLaunch": {
+    "actionType": 7,
+    "durationTicks": 24,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": null,
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "HaulScrap": {
+    "actionType": 0,
+    "durationTicks": 1,
+    "sourceId": "ScrapNode",
+    "destinationId": "ScrapBuffer",
+    "inputItemType": "Scrap"
+  },
+  "LoadIntoScrapBuffer": {
+    "actionType": 3,
+    "durationTicks": 1,
+    "sourceId": "ScrapBeltB",
+    "destinationId": "ScrapBuffer",
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "PushOutput": {
+    "actionType": 4,
+    "durationTicks": 1,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": null,
+    "inputItemType": "",
+    "outputItemType": ""
+  },
+  "RefineIronPlate": {
+    "actionType": 2,
+    "durationTicks": 3,
+    "sourceId": "ScrapBuffer",
+    "destinationId": "IronPlateBuffer",
+    "haulQuantity": 1,
+    "recipe": null,
+    "inputItemType": "Scrap",
+    "outputItemType": "IronPlate"
+  },
+  "RepeatAssembly": {
+    "actionType": 6,
+    "durationTicks": 1,
+    "sourceId": "",
+    "destinationId": "",
+    "haulQuantity": 1,
+    "recipe": null,
+    "inputItemType": "",
+    "outputItemType": ""
+  }
+}

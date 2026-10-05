@@ -1,0 +1,40 @@
+{
+  "AssemblyLineDeck": {
+    "cards": [
+      "Card_ExtractScrap",
+      "Card_HaulScrap",
+      "Card_PushOutput",
+      "Card_RepeatAssembly",
+      "Card_FreightLaunch",
+      "Card_R1_Coking",
+      "Card_R2_ScrapReclamation",
+      "Card_R3_Glassmaking",
+      "Card_R8_GearCutting",
+      "Card_R19_WireDrawing",
+      "Card_R4_IronSmelting",
+      "Card_R5_CopperSmelting",
+      "Card_R6_ZincSmelting",
+      "Card_R7_BrassAlloying",
+      "Card_R9_CasingPress",
+      "Card_R10_LensGrinding",
+      "Card_R11_MainspringWinding",
+      "Card_R12_AetherContainment",
+      "Card_R13_MechanismAssembly",
+      "Card_R15_FrameSection",
+      "Card_R16_GreatCog",
+      "Card_R18_AetherConduit",
+      "Card_R14_Regulator",
+      "Card_R17_ChronometerCore",
+      "Card_ClockworkScavenger",
+      "Card_BrassPresser",
+      "Card_AetherHauler",
+      "Card_MainspringOverclocker",
+      "Card_ZeppelinFreightLoader"
+    ],
+    "openingHand": [
+      "Card_ExtractScrap",
+      "Card_HaulScrap",
+      "Card_PushOutput"
+    ]
+  }
+}

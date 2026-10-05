@@ -42,6 +42,36 @@ G=".../Godot_v4.7.2-stable_mono_win64_console.exe"
 and as fast as the machine allows. `--spike-check` auto-builds the golem, runs 600 ticks and
 asserts the whole loop (node → extractor → belt → unloader → depot).
 
+## Authored data (`godot/data/*.json`)
+
+The chassis, logic cores, punch cards, recipes, Clock Tower stages and the Assembly Line
+deck: what Unity kept as ScriptableObject `.asset` files.
+
+- **Until cutover (G10) the Unity assets are the source of truth.** Regenerate the JSON with
+  `python Tools/Data/convert_unity_assets.py`. `--check` exits 1 if the JSON is stale. After
+  cutover the JSON is edited by hand.
+- **Keys are C# field names**, and references are by definition **name** (e.g.
+  `"recipe": "R18_AetherConduit"`). Unity's `0`/`1` bools and integer enums are kept as they
+  are.
+- **`Core/Data/DefinitionLoader` is strict.** An unknown key, a reference to a missing name,
+  an undefined enum value, or a bool other than 0/1 throws, naming the file and field.
+  `WorldNode` loads the data at startup, so a bad edit fails on launch, not mid-game.
+  - Don't "fix" a strictness failure by loosening the loader. It means the data and the
+    classes disagree.
+  - A key the JSON omits keeps the C# field's initializer. That is how Unity treated
+    fields added after an asset was saved.
+- Tests read the real data through `Core.Tests/AuthoredData`, which loads fresh per call
+  so no test can leak a mutation. `DefinitionLoaderTests.EveryLoadedFieldEqualsItsJsonValue`
+  is the parity check on the conversion.
+
+## The test ledger
+
+`docs/godot-test-ledger.md` is **generated**. Regenerate it with
+`python Tools/Godot/test_ledger.py`. `--check` exits 1 if it is stale, or if a Unity test file
+is neither ported nor assigned a milestone in the script's `HELD` table. A ported file keeps
+its Unity relative path under `Core.Tests/`. A PlayMode suite that lands elsewhere goes in
+`MOVED`. Every milestone PR regenerates the ledger.
+
 ## Rules that are specific to this side
 
 - **Core keeps Unity's frame: +y is north.** `Scripts/GridConversions.cs` is the only place a
