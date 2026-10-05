@@ -76,7 +76,15 @@ namespace GolemFactory.Nodes
             }
         }
 
-        public override void _EnterTree() => AddToGroup(InteractableGroup.Name);
+        // Only the slice's station answers [E] itself. In the Sandbox, Core's PlayerInteractor
+        // finds the world's station and opens the construction panel.
+        public override void _EnterTree()
+        {
+            if (!UseStarterStation)
+            {
+                AddToGroup(InteractableGroup.Name);
+            }
+        }
 
         public override void _Ready()
         {

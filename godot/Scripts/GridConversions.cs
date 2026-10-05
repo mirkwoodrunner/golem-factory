@@ -50,14 +50,24 @@ namespace GolemFactory.Nodes
         }
 
         /// <summary>
-        /// Places a standing sprite the way Unity's BottomCenter pivot did: its feet on the
-        /// bottom edge of the cell rather than its middle on the cell's centre.
+        /// Places a standing sprite the way Unity's BottomCenter pivot did: its FEET ON THE NODE'S
+        /// ORIGIN -- the cell centre for a building or golem, the walk position for the player.
+        ///
+        /// <para>
+        /// The origin is also what y-sorting compares, so feet-on-origin is what makes depth
+        /// right. The spike put the feet half a cell BELOW the origin (on the cell's bottom
+        /// edge), which drew the player and every building half a cell lower than Unity did and
+        /// sorted them by a point above their feet: standing just south of a crate, the player's
+        /// feet were in front of it but their sort point was behind it, so the crate drew over
+        /// them. Props, walls and stalls were already right (SpritePivots, Unity's own pivots).
+        /// The `world` scenario now checks every standing sprite's feet against its sort point.
+        /// </para>
         /// </summary>
         public static void StandOnCell(Sprite2D sprite)
         {
             sprite.Centered = false;
             Vector2 size = sprite.Texture.GetSize();
-            sprite.Offset = new Vector2(-size.X / 2f, CellPixels / 2f - size.Y);
+            sprite.Offset = new Vector2(-size.X / 2f, -size.Y);
         }
     }
 }
