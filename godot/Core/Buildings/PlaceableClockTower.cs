@@ -29,6 +29,11 @@ namespace GolemFactory.Buildings
 
         public void Configure(ClockTowerSite towerSite) => site = towerSite;
 
+        /// <summary>The name the tower's input endpoint reports (the prefab's authored displayName).</summary>
+        public void ConfigureDisplayName(string name) => displayName = string.IsNullOrEmpty(name) ? "Clock Tower" : name;
+
+        public string DisplayName => displayName;
+
         public void ConfigureStages(IEnumerable<ClockTowerStageDefinition> stageDefinitions) =>
             stages = stageDefinitions == null
                 ? new List<ClockTowerStageDefinition>()

@@ -58,6 +58,7 @@ namespace GolemFactory.Nodes.Scenarios
                 ["loop"] = () => new LoopScenario(),
                 ["font-glyphs"] = () => new FontGlyphsScenario(),
                 ["world"] = () => new WorldScenario(),
+                ["build"] = () => new BuildScenario(),
             };
 
         [Export] public NodePath StationPath { get; set; }
@@ -77,6 +78,16 @@ namespace GolemFactory.Nodes.Scenarios
         {
             string[] args = OS.GetCmdlineUserArgs();
             _name = ScenarioName(args);
+
+            // Headless runs get a 64x64 window, which puts the bottom-left build menu above the
+            // top of the screen and makes every screen-space check meaningless. Give them the
+            // window a player has.
+            if (DisplayServer.GetName() == "headless")
+            {
+                GetTree().Root.Size = new Vector2I(
+                    (int)ProjectSettings.GetSetting("display/window/size/viewport_width", 1280),
+                    (int)ProjectSettings.GetSetting("display/window/size/viewport_height", 720));
+            }
 
             if (_name == null)
             {

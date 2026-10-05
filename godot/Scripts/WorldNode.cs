@@ -8,15 +8,14 @@ using GolemFactory.World;
 namespace GolemFactory.Nodes
 {
     /// <summary>
-    /// The scene's one owner of simulation state: the clock and every registry a golem or a
-    /// building needs.
+    /// The scene's one owner of simulation state: a Core <see cref="SandboxWorld"/>.
     ///
     /// <para>
-    /// In Unity this was seven Holder MonoBehaviours plus SimulationClockRunner, each a thin
-    /// shell around one plain object so the Inspector had something to point at. Godot nodes
-    /// find each other by path or group instead, so one node owning all of them does the same
-    /// job; each Core object is still constructed and owned exactly as before, which is the
-    /// part of the Holder pattern that mattered.
+    /// In Unity this was seven Holder MonoBehaviours plus SimulationClockRunner, wired by
+    /// SandboxBootstrap sweeping the scene at Start. Since G5 the registries AND that wiring live
+    /// in Core's SandboxWorld, so this node only loads the data, owns the world, and advances
+    /// its clock each frame. The properties below forward to it so a node can keep asking
+    /// <c>World.Buffers</c> without knowing about the composition.
     /// </para>
     ///
     /// <para>
@@ -34,34 +33,32 @@ namespace GolemFactory.Nodes
         /// <summary>Belt segment length in ticks, BeltNetworkHolder's default.</summary>
         [Export] public int BeltSegmentLengthTicks { get; set; } = 4;
 
-        public SimulationClock Clock { get; } = new SimulationClock();
-        public ConveyorSystem Conveyor { get; } = new ConveyorSystem();
-        public SpatialEndpointRegistry Endpoints { get; } = new SpatialEndpointRegistry();
-        public ResourceNodeRegistry Nodes { get; } = new ResourceNodeRegistry();
-        public StorageBufferRegistry Buffers { get; } = new StorageBufferRegistry();
-        public BeltNetwork Belts { get; } = new BeltNetwork();
-
         /// <summary>
-        /// Whether to apply <c>res://data/sandbox.json</c>: the stalls, the market, the buffer
-        /// policy and the room's bounds. On in Sandbox.tscn; off in test scenes (LoopSlice) that
-        /// author their own world.
+        /// Whether to compose the full Sandbox from <c>res://data/sandbox.json</c> and
+        /// <c>placeables.json</c>: stalls, market, buffer policy, bounds, starter bench and
+        /// station, the build menu. On in Sandbox.tscn; off in test scenes (LoopSlice) that
+        /// author their own world on bare belts and a clock.
         /// </summary>
         [Export] public bool ApplySandboxSetup { get; set; }
 
-        /// <summary>The applied setup, or null when <see cref="ApplySandboxSetup"/> is off.</summary>
-        public SandboxSetup Setup { get; private set; }
+        /// <summary>The composed world. Null only before _Ready.</summary>
+        public SandboxWorld Sandbox { get; private set; }
 
-        /// <summary>The truckload market, when the setup built one.</summary>
-        public TruckloadMarket Market { get; private set; }
+        public SimulationClock Clock => Sandbox.Clock;
+        public ConveyorSystem Conveyor => Sandbox.Conveyor;
+        public SpatialEndpointRegistry Endpoints => Sandbox.Endpoints;
+        public ResourceNodeRegistry Nodes => Sandbox.Nodes;
+        public StorageBufferRegistry Buffers => Sandbox.Buffers;
+        public BeltNetwork Belts => Sandbox.Belts;
+        public DefinitionSet Definitions => Sandbox.Definitions;
+
+        /// <summary>The applied setup, or null when <see cref="ApplySandboxSetup"/> is off.</summary>
+        public SandboxSetup Setup => Sandbox?.Setup;
+
+        public TruckloadMarket Market => Sandbox?.Market;
 
         /// <summary>The room's live extent (Floor Expansion grows it northward).</summary>
-        public FloorBounds Bounds { get; private set; } = new FloorBounds();
-
-        /// <summary>
-        /// The authored definitions (chassis, cards, recipes, ...) from <c>res://data/</c>,
-        /// loaded once in <see cref="_Ready"/> before any sibling asks for them.
-        /// </summary>
-        public DefinitionSet Definitions { get; private set; }
+        public FloorBounds Bounds => Sandbox?.Bounds ?? new FloorBounds();
 
         public static WorldNode Find(Node from) =>
             from.GetTree().GetFirstNodeInGroup(GroupName) as WorldNode;
@@ -76,33 +73,22 @@ namespace GolemFactory.Nodes
             Compat.Debug.Warned += message => GD.PushWarning(message);
             Compat.Debug.Errored += message => GD.PushError(message);
 
-            // Strict loader: a bad data file throws here, at startup, naming the file and field.
-            Definitions = DefinitionLoader.Load(file => FileAccess.GetFileAsString("res://data/" + file));
+            // Strict loaders: a bad data file throws here, at startup, naming the file and field.
+            DefinitionSet definitions = DefinitionLoader.Load(Read);
 
-            Belts.Configure(Conveyor, Endpoints, BeltSegmentLengthTicks);
+            Sandbox = ApplySandboxSetup
+                ? SandboxWorld.Compose(
+                    definitions,
+                    SandboxSetup.Parse(Read("sandbox.json")),
+                    PlaceableCatalog.Load(Read(PlaceableCatalog.FileName), definitions),
+                    BeltSegmentLengthTicks, TicksPerSecond)
+                : new SandboxWorld(definitions, BeltSegmentLengthTicks, TicksPerSecond);
 
-            if (ApplySandboxSetup)
-            {
-                // SandboxBootstrap.Start's rules, in its order: buffer policy, then the stalls,
-                // then the market that trades in them.
-                Setup = SandboxSetup.Parse(FileAccess.GetFileAsString("res://data/sandbox.json"));
-                Setup.ApplyBufferPolicy(Buffers);
-                Setup.RegisterNodes(Nodes);
-                Market = Setup.BuildMarket(Nodes);
-                Bounds = new FloorBounds(FloorLayout.HalfExtent, Setup.startingNorthExtent);
-            }
-
-            // Same registration order as SandboxBootstrap: belts advance before any golem
-            // ticks, so a golem sees this tick's belt state.
-            Clock.TicksPerSecond = TicksPerSecond;
-            Clock.Register(Conveyor);
-            if (Market != null)
-            {
-                Clock.Register(Market);
-            }
-            Clock.Play();
+            Sandbox.Clock.Play();
         }
 
-        public override void _Process(double delta) => Clock.Advance((float)delta);
+        public override void _Process(double delta) => Sandbox.Advance((float)delta);
+
+        private static string Read(string file) => FileAccess.GetFileAsString("res://data/" + file);
     }
 }

@@ -38,6 +38,7 @@ namespace GolemFactory.Nodes
                 GlobalPosition = _target.GlobalPosition;
             }
             ApplyZoom();
+            GetViewport().SizeChanged += ApplyZoom; // a size is in cells, so a new window re-fits
             MakeCurrent();
         }
 

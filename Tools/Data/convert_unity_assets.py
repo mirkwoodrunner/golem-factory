@@ -43,6 +43,12 @@ OUTPUT_FILE = {
     "DraftableCardCatalog": "assembly_line_decks.json",
 }
 
+# The placeables Sandbox.unity's BuildModeController offers, in its _availablePrefabs order
+# (the build menu's row order). Converted to placeables.json: each prefab's root sprite and
+# the authored fields of every gameplay component on it.
+SANDBOX_SCENE = os.path.join(ASSETS, "_Project", "Scenes", "Sandbox.unity")
+PLACEABLES_FILE = "placeables.json"
+
 GUID = re.compile(r"^guid:\s*([0-9a-f]{32})\s*$", re.M)
 CLASS = re.compile(r"\b(?:class|struct)\s+(\w+)")
 
@@ -156,6 +162,67 @@ def parse_asset(path):
     return doc["MonoBehaviour"]
 
 
+def parse_documents(path):
+    """Every document of a multi-document Unity YAML file (a prefab): [(fileID, {Type: body})]."""
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    docs = []
+    for chunk in re.split(r"^--- !u!\d+ &(\d+).*$", text, flags=re.M)[1:]:
+        docs.append(chunk)
+    out = []
+    for file_id, body in zip(docs[0::2], docs[1::2]):
+        lines = []
+        for line in body.splitlines():
+            if line.startswith(("%", "---")) or not line.strip():
+                continue
+            stripped = line.lstrip(" ")
+            lines.append((len(line) - len(stripped), stripped))
+        doc, end = parse_block(lines, 0, 0)
+        if end != len(lines):
+            raise ValueError(f"{path}: unparsed from line {end}: {lines[end]}")
+        out.append((int(file_id), doc))
+    return out
+
+
+def sandbox_roster(guids):
+    """The prefab paths Sandbox's BuildModeController offers, in order."""
+    with open(SANDBOX_SCENE, encoding="utf-8") as f:
+        text = f.read()
+    block = re.search(r"_availablePrefabs:\n((?:  - .*\n)+)", text).group(1)
+    return [guids[g] for g in re.findall(r"guid: ([0-9a-f]{32})", block)]
+
+
+def convert_placeables(guids, names):
+    placeables = []
+    for path in sandbox_roster(guids):
+        docs = dict(parse_documents(path))
+        objects = {fid: d["GameObject"] for fid, d in docs.items() if "GameObject" in d}
+        transforms = {fid: d["Transform"] for fid, d in docs.items() if "Transform" in d}
+        # The root is the GameObject whose Transform has no parent.
+        root_go = next(t["m_GameObject"]["fileID"] for t in transforms.values()
+                       if t["m_Father"]["fileID"] == 0)
+        entry = {"name": objects[root_go]["m_Name"], "sprite": None, "parts": {}}
+        for fid, d in docs.items():
+            if "SpriteRenderer" in d and d["SpriteRenderer"]["m_GameObject"]["fileID"] == root_go:
+                sprite = d["SpriteRenderer"].get("m_Sprite")
+                entry["sprite"] = resolve(sprite, guids, names) if sprite else None
+            if "MonoBehaviour" in d and d["MonoBehaviour"]["m_GameObject"]["fileID"] == root_go:
+                mb = d["MonoBehaviour"]
+                cls = script_class(guids.get(mb["m_Script"]["guid"]))
+                fields = {}
+                for k, v in mb.items():
+                    if k.startswith("m_"):
+                        continue
+                    # In-prefab and scene references ({fileID: N} with no guid) are wiring
+                    # the Godot scene does itself; only asset references carry data.
+                    if isinstance(v, dict) and set(v) == {"fileID"}:
+                        continue
+                    fields[k] = resolve(v, guids, names)
+                entry["parts"][cls] = fields
+        placeables.append(entry)
+    return json.dumps(placeables, indent=2, ensure_ascii=True) + "\n"
+
+
 # --- Conversion ------------------------------------------------------------------------
 
 def resolve(value, guids, names):
@@ -197,10 +264,12 @@ def convert():
             raise ValueError(f"duplicate {cls} name {doc['m_Name']}")
         table[doc["m_Name"]] = fields
 
-    return {
+    result = {
         file: json.dumps(dict(sorted(table.items())), indent=2, ensure_ascii=True) + "\n"
         for file, table in outputs.items()
     }
+    result[PLACEABLES_FILE] = convert_placeables(guids, names)
+    return result
 
 
 def main():

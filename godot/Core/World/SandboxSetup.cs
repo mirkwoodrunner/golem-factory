@@ -46,6 +46,14 @@ namespace GolemFactory.World
             public string roster;
         }
 
+        /// <summary>The Floor Expansion purchase, as Sandbox.unity's FloorExpansionService authored it.</summary>
+        public sealed class Expansion
+        {
+            public int scrapPerRow;
+            public int ironPlatePerRow;
+            public int rowsPerPurchase;
+        }
+
         public sealed class Point
         {
             public float x;
@@ -60,6 +68,7 @@ namespace GolemFactory.World
         public string freeStallSeedNode;
         public int freeStallSeedQuantity;
         public Point playerStart = new Point();
+        public Expansion floorExpansion;
         public List<NodeEntry> nodes = new List<NodeEntry>();
         public List<MarketEntry> market = new List<MarketEntry>();
         public Placement starterBench;

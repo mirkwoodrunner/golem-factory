@@ -51,6 +51,9 @@ each scene; `-- --scenario <name>` runs one to a verdict, prints
 ones. Current scenarios:
 - `world` (Sandbox): the shell matches `SandboxLayout`, all nine stalls publish endpoints, and
   the player walks to the street's far edge and back with the camera following.
+- `build` (Sandbox): every placeable placed through the real build menu and cursor with
+  synthetic mouse and key events, then drag runs, Escape, and a demolition that restores the
+  stockpile exactly.
 - `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
   into the stockpile, over 600 ticks. `--spike-check` is an alias.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
@@ -85,10 +88,27 @@ To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scen
 `SandboxLayoutTests` pins it to Unity's numbers. Don't hand-place walls in the scene.
 Sprite pivots, Unity's import pivots, live in `Scripts/World/SpritePivots`.
 
+## The Sandbox is composed in Core
+
+`Core/World/SandboxWorld` is what Unity's `SandboxBootstrap` did, as a plain object: every
+registry, and the wiring between them and `BuildModeController`. `WorldNode` owns one.
+Unit tests compose the same world with no scene (`SandboxWorldTests`). A new system belongs
+there, not on a node, so a test can reach it.
+
+Buildings are Core `PlaceableBuilding`s. Godot draws them in `Scripts/Buildings/BuildingsLayer`,
+one `BuildingView` each, by listening to `BuildingPlaced`, `BuildingRemoved` and
+`ConnectedShapesChanged`. Don't give a building its own scene with logic in it.
+
+**Z-order:** the floor is z −10 (`FloorLayer.FloorZ`), and floor-level things (belts, pipes,
+the ghost, shadows) are −1. Z-index is global within a canvas layer, so anything you add at a
+negative z must stay above −10.
+
 ## Authored data (`godot/data/*.json`)
 
 The chassis, logic cores, punch cards, recipes, Clock Tower stages and the Assembly Line
-deck: what Unity kept as ScriptableObject `.asset` files.
+deck: what Unity kept as ScriptableObject `.asset` files. Also `placeables.json` (the build
+menu, from the prefabs) and `sandbox.json` (the world's setup, hand-written from
+`Sandbox.unity` in G4).
 
 - **Until cutover (G10) the Unity assets are the source of truth.** Regenerate the JSON with
   `python Tools/Data/convert_unity_assets.py`. `--check` exits 1 if the JSON is stale. After
