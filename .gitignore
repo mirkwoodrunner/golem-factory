@@ -75,3 +75,6 @@ crashlytics-build.properties
 
 # Local art review scratch (generated comparison images, not part of the build)
 art-review/
+
+# Python bytecode (Tools/ scripts import each other since the art-path helper)
+__pycache__/

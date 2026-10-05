@@ -9,7 +9,7 @@
 [ext_resource type="Script" path="res://Scripts/ConstructionStationNode.cs" id="7_station"]
 [ext_resource type="Script" path="res://Scripts/PlayerNode.cs" id="8_player"]
 [ext_resource type="Script" path="res://Scripts/Hud.cs" id="9_hud"]
-[ext_resource type="Script" path="res://Scripts/SpikeCheck.cs" id="10_check"]
+[ext_resource type="Script" path="res://Scripts/Scenarios/ScenarioRunner.cs" id="10_check"]
 [ext_resource type="Texture2D" path="res://art/item_scrap.png" id="11_scrap"]
 
 [node name="Sandbox" type="Node2D"]
@@ -61,7 +61,7 @@ script = ExtResource("9_hud")
 PlayerPath = NodePath("../Entities/Player")
 DepotPath = NodePath("../Entities/Depot")
 
-[node name="SpikeCheck" type="Node" parent="."]
+[node name="Scenarios" type="Node" parent="."]
 script = ExtResource("10_check")
 StationPath = NodePath("../Entities/Station")
 DepotPath = NodePath("../Entities/Depot")

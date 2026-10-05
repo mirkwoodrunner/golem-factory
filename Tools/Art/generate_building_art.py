@@ -26,12 +26,13 @@ Re-runnable and deterministic -- no randomness, so a re-run writes byte-identica
 """
 
 import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from art_paths import art_dir  # noqa: E402
 
 from PIL import Image, ImageDraw
 
-OUT_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "Assets", "_Project", "Art")
+OUT_DIR = art_dir()
 
 TRANSPARENT = (0, 0, 0, 0)
 OUTLINE = (28, 18, 22, 255)

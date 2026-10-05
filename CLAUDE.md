@@ -77,6 +77,11 @@ Editor (or a live MCP-for-Unity bridge, if connected):
   > wanted back. `HardcodedDemoProgram` stays: it is the definition of the reference programs the
   > regression suite pins.
 - **Regenerate art**: there are now **two** generators, and which one owns a file matters.
+  > **Since the Godot conversion's G3 the generators write to `godot/art/`, not
+  > `Assets/_Project/Art/`.** Unity's copy of the art is frozen until cutover. Where this
+  > section says a generator writes to `Assets/`, read `godot/art/`. `--out-root <dir>`
+  > redirects any of them, and `python Tools/Art/verify_art.py` checks that a regeneration
+  > reproduces the committed art. See `godot/CLAUDE.md`, "Art and fonts".
   - `python Tools/Art/generate_topdown_environment.py` — the floor, walls, props, belt and
     cursor overlays. Square, top-down, PPU 64. **This is the one that owns the environment.**
   - `python Tools/Art/generate_placeholder_art.py` — everything else (chassis, items, player,

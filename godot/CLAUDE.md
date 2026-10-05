@@ -33,14 +33,43 @@ dotnet test godot/GolemFactory.sln            # Core tests: ~0.6 s, no engine in
 
 G=".../Godot_v4.7.2-stable_mono_win64_console.exe"
 "$G" --headless --path godot --build-solutions --quit             # compile the Godot project
-"$G" --headless --path godot --fixed-fps 60 -- --spike-check      # end-to-end check, exit 0/1
+"$G" --headless --path godot --fixed-fps 60 -- --scenario loop    # an end-to-end scenario, exit 0/1
 "$G" --path godot --fixed-fps 60 --quit-after 240 \
-     --write-movie <dir>/frame.png -- --spike-demo                 # render frames to look at
+     --write-movie <dir>/frame.png -- --demo                       # render frames to look at
 ```
 
 `--fixed-fps 60` makes every frame 1/60 s of game time, so headless runs are deterministic
-and as fast as the machine allows. `--spike-check` auto-builds the golem, runs 600 ticks and
-asserts the whole loop (node → extractor → belt → unloader → depot).
+and as fast as the machine allows.
+
+**Scenarios** (`Scripts/Scenarios/`) are the scene-level checks. `ScenarioRunner` is a node in
+`Sandbox.tscn`; `-- --scenario <name>` runs one to a verdict, prints
+`[scenario <name>] PASS|FAIL …` and exits 0/1. An unknown name fails and lists the known
+ones. Current scenarios:
+- `loop`: the station builds a Scavenger, which mines onto the belt, which the unloader hauls
+  into the stockpile, over 600 ticks. `--spike-check` is an alias.
+- `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
+
+To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scenarios`.
+`--demo` (alias `--spike-demo`) only runs the scripted setup, for `--write-movie` captures.
+
+## Art and fonts
+
+- **The art lives in `godot/art/`**, mirroring Unity's `Assets/_Project/Art/` including
+  `UI/…`. Since G3 the generators in `Tools/Art/` write here. Their root comes from
+  `Tools/Art/art_paths.py`, and `--out-root <dir>` redirects any of them. Unity's copy is
+  frozen until cutover.
+- **`python Tools/Art/verify_art.py`** regenerates everything into a scratch folder and
+  compares it with `godot/art/`. Exit 1 means a generated sprite drifted. It also lists the
+  sprites that are authored rather than generated (walk frames, item and chassis art, the
+  Steampunk pack), so "not generated" is never mistaken for "verified".
+- Texture filtering is nearest-neighbour project-wide. Standing sprites are placed with
+  `GridConversions.StandOnCell`, Unity's BottomCenter pivot. The five pipe tiles are
+  centre-pivoted (they rotate in quarter turns). 9-slice UI uses `StyleBoxTexture` margins.
+  Those are set where each sprite is drawn, in G5 and G7, not by an import pass.
+- **Font:** `fonts/LiberationSans.ttf` (OFL; licence beside it) is the project font
+  (`gui/theme/custom_font`). Game text is printable Latin-1 plus → ≥ █ ░, with · as the
+  separator, and the `font-glyphs` scenario pins that. To use a new character, check that
+  the font has it; if not, add a fallback font and widen the scenario in the same change.
 
 ## Authored data (`godot/data/*.json`)
 

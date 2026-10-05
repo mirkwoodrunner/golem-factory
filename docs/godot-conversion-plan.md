@@ -9,7 +9,8 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 | G0: Land the spike | **done**: PR #28, merged 2026-10-04 |
 | G1: Authored data as JSON | in review: PR #29 |
 | G2: Gameplay services into Core | **built**, in review as stacked sub-PRs: G2a station + assembly bay, G2b build mode, G2c interactions, G2d save + the rest |
-| G3–G10 | not started |
+| G3: Art and fonts pipeline | in review |
+| G4–G10 | not started |
 
 ## Context
 
@@ -237,6 +238,24 @@ found missing.
 
 **Exit:** a regenerated `godot/art/` matches the Unity art byte for byte, and the font check
 passes.
+
+**As built (G3):**
+- **One art root.** Every generator and the trim tool take their output folder from
+  `Tools/Art/art_paths.py` (`godot/art/`), and `--out-root` redirects any of them. All 147
+  sprites are in `godot/art/`, with `UI/…` folders mirrored.
+- **Exit met.** `Tools/Art/verify_art.py` regenerates everything into a scratch folder: all
+  68 generated sprites are byte-identical to the committed art. The other 79 are authored
+  (walk frames, item and chassis art, the Steampunk pack) and are listed by name. The trim
+  tool reports every standing sprite already trimmed.
+- **No import pass.** Unity's PPU, pivot and 9-slice settings are applied where each sprite
+  is drawn: `StandOnCell` for standing sprites, centred pipe tiles (G5), `StyleBoxTexture`
+  margins (G7). Nearest filtering is already project-wide.
+- **Font.** `godot/fonts/LiberationSans.ttf` (OFL licence alongside) is the project font. It
+  covers printable Latin-1 and all four allowlisted glyphs, so no fallback font is needed. A
+  probe confirmed `HasChar` returns false for glyphs the font lacks, so the check has teeth.
+- **The scenario runner.** The spike's `SpikeCheck` became `Scripts/Scenarios/ScenarioRunner`
+  with `-- --scenario <name>`: `loop` (alias `--spike-check`) and `font-glyphs`. An unknown
+  name fails, and `--demo` replaces `--spike-demo`.
 
 ### G4: The world scene
 `Sandbox.tscn` at full size:

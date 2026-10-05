@@ -28,12 +28,13 @@ Pillow.
 """
 
 import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from art_paths import art_dir  # noqa: E402
 
 from PIL import Image, ImageDraw
 
-OUT_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "..", "Assets", "_Project", "Art", "UI", "TechTree"
-)
+OUT_DIR = art_dir("UI", "TechTree")
 
 # Lifted verbatim from generate_workbench_ui_art.py so the two screens share one palette.
 MAHOGANY_DARK = (66, 36, 25, 255)
