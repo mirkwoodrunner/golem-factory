@@ -14,8 +14,9 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 | G5: Buildings and build mode | in review; **waiting on your hands-on check** |
 | G5b: The player's hands (pulled forward from G6) | in review |
 | G6: Golems in full | in review |
-| G7: The Workbench | in review; **waiting on your screenshot review** |
-| G8–G10 | not started |
+| G7: The Workbench | in review (you approved the screenshot) |
+| G8: Management HUD and remaining screens | in review |
+| G9–G10 | not started |
 
 ## Context
 
@@ -548,6 +549,53 @@ claims. See G7's As built.)
 - Port the UI PlayMode tests that test policy, not pixels.
 
 **Exit:** every screen opens, and the exclusivity scenario passes.
+
+**As built (G8):**
+- **Core models**, one per panel, each the decisions of a Unity panel with its UGUI taken out:
+  - `InventoryReadout`: the rows, with rates from a `BufferRateTracker` that `SandboxWorld`
+    now samples in real time (Unity's `BufferThroughputMonitor`).
+  - `AlertsStrip`: reconciles against the roster every 0.5 s.
+  - `ManagementTabs` and `PatentBrowser`.
+  - `AssemblyLineBoard`: the wallet, bay, floor and slot rows, with Claim, Upgrade and Extend.
+  - `TechTreeReadout`: the Ledger's selection and recipe pane.
+  - `ScreenCoordinator`: opening any full screen closes the others. In Unity that was spread
+    over three classes and once let screens stack.
+- **The Assembly Line is live.** `SandboxWorld` wires `SandboxBootstrap.RegisterAssemblyLine`
+  in its order: the unlock context from the tech-tree ledger *before* seeding, then the
+  opening hand, then claims. The Workbench vault is now gated (`gateWorkbenchRoster: 1`, as in
+  `Sandbox.unity`). The tech-tree tracker polls and promotes cards as the factory produces new
+  goods.
+- **Godot screens, from WorkbenchCanvas.prefab's numbers:**
+  - `ManagementScreen` (Tab): Inventory, AssemblyLine, Patents, SaveLoad and Ledger tabs.
+  - `AssemblyLineTab`.
+  - `LedgerTab`: the full chart over the tt_* chrome, drag to pan, with the recipe pane
+    outside the chart.
+  - `HudOverlay`, replacing the spike's debug readout in the Sandbox: steam gauge, alerts
+    strip, Clock Tower panel, and the simulation control bar (pause/play, 0.5x–4x).
+
+  Floor Expansion now works end to end: Extend buys rows, which are planked and walled, and
+  the walk and build bounds follow.
+- **Unity fixes found in the port** (each has a test or scenario):
+  - **The Patents Load button lost the blueprint.** It loaded the blueprint, then opened the
+    Workbench, whose Open re-reads the target golem's program. Godot opens first, then loads.
+  - **The Assembly Line wallet was `ScrapBuffer`**, an M9 setting never revisited after the
+    economy moved to `FactoryStockpile`. A Scrap-priced card read its price against a buffer
+    the player can't fill. Claims now pay from the stockpile, like the bay and floor rows.
+- **Port bugs caught by the frames and the scenario, all fixed:**
+  - The Clock Tower panel said "starved of FrameSection" with no tower built, because the site
+    was given every stage at startup. Unity's site starts empty, and a built tower brings its
+    stages.
+  - Rebuilt walls lost their names (a queued node stays in the tree).
+  - A Ledger rebuild flashed unstyled plaques for one frame.
+- **The SaveLoad tab** is drawn as the prefab has it, with its buttons disabled and a line
+  saying save/load arrives in G9.
+- **For your attention:** the Assembly Line opens with the three opening-hand verbs in its
+  slots, cards you already own. Claiming them is free and buys nothing. Unity seeds the slots
+  before granting the hand, and only a refill skips owned cards. This is faithful to Unity,
+  not fixed; it's yours to decide.
+- **Tests:** 7 held suites ported onto the Core models, plus regression tests for the fixes;
+  4 tests were replaced by the new `management` scenario. Ledger 1465/1473; the 8 left are
+  G9's save tests.
 
 ### G9: Save and load end to end
 `SaveLoadService` plus Godot `SaveFileIO`, respawning player-built golems and rebuilding

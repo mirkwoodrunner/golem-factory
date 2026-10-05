@@ -9,6 +9,8 @@ using GolemFactory.Compat;
 using GolemFactory.Data;
 using GolemFactory.Economy;
 using GolemFactory.Golems;
+using GolemFactory.AssemblyLine;
+using GolemFactory.Progression;
 using GolemFactory.Player;
 using GolemFactory.PunchCards;
 using GolemFactory.Simulation;
@@ -162,7 +164,11 @@ namespace GolemFactory.World
             }
 
             // Ticked whether or not a tower is built: an unbuilt tower accrues nothing.
-            ClockTower.Configure(Definitions.ClockTowerStages.Values.OrderBy(s => s.name));
+            // EMPTY, as ManagerHolders.prefab's site holder was (stages: []): the site stays
+            // dormant until a tower is BUILT, and the placed tower hands it the stages it carries
+            // (PlaceableClockTower.RegisterAsSpatialEndpoint). Configured with every stage at
+            // startup, the HUD said "Clock Tower starved of FrameSection" over an empty workshop.
+            ClockTower.Configure(new ClockTowerStageDefinition[0]);
             ClockTower.Attach();
             Clock.Register(ClockTower);
 
@@ -197,6 +203,55 @@ namespace GolemFactory.World
 
             WireInteractor();
             WireWorkbench(setup.workbench);
+            Alerts = new AlertsStrip(() => _golems);
+            Alerts.Attach();
+            WireProgression(setup.assemblyLine);
+        }
+
+        /// <summary>The tech tree's progress ledger, read by the Assembly Line's unlocks and the Ledger tab.</summary>
+        public TechTreeProgressTracker TechTree { get; } = new TechTreeProgressTracker();
+
+        /// <summary>The Assembly Line (§8): draft slots, claims, the cards waiting on prerequisites.</summary>
+        public AssemblyLineState AssemblyLine { get; private set; }
+
+        /// <summary>The Assembly Line tab's rows and actions.</summary>
+        public AssemblyLineBoard AssemblyLineBoard { get; private set; }
+
+        /// <summary>
+        /// SandboxBootstrap.RegisterAssemblyLine and WireTechTree, in their order. THE UNLOCK
+        /// CONTEXT IS WIRED BEFORE THE POOL IS SEEDED (root CLAUDE.md): seeding first makes every
+        /// prerequisite unanswerable, which deliberately passes, and §8.3's gating goes inert. The
+        /// context reads the tech tree's ledger, which only grows, so spending a good cannot
+        /// re-lock a card.
+        /// </summary>
+        private void WireProgression(SandboxSetup.AssemblyLineSetup setup)
+        {
+            TechTree.Configure(Buffers, ClockTower.Site);
+            TechTree.ConfigureWorld(() => _golems, InteractableBuildings);
+            TechTree.ConfigureFloorBounds(Bounds);
+            TechTree.Attach();
+
+            if (setup == null || string.IsNullOrEmpty(setup.deck) || !Definitions.Decks.TryGetValue(setup.deck, out DraftableCardCatalog deck))
+            {
+                return;
+            }
+
+            AssemblyLine = new AssemblyLineState(setup.slots);
+            AssemblyLine.ConfigureUnlockContext(itemType => TechTree.Ledger.HasItem(itemType));
+            AssemblyLine.SeedCandidates(deck.Cards);
+            foreach (DraftableCardDefinition card in deck.OpeningHand)
+            {
+                AssemblyLine.GrantClaim(setup.claimUserId, card);
+            }
+            if (setup.gateWorkbench)
+            {
+                Workbench.ConfigureCardGating(AssemblyLine, setup.claimUserId);
+            }
+            TechTree.ConfigureCardClaims(AssemblyLine, setup.claimUserId);
+
+            AssemblyLineBoard = new AssemblyLineBoard(AssemblyLine, Buffers, _stockpileBufferId, setup.claimUserId);
+            AssemblyLineBoard.ConfigureBays(AssemblyBay, _stockpileBufferId);
+            AssemblyLineBoard.ConfigureFloorExpansion(FloorExpansion);
         }
 
         private void WireWorkbench(SandboxSetup.WorkbenchRoster roster)
@@ -375,7 +430,35 @@ namespace GolemFactory.World
         }
 
         /// <summary>Advances the simulation by real seconds (WorldNode calls this every frame).</summary>
-        public void Advance(float seconds) => Clock.Advance(seconds);
+        public void Advance(float seconds)
+        {
+            Clock.Advance(seconds);
+
+            // Unity's BufferThroughputMonitor and AlertsPanel ran on Update in real time, not on
+            // simulation ticks: the rate column reads "per minute of the player's time", and
+            // the strip must keep reconciling while the clock is paused.
+            _realSeconds += seconds;
+            if (_realSeconds >= _nextThroughputSample)
+            {
+                _nextThroughputSample = _realSeconds + BufferRateTracker.DefaultSampleIntervalSeconds;
+                Throughput.Sample(_realSeconds, Buffers);
+            }
+            Alerts?.Update(seconds);
+            AssemblyLine?.Tick(seconds);
+            TechTree.Update(_realSeconds);
+        }
+
+        private float _realSeconds;
+        private float _nextThroughputSample;
+
+        /// <summary>The Inventory tab's rate history (Unity's BufferThroughputMonitor), sampled in real time.</summary>
+        public BufferRateTracker Throughput { get; } = new BufferRateTracker();
+
+        /// <summary>The HUD's alerts strip. Null on the bare (slice) world.</summary>
+        public AlertsStrip Alerts { get; private set; }
+
+        /// <summary>The full screens, one up at a time.</summary>
+        public ScreenCoordinator Screens { get; } = new ScreenCoordinator();
 
         private sealed class TickAdapter : ITickable
         {

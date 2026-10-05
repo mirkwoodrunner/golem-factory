@@ -8,6 +8,8 @@ using GolemFactory.Golems;
 using GolemFactory.PunchCards;
 using GolemFactory.Tests.Data;
 using GolemFactory.World;
+using GolemFactory.AssemblyLine;
+using GolemFactory.UI;
 using NUnit.Framework;
 
 namespace GolemFactory.Tests.World
@@ -174,15 +176,71 @@ namespace GolemFactory.Tests.World
         }
 
         [Test]
-        public void TheWorkbenchOffersSandboxUnitysRoster()
+        public void TheWorkbenchIsGated_OfferingTheOpeningHandUntilCardsAreClaimed()
         {
+            // Sandbox.unity's gateWorkbenchRoster: 1 -- the vault offers only cards claimed on
+            // the Assembly Line. The opening hand is three verbs; the five chassis cards are
+            // claimed from the line like any other, so the rack starts empty (a golem keeps the
+            // chassis its station built it with -- the rack is for switching).
             SandboxWorld world = Compose();
             Assert.AreEqual(SandboxWorld.WorkbenchSockets, world.Workbench.SocketCount);
-            Assert.AreEqual(5, world.Workbench.RackChassis.Count());
-            Assert.AreEqual(2, world.Workbench.VaultLogicCores.Count());
-            Assert.AreEqual(24, world.Workbench.VaultAppendages.Count(),
-                "WorkbenchCanvas.prefab's two verbs plus Sandbox.unity's 22-card override");
-            Assert.IsFalse(world.Workbench.IsRosterGated, "ungated until the Assembly Line panel (G8) can grant claims");
+            Assert.IsTrue(world.Workbench.IsRosterGated);
+            CollectionAssert.AreEquivalent(new[] { "ExtractScrap", "HaulScrap", "PushOutput" },
+                world.Workbench.VaultAppendages.Select(a => a.name));
+            Assert.AreEqual(0, world.Workbench.RackChassis.Count());
+            Assert.AreEqual(2, world.Workbench.VaultLogicCores.Count(), "logic cores are not gated");
+        }
+
+        [Test]
+        public void ClaimingAChassisCard_PutsItOnTheRack()
+        {
+            SandboxWorld world = Compose();
+            DraftableCardDefinition scavenger = world.Definitions.Cards["Card_ClockworkScavenger"];
+
+            world.AssemblyLine.GrantClaim("LocalPlayer", scavenger);
+
+            CollectionAssert.AreEqual(new[] { "ClockworkScavenger" }, world.Workbench.RackChassis.Select(c => c.name));
+        }
+
+        [Test]
+        public void TheAssemblyLineStartsLocked_AndTheLedgerOpensIt()
+        {
+            // §8.3: no card whose prerequisite the factory has never produced sits in a slot.
+            SandboxWorld world = Compose();
+            Assert.That(world.AssemblyLine.WaitingCards.Count, Is.GreaterThan(0), "cards wait on prerequisites");
+            foreach (AssemblyLineRow row in world.AssemblyLineBoard.Rows().Where(r => r.Kind == AssemblyLineRowKind.Slot))
+            {
+                StringAssert.DoesNotContain("Coking", row.Text, "R1 Coking in a slot before the factory has seen coal");
+            }
+
+            int waiting = world.AssemblyLine.WaitingCards.Count;
+            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Coal, 1);
+            world.TechTree.Poll();
+
+            Assert.That(world.AssemblyLine.WaitingCards.Count, Is.LessThan(waiting), "holding coal unlocked something");
+        }
+
+        [Test]
+        public void TheClockTowerIsDormantUntilOneIsBuilt()
+        {
+            SandboxWorld world = Compose();
+            Assert.IsFalse(world.ClockTower.Site.BuildReading().HasActiveStage,
+                "no tower stands, so nothing is demanded and nothing is starved");
+
+            PlaceableEntry tower = world.Placeables.Single(p => p.Key == "ClockTowerPrefab");
+            world.Build.SetActivePrefab(tower.Prefab);
+            world.Build.PlaceOrRemove(new Vector2Int(4, 6));
+
+            Assert.IsTrue(world.ClockTower.Site.BuildReading().HasActiveStage, "the built tower brought its stages");
+        }
+
+        [Test]
+        public void TheBoardChargesTheStockpile()
+        {
+            SandboxWorld world = Compose();
+            AssemblyLineRow wallet = world.AssemblyLineBoard.Rows()[0];
+            StringAssert.Contains(world.StockpileBufferId, wallet.Text,
+                "Unity's ScrapBuffer wallet was a stale M9 setting; claims pay from the stockpile");
         }
 
         [Test]

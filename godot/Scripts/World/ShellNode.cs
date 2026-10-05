@@ -48,8 +48,15 @@ namespace GolemFactory.Nodes
             var ambient = new CanvasModulate { Name = "Ambient", Color = new Color(AmbientLevel, AmbientLevel, AmbientLevel) };
             Callable.From(() => GetParent().AddChild(ambient)).CallDeferred();
 
-            FloorBounds bounds = WorldNode.Find(this)?.Bounds ?? new FloorBounds();
+            WorldNode world = WorldNode.Find(this);
+            FloorBounds bounds = world?.Bounds ?? new FloorBounds();
             RebuildWalls(bounds.NorthExtent);
+
+            // The back wall, its sconces and corner posts move north with a Floor Expansion.
+            if (world?.Setup != null)
+            {
+                world.Sandbox.FloorExpansion.RowsAdded += (from, to) => RebuildWalls(bounds.NorthExtent);
+            }
 
             foreach (LayoutPiece prop in SandboxLayout.Props())
             {
@@ -70,6 +77,10 @@ namespace GolemFactory.Nodes
         {
             foreach (Node2D wall in _walls)
             {
+                // Detached now, freed later: a queued node stays in the tree until the frame
+                // ends, so the new "WallNorth_0" would have been renamed out from under its own
+                // name (found by the `management` scenario's Floor Expansion check).
+                RemoveChild(wall);
                 wall.QueueFree();
             }
             _walls.Clear();

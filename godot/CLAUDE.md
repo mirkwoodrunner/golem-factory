@@ -62,6 +62,10 @@ ones. Current scenarios:
 - `workbench` (Sandbox): program a golem end to end through the Workbench with real mouse
   drags. Also covers socket highlights, the dial, failed drags leaving no orphans, Engage,
   Patent, and close/reopen.
+- `management` (Sandbox): the HUD (alerts strip, pause and play), and Tab opening Management
+  with the HUD and build menu hidden. Covers the Inventory icons, the tab exclusivity, an
+  Assembly Line claim reaching the Workbench, Extend planking and walling new rows, Patents
+  Load, the Ledger's plaques and recipe pane, and one screen at a time.
 - `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
   into the stockpile, over 600 ticks. `--spike-check` is an alias.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
@@ -111,6 +115,13 @@ one `BuildingView` each, by listening to `BuildingPlaced`, `BuildingRemoved` and
 only feeds it the position and the keys. A full screen joins the `ModalScreens` group and
 implements `IScreen`; while one is open the player stays still and the world prompt hides. A
 new screen gets that for free.
+
+**Full screens report to `SandboxWorld.Screens`** (`ScreenCoordinator`). Implement
+`IClosableScreen`, `Register` in `_Ready`, and call `Screens.Opening(this)` in `Open`; every
+other screen closes. Don't hand-close siblings. That's the bug class the coordinator replaced.
+
+**Godot node names can't hold `.` or `:`**, and a duplicate sibling name is silently renamed.
+Never find a control by a name built from data (a node id, a card name); keep a lookup.
 
 **Screens are written from their Unity prefab's numbers** with `Scripts/UI/Ugui.cs`.
 `Ugui.Place` takes a RectTransform's anchorMin/anchorMax/anchoredPosition/sizeDelta/pivot.
