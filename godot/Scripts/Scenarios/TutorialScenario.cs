@@ -227,6 +227,51 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
 
+            // Chapter 2: set the Scavenger to work, then on to the Presser and its steam pipe --
+            // the step that marks more than one tile.
+            Do("set the Scavenger to work on its tile", () =>
+            {
+                _world.Golems.First(g => !g.IsRemoved).SetPlacement(_world.Tutorial.GolemSpot, World.Facing.North);
+                return null;
+            });
+            Do("its first cycle opens chapter 2", () => _panel.TitleText == "Cut Gears" ? null : Wait);
+            Do("cut the Gears, claim Scrap Reclamation, build the Presser", () =>
+            {
+                Give(ItemType.Gear, 30);
+                Give(ItemType.IronPlate, 60);
+                Give(ItemType.Scrap, 200);
+                for (int attempt = 0; attempt < 6 && !_world.AssemblyLine.GetClaimedCards("LocalPlayer").Any(c => c.appendage?.name == "AssembleScrapReclamation"); attempt++)
+                {
+                    int slot = Enumerable.Range(0, _world.AssemblyLine.SlotCount)
+                        .FirstOrDefault(i => _world.AssemblyLine.GetCard(i)?.appendage?.name == "AssembleScrapReclamation");
+                    _world.AssemblyLineBoard.Claim(slot);
+                }
+                return _world.StarterStation.TryConstructGolem(_world.Definitions.Chassis["BrassPresser"], out _) ? null : "no Presser";
+            });
+            Do("the pipe step marks both pipe tiles", () =>
+            {
+                if (_panel.TitleText != "Lay a steam pipe")
+                {
+                    return $"on '{_panel.TitleText}'";
+                }
+                var markers = _panel.SpotMarkers.Select(m => m.GetGlobalRect()).ToList();
+                foreach (CoreVector2Int pipe in _world.Tutorial.PipeSpots)
+                {
+                    Vector2 tile = _tree.Root.GetCanvasTransform() * GridConversions.CellToWorld(pipe);
+                    if (!markers.Any(r => r.HasPoint(tile)))
+                    {
+                        return $"no marker on pipe tile {pipe} ({tile}); markers at {string.Join(", ", markers)}";
+                    }
+                }
+                Button row = _menu.Rows.Single(r => r.prefab.name == "SteamPipePrefab").row;
+                if (!_panel.RowHighlight.Visible || !_panel.RowHighlight.GetGlobalRect().Encloses(row.GetGlobalRect()))
+                {
+                    return "the Steam Pipe row is not outlined";
+                }
+                _log.Add($"chapter 2: claimed Scrap Reclamation, built a Presser; the pipe step marks {markers.Count} tiles and outlines Steam Pipe");
+                return null;
+            });
+
             Do("click Skip guide", () => { Click(_panel.SkipButton); return null; });
             Do("Skip put it away", () =>
             {

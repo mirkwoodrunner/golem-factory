@@ -174,6 +174,42 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void AnUnlockedCard_JumpsTheQueue_InDeckOrder()
+        {
+            // G10: a card unlocks when the factory makes what it needs -- the moment it matters --
+            // and used to join the BACK of the queue (in reverse deck order, too), so the first
+            // recipe a Presser runs sat behind half a dozen cards. Now it is next up.
+            DraftableCardDefinition free = MakeCard("Repeat", unique: false);
+            DraftableCardDefinition late1 = MakeCard("AetherHauler");
+            DraftableCardDefinition late2 = MakeCard("CasingPress");
+            DraftableCardDefinition coking = MakeCard("Coking");
+            DraftableCardDefinition reclaim = MakeCard("ScrapReclamation");
+            coking.prerequisiteItemProduced = ItemType.Scrap;
+            reclaim.prerequisiteItemProduced = ItemType.Scrap;
+
+            var line = new AssemblyLineState(1);
+            bool scrapMade = false;
+            line.ConfigureUnlockContext(item => scrapMade);
+            line.SeedCandidates(new[] { free, coking, reclaim, late1, late2 });
+            Assert.AreSame(free, line.GetCard(0));
+
+            scrapMade = true;
+            line.PromoteUnlockedCards();
+            Assert.IsTrue(line.TryClaimSlot(0, User, new StorageBufferRegistry(), Wallet), "the free verb");
+
+            Assert.AreSame(coking, line.GetCard(0), "the unlocked cards come up next, in deck order");
+            Assert.IsTrue(line.TryClaimSlot(0, User, Funded(), Wallet));
+            Assert.AreSame(reclaim, line.GetCard(0), "and then the second -- ahead of the Aether-Hauler");
+        }
+
+        private StorageBufferRegistry Funded()
+        {
+            var buffers = new StorageBufferRegistry();
+            buffers.Deposit(Wallet, ItemType.Scrap, 100);
+            return buffers;
+        }
+
+        [Test]
         public void ACardPrerequisite_IsSatisfiedByClaimingIt()
         {
             DraftableCardDefinition first = MakeCard("Smelting");

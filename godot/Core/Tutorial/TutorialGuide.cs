@@ -26,6 +26,9 @@ namespace GolemFactory.Tutorial
         /// </summary>
         public Vector2Int? Spot { get; }
 
+        /// <summary>Every tile the step marks: <see cref="Spot"/> first, then any others (a pipe run).</summary>
+        public IReadOnlyList<Vector2Int> Spots { get; }
+
         public Facing? SpotFacing { get; }
 
         internal Func<SandboxWorld, bool> Done { get; }
@@ -35,10 +38,20 @@ namespace GolemFactory.Tutorial
         internal TutorialStep(
             string id, string title, string body, Func<SandboxWorld, bool> done,
             Func<SandboxWorld, Vector2Int?> target, Func<SandboxWorld, string> progress = null, string menuKey = null,
-            Vector2Int? spot = null, Facing? spotFacing = null)
+            Vector2Int? spot = null, Facing? spotFacing = null, Vector2Int[] moreSpots = null)
         {
-            Spot = spot;
+            Spot = spot ?? (moreSpots != null && moreSpots.Length > 0 ? moreSpots[0] : (Vector2Int?)null);
             SpotFacing = spotFacing;
+            var spots = new List<Vector2Int>();
+            if (spot != null)
+            {
+                spots.Add(spot.Value);
+            }
+            if (moreSpots != null)
+            {
+                spots.AddRange(moreSpots);
+            }
+            Spots = spots;
             Id = id;
             Title = title;
             Body = body;
@@ -73,6 +86,7 @@ namespace GolemFactory.Tutorial
         private readonly SandboxWorld _world;
         private readonly List<TutorialStep> _steps;
         private bool _cycleSeen;
+        private readonly HashSet<string> _completedSinceEntry = new HashSet<string>();
 
         public TutorialGuide(SandboxWorld world)
         {
@@ -149,6 +163,7 @@ namespace GolemFactory.Tutorial
         {
             Index = index;
             _cycleSeen = false;
+            _completedSinceEntry.Clear();
             Version++;
         }
 
@@ -158,6 +173,7 @@ namespace GolemFactory.Tutorial
             if (_world.Golems.Any(g => g != null && !g.IsRemoved && g.GolemId == e.GolemId))
             {
                 _cycleSeen = true;
+                _completedSinceEntry.Add(e.GolemId);
             }
         }
 
@@ -208,6 +224,47 @@ namespace GolemFactory.Tutorial
 
         /// <summary>Beside the golem, east of it.</summary>
         public Vector2Int BoilerSpot => StallCell + new Vector2Int(1, 1);
+
+        // Chapter 2 extends the same column north: the Presser stands on the far side of the first
+        // depot, hauling the Scrap the Scavenger delivers (every depot is a door into the one
+        // stockpile), and pushes Iron Plate into a second depot in front of it. It is two tiles
+        // from the boiler, so it needs the game's first steam pipe -- the lesson of Phase 2.
+        //
+        //     depot 2      <- the Presser pushes Iron Plate into it
+        //     Presser  P   <- P: steam pipe
+        //     depot 1  P
+        //     golem boiler
+        //     Scrap stall
+
+        /// <summary>Where the first Brass Presser stands: just north of the first depot.</summary>
+        public Vector2Int PresserSpot => StallCell + new Vector2Int(0, 3);
+
+        /// <summary>In front of the Presser.</summary>
+        public Vector2Int PresserDepotSpot => StallCell + new Vector2Int(0, 4);
+
+        /// <summary>The pipe run from the boiler up the Presser's east side.</summary>
+        public Vector2Int[] PipeSpots => new[] { StallCell + new Vector2Int(1, 2), StallCell + new Vector2Int(1, 3) };
+
+        private bool SteamReachesPresserSpot => _world.Steam.Reaches(PresserSpot, _world.Clock.CurrentTick);
+
+        private IEnumerable<GolemEntity> Pressers =>
+            LiveGolems.Where(g => g.Program?.chassis != null && g.Program.chassis.name == "BrassPresser");
+
+        private bool IsIronPresser(GolemEntity golem) =>
+            golem.Program?.logicCore != null
+            && golem.Program.appendages.Any(a => a != null && a.name == "HaulScrap")
+            && golem.Program.appendages.Any(a => a != null && a.name == "AssembleScrapReclamation")
+            && golem.Program.appendages.Any(a => a != null && a.name == "PushOutput");
+
+        private bool HasClaimed(string appendageName)
+        {
+            string user = _world.Setup?.assemblyLine?.claimUserId;
+            return _world.AssemblyLine != null && user != null
+                && _world.AssemblyLine.GetClaimedCards(user).Any(c => c.appendage != null && c.appendage.name == appendageName);
+        }
+
+        private string Counts(params (string item, int goal)[] goals) =>
+            string.Join("  \u00b7  ", goals.Select(g => Count(g.item, g.goal)));
 
         private bool SteamReachesGolemSpot => _world.Steam.Reaches(GolemSpot, _world.Clock.CurrentTick);
 
@@ -314,10 +371,76 @@ namespace GolemFactory.Tutorial
                 spot: GolemSpot,
                 spotFacing: Facing.North),
 
+            // --- Chapter 2: the first machine that CRAFTS --------------------------------------
+            // progression-design §9 Phase 1's goal and Phase 2's lesson: a Scavenger gathers but
+            // cannot craft; the Brass Presser can, and running it needs the first steam pipe.
+
             new TutorialStep(
-                "done", "Your factory is running",
-                "Press Tab for the Management screen: your Inventory, the Assembly Line (claim new cards to "
-                + "program with), and the Ledger (what to build next). F1 brings this guide back.",
+                "gears", "Cut Gears",
+                "Your Scavenger gathers, but it can't craft. The next golem can: the Brass Presser. It costs "
+                + "10 Gears. At the bench, press R until it shows R8 Gear Cutting (2 Iron Plate become 1 Gear), "
+                + "then hold E. Short of Iron Plate? Switch back to R2 and crank some.",
+                w => Stock(ItemType.Gear) >= 10,
+                w => ScrapFirst(1, Bench),
+                w => Counts((ItemType.Gear, 10), (ItemType.IronPlate, 2))),
+
+            new TutorialStep(
+                "claim", "Claim Scrap Reclamation",
+                "A golem can only use cards you own. Press Tab, open the Assembly Line, and claim "
+                + "Scrap Reclamation: it lets a golem turn Scrap into Iron Plate. Not offered yet? "
+                + "Claim another card to bring the next one up.",
+                w => HasClaimed("AssembleScrapReclamation"),
+                w => null),
+
+            new TutorialStep(
+                "presser", "Build a Brass Presser",
+                "At the construction station, press E and choose the Brass Presser "
+                + "(60 Scrap + 20 Iron Plate + 10 Gear). Your Scavenger's depot fills with Scrap while you work.",
+                w => Pressers.Any(),
+                w => ScrapFirst(60, Station),
+                w => Counts((ItemType.Scrap, 60), (ItemType.IronPlate, 20), (ItemType.Gear, 10))),
+
+            new TutorialStep(
+                "pipe", "Lay a steam pipe",
+                "The Presser will stand two tiles from the boiler, out of its reach. Build Steam Pipe "
+                + "(1 Iron Plate each) on the two marked tiles: steam runs along pipes to any golem beside them.",
+                w => SteamReachesPresserSpot,
+                w => PipeSpots[0],
+                menuKey: "SteamPipePrefab",
+                moreSpots: PipeSpots),
+
+            new TutorialStep(
+                "depot2", "A depot for its output",
+                "Build a second Depot on the marked tile. The Presser will take Scrap from the first depot "
+                + "behind it and push Iron Plate into this one. Every depot opens onto the same stockpile.",
+                w => Built.Any(b => b.Cell == PresserDepotSpot && b.GetPart<PlaceableDepot>() != null),
+                w => ScrapFirst(15, PresserDepotSpot),
+                w => Count(ItemType.Scrap, 15),
+                menuKey: "DepotPrefab",
+                spot: PresserDepotSpot),
+
+            new TutorialStep(
+                "program-presser", "Program the Presser",
+                "In the Workbench: Always On into TRIGGER, then Haul Scrap, Assemble Scrap Reclamation and "
+                + "Push Output into STEPS 1 to 3, and pull ENGAGE. Closed it? Press E at the Presser.",
+                w => Pressers.Any(IsIronPresser),
+                w => Pressers.Select(g => (Vector2Int?)g.Cell).FirstOrDefault()),
+
+            new TutorialStep(
+                "work-presser", "Make Iron Plate",
+                "Move the Presser with G onto the marked tile, between the two depots, and press R until it "
+                + "faces up. It hauls Scrap from behind, presses it into Iron Plate, and pushes it forward.",
+                w => Pressers.Any(g => _completedSinceEntry.Contains(g.GolemId)),
+                w => Pressers.Any(g => g.Cell == PresserSpot) ? PresserSpot
+                    : Pressers.Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? PresserSpot,
+                spot: PresserSpot,
+                spotFacing: Facing.North),
+
+            new TutorialStep(
+                "done", "Iron Plate, on its own",
+                "Next, keep the boiler fed: claim R1 Coking, then build a Presser that runs Haul Coal, "
+                + "Assemble Coking, Push, fed by a Scavenger at the Coal stall. Tab shows your Inventory, "
+                + "the Assembly Line and the Ledger, which maps the road ahead. F1 brings this guide back.",
                 w => false,
                 w => null),
         };

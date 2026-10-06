@@ -168,25 +168,43 @@ namespace GolemFactory.AssemblyLine
         /// </summary>
         public int PromoteUnlockedCards()
         {
-            int promoted = 0;
-            for (int i = _waiting.Count - 1; i >= 0; i--)
+            // To the FRONT of the queue, in deck order (G10, found writing the guide's second
+            // chapter). A card unlocks the moment the factory makes what it needs, which is the
+            // moment the player needs it -- and it used to join the BACK, behind the Aether-Hauler
+            // and Casing Press cards, so R2 Scrap Reclamation, the first recipe a Presser runs,
+            // came up only after claiming through half a dozen cards, two of them unaffordable
+            // that early and so stuck in their slots. (The loop also ran backwards, so cards
+            // unlocked together arrived in reverse deck order.) Same complaint as the skip-owned
+            // rule in DequeueNextOffer: a card track, not a slot machine.
+            var promotedCards = new List<DraftableCardDefinition>();
+            for (int i = 0; i < _waiting.Count; i++)
             {
-                if (!IsUnlocked(_waiting[i]))
+                if (IsUnlocked(_waiting[i]))
                 {
-                    continue;
+                    promotedCards.Add(_waiting[i]);
                 }
-
-                _refillQueue.Enqueue(_waiting[i]);
-                _waiting.RemoveAt(i);
-                promoted++;
             }
 
-            if (promoted > 0)
+            if (promotedCards.Count > 0)
             {
+                foreach (DraftableCardDefinition card in promotedCards)
+                {
+                    _waiting.Remove(card);
+                }
+                var rest = _refillQueue.ToArray();
+                _refillQueue.Clear();
+                foreach (DraftableCardDefinition card in promotedCards)
+                {
+                    _refillQueue.Enqueue(card);
+                }
+                foreach (DraftableCardDefinition card in rest)
+                {
+                    _refillQueue.Enqueue(card);
+                }
                 RefillEmptySlots();
             }
 
-            return promoted;
+            return promotedCards.Count;
         }
 
         public DraftableCardDefinition GetCard(int slotIndex) => _slots[slotIndex];

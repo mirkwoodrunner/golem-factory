@@ -57,7 +57,7 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
-        public void TheWholeGuide_FromAColdStartToAWorkingGolem()
+        public void TheWholeGuide_FromAColdStartToTheFirstIronPlate()
         {
             SandboxWorld world = Compose();
             DefinitionSet defs = world.Definitions;
@@ -77,7 +77,7 @@ namespace GolemFactory.Tests.Tutorial
 
             Give(world, ItemType.Scrap, 100);
             Give(world, ItemType.IronPlate, 10);
-            PlaceableBuilding boiler = Place(world, "BoilerPrefab", -9, -15);
+            PlaceableBuilding boiler = Place(world, "BoilerPrefab", world.Tutorial.BoilerSpot.x, world.Tutorial.BoilerSpot.y);
             Assert.AreEqual("fuel", StepId(world));
             Assert.AreEqual(boiler.Cell, world.Tutorial.TargetCell, "points at the boiler it means");
 
@@ -95,14 +95,66 @@ namespace GolemFactory.Tests.Tutorial
             Place(world, "DepotPrefab", -8, -14);
             Assert.AreEqual("work", StepId(world));
 
-            // Scrap stall (-8,-16) behind, depot (-8,-14) in front, boiler (-9,-15) beside.
-            golem.SetPlacement(new Vector2Int(-8, -15), Facing.North);
+            // Scrap stall behind, depot in front, boiler beside: the marked layout.
+            golem.SetPlacement(world.Tutorial.GolemSpot, Facing.North);
             world.Clock.Play();
             for (int frame = 0; frame < 600 && StepId(world) == "work"; frame++)
             {
                 world.Advance(1f / 30f);
             }
-            Assert.AreEqual("done", StepId(world), "a finished cycle ends the work step");
+            Assert.AreEqual("gears", StepId(world), "a finished cycle ends chapter 1");
+
+            // --- Chapter 2: the Brass Presser ---------------------------------------------------
+            Give(world, ItemType.Gear, 10);
+            Assert.AreEqual("claim", StepId(world));
+
+            // Claim through the real board: other cards first if Scrap Reclamation is not yet
+            // offered, exactly as the step tells the player to.
+            Give(world, ItemType.Scrap, 400);
+            Give(world, ItemType.IronPlate, 100);
+            Give(world, ItemType.Gear, 20);
+            Give(world, ItemType.Coal, 40);
+            Give(world, ItemType.Coke, 100);
+            var claimed = new System.Collections.Generic.List<string>();
+            for (int attempt = 0; attempt < 30 && StepId(world) == "claim"; attempt++)
+            {
+                int slot = Enumerable.Range(0, world.AssemblyLine.SlotCount)
+                    .FirstOrDefault(i => world.AssemblyLine.GetCard(i)?.appendage?.name == "AssembleScrapReclamation");
+                claimed.Add(world.AssemblyLine.GetCard(slot)?.name);
+                Assert.IsTrue(world.AssemblyLineBoard.Claim(slot), world.AssemblyLineBoard.Status + " after " + string.Join(", ", claimed)
+                    + " | waiting: " + string.Join(", ", world.AssemblyLine.WaitingCards.Select(c => c.name)));
+            }
+            Assert.LessOrEqual(claimed.Count, 3, "Scrap Reclamation comes up within two claims: " + string.Join(", ", claimed));
+            Assert.AreEqual("presser", StepId(world));
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["BrassPresser"], out GolemEntity presser));
+            Assert.AreEqual("pipe", StepId(world));
+            Assert.AreEqual("SteamPipePrefab", world.Tutorial.Current.MenuKey);
+            CollectionAssert.AreEqual(world.Tutorial.PipeSpots, world.Tutorial.Current.Spots, "both pipe tiles marked");
+
+            foreach (Vector2Int pipe in world.Tutorial.PipeSpots)
+            {
+                Place(world, "SteamPipePrefab", pipe.x, pipe.y);
+            }
+            Assert.AreEqual("depot2", StepId(world));
+
+            Place(world, "DepotPrefab", world.Tutorial.PresserDepotSpot.x, world.Tutorial.PresserDepotSpot.y);
+            Assert.AreEqual("program-presser", StepId(world));
+
+            presser.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            Assert.IsTrue(presser.Program.TryAddAppendage(defs.Appendages["HaulScrap"]));
+            Assert.IsTrue(presser.Program.TryAddAppendage(defs.Appendages["AssembleScrapReclamation"]));
+            Assert.IsTrue(presser.Program.TryAddAppendage(defs.Appendages["PushOutput"]));
+            Assert.AreEqual("work-presser", StepId(world));
+
+            // Depot 1 behind (Scrap from the stockpile), depot 2 in front, a pipe beside.
+            presser.SetPlacement(world.Tutorial.PresserSpot, Facing.North);
+            for (int frame = 0; frame < 1200 && StepId(world) == "work-presser"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("done", StepId(world),
+                $"the Presser's first cycle ends chapter 2 (presser {presser.Program.State}, {presser.StallReason} {presser.StallResourceId})");
 
             world.Tutorial.Finish();
             Assert.IsFalse(world.Tutorial.IsShowing);

@@ -763,6 +763,30 @@ buildings. Includes the "no refund on load" duplicator regression.
   - the boiler's [E] caption reads "18 Coke · 2 golems · 1:30 left"
   - loading Coke reports how long it lasts one golem
   - the HUD gauge is labelled "Boiler fuel"
+- **The guide's second chapter: the first Brass Presser** (from playtest: "what should the user
+  do after automating scrap extraction?"). It follows progression-design §9: Phase 1's goal is
+  the Presser, the first golem that crafts, and Phase 2's lesson is that it needs steam piped
+  to it. Seven steps:
+  1. Cut 10 Gears at the bench (R8).
+  2. Claim Scrap Reclamation on the Assembly Line.
+  3. Build the Presser (60 Scrap + 20 Iron Plate + 10 Gear).
+  4. Lay two Steam Pipes on marked tiles from the boiler.
+  5. Build a second depot on its marked tile.
+  6. Program Haul Scrap → Assemble Scrap Reclamation → Push Output.
+  7. Put it on its marked tile, between the two depots. It hauls the Scavenger's Scrap
+     through the first depot (every depot opens onto the one stockpile).
+
+  A closing step points at the Coke line and the Ledger. A step can now mark several tiles
+  (the pipe run), and the Workbench placement covers both programming steps.
+  `TutorialGuideTests` plays both chapters through to the Presser's first Iron Plate, and the
+  `tutorial` scenario checks the pipe step's markers.
+- **Newly unlocked Assembly Line cards jump the queue**, found writing that chapter. A card
+  unlocks when the factory first makes what it needs, and it used to join the *back* of the
+  queue, in reverse deck order. So R2 Scrap Reclamation, the first recipe a Presser runs, came
+  up only after claiming through about six cards, two of them unaffordable that early.
+  Promoted cards now go to the front in deck order, so R2 is at most two free claims away.
+  `AnUnlockedCard_JumpsTheQueue_InDeckOrder` covers it. This changes Unity's gating
+  behaviour; yours to overrule.
 - **Coke burns only for WORKING golems, at half the rate** (your call, from playtest: "it seems
   to burn very fast"). It was 6 Coke/min for every golem in a boiler's reach, working or not;
   it's now 3 Coke/min per golem actually running a step.

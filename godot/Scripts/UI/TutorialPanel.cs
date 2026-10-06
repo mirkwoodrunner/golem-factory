@@ -161,8 +161,8 @@ namespace GolemFactory.Nodes
             }
         }
 
-        /// <summary>The step that is done inside the Workbench, and so is shown over it.</summary>
-        private const string WorkbenchStepId = "program";
+        /// <summary>The steps done inside the Workbench, and so shown over it.</summary>
+        private static readonly string[] WorkbenchStepIds = { "program", "program-presser" };
 
         public override void _UnhandledInput(InputEvent e)
         {
@@ -186,7 +186,7 @@ namespace GolemFactory.Nodes
             TutorialGuide guide = Guide;
             bool screenOpen = ModalScreens.AnyOpen(GetTree());
             _workbench ??= GetTree().Root.FindChild("Workbench", true, false) as WorkbenchScreen;
-            bool inWorkbench = screenOpen && _workbench != null && _workbench.IsOpen && guide?.Current?.Id == WorkbenchStepId;
+            bool inWorkbench = screenOpen && _workbench != null && _workbench.IsOpen && System.Array.IndexOf(WorkbenchStepIds, guide?.Current?.Id) >= 0;
 
             // Over a full screen the guide shows only for the step that happens there; every other
             // step is about the world behind the screen, and the screens have no room to spare.
@@ -197,6 +197,7 @@ namespace GolemFactory.Nodes
                 _arrow.Visible = false;
                 _rowHighlight.Visible = false;
                 _spot.Visible = false;
+                HideExtraSpots(0);
                 return;
             }
 
@@ -282,25 +283,64 @@ namespace GolemFactory.Nodes
         /// <summary>Whether the arrow is pinned to the screen edge (target off screen). For scenarios.</summary>
         public bool OffScreen { get; private set; }
 
+        private readonly System.Collections.Generic.List<Panel> _extraSpots = new System.Collections.Generic.List<Panel>();
+
+        /// <summary>For scenarios: every visible marker, the primary first.</summary>
+        public System.Collections.Generic.IEnumerable<Control> SpotMarkers =>
+            new Control[] { _spot }.Concat(_extraSpots).Where(c => c.Visible);
+
+        private void HideExtraSpots(int fromIndex)
+        {
+            for (int i = System.Math.Max(0, fromIndex); i < _extraSpots.Count; i++)
+            {
+                _extraSpots[i].Visible = false;
+            }
+        }
+
+        /// <summary>
+        /// Lays <paramref name="marker"/> over a floor tile: its two corners through the canvas
+        /// transform, so it follows the camera's zoom as well as its position. Returns its size.
+        /// </summary>
+        private Vector2 PlaceOnTile(Control marker, Compat.Vector2Int cell)
+        {
+            Transform2D canvas = GetViewport().GetCanvasTransform();
+            Vector2 centre = GridConversions.CellToWorld(cell); // a floor tile's centre
+            Vector2 half = new Vector2(GridConversions.CellPixels, GridConversions.CellPixels) * 0.5f;
+            Vector2 topLeft = canvas * (centre - half);
+            Vector2 size = canvas * (centre + half) - topLeft;
+            marker.Position = topLeft;
+            marker.Size = size;
+            marker.Modulate = new Color(1f, 1f, 1f, 0.6f + 0.4f * Mathf.Sin(_time * 5f));
+            return size;
+        }
+
         private void MarkSpot(TutorialGuide guide, bool screenOpen)
         {
             TutorialStep step = guide.Current;
             if (step?.Spot == null || screenOpen)
             {
                 _spot.Visible = false;
+                HideExtraSpots(0);
                 return;
             }
 
-            // The tile's two corners through the canvas transform, so it follows the camera's
-            // zoom as well as its position.
-            Transform2D canvas = GetViewport().GetCanvasTransform();
-            Vector2 centre = GridConversions.CellToWorld(step.Spot.Value); // a floor tile's centre
-            Vector2 half = new Vector2(GridConversions.CellPixels, GridConversions.CellPixels) * 0.5f;
-            Vector2 topLeft = canvas * (centre - half);
-            Vector2 size = canvas * (centre + half) - topLeft;
-            _spot.Position = topLeft;
-            _spot.Size = size;
-            _spot.Modulate = new Color(1f, 1f, 1f, 0.6f + 0.4f * Mathf.Sin(_time * 5f));
+            Vector2 size = PlaceOnTile(_spot, step.Spot.Value);
+
+            // A step can mark more than one tile (a pipe run): the rest get plain outlines.
+            for (int i = 1; i < step.Spots.Count; i++)
+            {
+                if (_extraSpots.Count < i)
+                {
+                    var extra = new Panel { Name = "Spot" + i, MouseFilter = Control.MouseFilterEnum.Ignore };
+                    extra.AddThemeStyleboxOverride("panel", _spot.GetThemeStylebox("panel"));
+                    _spot.GetParent().AddChild(extra);
+                    _spot.GetParent().MoveChild(extra, 0);
+                    _extraSpots.Add(extra);
+                }
+                PlaceOnTile(_extraSpots[i - 1], step.Spots[i]);
+                _extraSpots[i - 1].Visible = true;
+            }
+            HideExtraSpots(step.Spots.Count - 1);
 
             _spotFacing.Visible = step.SpotFacing != null;
             if (step.SpotFacing != null)
