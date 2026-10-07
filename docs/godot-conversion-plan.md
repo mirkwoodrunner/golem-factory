@@ -784,9 +784,18 @@ buildings. Includes the "no refund on load" duplicator regression.
   unlocks when the factory first makes what it needs, and it used to join the *back* of the
   queue, in reverse deck order. So R2 Scrap Reclamation, the first recipe a Presser runs, came
   up only after claiming through about six cards, two of them unaffordable that early.
-  Promoted cards now go to the front in deck order, so R2 is at most two free claims away.
-  `AnUnlockedCard_JumpsTheQueue_InDeckOrder` covers it. This changes Unity's gating
-  behaviour; yours to overrule.
+  Promoted cards now go to the front, in deck order.
+
+  That wasn't enough, as the playtest showed ("it says to claim scrap reclamation, but I don't
+  see it"): the slots held only cycling verbs, Repeat Assembly twice, and a slot refills only
+  on a claim. So **a slot holding a cycling verb now gives way to any unowned one-off card
+  waiting in the queue**, checked on promotion and every tick, and refills prefer one-off
+  cards. The verbs matter only to the Overclocker and Zeppelin, and they come back once
+  nothing else is waiting. R2 is on show the moment Scrap exists.
+
+  Tests: `AnUnlockedCard_TakesAVerbsSlot_AtOnce_InDeckOrder`,
+  `ALineAlreadyFullOfVerbs_ShowsAWaitingOneOff_OnTheNextTick`, and the guide test, which now
+  claims nothing but R2. This changes Unity's gating behaviour; yours to overrule.
 - **Coke burns only for WORKING golems, at half the rate** (your call, from playtest: "it seems
   to burn very fast"). It was 6 Coke/min for every golem in a boiler's reach, working or not;
   it's now 3 Coke/min per golem actually running a step.

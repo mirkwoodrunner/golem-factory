@@ -124,7 +124,7 @@ namespace GolemFactory.Tests.Tutorial
                 Assert.IsTrue(world.AssemblyLineBoard.Claim(slot), world.AssemblyLineBoard.Status + " after " + string.Join(", ", claimed)
                     + " | waiting: " + string.Join(", ", world.AssemblyLine.WaitingCards.Select(c => c.name)));
             }
-            Assert.LessOrEqual(claimed.Count, 3, "Scrap Reclamation comes up within two claims: " + string.Join(", ", claimed));
+            Assert.AreEqual(1, claimed.Count, "Scrap Reclamation is on show without claiming anything else: " + string.Join(", ", claimed));
             Assert.AreEqual("presser", StepId(world));
 
             Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["BrassPresser"], out GolemEntity presser));

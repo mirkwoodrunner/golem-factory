@@ -386,9 +386,8 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "claim", "Claim Scrap Reclamation",
-                "A golem can only use cards you own. Press Tab, open the Assembly Line, and claim "
-                + "Scrap Reclamation: it lets a golem turn Scrap into Iron Plate. Not offered yet? "
-                + "Claim another card to bring the next one up.",
+                "A golem can only use cards you own. Press Tab, open the Assembly Line, and click Claim on "
+                + "Assemble Scrap Reclamation (4 Scrap): it lets a golem turn Scrap into Iron Plate.",
                 w => HasClaimed("AssembleScrapReclamation"),
                 w => null),
 
