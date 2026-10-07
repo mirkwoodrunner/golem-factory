@@ -45,7 +45,8 @@ namespace GolemFactory.Tests.World
         public void TheBuildMenuIsTheCatalog()
         {
             SandboxWorld world = Compose();
-            Assert.AreEqual(10, world.Build.AvailablePrefabs.Count);
+            Assert.AreEqual(world.Placeables.Count, world.Build.AvailablePrefabs.Count);
+            Assert.AreEqual(11, world.Build.AvailablePrefabs.Count, "Unity's ten plus the belt splitter");
         }
 
         [Test]
@@ -232,6 +233,24 @@ namespace GolemFactory.Tests.World
             world.Build.PlaceOrRemove(new Vector2Int(4, 6));
 
             Assert.IsTrue(world.ClockTower.Site.BuildReading().HasActiveStage, "the built tower brought its stages");
+        }
+
+        [Test]
+        public void TheAssemblyLineOpens_OnCardsThePlayerDoesNotOwn()
+        {
+            // The opening hand is granted before the deck is seeded, so the line's skip-owned
+            // rule applies to its very first fill. Seeded first, all three slots held the
+            // opening verbs -- free to claim and buying nothing.
+            SandboxWorld world = Compose();
+            var owned = world.AssemblyLine.GetClaimedCards("LocalPlayer");
+            Assert.AreEqual(3, owned.Count, "precondition: the opening hand is owned");
+
+            for (int i = 0; i < world.AssemblyLine.SlotCount; i++)
+            {
+                DraftableCardDefinition card = world.AssemblyLine.GetCard(i);
+                Assert.IsNotNull(card, "slot " + i + " is empty");
+                CollectionAssert.DoesNotContain(owned, card, "slot " + i + " offers an owned card");
+            }
         }
 
         [Test]

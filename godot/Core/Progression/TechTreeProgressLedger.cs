@@ -54,6 +54,11 @@ namespace GolemFactory.Progression
             return true;
         }
 
+        public IEnumerable<string> Items => _items;
+        public IEnumerable<string> Chassis => _chassis;
+        public IEnumerable<string> Buildings => _buildings;
+        public IEnumerable<string> ClaimedCards => _claimedCards;
+
         public bool HasItem(string itemType) => _items.Contains(itemType ?? string.Empty);
         public bool HasChassis(string chassisName) => _chassis.Contains(chassisName ?? string.Empty);
         public bool HasBuilding(string buildingId) => _buildings.Contains(buildingId ?? string.Empty);

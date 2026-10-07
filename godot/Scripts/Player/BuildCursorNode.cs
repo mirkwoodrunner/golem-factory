@@ -1,4 +1,5 @@
 using Godot;
+using GolemFactory.Buildings;
 using GolemFactory.Player;
 using GolemFactory.World;
 using CoreVector2Int = GolemFactory.Compat.Vector2Int;
@@ -125,7 +126,9 @@ namespace GolemFactory.Nodes
             CoreColor tint = BuildGhostVisuals.Evaluate(Build.GhostStateFor(cell), (float)_time);
             _ghost.Modulate = new Color(tint.r, tint.g, tint.b, tint.a);
 
-            _arrow.Visible = !Build.IsDemolishActive;
+            // No arrow for the wrecking bar, nor for a splitter, which has no facing to show:
+            // its outputs are whichever neighbouring belts lead away from it.
+            _arrow.Visible = !Build.IsDemolishActive && Build.ActivePrefab?.GetPart<PlaceableBeltSplitter>() == null;
             Facing facing = Build.PlacementFacing;
             _arrow.Rotation = GridConversions.FacingToRotation(facing);
             _arrow.Position = GridConversions.FacingStep(facing) * 0.28f;

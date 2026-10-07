@@ -179,6 +179,11 @@ departure from it.
 
 - A **Boiler** (30 Scrap + 10 Iron Plate) burns **1 Coke per powered golem per 10 s = 6 Coke/min
   per golem**, and can power up to **8** of them.
+  > **Changed in the Godot playtest (G10, 2026-10-05):** a boiler now burns **1 Coke per
+  > *working* golem per 20 s = 3 Coke/min**. Idle, unprogrammed and stalled golems in reach stay
+  > powered but cost nothing. The playtest found 6/min, charged for golems doing nothing, too
+  > fast. Proportional burn, the point of this section, is unchanged. §10's 7-golem coal cluster
+  > now consumes 21 Coke/min against 140 produced, which is more convergent than before.
 - Consumption is **proportional, not flat**. This is the whole point: a flat per-boiler burn makes
   seven of every eight golems free and the eighth cost a fortune, so the marginal cost the player
   actually optimises against is zero. Proportional burn means placing a golem has a cost you feel

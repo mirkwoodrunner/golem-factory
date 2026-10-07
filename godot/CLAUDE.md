@@ -68,7 +68,14 @@ ones. Current scenarios:
   Load, the Ledger's plaques and recipe pane, and one screen at a time.
 - `save` (Sandbox): through the SaveLoad tab, build, save, wreck everything, and load. The
   buildings, golems (with program and place) and stockpile must come back exactly, and two
-  more rounds must change nothing. Writes `user://scenario-save.json`, never the player's save.
+  more rounds must change nothing. Then it extends the room after a save and loads, and the
+  rows and back wall must go back. Writes `user://scenario-save.json`, never the player's save.
+- `tutorial` (Sandbox): the step-by-step guide's panel.
+  - It opens on step 1, with the arrow pinned to the screen edge toward the Scrap stall and
+    clear of the HUD bars.
+  - Gathering advances it, and the Boiler step outlines its build-menu row.
+  - F1 hides and shows it, it steps aside over Management, and Skip guide puts it away.
+  - In the Workbench on "Program it", it sits clear of the sockets, the lever and the vault.
 - `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
   into the stockpile, over 600 ticks. `--spike-check` is an alias.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
@@ -119,6 +126,11 @@ only feeds it the position and the keys. A full screen joins the `ModalScreens` 
 implements `IScreen`; while one is open the player stays still and the world prompt hides. A
 new screen gets that for free.
 
+**The guide (`Core/Tutorial/TutorialGuide`) detects its steps from world state.** A new step
+gets a `Done` check that reads the world, never a call from the code that does the thing. A
+step that happens inside a full screen must also be placed clear of that screen's controls
+(see `TutorialPanel.Dock`).
+
 **Full screens report to `SandboxWorld.Screens`** (`ScreenCoordinator`). Implement
 `IClosableScreen`, `Register` in `_Ready`, and call `Screens.Opening(this)` in `Open`; every
 other screen closes. Don't hand-close siblings. That's the bug class the coordinator replaced.
@@ -143,7 +155,8 @@ already run that frame.
 sprite's feet away from its node. The `world` scenario fails if one does.
 
 **Z-order:** the floor is z −10 (`FloorLayer.FloorZ`), and floor-level things (belts, pipes,
-the ghost, shadows) are −1. Z-index is global within a canvas layer, so anything you add at a
+the ghost, shadows) are −1. A belt's own tile is −2, so every lane sits under every item of
+cargo; at one z, an item crossing into the next cell vanished under that cell's tile. Z-index is global within a canvas layer, so anything you add at a
 negative z must stay above −10.
 
 ## Authored data (`godot/data/*.json`)
@@ -151,7 +164,8 @@ negative z must stay above −10.
 The chassis, logic cores, punch cards, recipes, Clock Tower stages and the Assembly Line
 deck: what Unity kept as ScriptableObject `.asset` files. Also `placeables.json` (the build
 menu, from the prefabs) and `sandbox.json` (the world's setup, hand-written from
-`Sandbox.unity` in G4).
+`Sandbox.unity` in G4). The belt splitter has no Unity prefab: the converter adds it after
+the belt (`belt_splitter_entry`), so edit it there, not in the JSON.
 
 - **Until cutover (G10) the Unity assets are the source of truth.** Regenerate the JSON with
   `python Tools/Data/convert_unity_assets.py`. `--check` exits 1 if the JSON is stale. After

@@ -36,6 +36,8 @@ namespace GolemFactory.Nodes
         private Texture2D _lightTexture;
 
         public int WallCount => _walls.Count;
+
+        public IReadOnlyList<Node2D> Walls => _walls;
         public int PropCount { get; private set; }
         public int SconceCount { get; private set; }
 
@@ -56,6 +58,7 @@ namespace GolemFactory.Nodes
             if (world?.Setup != null)
             {
                 world.Sandbox.FloorExpansion.RowsAdded += (from, to) => RebuildWalls(bounds.NorthExtent);
+                world.Sandbox.FloorExpansion.RowsRemoved += (from, to) => RebuildWalls(bounds.NorthExtent);
             }
 
             foreach (LayoutPiece prop in SandboxLayout.Props())

@@ -145,6 +145,12 @@ namespace GolemFactory.Golems
         public StallReason StallReason => program.State == GolemState.Stalled ? _stallReason : StallReason.None;
         public string StallResourceId => program.State == GolemState.Stalled ? _stallResourceId : null;
 
+        /// <summary>Why steam does not reach this golem, while it is stalled for want of it.</summary>
+        public SteamShortage SteamShortage =>
+            StallReason == StallReason.NoSteam && steamNetwork != null
+                ? steamNetwork.Diagnose(golemId, _currentTick)
+                : SteamShortage.None;
+
         // HOW MANY MORE of _stallResourceId the step needed -- progression-design §8's "Why is
         // this golem stopped?" row requires the specific short ingredient *and amount* for
         // Assemble. On R15 (10 Casing + 6 Iron Plate + 4 Brass) "no Casing available" does not
@@ -456,6 +462,11 @@ namespace GolemFactory.Golems
                     return;
                 }
             }
+
+            // Past the stall check: this golem is doing work this tick, and only work burns Coke
+            // (G10, at the user's call -- an idle, unprogrammed or stalled golem in a boiler's
+            // reach used to cost the same 6 Coke/min as one producing).
+            steamNetwork?.ReportWorking(golemId, tick);
 
             // wasStalled can only be true here if StepProgressTicks was 0 (Stalled is only
             // ever set in the guard clause above, which requires StepProgressTicks == 0),

@@ -174,6 +174,65 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void AnUnlockedCard_TakesAVerbsSlot_AtOnce_InDeckOrder()
+        {
+            // G10, from playtest ("it says to claim scrap reclamation, but I don't see it"): the
+            // slots held only cycling verbs -- Repeat twice -- because every one-off card was
+            // still locked. When Scrap Reclamation unlocked it joined the queue behind them and
+            // stayed out of sight until claims emptied their slots. Now an unlocked one-off card
+            // takes a verb's slot straight away, in deck order, ahead of later cards.
+            DraftableCardDefinition repeat = MakeCard("Repeat", unique: false);
+            DraftableCardDefinition freight = MakeCard("Freight", unique: false);
+            DraftableCardDefinition coking = MakeCard("Coking");
+            DraftableCardDefinition reclaim = MakeCard("ScrapReclamation");
+            DraftableCardDefinition hauler = MakeCard("AetherHauler");
+            coking.prerequisiteItemProduced = ItemType.Scrap;
+            reclaim.prerequisiteItemProduced = ItemType.Scrap;
+            hauler.prerequisiteItemProduced = ItemType.Brass;
+
+            var line = new AssemblyLineState(2);
+            bool scrapMade = false;
+            line.ConfigureUnlockContext(item => scrapMade && item == ItemType.Scrap);
+            line.SeedCandidates(new[] { repeat, freight, coking, reclaim, hauler });
+            CollectionAssert.AreEquivalent(new[] { repeat, freight }, new[] { line.GetCard(0), line.GetCard(1) },
+                "nothing else unlocked: the verbs are on show");
+
+            scrapMade = true;
+            line.PromoteUnlockedCards();
+
+            CollectionAssert.AreEqual(new[] { coking, reclaim }, new[] { line.GetCard(0), line.GetCard(1) },
+                "both unlocked one-offs on show at once, in deck order, with no claim needed");
+        }
+
+        [Test]
+        public void ALineAlreadyFullOfVerbs_ShowsAWaitingOneOff_OnTheNextTick()
+        {
+            // A saved game, or any line that got into that state: Tick rebalances it.
+            DraftableCardDefinition repeat = MakeCard("Repeat", unique: false);
+            DraftableCardDefinition reclaim = MakeCard("ScrapReclamation");
+            reclaim.prerequisiteItemProduced = ItemType.Scrap;
+            var line = new AssemblyLineState(1);
+            bool scrapMade = false;
+            line.ConfigureUnlockContext(item => scrapMade);
+            line.SeedCandidates(new[] { repeat, reclaim });
+            Assert.AreSame(repeat, line.GetCard(0));
+
+            scrapMade = true;
+            line.PromoteUnlockedCards();
+            Assert.AreSame(reclaim, line.GetCard(0));
+
+            Assert.IsTrue(line.TryClaimSlot(0, User, Funded(), Wallet));
+            Assert.AreSame(repeat, line.GetCard(0), "with nothing else waiting, the verb comes back");
+        }
+
+        private StorageBufferRegistry Funded()
+        {
+            var buffers = new StorageBufferRegistry();
+            buffers.Deposit(Wallet, ItemType.Scrap, 100);
+            return buffers;
+        }
+
+        [Test]
         public void ACardPrerequisite_IsSatisfiedByClaimingIt()
         {
             DraftableCardDefinition first = MakeCard("Smelting");

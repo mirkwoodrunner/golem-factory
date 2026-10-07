@@ -111,6 +111,50 @@ namespace GolemFactory.Nodes.Scenarios
                     return null;
                 });
             }
+            // The floor is saved too (G10): extend after the save, and a load takes the bought
+            // rows back out -- planks, back wall and all.
+            int north = 0;
+            Do("deposit and save", () =>
+            {
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Scrap, 500);
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.IronPlate, 500);
+                Click(_screen.SaveButton); // lands next frame: extend in the step after
+                _saved = Take();
+                north = _world.Bounds.NorthExtent;
+                return null;
+            });
+            Do("the save was taken before extending", () =>
+                _screen.SaveStatus.StartsWith("Saved") && _world.Bounds.NorthExtent == north
+                    ? null
+                    : $"save not taken first ('{_screen.SaveStatus}')");
+            Do("extend the workshop", () =>
+            {
+                return _world.AssemblyLineBoard.ExtendFloor() ? null : "Extend refused: " + _world.AssemblyLineBoard.Status;
+            });
+            Do("the new rows are planked", () =>
+                Floor().GetCellSourceId(new Vector2I(0, -_world.Bounds.NorthExtent)) >= 0 ? null : "no planks on the new back row");
+            Do("load the save from before the expansion", () => { Click(_screen.LoadButton); return null; });
+            Do("the rows and the wall went back", () =>
+            {
+                if (_world.Bounds.NorthExtent != north)
+                {
+                    return $"north wall at {_world.Bounds.NorthExtent}, saved at {north}";
+                }
+                if (Floor().GetCellSourceId(new Vector2I(0, -(north + 1))) >= 0)
+                {
+                    return "planks left beyond the restored wall";
+                }
+                var shell = _tree.GetFirstNodeInGroup(ShellNode.GroupName) as ShellNode;
+                Node2D backWall = shell?.Walls.OrderBy(w => w.Position.Y).FirstOrDefault();
+                // Nothing may stand further north than the restored back wall's own row.
+                float limitY = GridConversions.CellToWorld(new CoreVector2Int(0, north + 2)).Y;
+                if (backWall == null || backWall.Position.Y <= limitY)
+                {
+                    return $"back wall at y={backWall?.Position.Y}, north of row {north + 1} (y={limitY})";
+                }
+                _log.Add($"floor extended after the save came back to row {north}: planks and back wall restored");
+                return _saved.Diff(Take());
+            });
             Do("close", () => { _screen.Close(); return null; });
         }
 
@@ -235,6 +279,25 @@ namespace GolemFactory.Nodes.Scenarios
             }
             _world.Build.PlaceOrRemove(new CoreVector2Int(x, y));
             _world.Build.CancelPlacement();
+        }
+
+        private FloorLayer Floor() => FindFloor(_tree.Root);
+
+        private static FloorLayer FindFloor(Node node)
+        {
+            if (node is FloorLayer floor)
+            {
+                return floor;
+            }
+            foreach (Node child in node.GetChildren())
+            {
+                FloorLayer found = FindFloor(child);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+            return null;
         }
 
         private void Do(string name, Func<string> step) => _steps.Enqueue((name, step));

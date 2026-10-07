@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using GolemFactory.Belts;
 using GolemFactory.Buildings;
+using GolemFactory.Economy;
 using GolemFactory.Data;
 using GolemFactory.PunchCards;
 using GolemFactory.Steam;
@@ -126,7 +128,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("pick up the bar, then put it down from its own row", () => { ClickRow(null); ClickRow(null); return null; });
             Do("the Demolish row toggles", () =>
                 !_world.Build.IsBuildToolActive ? null : "a second click on Demolish left a tool in hand");
-            Do("menu", () => { _log.Add("menu: 11 rows, Demolish last, toggles, tools exclusive"); return null; });
+            Do("menu", () => { _log.Add("menu: 12 rows, Demolish last, toggles, tools exclusive"); return null; });
         }
 
         private void PlanPlacements()
@@ -237,6 +239,78 @@ namespace GolemFactory.Nodes.Scenarios
                     }
                 }
                 _log.Add("belt run of 4 laid East");
+                return null;
+            });
+
+            // The belt splitter (G10): clicked onto the run's end, it takes the run's goods and
+            // fans them out to every belt leading away from it.
+            PlaceableEntry splitterEntry = _world.Placeables.Single(p => p.Key == "BeltSplitterPrefab");
+            Do("pick the splitter", () => { ClickRow(splitterEntry.Prefab); return null; });
+            Do("click it onto the end of the run", () => { ClickCell(new CoreVector2Int(-2, -3)); return null; });
+            Do("lay two branches off it", () =>
+            {
+                foreach ((CoreVector2Int cell, Facing facing) in new[] { (new CoreVector2Int(-2, -2), Facing.North), (new CoreVector2Int(-1, -3), Facing.East) })
+                {
+                    _world.Build.SetActivePrefab(belt.Prefab);
+                    while (_world.Build.PlacementFacing != facing)
+                    {
+                        _world.Build.RotatePlacement();
+                    }
+                    _world.Build.PlaceOrRemove(cell);
+                }
+                _world.Build.SetActivePrefab(splitterEntry.Prefab); // the arrow check below
+                return null;
+            });
+            Do("the run feeds the splitter, which feeds both branches", () =>
+            {
+                PlaceableBuilding splitter = BuildingAt(new CoreVector2Int(-2, -3));
+                if (splitter?.GetPart<PlaceableBeltSplitter>() == null)
+                {
+                    return "no splitter at the run's end";
+                }
+                BeltSegment lane = splitter.GetPart<PlaceableBelt>().Segment;
+                if (BuildingAt(new CoreVector2Int(-3, -3)).GetPart<PlaceableBelt>().Segment.Next != lane)
+                {
+                    return "the run does not feed the splitter";
+                }
+                if (lane.Outputs.Count != 2)
+                {
+                    return $"the splitter has {lane.Outputs.Count} outputs";
+                }
+                _layer.TryGetView(splitter, out BuildingView view);
+                if (view?.SpriteName != "belt_splitter")
+                {
+                    return $"the splitter draws {view?.SpriteName}";
+                }
+                _log.Add("splitter on the run's end feeds 2 branches and draws its own tile");
+                return null;
+            });
+            Do("put the splitter down", () => { _world.Build.CancelPlacement(); return null; });
+
+            // Cargo through the junction, at the Sandbox's belt speed: six Scrap fed onto the
+            // run's tail must reach both dead-end branches (and is what the frames are for).
+            for (int k = 0; k < 90; k++)
+            {
+                int beat = k;
+                Do("feed the run and let it flow", () =>
+                {
+                    if (beat % 10 == 0 && beat < 60)
+                    {
+                        BuildingAt(new CoreVector2Int(-6, -3)).GetPart<PlaceableBelt>().Segment
+                            .TryEnqueue(new ItemStack { ItemType = ItemType.Scrap });
+                    }
+                    return null;
+                });
+            }
+            Do("both branches received Scrap", () =>
+            {
+                int north = BuildingAt(new CoreVector2Int(-2, -2)).GetPart<PlaceableBelt>().Segment.Items.Count;
+                int east = BuildingAt(new CoreVector2Int(-1, -3)).GetPart<PlaceableBelt>().Segment.Items.Count;
+                if (north == 0 || east == 0)
+                {
+                    return $"branches hold {north} (north) and {east} (east)";
+                }
+                _log.Add($"Scrap through the splitter: {north} north, {east} east");
                 return null;
             });
 

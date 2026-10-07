@@ -106,6 +106,9 @@ namespace GolemFactory.World
         /// <summary>Every live golem, whichever station built it.</summary>
         public IReadOnlyList<GolemEntity> Golems => _golems;
 
+        /// <summary>The step-by-step guide (G10), when sandbox.json turns it on; else null.</summary>
+        public Tutorial.TutorialGuide Tutorial { get; private set; }
+
         /// <summary>A station built a golem. The scene hosts a node for it.</summary>
         public event Action<GolemEntity> GolemSpawned;
 
@@ -141,6 +144,11 @@ namespace GolemFactory.World
             _stockpileBufferId = setup.stockpileBufferId;
             _requireSteamPower = setup.requireSteamPower;
             Bounds = new FloorBounds(FloorLayout.HalfExtent, setup.startingNorthExtent);
+            if (setup.beltCellsPerSecond > 0f)
+            {
+                // A cell is segmentLengthTicks progress units; at TicksPerSecond ticks a second.
+                Conveyor.StepPerTick = setup.beltCellsPerSecond * Belts.SegmentLengthTicks / Clock.TicksPerSecond;
+            }
 
             // SandboxBootstrap.Start, in its order.
             setup.ApplyBufferPolicy(Buffers);
@@ -207,6 +215,10 @@ namespace GolemFactory.World
             Alerts = new AlertsStrip(() => _golems);
             Alerts.Attach();
             WireProgression(setup.assemblyLine);
+            if (setup.tutorial)
+            {
+                Tutorial = new Tutorial.TutorialGuide(this);
+            }
         }
 
         /// <summary>The tech tree's progress ledger, read by the Assembly Line's unlocks and the Ledger tab.</summary>
@@ -237,13 +249,20 @@ namespace GolemFactory.World
                 return;
             }
 
+            _deck = deck;
+            _claimUserId = setup.claimUserId;
             AssemblyLine = new AssemblyLineState(setup.slots);
             AssemblyLine.ConfigureUnlockContext(itemType => TechTree.Ledger.HasItem(itemType));
-            AssemblyLine.SeedCandidates(deck.Cards);
+            // The opening hand BEFORE the deck. The line skips a card its player already owns
+            // only when it fills a slot, so seeding first filled all three slots with the
+            // opening verbs -- free to claim, buying nothing -- and no real card appeared until
+            // the player had cleared them. (Unity's SandboxBootstrap had the same order; fixed
+            // in the port at the user's call.) The unlock context is still wired first.
             foreach (DraftableCardDefinition card in deck.OpeningHand)
             {
                 AssemblyLine.GrantClaim(setup.claimUserId, card);
             }
+            AssemblyLine.SeedCandidates(deck.Cards);
             if (setup.gateWorkbench)
             {
                 Workbench.ConfigureCardGating(AssemblyLine, setup.claimUserId);
@@ -300,6 +319,7 @@ namespace GolemFactory.World
         {
             List<GolemEntity> live = LiveGolems();
             SaveData data = SaveLoadService.CaptureState(Buffers, Patents, live, Build.Buildings);
+            data.progress = CaptureProgress();
             SaveFileIO.WriteToFile(data, path);
             return $"Saved {live.Count} golems and {data.buildings.Count} buildings.";
         }
@@ -320,6 +340,8 @@ namespace GolemFactory.World
                 return "No save file found.";
             }
 
+            RestoreProgress(data.progress);
+
             IGolemRespawner respawner = _stationTemplate != null ? new StationGolemRespawner(_stationTemplate) : null;
             SaveLoadService.RestoreReport report = SaveLoadService.RestoreState(
                 data, Buffers, Patents, LiveGolems(), Definitions.ToCatalog(), respawner,
@@ -333,6 +355,78 @@ namespace GolemFactory.World
                 ? $"{report.BuildingsRebuilt} buildings, {report.BuildingsSkipped} skipped"
                 : $"{report.BuildingsRebuilt} buildings";
             return golems + "; " + buildings + ".";
+        }
+
+        private DraftableCardCatalog _deck;
+        private string _claimUserId;
+
+        private ProgressEntry CaptureProgress()
+        {
+            var progress = new ProgressEntry
+            {
+                ledgerTowerStages = TechTree.Ledger.CompletedTowerStages,
+                floorNorthExtent = Bounds.NorthExtent,
+                assemblyBayTier = AssemblyBay.Tier,
+                clockSpeed = Clock.Speed,
+                clockPaused = Clock.State == ClockState.Paused,
+                tutorialStep = Tutorial?.Index ?? 0,
+                tutorialDismissed = Tutorial?.Dismissed ?? false,
+            };
+            progress.ledgerItems.AddRange(TechTree.Ledger.Items.OrderBy(x => x));
+            progress.ledgerChassis.AddRange(TechTree.Ledger.Chassis.OrderBy(x => x));
+            progress.ledgerBuildings.AddRange(TechTree.Ledger.Buildings.OrderBy(x => x));
+            progress.ledgerCards.AddRange(TechTree.Ledger.ClaimedCards.OrderBy(x => x));
+            if (AssemblyLine != null)
+            {
+                progress.claimedCards.AddRange(AssemblyLine.GetClaimedCards(_claimUserId).Select(c => c.name));
+            }
+            return progress;
+        }
+
+        /// <summary>
+        /// Restores progress BEFORE the world: the ledger first (the Assembly Line's unlock
+        /// context reads it), then the line, the bay tier (respawned golems take bay slots) and
+        /// the floor (a building beyond the original back wall needs its row to rebuild on).
+        /// </summary>
+        private void RestoreProgress(ProgressEntry progress)
+        {
+            if (progress == null)
+            {
+                return; // a save from before progress was saved: leave it as it is
+            }
+
+            TechTreeProgressLedger ledger = TechTree.Ledger;
+            ledger.Clear();
+            progress.ledgerItems.ForEach(x => ledger.RecordItem(x));
+            progress.ledgerChassis.ForEach(x => ledger.RecordChassis(x));
+            progress.ledgerBuildings.ForEach(x => ledger.RecordBuilding(x));
+            progress.ledgerCards.ForEach(x => ledger.RecordClaimedCard(x));
+            ledger.RecordCompletedTowerStages(progress.ledgerTowerStages);
+
+            if (AssemblyLine != null)
+            {
+                var byName = _deck.Cards.Concat(_deck.OpeningHand).Where(c => c != null)
+                    .GroupBy(c => c.name).ToDictionary(g => g.Key, g => g.First());
+                AssemblyLine.Restore(
+                    _claimUserId,
+                    progress.claimedCards.Where(byName.ContainsKey).Select(n => byName[n]),
+                    _deck.Cards);
+            }
+
+            AssemblyBay.RestoreTier(progress.assemblyBayTier);
+            FloorExpansion.Restore(progress.floorNorthExtent);
+
+            Tutorial?.Restore(progress.tutorialStep, progress.tutorialDismissed);
+
+            Clock.Speed = progress.clockSpeed > 0f ? progress.clockSpeed : 1f;
+            if (progress.clockPaused)
+            {
+                Clock.Pause();
+            }
+            else
+            {
+                Clock.Play();
+            }
         }
 
         private List<GolemEntity> LiveGolems() => _golems.Where(g => g != null && !g.IsRemoved).ToList();
@@ -509,6 +603,7 @@ namespace GolemFactory.World
             Alerts?.Update(seconds);
             AssemblyLine?.Tick(seconds);
             TechTree.Update(_realSeconds);
+            Tutorial?.Update();
         }
 
         private float _realSeconds;

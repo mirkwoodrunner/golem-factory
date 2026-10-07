@@ -168,25 +168,44 @@ namespace GolemFactory.AssemblyLine
         /// </summary>
         public int PromoteUnlockedCards()
         {
-            int promoted = 0;
-            for (int i = _waiting.Count - 1; i >= 0; i--)
+            // To the FRONT of the queue, in deck order (G10, found writing the guide's second
+            // chapter). A card unlocks the moment the factory makes what it needs, which is the
+            // moment the player needs it -- and it used to join the BACK, behind the Aether-Hauler
+            // and Casing Press cards, so R2 Scrap Reclamation, the first recipe a Presser runs,
+            // came up only after claiming through half a dozen cards, two of them unaffordable
+            // that early and so stuck in their slots. (The loop also ran backwards, so cards
+            // unlocked together arrived in reverse deck order.) Same complaint as the skip-owned
+            // rule in DequeueNextOffer: a card track, not a slot machine.
+            var promotedCards = new List<DraftableCardDefinition>();
+            for (int i = 0; i < _waiting.Count; i++)
             {
-                if (!IsUnlocked(_waiting[i]))
+                if (IsUnlocked(_waiting[i]))
                 {
-                    continue;
+                    promotedCards.Add(_waiting[i]);
                 }
-
-                _refillQueue.Enqueue(_waiting[i]);
-                _waiting.RemoveAt(i);
-                promoted++;
             }
 
-            if (promoted > 0)
+            if (promotedCards.Count > 0)
             {
+                foreach (DraftableCardDefinition card in promotedCards)
+                {
+                    _waiting.Remove(card);
+                }
+                var rest = _refillQueue.ToArray();
+                _refillQueue.Clear();
+                foreach (DraftableCardDefinition card in promotedCards)
+                {
+                    _refillQueue.Enqueue(card);
+                }
+                foreach (DraftableCardDefinition card in rest)
+                {
+                    _refillQueue.Enqueue(card);
+                }
                 RefillEmptySlots();
+                Rebalance();
             }
 
-            return promoted;
+            return promotedCards.Count;
         }
 
         public DraftableCardDefinition GetCard(int slotIndex) => _slots[slotIndex];
@@ -267,6 +286,8 @@ namespace GolemFactory.AssemblyLine
 
         public void Tick(float deltaTime)
         {
+            Rebalance();
+
             for (int i = 0; i < SlotCount; i++)
             {
                 if (_slots[i] != null)
@@ -409,6 +430,30 @@ namespace GolemFactory.AssemblyLine
             }
         }
 
+        /// <summary>
+        /// A load: forget every claim, slot and queue, then rebuild the line as a fresh session
+        /// would -- the claims first (so the first fill skips what is owned), then the deck. A
+        /// load replaces progress rather than merging into it, or a card bought after the save
+        /// would survive a load that also handed back the goods it cost. The unlock context is
+        /// kept, and should already answer from the restored ledger.
+        /// </summary>
+        public void Restore(string userId, IEnumerable<DraftableCardDefinition> claimed, IEnumerable<DraftableCardDefinition> deck)
+        {
+            for (int i = 0; i < SlotCount; i++)
+            {
+                _slots[i] = null;
+                _secondsOnLine[i] = 0f;
+            }
+            _refillQueue.Clear();
+            _waiting.Clear();
+            _claimedByUser.Clear();
+            foreach (DraftableCardDefinition card in claimed)
+            {
+                GrantClaim(userId, card);
+            }
+            SeedCandidates(deck);
+        }
+
         public IReadOnlyList<DraftableCardDefinition> GetClaimedCards(string userId) =>
             _claimedByUser.TryGetValue(userId, out List<DraftableCardDefinition> claimed)
                 ? claimed
@@ -467,21 +512,101 @@ namespace GolemFactory.AssemblyLine
         /// </summary>
         private DraftableCardDefinition DequeueNextOffer()
         {
-            int count = _refillQueue.Count;
-            for (int i = 0; i < count; i++)
+            // G10, from playtest ("it says to claim scrap reclamation, but I don't see it"): a
+            // ONE-OFF card nobody owns comes before a cycling verb. Repeat Assembly and Freight
+            // Launch cycle forever and only matter to the Overclocker and the Zeppelin, yet they
+            // sat in all three slots -- Repeat twice -- while R2 Scrap Reclamation waited behind
+            // them, out of sight until two claims emptied their slots. Then an unowned card not
+            // already on the line, then any unowned card, then the head, as before.
+            DraftableCardDefinition[] queue = _refillQueue.ToArray();
+            int pick = FirstIndex(queue, c => c.isUnique && !IsClaimedByAnyone(c));
+            if (pick < 0)
             {
-                DraftableCardDefinition next = _refillQueue.Dequeue();
-                if (!IsClaimedByAnyone(next))
-                {
-                    return next;
-                }
-
-                // Rotated, not discarded, and the rotation preserves the queue's relative
-                // order -- the skipped cards come back round behind whatever is offered now.
-                _refillQueue.Enqueue(next);
+                pick = FirstIndex(queue, c => !IsClaimedByAnyone(c) && !IsOnTheLine(c));
+            }
+            if (pick < 0)
+            {
+                pick = FirstIndex(queue, c => !IsClaimedByAnyone(c));
+            }
+            if (pick < 0)
+            {
+                pick = 0;
             }
 
-            return _refillQueue.Dequeue();
+            // The cards ahead of the pick are rotated behind the rest, not discarded, keeping
+            // the queue's relative order -- the skipped cards come back round after this offer.
+            _refillQueue.Clear();
+            for (int i = pick + 1; i < queue.Length; i++)
+            {
+                _refillQueue.Enqueue(queue[i]);
+            }
+            for (int i = 0; i < pick; i++)
+            {
+                _refillQueue.Enqueue(queue[i]);
+            }
+            return queue[pick];
+        }
+
+        private static int FirstIndex(DraftableCardDefinition[] cards, Func<DraftableCardDefinition, bool> test)
+        {
+            for (int i = 0; i < cards.Length; i++)
+            {
+                if (test(cards[i]))
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        private bool IsOnTheLine(DraftableCardDefinition card)
+        {
+            for (int i = 0; i < SlotCount; i++)
+            {
+                if (_slots[i] == card)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// A slot holding a cycling verb gives way while a one-off card nobody owns is waiting in
+        /// the queue (G10). The verb is not lost: a cycling card keeps its place in the queue
+        /// while it is on the line, so it comes round again once nothing better is waiting.
+        /// Called on promotion and every tick, so a line that was already full of verbs when a
+        /// card unlocked -- a saved game, say -- puts the card on show the next frame.
+        /// </summary>
+        public void Rebalance()
+        {
+            bool cleared = false;
+            for (int i = 0; i < SlotCount; i++)
+            {
+                if (_slots[i] != null && !_slots[i].isUnique && QueueHoldsUnownedOneOff())
+                {
+                    _slots[i] = null;
+                    _secondsOnLine[i] = 0f;
+                    cleared = true;
+                    RefillEmptySlots();
+                }
+            }
+            if (cleared)
+            {
+                RefillEmptySlots();
+            }
+        }
+
+        private bool QueueHoldsUnownedOneOff()
+        {
+            foreach (DraftableCardDefinition card in _refillQueue)
+            {
+                if (card.isUnique && !IsClaimedByAnyone(card))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

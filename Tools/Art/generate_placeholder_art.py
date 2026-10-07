@@ -93,7 +93,7 @@ def _iso_cell_fraction(px, py, w):
 TOP_DOWN_OWNED = {
     "floor_tile.png", "floor_tile_wood_b.png", "floor_tile_wood_c.png", "floor_tile_wood_d.png",
     "floor_tile_accent.png", "floor_tile_grate.png", "build_ghost_tile.png",
-    "interaction_ring.png", "belt_tile.png", "ground_shadow.png",
+    "interaction_ring.png", "belt_splitter.png", "belt_tile.png", "ground_shadow.png",
     "wall_segment_ne.png", "wall_segment_nw.png", "wall_segment_ne_lamp.png",
     "wall_segment_nw_lamp.png", "floor_edge_se.png", "floor_edge_sw.png",
     "wall_corner_post.png", "prop_crate.png", "prop_barrel.png",

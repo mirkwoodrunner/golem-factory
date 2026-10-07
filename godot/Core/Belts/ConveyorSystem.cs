@@ -7,6 +7,14 @@ namespace GolemFactory.Belts
     {
         private readonly Dictionary<string, BeltSegment> _segments = new Dictionary<string, BeltSegment>();
 
+        /// <summary>
+        /// How far every item moves along its lane per tick, in a segment's progress units.
+        /// 1 is the original rate (a lane of Length L crosses in L ticks); the Sandbox slows it
+        /// from its setup (<c>beltCellsPerSecond</c>, G10). Spacing is unchanged: items still
+        /// queue <see cref="BeltSegment.MinSpacing"/> apart, so a belt holds the same cargo.
+        /// </summary>
+        public float StepPerTick { get; set; } = 1f;
+
         public void Register(BeltSegment segment) => _segments[segment.SegmentId] = segment;
 
         public void Unregister(string segmentId) => _segments.Remove(segmentId);
@@ -48,7 +56,7 @@ namespace GolemFactory.Belts
             // Phase 1: advance every segment first.
             foreach (BeltSegment segment in _segments.Values)
             {
-                segment.Advance(1f);
+                segment.Advance(StepPerTick);
             }
 
             // Phase 2: hand off completed heads onto Next. Kept as its own pass (after all

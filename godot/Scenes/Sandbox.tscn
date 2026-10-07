@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://Scripts/WorldNode.cs" id="1_world"]
 [ext_resource type="Script" path="res://Scripts/FloorLayer.cs" id="2_floor"]
@@ -18,6 +18,7 @@
 [ext_resource type="Script" path="res://Scripts/Golems/RoutingFocusNode.cs" id="16_focus"]
 [ext_resource type="Script" path="res://Scripts/UI/WorkbenchScreen.cs" id="17_workbench"]
 [ext_resource type="Script" path="res://Scripts/UI/ManagementScreen.cs" id="18_management"]
+[ext_resource type="Script" path="res://Scripts/UI/TutorialPanel.cs" id="19_tutorial"]
 
 [node name="Sandbox" type="Node2D"]
 
@@ -82,6 +83,9 @@ script = ExtResource("17_workbench")
 
 [node name="Management" type="CanvasLayer" parent="."]
 script = ExtResource("18_management")
+
+[node name="Tutorial" type="CanvasLayer" parent="."]
+script = ExtResource("19_tutorial")
 
 [node name="Scenarios" type="Node" parent="."]
 script = ExtResource("9_scenarios")

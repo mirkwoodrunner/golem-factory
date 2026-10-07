@@ -220,7 +220,30 @@ def convert_placeables(guids, names):
                     fields[k] = resolve(v, guids, names)
                 entry["parts"][cls] = fields
         placeables.append(entry)
+        if entry["name"] == "BeltPrefab":
+            placeables.append(belt_splitter_entry(entry))
     return json.dumps(placeables, indent=2, ensure_ascii=True) + "\n"
+
+
+# Placeables with no Unity prefab, added in the Godot build at the user's call. Kept here so a
+# regeneration from the Unity assets cannot drop them.
+SPLITTER_COST = [{"itemType": "Scrap", "quantity": 4}]
+
+
+def belt_splitter_entry(belt):
+    """The belt splitter (G10). Core's PlaceableBeltSplitter has existed since the belt pass, but
+    Unity never authored a prefab, so it was never in the build menu. It IS a belt -- same lane,
+    same cargo sprites -- plus the splitter part, with its own picture and no drag runs (a run
+    of splitters would only be a slow belt)."""
+    return {
+        "name": "BeltSplitterPrefab",
+        "sprite": None,
+        "parts": {
+            "PlaceableBuilding": {"cost": SPLITTER_COST, "dragPlaceable": 0},
+            "PlaceableBelt": belt["parts"]["PlaceableBelt"],
+            "PlaceableBeltSplitter": {"sprite": "belt_splitter.png"},
+        },
+    }
 
 
 # --- Conversion ------------------------------------------------------------------------

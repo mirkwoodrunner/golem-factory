@@ -29,6 +29,31 @@ namespace GolemFactory.World
         /// <summary>Raised after a purchase grows the room: the first and last new row, inclusive.</summary>
         public event Action<int, int> RowsAdded;
 
+        /// <summary>Rows a load took away (from, to inclusive): a save made before an expansion.</summary>
+        public event Action<int, int> RowsRemoved;
+
+        /// <summary>
+        /// A load: the room becomes the saved size, announcing the rows it gained or lost so the
+        /// floor and walls follow. Never charges and never refunds -- the stockpile is restored
+        /// from the same save.
+        /// </summary>
+        public void Restore(int northExtent)
+        {
+            if (bounds == null || northExtent <= 0)
+            {
+                return;
+            }
+            int previous = bounds.Restore(northExtent);
+            if (bounds.NorthExtent > previous)
+            {
+                RowsAdded?.Invoke(previous + 1, bounds.NorthExtent);
+            }
+            else if (bounds.NorthExtent < previous)
+            {
+                RowsRemoved?.Invoke(bounds.NorthExtent + 1, previous);
+            }
+        }
+
         public string LastStatusMessage { get; private set; } = "";
 
         public FloorBounds Bounds => bounds;

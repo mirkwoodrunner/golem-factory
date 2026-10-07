@@ -1,3 +1,4 @@
+using GolemFactory.Steam;
 using GolemFactory.Events;
 
 namespace GolemFactory.UI
@@ -17,8 +18,22 @@ namespace GolemFactory.UI
         // shortfall is OPTIONAL and defaults to 0, which reproduces the pre-§1.3 text exactly.
         // Only Assemble's MissingItem ever supplies one: a Haul type mismatch and an empty Push
         // hold have no meaningful "how many more", and inventing one there would be a lie.
-        public static string DescribeShort(StallReason reason, string resourceId, int shortfall = 0)
+        public static string DescribeShort(StallReason reason, string resourceId, int shortfall = 0,
+            SteamShortage steam = SteamShortage.None)
         {
+            // A NoSteam stall with a known cause says the cause, because the three have three
+            // different fixes (G10: a player with a pipe running to the golem was told only
+            // "no steam" while its boiler sat empty).
+            if (reason == StallReason.NoSteam)
+            {
+                switch (steam)
+                {
+                    case SteamShortage.NoPipe: return "no steam pipe reaches me";
+                    case SteamShortage.BoilerOutOfCoke: return "my boiler is out of Coke";
+                    case SteamShortage.BoilerAtCapacity: return "my boiler already powers 8 golems";
+                }
+            }
+
             string target = string.IsNullOrEmpty(resourceId) ? "source" : resourceId;
             switch (reason)
             {
@@ -94,9 +109,22 @@ namespace GolemFactory.UI
         // Long form for the alerts strip, which has no other context about which golem it means.
         // shortfall behaves exactly as in DescribeShort -- optional, 0 means "no amount".
         public static string Describe(
-            string golemId, StallReason reason, string resourceId, int shortfall = 0)
+            string golemId, StallReason reason, string resourceId, int shortfall = 0,
+            SteamShortage steam = SteamShortage.None)
         {
             string who = string.IsNullOrEmpty(golemId) ? "A golem" : golemId;
+            if (reason == StallReason.NoSteam)
+            {
+                switch (steam)
+                {
+                    case SteamShortage.NoPipe:
+                        return who + " stalled: no steam pipe reaches it from a boiler";
+                    case SteamShortage.BoilerOutOfCoke:
+                        return who + " stalled: its boiler is out of Coke - fuel it with [E]";
+                    case SteamShortage.BoilerAtCapacity:
+                        return who + " stalled: its boiler already powers 8 golems - build another";
+                }
+            }
             string target = string.IsNullOrEmpty(resourceId) ? "its source" : resourceId;
             switch (reason)
             {
@@ -172,7 +200,7 @@ namespace GolemFactory.UI
             // has no entry for it, unlike legacy Text's dynamic OS font fallback, so it would
             // render as a missing-glyph box.
             string text = "[!] " + Describe(
-                primary.GolemId, primary.Reason, primary.ResourceId, primary.Shortfall);
+                primary.GolemId, primary.Reason, primary.ResourceId, primary.Shortfall, primary.Steam);
             if (stalledCount > 1)
             {
                 text += "  (+" + (stalledCount - 1) + " more)";
