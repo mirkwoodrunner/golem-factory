@@ -212,7 +212,7 @@ namespace GolemFactory.Nodes
                 TutorialStep step = guide.Current;
                 _counter.Text = $"GUIDE  ·  step {guide.Index + 1} of {guide.StepCount}  ·  F1 hides";
                 _title.Text = step.Title;
-                _body.Text = step.Body;
+                _body.Text = step.Body + MenuKeyHint(step);
                 bool last = guide.Index == guide.StepCount - 1;
                 _finish.Visible = last;
                 _skip.Visible = !last;
@@ -245,7 +245,7 @@ namespace GolemFactory.Nodes
             float bob = Mathf.Sin(_time * 4f) * 6f;
 
             // Where the arrow may stand: inside the screen, clear of the HUD's top strip and its
-            // bottom control bar (an edge-pinned arrow pointing at the street sat on PAUSE).
+            // build bar along the bottom (an edge-pinned arrow pointing at the street once sat on PAUSE).
             Rect2 field = new Rect2(
                 screen.Position + new Vector2(EdgeMargin, TopMargin),
                 screen.Size - new Vector2(EdgeMargin * 2f, TopMargin + BottomMargin));
@@ -278,7 +278,7 @@ namespace GolemFactory.Nodes
 
         private const float EdgeMargin = 40f;
         private const float TopMargin = 60f;
-        private const float BottomMargin = 90f;
+        private const float BottomMargin = 100f; // clear of the build bar along the bottom
 
         /// <summary>Whether the arrow is pinned to the screen edge (target off screen). For scenarios.</summary>
         public bool OffScreen { get; private set; }
@@ -351,6 +351,28 @@ namespace GolemFactory.Nodes
                 _spotFacing.Position = size / 2f - _spotFacing.Size / 2f;
             }
             _spot.Visible = true;
+        }
+
+        /// <summary>
+        /// " Shortcut: 5." for a step that needs a build-menu row -- read from the menu's own row
+        /// order, so the hint cannot drift from the key when the menu changes.
+        /// </summary>
+        private string MenuKeyHint(TutorialStep step)
+        {
+            if (step?.MenuKey == null || _world?.Sandbox == null)
+            {
+                return "";
+            }
+            var placeables = _world.Sandbox.Placeables;
+            for (int i = 0; i < placeables.Count; i++)
+            {
+                if (placeables[i].Key == step.MenuKey)
+                {
+                    string key = UI.BuildMenuLabels.KeyFor(i);
+                    return key.Length > 0 ? $" Shortcut: {key}." : "";
+                }
+            }
+            return "";
         }
 
         private void HighlightRow(TutorialGuide guide, bool screenOpen)

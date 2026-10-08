@@ -76,10 +76,10 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return $"the arrow is drawn off screen at {arrow}";
                 }
-                // Clear of the HUD's bottom control bar (it sat on PAUSE once).
-                if (arrow.End.Y > _tree.Root.GetVisibleRect().End.Y - 60f)
+                // Clear of the build bar along the bottom (it sat on the old PAUSE bar once).
+                if (arrow.Intersects(_menu.Panel.GetGlobalRect()))
                 {
-                    return $"the arrow sits on the control bar at {arrow}";
+                    return $"the arrow sits on the build bar at {arrow}";
                 }
                 _log.Add("step 1 'Gather Scrap', arrow at the screen edge pointing at the Scrap stall");
                 return null;

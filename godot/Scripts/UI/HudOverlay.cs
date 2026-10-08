@@ -95,7 +95,9 @@ namespace GolemFactory.Nodes
         private void BuildControlBar()
         {
             ColorRect bar = Ugui.Place(Ugui.Rect("SimControlBar", new Color(0.16f, 0.11f, 0.07f, 0.96f)),
-                0.5f, 0f, 0.5f, 0f, 0f, 16f * BarScale, 560f * BarScale, 52f * BarScale, 0.5f, 0f);
+                // Top centre, under the alerts strip (G10): the bottom edge belongs to the build
+                // bar since it went horizontal.
+                0.5f, 1f, 0.5f, 1f, 0f, -38f, 560f * BarScale, 52f * BarScale, 0.5f, 1f);
             bar.MouseFilter = Control.MouseFilterEnum.Stop;
             _root.AddChild(bar);
             var row = Ugui.Fill(new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = Control.MouseFilterEnum.Pass });
