@@ -245,7 +245,7 @@ namespace GolemFactory.Nodes
             float bob = Mathf.Sin(_time * 4f) * 6f;
 
             // Where the arrow may stand: inside the screen, clear of the HUD's top strip and its
-            // bottom control bar (an edge-pinned arrow pointing at the street sat on PAUSE).
+            // build bar along the bottom (an edge-pinned arrow pointing at the street once sat on PAUSE).
             Rect2 field = new Rect2(
                 screen.Position + new Vector2(EdgeMargin, TopMargin),
                 screen.Size - new Vector2(EdgeMargin * 2f, TopMargin + BottomMargin));
@@ -278,7 +278,7 @@ namespace GolemFactory.Nodes
 
         private const float EdgeMargin = 40f;
         private const float TopMargin = 60f;
-        private const float BottomMargin = 90f;
+        private const float BottomMargin = 100f; // clear of the build bar along the bottom
 
         /// <summary>Whether the arrow is pinned to the screen edge (target off screen). For scenarios.</summary>
         public bool OffScreen { get; private set; }

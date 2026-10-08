@@ -130,8 +130,20 @@ namespace GolemFactory.Nodes.Scenarios
                 !_world.Build.IsBuildToolActive ? null : "a second click on Demolish left a tool in hand");
             // G10's compact menu: a row is its key and name; the cost is in a hover card, and the
             // number keys do what clicking a row does.
-            Do("the menu is compact", () =>
-                _menu.Panel.Size.X <= 180f ? null : $"the menu is {_menu.Panel.Size.X}px wide");
+            Do("the menu is a bar along the bottom", () =>
+            {
+                Rect2 bar = _menu.Panel.GetGlobalRect();
+                Rect2 screen = _viewport.GetVisibleRect();
+                if (bar.Size.X < bar.Size.Y * 6f)
+                {
+                    return $"not a horizontal bar: {bar.Size}";
+                }
+                if (bar.End.Y < screen.End.Y - 20f || Mathf.Abs(bar.GetCenter().X - screen.GetCenter().X) > 2f)
+                {
+                    return $"not bottom-centred: {bar} on {screen}";
+                }
+                return bar.End.X <= screen.End.X && bar.Position.X >= 0f ? null : $"off screen: {bar}";
+            });
             Do("hover the Boiler row", () =>
             {
                 Vector2 at = _menu.Rows.Single(r => r.prefab.name == "BoilerPrefab").row.GetGlobalRect().GetCenter();
@@ -152,7 +164,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return $"card cost '{_menu.HoverCardCost}'";
                 }
-                return _menu.HoverCard.GetGlobalRect().Position.X >= _menu.Panel.GetGlobalRect().End.X
+                return _menu.HoverCard.GetGlobalRect().End.Y <= _menu.Panel.GetGlobalRect().Position.Y
                     ? null : "the card overlaps the menu";
             });
             Do("press 1", () => { PressKey(Key.Key1); return null; });
@@ -166,7 +178,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("3 swapped the bar for the third placeable", () =>
                 !_world.Build.IsDemolishActive && _world.Build.ActivePrefab == _world.Placeables[2].Prefab ? null : "tools not swapped");
             Do("put it down", () => { PressKey(Key.Escape); return null; });
-            Do("menu", () => { _log.Add($"menu: 12 rows, {_menu.Panel.Size.X}px wide, Demolish last, toggles, tools exclusive; hover card '{_menu.HoverCardName}' / '{_menu.HoverCardCost}'; keys 1, 3, X select and toggle"); return null; });
+            Do("menu", () => { _log.Add($"menu: 12 rows, a {_menu.Panel.Size.X}x{_menu.Panel.Size.Y} bar along the bottom, Demolish last, toggles, tools exclusive; hover card '{_menu.HoverCardName}' / '{_menu.HoverCardCost}'; keys 1, 3, X select and toggle"); return null; });
         }
 
         private void PlanPlacements()

@@ -8,8 +8,10 @@ using GolemFactory.UI;
 namespace GolemFactory.Nodes
 {
     /// <summary>
-    /// The build menu: an iron panel bottom-left, one brass row per placeable and the wrecking
-    /// bar's Demolish row last.
+    /// The build menu: an iron bar along the bottom of the screen, one brass tile per placeable
+    /// and the wrecking bar's Demolish tile last. Horizontal since G10 (from playtest: "Can you
+    /// make the menu horizontal instead of vertical?"); the simulation bar that used to sit at the
+    /// bottom centre moved to the top, under the alerts strip.
     ///
     /// <para>
     /// <b>Compact since G10</b> (from playtest: "the side bar for building is big. Could you make
@@ -29,12 +31,11 @@ namespace GolemFactory.Nodes
     /// </summary>
     public partial class BuildMenuNode : CanvasLayer
     {
-        private const float RowHeight = 24f;
-        private const float RowSpacing = 3f;
-        private const float PanelWidth = 176f;
-        private const float RowsTop = 34f;   // the row container's inset under the title
-        private const float RowsBottom = 9f;
-        private const float RowsSide = 9f;
+        private const float TileWidth = 76f;
+        private const float TileHeight = 42f;
+        private const float TileSpacing = 4f;
+        private const float BarPadding = 8f;
+        private const float BottomGap = 10f;
         private const float CardWidth = 270f;
 
         private static readonly Color SelectedRowColor = new Color(0.88f, 0.68f, 0.35f, 1f);
@@ -83,11 +84,12 @@ namespace GolemFactory.Nodes
             _rowStyle = NineSlice("res://art/UI/Steampunk/steampunk_button_blank.png", 8, 8, 8, 8);
             _rowActiveStyle = NineSlice("res://art/UI/Steampunk/steampunk_button_blank_iron.png", 8, 8, 8, 8);
 
-            int rowCount = world.Sandbox.Placeables.Count + 1;
-            float height = rowCount * RowHeight + (rowCount - 1) * RowSpacing + RowsTop + RowsBottom;
+            int tileCount = world.Sandbox.Placeables.Count + 1;
+            float width = tileCount * TileWidth + (tileCount - 1) * TileSpacing + 2 * BarPadding;
+            float height = TileHeight + 2 * BarPadding;
 
             // Unity's spriteBorder is (left, bottom, right, top).
-            var panel = new Panel { Name = "BuildMenu", Size = new Vector2(PanelWidth, height) };
+            var panel = new Panel { Name = "BuildMenu", Size = new Vector2(width, height) };
             panel.AddThemeStyleboxOverride("panel", NineSlice("res://art/UI/Steampunk/steampunk_panel_iron_bolt.png", 12, 10, 12, 10));
             panel.SelfModulate = new Color(1f, 1f, 1f, 0.96f);
             AddChild(panel);
@@ -95,30 +97,12 @@ namespace GolemFactory.Nodes
             // The project font (gui/theme/custom_font), emboldened: Unity's FontStyles.Bold.
             _bold = new FontVariation { BaseFont = panel.GetThemeFont("font", "Label"), VariationEmbolden = 0.8f };
 
-            var title = new Label { Text = "Build", Position = new Vector2(RowsSide, 6f), Size = new Vector2(PanelWidth - 2 * RowsSide, 24f) };
-            title.VerticalAlignment = VerticalAlignment.Center;
-            title.AddThemeFontOverride("font", _bold);
-            title.AddThemeFontSizeOverride("font_size", 15);
-            title.AddThemeColorOverride("font_color", TitleColor);
-            panel.AddChild(title);
-            var hint = new Label
+            var list = new HBoxContainer
             {
-                Text = "hover for cost",
-                Position = new Vector2(RowsSide, 6f),
-                Size = new Vector2(PanelWidth - 2 * RowsSide, 24f),
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Center,
+                Position = new Vector2(BarPadding, BarPadding),
+                Size = new Vector2(width - 2 * BarPadding, TileHeight),
             };
-            hint.AddThemeFontSizeOverride("font_size", 10);
-            hint.AddThemeColorOverride("font_color", DimColor);
-            panel.AddChild(hint);
-
-            var list = new VBoxContainer
-            {
-                Position = new Vector2(RowsSide, RowsTop),
-                Size = new Vector2(PanelWidth - 2 * RowsSide, height - RowsTop - RowsBottom),
-            };
-            list.AddThemeConstantOverride("separation", (int)RowSpacing);
+            list.AddThemeConstantOverride("separation", (int)TileSpacing);
             panel.AddChild(list);
 
             for (int i = 0; i < world.Sandbox.Placeables.Count; i++)
@@ -137,8 +121,8 @@ namespace GolemFactory.Nodes
             list.AddChild(_demolishRow);
 
             BuildHoverCard();
-            PlaceBottomLeft();
-            GetViewport().SizeChanged += PlaceBottomLeft;
+            PlaceBottomCentre();
+            GetViewport().SizeChanged += PlaceBottomCentre;
         }
 
         /// <summary>A row click or its key: pick the placeable up, or put it down if held.</summary>
@@ -232,9 +216,10 @@ namespace GolemFactory.Nodes
             RefreshHoverCard();
         }
 
-        private void PlaceBottomLeft()
+        private void PlaceBottomCentre()
         {
-            Panel.Position = new Vector2(16f, GetViewport().GetVisibleRect().Size.Y - 16f - Panel.Size.Y);
+            Vector2 screen = GetViewport().GetVisibleRect().Size;
+            Panel.Position = new Vector2((screen.X - Panel.Size.X) / 2f, screen.Y - BottomGap - Panel.Size.Y);
         }
 
         private Button MakeRow(string hotkey, string name)
@@ -242,7 +227,7 @@ namespace GolemFactory.Nodes
             var row = new Button
             {
                 Name = name.Replace(" ", "").Replace("-", "") + "Row",
-                CustomMinimumSize = new Vector2(0f, RowHeight),
+                CustomMinimumSize = new Vector2(TileWidth, TileHeight),
                 FocusMode = Control.FocusModeEnum.None,
             };
             // The captions are CHILDREN, as in Unity (an Image row with a TMP child): the row's
@@ -252,29 +237,32 @@ namespace GolemFactory.Nodes
             {
                 Name = "Key",
                 Text = hotkey,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
                 MouseFilter = Control.MouseFilterEnum.Ignore,
-                Position = new Vector2(4f, 0f),
-                Size = new Vector2(18f, RowHeight),
+                Position = new Vector2(6f, 2f),
+                Size = new Vector2(16f, 14f),
             };
             keyLabel.AddThemeFontOverride("font", _bold);
-            keyLabel.AddThemeFontSizeOverride("font_size", 12);
+            keyLabel.AddThemeFontSizeOverride("font_size", 11);
             row.AddChild(keyLabel);
 
             var label = new Label
             {
                 Name = "Label",
                 Text = name,
-                HorizontalAlignment = HorizontalAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                ClipText = true,
+                AutowrapMode = TextServer.AutowrapMode.WordSmart,
                 MouseFilter = Control.MouseFilterEnum.Ignore,
             };
             label.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-            label.OffsetLeft = 26f;
-            label.OffsetRight = -6f;
-            label.AddThemeFontSizeOverride("font_size", 12);
+            label.OffsetLeft = 4f;
+            label.OffsetRight = -4f;
+            label.OffsetTop = 9f;
+            label.OffsetBottom = -2f;
+            label.AddThemeConstantOverride("line_spacing", -3);
+            label.AddThemeFontSizeOverride("font_size", 11);
             row.AddChild(label);
 
             _rowKeys[row] = hotkey;
@@ -386,14 +374,14 @@ namespace GolemFactory.Nodes
                 _cardCost.AddThemeColorOverride("font_color", affordable ? AffordColor : ShortColor);
             }
 
-            // Beside the menu, level with the hovered row, kept on screen.
+            // Above the hovered tile, centred on it, kept on screen.
             // A Panel does not grow to its children: size it from the text column (whose wrapped
             // lines settle a frame after the text changes -- a one-frame lag nobody sees).
             _card.Size = new Vector2(CardWidth, Mathf.Max(_cardColumn.GetCombinedMinimumSize().Y + 16f, 56f));
-            Rect2 row = _hovered.GetGlobalRect();
-            float bottom = Mathf.Max(8f, GetViewport().GetVisibleRect().Size.Y - 8f - _card.Size.Y);
-            float y = Mathf.Clamp(row.Position.Y + row.Size.Y / 2f - _card.Size.Y / 2f, 8f, bottom);
-            _card.Position = new Vector2(Panel.Position.X + Panel.Size.X + 6f, y);
+            Rect2 tile = _hovered.GetGlobalRect();
+            float right = Mathf.Max(8f, GetViewport().GetVisibleRect().Size.X - 8f - _card.Size.X);
+            float x = Mathf.Clamp(tile.Position.X + tile.Size.X / 2f - _card.Size.X / 2f, 8f, right);
+            _card.Position = new Vector2(x, Panel.Position.Y - 6f - _card.Size.Y);
             _card.Visible = true;
         }
 
