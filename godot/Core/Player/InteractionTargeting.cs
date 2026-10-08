@@ -166,6 +166,10 @@ namespace GolemFactory.Player
         /// "Interact" -- because the whole point of the prompt is that the player knows what
         /// the key will do before pressing it.
         /// </summary>
+        // Only the first letter: "Order a truckload of" must not become "order A truckload".
+        private static string LowerFirst(string verb) =>
+            string.IsNullOrEmpty(verb) ? verb : char.ToLowerInvariant(verb[0]) + verb.Substring(1);
+
         public static string Verb(InteractionKind kind)
         {
             switch (kind)
@@ -241,8 +245,20 @@ namespace GolemFactory.Player
         /// </summary>
         /// <param name="detail">Optional trailing context (remaining quantity, cost, state).</param>
         public static string BuildPrompt(
-            InteractionKind kind, string targetName, string detail, InteractionAffordance affordance, string interactKey)
+            InteractionKind kind, string targetName, string detail, InteractionAffordance affordance, string interactKey) =>
+            BuildPrompt(kind, targetName, detail, affordance, interactKey, null);
+
+        /// <summary>
+        /// As above, with the verb overridden: the same key can mean a different action on the
+        /// same target. An EMPTY market stall is the case -- [E] orders a truckload there, and a
+        /// caption saying "Harvest" described an action the key would not take (G10).
+        /// </summary>
+        public static string BuildPrompt(
+            InteractionKind kind, string targetName, string detail, InteractionAffordance affordance, string interactKey,
+            string verb)
         {
+            bool overridden = !string.IsNullOrEmpty(verb);
+            verb = overridden ? verb : Verb(kind);
             if (kind == InteractionKind.None || affordance == InteractionAffordance.Hidden)
             {
                 return "";
@@ -255,19 +271,19 @@ namespace GolemFactory.Player
             {
                 // Only the verb is lowercased -- a target name is a proper noun ("Aether",
                 // "PlayerGolem-001") and lowercasing it made the line read as a typo.
-                return "Move closer to " + Verb(kind).ToLowerInvariant() + name + suffix;
+                return "Move closer to " + (overridden ? LowerFirst(verb) : verb.ToLowerInvariant()) + name + suffix;
             }
 
             if (affordance == InteractionAffordance.Unavailable)
             {
                 // No key: the action cannot succeed, and printing "[E] Harvest" next to
                 // "depleted" told the player two contradictory things at once.
-                string subject = string.IsNullOrEmpty(targetName) ? Verb(kind) : targetName;
+                string subject = string.IsNullOrEmpty(targetName) ? verb : targetName;
                 return subject + suffix;
             }
 
             string key = string.IsNullOrEmpty(interactKey) ? "E" : interactKey;
-            return "[" + key + "]  " + Verb(kind) + name + suffix;
+            return "[" + key + "]  " + verb + name + suffix;
         }
     }
 }

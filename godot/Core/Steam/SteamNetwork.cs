@@ -52,13 +52,15 @@ namespace GolemFactory.Steam
     public sealed class SteamNetwork
     {
         /// <summary>
-        /// §3.1: 1 Coke per powered golem per 10 s, and SimulationClock.TicksPerSecond is 10 --
-        /// so 100 ticks. Expressed in ticks rather than seconds because the burn must not depend
-        /// on the clock's speed multiplier or on frame timing: a factory run at 4x speed burns
-        /// the same Coke per unit of WORK DONE, which is the only reading that keeps a ratio a
-        /// ratio.
+        /// 1 Coke per WORKING golem per 20 s, i.e. 3 Coke/min each -- half §3.1's 1 per 10 s,
+        /// and charged only for golems doing work (G10, at the user's call from playtest: "it
+        /// seems to burn very fast"). Expressed in ticks rather than seconds because the burn
+        /// must not depend on the clock's speed multiplier or on frame timing: a factory run at
+        /// 4x speed burns the same Coke per unit of WORK DONE, which is the only reading that
+        /// keeps a ratio a ratio. The name keeps "Powered" for its call sites; what it prices is
+        /// a working golem-tick.
         /// </summary>
-        public const int TicksPerCokePerPoweredGolem = 100;
+        public const int TicksPerCokePerPoweredGolem = 200;
 
         /// <summary>§3.1: a Boiler powers at most 8 golems.</summary>
         public const int MaxGolemsPerBoiler = 8;
@@ -93,6 +95,11 @@ namespace GolemFactory.Steam
 
         // golemId -> the boiler currently powering it. Rebuilt per tick.
         private readonly Dictionary<string, string> _poweredBy = new Dictionary<string, string>();
+
+        // The last tick each consumer reported doing work. A golem ticks before or after the
+        // network on the clock depending on registration order, so a report from this tick OR
+        // the one before counts -- one tick's lag, never a double charge.
+        private readonly Dictionary<string, long> _lastWorked = new Dictionary<string, long>();
 
         // Scratch, reused across the flood fill so a factory-sized pipe run does not allocate
         // two sets per boiler per rebuild.
@@ -280,6 +287,57 @@ namespace GolemFactory.Steam
             return _poweredBy.ContainsKey(consumerId);
         }
 
+        /// <summary>
+        /// Why <paramref name="consumerId"/> has no steam, for the stall badge and the alerts
+        /// strip: no boiler's pipes reach its tile, the boilers that do are out of Coke, or a
+        /// fuelled one does but is already at <see cref="MaxGolemsPerBoiler"/>.
+        /// </summary>
+        public SteamShortage Diagnose(string consumerId, long tick)
+        {
+            if (string.IsNullOrEmpty(consumerId) || !_consumerCells.TryGetValue(consumerId, out Vector2Int cell))
+            {
+                return SteamShortage.None;
+            }
+
+            Evaluate(tick);
+            if (_poweredBy.ContainsKey(consumerId))
+            {
+                return SteamShortage.None;
+            }
+
+            bool reached = false;
+            for (int b = 0; b < _boilerOrder.Count; b++)
+            {
+                SteamBoiler boiler = _boilerOrder[b];
+                if (_poweredCellsByBoiler.TryGetValue(boiler.BoilerId, out HashSet<Vector2Int> reach) && reach.Contains(cell))
+                {
+                    reached = true;
+                    if (boiler.CokeStock > 0)
+                    {
+                        return SteamShortage.BoilerAtCapacity;
+                    }
+                }
+            }
+            return reached ? SteamShortage.BoilerOutOfCoke : SteamShortage.NoPipe;
+        }
+
+        /// <summary>
+        /// Whether any boiler's pipes reach <paramref name="cell"/> -- a golem standing there
+        /// would be on the grid -- regardless of Coke or the 8-golem cap. For the guide (G10).
+        /// </summary>
+        public bool Reaches(Vector2Int cell, long tick)
+        {
+            Evaluate(tick);
+            foreach (HashSet<Vector2Int> reach in _poweredCellsByBoiler.Values)
+            {
+                if (reach.Contains(cell))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public bool TryGetPoweringBoiler(string consumerId, long tick, out string boilerId)
         {
             boilerId = null;
@@ -309,6 +367,18 @@ namespace GolemFactory.Steam
         /// read-only view can never be allowed to perturb the sim it is reporting on.
         /// </summary>
         public int LastEvaluatedPoweredCount => _poweredBy.Count;
+
+        /// <summary>Golems drawing Coke as of the last burn: powered AND working.</summary>
+        public int LastEvaluatedWorkingCount { get; private set; }
+
+        /// <summary>A golem doing work this tick; only those burn Coke.</summary>
+        public void ReportWorking(string consumerId, long tick)
+        {
+            if (!string.IsNullOrEmpty(consumerId))
+            {
+                _lastWorked[consumerId] = tick;
+            }
+        }
 
         /// <summary>Coke on hand across every boiler -- what the fuel gauge reads.</summary>
         public int TotalCokeStock
@@ -360,7 +430,25 @@ namespace GolemFactory.Steam
             RebuildOrders();
             for (int i = 0; i < _boilerOrder.Count; i++)
             {
-                _boilerOrder[i].Accrue(_boilerOrder[i].PoweredGolemCount);
+                _boilerOrder[i].WorkingGolemCount = 0;
+            }
+            int working = 0;
+            foreach (KeyValuePair<string, string> powered in _poweredBy)
+            {
+                if (_lastWorked.TryGetValue(powered.Key, out long worked) && worked >= tick - 1
+                    && _boilers.TryGetValue(powered.Value, out SteamBoiler boiler))
+                {
+                    boiler.WorkingGolemCount++;
+                    working++;
+                }
+            }
+            LastEvaluatedWorkingCount = working;
+
+            // Only working golems are charged. Power is still granted to every golem in reach,
+            // so an idle one can start the moment it has something to do.
+            for (int i = 0; i < _boilerOrder.Count; i++)
+            {
+                _boilerOrder[i].Accrue(_boilerOrder[i].WorkingGolemCount);
             }
 
             // Deliberately NOT marking the evaluation dirty here. A boiler that burns its last

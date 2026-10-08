@@ -16,16 +16,16 @@ namespace GolemFactory.Tests.EditMode
             // The line the entire mechanic turns on. A flat per-boiler burn would make these
             // four numbers identical, and the marginal cost of a golem would be zero.
             Assert.AreEqual(0, SteamGaugeUtility.BurnPerMinute(0));
-            Assert.AreEqual(6, SteamGaugeUtility.BurnPerMinute(1));
-            Assert.AreEqual(24, SteamGaugeUtility.BurnPerMinute(4));
-            Assert.AreEqual(48, SteamGaugeUtility.BurnPerMinute(8));
+            Assert.AreEqual(3, SteamGaugeUtility.BurnPerMinute(1));
+            Assert.AreEqual(12, SteamGaugeUtility.BurnPerMinute(4));
+            Assert.AreEqual(24, SteamGaugeUtility.BurnPerMinute(8));
         }
 
         [Test]
         public void TheDesignsWorkedExample_ReadsBackExactly()
         {
-            // §8: "240 Coke, 24/min, 10:00 left".
-            SteamGaugeReading reading = SteamGaugeUtility.Compute(240, 4, 240);
+            // §8: "240 Coke, 24/min, 10:00 left" -- 4 golems then, 8 at G10's halved rate.
+            SteamGaugeReading reading = SteamGaugeUtility.Compute(240, 8, 240);
 
             Assert.AreEqual(240, reading.CokeStock);
             Assert.AreEqual(24, reading.BurnPerMinute);
@@ -39,15 +39,15 @@ namespace GolemFactory.Tests.EditMode
         public void TheCountdownRespondsToEveryGolemPlaced()
         {
             // §3.1: "with proportional burn the countdown responds live to every golem placed".
-            Assert.AreEqual(2400, SteamGaugeUtility.Compute(240, 1, 240).SecondsRemaining);
-            Assert.AreEqual(1200, SteamGaugeUtility.Compute(240, 2, 240).SecondsRemaining);
-            Assert.AreEqual(300, SteamGaugeUtility.Compute(240, 8, 240).SecondsRemaining);
+            Assert.AreEqual(4800, SteamGaugeUtility.Compute(240, 1, 240).SecondsRemaining);
+            Assert.AreEqual(2400, SteamGaugeUtility.Compute(240, 2, 240).SecondsRemaining);
+            Assert.AreEqual(600, SteamGaugeUtility.Compute(240, 8, 240).SecondsRemaining);
         }
 
         [Test]
         public void TheCountdownRoundsDown_SoItNeverPromisesTimeThePlayerDoesNotHave()
         {
-            SteamGaugeReading reading = SteamGaugeUtility.Compute(239, 4, 240);
+            SteamGaugeReading reading = SteamGaugeUtility.Compute(239, 8, 240);
 
             Assert.AreEqual(597, reading.SecondsRemaining, "239 * 60 / 24 = 597.5 -> 597");
             Assert.AreEqual("239 Coke - 24/min - 9:57 left", SteamGaugeUtility.Format(reading));

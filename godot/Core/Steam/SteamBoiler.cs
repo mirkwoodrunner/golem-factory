@@ -41,7 +41,7 @@ namespace GolemFactory.Steam
         public int PeakCokeStock { get; private set; }
 
         /// <summary>
-        /// Powered-golem-ticks owed but not yet paid for, in [0, 100). See
+        /// Powered-golem-ticks owed but not yet paid for, in [0, 200). See
         /// <see cref="SteamNetwork.TicksPerCokePerPoweredGolem"/>: this is what makes the burn
         /// exactly proportional without ever touching a float.
         /// </summary>
@@ -49,6 +49,9 @@ namespace GolemFactory.Steam
 
         /// <summary>How many golems this boiler is powering as of the last evaluation.</summary>
         public int PoweredGolemCount { get; internal set; }
+
+        /// <summary>Of those, how many were working -- and so burning Coke -- at the last tick.</summary>
+        public int WorkingGolemCount { get; internal set; }
 
         /// <summary>Refuel. The only way Coke ever goes up.</summary>
         public void AddCoke(int quantity)

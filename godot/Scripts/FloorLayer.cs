@@ -28,31 +28,102 @@ namespace GolemFactory.Nodes
             "res://art/floor_tile_grate.png",
         };
 
+        // The street's two cobbles, chosen by SandboxLayout.StreetTileVariant.
+        private static readonly string[] StreetPaths =
+        {
+            "res://art/street_cobble.png",
+            "res://art/street_cobble_b.png",
+        };
+
+        /// <summary>Also pave the market street south of the shop front.</summary>
+        [Export] public bool PaintStreet { get; set; }
+
+        private int[] _floorSources;
+
+        /// <summary>The floor's z. Everything drawn on the floor uses -1, above this.</summary>
+        public const int FloorZ = -10;
+
         public override void _Ready()
         {
             var tileSet = new TileSet { TileSize = new Vector2I(GridConversions.CellPixels, GridConversions.CellPixels) };
-            var sourceIds = new int[TilePaths.Length];
-            for (int i = 0; i < TilePaths.Length; i++)
-            {
-                var atlas = new TileSetAtlasSource
-                {
-                    Texture = GD.Load<Texture2D>(TilePaths[i]),
-                    TextureRegionSize = tileSet.TileSize,
-                };
-                atlas.CreateTile(Vector2I.Zero);
-                sourceIds[i] = tileSet.AddSource(atlas);
-            }
+            int[] sourceIds = AddSources(tileSet, TilePaths);
+            int[] streetIds = AddSources(tileSet, StreetPaths);
             TileSet = tileSet;
+            _floorSources = sourceIds;
+
+            // Z-index is global within a canvas layer, so the floor sits well below the -1 that
+            // floor-level things use (belts, pipes, the build ghost, prop contact shadows).
+            // At z 0 it drew over all of them.
+            ZIndex = FloorZ;
 
             // A TileMapLayer cell's square starts at its top-left corner; GridConversions puts a
             // cell's CENTRE on the cell coordinate. Shift by half a tile so they agree.
             Position = new Vector2(-GridConversions.CellPixels / 2f, -GridConversions.CellPixels / 2f);
 
-            foreach (CoreVector2Int cell in FloorLayout.GetFloorCells())
+            WorldNode world = WorldNode.Find(this);
+            FloorBounds bounds = world?.Bounds ?? new FloorBounds();
+            PaintRows(-bounds.HalfExtent, bounds.NorthExtent, bounds.HalfExtent);
+
+            // A Floor Expansion purchase announces exactly the rows it added; plank them.
+            if (world?.Setup != null)
             {
-                int variant = FloorTileVariant.Select(cell.x, cell.y);
-                SetCell(new Vector2I(cell.x, -cell.y), sourceIds[variant], Vector2I.Zero);
+                world.Sandbox.FloorExpansion.RowsAdded += (from, to) => PaintRows(from, to, bounds.HalfExtent);
+                world.Sandbox.FloorExpansion.RowsRemoved += (from, to) => EraseRows(from, to, bounds.HalfExtent);
             }
+
+            if (PaintStreet)
+            {
+                foreach (CoreVector2Int cell in FloorLayout.GetStreetCells())
+                {
+                    SetCell(new Vector2I(cell.x, -cell.y), streetIds[SandboxLayout.StreetTileVariant(cell)], Vector2I.Zero);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Paints the workshop's plank floor on rows <paramref name="fromRow"/>..<paramref name="toRow"/>
+        /// (Core frame). Floor Expansion calls this for the rows a purchase added.
+        /// </summary>
+        public void PaintRows(int fromRow, int toRow, int halfExtent)
+        {
+            for (int y = fromRow; y <= toRow; y++)
+            {
+                for (int x = -halfExtent; x <= halfExtent; x++)
+                {
+                    SetCell(new Vector2I(x, -y), _floorSources[FloorTileVariant.Select(x, y)], Vector2I.Zero);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Takes the planks off rows <paramref name="fromRow"/>..<paramref name="toRow"/>: a
+        /// load of a save made before those rows were bought.
+        /// </summary>
+        public void EraseRows(int fromRow, int toRow, int halfExtent)
+        {
+            for (int y = fromRow; y <= toRow; y++)
+            {
+                for (int x = -halfExtent; x <= halfExtent; x++)
+                {
+                    EraseCell(new Vector2I(x, -y));
+                }
+            }
+        }
+
+        private static int[] AddSources(TileSet tileSet, string[] paths)
+        {
+            var ids = new int[paths.Length];
+            for (int i = 0; i < paths.Length; i++)
+            {
+                var atlas = new TileSetAtlasSource
+                {
+                    Texture = GD.Load<Texture2D>(paths[i]),
+                    TextureRegionSize = tileSet.TileSize,
+                };
+                atlas.CreateTile(Vector2I.Zero);
+                ids[i] = tileSet.AddSource(atlas);
+            }
+            return ids;
         }
     }
 }

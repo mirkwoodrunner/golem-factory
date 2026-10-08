@@ -24,58 +24,84 @@ TEST_ATTR = re.compile(r"^\s*\[(?:Test|TestCase|UnityTest)\b", re.M)
 # Held files -> (milestone, what brings them across). Every unported Unity file must be
 # named here; --check fails on one that is not, so nothing drops off the ledger silently.
 HELD = {
-    # G2: the rules move into Core services, and these become unit tests.
-    "AssemblyLine/AssemblyLineGatingTests.cs": ("G2", "AssemblyLineStateHolder rules"),
-    "Buildings/AssemblyBayCapTests.cs": ("G2", "StationService (assembly bay)"),
-    "Buildings/AssemblyBayStructureTests.cs": ("G2", "StationService (assembly bay)"),
-    "Buildings/GolemConstructionStationTests.cs": ("G2", "StationService"),
-    "Buildings/GolemDismantleTests.cs": ("G2", "StationService (dismantle)"),
-    "Buildings/HandCrankBenchTests.cs": ("G2", "HandCrankBench rules"),
-    "Buildings/PlacedStationWiringTests.cs": ("G2", "StationService"),
-    "ClockTower/ClockTowerSiteHolderTests.cs": ("G2", "ClockTowerSite wiring"),
-    "Golems/BeltGolemHandoffTests.cs": ("G2", "GolemEntity + BeltNetwork (PlayMode only for scene setup)"),
-    "Golems/GolemRefineTests.cs": ("G2", "GolemEntity (PlayMode only for scene setup)"),
-    "Player/BoilerHandRefuelTests.cs": ("G2", "InteractionService"),
-    "Player/BuildDemolitionRefundTests.cs": ("G2", "BuildService (refund)"),
-    "Player/BuildDragRunTests.cs": ("G2", "BuildService (drag runs)"),
-    "Player/BuildingRebuildTests.cs": ("G2", "BuildService (rebuild)"),
-    "Player/BuildModeControllerTests.cs": ("G2", "BuildService"),
-    "Player/BuildPlacementBoundsTests.cs": ("G2", "BuildService (bounds)"),
-    "Player/GolemInteractableRefreshTests.cs": ("G2", "InteractionService"),
-    "Player/GolemRepositioningTests.cs": ("G2", "InteractionService (carry/rotate)"),
-    "Player/PlacedStationConfigurationTests.cs": ("G2", "StationService"),
-    "Player/PlayerInteractorTests.cs": ("G2", "InteractionService"),
-    "Player/WreckingBarGolemTests.cs": ("G2", "BuildService + StationService"),
-    "Progression/BuildingSignalCoverageTests.cs": ("G2", "TechTreeProgressTracker rules"),
-    "Save/BuildingPersistenceTests.cs": ("G2", "SaveLoadService over IPlacedBuilding"),
-    "Save/GolemRespawnTests.cs": ("G2", "StationService (respawn)"),
-    "Save/SaveLoadServiceTests.cs": ("G2", "SaveLoadService over IPlacedBuilding"),
-    "UI/AssemblyBayRowPolicyTests.cs": ("G2", "StationService (assembly bay)"),
-    "World/FloorExpansionTests.cs": ("G2", "FloorExpansionService rules"),
-    "World/ResourceNodeMarkerTests.cs": ("G2", "SandboxSetup / node registration"),
-    # G4: scene-level presentation.
-    "Player/ArtificerWalkAnimatorTests.cs": ("G4", "PlayerNode walk animation (rules already in Core)"),
-    "Player/PlayerControllerTests.cs": ("G4", "PlayerNode movement (rules already in Core)"),
+    # G2: the rules move into Core, and these become unit tests. G2a (station, assembly bay)
+    # G2 is done: G2a-G2d.
+    "AssemblyLine/AssemblyLineGatingTests.cs": ("G2d", "AssemblyLineStateHolder rules"),
+    "Buildings/AssemblyBayCapTests.cs": ("G2d", "StationService (assembly bay)"),
+    "Buildings/AssemblyBayStructureTests.cs": ("G2d", "StationService (assembly bay)"),
+    "Buildings/GolemConstructionStationTests.cs": ("G2d", "StationService"),
+    "Buildings/GolemDismantleTests.cs": ("G2d", "StationService (dismantle)"),
+    "Buildings/HandCrankBenchTests.cs": ("G2d", "HandCrankBench rules"),
+    "Buildings/PlacedStationWiringTests.cs": ("G2d", "StationService"),
+    "ClockTower/ClockTowerSiteHolderTests.cs": ("G2d", "ClockTowerSite wiring"),
+    "Golems/BeltGolemHandoffTests.cs": ("G2d", "GolemEntity + BeltNetwork (PlayMode only for scene setup)"),
+    "Golems/GolemRefineTests.cs": ("G2d", "GolemEntity (PlayMode only for scene setup)"),
+    "Player/BoilerHandRefuelTests.cs": ("G2c", "InteractionService"),
+    "Player/BuildDemolitionRefundTests.cs": ("G2b", "BuildService (refund)"),
+    "Player/BuildDragRunTests.cs": ("G2b", "BuildService (drag runs)"),
+    "Player/BuildingRebuildTests.cs": ("G2b", "BuildService (rebuild)"),
+    "Player/BuildModeControllerTests.cs": ("G2b", "BuildService"),
+    "Player/BuildPlacementBoundsTests.cs": ("G2b", "BuildService (bounds)"),
+    "Player/GolemInteractableRefreshTests.cs": ("G2c", "InteractionService"),
+    "Player/GolemRepositioningTests.cs": ("G2c", "InteractionService (carry/rotate)"),
+    "Player/PlacedStationConfigurationTests.cs": ("G2b", "BuildService asking for a placed station's wiring"),
+    "Player/PlayerInteractorTests.cs": ("G2c", "InteractionService"),
+    "Player/WreckingBarGolemTests.cs": ("G2b", "BuildService + StationService"),
+    "Progression/BuildingSignalCoverageTests.cs": ("G2d", "TechTreeProgressTracker rules"),
+    "Save/BuildingPersistenceTests.cs": ("G2d", "SaveLoadService over IPlacedBuilding"),
+    "Save/GolemRespawnTests.cs": ("G2d", "StationService (respawn)"),
+    "Save/SaveLoadServiceTests.cs": ("G2d", "SaveLoadService over IPlacedBuilding"),
+    "UI/AssemblyBayRowPolicyTests.cs": ("G2d", "StationService (assembly bay)"),
+    "World/FloorExpansionTests.cs": ("G2d", "FloorExpansionService rules"),
+    "World/ResourceNodeMarkerTests.cs": ("G2d", "SandboxSetup / node registration"),
     # G7/G8: the screens.
-    "UI/WorkbenchControllerTests.cs": ("G7", "WorkbenchSession"),
-    "UI/WorkbenchQuantityTests.cs": ("G7", "WorkbenchSession"),
-    "UI/AlertsPanelReconcileTests.cs": ("G8", "Alerts panel"),
-    "UI/AssemblyLinePanelTests.cs": ("G8", "Assembly Line panel"),
-    "UI/BuildMenuDemolishRowTests.cs": ("G5", "Build menu panel"),
-    "UI/HudScreenExclusivityTests.cs": ("G8", "HudScreenPolicy scenario"),
-    "UI/InventoryPanelTests.cs": ("G8", "Inventory panel"),
-    "UI/ManagementPanelTests.cs": ("G8", "Management panel"),
-    "UI/PatentBrowserPanelTests.cs": ("G8", "Patents tab"),
-    "UI/SaveLoadPanelTests.cs": ("G9", "Save/load panel"),
-    "UI/TechTreeRecipeReadoutTests.cs": ("G8", "Ledger recipe readout"),
-    # G9: save files on disk.
-    "Save/SaveCatalogCoverageTests.cs": ("G9", "Save panel's catalog vs the JSON data"),
-    "Save/SaveFileIOTests.cs": ("G9", "Godot SaveFileIO (user://)"),
 }
 
 # Ported to a different path than the original.
 MOVED = {
     "PlayMode/Golems/GolemSignalTriggerTests.cs": "Golems/GolemSignalTriggerTests.cs",
+}
+
+
+# Unity files whose tests drive a screen or a scene, so the Godot side checks them in a
+# headless scenario (godot/Scripts/Scenarios/) instead of a unit test.
+# rel -> (scenario file under godot/Scripts/Scenarios, what it checks).
+# --check fails if the scenario file is missing, so an entry cannot point at nothing.
+REPLACED = {
+    "UI/BuildMenuDemolishRowTests.cs": (
+        "BuildScenario.cs",
+        "`build` scenario: Demolish is the last of 11 rows; its row toggles the bar; picking a "
+        "placeable puts the bar down; the panel is tall enough for every row"),
+}
+SCENARIOS = os.path.join(REPO, "godot", "Scripts", "Scenarios")
+
+
+# Ported files that deliberately left some tests behind, or swapped one for its replacement.
+# rel -> (tests held, milestone or "", note shown in the ledger).
+PARTIAL = {
+    "UI/WorkbenchControllerTests.cs": (
+        0, "", "29 ported onto WorkbenchSession; 9 UGUI-plumbing tests (Open_ActivatesCanvasRoot, "
+               "Open_ClosesManagementPanelAndConstructionPanel, the four FailedDrag/RepeatedFailedDrags, "
+               "CardDestroyedMidDrag, the two RealDrag) checked by the `workbench` scenario against the "
+               "Godot screen; SlotCaptions_SurviveARowWithNoCaptionChild retired (captions are strings, "
+               "there is no child to be missing)"),
+    "UI/HudScreenExclusivityTests.cs": (
+        0, "", "4 ported onto ScreenCoordinator; BuildMenu_HidesWhileAnyScreenIsOpenAndReturnsAfterwards "
+               "checked by the `management` scenario against the real build menu"),
+    "UI/TechTreeRecipeReadoutTests.cs": (
+        0, "", "4 ported onto TechTreeReadout; TheReadoutIsParentedOutsideTheChart and "
+               "EveryNodePlaqueIsClickable checked by the `management` scenario against the drawn Ledger"),
+    "UI/WorkbenchQuantityTests.cs": (
+        0, "", "9 ported onto WorkbenchSession; VaultCards_HaveNoStepper checked by the `workbench` scenario"),
+    "Player/PlayerControllerTests.cs": (
+        0, "", "ported onto PlayerWalker; Awake_AddsYSortSpriteRenderer retired (y-sort is the scene's "
+               "y_sort_enabled); MoveBy_WithFloorBounds_FollowsTheNorthWallAsTheRoomGrows added"),
+    "Player/ArtificerWalkAnimatorTests.cs": (
+        0, "", "ported onto PlayerWalker; UnwiredFrames_LeaveTheSpriteAlone retired (the node loads "
+               "its sixteen frames from res://art, so there is no half-wired array)"),
+    "World/FloorExpansionTests.cs": (
+        0, "", "PaintingWritesATileOnEveryNewCell replaced by APurchaseAnnouncesExactlyTheRowsItAdded "
+               "(painting is the scene's job; Core owes it the rows)"),
 }
 
 
@@ -99,9 +125,22 @@ def build():
                 target = MOVED.get(f"{suite}/{rel}", rel)
                 if os.path.exists(os.path.join(CORE, target)):
                     ported = count(os.path.join(CORE, target))
-                    status = "ported" if ported >= n else f"ported ({ported}/{n})"
+                    held_here, milestone, note = PARTIAL.get(rel, (0, "", ""))
+                    if held_here:
+                        status = f"ported {n - held_here}/{n}; {held_here} held: {milestone}"
+                        totals["ported"] += n - held_here
+                        totals["held"] += held_here
+                    else:
+                        status = "ported" if ported >= n else f"ported ({ported}/{n})"
+                        totals["ported"] += n
+                    where = f"`Core.Tests/{target}`" + (f" -- {note}" if note else "")
+                    rows.append((suite, rel, n, status, where))
+                elif rel in REPLACED:
+                    scenario, how = REPLACED[rel]
+                    if not os.path.exists(os.path.join(SCENARIOS, scenario)):
+                        problems.append(f"{suite}/{rel} is replaced by a missing scenario {scenario}")
                     totals["ported"] += n
-                    rows.append((suite, rel, n, status, f"`Core.Tests/{target}`"))
+                    rows.append((suite, rel, n, "replaced by a scenario", how))
                 elif rel in HELD:
                     milestone, how = HELD[rel]
                     totals["held"] += n

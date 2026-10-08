@@ -1,66 +1,92 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://Scripts/WorldNode.cs" id="1_world"]
 [ext_resource type="Script" path="res://Scripts/FloorLayer.cs" id="2_floor"]
-[ext_resource type="Script" path="res://Scripts/ResourceNodeMarker.cs" id="3_node"]
-[ext_resource type="Script" path="res://Scripts/BeltRun.cs" id="4_belt"]
-[ext_resource type="Script" path="res://Scripts/DepotNode.cs" id="5_depot"]
-[ext_resource type="Script" path="res://Scripts/GolemNode.cs" id="6_golem"]
-[ext_resource type="Script" path="res://Scripts/ConstructionStationNode.cs" id="7_station"]
-[ext_resource type="Script" path="res://Scripts/PlayerNode.cs" id="8_player"]
-[ext_resource type="Script" path="res://Scripts/Hud.cs" id="9_hud"]
-[ext_resource type="Script" path="res://Scripts/SpikeCheck.cs" id="10_check"]
-[ext_resource type="Texture2D" path="res://art/item_scrap.png" id="11_scrap"]
+[ext_resource type="Script" path="res://Scripts/World/ShellNode.cs" id="3_shell"]
+[ext_resource type="Script" path="res://Scripts/World/SandboxNode.cs" id="4_sandbox"]
+[ext_resource type="Script" path="res://Scripts/ConstructionStationNode.cs" id="5_station"]
+[ext_resource type="Script" path="res://Scripts/PlayerNode.cs" id="6_player"]
+[ext_resource type="Script" path="res://Scripts/Player/CameraRigNode.cs" id="7_camera"]
+[ext_resource type="Script" path="res://Scripts/UI/HudOverlay.cs" id="8_hud"]
+[ext_resource type="Script" path="res://Scripts/Scenarios/ScenarioRunner.cs" id="9_scenarios"]
+[ext_resource type="Script" path="res://Scripts/Buildings/BuildingsLayer.cs" id="10_buildings"]
+[ext_resource type="Script" path="res://Scripts/Player/BuildCursorNode.cs" id="11_cursor"]
+[ext_resource type="Script" path="res://Scripts/UI/BuildMenuNode.cs" id="12_menu"]
+[ext_resource type="Script" path="res://Scripts/UI/InteractionPromptNode.cs" id="13_prompt"]
+[ext_resource type="Script" path="res://Scripts/UI/HandCrankPanelNode.cs" id="14_crank"]
+[ext_resource type="Script" path="res://Scripts/UI/ConstructionPanelNode.cs" id="15_construct"]
+[ext_resource type="Script" path="res://Scripts/Golems/RoutingFocusNode.cs" id="16_focus"]
+[ext_resource type="Script" path="res://Scripts/UI/WorkbenchScreen.cs" id="17_workbench"]
+[ext_resource type="Script" path="res://Scripts/UI/ManagementScreen.cs" id="18_management"]
+[ext_resource type="Script" path="res://Scripts/UI/TutorialPanel.cs" id="19_tutorial"]
 
 [node name="Sandbox" type="Node2D"]
 
 [node name="World" type="Node" parent="."]
 script = ExtResource("1_world")
+ApplySandboxSetup = true
 
 [node name="Floor" type="TileMapLayer" parent="."]
 script = ExtResource("2_floor")
-
-[node name="Belts" type="Node2D" parent="."]
-script = ExtResource("4_belt")
-StartCell = Vector2i(-2, 0)
-Length = 5
-Facing = 1
+PaintStreet = true
 
 [node name="Entities" type="Node2D" parent="."]
 y_sort_enabled = true
 
-[node name="ScrapNode" type="Node2D" parent="Entities"]
-script = ExtResource("3_node")
-Cell = Vector2i(-4, 0)
-Icon = ExtResource("11_scrap")
+[node name="Shell" type="Node2D" parent="Entities"]
+script = ExtResource("3_shell")
 
-[node name="Depot" type="Node2D" parent="Entities"]
-script = ExtResource("5_depot")
-Cell = Vector2i(4, 0)
+[node name="Sandbox" type="Node2D" parent="Entities"]
+y_sort_enabled = true
+script = ExtResource("4_sandbox")
 
-[node name="Unloader" type="Node2D" parent="Entities"]
-script = ExtResource("6_golem")
-GolemId = "Unloader-001"
-Cell = Vector2i(3, 0)
-Facing = 1
-ProgramKind = 1
+[node name="Buildings" type="Node2D" parent="Entities"]
+y_sort_enabled = true
+script = ExtResource("10_buildings")
 
-[node name="Station" type="Node2D" parent="Entities"]
-script = ExtResource("7_station")
-Cell = Vector2i(-4, -3)
-SpawnCell = Vector2i(-3, 0)
-SpawnFacing = 1
+[node name="StarterConstructionStation" type="Node2D" parent="Entities"]
+script = ExtResource("5_station")
+UseStarterStation = true
 
 [node name="Player" type="Node2D" parent="Entities"]
-script = ExtResource("8_player")
-StartCell = Vector2i(-3, -2)
+script = ExtResource("6_player")
+OwnCamera = false
+
+[node name="RoutingFocus" type="Node" parent="."]
+script = ExtResource("16_focus")
+PlayerPath = NodePath("../Entities/Player")
+
+[node name="InteractionPrompt" type="Node2D" parent="."]
+script = ExtResource("13_prompt")
+
+[node name="BuildCursor" type="Node2D" parent="."]
+script = ExtResource("11_cursor")
+
+[node name="Camera" type="Camera2D" parent="."]
+script = ExtResource("7_camera")
+TargetPath = NodePath("../Entities/Player")
 
 [node name="Hud" type="CanvasLayer" parent="."]
-script = ExtResource("9_hud")
-PlayerPath = NodePath("../Entities/Player")
-DepotPath = NodePath("../Entities/Depot")
+script = ExtResource("8_hud")
 
-[node name="SpikeCheck" type="Node" parent="."]
-script = ExtResource("10_check")
-StationPath = NodePath("../Entities/Station")
-DepotPath = NodePath("../Entities/Depot")
+[node name="BuildMenu" type="CanvasLayer" parent="."]
+script = ExtResource("12_menu")
+
+[node name="HandCrankPanel" type="CanvasLayer" parent="."]
+script = ExtResource("14_crank")
+
+[node name="ConstructionPanel" type="CanvasLayer" parent="."]
+script = ExtResource("15_construct")
+
+[node name="Workbench" type="CanvasLayer" parent="."]
+script = ExtResource("17_workbench")
+
+[node name="Management" type="CanvasLayer" parent="."]
+script = ExtResource("18_management")
+
+[node name="Tutorial" type="CanvasLayer" parent="."]
+script = ExtResource("19_tutorial")
+
+[node name="Scenarios" type="Node" parent="."]
+script = ExtResource("9_scenarios")
+StationPath = NodePath("../Entities/StarterConstructionStation")

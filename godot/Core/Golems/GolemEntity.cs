@@ -83,6 +83,19 @@ namespace GolemFactory.Golems
         public void MarkRuntimeSpawned() => _isRuntimeSpawned = true;
 
         public string GolemId => golemId;
+
+
+        /// <summary>
+
+        /// Unity's Object.name: what the golem's GameObject was called ("GolemPrefab(Clone)" for a
+
+        /// station-built one). Identity is <see cref="GolemId"/>, never this; it survives only as the
+
+        /// Workbench header's fallback for a golem that was never given an id.
+
+        /// </summary>
+
+        public string name = "";
         public GolemProgram Program => program;
 
         public Vector2Int Cell => cell;
@@ -131,6 +144,12 @@ namespace GolemFactory.Golems
         private string _stallResourceId;
         public StallReason StallReason => program.State == GolemState.Stalled ? _stallReason : StallReason.None;
         public string StallResourceId => program.State == GolemState.Stalled ? _stallResourceId : null;
+
+        /// <summary>Why steam does not reach this golem, while it is stalled for want of it.</summary>
+        public SteamShortage SteamShortage =>
+            StallReason == StallReason.NoSteam && steamNetwork != null
+                ? steamNetwork.Diagnose(golemId, _currentTick)
+                : SteamShortage.None;
 
         // HOW MANY MORE of _stallResourceId the step needed -- progression-design §8's "Why is
         // this golem stopped?" row requires the specific short ingredient *and amount* for
@@ -315,6 +334,29 @@ namespace GolemFactory.Golems
             ReleaseNodeClaim();
         }
 
+        /// <summary>
+        /// True once <see cref="Remove"/> has run: this golem has left the world.
+        /// </summary>
+        public bool IsRemoved { get; private set; }
+
+        /// <summary>
+        /// Takes this golem out of the world -- what Unity's <c>Destroy</c> did. Runs
+        /// <see cref="Detach"/> (Unity ran OnDisable on destroy, releasing the steam consumer and
+        /// the node claim) and marks the golem removed, which is how holders of a reference --
+        /// the assembly bay above all -- learn it is gone. In Unity they learned it from a
+        /// destroyed object comparing equal to null, which plain C# has no equivalent of.
+        /// One-way and idempotent.
+        /// </summary>
+        public void Remove()
+        {
+            if (IsRemoved)
+            {
+                return;
+            }
+            Detach();
+            IsRemoved = true;
+        }
+
         private void OnGolemCompletedForSignal(GolemCompletedEvent e)
         {
             LogicCoreDefinition logicCore = program.logicCore;
@@ -420,6 +462,11 @@ namespace GolemFactory.Golems
                     return;
                 }
             }
+
+            // Past the stall check: this golem is doing work this tick, and only work burns Coke
+            // (G10, at the user's call -- an idle, unprogrammed or stalled golem in a boiler's
+            // reach used to cost the same 6 Coke/min as one producing).
+            steamNetwork?.ReportWorking(golemId, tick);
 
             // wasStalled can only be true here if StepProgressTicks was 0 (Stalled is only
             // ever set in the guard clause above, which requires StepProgressTicks == 0),

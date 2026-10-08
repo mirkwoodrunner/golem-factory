@@ -33,19 +33,139 @@ dotnet test godot/GolemFactory.sln            # Core tests: ~0.6 s, no engine in
 
 G=".../Godot_v4.7.2-stable_mono_win64_console.exe"
 "$G" --headless --path godot --build-solutions --quit             # compile the Godot project
-"$G" --headless --path godot --fixed-fps 60 -- --spike-check      # end-to-end check, exit 0/1
+"$G" --headless --path godot --fixed-fps 60 -- --scenario world   # an end-to-end scenario, exit 0/1
 "$G" --path godot --fixed-fps 60 --quit-after 240 \
-     --write-movie <dir>/frame.png -- --spike-demo                 # render frames to look at
+     --write-movie <dir>/frame.png -- --demo                       # render frames to look at
 ```
 
 `--fixed-fps 60` makes every frame 1/60 s of game time, so headless runs are deterministic
-and as fast as the machine allows. `--spike-check` auto-builds the golem, runs 600 ticks and
-asserts the whole loop (node → extractor → belt → unloader → depot).
+and as fast as the machine allows.
+
+**Scenes.** `Scenes/Sandbox.tscn` is the game world (the main scene). `Scenes/LoopSlice.tscn`
+is the spike's hand-built slice, kept as the `loop` scenario's fixture; run it by passing
+`res://Scenes/LoopSlice.tscn` before `--`.
+
+**Scenarios** (`Scripts/Scenarios/`) are the scene-level checks. `ScenarioRunner` is a node in
+each scene; `-- --scenario <name>` runs one to a verdict, prints
+`[scenario <name>] PASS|FAIL …` and exits 0/1. An unknown name fails and lists the known
+ones. Current scenarios:
+- `world` (Sandbox): the shell matches `SandboxLayout`, all nine stalls publish endpoints, and
+  the player walks to the street's far edge and back with the camera following.
+- `build` (Sandbox): every placeable placed through the real build menu and cursor with
+  synthetic mouse and key events, then drag runs, Escape, and a demolition that restores the
+  stockpile exactly.
+- `interact` (Sandbox): the player's `[E]`, hold-`[E]`, and `[G]` at a stall, an empty stall,
+  the bench and the station, using real key and mouse events.
+- `golems` (Sandbox): every chassis built, and every `AppendageActionType` run on real steam:
+  extract, haul, push, load, assemble plus repeat, refine, and freight. A golem out of steam
+  must stall and wear its badge.
+- `workbench` (Sandbox): program a golem end to end through the Workbench with real mouse
+  drags. Also covers socket highlights, the dial, failed drags leaving no orphans, Engage,
+  Patent, and close/reopen.
+- `management` (Sandbox): the HUD (alerts strip, pause and play), and Tab opening Management
+  with the HUD and build menu hidden. Covers the Inventory icons, the tab exclusivity, an
+  Assembly Line claim reaching the Workbench, Extend planking and walling new rows, Patents
+  Load, the Ledger's plaques and recipe pane, and one screen at a time.
+- `save` (Sandbox): through the SaveLoad tab, build, save, wreck everything, and load. The
+  buildings, golems (with program and place) and stockpile must come back exactly, and two
+  more rounds must change nothing. Then it extends the room after a save and loads, and the
+  rows and back wall must go back. Writes `user://scenario-save.json`, never the player's save.
+- `tutorial` (Sandbox): the step-by-step guide's panel.
+  - It opens on step 1, with the arrow pinned to the screen edge toward the Scrap stall and
+    clear of the HUD bars.
+  - Gathering advances it, and the Boiler step outlines its build-menu row.
+  - F1 hides and shows it, it steps aside over Management, and Skip guide puts it away.
+  - In the Workbench on "Program it", it sits clear of the sockets, the lever and the vault.
+- `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
+  into the stockpile, over 600 ticks. `--spike-check` is an alias.
+- `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
+
+To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scenarios`.
+`--demo` (alias `--spike-demo`) only runs the scripted setup, for `--write-movie` captures.
+
+## Art and fonts
+
+- **The art lives in `godot/art/`**, mirroring Unity's `Assets/_Project/Art/` including
+  `UI/…`. Since G3 the generators in `Tools/Art/` write here. Their root comes from
+  `Tools/Art/art_paths.py`, and `--out-root <dir>` redirects any of them. Unity's copy is
+  frozen until cutover.
+- **`python Tools/Art/verify_art.py`** regenerates everything into a scratch folder and
+  compares it with `godot/art/`. Exit 1 means a generated sprite drifted. It also lists the
+  sprites that are authored rather than generated (walk frames, item and chassis art, the
+  Steampunk pack), so "not generated" is never mistaken for "verified".
+- Texture filtering is nearest-neighbour project-wide. Standing sprites are placed with
+  `GridConversions.StandOnCell`, Unity's BottomCenter pivot. The five pipe tiles are
+  centre-pivoted (they rotate in quarter turns). 9-slice UI uses `StyleBoxTexture` margins.
+  Those are set where each sprite is drawn, in G5 and G7, not by an import pass.
+- **Font:** `fonts/LiberationSans.ttf` (OFL; licence beside it) is the project font
+  (`gui/theme/custom_font`). Game text is printable Latin-1 plus → ≥ █ ░, with · as the
+  separator, and the `font-glyphs` scenario pins that. To use a new character, check that
+  the font has it; if not, add a fallback font and widen the scenario in the same change.
+
+## The world is built from rules at load
+
+`Sandbox.tscn` is mostly empty. `ShellNode` builds walls, props and sconces from
+`Core/World/SandboxLayout`, and `SandboxNode` builds the stalls and the starter bench from
+`data/sandbox.json` (via `WorldNode.Setup`). Change the room in Core, where
+`SandboxLayoutTests` pins it to Unity's numbers. Don't hand-place walls in the scene.
+Sprite pivots, Unity's import pivots, live in `Scripts/World/SpritePivots`.
+
+## The Sandbox is composed in Core
+
+`Core/World/SandboxWorld` is what Unity's `SandboxBootstrap` did, as a plain object: every
+registry, and the wiring between them and `BuildModeController`. `WorldNode` owns one.
+Unit tests compose the same world with no scene (`SandboxWorldTests`). A new system belongs
+there, not on a node, so a test can reach it.
+
+Buildings are Core `PlaceableBuilding`s. Godot draws them in `Scripts/Buildings/BuildingsLayer`,
+one `BuildingView` each, by listening to `BuildingPlaced`, `BuildingRemoved` and
+`ConnectedShapesChanged`. Don't give a building its own scene with logic in it.
+
+**The player's hands are Core's `PlayerInteractor`** (`SandboxWorld.Interactor`). `PlayerNode`
+only feeds it the position and the keys. A full screen joins the `ModalScreens` group and
+implements `IScreen`; while one is open the player stays still and the world prompt hides. A
+new screen gets that for free.
+
+**The guide (`Core/Tutorial/TutorialGuide`) detects its steps from world state.** A new step
+gets a `Done` check that reads the world, never a call from the code that does the thing. A
+step that happens inside a full screen must also be placed clear of that screen's controls
+(see `TutorialPanel.Dock`).
+
+**Full screens report to `SandboxWorld.Screens`** (`ScreenCoordinator`). Implement
+`IClosableScreen`, `Register` in `_Ready`, and call `Screens.Opening(this)` in `Open`; every
+other screen closes. Don't hand-close siblings. That's the bug class the coordinator replaced.
+
+**Godot node names can't hold `.` or `:`**, and a duplicate sibling name is silently renamed.
+Never find a control by a name built from data (a node id, a card name); keep a lookup.
+
+**Screens are written from their Unity prefab's numbers** with `Scripts/UI/Ugui.cs`.
+`Ugui.Place` takes a RectTransform's anchorMin/anchorMax/anchoredPosition/sizeDelta/pivot.
+`Ugui.Image` gives a 9-sliced, tinted plate whose tint stays off its children. `Ugui.Text` is
+a single-line TMP-style label. Dump a prefab's tree first (anchors, sprites, borders, text
+sizes) and transcribe it; don't eyeball a layout. **A control has no size until the frame
+after it's built**, so a scenario must not click something in the same step that opened it.
+
+**Scenario input:** `Input.ParseInputEvent` **without** `FlushBufferedEvents` for key presses,
+and a tap must hold the key down across at least one frame. A press and release in the same
+frame, or a flush from inside `_Process`, never reads as "just pressed" to a node that has
+already run that frame.
+
+**Depth: a standing sprite's feet go on its node's origin.** Y-sort compares origins, so use
+`GridConversions.StandOnCell` or `SpritePivots` for anything that stands, and never offset a
+sprite's feet away from its node. The `world` scenario fails if one does.
+
+**Z-order:** the floor is z −10 (`FloorLayer.FloorZ`), and floor-level things (belts, pipes,
+the ghost, shadows) are −1. A belt's own tile is −2, so every lane sits under every item of
+cargo; at one z, an item crossing into the next cell vanished under that cell's tile. Z-index is global within a canvas layer, so anything you add at a
+negative z must stay above −10.
 
 ## Authored data (`godot/data/*.json`)
 
 The chassis, logic cores, punch cards, recipes, Clock Tower stages and the Assembly Line
-deck: what Unity kept as ScriptableObject `.asset` files.
+deck: what Unity kept as ScriptableObject `.asset` files. Also `placeables.json` (the build
+menu, from the prefabs) and `sandbox.json` (the world's setup, hand-written from
+`Sandbox.unity` in G4). The belt splitter has no Unity prefab: the converter adds it after
+the belt (`belt_splitter_entry`), so edit it there, not in the JSON.
 
 - **Until cutover (G10) the Unity assets are the source of truth.** Regenerate the JSON with
   `python Tools/Data/convert_unity_assets.py`. `--check` exits 1 if the JSON is stale. After

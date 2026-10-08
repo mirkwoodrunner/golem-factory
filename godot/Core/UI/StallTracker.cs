@@ -1,3 +1,4 @@
+using GolemFactory.Steam;
 using System.Collections.Generic;
 using GolemFactory.Events;
 
@@ -22,12 +23,19 @@ namespace GolemFactory.UI
             : this(golemId, reason, resourceId, 0) { }
 
         public StallSnapshot(string golemId, StallReason reason, string resourceId, int shortfall)
+            : this(golemId, reason, resourceId, shortfall, SteamShortage.None) { }
+
+        public StallSnapshot(string golemId, StallReason reason, string resourceId, int shortfall, SteamShortage steam)
         {
             GolemId = golemId;
             Reason = reason;
             ResourceId = resourceId;
             Shortfall = shortfall;
+            Steam = steam;
         }
+
+        /// <summary>For a NoSteam stall, why (G10); None otherwise.</summary>
+        public readonly SteamShortage Steam;
     }
 
     // Plain C# tracker of "currently stalled" golem ids, driven by

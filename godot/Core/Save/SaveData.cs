@@ -20,6 +20,32 @@ namespace GolemFactory.Save
         // no factory around them -- golems came back (see GolemEntry.wasRuntimeSpawned) and
         // stalled immediately, because the belts they push into and the depots they fill did not.
         public List<BuildingEntry> buildings = new List<BuildingEntry>();
+
+        // The factory's progress (G10): what Unity's save never held. Null in a save written
+        // before it existed, and a load then leaves progress exactly as it is.
+        public ProgressEntry progress;
+    }
+
+    /// <summary>
+    /// Progress a session earns beyond its goods and buildings: Assembly Line claims, the tech
+    /// tree's ledger, the Floor Expansion and assembly-bay purchases, and the clock's setting.
+    /// Cards, chassis and buildings are by NAME, like the rest of this file.
+    /// </summary>
+    [Serializable]
+    public sealed class ProgressEntry
+    {
+        public List<string> claimedCards = new List<string>();
+        public List<string> ledgerItems = new List<string>();
+        public List<string> ledgerChassis = new List<string>();
+        public List<string> ledgerBuildings = new List<string>();
+        public List<string> ledgerCards = new List<string>();
+        public int ledgerTowerStages;
+        public int floorNorthExtent;
+        public int assemblyBayTier = 1;
+        public float clockSpeed = 1f;
+        public bool clockPaused;
+        public int tutorialStep;
+        public bool tutorialDismissed;
     }
 
     /// <summary>

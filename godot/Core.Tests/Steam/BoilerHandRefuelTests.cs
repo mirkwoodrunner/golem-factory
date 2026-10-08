@@ -48,7 +48,9 @@ namespace GolemFactory.Tests.EditMode
                 BoilerRefuelPolicy.HandLoadBatch * (SteamNetwork.TicksPerCokePerPoweredGolem / 10f);
             float secondsForAFullBoiler = secondsForOneGolem / SteamNetwork.MaxGolemsPerBoiler;
 
-            Assert.Less(secondsForAFullBoiler, 30f,
+            // Was 30 s. G10 halved the burn (the user's call), so one 20-Coke press now covers a
+            // full boiler for 50 s; a minute is still far short of what a coking line supplies.
+            Assert.Less(secondsForAFullBoiler, 60f,
                 "a single press should not keep a full boiler running long enough to replace a coking line");
             Assert.Greater(secondsForOneGolem, 60f,
                 "but it must be worth walking over for -- a press that buys under a minute is busywork");
