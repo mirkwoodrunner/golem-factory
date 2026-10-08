@@ -272,6 +272,54 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
 
+            // Finish chapter 2 for real, then into chapter 3 as far as its pipe run.
+            Do("lay the pipes, the depot, and program and place the Presser", () =>
+            {
+                foreach (CoreVector2Int pipe in _world.Tutorial.PipeSpots)
+                {
+                    PlaceAt("SteamPipePrefab", pipe);
+                }
+                PlaceAt("DepotPrefab", _world.Tutorial.PresserDepotSpot);
+                var presser = _world.Golems.First(g => !g.IsRemoved && g.Program.chassis?.name == "BrassPresser");
+                presser.Program.logicCore = _world.Definitions.LogicCores["AlwaysOnCore"];
+                presser.Program.TryAddAppendage(_world.Definitions.Appendages["HaulScrap"]);
+                presser.Program.TryAddAppendage(_world.Definitions.Appendages["AssembleScrapReclamation"]);
+                presser.Program.TryAddAppendage(_world.Definitions.Appendages["PushOutput"]);
+                presser.SetPlacement(_world.Tutorial.PresserSpot, World.Facing.North);
+                return null;
+            });
+            Do("its first Iron Plate opens chapter 3", () => _panel.TitleText == "Claim Coking" ? null : Wait);
+            Do("claim Coking, build a second Presser and the coal line's boiler", () =>
+            {
+                int slot = Enumerable.Range(0, _world.AssemblyLine.SlotCount)
+                    .FirstOrDefault(i => _world.AssemblyLine.GetCard(i)?.appendage?.name == "AssembleCoking");
+                _world.AssemblyLineBoard.Claim(slot);
+                Give(ItemType.Scrap, 200);
+                Give(ItemType.IronPlate, 60);
+                Give(ItemType.Gear, 20);
+                _world.StarterStation.TryConstructGolem(_world.Definitions.Chassis["BrassPresser"], out _);
+                PlaceAt("BoilerPrefab", _world.Tutorial.Boiler2Spot);
+                return null;
+            });
+            Do("chapter 3's pipe step marks its whole run", () =>
+            {
+                if (_panel.TitleText != "Join the boilers")
+                {
+                    return $"on '{_panel.TitleText}'";
+                }
+                var markers = _panel.SpotMarkers.Select(m => m.GetGlobalRect()).ToList();
+                foreach (CoreVector2Int pipe in _world.Tutorial.Pipe2Spots)
+                {
+                    Vector2 tile = _tree.Root.GetCanvasTransform() * GridConversions.CellToWorld(pipe);
+                    if (!markers.Any(r => r.HasPoint(tile)))
+                    {
+                        return $"no marker on pipe tile {pipe}";
+                    }
+                }
+                _log.Add($"chapter 3: Coking claimed, second Presser and boiler built; the pipe step marks {_world.Tutorial.Pipe2Spots.Length} tiles, '{_panel.ProgressText}'");
+                return null;
+            });
+
             Do("click Skip guide", () => { Click(_panel.SkipButton); return null; });
             Do("Skip put it away", () =>
             {
@@ -335,6 +383,13 @@ namespace GolemFactory.Nodes.Scenarios
         }
 
         private void Give(string item, int quantity) => _world.Buffers.Deposit(_world.StockpileBufferId, item, quantity);
+
+        private void PlaceAt(string key, CoreVector2Int cell)
+        {
+            _world.Build.SetActivePrefab(_world.Placeables.Single(p => p.Key == key).Prefab);
+            _world.Build.PlaceOrRemove(cell);
+            _world.Build.CancelPlacement();
+        }
 
         private void Do(string name, Func<string> step) => _steps.Enqueue((name, step));
 

@@ -162,7 +162,7 @@ namespace GolemFactory.Nodes
         }
 
         /// <summary>The steps done inside the Workbench, and so shown over it.</summary>
-        private static readonly string[] WorkbenchStepIds = { "program", "program-presser" };
+        private static readonly string[] WorkbenchStepIds = { "program", "program-presser", "program-coker" };
 
         public override void _UnhandledInput(InputEvent e)
         {

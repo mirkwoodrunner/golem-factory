@@ -780,6 +780,27 @@ buildings. Includes the "no refund on load" duplicator regression.
   (the pipe run), and the Workbench placement covers both programming steps.
   `TutorialGuideTests` plays both chapters through to the Presser's first Iron Plate, and the
   `tutorial` scenario checks the pipe step's markers.
+- **Guide chapter 3: the Coke line** (you asked for it). It builds a boiler that feeds itself
+  beside the Coal stall. Seven steps:
+  1. Claim Assemble Coking.
+  2. Build a second Brass Presser.
+  3. Build a second boiler on its marked tile, two north of the Coal stall.
+  4. Lay a marked pipe run: from the first boiler east along the stalls' row, then up one to
+     the second.
+  5. Order a Coal truckload at the stall.
+  6. Program Extract Scrap → Assemble Coking → Push Output.
+  7. Put it between the stall and the new boiler, facing the boiler. Done when its first Coke
+     lands in that firebox.
+
+  **The pipe run is load-bearing.** The new boiler starts empty, and a Presser beside only an
+  empty boiler could never make the first Coke. The pipes power it from the first boiler and
+  join the two into one network.
+
+  "Extract Scrap" takes whatever the stall behind holds, which here is Coal; the step says so.
+  The name is misleading and worth fixing when the card data is hand-edited after cutover.
+
+  `TutorialGuideTests` plays all three chapters through to Coke in the new firebox, and the
+  `tutorial` scenario checks the chapter-3 pipe markers.
 - **Newly unlocked Assembly Line cards jump the queue**, found writing that chapter. A card
   unlocks when the factory first makes what it needs, and it used to join the *back* of the
   queue, in reverse deck order. So R2 Scrap Reclamation, the first recipe a Presser runs, came
