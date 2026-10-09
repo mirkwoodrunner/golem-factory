@@ -178,7 +178,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("3 swapped the bar for the third placeable", () =>
                 !_world.Build.IsDemolishActive && _world.Build.ActivePrefab == _world.Placeables[2].Prefab ? null : "tools not swapped");
             Do("put it down", () => { PressKey(Key.Escape); return null; });
-            Do("menu", () => { _log.Add($"menu: 12 rows, a {_menu.Panel.Size.X}x{_menu.Panel.Size.Y} bar along the bottom, Demolish last, toggles, tools exclusive; hover card '{_menu.HoverCardName}' / '{_menu.HoverCardCost}'; keys 1, 3, X select and toggle"); return null; });
+            Do("menu", () => { _log.Add($"menu: {_world.Placeables.Count + 1} rows, a {_menu.Panel.Size.X}x{_menu.Panel.Size.Y} bar along the bottom, Demolish last, toggles, tools exclusive; hover card '{_menu.HoverCardName}' / '{_menu.HoverCardCost}'; keys 1, 3, X select and toggle"); return null; });
         }
 
         private void PlanPlacements()
@@ -432,9 +432,9 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return $"{_world.Build.Buildings.Count} buildings still stand";
                 }
-                if (_layer.ViewCount > 0)
+                if (_layer.PlayerViewCount > 0)
                 {
-                    return $"{_layer.ViewCount} views outlived their buildings";
+                    return $"{_layer.PlayerViewCount} views outlived their buildings";
                 }
                 Dictionary<string, int> now = Stock();
                 string drift = string.Join(", ", Tracked.Where(t => now[t] != _funded[t]).Select(t => $"{t} {_funded[t]}->{now[t]}"));

@@ -939,8 +939,16 @@ buildings. Includes the "no refund on load" duplicator regression.
        far kerb (187 wall pieces, up from 167).
      - The tower's site is a fixed 3×3 footprint at the square's centre, with a free ring of
        cells around it to stand and deliver from.
-  2. The site as a fixed multi-tile building, out of the build menu, roped off until the
-     factory has built a Zeppelin.
+  2. **The site (done).** The tower stands from the start on the 3×3 footprint and is
+     never in the build menu (`SandboxWorld.Placeables` versus `AllPlaceables`).
+     - It's a **fixture** (`PlaceableBuilding.IsFixture`, `BuildModeController.RegisterFixture`):
+       it occupies all nine cells, and the wrecking bar refuses it by click or drag.
+     - It stays out of `Build.Buildings`, which is the factory, read by the save, the refund and
+       every count. It joins the authored buildings, as the starter bench and station do.
+     - Every footprint cell is its input, so it can be fed from any side.
+     - It's **roped off** (`ClockTowerSite.OpenWhen`) until the tech-tree ledger has seen a
+       Zeppelin. While closed it refuses deliveries, accrues nothing, and the HUD reads
+       "Clock Tower site roped off until you build a Zeppelin".
   3. Staged art from a procedural generator, one picture per stage completed.
   4. Its guide chapter, and save.
 - **One Haul card; the player picks the good** (your call). Found while planning the smelting

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using GolemFactory.Buildings;
+using GolemFactory.ClockTower;
 using GolemFactory.Compat;
 using GolemFactory.Data;
 using GolemFactory.Economy;
@@ -46,7 +47,10 @@ namespace GolemFactory.Tests.World
         {
             SandboxWorld world = Compose();
             Assert.AreEqual(world.Placeables.Count, world.Build.AvailablePrefabs.Count);
-            Assert.AreEqual(11, world.Build.AvailablePrefabs.Count, "Unity's ten plus the belt splitter");
+            // Unity's ten plus the belt splitter, less the Clock Tower: it stands on its own site in
+            // the town square now (G10), never placed from the menu.
+            Assert.AreEqual(10, world.Build.AvailablePrefabs.Count);
+            Assert.IsFalse(world.Placeables.Any(p => p.Key == SandboxWorld.ClockTowerKey));
         }
 
         [Test]
@@ -222,17 +226,37 @@ namespace GolemFactory.Tests.World
         }
 
         [Test]
-        public void TheClockTowerIsDormantUntilOneIsBuilt()
+        public void TheClockTower_StandsOnItsSite_RopedOffUntilAZeppelin()
         {
+            // G10, the user's call: the tower is the final project, so it has one site in the
+            // town square and waits for the end game.
             SandboxWorld world = Compose();
-            Assert.IsFalse(world.ClockTower.Site.BuildReading().HasActiveStage,
-                "no tower stands, so nothing is demanded and nothing is starved");
+            PlaceableBuilding tower = world.ClockTowerBuilding;
+            Assert.IsNotNull(tower, "the tower stands from the start");
+            Assert.AreEqual(TownSquare.TowerCentre, tower.Cell);
+            CollectionAssert.DoesNotContain(world.Build.Buildings, tower, "the town's, not the factory's");
 
-            PlaceableEntry tower = world.Placeables.Single(p => p.Key == "ClockTowerPrefab");
-            world.Build.SetActivePrefab(tower.Prefab);
-            world.Build.PlaceOrRemove(new Vector2Int(4, 6));
+            foreach (Vector2Int cell in TownSquare.TowerCells())
+            {
+                Assert.IsTrue(world.Grid.IsOccupied(cell), $"{cell}: the footprint is taken");
+                Assert.IsFalse(world.Build.HasRemovableBuilding(cell), $"{cell}: the wrecking bar cannot take it");
+                Assert.IsTrue(world.Endpoints.TryGetEndpoint(cell, out var endpoint) && !endpoint.CanGive(ItemType.FrameSection),
+                    $"{cell}: a footprint cell is an input, refusing while roped off");
+            }
 
-            Assert.IsTrue(world.ClockTower.Site.BuildReading().HasActiveStage, "the built tower brought its stages");
+            world.Build.EnterDemolishMode();
+            world.Build.PlaceOrRemove(TownSquare.TowerCentre);
+            Assert.IsTrue(world.Grid.IsOccupied(TownSquare.TowerCentre), "a demolition click is refused");
+            StringAssert.Contains("stays", world.Build.LastStatusMessage);
+
+            ClockTowerReading closed = world.ClockTower.Site.BuildReading();
+            Assert.IsFalse(closed.HasActiveStage, "nothing demanded, nothing starved, while roped off");
+            StringAssert.Contains("Zeppelin", ClockTowerReadout.FormatHeadline(closed));
+
+            world.TechTree.Ledger.RecordChassis(SandboxWorld.ZeppelinChassis);
+            Assert.IsTrue(world.ClockTower.Site.BuildReading().HasActiveStage, "the rope comes down: stage 1 is open");
+            Assert.IsTrue(world.Endpoints.TryGetEndpoint(TownSquare.TowerOrigin, out var corner) && corner.CanGive(ItemType.FrameSection),
+                "and any footprint cell takes Frame Sections");
         }
 
         [Test]

@@ -251,9 +251,9 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 return "the rebuilt golem has no node";
             }
-            if (_layer.ViewCount != 3)
+            if (_layer.PlayerViewCount != 3)
             {
-                return $"{_layer.ViewCount} building views for 3 buildings";
+                return $"{_layer.PlayerViewCount} building views for 3 buildings";
             }
             _log.Add($"load after wrecking: 3 buildings drawn again, {_golemId} rebuilt with [{program}] at {golem.Cell} and hosted, stockpile exactly as saved");
             return null;

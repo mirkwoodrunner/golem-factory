@@ -69,7 +69,22 @@ namespace GolemFactory.World
         public DefinitionSet Definitions { get; private set; }
         public SandboxSetup Setup { get; private set; }
         public TruckloadMarket Market { get; private set; }
+        /// <summary>The build menu: every placeable the player may place.</summary>
         public IReadOnlyList<PlaceableEntry> Placeables { get; private set; } = new List<PlaceableEntry>();
+
+        /// <summary>
+        /// Every placeable the world knows how to draw: the menu's, and the fixtures (the Clock
+        /// Tower), which stand on their own sites and are never in the menu (G10).
+        /// </summary>
+        public IReadOnlyList<PlaceableEntry> AllPlaceables { get; private set; } = new List<PlaceableEntry>();
+
+        /// <summary>The placeables that are the world's, not the player's to place.</summary>
+        public static readonly IReadOnlyCollection<string> FixtureKeys = new[] { ClockTowerKey };
+
+        public const string ClockTowerKey = "ClockTowerPrefab";
+
+        /// <summary>The Clock Tower, standing on its site in the town square; null in a world without one.</summary>
+        public PlaceableBuilding ClockTowerBuilding { get; private set; }
         public List<ResourceNodeMarker> Markers { get; } = new List<ResourceNodeMarker>();
         public HandCrankBench StarterBench { get; private set; }
         public GolemConstructionStation StarterStation { get; private set; }
@@ -140,7 +155,8 @@ namespace GolemFactory.World
         private void Apply(SandboxSetup setup, IReadOnlyList<PlaceableEntry> placeables)
         {
             Setup = setup;
-            Placeables = placeables ?? new List<PlaceableEntry>();
+            AllPlaceables = placeables ?? new List<PlaceableEntry>();
+            Placeables = AllPlaceables.Where(p => !FixtureKeys.Contains(p.Key)).ToList();
             _stockpileBufferId = setup.stockpileBufferId;
             _requireSteamPower = setup.requireSteamPower;
             Bounds = new FloorBounds(FloorLayout.HalfExtent, setup.startingNorthExtent);
@@ -194,6 +210,7 @@ namespace GolemFactory.World
             Clock.Register(Market);
 
             WireBuildMode();
+            RaiseClockTower();
 
             if (setup.starterStation != null)
             {
@@ -504,6 +521,42 @@ namespace GolemFactory.World
 
         /// <summary>Everything [E] may reach: what the player built, and what the setup authored.</summary>
         public IEnumerable<PlaceableBuilding> InteractableBuildings() => Build.Buildings.Concat(_authoredBuildings);
+
+        /// <summary>
+        /// The Clock Tower on its fixed site in the town square (G10). A fixture: not in the
+        /// build menu, not the wrecking bar's, and never in a save's building list (it is not
+        /// runtime-placed), so a load finds it where it always stands. Every footprint cell takes
+        /// deliveries, so a golem can feed it from any side; until the factory has built a
+        /// Zeppelin, none of them will.
+        /// </summary>
+        private void RaiseClockTower()
+        {
+            PlaceableEntry entry = AllPlaceables.FirstOrDefault(p => p.Key == ClockTowerKey);
+            if (entry == null)
+            {
+                return;
+            }
+
+            PlaceableBuilding tower = entry.Prefab.Instantiate();
+            Vector2Int centre = TownSquare.TowerCentre;
+            Build.RegisterFixture(tower, centre, TownSquare.TowerCells());
+            PlaceableClockTower part = tower.GetPart<PlaceableClockTower>();
+            if (part != null && part.RegisterAsSpatialEndpoint(Endpoints, ClockTower.Site, centre))
+            {
+                foreach (Vector2Int cell in TownSquare.TowerCells().Where(c => c != centre))
+                {
+                    Endpoints.Register(cell, part.Endpoint);
+                }
+            }
+
+            ClockTower.Site.OpenWhen = () => TechTree.Ledger.HasChassis(ZeppelinChassis);
+            ClockTower.Site.ClosedReason = "roped off until you build a Zeppelin";
+            ClockTowerBuilding = tower;
+            _authoredBuildings.Add(tower);
+        }
+
+        /// <summary>What opens the tower's site: the factory has built one of these.</summary>
+        public const string ZeppelinChassis = "ZeppelinFreightLoader";
 
         private void WireBuildMode()
         {

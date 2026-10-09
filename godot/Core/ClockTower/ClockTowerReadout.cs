@@ -102,8 +102,14 @@ namespace GolemFactory.ClockTower
 
         public bool IsStarved => !string.IsNullOrEmpty(StarvedItemType);
 
-        public static ClockTowerReading Dormant() =>
-            new ClockTowerReading(false, false, 0, null, 0, 0, null, null, 0, -1, NoDemands);
+        /// <summary>
+        /// Why a dormant site is dormant, when it is closed rather than merely unstarted (G10:
+        /// "roped off until you build a Zeppelin"); null otherwise.
+        /// </summary>
+        public string ClosedReason { get; init; }
+
+        public static ClockTowerReading Dormant(string closedReason = null) =>
+            new ClockTowerReading(false, false, 0, null, 0, 0, null, null, 0, -1, NoDemands) { ClosedReason = closedReason };
 
         public static ClockTowerReading Completed(string finalStageName, long completedTick) =>
             new ClockTowerReading(
@@ -159,7 +165,9 @@ namespace GolemFactory.ClockTower
 
             if (!reading.HasActiveStage)
             {
-                return "Clock Tower dormant";
+                return string.IsNullOrEmpty(reading.ClosedReason)
+                    ? "Clock Tower dormant"
+                    : "Clock Tower site " + reading.ClosedReason;
             }
 
             string name = string.IsNullOrEmpty(reading.StageName) ? "Stage" : reading.StageName;

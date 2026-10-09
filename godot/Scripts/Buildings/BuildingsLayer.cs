@@ -33,6 +33,9 @@ namespace GolemFactory.Nodes
 
         public int ViewCount => _views.Count;
 
+        /// <summary>Views of the player's buildings: every view but the fixtures' (the Clock Tower).</summary>
+        public int PlayerViewCount => _views.Keys.Count(b => !b.IsFixture);
+
         public bool TryGetView(PlaceableBuilding building, out BuildingView view) => _views.TryGetValue(building, out view);
 
         public override void _EnterTree() => AddToGroup(GroupName);
@@ -42,7 +45,7 @@ namespace GolemFactory.Nodes
             YSortEnabled = true;
             _world = WorldNode.Find(this);
             SandboxWorld sandbox = _world.Sandbox;
-            _entries = sandbox.Placeables.ToDictionary(p => p.Key);
+            _entries = sandbox.AllPlaceables.ToDictionary(p => p.Key);
 
             sandbox.Build.BuildingPlaced += OnPlaced;
             sandbox.Build.BuildingRemoved += OnRemoved;
@@ -50,6 +53,13 @@ namespace GolemFactory.Nodes
             foreach (PlaceableBuilding existing in sandbox.Build.Buildings)
             {
                 OnPlaced(existing);
+            }
+
+            // The Clock Tower stands on its site from the start (G10), a fixture rather than
+            // one of the player's buildings.
+            if (sandbox.ClockTowerBuilding != null)
+            {
+                OnPlaced(sandbox.ClockTowerBuilding);
             }
         }
 

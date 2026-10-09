@@ -451,7 +451,8 @@ namespace GolemFactory.Player
         public bool HasRemovableBuilding(Vector2Int cell) =>
             _gridMap != null
             && _gridMap.TryGetOccupant(cell, out object occupant)
-            && occupant is PlaceableBuilding;
+            && occupant is PlaceableBuilding building
+            && !building.IsFixture;
 
         /// <summary>
         /// The golem standing on <paramref name="cell"/>, if any.
@@ -484,6 +485,35 @@ namespace GolemFactory.Player
         }
 
         /// <summary>Whether the wrecking bar has something to take back at this cell.</summary>
+        private static string FixtureName(PlaceableBuilding building) =>
+            building.GetPart<PlaceableClockTower>()?.DisplayName ?? building.name;
+
+        /// <summary>
+        /// Puts a fixture on the world across a whole footprint (G10: the Clock Tower is three
+        /// cells square). Every cell is occupied by it, so nothing can be built over the
+        /// footprint, and a click on any of them finds it -- and is refused.
+        /// </summary>
+        public void RegisterFixture(PlaceableBuilding building, Vector2Int cell, IEnumerable<Vector2Int> footprint)
+        {
+            if (building == null || _gridMap == null)
+            {
+                return;
+            }
+
+            // NOT in Buildings: that list is the factory, which the save, the refund and every
+            // count of "what the player built" read. A fixture is the town's.
+            building.IsFixture = true;
+            building.Cell = cell;
+            _gridMap.TryOccupy(cell, building);
+            foreach (Vector2Int other in footprint)
+            {
+                if (other != cell)
+                {
+                    _gridMap.TryOccupy(other, building);
+                }
+            }
+        }
+
         public bool HasRemovableThing(Vector2Int cell) =>
             HasRemovableBuilding(cell) || (_golemDismantler != null && TryFindGolemAt(cell, out _));
 
@@ -945,6 +975,15 @@ namespace GolemFactory.Player
         // "replace the built world" sweep can never drift apart.
         private void DemolishBuilding(PlaceableBuilding building, Vector2Int cell, bool refund)
         {
+            // A landmark is part of the world, not the factory (G10): the Clock Tower stands on
+            // its site whatever the wrecking bar thinks, and a load's sweep never reaches it
+            // either, since it is not runtime-placed.
+            if (building.IsFixture)
+            {
+                LastStatusMessage = $"The {FixtureName(building)} is part of the town. It stays.";
+                return;
+            }
+
             // COZY RULE: never take goods away as the price of tidying up. If the refund will
             // not fit, the building stays standing and says so -- a demolition that destroyed
             // what it could not hand back would be exactly the punishment a full refund exists

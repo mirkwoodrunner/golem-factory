@@ -261,6 +261,18 @@ namespace GolemFactory.ClockTower
         /// the running stage demands it. What <see cref="ClockTowerInputEndpoint"/>'s typed
         /// <c>CanGive</c> answers.
         /// </summary>
+        /// <summary>
+        /// Whether the site is open to deliveries (G10). Null means always: a site nobody gates
+        /// works as it always did. The Sandbox ropes its tower off until the factory has built a
+        /// Zeppelin, so the endgame project waits for the end game.
+        /// </summary>
+        public Func<bool> OpenWhen { get; set; }
+
+        public bool IsOpen => OpenWhen == null || OpenWhen();
+
+        /// <summary>What the rope's sign says while the site is closed.</summary>
+        public string ClosedReason { get; set; } = "roped off";
+
         public bool Demands(string itemType)
         {
             if (string.IsNullOrEmpty(itemType))
@@ -386,7 +398,8 @@ namespace GolemFactory.ClockTower
                 return;
             }
 
-            ClockTowerStageDefinition stage = ActiveStage;
+            // A roped-off site (G10) accrues nothing, exactly as one with no stage.
+            ClockTowerStageDefinition stage = IsOpen ? ActiveStage : null;
             if (stage == null)
             {
                 _stageScaledMultiplier = 0L;
@@ -512,6 +525,12 @@ namespace GolemFactory.ClockTower
             {
                 return ClockTowerReading.Completed(
                     _stages.Count > 0 ? _stages[_stages.Count - 1].stageName : null, CompletedTick);
+            }
+
+            // A roped-off site is dormant, and says why (G10).
+            if (!IsOpen)
+            {
+                return ClockTowerReading.Dormant(ClosedReason);
             }
 
             ClockTowerStageDefinition stage = ActiveStage;
