@@ -57,7 +57,7 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
-        public void TheWholeGuide_FromAColdStartToTheFirstIronPlate()
+        public void TheWholeGuide_FromAColdStartToTheLastChapter()
         {
             SandboxWorld world = Compose();
             DefinitionSet defs = world.Definitions;
@@ -205,9 +205,52 @@ namespace GolemFactory.Tests.Tutorial
             {
                 world.Advance(1f / 30f);
             }
-            Assert.AreEqual("done", StepId(world),
+            Assert.AreEqual("patent", StepId(world),
                 $"the coking Presser's first cycle ends chapter 3 (coker {coker.Program.State}, {coker.StallReason} {coker.StallResourceId})");
             Assert.Greater(boiler2.Boiler.CokeStock, 0, "its Coke went into the new boiler's firebox");
+
+            // --- Chapter 4: a patent, R, and a stall on purpose ------------------------------------
+            Assert.IsTrue(world.Patents.TryPatent(new GolemFactory.Blueprints.Blueprint(
+                "BP-001", "LocalPlayer", golem.Program.chassis, golem.Program.logicCore, golem.Program.appendages.ToList())));
+            Assert.AreEqual("scav2", StepId(world));
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["ClockworkScavenger"], out GolemEntity scav2));
+            Assert.AreEqual("stamp", StepId(world));
+
+            // Stamping is the Patents tab's Load: the blueprint's program onto the new golem.
+            var blueprint = world.Patents.Blueprints.Values.Single();
+            scav2.Program.logicCore = blueprint.LogicCore;
+            foreach (var card in blueprint.Appendages)
+            {
+                scav2.Program.TryAddAppendage(card);
+            }
+            Assert.AreEqual("depot3", StepId(world));
+
+            Place(world, "DepotPrefab", world.Tutorial.Depot3Spot.x, world.Tutorial.Depot3Spot.y);
+            Assert.AreEqual("turn", StepId(world));
+            Assert.AreEqual(Facing.East, world.Tutorial.Current.SpotFacing, "the marker shows east");
+
+            scav2.SetPlacement(world.Tutorial.Scav2Spot, Facing.East);
+            for (int frame = 0; frame < 900 && StepId(world) == "turn"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("stall", StepId(world), $"facing the depot, it works ({scav2.StallReason} {scav2.StallResourceId})");
+
+            scav2.SetPlacement(world.Tutorial.Scav2Spot, Facing.North);
+            for (int frame = 0; frame < 300 && StepId(world) == "stall"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual(Events.StallReason.NoSourceAtTile, scav2.StallReason, "the street behind it: 'nothing behind me'");
+            Assert.AreEqual("unstall", StepId(world), $"facing away, it stalls ({scav2.Program.State} {scav2.StallReason} {scav2.StallResourceId} step {scav2.Program.CurrentStepIndex} cell {scav2.Cell} facing {scav2.Facing})");
+
+            scav2.SetPlacement(world.Tutorial.Scav2Spot, Facing.East);
+            for (int frame = 0; frame < 900 && StepId(world) == "unstall"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("done", StepId(world), "turned back, it resumes");
 
             world.Tutorial.Finish();
             Assert.IsFalse(world.Tutorial.IsShowing);

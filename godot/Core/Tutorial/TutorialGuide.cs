@@ -340,6 +340,27 @@ namespace GolemFactory.Tutorial
         private bool CoalStallStocked =>
             _world.Nodes.TryGetNode("CoalNode", out var node) && node.RemainingQuantity > 0;
 
+        // Chapter 4 copies the first golem's program onto a second Scavenger with a patent, and
+        // stands it on the Scrap stall's EAST side, facing east into a third depot -- the first
+        // golem faces north, so this one is the lesson in R. Boiler 1 is right above it.
+        //
+        //     golem 1   boiler 1
+        //     Scrap     golem 2  -> depot 3
+
+        /// <summary>The second Scavenger: east of the Scrap stall, under the first boiler.</summary>
+        public Vector2Int Scav2Spot => StallCell + new Vector2Int(1, 0);
+
+        /// <summary>East of the second Scavenger.</summary>
+        public Vector2Int Depot3Spot => StallCell + new Vector2Int(2, 0);
+
+        private IEnumerable<GolemEntity> Scavengers =>
+            LiveGolems.Where(g => g.Program?.chassis != null && g.Program.chassis.name == "ClockworkScavenger");
+
+        /// <summary>The Scavenger that is not the first one: chapter 4's.</summary>
+        private GolemEntity SecondScavenger => Scavengers.Skip(1).FirstOrDefault();
+
+        private string _stalledGolemId;
+
         private bool SteamReachesGolemSpot => _world.Steam.Reaches(GolemSpot, _world.Clock.CurrentTick);
 
         private IEnumerable<PlaceableBuilding> Built => _world.Build.Buildings.Where(b => !b.IsRemoved);
@@ -573,11 +594,82 @@ namespace GolemFactory.Tutorial
                 spot: CokerSpot,
                 spotFacing: Facing.North),
 
+            // --- Chapter 4: copies, turning, and a stall on purpose --------------------------------
+            // The playtest script's Part C: a patent stamped onto a second golem, R to turn it, and
+            // a golem stalled deliberately to see its badge name the problem (Part I1).
+
+            new TutorialStep(
+                "patent", "Patent a program",
+                "Retyping a program for every golem is the chore a patent removes. Press E at your first "
+                + "Scavenger to open its Workbench, and press PATENT to save its program.",
+                w => _world.Patents.Blueprints.Count > 0,
+                w => FirstGolem),
+
+            new TutorialStep(
+                "scav2", "Build a second Scavenger",
+                "At the construction station, build another Clockwork Scavenger (12 Scrap).",
+                w => Scavengers.Count() >= 2,
+                w => ScrapFirst(12, Station),
+                w => Count(ItemType.Scrap, 12)),
+
+            new TutorialStep(
+                "stamp", "Stamp the patent onto it",
+                "With the new golem in the Workbench, press Tab, open Patents and click Load on your patent, "
+                + "then pull ENGAGE. The same program, without dragging a card.",
+                w => SecondScavenger != null && IsProgrammed(SecondScavenger),
+                w => SecondScavenger != null ? SecondScavenger.Cell : (Vector2Int?)null),
+
+            new TutorialStep(
+                "depot3", "A depot beside the stall",
+                "Build a Depot on the marked tile, two east of the Scrap stall.",
+                w => Built.Any(b => b.Cell == Depot3Spot && b.GetPart<PlaceableDepot>() != null),
+                w => ScrapFirst(15, Depot3Spot),
+                w => Count(ItemType.Scrap, 15),
+                menuKey: "DepotPrefab",
+                spot: Depot3Spot),
+
+            new TutorialStep(
+                "turn", "Turn it with R",
+                "Move the new Scavenger onto the marked tile beside the Scrap stall (G). This one must face "
+                + "EAST, at the depot: stand next to it and press R to turn it. It needs the stall behind it.",
+                w => SecondScavenger != null && _completedSinceEntry.Contains(SecondScavenger.GolemId),
+                w => SecondScavenger != null && SecondScavenger.Cell != Scav2Spot ? SecondScavenger.Cell : Scav2Spot,
+                spot: Scav2Spot,
+                spotFacing: Facing.East),
+
+            new TutorialStep(
+                "stall", "Stall it on purpose",
+                "Golems never improvise. Press R by the new Scavenger until it faces up, at the boiler. With "
+                + "the street behind it instead of the stall, it stops, and its badge says what is missing.",
+                w =>
+                {
+                    // Any stall of chapter 4's golem: which way the player turned it decides the
+                    // reason, and every reason's badge names the problem.
+                    GolemEntity scav2 = SecondScavenger;
+                    if (scav2 != null && scav2.Program.State == GolemState.Stalled)
+                    {
+                        _stalledGolemId = scav2.GolemId;
+                        return true;
+                    }
+                    return false;
+                },
+                w => SecondScavenger?.Cell),
+
+            new TutorialStep(
+                "unstall", "And back to work",
+                "Turn it back to face the depot (R). A stalled golem waits rather than skipping ahead, and "
+                + "picks up the moment its tile is right again.",
+                w => _stalledGolemId != null && _completedSinceEntry.Contains(_stalledGolemId),
+                w => LiveGolems.Where(g => g.GolemId == _stalledGolemId).Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
+                spot: Scav2Spot,
+                spotFacing: Facing.East),
+
             new TutorialStep(
                 "done", "A factory that feeds itself",
-                "Scrap, Iron Plate and Coke now run without you. Keep the Coal stall stocked (E when it runs "
-                + "dry). Tab shows your Inventory, the Assembly Line and the Ledger, which maps the road "
-                + "ahead: the Aether-Hauler and two-input recipes. F1 brings this guide back.",
+                "Scrap, Iron Plate and Coke now run without you, and a patent copies a program in a click. "
+                + "Keep the Coal stall stocked (E when it runs dry). Tab shows your Inventory, the Assembly Line "
+                + "and the Ledger, which maps the road ahead: the Aether-Hauler and two-input recipes. "
+                + "F1 brings this guide back.",
                 w => false,
                 w => null),
         };

@@ -26,6 +26,7 @@ namespace GolemFactory.Tutorial
             ("scrap", 1, "The first golem"),
             ("gears", 2, "The first Presser"),
             ("coking-card", 3, "The Coke line"),
+            ("patent", 4, "Copies, turning and stalls"),
         };
 
         /// <summary>The chapter the current step belongs to, and its title.</summary>
@@ -170,6 +171,23 @@ namespace GolemFactory.Tutorial
             ["program-coker"] = () => Program(Pressers.FirstOrDefault(g => !IsIronPresser(g)),
                 "ExtractScrap", "AssembleCoking", "PushOutput"),
             ["work-coker"] = () => Pressers.FirstOrDefault(IsCoker)?.SetPlacement(CokerSpot, Facing.North),
+
+            ["patent"] = () =>
+            {
+                GolemEntity first = Scavengers.FirstOrDefault(IsProgrammed);
+                if (first != null)
+                {
+                    _world.Patents.TryPatent(new Blueprints.Blueprint(
+                        "BP-KIT", _world.Setup?.assemblyLine?.claimUserId ?? "LocalPlayer",
+                        first.Program.chassis, first.Program.logicCore, first.Program.appendages.ToList()));
+                }
+            },
+            ["scav2"] = () => BuildGolem("ClockworkScavenger"),
+            ["stamp"] = () => Program(SecondScavenger, "ExtractScrap", "PushOutput"),
+            ["depot3"] = () => PlaceGranted("DepotPrefab", Depot3Spot, Facing.North),
+            ["turn"] = () => SecondScavenger?.SetPlacement(Scav2Spot, Facing.East),
+            ["stall"] = () => SecondScavenger?.SetPlacement(Scav2Spot, Facing.North),
+            ["unstall"] = () => SecondScavenger?.SetPlacement(Scav2Spot, Facing.East),
         };
 
         private void Grant(string item, int quantity) => _world.Buffers.Deposit(_world.StockpileBufferId, item, quantity);

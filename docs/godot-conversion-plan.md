@@ -823,7 +823,21 @@ buildings. Includes the "no refund on load" duplicator regression.
     who did the chapter would have. Every use goes in the report. `PlaytestKitTests` carries
     a fresh game through all three chapters, and so does the `playtest-kit` scenario, by
     pressing F9.
-  - Still to come: guide chapters 4-9, and the markdown script shrinking to a how-to.
+  - **Guide chapter 4: copies, turning and stalls** (the script's Part C and the badge half
+    of I1). Seven steps:
+    1. Patent the first Scavenger's program.
+    2. Build a second Scavenger.
+    3. Stamp the patent onto it (Patents → Load, then ENGAGE).
+    4. Build a third depot on its marked tile.
+    5. Stand the golem on the Scrap stall's east side, facing EAST: the first lesson in R.
+       Boiler 1 is right above it, so it needs no pipe.
+    6. Turn it to face up, so it stalls with "nothing behind me".
+    7. Turn it back; it resumes.
+
+    New questions: did stamping feel better than reprogramming, and did the badge say what
+    was wrong. Facing south was the first try, but it backs onto the boiler and stalls as
+    "waiting on Boiler(-7,-15)", true but confusing, so the step asks for up.
+  - Still to come: guide chapters 5-9, and the markdown script shrinking to a how-to.
 - **Newly unlocked Assembly Line cards jump the queue**, found writing that chapter. A card
   unlocks when the factory first makes what it needs, and it used to join the *back* of the
   queue, in reverse deck order. So R2 Scrap Reclamation, the first recipe a Presser runs, came
