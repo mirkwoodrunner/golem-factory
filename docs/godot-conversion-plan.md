@@ -7,17 +7,50 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 | Milestone | Status |
 |---|---|
 | G0: Land the spike | **done**: PR #28, merged 2026-10-04 |
-| G1: Authored data as JSON | in review: PR #29 |
-| G2: Gameplay services into Core | **built**, in review as stacked sub-PRs: G2a station + assembly bay, G2b build mode, G2c interactions, G2d save + the rest |
-| G3: Art and fonts pipeline | in review |
-| G4: The world scene | in review |
-| G5: Buildings and build mode | in review; **waiting on your hands-on check** |
-| G5b: The player's hands (pulled forward from G6) | in review |
-| G6: Golems in full | in review |
-| G7: The Workbench | in review (you approved the screenshot) |
-| G8: Management HUD and remaining screens | in review |
-| G9: Save and load end to end | in review |
-| G10: Parity playtest and cutover | not started; **needs you to play it** |
+| G1: Authored data as JSON | **done**: PR #29 |
+| G2: Gameplay services into Core | **done**: PRs #30–#33 (G2a–G2d) |
+| G3: Art and fonts pipeline | **done**: PR #34 |
+| G4: The world scene | **done**: PR #35 |
+| G5: Buildings and build mode | **done**: PR #36 |
+| G5b: The player's hands (pulled forward from G6) | **done**: PR #37 |
+| G6: Golems in full | **done**: PR #38 |
+| G7: The Workbench | **done**: PR #39 |
+| G8: Management HUD and remaining screens | **done**: PR #40 |
+| G9: Save and load end to end | **done**: PR #41 (all of #30–#42 landed on `main` through #43, 2026-10-08) |
+| G10: Parity playtest and cutover | **in progress**: playtest fixes #42, #44, #45 merged; #46 (playtest mode) and #47 (Clock Tower) open; then your playtest, then the cutover PR |
+
+## Next session: start here
+
+State as of 2026-10-09:
+
+1. **Two PRs await your merge, in order:** #46 (`conversion/g10-playtest-mode`: playtest
+   mode, guide chapters 4–9, the Haul good picker, claims that are never random) and then
+   #47 (`conversion/g10-clock-tower`, based on #46: the town square, the roped-off tower site,
+   staged art, guide chapter 10). If #46 is squash-merged, rebase #47 onto `main` before
+   merging it. Never merge them on your own.
+2. **Your playtest.** You last played to just before Coke automation (chapter 3) and reported
+   that claims looked random; #46 fixes that (see "Claims, from playtest" below), but you
+   haven't confirmed it in play yet. Play from a fresh game with `"playtest": true` in
+   `godot/data/sandbox.json`; the guide asks the questions, F9 skips a chapter, and the report
+   is `%APPDATA%\Godot\app_userdata\Golem Factory\playtest-report.md`. How-to:
+   `testscript/phase-1-playtest.md`.
+3. **Fix what the report finds.** Already noticed and left for the playtest to judge:
+   - golems that are only *waiting* for input wear the red stall badge (maybe too loud);
+   - one stall badge shows a raw belt id, `Belt(0,-12)#3`;
+   - the old single-cell `godot/art/clock_tower.png` is unused since the staged art (delete
+     at cutover);
+   - the "Extract Scrap" card takes whatever the stall behind holds (Coal, in chapter 3), so
+     rename it once the card data is hand-edited after cutover.
+4. **Then the cutover PR** (the G10 list below): tag `unity-final`, delete `Assets/`,
+   `Packages/`, `ProjectSettings/` and the Unity `.gitignore` rules, retire the Unity Editor
+   tooling and `Tools/Data/convert_unity_assets.py`'s source-of-truth role (the JSON becomes
+   hand-edited), move `docs/unity-implementation-plan.md` to `docs/history/`, rewrite the root
+   `CLAUDE.md` from `godot/CLAUDE.md`, and update `docs/open-items.md` (still Unity-era).
+
+Standing rules: leave the modified `Assets/TextMesh Pro/.../LiberationSans SDF - Fallback.asset`
+uncommitted; nothing under `Assets/` changes before the cutover; tests and scenarios never write
+the player's real `save.json`. Last full run: **1629/1629** Core tests, all eleven scenarios
+pass, `verify_art.py` clean.
 
 ## Context
 

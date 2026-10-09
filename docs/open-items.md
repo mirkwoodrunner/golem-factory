@@ -1,5 +1,9 @@
 # Golem Factory — Open Items
 
+> **The game is now the Godot build (`godot/`).** This file still describes the Unity project
+> and is rewritten in the G10 cutover PR. Until then, the current state and what's next live in
+> `docs/godot-conversion-plan.md`, under "Next session: start here".
+
 Consolidated backlog as of the progression-design pass, on branch
 `polish/production-quality-pass` (17 commits, **not merged to `main`**).
 
