@@ -250,7 +250,69 @@ namespace GolemFactory.Tests.Tutorial
             {
                 world.Advance(1f / 30f);
             }
-            Assert.AreEqual("done", StepId(world), "turned back, it resumes");
+            Assert.AreEqual("r4-card", StepId(world), "turned back, it resumes");
+
+            // --- Chapter 5: metal, and its Slag ---------------------------------------------------
+            Give(world, ItemType.Scrap, 400);
+            Give(world, ItemType.IronPlate, 200);
+            Give(world, ItemType.Gear, 60);
+            Give(world, ItemType.Coke, 120);
+            int r4 = Enumerable.Range(0, world.AssemblyLine.SlotCount)
+                .FirstOrDefault(i => world.AssemblyLine.GetCard(i)?.appendage?.name == "AssembleIronSmelting");
+            Assert.AreEqual("AssembleIronSmelting", world.AssemblyLine.GetCard(r4)?.appendage?.name, "Iron Smelting is on show");
+            Assert.IsTrue(world.AssemblyLineBoard.Claim(r4), world.AssemblyLineBoard.Status);
+            Assert.AreEqual("hauler", StepId(world));
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["AetherHauler"], out GolemEntity smelter));
+            Assert.AreEqual("smelt-depots", StepId(world));
+            Place(world, "DepotPrefab", world.Tutorial.SmeltInSpot.x, world.Tutorial.SmeltInSpot.y);
+            Place(world, "DepotPrefab", world.Tutorial.SmeltOutSpot.x, world.Tutorial.SmeltOutSpot.y);
+            Assert.AreEqual("pipes3", StepId(world));
+            foreach (Vector2Int pipe in world.Tutorial.Pipe3Spots)
+            {
+                Place(world, "SteamPipePrefab", pipe.x, pipe.y);
+            }
+            Assert.AreEqual("program-smelter", StepId(world));
+
+            // Two Hauls of the one card, set to two goods with the picker.
+            smelter.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            smelter.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
+            smelter.Program.SetQuantityAt(0, 2);
+            smelter.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
+            smelter.Program.SetItemTypeAt(1, ItemType.Coke);
+            Assert.IsTrue(smelter.Program.TryAddAppendage(defs.Appendages["AssembleIronSmelting"]));
+            Assert.IsTrue(smelter.Program.TryAddAppendage(defs.Appendages["PushOutput"]));
+            Assert.AreEqual("work-smelter", StepId(world));
+
+            smelter.SetPlacement(world.Tutorial.SmelterSpot, Facing.North);
+            for (int frame = 0; frame < 900 && StepId(world) == "work-smelter"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("slag-heap", StepId(world), $"the smelter cycles ({smelter.StallReason} {smelter.StallResourceId})");
+            Assert.Greater(world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.Slag), 0, "and makes Slag");
+
+            Place(world, "SlagHeapPrefab", world.Tutorial.SlagHeapSpot.x, world.Tutorial.SlagHeapSpot.y);
+            Assert.AreEqual("carrier", StepId(world));
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["BrassPresser"], out GolemEntity carrier));
+            Assert.AreEqual("program-carrier", StepId(world));
+
+            carrier.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            carrier.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
+            carrier.Program.SetItemTypeAt(0, ItemType.Slag);
+            carrier.Program.SetQuantityAt(0, 4);
+            carrier.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
+            carrier.Program.SetItemTypeAt(1, ItemType.Coke);
+            carrier.Program.TryAddAppendage(defs.Appendages["PushOutput"]);
+            Assert.AreEqual("work-carrier", StepId(world));
+
+            Give(world, ItemType.Slag, 8);
+            carrier.SetPlacement(world.Tutorial.CarrierSpot, Facing.North);
+            for (int frame = 0; frame < 1200 && StepId(world) == "work-carrier"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("done", StepId(world), $"the heap burns Slag ({carrier.StallReason} {carrier.StallResourceId})");
 
             world.Tutorial.Finish();
             Assert.IsFalse(world.Tutorial.IsShowing);

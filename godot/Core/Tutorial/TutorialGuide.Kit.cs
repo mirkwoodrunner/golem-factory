@@ -27,6 +27,7 @@ namespace GolemFactory.Tutorial
             ("gears", 2, "The first Presser"),
             ("coking-card", 3, "The Coke line"),
             ("patent", 4, "Copies, turning and stalls"),
+            ("r4-card", 5, "Metal, and its Slag"),
         };
 
         /// <summary>The chapter the current step belongs to, and its title.</summary>
@@ -188,6 +189,41 @@ namespace GolemFactory.Tutorial
             ["turn"] = () => SecondScavenger?.SetPlacement(Scav2Spot, Facing.East),
             ["stall"] = () => SecondScavenger?.SetPlacement(Scav2Spot, Facing.North),
             ["unstall"] = () => SecondScavenger?.SetPlacement(Scav2Spot, Facing.East),
+
+            ["r4-card"] = () => Claim("AssembleIronSmelting"),
+            ["hauler"] = () => BuildGolem("AetherHauler"),
+            ["smelt-depots"] = () =>
+            {
+                PlaceGranted("DepotPrefab", SmeltInSpot, Facing.North);
+                PlaceGranted("DepotPrefab", SmeltOutSpot, Facing.North);
+            },
+            ["pipes3"] = () =>
+            {
+                foreach (Vector2Int cell in Pipe3Spots)
+                {
+                    PlaceGranted("SteamPipePrefab", cell, Facing.North);
+                }
+            },
+            ["program-smelter"] = () =>
+            {
+                ProgramSlots(Haulers.FirstOrDefault(),
+                    ("HaulScrap", ItemType.Scrap, 2), ("HaulScrap", ItemType.Coke, 1),
+                    ("AssembleIronSmelting", null, 1), ("PushOutput", null, 1));
+                // The smelter's goods, so its first cycle never waits on the market.
+                Grant(ItemType.Scrap, 40);
+                Grant(ItemType.Coke, 20);
+            },
+            ["work-smelter"] = () => Haulers.FirstOrDefault(IsSmelter)?.SetPlacement(SmelterSpot, Facing.North),
+            ["slag-heap"] = () => PlaceGranted("SlagHeapPrefab", SlagHeapSpot, Facing.North),
+            ["carrier"] = () => BuildGolem("BrassPresser"),
+            ["program-carrier"] = () => ProgramSlots(Pressers.FirstOrDefault(g => !IsIronPresser(g) && !IsCoker(g)),
+                ("HaulScrap", ItemType.Slag, 4), ("HaulScrap", ItemType.Coke, 1), ("PushOutput", null, 1)),
+            ["work-carrier"] = () =>
+            {
+                Pressers.FirstOrDefault(IsCarrier)?.SetPlacement(CarrierSpot, Facing.North);
+                Grant(ItemType.Slag, 8); // enough for the heap's first burn, even before the smelter's lands
+                Grant(ItemType.Coke, 4);
+            },
         };
 
         private void Grant(string item, int quantity) => _world.Buffers.Deposit(_world.StockpileBufferId, item, quantity);
@@ -246,6 +282,24 @@ namespace GolemFactory.Tutorial
             foreach (string card in cards)
             {
                 golem.Program.TryAddAppendage(_world.Definitions.Appendages[card]);
+            }
+        }
+
+        /// <summary>Programs a golem slot by slot: card, the good a Haul takes (or null), batch size.</summary>
+        private void ProgramSlots(GolemEntity golem, params (string card, string good, int quantity)[] slots)
+        {
+            if (golem == null)
+            {
+                return;
+            }
+            Program(golem, slots.Select(s => s.card).ToArray());
+            for (int i = 0; i < slots.Length && i < golem.Program.appendages.Count; i++)
+            {
+                if (slots[i].good != null)
+                {
+                    golem.Program.SetItemTypeAt(i, slots[i].good);
+                }
+                golem.Program.SetQuantityAt(i, slots[i].quantity);
             }
         }
 

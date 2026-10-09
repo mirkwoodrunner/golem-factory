@@ -35,7 +35,7 @@ namespace GolemFactory.Nodes.Scenarios
 
             // The first question waits in the guide's place; the kit does not need it answered.
             Do("skip the light question", () => { _world.Tutorial.Playtest.Skip(0f); return null; });
-            foreach ((string next, string label) in new[] { ("gears", "chapter 1"), ("coking-card", "chapter 2"), ("patent", "chapter 3"), ("done", "chapter 4") })
+            foreach ((string next, string label) in new[] { ("gears", "chapter 1"), ("coking-card", "chapter 2"), ("patent", "chapter 3"), ("r4-card", "chapter 4"), ("done", "chapter 5") })
             {
                 string expect = next;
                 string chapter = label;
@@ -54,19 +54,25 @@ namespace GolemFactory.Nodes.Scenarios
                     return null;
                 });
             }
+            // Stand in the street, so a --write-movie run of this scenario frames the whole factory.
+            Do("walk out to the street", () =>
+            {
+                (tree.Root.FindChild("Player", true, false) as PlayerNode)?.TeleportTo(new Compat.Vector3(-5f, -13f, 0f));
+                return null;
+            });
             Do("the factory stands and the report says so", () =>
             {
                 int golems = _world.Golems.Count(g => !g.IsRemoved);
-                if (golems != 4)
+                if (golems != 6)
                 {
                     return $"{golems} golems";
                 }
                 string report = _world.Tutorial.Playtest.Compose("", _world.Tutorial.Now);
-                if (!report.Contains("fast-forwarded chapter 4"))
+                if (!report.Contains("fast-forwarded chapter 5"))
                 {
                     return "the report does not record the kit";
                 }
-                _log.Add($"4 golems working, {_world.Build.Buildings.Count(b => !b.IsRemoved)} buildings, report records {_world.Tutorial.Playtest.KitUses.Count} kit uses");
+                _log.Add($"6 golems working, {_world.Build.Buildings.Count(b => !b.IsRemoved)} buildings, report records {_world.Tutorial.Playtest.KitUses.Count} kit uses");
                 return null;
             });
         }

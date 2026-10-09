@@ -361,6 +361,62 @@ namespace GolemFactory.Tutorial
 
         private string _stalledGolemId;
 
+        // Chapter 5 smelts: an Aether-Hauler hauls Scrap AND Coke (the Haul good picker) and runs
+        // R4, which makes Slag whether you want it or not. A carrier Presser hauls the Slag, with
+        // the Coke the heap burns to void it (1 per 4), into a Slag Heap. All of it stands in a
+        // column east of the coal line's boiler, steamed by a pipe run straight off it.
+        //
+        //     Slag Heap
+        //     carrier    pipe
+        //     depot B    pipe        boiler 2 is west of the bottom pipe
+        //     smelter    pipe
+        //     depot A
+
+        private Vector2Int SmeltColumn => Boiler2Spot + new Vector2Int(2, 0);
+
+        /// <summary>The Aether-Hauler that smelts: two east of the coal line's boiler.</summary>
+        public Vector2Int SmelterSpot => SmeltColumn;
+
+        /// <summary>Behind the smelter: its Scrap and Coke, from the stockpile.</summary>
+        public Vector2Int SmeltInSpot => SmeltColumn + new Vector2Int(0, -1);
+
+        /// <summary>In front of the smelter, behind the carrier: Iron Plate and Slag land here.</summary>
+        public Vector2Int SmeltOutSpot => SmeltColumn + new Vector2Int(0, 1);
+
+        /// <summary>The carrier Presser, in front of depot B.</summary>
+        public Vector2Int CarrierSpot => SmeltColumn + new Vector2Int(0, 2);
+
+        /// <summary>The Slag Heap, in front of the carrier.</summary>
+        public Vector2Int SlagHeapSpot => SmeltColumn + new Vector2Int(0, 3);
+
+        /// <summary>Beside boiler 2 and up the column's west side.</summary>
+        public Vector2Int[] Pipe3Spots => new[]
+        {
+            SmeltColumn + new Vector2Int(-1, 0), SmeltColumn + new Vector2Int(-1, 1), SmeltColumn + new Vector2Int(-1, 2),
+        };
+
+        private IEnumerable<GolemEntity> Haulers =>
+            LiveGolems.Where(g => g.Program?.chassis != null && g.Program.chassis.name == "AetherHauler");
+
+        private int HaulsOf(GolemEntity golem, string itemType) =>
+            Enumerable.Range(0, golem.Program.appendages.Count).Count(i =>
+                golem.Program.appendages[i]?.actionType == PunchCards.AppendageActionType.Haul
+                && golem.Program.GetItemTypeAt(i) == itemType);
+
+        private bool IsSmelter(GolemEntity golem) =>
+            golem.Program?.logicCore != null
+            && golem.Program.appendages.Any(a => a?.name == "AssembleIronSmelting")
+            && golem.Program.appendages.Any(a => a?.name == "PushOutput")
+            && HaulsOf(golem, ItemType.Scrap) > 0 && HaulsOf(golem, ItemType.Coke) > 0;
+
+        private bool IsCarrier(GolemEntity golem) =>
+            golem.Program?.logicCore != null
+            && golem.Program.appendages.Any(a => a?.name == "PushOutput")
+            && HaulsOf(golem, ItemType.Slag) > 0 && HaulsOf(golem, ItemType.Coke) > 0;
+
+        private SlagHeap HeapAt(Vector2Int cell) =>
+            Built.FirstOrDefault(b => b.Cell == cell)?.GetPart<PlaceableSlagHeap>()?.Heap;
+
         private bool SteamReachesGolemSpot => _world.Steam.Reaches(GolemSpot, _world.Clock.CurrentTick);
 
         private IEnumerable<PlaceableBuilding> Built => _world.Build.Buildings.Where(b => !b.IsRemoved);
@@ -663,6 +719,96 @@ namespace GolemFactory.Tutorial
                 w => LiveGolems.Where(g => g.GolemId == _stalledGolemId).Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
                 spot: Scav2Spot,
                 spotFacing: Facing.East),
+
+            // --- Chapter 5: metal, and its Slag ---------------------------------------------------
+            // progression-design Phase 4: the Aether-Hauler opens two-input recipes, and R4 Iron
+            // Smelting makes Slag every cycle, which must be routed or the line stalls.
+
+            new TutorialStep(
+                "r4-card", "Claim Iron Smelting",
+                "Iron Smelting makes twice the Iron Plate from the same Scrap, but it needs Coke too: two "
+                + "inputs. Press Tab, open the Assembly Line and claim Assemble Iron Smelting.",
+                w => HasClaimed("AssembleIronSmelting"),
+                w => null),
+
+            new TutorialStep(
+                "hauler", "Build an Aether-Hauler",
+                "Two inputs need a bigger frame. Build an Aether-Hauler at the station (80 Iron Plate + 40 Gear "
+                + "+ 30 Coke): four slots, enough for two Hauls, an Assemble and a Push.",
+                w => Haulers.Any(),
+                w => Station,
+                w => Counts((ItemType.IronPlate, 80), (ItemType.Gear, 40), (ItemType.Coke, 30))),
+
+            new TutorialStep(
+                "smelt-depots", "Depots for the smelter",
+                "Build two Depots on the marked tiles, east of the coal line's boiler: one behind the smelter "
+                + "for its Scrap and Coke, one in front for its Iron Plate.",
+                w => new[] { SmeltInSpot, SmeltOutSpot }.All(c => Built.Any(b => b.Cell == c && b.GetPart<PlaceableDepot>() != null)),
+                w => new[] { SmeltInSpot, SmeltOutSpot }.Where(c => !Built.Any(b => b.Cell == c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
+                w => Count(ItemType.Scrap, 30),
+                menuKey: "DepotPrefab",
+                moreSpots: new[] { SmeltInSpot, SmeltOutSpot }),
+
+            new TutorialStep(
+                "pipes3", "Steam for the column",
+                "Lay Steam Pipe on the three marked tiles, from beside the coal line's boiler up the column. "
+                + "The smelter and the carrier you build next both stand beside it.",
+                w => Pipe3Spots.All(c => _world.Steam.HasPipe(c)),
+                w => Pipe3Spots.Where(c => !_world.Steam.HasPipe(c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
+                w => $"Pipes  {Pipe3Spots.Count(c => _world.Steam.HasPipe(c))} / {Pipe3Spots.Length}",
+                menuKey: "SteamPipePrefab",
+                moreSpots: Pipe3Spots),
+
+            new TutorialStep(
+                "program-smelter", "Two Hauls, two goods",
+                "In the Workbench: Always On, then Haul, Haul, Assemble Iron Smelting and Push Output. On the "
+                + "second Haul, click the arrow until it says Coke. Set the first to 2: the recipe takes 2 Scrap and 1 Coke.",
+                w => Haulers.Any(IsSmelter),
+                w => Haulers.Select(g => (Vector2Int?)g.Cell).FirstOrDefault()),
+
+            new TutorialStep(
+                "work-smelter", "Smelt",
+                "Put the Aether-Hauler on the marked tile between the two depots, facing up. Watch what it "
+                + "pushes: Iron Plate, and Slag with it.",
+                w => Haulers.Any(g => IsSmelter(g) && _completedSinceEntry.Contains(g.GolemId)),
+                w => Haulers.Any(g => g.Cell == SmelterSpot) ? SmelterSpot
+                    : Haulers.Where(IsSmelter).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? SmelterSpot,
+                spot: SmelterSpot,
+                spotFacing: Facing.North),
+
+            new TutorialStep(
+                "slag-heap", "Somewhere for the Slag",
+                "Slag piles up every cycle, and a full store stalls the smelter. Build a Slag Heap on the "
+                + "marked tile (20 Scrap + 10 Iron Plate): it burns 1 Coke for every 4 Slag.",
+                w => HeapAt(SlagHeapSpot) != null,
+                w => ScrapFirst(20, SlagHeapSpot),
+                w => Counts((ItemType.Scrap, 20), (ItemType.IronPlate, 10)),
+                menuKey: "SlagHeapPrefab",
+                spot: SlagHeapSpot),
+
+            new TutorialStep(
+                "carrier", "A carrier",
+                "Build another Brass Presser at the station. It will make nothing: it carries.",
+                w => Pressers.Count() >= 3,
+                w => ScrapFirst(60, Station),
+                w => Counts((ItemType.Scrap, 60), (ItemType.IronPlate, 20), (ItemType.Gear, 10))),
+
+            new TutorialStep(
+                "program-carrier", "Carry Slag and its fuel",
+                "Program it: Always On, Haul set to Slag with the dial at 4, Haul set to Coke at 1, then Push "
+                + "Output. Four Slag and the one Coke that burns them, every trip.",
+                w => Pressers.Any(IsCarrier),
+                w => Pressers.Where(g => !IsIronPresser(g) && !IsCoker(g)).Select(g => (Vector2Int?)g.Cell).FirstOrDefault()),
+
+            new TutorialStep(
+                "work-carrier", "Clear the Slag",
+                "Put the carrier on the marked tile between depot and heap, facing up. When the heap starts "
+                + "burning Slag, the iron line is safe.",
+                w => HeapAt(SlagHeapSpot)?.TotalVoided > 0,
+                w => Pressers.Any(g => IsCarrier(g) && g.Cell == CarrierSpot) ? CarrierSpot
+                    : Pressers.Where(IsCarrier).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? CarrierSpot,
+                spot: CarrierSpot,
+                spotFacing: Facing.North),
 
             new TutorialStep(
                 "done", "A factory that feeds itself",

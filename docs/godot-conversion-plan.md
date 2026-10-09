@@ -837,7 +837,24 @@ buildings. Includes the "no refund on load" duplicator regression.
     New questions: did stamping feel better than reprogramming, and did the badge say what
     was wrong. Facing south was the first try, but it backs onto the boiler and stalls as
     "waiting on Boiler(-7,-15)", true but confusing, so the step asks for up.
-  - Still to come: guide chapters 5-9, and the markdown script shrinking to a how-to.
+  - **Guide chapter 5: metal, and its Slag** (progression Phase 4; the script's F and I3).
+    Ten steps:
+    1. Claim Iron Smelting.
+    2. Build an Aether-Hauler.
+    3. Build two depots on marked tiles: one behind the smelter, one in front.
+    4. Lay three marked pipes straight off the coal line's boiler.
+    5. Program Haul (Scrap ×2), Haul (Coke, set with the picker), Assemble Iron Smelting and
+       Push.
+    6. Set the smelter to work: it pushes Iron Plate and Slag.
+    7. Build a Slag Heap on its marked tile.
+    8. Build a carrier Presser.
+    9. Program it Haul (Slag ×4), Haul (Coke ×1), Push: the four Slag and the one Coke the
+       heap burns them with.
+    10. Set it to work. Done when the heap burns its first Slag.
+
+    New question: was Slag a real problem or a chore. The playtest kit now fast-forwards five
+    chapters to a 6-golem factory.
+  - Still to come: guide chapters 6-9, and the markdown script shrinking to a how-to.
 - **One Haul card; the player picks the good** (your call). Found while planning the smelting
   chapter: the deck's only Haul was typed to Scrap. No card could load Coke, ore or plate into
   a golem, so every two-input recipe (the Aether-Hauler's reason to exist) could not be fed,
