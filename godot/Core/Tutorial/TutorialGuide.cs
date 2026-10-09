@@ -414,6 +414,72 @@ namespace GolemFactory.Tutorial
             && golem.Program.appendages.Any(a => a?.name == "PushOutput")
             && HaulsOf(golem, ItemType.Slag) > 0 && HaulsOf(golem, ItemType.Coke) > 0;
 
+        // Chapter 6 moves goods with a belt and sorts them with a label, at the Copper stall: an
+        // extractor pushes ore onto a belt run, an unloader hauls it off the end into a depot
+        // labelled Copper Ore. A long pipe run, laid by dragging, powers both and joins the top of
+        // chapter 5's column.
+        //
+        //     labelled depot
+        //     unloader      pipe
+        //     belt ^        pipe
+        //     belt ^        pipe        <- pipe continues to chapter 5's column
+        //     belt ^        pipe
+        //     extractor     pipe
+        //     Copper stall
+
+        private Vector2Int CopperCell => Stall("CopperOreNode") ?? new Vector2Int(8, 0);
+
+        /// <summary>The copper extractor, just north of the Copper stall.</summary>
+        public Vector2Int ExtractorSpot => CopperCell + new Vector2Int(0, 1);
+
+        /// <summary>The belt run north from the extractor, three cells.</summary>
+        public Vector2Int[] BeltSpots => new[]
+        {
+            CopperCell + new Vector2Int(0, 2), CopperCell + new Vector2Int(0, 3), CopperCell + new Vector2Int(0, 4),
+        };
+
+        /// <summary>The unloader, at the belt's end.</summary>
+        public Vector2Int UnloaderSpot => CopperCell + new Vector2Int(0, 5);
+
+        /// <summary>The labelled depot, in front of the unloader.</summary>
+        public Vector2Int CopperDepotSpot => CopperCell + new Vector2Int(0, 6);
+
+        /// <summary>
+        /// Up the copper line's west side, then west and down to the top of chapter 5's pipes.
+        /// </summary>
+        public Vector2Int[] Pipe4Spots
+        {
+            get
+            {
+                var spots = new List<Vector2Int>();
+                int west = CopperCell.x - 1;
+                for (int y = ExtractorSpot.y; y <= UnloaderSpot.y + 1; y++)
+                {
+                    spots.Add(new Vector2Int(west, y));
+                }
+                Vector2Int top = Pipe3Spots[Pipe3Spots.Length - 1];
+                int row = UnloaderSpot.y + 1;
+                for (int x = west - 1; x >= top.x; x--)
+                {
+                    spots.Add(new Vector2Int(x, row));
+                }
+                for (int y = row - 1; y > top.y; y--)
+                {
+                    spots.Add(new Vector2Int(top.x, y));
+                }
+                return spots.ToArray();
+            }
+        }
+
+        private GolemEntity CopperExtractor => Scavengers.Skip(2).FirstOrDefault();
+
+        private GolemEntity CopperUnloader => Scavengers.Skip(3).FirstOrDefault();
+
+        private bool BeltsLaid => BeltSpots.All(c => _world.Belts.TryGetBelt(c, out PlacedBelt belt) && belt.Facing == Facing.North);
+
+        private PlaceableDepot DepotAt(Vector2Int cell) =>
+            Built.FirstOrDefault(b => b.Cell == cell)?.GetPart<PlaceableDepot>();
+
         private SlagHeap HeapAt(Vector2Int cell) =>
             Built.FirstOrDefault(b => b.Cell == cell)?.GetPart<PlaceableSlagHeap>()?.Heap;
 
@@ -808,6 +874,81 @@ namespace GolemFactory.Tutorial
                 w => Pressers.Any(g => IsCarrier(g) && g.Cell == CarrierSpot) ? CarrierSpot
                     : Pressers.Where(IsCarrier).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? CarrierSpot,
                 spot: CarrierSpot,
+                spotFacing: Facing.North),
+
+            // --- Chapter 6: belts, and a label ---------------------------------------------------
+            // The playtest script's belt and labelled-depot items (F, I2): a belt carries goods a
+            // golem pushes onto it, a golem must take them off its end, and a label sorts.
+
+            new TutorialStep(
+                "copper", "Buy Copper Ore",
+                "Press E at the empty Copper stall to order a truckload (20 Scrap). When it arrives, take one "
+                + "by hand with E: a depot can only be labelled with a good you have.",
+                w => Stock(ItemType.CopperOre) >= 1,
+                w => Stall("CopperOreNode"),
+                w => Count(ItemType.CopperOre, 1)),
+
+            new TutorialStep(
+                "belts", "Lay a belt",
+                "Pick Belt in the build menu and DRAG from the tile above the Copper stall's front up the "
+                + "marked run: a dragged run points along itself, here north.",
+                w => BeltsLaid,
+                w => BeltSpots.Where(c => !_world.Belts.HasBelt(c)).Select(c => (Vector2Int?)c).FirstOrDefault() ?? BeltSpots[0],
+                w => $"Belts  {BeltSpots.Count(c => _world.Belts.HasBelt(c))} / {BeltSpots.Length}",
+                menuKey: "BeltPrefab",
+                moreSpots: BeltSpots),
+
+            new TutorialStep(
+                "pipes4", "Drag a pipe run",
+                "Steam Pipe drags too. Lay it along the marked run, up beside the belt and across to the "
+                + "smelter's pipes: one long stroke per straight stretch.",
+                w => Pipe4Spots.All(c => _world.Steam.HasPipe(c)),
+                w => Pipe4Spots.Where(c => !_world.Steam.HasPipe(c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
+                w => $"Pipes  {Pipe4Spots.Count(c => _world.Steam.HasPipe(c))} / {Pipe4Spots.Length}",
+                menuKey: "SteamPipePrefab",
+                moreSpots: Pipe4Spots),
+
+            new TutorialStep(
+                "scav3", "An extractor",
+                "Build a Scavenger and program it Extract, Push Output: it will push ore onto the belt.",
+                w => CopperExtractor != null && IsProgrammed(CopperExtractor),
+                w => ScrapFirst(12, Station),
+                w => Count(ItemType.Scrap, 12)),
+
+            new TutorialStep(
+                "work-extractor", "Onto the belt",
+                "Put it on the marked tile above the Copper stall, facing the belt (up). Watch the ore ride north.",
+                w => BeltSpots.Any(c => _world.Belts.TryGetBelt(c, out PlacedBelt belt) && belt.Segment.Items.Count > 0),
+                w => CopperExtractor != null && CopperExtractor.Cell != ExtractorSpot ? CopperExtractor.Cell : ExtractorSpot,
+                spot: ExtractorSpot,
+                spotFacing: Facing.North),
+
+            new TutorialStep(
+                "copper-depot", "A labelled depot",
+                "A belt only hands goods to another belt, so the ore stops at the end. Build a Depot on the "
+                + "marked tile past it, then stand by it and press E until its label reads Copper Ore.",
+                w => DepotAt(CopperDepotSpot)?.FilterItemType == ItemType.CopperOre,
+                w => DepotAt(CopperDepotSpot) == null ? ScrapFirst(15, CopperDepotSpot) : CopperDepotSpot,
+                w => DepotAt(CopperDepotSpot) == null ? Count(ItemType.Scrap, 15) : "Label: " + DepotAt(CopperDepotSpot).FilterLabel,
+                menuKey: "DepotPrefab",
+                spot: CopperDepotSpot),
+
+            new TutorialStep(
+                "unloader", "An unloader",
+                "Build one more Scavenger and program it Haul, set to Copper Ore, then Push Output. It takes "
+                + "ore off the belt's end and pushes it into the labelled depot.",
+                w => CopperUnloader != null && HaulsOf(CopperUnloader, ItemType.CopperOre) > 0
+                    && CopperUnloader.Program.appendages.Any(a => a?.name == "PushOutput"),
+                w => ScrapFirst(12, Station),
+                w => Count(ItemType.Scrap, 12)),
+
+            new TutorialStep(
+                "work-unloader", "Off the belt",
+                "Put it on the marked tile at the belt's end, facing the depot (up). Belt, golem, labelled "
+                + "depot: the shape of every long haul.",
+                w => CopperUnloader != null && _completedSinceEntry.Contains(CopperUnloader.GolemId),
+                w => CopperUnloader != null && CopperUnloader.Cell != UnloaderSpot ? CopperUnloader.Cell : UnloaderSpot,
+                spot: UnloaderSpot,
                 spotFacing: Facing.North),
 
             new TutorialStep(

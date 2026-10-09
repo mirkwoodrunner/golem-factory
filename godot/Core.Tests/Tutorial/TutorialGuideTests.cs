@@ -312,7 +312,74 @@ namespace GolemFactory.Tests.Tutorial
             {
                 world.Advance(1f / 30f);
             }
-            Assert.AreEqual("done", StepId(world), $"the heap burns Slag ({carrier.StallReason} {carrier.StallResourceId})");
+            Assert.AreEqual("copper", StepId(world), $"the heap burns Slag ({carrier.StallReason} {carrier.StallResourceId})");
+
+            // --- Chapter 6: belts, and a label ------------------------------------------------------
+            // Order Copper at the stall, wait for the cart, take one by hand.
+            SandboxSetup.NodeEntry copperStall = world.Setup.nodes.Single(n => n.id == "CopperOreNode");
+            world.Interactor.Position = new Compat.Vector3(copperStall.x, copperStall.y + 1f, 0f);
+            world.Interactor.Poll();
+            Assert.IsTrue(world.Interactor.Interact(), "ordered Copper: " + world.Interactor.LastStatusMessage);
+            for (int frame = 0; frame < 600 && !world.Nodes.TryGetNode("CopperOreNode", out var n) | (n != null && n.RemainingQuantity == 0); frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            world.Interactor.Poll();
+            Assert.IsTrue(world.Interactor.Interact(), "harvested one: " + world.Interactor.LastStatusMessage);
+            Assert.AreEqual("belts", StepId(world));
+
+            // A dragged run: build mode's own drag, which points the run along itself.
+            world.Build.SetActivePrefab(world.Placeables.Single(p => p.Key == "BeltPrefab").Prefab);
+            Vector2Int[] belts = world.Tutorial.BeltSpots;
+            world.Build.Click(belts[0], false);       // press on the first tile...
+            foreach (Vector2Int cell in belts.Skip(1))
+            {
+                world.Build.Hover(cell);              // ...drag along the run...
+            }
+            world.Build.Release();                    // ...and let go
+            world.Build.CancelPlacement();
+            Assert.AreEqual("pipes4", StepId(world), "a north run on the marked tiles");
+
+            foreach (Vector2Int pipe in world.Tutorial.Pipe4Spots)
+            {
+                Place(world, "SteamPipePrefab", pipe.x, pipe.y);
+            }
+            Assert.AreEqual("scav3", StepId(world));
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["ClockworkScavenger"], out GolemEntity extractor));
+            extractor.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            extractor.Program.TryAddAppendage(defs.Appendages["ExtractScrap"]);
+            extractor.Program.TryAddAppendage(defs.Appendages["PushOutput"]);
+            Assert.AreEqual("work-extractor", StepId(world));
+
+            extractor.SetPlacement(world.Tutorial.ExtractorSpot, Facing.North);
+            for (int frame = 0; frame < 900 && StepId(world) == "work-extractor"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("copper-depot", StepId(world), $"ore rides the belt ({extractor.StallReason} {extractor.StallResourceId})");
+
+            Place(world, "DepotPrefab", world.Tutorial.CopperDepotSpot.x, world.Tutorial.CopperDepotSpot.y);
+            PlaceableDepot copperDepot = world.Build.Buildings.Single(b => !b.IsRemoved && b.Cell == world.Tutorial.CopperDepotSpot).GetPart<PlaceableDepot>();
+            for (int press = 0; press < 30 && copperDepot.FilterItemType != ItemType.CopperOre; press++)
+            {
+                Assert.IsTrue(world.Interactor.TryRelabelDepot(copperDepot)); // [E] at the depot
+            }
+            Assert.AreEqual("unloader", StepId(world), "labelled Copper Ore by pressing E");
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["ClockworkScavenger"], out GolemEntity unloader));
+            unloader.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            unloader.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
+            unloader.Program.SetItemTypeAt(0, ItemType.CopperOre);
+            unloader.Program.TryAddAppendage(defs.Appendages["PushOutput"]);
+            Assert.AreEqual("work-unloader", StepId(world));
+
+            unloader.SetPlacement(world.Tutorial.UnloaderSpot, Facing.North);
+            for (int frame = 0; frame < 900 && StepId(world) == "work-unloader"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("done", StepId(world), $"the unloader empties the belt into the labelled depot ({unloader.StallReason} {unloader.StallResourceId})");
 
             world.Tutorial.Finish();
             Assert.IsFalse(world.Tutorial.IsShowing);

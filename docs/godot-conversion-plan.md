@@ -854,7 +854,25 @@ buildings. Includes the "no refund on load" duplicator regression.
 
     New question: was Slag a real problem or a chore. The playtest kit now fast-forwards five
     chapters to a 6-golem factory.
-  - Still to come: guide chapters 6-9, and the markdown script shrinking to a how-to.
+  - **Guide chapter 6: belts, and a label** (the script's F and I2), at the Copper stall.
+    Eight steps:
+    1. Buy a Copper truckload and take one by hand, so the label can offer it.
+    2. Drag a belt run north on the marked tiles.
+    3. Drag a long pipe run up beside it and across to chapter 5's pipes.
+    4. Build and program an extractor (Extract → Push).
+    5. Set it to push ore onto the belt.
+    6. Build a depot past the belt's end and label it Copper Ore with E.
+    7. Build an unloader (Haul ‹Copper Ore› → Push).
+    8. Set it between the belt's end and the depot.
+
+    New questions: is E-cycling a decent way to label, and did dragging feel good. F9 now
+    fast-forwards six chapters to an 8-golem factory.
+
+    **Noticed in the frames, left for the playtest:** golems waiting for input wear the red
+    stall badge too: a carrier with "no Slag" yet, an unloader "waiting on Belt(0,-12)#3".
+    Waiting is normal in a running factory, so the badge may be too loud, and that belt label
+    is an internal id.
+  - Still to come: guide chapters 7-9, and the markdown script shrinking to a how-to.
 - **One Haul card; the player picks the good** (your call). Found while planning the smelting
   chapter: the deck's only Haul was typed to Scrap. No card could load Coke, ore or plate into
   a golem, so every two-input recipe (the Aether-Hauler's reason to exist) could not be fed,

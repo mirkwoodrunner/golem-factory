@@ -28,6 +28,7 @@ namespace GolemFactory.Tutorial
             ("coking-card", 3, "The Coke line"),
             ("patent", 4, "Copies, turning and stalls"),
             ("r4-card", 5, "Metal, and its Slag"),
+            ("copper", 6, "Belts, and a label"),
         };
 
         /// <summary>The chapter the current step belongs to, and its title.</summary>
@@ -218,6 +219,45 @@ namespace GolemFactory.Tutorial
             ["carrier"] = () => BuildGolem("BrassPresser"),
             ["program-carrier"] = () => ProgramSlots(Pressers.FirstOrDefault(g => !IsIronPresser(g) && !IsCoker(g)),
                 ("HaulScrap", ItemType.Slag, 4), ("HaulScrap", ItemType.Coke, 1), ("PushOutput", null, 1)),
+            ["copper"] = () =>
+            {
+                if (_world.Nodes.TryGetNode("CopperOreNode", out ResourceNode node))
+                {
+                    node.Deliver(40);
+                }
+                Grant(ItemType.CopperOre, 1);
+            },
+            ["belts"] = () =>
+            {
+                foreach (Vector2Int cell in BeltSpots)
+                {
+                    PlaceGranted("BeltPrefab", cell, Facing.North);
+                }
+            },
+            ["pipes4"] = () =>
+            {
+                foreach (Vector2Int cell in Pipe4Spots)
+                {
+                    PlaceGranted("SteamPipePrefab", cell, Facing.North);
+                }
+            },
+            ["scav3"] = () =>
+            {
+                BuildGolem("ClockworkScavenger");
+                Program(CopperExtractor, "ExtractScrap", "PushOutput");
+            },
+            ["work-extractor"] = () => CopperExtractor?.SetPlacement(ExtractorSpot, Facing.North),
+            ["copper-depot"] = () =>
+            {
+                PlaceGranted("DepotPrefab", CopperDepotSpot, Facing.North);
+                DepotAt(CopperDepotSpot)?.SetFilter(ItemType.CopperOre);
+            },
+            ["unloader"] = () =>
+            {
+                BuildGolem("ClockworkScavenger");
+                ProgramSlots(CopperUnloader, ("HaulScrap", ItemType.CopperOre, 1), ("PushOutput", null, 1));
+            },
+            ["work-unloader"] = () => CopperUnloader?.SetPlacement(UnloaderSpot, Facing.North),
             ["work-carrier"] = () =>
             {
                 Pressers.FirstOrDefault(IsCarrier)?.SetPlacement(CarrierSpot, Facing.North);

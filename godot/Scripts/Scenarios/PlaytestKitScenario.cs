@@ -35,7 +35,7 @@ namespace GolemFactory.Nodes.Scenarios
 
             // The first question waits in the guide's place; the kit does not need it answered.
             Do("skip the light question", () => { _world.Tutorial.Playtest.Skip(0f); return null; });
-            foreach ((string next, string label) in new[] { ("gears", "chapter 1"), ("coking-card", "chapter 2"), ("patent", "chapter 3"), ("r4-card", "chapter 4"), ("done", "chapter 5") })
+            foreach ((string next, string label) in new[] { ("gears", "chapter 1"), ("coking-card", "chapter 2"), ("patent", "chapter 3"), ("r4-card", "chapter 4"), ("copper", "chapter 5"), ("done", "chapter 6") })
             {
                 string expect = next;
                 string chapter = label;
@@ -63,16 +63,16 @@ namespace GolemFactory.Nodes.Scenarios
             Do("the factory stands and the report says so", () =>
             {
                 int golems = _world.Golems.Count(g => !g.IsRemoved);
-                if (golems != 6)
+                if (golems != 8)
                 {
                     return $"{golems} golems";
                 }
                 string report = _world.Tutorial.Playtest.Compose("", _world.Tutorial.Now);
-                if (!report.Contains("fast-forwarded chapter 5"))
+                if (!report.Contains("fast-forwarded chapter 6"))
                 {
                     return "the report does not record the kit";
                 }
-                _log.Add($"6 golems working, {_world.Build.Buildings.Count(b => !b.IsRemoved)} buildings, report records {_world.Tutorial.Playtest.KitUses.Count} kit uses");
+                _log.Add($"8 golems working, {_world.Build.Buildings.Count(b => !b.IsRemoved)} buildings, report records {_world.Tutorial.Playtest.KitUses.Count} kit uses");
                 return null;
             });
         }
