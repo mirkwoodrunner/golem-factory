@@ -30,6 +30,7 @@ GENERATORS = [
     "generate_building_art.py",
     "generate_workbench_ui_art.py",
     "generate_tech_tree_art.py",
+    "generate_clock_tower_art.py",
 ]
 
 # Sprites whose committed version was drawn by hand over the generated placeholder, so the

@@ -949,7 +949,20 @@ buildings. Includes the "no refund on load" duplicator regression.
      - It's **roped off** (`ClockTowerSite.OpenWhen`) until the tech-tree ledger has seen a
        Zeppelin. While closed it refuses deliveries, accrues nothing, and the HUD reads
        "Clock Tower site roped off until you build a Zeppelin".
-  3. Staged art from a procedural generator, one picture per stage completed.
+  3. **Staged art (done).** `Tools/Art/generate_clock_tower_art.py` draws six pictures:
+     - `clock_tower_site` (roped off: brass posts, a sagging rope, a sign)
+     - `stage0` (open: the plinth chalked out)
+     - `stage1` (Foundation: a stone plinth under scaffolding)
+     - `stage2` (The Movement: the brick shaft, its great cog showing)
+     - `stage3` (Aether Illumination: a band of glowing lenses)
+     - `stage4` (The Chronometer: belfry, clock face, slate spire)
+
+     All six share one untrimmed 192×448 canvas with the bottom row on the footprint's south
+     edge, so the stages swap in place. `verify_art.py` runs the generator.
+     `ClockTowerArt.SpriteFor` picks the picture (Core, tested). The view puts the tower's node
+     at the footprint's south edge, because a standing sprite's feet go on its node's origin;
+     the `world` scenario caught the first draft offsetting them. The old single-cell
+     `clock_tower.png` is now unused.
   4. Its guide chapter, and save.
 - **One Haul card; the player picks the good** (your call). Found while planning the smelting
   chapter: the deck's only Haul was typed to Scrap. No card could load Coke, ore or plate into
