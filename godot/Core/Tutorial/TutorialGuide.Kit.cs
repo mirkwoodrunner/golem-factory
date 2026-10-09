@@ -30,6 +30,7 @@ namespace GolemFactory.Tutorial
             ("r4-card", 5, "Metal, and its Slag"),
             ("copper", 6, "Belts, and a label"),
             ("expand", 7, "Room to grow, and keeping it"),
+            ("copper-ingot", 8, "Brass, and the goods beyond"),
         };
 
         /// <summary>The chapter the current step belongs to, and its title.</summary>
@@ -272,6 +273,15 @@ namespace GolemFactory.Tutorial
             ["ledger"] = () => _world.LedgerReadout.Select("r2.reclamation"),
             ["save"] = () => _world.SaveTo(KitSavePath),
             ["load"] = () => _world.LoadFrom(KitSavePath),
+            // Chapter 8's goals: claim the card, then the good, as its line would have made it.
+            ["copper-ingot"] = () => MakeGood("AssembleCopperSmelting", ItemType.CopperIngot, 10),
+            ["zinc-ingot"] = () => MakeGood("AssembleZincSmelting", ItemType.ZincIngot, 5),
+            ["brass"] = () => MakeGood("AssembleBrassAlloying", ItemType.Brass, 20),
+            ["casing"] = () => MakeGood("AssembleCasingPress", ItemType.Casing, 10),
+            ["glass"] = () => MakeGood("AssembleGlassmaking", ItemType.Glass, 10),
+            ["lens"] = () => MakeGood("AssembleLensGrinding", ItemType.Lens, 10),
+            ["mainspring"] = () => MakeGood("AssembleMainspringWinding", ItemType.Mainspring, 3),
+            ["aether-cell"] = () => MakeGood("AssembleAetherContainment", ItemType.AetherCell, 2),
             ["work-carrier"] = () =>
             {
                 Pressers.FirstOrDefault(IsCarrier)?.SetPlacement(CarrierSpot, Facing.North);
@@ -364,6 +374,16 @@ namespace GolemFactory.Tutorial
         }
 
         /// <summary>Claims the card with this appendage: from its slot if offered, else granted.</summary>
+        /// <summary>A goal step: the card claimed, then the good in the stockpile.</summary>
+        private void MakeGood(string card, string good, int quantity)
+        {
+            if (!HasClaimed(card))
+            {
+                Claim(card);
+            }
+            Grant(good, quantity);
+        }
+
         private void Claim(string appendageName)
         {
             AssemblyLineState line = _world.AssemblyLine;

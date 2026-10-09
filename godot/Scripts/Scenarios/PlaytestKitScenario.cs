@@ -35,7 +35,7 @@ namespace GolemFactory.Nodes.Scenarios
 
             // The first question waits in the guide's place; the kit does not need it answered.
             Do("skip the light question", () => { _world.Tutorial.Playtest.Skip(0f); return null; });
-            foreach ((string next, string label) in new[] { ("gears", "chapter 1"), ("coking-card", "chapter 2"), ("patent", "chapter 3"), ("r4-card", "chapter 4"), ("copper", "chapter 5"), ("expand", "chapter 6"), ("done", "chapter 7") })
+            foreach ((string next, string label) in new[] { ("gears", "chapter 1"), ("coking-card", "chapter 2"), ("patent", "chapter 3"), ("r4-card", "chapter 4"), ("copper", "chapter 5"), ("expand", "chapter 6"), ("copper-ingot", "chapter 7"), ("done", "chapter 8") })
             {
                 string expect = next;
                 string chapter = label;
@@ -68,7 +68,7 @@ namespace GolemFactory.Nodes.Scenarios
                     return $"{golems} golems";
                 }
                 string report = _world.Tutorial.Playtest.Compose("", _world.Tutorial.Now);
-                if (!report.Contains("fast-forwarded chapter 7"))
+                if (!report.Contains("fast-forwarded chapter 8"))
                 {
                     return "the report does not record the kit";
                 }

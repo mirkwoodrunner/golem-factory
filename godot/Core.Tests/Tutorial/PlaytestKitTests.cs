@@ -111,16 +111,19 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual("expand", world.Tutorial.Current.Id, "chapter 6 done: ore down a belt into a labelled depot");
 
             RunKit(world);
-            Assert.AreEqual("done", world.Tutorial.Current.Id, "chapter 7 done: room, bays, the Ledger, a save and a load");
+            Assert.AreEqual("copper-ingot", world.Tutorial.Current.Id, "chapter 7 done: room, bays, the Ledger, a save and a load");
             Assert.Greater(world.Bounds.NorthExtent, world.Bounds.MinNorthExtent);
             Assert.AreEqual(2, world.AssemblyBay.Tier);
+
+            RunKit(world);
+            Assert.AreEqual("done", world.Tutorial.Current.Id, "chapter 8 done: every good the Zeppelin costs");
 
             // The ground is real: the layouts stand, and the golems are the ones a player builds.
             Assert.AreEqual(8, world.Golems.Count(g => !g.IsRemoved));
             Assert.IsTrue(world.Build.Buildings.Any(b => !b.IsRemoved && b.Cell == world.Tutorial.Boiler2Spot));
 
             var kit = world.Tutorial.Playtest.KitUses;
-            Assert.AreEqual(7, kit.Count, "the report says what was fast-forwarded");
+            Assert.AreEqual(8, kit.Count, "the report says what was fast-forwarded");
             StringAssert.Contains("chapter 1", kit[0]);
             StringAssert.Contains("Playtest kit", world.Tutorial.Playtest.Compose("", world.Tutorial.Now));
         }

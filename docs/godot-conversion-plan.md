@@ -890,7 +890,19 @@ buildings. Includes the "no refund on load" duplicator regression.
   - **Scenario runs never touch the player's save.** `PlaytestNode.UnderScenario` now reads the
     command line itself. It used to be a flag the ScenarioRunner set, after `ManagementScreen`
     had already chosen the player's real `save.json`, and a kit run overwrote one.
-  - Still to come: guide chapters 8-9, and the markdown script shrinking to a how-to.
+  - **Guide chapter 8: Brass, and the goods beyond.** Eight **goal steps**, one for each good
+    the Zeppelin costs: Copper Ingot, Zinc Ingot, Brass, Casing, Glass, Lens, Mainspring and
+    Aether Cell.
+    - Each step names its card (a new `TutorialStep.Card`, which also replaced the guide's
+      switch for the three earlier claim steps) and its recipe.
+    - A step is done once the tech-tree ledger has seen the good, the same question the
+      line asks of a card's price.
+    - No marked tiles: by now the player has built every shape of line these need.
+    - In this order every card's price is payable when its step comes.
+    - The kit claims each card and grants the good, as the gears step already did.
+    - New question: did you know what to build next?
+  - Still to come: guide chapter 9 (the Zeppelin and the Freight Mast), and the markdown
+    script shrinking to a how-to.
 - **One Haul card; the player picks the good** (your call). Found while planning the smelting
   chapter: the deck's only Haul was typed to Scrap. No card could load Coke, ore or plate into
   a golem, so every two-input recipe (the Aether-Hauler's reason to exist) could not be fed,

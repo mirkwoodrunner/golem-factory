@@ -397,12 +397,51 @@ namespace GolemFactory.Tests.Tutorial
                 world.SaveTo(savePath);
                 Assert.AreEqual("load", StepId(world));
                 world.LoadFrom(savePath);
-                Assert.AreEqual("done", StepId(world), "the load lands past the Save step, and completes Load");
+                Assert.AreEqual("copper-ingot", StepId(world), "the load lands past the Save step, and completes Load");
             }
             finally
             {
                 System.IO.File.Delete(savePath);
             }
+
+            // --- Chapter 8: goal steps ---------------------------------------------------------------
+            // Each asks for a card -- which the line must be showing -- then a good. Made here by
+            // depositing it: the lines that make them are chapters 2-6's shapes again.
+            (string step, string card, string good)[] goals =
+            {
+                ("copper-ingot", "AssembleCopperSmelting", ItemType.CopperIngot),
+                ("zinc-ingot", "AssembleZincSmelting", ItemType.ZincIngot),
+                ("brass", "AssembleBrassAlloying", ItemType.Brass),
+                ("casing", "AssembleCasingPress", ItemType.Casing),
+                ("glass", "AssembleGlassmaking", ItemType.Glass),
+                ("lens", "AssembleLensGrinding", ItemType.Lens),
+                ("mainspring", "AssembleMainspringWinding", ItemType.Mainspring),
+                ("aether-cell", "AssembleAetherContainment", ItemType.AetherCell),
+            };
+            Give(world, ItemType.ZincOre, 8);   // bought at the Zinc stall
+            Give(world, ItemType.Aether, 4);    // and the Aether stall
+            foreach ((string step, string card, string good) in goals)
+            {
+                world.Advance(1f / 30f);
+                Assert.AreEqual(step, StepId(world));
+                var line = world.AssemblyLine;
+                int slot = Enumerable.Range(0, line.SlotCount).FirstOrDefault(i => line.GetCard(i)?.appendage?.name == card, -1);
+                Assert.GreaterOrEqual(slot, 0, $"{step}: {card} is on the line");
+                Give(world, ItemType.Scrap, 100);
+                Give(world, ItemType.IronPlate, 100);
+                Give(world, ItemType.Gear, 50);
+                foreach (var cost in line.GetCurrentCostBundle(slot))
+                {
+                    Give(world, cost.itemType, cost.quantity);
+                }
+                Assert.IsTrue(world.AssemblyLineBoard.Claim(slot), $"{step}: claimed {card}");
+                Give(world, good, 10);
+                for (int frame = 0; frame < 60; frame++) // the tech tree polls the stockpile, not every frame
+                {
+                    world.Advance(1f / 30f);
+                }
+            }
+            Assert.AreEqual("done", StepId(world), "every good the Zeppelin costs has been made");
 
             world.Tutorial.Finish();
             Assert.IsFalse(world.Tutorial.IsShowing);

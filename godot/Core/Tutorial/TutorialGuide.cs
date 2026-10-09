@@ -31,6 +31,12 @@ namespace GolemFactory.Tutorial
 
         public Facing? SpotFacing { get; }
 
+        /// <summary>
+        /// The card this step asks the player to claim (its appendage's name), or null. The
+        /// Assembly Line keeps it on show while the step is current.
+        /// </summary>
+        public string Card { get; }
+
         internal Func<SandboxWorld, bool> Done { get; }
         internal Func<SandboxWorld, string> ProgressText { get; }
         internal Func<SandboxWorld, Vector2Int?> Target { get; }
@@ -38,8 +44,9 @@ namespace GolemFactory.Tutorial
         internal TutorialStep(
             string id, string title, string body, Func<SandboxWorld, bool> done,
             Func<SandboxWorld, Vector2Int?> target, Func<SandboxWorld, string> progress = null, string menuKey = null,
-            Vector2Int? spot = null, Facing? spotFacing = null, Vector2Int[] moreSpots = null)
+            Vector2Int? spot = null, Facing? spotFacing = null, Vector2Int[] moreSpots = null, string card = null)
         {
+            Card = card;
             Spot = spot ?? (moreSpots != null && moreSpots.Length > 0 ? moreSpots[0] : (Vector2Int?)null);
             SpotFacing = spotFacing;
             var spots = new List<Vector2Int>();
@@ -122,13 +129,7 @@ namespace GolemFactory.Tutorial
         /// The card the current step asks the player to claim (by its appendage), or null. The
         /// Assembly Line keeps it on show.
         /// </summary>
-        public string WantedCardAppendage => IsShowing || KitRunning ? Current?.Id switch
-        {
-            "claim" => "AssembleScrapReclamation",
-            "coking-card" => "AssembleCoking",
-            "r4-card" => "AssembleIronSmelting",
-            _ => null,
-        } : null;
+        public string WantedCardAppendage => IsShowing || KitRunning ? Current?.Card : null;
 
         /// <summary>Bumped whenever the step changes, so a view redraws on change only.</summary>
         public int Version { get; private set; }
@@ -503,6 +504,20 @@ namespace GolemFactory.Tutorial
         private PlaceableDepot DepotAt(Vector2Int cell) =>
             Built.FirstOrDefault(b => b.Cell == cell)?.GetPart<PlaceableDepot>();
 
+        /// <summary>
+        /// Chapter 8's shape: claim a recipe card, then make the good. No marked tiles -- by now the
+        /// player has built every kind of line the recipe needs, and choosing where is the game.
+        /// Done once the factory has EVER made the good (the tech tree's ledger, which only
+        /// grows), the same question the Assembly Line asks of a card's price.
+        /// </summary>
+        private TutorialStep Goal(string id, string title, string body, string good, string card, string recipe, string stall = null) =>
+            new TutorialStep(
+                id, title, body,
+                w => _world.TechTree.Ledger.HasItem(good),
+                w => stall != null ? Stall(stall) : null,
+                w => (HasClaimed(card) ? "Card claimed" : "Claim the card") + "  ·  " + recipe,
+                card: card);
+
         private SlagHeap HeapAt(Vector2Int cell) =>
             Built.FirstOrDefault(b => b.Cell == cell)?.GetPart<PlaceableSlagHeap>()?.Heap;
 
@@ -629,7 +644,8 @@ namespace GolemFactory.Tutorial
                 "A golem can only use cards you own. Press Tab, open the Assembly Line, and click Claim on "
                 + "Assemble Scrap Reclamation (4 Scrap): it lets a golem turn Scrap into Iron Plate.",
                 w => HasClaimed("AssembleScrapReclamation"),
-                w => null),
+                w => null,
+                card: "AssembleScrapReclamation"),
 
             new TutorialStep(
                 "presser", "Build a Brass Presser",
@@ -684,7 +700,8 @@ namespace GolemFactory.Tutorial
                 "Your boiler burns the Coke you crank by hand, and it will run dry. Time to make Coke "
                 + "automatically. Press Tab, open the Assembly Line and claim Assemble Coking.",
                 w => HasClaimed("AssembleCoking"),
-                w => null),
+                w => null,
+                card: "AssembleCoking"),
 
             new TutorialStep(
                 "presser2", "A second Presser",
@@ -818,7 +835,8 @@ namespace GolemFactory.Tutorial
                 "Iron Smelting makes twice the Iron Plate from the same Scrap, but it needs Coke too: two "
                 + "inputs. Press Tab, open the Assembly Line and claim Assemble Iron Smelting.",
                 w => HasClaimed("AssembleIronSmelting"),
-                w => null),
+                w => null,
+                card: "AssembleIronSmelting"),
 
             new TutorialStep(
                 "hauler", "Build an Aether-Hauler",
@@ -1013,6 +1031,44 @@ namespace GolemFactory.Tutorial
                 "Now click Load. Your factory comes back exactly as you saved it, mid-cycle and all.",
                 w => _world.LoadsMade > 0,
                 w => null),
+
+            // --- Chapter 8: Brass, and the goods beyond --------------------------------------------
+            // The playtest script's tier-2 and tier-3 chain (Parts F and G): every good the Zeppelin
+            // costs. Goal steps, no marked tiles.
+
+            Goal("copper-ingot", "Smelt Copper",
+                "From here the guide names a good and its card, and you choose where to build. Claim Copper "
+                + "Smelting and set an Aether-Hauler on it: Haul Copper Ore and Coke, Assemble, Push.",
+                ItemType.CopperIngot, "AssembleCopperSmelting", "2 Copper Ore + 1 Coke → 1 Copper Ingot"),
+
+            Goal("zinc-ingot", "Smelt Zinc",
+                "Order Zinc Ore at the Zinc stall, claim Zinc Smelting, and smelt it the same way.",
+                ItemType.ZincIngot, "AssembleZincSmelting", "2 Zinc Ore + 1 Coke → 1 Zinc Ingot", "ZincOreNode"),
+
+            Goal("brass", "Alloy Brass",
+                "Brass is two ingots in one: claim Brass Alloying and feed one golem Copper and Zinc Ingot.",
+                ItemType.Brass, "AssembleBrassAlloying", "2 Copper Ingot + 1 Zinc Ingot → 1 Brass"),
+
+            Goal("casing", "Press Casings",
+                "Claim Casing Press. A Brass Presser can run it: Iron Plate and Brass in, a Casing out.",
+                ItemType.Casing, "AssembleCasingPress", "4 Iron Plate + 1 Brass → 1 Casing"),
+
+            Goal("glass", "Glass from Slag",
+                "Your smelters' Slag is not only waste. Claim Glassmaking, and send some Slag to a golem "
+                + "running it instead of the heap.",
+                ItemType.Glass, "AssembleGlassmaking", "1 Slag → 1 Glass"),
+
+            Goal("lens", "Grind a Lens",
+                "Claim Lens Grinding: Glass and Brass make a Lens.",
+                ItemType.Lens, "AssembleLensGrinding", "2 Glass + 1 Brass → 1 Lens"),
+
+            Goal("mainspring", "Wind a Mainspring",
+                "Claim Mainspring Winding: Brass and Gears make a Mainspring.",
+                ItemType.Mainspring, "AssembleMainspringWinding", "3 Brass + 2 Gear → 1 Mainspring"),
+
+            Goal("aether-cell", "Bottle the Aether",
+                "Order Aether at the Aether stall, claim Aether Containment, and seal it behind Lenses.",
+                ItemType.AetherCell, "AssembleAetherContainment", "1 Aether + 2 Lens → 1 Aether Cell", "AetherNode"),
 
             new TutorialStep(
                 "done", "A factory that feeds itself",
