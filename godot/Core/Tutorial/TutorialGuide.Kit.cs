@@ -31,6 +31,7 @@ namespace GolemFactory.Tutorial
             ("copper", 6, "Belts, and a label"),
             ("expand", 7, "Room to grow, and keeping it"),
             ("copper-ingot", 8, "Brass, and the goods beyond"),
+            ("zeppelin-card", 9, "The Zeppelin"),
         };
 
         /// <summary>The chapter the current step belongs to, and its title.</summary>
@@ -282,6 +283,12 @@ namespace GolemFactory.Tutorial
             ["lens"] = () => MakeGood("AssembleLensGrinding", ItemType.Lens, 10),
             ["mainspring"] = () => MakeGood("AssembleMainspringWinding", ItemType.Mainspring, 3),
             ["aether-cell"] = () => MakeGood("AssembleAetherContainment", ItemType.AetherCell, 2),
+            ["zeppelin-card"] = () => Claim("ZeppelinFreightLoader"),
+            ["zeppelin"] = () => BuildGolem("ZeppelinFreightLoader"),
+            ["mast"] = () => PlaceGranted("FreightMastPrefab", MastSpot, Facing.North),
+            ["zeppelin-pipe"] = () => PlaceGranted("SteamPipePrefab", ZeppelinPipeSpot, Facing.North),
+            ["program-zeppelin"] = () => ProgramSlots(Zeppelin, ("HaulScrap", ItemType.CopperOre, 1), ("FreightLaunch", null, 1)),
+            ["launch"] = () => Zeppelin?.SetPlacement(ZeppelinSpot, Facing.North),
             ["work-carrier"] = () =>
             {
                 Pressers.FirstOrDefault(IsCarrier)?.SetPlacement(CarrierSpot, Facing.North);
@@ -394,7 +401,7 @@ namespace GolemFactory.Tutorial
             }
             for (int i = 0; i < line.SlotCount; i++)
             {
-                if (line.GetCard(i)?.appendage?.name == appendageName)
+                if (CardKey(line.GetCard(i)) == appendageName)
                 {
                     GrantCost(line.GetCurrentCostBundle(i));
                     _world.AssemblyLineBoard.Claim(i);
@@ -403,7 +410,7 @@ namespace GolemFactory.Tutorial
             }
             string deck = _world.Setup.assemblyLine.deck;
             DraftableCardDefinition card = _world.Definitions.Decks.TryGetValue(deck, out DraftableCardCatalog catalog)
-                ? catalog.Cards.FirstOrDefault(c => c.appendage?.name == appendageName)
+                ? catalog.Cards.FirstOrDefault(c => CardKey(c) == appendageName)
                 : null;
             if (card != null)
             {

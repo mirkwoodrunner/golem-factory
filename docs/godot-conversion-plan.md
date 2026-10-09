@@ -901,8 +901,24 @@ buildings. Includes the "no refund on load" duplicator regression.
     - In this order every card's price is payable when its step comes.
     - The kit claims each card and grants the good, as the gears step already did.
     - New question: did you know what to build next?
-  - Still to come: guide chapter 9 (the Zeppelin and the Freight Mast), and the markdown
-    script shrinking to a how-to.
+  - **Guide chapter 9: the Zeppelin** (the script's Freight Link, Part G). Six steps:
+    1. Claim its chassis card. Chassis cards are now matched too, through `TutorialGuide.CardKey`.
+    2. Build the Zeppelin.
+    3. Raise a Freight Mast.
+    4. Lay one pipe for steam.
+    5. Program it: Haul ‹Copper Ore›, then Freight Launch.
+    6. Set it past chapter 6's labelled Copper depot, **with the depot behind it**: a golem hauls
+       from behind. The first draft had it facing the depot, and the guide test caught it
+       stalling on `NoSourceAtTile`.
+
+    The guide test plays it for real: the Zeppelin flies and the ore lands in the stockpile
+    through the mast. New question: did flying goods to a mast feel worth it?
+  - **The guide stays on show over the Workbench for every step done there.** This is now a
+    `TutorialStep.Workbench` flag, not a list in the panel. The list had stopped at chapter 3, so
+    the guide stepped aside exactly when programming the smelter's two Hauls, the hardest
+    Workbench step in the guide.
+  - Still to come: the markdown script shrinking to a how-to, then the Clock Tower rework,
+    whose chapter comes with it.
 - **One Haul card; the player picks the good** (your call). Found while planning the smelting
   chapter: the deck's only Haul was typed to Scrap. No card could load Coke, ore or plate into
   a golem, so every two-input recipe (the Aether-Hauler's reason to exist) could not be fed,

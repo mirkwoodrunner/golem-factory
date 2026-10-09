@@ -161,9 +161,6 @@ namespace GolemFactory.Nodes
             }
         }
 
-        /// <summary>The steps done inside the Workbench, and so shown over it.</summary>
-        private static readonly string[] WorkbenchStepIds = { "program", "program-presser", "program-coker" };
-
         public override void _UnhandledInput(InputEvent e)
         {
             if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F1 } && Guide != null)
@@ -193,7 +190,7 @@ namespace GolemFactory.Nodes
             TutorialGuide guide = Guide;
             bool screenOpen = ModalScreens.AnyOpen(GetTree());
             _workbench ??= GetTree().Root.FindChild("Workbench", true, false) as WorkbenchScreen;
-            bool inWorkbench = screenOpen && _workbench != null && _workbench.IsOpen && System.Array.IndexOf(WorkbenchStepIds, guide?.Current?.Id) >= 0;
+            bool inWorkbench = screenOpen && _workbench != null && _workbench.IsOpen && guide?.Current?.Workbench == true;
 
             // Over a full screen the guide shows only for the step that happens there; every other
             // step is about the world behind the screen, and the screens have no room to spare.

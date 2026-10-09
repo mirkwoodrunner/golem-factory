@@ -220,7 +220,7 @@ namespace GolemFactory.World
                 Tutorial = new Tutorial.TutorialGuide(this);
                 if (AssemblyLine != null)
                 {
-                    AssemblyLine.Wanted = card => card?.appendage != null && card.appendage.name == Tutorial.WantedCardAppendage;
+                    AssemblyLine.Wanted = card => card != null && GolemFactory.Tutorial.TutorialGuide.CardKey(card) == Tutorial.WantedCardAppendage;
                 }
                 if (setup.playtest)
                 {

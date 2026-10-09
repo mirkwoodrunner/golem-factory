@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using GolemFactory.AssemblyLine;
 using GolemFactory.Buildings;
 using GolemFactory.Compat;
 using GolemFactory.Economy;
@@ -37,6 +38,12 @@ namespace GolemFactory.Tutorial
         /// </summary>
         public string Card { get; }
 
+        /// <summary>
+        /// Whether the step is done inside the Workbench, so the guide stays on show over it
+        /// (docked clear of its controls) rather than stepping aside as it does over other screens.
+        /// </summary>
+        public bool Workbench { get; }
+
         internal Func<SandboxWorld, bool> Done { get; }
         internal Func<SandboxWorld, string> ProgressText { get; }
         internal Func<SandboxWorld, Vector2Int?> Target { get; }
@@ -44,9 +51,11 @@ namespace GolemFactory.Tutorial
         internal TutorialStep(
             string id, string title, string body, Func<SandboxWorld, bool> done,
             Func<SandboxWorld, Vector2Int?> target, Func<SandboxWorld, string> progress = null, string menuKey = null,
-            Vector2Int? spot = null, Facing? spotFacing = null, Vector2Int[] moreSpots = null, string card = null)
+            Vector2Int? spot = null, Facing? spotFacing = null, Vector2Int[] moreSpots = null, string card = null,
+            bool workbench = false)
         {
             Card = card;
+            Workbench = workbench;
             Spot = spot ?? (moreSpots != null && moreSpots.Length > 0 ? moreSpots[0] : (Vector2Int?)null);
             SpotFacing = spotFacing;
             var spots = new List<Vector2Int>();
@@ -308,11 +317,17 @@ namespace GolemFactory.Tutorial
             && golem.Program.appendages.Any(a => a != null && a.name == "AssembleScrapReclamation")
             && golem.Program.appendages.Any(a => a != null && a.name == "PushOutput");
 
+        /// <summary>
+        /// What a step calls a card by: its appendage's name, or for a chassis card the chassis's.
+        /// </summary>
+        public static string CardKey(DraftableCardDefinition card) =>
+            card?.appendage?.name ?? card?.chassis?.name;
+
         private bool HasClaimed(string appendageName)
         {
             string user = _world.Setup?.assemblyLine?.claimUserId;
             return _world.AssemblyLine != null && user != null
-                && _world.AssemblyLine.GetClaimedCards(user).Any(c => c.appendage != null && c.appendage.name == appendageName);
+                && _world.AssemblyLine.GetClaimedCards(user).Any(c => CardKey(c) == appendageName);
         }
 
         private string Counts(params (string item, int goal)[] goals) =>
@@ -516,7 +531,29 @@ namespace GolemFactory.Tutorial
                 w => _world.TechTree.Ledger.HasItem(good),
                 w => stall != null ? Stall(stall) : null,
                 w => (HasClaimed(card) ? "Card claimed" : "Claim the card") + "  ·  " + recipe,
-                card: card);
+                card: card,
+                workbench: true);
+
+        // Chapter 9 flies the Copper home. The Zeppelin stands on the labelled Copper depot's far
+        // side with the depot behind it, hauls ore out and launches it to a Freight Mast, which lands it in the
+        // stockpile. One more pipe, on the copper run's top, gives it steam.
+        //
+        //     pipe  Zeppelin (faces up, depot behind)              Freight Mast
+        //     pipe  labelled Copper depot
+
+        /// <summary>The Zeppelin's tile: just past the labelled Copper depot.</summary>
+        public Vector2Int ZeppelinSpot => CopperDepotSpot + new Vector2Int(0, 1);
+
+        /// <summary>The pipe beside it, on top of chapter 6's run.</summary>
+        public Vector2Int ZeppelinPipeSpot => ZeppelinSpot + new Vector2Int(-1, 0);
+
+        /// <summary>Where the guide suggests the mast: a few tiles off, across open floor.</summary>
+        public Vector2Int MastSpot => ZeppelinSpot + new Vector2Int(4, 3);
+
+        private GolemEntity Zeppelin =>
+            LiveGolems.FirstOrDefault(g => g.Program?.chassis != null && g.Program.chassis.name == "ZeppelinFreightLoader");
+
+        private bool HasMast => Built.Any(b => b.GetPart<PlaceableFreightMast>() != null);
 
         private SlagHeap HeapAt(Vector2Int cell) =>
             Built.FirstOrDefault(b => b.Cell == cell)?.GetPart<PlaceableSlagHeap>()?.Heap;
@@ -603,7 +640,8 @@ namespace GolemFactory.Tutorial
                 "In the Workbench, drag the Always On core into TRIGGER, Extract Scrap into STEP 1 and "
                 + "Push Output into STEP 2, then pull ENGAGE. Closed it? Press E at the golem.",
                 w => LiveGolems.Any(IsProgrammed),
-                w => FirstGolem),
+                w => FirstGolem,
+                workbench: true),
 
             new TutorialStep(
                 "depot", "Build a Depot",
@@ -679,7 +717,8 @@ namespace GolemFactory.Tutorial
                 "In the Workbench: Always On into TRIGGER, then Haul Scrap, Assemble Scrap Reclamation and "
                 + "Push Output into STEPS 1 to 3, and pull ENGAGE. Closed it? Press E at the Presser.",
                 w => Pressers.Any(IsIronPresser),
-                w => Pressers.Select(g => (Vector2Int?)g.Cell).FirstOrDefault()),
+                w => Pressers.Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
+                workbench: true),
 
             new TutorialStep(
                 "work-presser", "Make Iron Plate",
@@ -744,7 +783,8 @@ namespace GolemFactory.Tutorial
                 "In the Workbench: Always On, then Extract Scrap, Assemble Coking and Push Output. Despite its "
                 + "name, Extract takes whatever the stall behind the golem holds: here, Coal.",
                 w => Pressers.Any(IsCoker),
-                w => Pressers.Where(g => !IsIronPresser(g)).Select(g => (Vector2Int?)g.Cell).FirstOrDefault()),
+                w => Pressers.Where(g => !IsIronPresser(g)).Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
+                workbench: true),
 
             new TutorialStep(
                 "work-coker", "Feed the boiler",
@@ -765,7 +805,8 @@ namespace GolemFactory.Tutorial
                 "Retyping a program for every golem is the chore a patent removes. Press E at your first "
                 + "Scavenger to open its Workbench, and press PATENT to save its program.",
                 w => _world.Patents.Blueprints.Count > 0,
-                w => FirstGolem),
+                w => FirstGolem,
+                workbench: true),
 
             new TutorialStep(
                 "scav2", "Build a second Scavenger",
@@ -779,7 +820,8 @@ namespace GolemFactory.Tutorial
                 "With the new golem in the Workbench, press Tab, open Patents and click Load on your patent, "
                 + "then pull ENGAGE. The same program, without dragging a card.",
                 w => SecondScavenger != null && IsProgrammed(SecondScavenger),
-                w => SecondScavenger != null ? SecondScavenger.Cell : (Vector2Int?)null),
+                w => SecondScavenger != null ? SecondScavenger.Cell : (Vector2Int?)null,
+                workbench: true),
 
             new TutorialStep(
                 "depot3", "A depot beside the stall",
@@ -871,7 +913,8 @@ namespace GolemFactory.Tutorial
                 "In the Workbench: Always On, then Haul, Haul, Assemble Iron Smelting and Push Output. On the "
                 + "second Haul, click the arrow until it says Coke. Set the first to 2: the recipe takes 2 Scrap and 1 Coke.",
                 w => Haulers.Any(IsSmelter),
-                w => Haulers.Select(g => (Vector2Int?)g.Cell).FirstOrDefault()),
+                w => Haulers.Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
+                workbench: true),
 
             new TutorialStep(
                 "work-smelter", "Smelt",
@@ -905,7 +948,8 @@ namespace GolemFactory.Tutorial
                 "Program it: Always On, Haul set to Slag with the dial at 4, Haul set to Coke at 1, then Push "
                 + "Output. Four Slag and the one Coke that burns them, every trip.",
                 w => Pressers.Any(IsCarrier),
-                w => Pressers.Where(g => !IsIronPresser(g) && !IsCoker(g)).Select(g => (Vector2Int?)g.Cell).FirstOrDefault()),
+                w => Pressers.Where(g => !IsIronPresser(g) && !IsCoker(g)).Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
+                workbench: true),
 
             new TutorialStep(
                 "work-carrier", "Clear the Slag",
@@ -954,7 +998,8 @@ namespace GolemFactory.Tutorial
                 "Build a Scavenger and program it Extract, Push Output: it will push ore onto the belt.",
                 w => CopperExtractor != null && IsProgrammed(CopperExtractor),
                 w => ScrapFirst(12, Station),
-                w => Count(ItemType.Scrap, 12)),
+                w => Count(ItemType.Scrap, 12),
+                workbench: true),
 
             new TutorialStep(
                 "work-extractor", "Onto the belt",
@@ -981,7 +1026,8 @@ namespace GolemFactory.Tutorial
                 w => CopperUnloader != null && HaulsOf(CopperUnloader, ItemType.CopperOre) > 0
                     && CopperUnloader.Program.appendages.Any(a => a?.name == "PushOutput"),
                 w => ScrapFirst(12, Station),
-                w => Count(ItemType.Scrap, 12)),
+                w => Count(ItemType.Scrap, 12),
+                workbench: true),
 
             new TutorialStep(
                 "work-unloader", "Off the belt",
@@ -1069,6 +1115,61 @@ namespace GolemFactory.Tutorial
             Goal("aether-cell", "Bottle the Aether",
                 "Order Aether at the Aether stall, claim Aether Containment, and seal it behind Lenses.",
                 ItemType.AetherCell, "AssembleAetherContainment", "1 Aether + 2 Lens → 1 Aether Cell", "AetherNode"),
+
+            // --- Chapter 9: the Zeppelin ---------------------------------------------------------------
+            // The playtest script's Freight Link (Part G): a Zeppelin flies goods to a mast in one
+            // flat 24-tick hop, however far.
+
+            new TutorialStep(
+                "zeppelin-card", "Claim the Zeppelin",
+                "Everything it costs is in your stockpile now. Press Tab, open the Assembly Line and claim "
+                + "the Zeppelin Freight Loader.",
+                w => HasClaimed("ZeppelinFreightLoader"),
+                w => null,
+                card: "ZeppelinFreightLoader"),
+
+            new TutorialStep(
+                "zeppelin", "Build the Zeppelin",
+                "At the construction station, build a Zeppelin Freight Loader: 6 Mainspring, 8 Lens, 3 Aether "
+                + "Cell, 30 Casing and 40 Brass.",
+                w => Zeppelin != null,
+                w => ScrapFirst(1, Station),
+                w => Counts((ItemType.Mainspring, 6), (ItemType.Lens, 8), (ItemType.AetherCell, 3), (ItemType.Casing, 30), (ItemType.Brass, 40))),
+
+            new TutorialStep(
+                "mast", "Raise a Freight Mast",
+                "A Zeppelin flies to a Freight Mast, and the mast lands what it brings in the stockpile. "
+                + "Build one on the marked tile (20 Brass + 10 Casing); anywhere would do.",
+                w => HasMast,
+                w => HasMast ? (Vector2Int?)null : MastSpot,
+                w => Counts((ItemType.Brass, 20), (ItemType.Casing, 10)),
+                menuKey: "FreightMastPrefab",
+                spot: MastSpot),
+
+            new TutorialStep(
+                "zeppelin-pipe", "Steam for it",
+                "One more pipe, on the marked tile at the top of the copper line's run.",
+                w => _world.Steam.HasPipe(ZeppelinPipeSpot),
+                w => ZeppelinPipeSpot,
+                menuKey: "SteamPipePrefab",
+                spot: ZeppelinPipeSpot),
+
+            new TutorialStep(
+                "program-zeppelin", "Program the Zeppelin",
+                "Always On, Haul set to Copper Ore, then Freight Launch: it flies whatever it holds to the mast.",
+                w => Zeppelin != null && HaulsOf(Zeppelin, ItemType.CopperOre) > 0
+                    && Zeppelin.Program.appendages.Any(a => a?.name == "FreightLaunch"),
+                w => null,
+                workbench: true),
+
+            new TutorialStep(
+                "launch", "Fly the Copper home",
+                "Put it on the marked tile past the labelled Copper depot, with the depot BEHIND it (facing "
+                + "up): it hauls from behind, like every golem. Each flight takes 24 ticks, however far the mast.",
+                w => Zeppelin != null && _completedSinceEntry.Contains(Zeppelin.GolemId),
+                w => Zeppelin != null && Zeppelin.Cell != ZeppelinSpot ? Zeppelin.Cell : ZeppelinSpot,
+                spot: ZeppelinSpot,
+                spotFacing: Facing.North),
 
             new TutorialStep(
                 "done", "A factory that feeds itself",

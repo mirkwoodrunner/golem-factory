@@ -441,7 +441,47 @@ namespace GolemFactory.Tests.Tutorial
                     world.Advance(1f / 30f);
                 }
             }
-            Assert.AreEqual("done", StepId(world), "every good the Zeppelin costs has been made");
+            Assert.AreEqual("zeppelin-card", StepId(world), "every good the Zeppelin costs has been made");
+
+            // --- Chapter 9: the Zeppelin --------------------------------------------------------------
+            var zline = world.AssemblyLine;
+            int zslot = Enumerable.Range(0, zline.SlotCount).FirstOrDefault(i => zline.GetCard(i)?.chassis?.name == "ZeppelinFreightLoader", -1);
+            Assert.GreaterOrEqual(zslot, 0, "the Zeppelin's card is on the line");
+            foreach (var cost in zline.GetCurrentCostBundle(zslot))
+            {
+                Give(world, cost.itemType, cost.quantity);
+            }
+            Assert.IsTrue(world.AssemblyLineBoard.Claim(zslot));
+            Assert.AreEqual("zeppelin", StepId(world));
+
+            Give(world, ItemType.Mainspring, 6);
+            Give(world, ItemType.Lens, 8);
+            Give(world, ItemType.AetherCell, 3);
+            Give(world, ItemType.Casing, 40);
+            Give(world, ItemType.Brass, 60);
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["ZeppelinFreightLoader"], out GolemEntity zeppelin));
+            Assert.AreEqual("mast", StepId(world));
+
+            Place(world, "FreightMastPrefab", world.Tutorial.MastSpot.x, world.Tutorial.MastSpot.y);
+            Assert.AreEqual("zeppelin-pipe", StepId(world));
+            Place(world, "SteamPipePrefab", world.Tutorial.ZeppelinPipeSpot.x, world.Tutorial.ZeppelinPipeSpot.y);
+            Assert.AreEqual("program-zeppelin", StepId(world));
+
+            zeppelin.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            Assert.IsTrue(zeppelin.Program.TryAddAppendage(defs.Appendages["HaulScrap"]));
+            zeppelin.Program.SetItemTypeAt(0, ItemType.CopperOre);
+            Assert.IsTrue(zeppelin.Program.TryAddAppendage(defs.Appendages["FreightLaunch"]));
+            Assert.AreEqual("launch", StepId(world));
+
+            int oreBefore = world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.CopperOre);
+            zeppelin.SetPlacement(world.Tutorial.ZeppelinSpot, Facing.North);
+            for (int frame = 0; frame < 1800 && StepId(world) == "launch"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("done", StepId(world), $"the Zeppelin flies ({zeppelin.StallReason} {zeppelin.StallResourceId})");
+            Assert.Greater(world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.CopperOre), oreBefore,
+                "the ore it flew landed in the stockpile, through the mast");
 
             world.Tutorial.Finish();
             Assert.IsFalse(world.Tutorial.IsShowing);
