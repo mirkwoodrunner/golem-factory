@@ -424,6 +424,9 @@ namespace GolemFactory.World
                 clockPaused = Clock.State == ClockState.Paused,
                 tutorialStep = Tutorial?.Index ?? 0,
                 tutorialDismissed = Tutorial?.Dismissed ?? false,
+                clockTowerStageIndex = ClockTower.Site.StageIndex,
+                clockTowerProgressUnits = ClockTower.Site.ProgressUnits,
+                clockTowerComplete = ClockTower.Site.IsComplete,
             };
             progress.ledgerItems.AddRange(TechTree.Ledger.Items.OrderBy(x => x));
             progress.ledgerChassis.AddRange(TechTree.Ledger.Chassis.OrderBy(x => x));
@@ -468,6 +471,13 @@ namespace GolemFactory.World
 
             AssemblyBay.RestoreTier(progress.assemblyBayTier);
             FloorExpansion.Restore(progress.floorNorthExtent);
+
+            // The tower on its site (G10), a fixture the building list never holds.
+            if (ClockTowerBuilding != null)
+            {
+                ClockTower.Site.RestoreProgress(
+                    progress.clockTowerStageIndex, progress.clockTowerProgressUnits, progress.clockTowerComplete);
+            }
 
             Tutorial?.Restore(progress.tutorialStep, progress.tutorialDismissed);
 

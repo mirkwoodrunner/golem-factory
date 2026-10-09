@@ -963,7 +963,26 @@ buildings. Includes the "no refund on load" duplicator regression.
      at the footprint's south edge, because a standing sprite's feet go on its node's origin;
      the `world` scenario caught the first draft offsetting them. The old single-cell
      `clock_tower.png` is now unused.
-  4. Its guide chapter, and save.
+  4. **Save, and guide chapter 10 (done).**
+     - **Save:** the tower's stage and progress ride in the save's `ProgressEntry`. A
+       fixture is never in the building list, where a placed tower's progress used to go, so
+       without this a load reset the endgame.
+     - **Chapter 10, the Clock Tower:**
+       1. Walk into the town square.
+       2. Make Frame Sections (a goal step).
+       3. Feed them to the tower.
+       4. Lay the Foundation.
+
+       The guide test feeds it for real, 6 a minute of freshly assembled Frame Sections
+       through a footprint cell's input, until stage 1 completes and the picture changes.
+       The guide says plainly that a stockpile builds nothing, which is the tower's
+       fresh-production rule. The kit teleports the player through
+       `PlayerInteractor.Teleport`, which the Godot player node consumes; a bare Position
+       write was overwritten by the node on its next frame.
+     - **Found in the kit's frames:** the instant the rope came down, the HUD raised
+       "starved of FrameSection, progress frozen" over a site nobody had fed. A site is now
+       starved only once it has `HasStarted`: the alarm waits for the first delivery, though
+       progress still freezes.
 - **One Haul card; the player picks the good** (your call). Found while planning the smelting
   chapter: the deck's only Haul was typed to Scrap. No card could load Coke, ore or plate into
   a golem, so every two-input recipe (the Aether-Hauler's reason to exist) could not be fed,

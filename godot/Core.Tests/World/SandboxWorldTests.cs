@@ -260,6 +260,59 @@ namespace GolemFactory.Tests.World
         }
 
         [Test]
+        public void AnOpenedTower_WaitsQuietly_UntilItsFirstDelivery()
+        {
+            // G10, seen in a playtest-kit frame: the instant the rope came down the HUD raised
+            // "starved of FrameSection - progress frozen" over a site nobody had fed yet.
+            SandboxWorld world = Compose();
+            world.Clock.Play();
+            world.TechTree.Ledger.RecordChassis(SandboxWorld.ZeppelinChassis);
+            for (int frame = 0; frame < 300; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            ClockTowerReading waiting = world.ClockTower.Site.BuildReading();
+            Assert.IsTrue(waiting.HasActiveStage, "open, and showing what it needs");
+            Assert.IsFalse(waiting.IsStarved, "but not alarmed before anyone could feed it");
+
+            Assert.IsTrue(world.Endpoints.TryGetEndpoint(TownSquare.TowerCentre, out IItemEndpoint tower));
+            Assert.IsTrue(tower.TryGive(new Belts.ItemStack { ItemType = ItemType.FrameSection }));
+            for (int frame = 0; frame < 30 * 120; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.IsTrue(world.ClockTower.Site.BuildReading().IsStarved, "once started and left to run dry, it says so");
+        }
+
+        [Test]
+        public void TheClockTowersProgress_SurvivesASaveAndLoad()
+        {
+            // G10: the tower is a fixture now, never in the save's building list, so its
+            // progress rides in the progress entry. Without that a load reset the endgame.
+            SandboxWorld world = Compose();
+            world.TechTree.Ledger.RecordChassis(SandboxWorld.ZeppelinChassis);
+            world.ClockTower.Site.RestoreProgress(1, 4321, false);
+            string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "golem-factory-tower-" + System.Guid.NewGuid() + ".json");
+            try
+            {
+                world.SaveTo(path);
+
+                SandboxWorld fresh = Compose();
+                Assert.IsFalse(fresh.ClockTower.Site.IsOpen, "precondition: a new world's site is roped off");
+                fresh.LoadFrom(path);
+
+                Assert.AreEqual(1, fresh.ClockTower.Site.StageIndex, "the Foundation stays built");
+                Assert.AreEqual(4321, fresh.ClockTower.Site.ProgressUnits, "and stage 2 keeps its progress");
+                Assert.IsTrue(fresh.ClockTower.Site.IsOpen, "the Zeppelin in the ledger keeps the rope down");
+                Assert.AreEqual("clock_tower_stage1", ClockTowerArt.SpriteFor(fresh.ClockTower.Site));
+            }
+            finally
+            {
+                System.IO.File.Delete(path);
+            }
+        }
+
+        [Test]
         public void TheAssemblyLineOpens_OnCardsThePlayerDoesNotOwn()
         {
             // The opening hand is granted before the deck is seeded, so the line's skip-owned

@@ -3,6 +3,7 @@ using System.Linq;
 using GolemFactory.Buildings;
 using GolemFactory.Data;
 using GolemFactory.Economy;
+using GolemFactory.Events;
 using GolemFactory.Golems;
 using GolemFactory.PunchCards;
 using GolemFactory.Tests.Data;
@@ -479,9 +480,55 @@ namespace GolemFactory.Tests.Tutorial
             {
                 world.Advance(1f / 30f);
             }
-            Assert.AreEqual("done", StepId(world), $"the Zeppelin flies ({zeppelin.StallReason} {zeppelin.StallResourceId})");
+            Assert.AreEqual("tower-visit", StepId(world), $"the Zeppelin flies ({zeppelin.StallReason} {zeppelin.StallResourceId})");
             Assert.Greater(world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.CopperOre), oreBefore,
                 "the ore it flew landed in the stockpile, through the mast");
+
+            // --- Chapter 10: the Clock Tower -------------------------------------------------------
+            Assert.IsTrue(world.ClockTower.Site.IsOpen, "the Zeppelin took the rope down");
+            world.Interactor.Position = new Compat.Vector3(0f, TownSquare.Top - 1, 0f); // walked out to the square
+            world.Advance(1f / 30f);
+            Assert.AreEqual("frame-section", StepId(world));
+
+            var fline = world.AssemblyLine;
+            int fslot = -1;
+            for (int frame = 0; frame < 60 && fslot < 0; frame++)
+            {
+                world.Advance(1f / 30f);
+                fslot = Enumerable.Range(0, fline.SlotCount).FirstOrDefault(i => fline.GetCard(i)?.appendage?.name == "AssembleFrameSection", -1);
+            }
+            Assert.GreaterOrEqual(fslot, 0, "the Frame Section card is on the line");
+            foreach (var cost in fline.GetCurrentCostBundle(fslot))
+            {
+                Give(world, cost.itemType, cost.quantity);
+            }
+            Assert.IsTrue(world.AssemblyLineBoard.Claim(fslot));
+            Give(world, ItemType.FrameSection, 1);
+            for (int frame = 0; frame < 60; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("tower-feed", StepId(world));
+
+            // Six a minute, through the same input a golem's push uses, until the Foundation is laid.
+            Assert.IsTrue(world.Endpoints.TryGetEndpoint(TownSquare.TowerOrigin, out IItemEndpoint tower));
+            for (int second = 0; second < 900 && StepId(world) != "done"; second++)
+            {
+                if (second % 10 == 0)
+                {
+                    // A line that MAKES them: the tower counts only fresh production, so a
+                    // stockpile fed to it builds nothing (ClockTowerSite's fresh-production rule).
+                    EventBus.Publish(new ItemAssembledEvent("FrameLine", ItemType.FrameSection, 1, world.Clock.CurrentTick));
+                    Assert.IsTrue(tower.TryGive(new Belts.ItemStack { ItemType = ItemType.FrameSection }), $"second {second}: the tower takes it");
+                }
+                for (int frame = 0; frame < 30; frame++)
+                {
+                    world.Advance(1f / 30f);
+                }
+            }
+            Assert.AreEqual("done", StepId(world), "the Foundation is laid: " +
+                GolemFactory.ClockTower.ClockTowerReadout.FormatHeadline(world.ClockTower.Site.BuildReading()));
+            Assert.AreEqual("clock_tower_stage1", GolemFactory.ClockTower.ClockTowerArt.SpriteFor(world.ClockTower.Site));
 
             world.Tutorial.Finish();
             Assert.IsFalse(world.Tutorial.IsShowing);

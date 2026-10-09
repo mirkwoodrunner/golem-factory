@@ -204,9 +204,18 @@ namespace GolemFactory.ClockTower
             Reset();
         }
 
+        /// <summary>
+        /// Whether building has begun: anything delivered, or any stage or progress made (a
+        /// load). Before that the tower is not "starved", only waiting.
+        /// </summary>
+        public bool HasStarted => _started || _stageIndex > 0 || _progressUnits > 0L || _complete;
+
+        private bool _started;
+
         /// <summary>Back to the start of stage 1, with every window and meter emptied.</summary>
         public void Reset()
         {
+            _started = false;
             _stageIndex = 0;
             _progressUnits = 0L;
             _complete = false;
@@ -354,6 +363,7 @@ namespace GolemFactory.ClockTower
 
             WindowFor(_delivered, itemType).Record(tick, quantity);
             MeterFor(itemType).Credit(quantity);
+            _started = true;
             return quantity;
         }
 
@@ -474,7 +484,11 @@ namespace GolemFactory.ClockTower
                     _limitingItemType = demand.itemType;
                 }
 
-                if (starved && _starvedItemType == null)
+                // Not before the tower has STARTED (G10, seen in a playtest-kit frame): the moment
+                // the rope came down the HUD raised "starved of FrameSection - progress frozen"
+                // over a site nobody had had a chance to feed, which read as something broken.
+                // Progress still freezes; only the alarm waits for the first delivery.
+                if (starved && _starvedItemType == null && HasStarted)
                 {
                     _starvedItemType = demand.itemType;
 
