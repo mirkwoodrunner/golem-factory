@@ -96,7 +96,9 @@ namespace GolemFactory.Nodes
         {
             // A full screen owns the keys: the player does not walk off while choosing a chassis.
             Vector2 input = ScriptedMove
-                ?? (ModalScreens.AnyOpen(GetTree()) ? Vector2.Zero : Input.GetVector(MoveLeft, MoveRight, MoveDown, MoveUp)); // +y = north
+                ?? (ModalScreens.AnyOpen(GetTree()) || TextEntry.IsTyping(GetViewport())
+                    ? Vector2.Zero
+                    : Input.GetVector(MoveLeft, MoveRight, MoveDown, MoveUp)); // +y = north
 
             // Bounded by the WORLD (workshop + street), with the north wall wherever Floor
             // Expansion has pushed it -- the clamp Unity's PlayerController applied.
@@ -111,7 +113,8 @@ namespace GolemFactory.Nodes
                 // Core's PlayerInteractor, as Unity's Update drove it: where the player stands,
                 // whether [E] is held (the crank), then re-pick and refresh the prompt.
                 _interactor.Position = _walker.Position;
-                bool screenOpen = ModalScreens.AnyOpen(GetTree());
+                // Typing a note counts too: "e" in a sentence must not crank a bench.
+                bool screenOpen = ModalScreens.AnyOpen(GetTree()) || TextEntry.IsTyping(GetViewport());
                 _interactor.SetInteractHeld(!screenOpen && Input.IsActionPressed(Interact));
                 _interactor.Poll();
                 if (!screenOpen && Input.IsActionJustPressed(Interact))

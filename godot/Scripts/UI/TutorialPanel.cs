@@ -190,8 +190,11 @@ namespace GolemFactory.Nodes
 
             // Over a full screen the guide shows only for the step that happens there; every other
             // step is about the world behind the screen, and the screens have no room to spare.
+            // A playtest question takes the plate's place while it waits (PlaytestNode); the arrow,
+            // markers and outline stay, so the step is still pointed at.
+            bool asking = guide?.Playtest?.Current != null && !screenOpen;
             bool showing = guide != null && guide.IsShowing && (!screenOpen || inWorkbench);
-            _plate.Visible = showing;
+            _plate.Visible = showing && !asking;
             if (!showing)
             {
                 _arrow.Visible = false;
@@ -212,7 +215,7 @@ namespace GolemFactory.Nodes
                 TutorialStep step = guide.Current;
                 _counter.Text = $"GUIDE  ·  step {guide.Index + 1} of {guide.StepCount}  ·  F1 hides";
                 _title.Text = step.Title;
-                _body.Text = step.Body + MenuKeyHint(step);
+                _body.Text = step.Body + MenuKeyHint(step) + ReportHint(step, guide);
                 bool last = guide.Index == guide.StepCount - 1;
                 _finish.Visible = last;
                 _skip.Visible = !last;
@@ -374,6 +377,12 @@ namespace GolemFactory.Nodes
             }
             return "";
         }
+
+        /// <summary>On the last step of a playtest, where the report is: the thing to send back.</summary>
+        private static string ReportHint(TutorialStep step, TutorialGuide guide) =>
+            guide.Playtest != null && step.Id == "done"
+                ? "\n\nPlaytest report (updates as you play): " + PlaytestNode.ReportFile
+                : "";
 
         private void HighlightRow(TutorialGuide guide, bool screenOpen)
         {

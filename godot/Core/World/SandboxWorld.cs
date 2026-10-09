@@ -218,6 +218,10 @@ namespace GolemFactory.World
             if (setup.tutorial)
             {
                 Tutorial = new Tutorial.TutorialGuide(this);
+                if (setup.playtest)
+                {
+                    Tutorial.AttachPlaytest(new Tutorial.PlaytestSession(), () => _realSeconds);
+                }
             }
         }
 

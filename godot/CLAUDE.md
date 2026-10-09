@@ -131,6 +131,11 @@ gets a `Done` check that reads the world, never a call from the code that does t
 step that happens inside a full screen must also be placed clear of that screen's controls
 (see `TutorialPanel.Dock`).
 
+**Playtest mode writes `user://playtest-report.md`.** Scenario runs write
+`user://scenario-playtest-report.md` instead (`PlaytestNode.UnderScenario`, set by the
+`ScenarioRunner`), so never point a test at the real path. Anything that POLLS the keyboard
+must also check `TextEntry.IsTyping`, or typing into a field walks the player.
+
 **Full screens report to `SandboxWorld.Screens`** (`ScreenCoordinator`). Implement
 `IClosableScreen`, `Register` in `_Ready`, and call `Screens.Opening(this)` in `Open`; every
 other screen closes. Don't hand-close siblings. That's the bug class the coordinator replaced.

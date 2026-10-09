@@ -164,6 +164,7 @@ ported, held for a named milestone, or retired with a reason.
 | `Core.Tests/Player/DemolitionContentsRefundTests.cs` | 3 |
 | `Core.Tests/Steam/SteamShortageTests.cs` | 6 |
 | `Core.Tests/Steam/WorkingGolemBurnTests.cs` | 2 |
+| `Core.Tests/Tutorial/PlaytestSessionTests.cs` | 5 |
 | `Core.Tests/Tutorial/TutorialGuideTests.cs` | 8 |
 | `Core.Tests/UI/BuildMenuLabelsTests.cs` | 8 |
 | `Core.Tests/World/BeltCargoPathTests.cs` | 5 |

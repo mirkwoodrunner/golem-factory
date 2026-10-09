@@ -7,6 +7,7 @@
   "startingNorthExtent": 12,
   "beltCellsPerSecond": 1.0,
   "tutorial": true,
+  "playtest": true,
   "freeStallSeedNode": "ScrapNode",
   "freeStallSeedQuantity": 60,
   "playerStart": { "x": 0, "y": 0 },

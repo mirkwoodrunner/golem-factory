@@ -80,6 +80,15 @@ namespace GolemFactory.Nodes.Scenarios
         /// <summary>The names <c>--scenario</c> accepts.</summary>
         public static IEnumerable<string> Names => Scenarios.Keys;
 
+        public override void _EnterTree()
+        {
+            // Before any _Ready: a scenario run must not write over a real playtest's report.
+            PlaytestNode.UnderScenario = Array.IndexOf(OS.GetCmdlineUserArgs(), "--scenario") >= 0
+                || Array.IndexOf(OS.GetCmdlineUserArgs(), "--spike-check") >= 0
+                || Array.IndexOf(OS.GetCmdlineUserArgs(), "--demo") >= 0
+                || Array.IndexOf(OS.GetCmdlineUserArgs(), "--spike-demo") >= 0;
+        }
+
         public override void _Ready()
         {
             string[] args = OS.GetCmdlineUserArgs();

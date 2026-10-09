@@ -36,6 +36,7 @@ namespace GolemFactory.Nodes.Scenarios
         private int _waited;
         private const string Wait = "wait";
         private PlayerNode _player;
+        private int _skipClickedAt = -1;
 
         private TutorialGuide Guide => _world.Tutorial;
 
@@ -51,6 +52,61 @@ namespace GolemFactory.Nodes.Scenarios
                 Do("scene", () => "Sandbox.tscn is missing the Tutorial panel, the build menu, or the guide");
                 return;
             }
+
+            // Playtest mode: the first "your call" question is up before anything else, in the
+            // guide plate's place, and answering it lands in the report on disk.
+            var playtest = _tree.Root.FindChild("Playtest", true, false) as PlaytestNode;
+            Compat.Vector3 standing = default;
+            Do("the light question is asked first, in the guide's place", () =>
+            {
+                if (playtest == null || !playtest.Card.Visible)
+                {
+                    return "no playtest card";
+                }
+                if (!playtest.PromptText.Contains("too dark"))
+                {
+                    return $"asked '{playtest.PromptText}'";
+                }
+                return _panel.Plate.Visible ? "the guide plate shows over the question" : null;
+            });
+            Do("type a note with a W in it", () =>
+            {
+                standing = _player.CorePosition;
+                playtest.Note.GrabFocus();
+                // A real key press carries its character; a synthetic one must be given it.
+                Input.ParseInputEvent(new InputEventKey { Keycode = Key.W, PhysicalKeycode = Key.W, Unicode = 'w', Pressed = true });
+                _heldTap = Key.W;
+                return null;
+            });
+            Do("the W went into the note, not into the player's legs", () =>
+            {
+                if (!playtest.Note.Text.ToLowerInvariant().Contains("w"))
+                {
+                    return $"note '{playtest.Note.Text}'";
+                }
+                Compat.Vector3 now = _player.CorePosition;
+                return now.x == standing.x && now.y == standing.y ? null : "the player walked while typing";
+            });
+            Do("answer 'About right'", () =>
+            {
+                playtest.Note.Text = "scenario note";
+                Click(playtest.Options.GetChildren().OfType<Button>().Single(b => b.Text == "About right"));
+                return null;
+            });
+            Do("the answer is in the report, and the guide is back", () =>
+            {
+                if (playtest.Card.Visible)
+                {
+                    return "the card is still up";
+                }
+                string report = System.IO.File.Exists(PlaytestNode.ReportFile) ? System.IO.File.ReadAllText(PlaytestNode.ReportFile) : "";
+                if (!report.Contains("Is the room too dark?** About right") || !report.Contains("scenario note"))
+                {
+                    return "the report does not have the answer: " + report.Split('\n').FirstOrDefault(l => l.Contains("too dark"));
+                }
+                _log.Add("playtest: light question answered with a note (typing W did not walk), report written to " + PlaytestNode.ReportFile);
+                return null;
+            });
 
             Do("the guide opens on step 1", () =>
                 _panel.Plate.Visible && _panel.TitleText == "Gather Scrap" && _panel.ProgressText == "Scrap  0 / 20"
@@ -317,6 +373,32 @@ namespace GolemFactory.Nodes.Scenarios
                     }
                 }
                 _log.Add($"chapter 3: Coking claimed, second Presser and boiler built; the pipe step marks {_world.Tutorial.Pipe2Spots.Length} tiles, '{_panel.ProgressText}'");
+                return null;
+            });
+
+            // The questions chapter 2 queued (the Workbench, the manual era) wait in the guide
+            // plate's place; skip them with the card's own button, one click at a time.
+            Do("skip the questions waiting since chapter 2", () =>
+            {
+                if (_world.Tutorial.Playtest.Current == null)
+                {
+                    return null;
+                }
+                // One click every ten frames: a skip takes effect a frame after its click.
+                if (playtest.Card.Visible && ++_skipClickedAt % 10 == 0)
+                {
+                    Click(playtest.SkipButton);
+                }
+                return Wait;
+            });
+            Do("they went into the report as skipped", () =>
+            {
+                int skipped = _world.Tutorial.Playtest.Answers.Count(a => a.Choice == "skipped");
+                if (skipped < 2)
+                {
+                    return $"{skipped} skipped answers";
+                }
+                _log.Add($"{skipped} queued questions skipped with the card's button");
                 return null;
             });
 

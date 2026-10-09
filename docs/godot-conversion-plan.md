@@ -801,6 +801,23 @@ buildings. Includes the "no refund on load" duplicator regression.
 
   `TutorialGuideTests` plays all three chapters through to Coke in the new firebox, and the
   `tutorial` scenario checks the chapter-3 pipe markers.
+- **Playtest mode, part 1: questions, timings and the report** (your call: "integrate the
+  playtest script into the tutorial").
+  - `Core/Tutorial/PlaytestSession` asks the script's judgement questions in the guide, each at
+    the step that follows what it asks about: the light, the Workbench, the manual era and the
+    walking, the market, Coke upkeep, and the guide itself.
+  - It times every step in real seconds and composes a Markdown report: answers with notes,
+    step timings, playtest-kit uses, and the errors the game logged.
+  - `Scripts/UI/PlaytestNode` shows the "your call" card in the guide plate's place, with
+    answer buttons, a note field and Skip. It hooks Godot's `Logger` for errors and writes
+    `user://playtest-report.md` as the session changes. **Scenario runs write
+    `scenario-playtest-report.md` instead**, so a test run can't overwrite a real playtest's
+    report.
+  - Typing a note doesn't walk or crank: `TextEntry.IsTyping` guards the player's polled keys.
+  - On in `sandbox.json` (`"playtest": true`). Covered by `PlaytestSessionTests`, and by the
+    `tutorial` scenario, which answers with a typed note and checks the report on disk.
+  - Still to come: the playtest kit, guide chapters 4-9, and the markdown script shrinking to
+    a how-to.
 - **Newly unlocked Assembly Line cards jump the queue**, found writing that chapter. A card
   unlocks when the factory first makes what it needs, and it used to join the *back* of the
   queue, in reverse deck order. So R2 Scrap Reclamation, the first recipe a Presser runs, came

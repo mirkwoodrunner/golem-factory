@@ -165,6 +165,33 @@ namespace GolemFactory.Tutorial
             _cycleSeen = false;
             _completedSinceEntry.Clear();
             Version++;
+            ReportStep();
+        }
+
+        /// <summary>Playtest mode, when on: questions and timings ride along with the steps.</summary>
+        public PlaytestSession Playtest { get; private set; }
+
+        private Func<float> _clock = () => 0f;
+
+        /// <summary>Turns playtest mode on, timed by <paramref name="clock"/> (real seconds).</summary>
+        public void AttachPlaytest(PlaytestSession session, Func<float> clock)
+        {
+            Playtest = session;
+            _clock = clock ?? (() => 0f);
+            ReportStep();
+        }
+
+        /// <summary>Real seconds since the session began, as the playtest report counts them.</summary>
+        public float Now => _clock();
+
+        private void ReportStep()
+        {
+            if (Playtest == null)
+            {
+                return;
+            }
+            TutorialStep step = Current;
+            Playtest.StepEntered(step?.Id ?? "finished", step?.Title ?? "Finished", _clock());
         }
 
         private void OnGolemCompleted(GolemCompletedEvent e)

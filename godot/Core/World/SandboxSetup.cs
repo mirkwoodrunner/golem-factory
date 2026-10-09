@@ -100,6 +100,12 @@ namespace GolemFactory.World
 
         /// <summary>Whether the step-by-step guide runs (G10). Off unless the setup asks.</summary>
         public bool tutorial;
+
+        /// <summary>
+        /// Playtest mode (G10): the guide asks the playtest script's judgement questions, times
+        /// every step, and keeps a report. Needs <see cref="tutorial"/>.
+        /// </summary>
+        public bool playtest;
         public string freeStallSeedNode;
         public int freeStallSeedQuantity;
         public Point playerStart = new Point();
