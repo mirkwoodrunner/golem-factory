@@ -838,6 +838,20 @@ buildings. Includes the "no refund on load" duplicator regression.
     was wrong. Facing south was the first try, but it backs onto the boiler and stalls as
     "waiting on Boiler(-7,-15)", true but confusing, so the step asks for up.
   - Still to come: guide chapters 5-9, and the markdown script shrinking to a how-to.
+- **One Haul card; the player picks the good** (your call). Found while planning the smelting
+  chapter: the deck's only Haul was typed to Scrap. No card could load Coke, ore or plate into
+  a golem, so every two-input recipe (the Aether-Hauler's reason to exist) could not be fed,
+  in Unity too.
+  - Each Haul slot now has a good on the program (`GolemProgram.appendageItemTypes`, parallel
+    to the batch sizes and for the same reason: the card is a shared asset). It defaults to
+    the card's own type.
+  - The Workbench shows `Haul < good >` on a socketed Haul, offering the goods the factory has
+    made plus Scrap. ENGAGE commits the pick.
+  - Patents keep each slot's good and batch size, and the save carries both for golems and
+    patents. An older save keeps the cards' defaults.
+  - `HaulItemTypeTests` covers it, including an Aether-Hauler smelting Iron Plate from Scrap
+    and Coke hauled from one depot. The `workbench` scenario clicks the picker and checks
+    ENGAGE commits it.
 - **Newly unlocked Assembly Line cards jump the queue**, found writing that chapter. A card
   unlocks when the factory first makes what it needs, and it used to join the *back* of the
   queue, in reverse deck order. So R2 Scrap Reclamation, the first recipe a Presser runs, came

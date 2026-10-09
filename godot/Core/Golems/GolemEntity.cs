@@ -1135,7 +1135,9 @@ namespace GolemFactory.Golems
             int quantity = CurrentStepQuantity();
             _stepDuration = StepDurationRules.Haul(quantity);
 
-            return BeginFillInputStock(step.inputItemType, quantity, out blockedResourceId);
+            // The slot's good, which the player picks in the Workbench (G10); the card's own type
+            // is only the default.
+            return BeginFillInputStock(program.GetItemTypeAt(program.CurrentStepIndex), quantity, out blockedResourceId);
         }
 
         // --- Push ---------------------------------------------------------------------------

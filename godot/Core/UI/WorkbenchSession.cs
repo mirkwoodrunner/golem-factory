@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using GolemFactory.Economy;
 using GolemFactory.AssemblyLine;
 using GolemFactory.Blueprints;
 using GolemFactory.Buildings;
@@ -94,6 +95,7 @@ namespace GolemFactory.UI
         private LogicCoreDefinition _draftLogicCore;
         private readonly AppendageActionDefinition[] _draftAppendages;
         private readonly int[] _draftQuantities;
+        private readonly string[] _draftItemTypes;
         private int _nextBlueprintNumber = 1;
 
         private float _statusShownSeconds;
@@ -103,6 +105,7 @@ namespace GolemFactory.UI
         {
             _draftAppendages = new AppendageActionDefinition[socketCount];
             _draftQuantities = Enumerable.Repeat(WorkbenchQuantityPolicy.MinQuantity, socketCount).ToArray();
+            _draftItemTypes = Enumerable.Repeat("", socketCount).ToArray();
             LogicHighlight = DropZoneHighlight.Neutral;
             AppendageHighlights = new DropZoneHighlight[socketCount];
         }
@@ -207,11 +210,13 @@ namespace GolemFactory.UI
             {
                 _draftAppendages[i] = null;
                 _draftQuantities[i] = WorkbenchQuantityPolicy.MinQuantity;
+                _draftItemTypes[i] = "";
             }
             for (int i = 0; i < program.appendages.Count && i < _draftAppendages.Length; i++)
             {
                 _draftAppendages[i] = program.appendages[i];
                 _draftQuantities[i] = WorkbenchQuantityPolicy.Clamp(program.GetQuantityAt(i));
+                _draftItemTypes[i] = program.GetItemTypeAt(i);
             }
             DraftOverflowCount = Math.Max(0, program.appendages.Count - _draftAppendages.Length);
         }
@@ -298,6 +303,7 @@ namespace GolemFactory.UI
                     {
                         _draftAppendages[card.SourceAppendageIndex] = null;
                         _draftQuantities[card.SourceAppendageIndex] = WorkbenchQuantityPolicy.MinQuantity;
+                        _draftItemTypes[card.SourceAppendageIndex] = "";
                     }
                 }
             }
@@ -314,19 +320,66 @@ namespace GolemFactory.UI
                 int arriving = fromSocket
                     ? _draftQuantities[card.SourceAppendageIndex]
                     : WorkbenchQuantityPolicy.Clamp(card.Appendage.haulQuantity);
+                string arrivingType = fromSocket ? _draftItemTypes[card.SourceAppendageIndex] : card.Appendage.inputItemType ?? "";
                 if (fromSocket && card.SourceAppendageIndex != target)
                 {
                     _draftAppendages[card.SourceAppendageIndex] = null;
                     _draftQuantities[card.SourceAppendageIndex] = WorkbenchQuantityPolicy.MinQuantity;
+                    _draftItemTypes[card.SourceAppendageIndex] = "";
                 }
                 _draftAppendages[target] = card.Appendage;
                 _draftQuantities[target] = arriving;
+                _draftItemTypes[target] = arrivingType;
             }
             EndCardDrag();
             Version++;
         }
 
         public void RemoveFromSlot(WorkbenchCardRef card) => HandleDrop(card, null);
+
+        /// <summary>The good the draft's Haul in <paramref name="index"/> takes ("" for a non-Haul slot).</summary>
+        public string DraftItemTypeAt(int index) =>
+            IsDraftHaul(index) ? (_draftItemTypes[index] ?? "") : "";
+
+        /// <summary>Whether the draft slot holds a Haul -- the one card with a good to pick.</summary>
+        public bool IsDraftHaul(int index) =>
+            index >= 0 && index < _draftAppendages.Length && _draftAppendages[index] != null
+            && _draftAppendages[index].actionType == AppendageActionType.Haul;
+
+        /// <summary>
+        /// The goods a Haul can be set to, in the economy's own order: every good the factory has
+        /// made (the tech tree's ledger, which only grows), plus Scrap, which every Haul starts on.
+        /// Unknown context -- a test, or a scene with no ledger -- offers every good.
+        /// </summary>
+        public Func<string, bool> HaulableGood { get; set; }
+
+        public IReadOnlyList<string> HaulOptions =>
+            ItemTiers.CanonicalOrder.Where(t => t == ItemType.Scrap || HaulableGood == null || HaulableGood(t)).ToList();
+
+        /// <summary>The good picker's arrows: step a Haul slot's good through <see cref="HaulOptions"/>.</summary>
+        public void CycleDraftItemType(int index, int delta)
+        {
+            if (!IsDraftHaul(index))
+            {
+                return;
+            }
+            IReadOnlyList<string> options = HaulOptions;
+            if (options.Count == 0)
+            {
+                return;
+            }
+            int at = -1;
+            for (int i = 0; i < options.Count; i++)
+            {
+                if (options[i] == _draftItemTypes[index])
+                {
+                    at = i;
+                }
+            }
+            int next = at < 0 ? 0 : ((at + delta) % options.Count + options.Count) % options.Count;
+            _draftItemTypes[index] = options[next];
+            Version++;
+        }
 
         public void AdjustDraftQuantity(int index, int delta)
         {
@@ -401,6 +454,7 @@ namespace GolemFactory.UI
                 if (_draftAppendages[i] != null && program.TryAddAppendage(_draftAppendages[i]))
                 {
                     program.SetQuantityAt(committed, _draftQuantities[i]);
+                    program.SetItemTypeAt(committed, _draftItemTypes[i]);
                     committed++;
                 }
             }
@@ -429,8 +483,11 @@ namespace GolemFactory.UI
 
             string id = $"BP-{_nextBlueprintNumber:D3}";
             _nextBlueprintNumber++;
+            var filled = Enumerable.Range(0, _draftAppendages.Length).Where(i => _draftAppendages[i] != null).ToList();
             var blueprint = new Blueprint(id, PlaceableBuilding.LocalPlayerOwnerId, _draftChassis, _draftLogicCore,
-                _draftAppendages.Where(a => a != null).ToList());
+                filled.Select(i => _draftAppendages[i]).ToList(),
+                filled.Select(i => _draftItemTypes[i]).ToList(),
+                filled.Select(i => _draftQuantities[i]).ToList());
             _patents?.TryPatent(blueprint);
             SetStatus($"Patented as {id}.", WorkbenchStatusReason.Info);
             return blueprint;
@@ -446,7 +503,14 @@ namespace GolemFactory.UI
             _draftLogicCore = blueprint.LogicCore;
             for (int i = 0; i < _draftAppendages.Length; i++)
             {
-                _draftAppendages[i] = i < blueprint.Appendages.Count ? blueprint.Appendages[i] : null;
+                AppendageActionDefinition card = i < blueprint.Appendages.Count ? blueprint.Appendages[i] : null;
+                _draftAppendages[i] = card;
+                // A patent keeps each slot's good and batch (G10); one from before falls back to the card's.
+                _draftItemTypes[i] = card == null ? ""
+                    : blueprint.ItemTypes != null && i < blueprint.ItemTypes.Count ? blueprint.ItemTypes[i] : card.inputItemType ?? "";
+                _draftQuantities[i] = card == null ? WorkbenchQuantityPolicy.MinQuantity
+                    : blueprint.Quantities != null && i < blueprint.Quantities.Count ? WorkbenchQuantityPolicy.Clamp(blueprint.Quantities[i])
+                    : WorkbenchQuantityPolicy.Clamp(card.haulQuantity);
             }
             DraftOverflowCount = Math.Max(0, blueprint.Appendages.Count - _draftAppendages.Length);
             SetStatus($"Loaded {blueprint.BlueprintId} into the draft.", WorkbenchStatusReason.Info);

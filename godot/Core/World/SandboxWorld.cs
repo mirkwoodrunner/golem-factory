@@ -273,6 +273,10 @@ namespace GolemFactory.World
             }
             TechTree.ConfigureCardClaims(AssemblyLine, setup.claimUserId);
 
+            // A Haul offers the goods the factory has made (G10): the ledger only grows, so a good
+            // once offered stays offered.
+            Workbench.HaulableGood = item => TechTree.Ledger.HasItem(item);
+
             AssemblyLineBoard = new AssemblyLineBoard(AssemblyLine, Buffers, _stockpileBufferId, setup.claimUserId);
             AssemblyLineBoard.ConfigureBays(AssemblyBay, _stockpileBufferId);
             AssemblyLineBoard.ConfigureFloorExpansion(FloorExpansion);
