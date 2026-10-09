@@ -917,8 +917,17 @@ buildings. Includes the "no refund on load" duplicator regression.
     `TutorialStep.Workbench` flag, not a list in the panel. The list had stopped at chapter 3, so
     the guide stepped aside exactly when programming the smelter's two Hauls, the hardest
     Workbench step in the guide.
-  - Still to come: the markdown script shrinking to a how-to, then the Clock Tower rework,
-    whose chapter comes with it.
+  - **`testscript/phase-1-playtest.md` is a how-to now**, down from 518 lines. The guide runs
+    what Parts A-H walked through. The page keeps:
+    - how to start, and where the report lands
+    - the keys
+    - a chapter map back to the old parts
+    - the checks the guide never reaches: moods, the Recycler, the splitter, the workshop and
+      Demolish
+    - the known gaps
+    - the tuning table, updated to the Godot numbers (3 Coke/min per working golem, no Focus)
+  - **Playtest mode is complete.** Still to come: the Clock Tower rework, whose chapter comes
+    with it, in its own PR.
 - **One Haul card; the player picks the good** (your call). Found while planning the smelting
   chapter: the deck's only Haul was typed to Scrap. No card could load Coke, ore or plate into
   a golem, so every two-input recipe (the Aether-Hauler's reason to exist) could not be fed,
