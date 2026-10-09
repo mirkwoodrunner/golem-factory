@@ -379,7 +379,30 @@ namespace GolemFactory.Tests.Tutorial
             {
                 world.Advance(1f / 30f);
             }
-            Assert.AreEqual("done", StepId(world), $"the unloader empties the belt into the labelled depot ({unloader.StallReason} {unloader.StallResourceId})");
+            Assert.AreEqual("expand", StepId(world), $"the unloader empties the belt into the labelled depot ({unloader.StallReason} {unloader.StallResourceId})");
+
+            // --- Chapter 7: room to grow, and keeping it -------------------------------------------
+            Give(world, ItemType.Scrap, 200);
+            Give(world, ItemType.IronPlate, 100);
+            Assert.IsTrue(world.AssemblyLineBoard.ExtendFloor(), world.AssemblyLineBoard.Status);
+            Assert.AreEqual("bays", StepId(world));
+            Assert.IsTrue(world.AssemblyLineBoard.UpgradeBays(), world.AssemblyLineBoard.Status);
+            Assert.AreEqual("ledger", StepId(world));
+            world.LedgerReadout.Select("r1.coking");
+            Assert.AreEqual("save", StepId(world));
+
+            string savePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "golem-factory-guide-" + System.Guid.NewGuid() + ".json");
+            try
+            {
+                world.SaveTo(savePath);
+                Assert.AreEqual("load", StepId(world));
+                world.LoadFrom(savePath);
+                Assert.AreEqual("done", StepId(world), "the load lands past the Save step, and completes Load");
+            }
+            finally
+            {
+                System.IO.File.Delete(savePath);
+            }
 
             world.Tutorial.Finish();
             Assert.IsFalse(world.Tutorial.IsShowing);

@@ -76,9 +76,10 @@ ones. Current scenarios:
   - Gathering advances it, and the Boiler step outlines its build-menu row.
   - F1 hides and shows it, it steps aside over Management, and Skip guide puts it away.
   - In the Workbench on "Program it", it sits clear of the sockets, the lever and the vault.
-- `playtest-kit` (Sandbox): F9 three times from a fresh game. The kit must fast-forward all
-  three guide chapters, leaving the golems and buildings a player would have built, and the
-  report must record it.
+- `playtest-kit` (Sandbox): F9 once per chapter from a fresh game (seven so far). The kit must
+  fast-forward every guide chapter, leaving the golems and buildings a player would have
+  built, and the report must record it. Its Save and Load steps use
+  `user://scenario-save.json`.
 - `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
   into the stockpile, over 600 ticks. `--spike-check` is an alias.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
@@ -139,8 +140,11 @@ playtest kit does to complete it, using the player's own verbs. `PlaytestKitTest
 a step without one.
 
 **Playtest mode writes `user://playtest-report.md`.** Scenario runs write
-`user://scenario-playtest-report.md` instead (`PlaytestNode.UnderScenario`, set by the
-`ScenarioRunner`), so never point a test at the real path. Anything that POLLS the keyboard
+`user://scenario-playtest-report.md` instead, and save to `user://scenario-save.json`
+(`PlaytestNode.UnderScenario`, which reads `--scenario` off the command line itself: a flag
+set by the ScenarioRunner arrived too late, and a kit run overwrote a player's save). Never
+point a test at the real paths. **A save calls `TutorialGuide.Settle`, never `Update`**:
+`Update` also runs the playtest kit, which then performed its Load step from inside the save. Anything that POLLS the keyboard
 must also check `TextEntry.IsTyping`, or typing into a field walks the player.
 
 **Full screens report to `SandboxWorld.Screens`** (`ScreenCoordinator`). Implement

@@ -33,6 +33,49 @@ namespace GolemFactory.Tests.Tutorial
             Assert.IsFalse(world.Tutorial.KitRunning, $"the kit finished (stuck on '{world.Tutorial.Current?.Title}')");
         }
 
+        /// <summary>
+        /// G10, from playtest: "I don't see the ones you want me to claim. It shouldn't be random,
+        /// it should be ones I am capable of claiming." At every claim step the asked-for card is
+        /// on the line and stays there, and nothing on the line asks for a good never made.
+        /// </summary>
+        [Test]
+        public void EveryClaimStep_ShowsTheCardItAsksFor_AndOnlyPayableCards()
+        {
+            SandboxWorld world = Compose();
+            RunKit(world);                                    // chapter 1, ends on "gears"
+            world.Buffers.Deposit(world.StockpileBufferId, GolemFactory.Economy.ItemType.Gear, 10);
+            AssertShowsAndHolds(world, "claim", "AssembleScrapReclamation");
+
+            RunKit(world);                                    // rest of chapter 2
+            AssertShowsAndHolds(world, "coking-card", "AssembleCoking");
+
+            RunKit(world);                                    // chapter 3
+            RunKit(world);                                    // chapter 4
+            AssertShowsAndHolds(world, "r4-card", "AssembleIronSmelting");
+        }
+
+        private static void AssertShowsAndHolds(SandboxWorld world, string step, string appendage)
+        {
+            world.Advance(1f / 30f);
+            Assert.AreEqual(step, world.Tutorial.Current.Id);
+            for (int frame = 0; frame < 300; frame++) // ten seconds: long enough to see it stay
+            {
+                world.Advance(1f / 30f);
+                var line = world.AssemblyLine;
+                var shown = Enumerable.Range(0, line.SlotCount).Select(line.GetCard).Where(c => c != null).ToList();
+                Assert.IsTrue(shown.Any(c => c.appendage?.name == appendage),
+                    $"{step}, frame {frame}: {appendage} is on the line (shows {string.Join(", ", shown.Select(c => c.name))})");
+                foreach (var card in shown)
+                {
+                    foreach (var cost in card.claimCost)
+                    {
+                        Assert.IsTrue(world.TechTree.Ledger.HasItem(cost.itemType),
+                            $"{step}: {card.name} asks for {cost.itemType}, which the factory has never made");
+                    }
+                }
+            }
+        }
+
         [Test]
         public void EveryStep_ButTheLast_HasSomethingTheKitCanDo()
         {
@@ -65,14 +108,19 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual("copper", world.Tutorial.Current.Id, "chapter 5 done: smelting, and the Slag burned");
 
             RunKit(world);
-            Assert.AreEqual("done", world.Tutorial.Current.Id, "chapter 6 done: ore down a belt into a labelled depot");
+            Assert.AreEqual("expand", world.Tutorial.Current.Id, "chapter 6 done: ore down a belt into a labelled depot");
+
+            RunKit(world);
+            Assert.AreEqual("done", world.Tutorial.Current.Id, "chapter 7 done: room, bays, the Ledger, a save and a load");
+            Assert.Greater(world.Bounds.NorthExtent, world.Bounds.MinNorthExtent);
+            Assert.AreEqual(2, world.AssemblyBay.Tier);
 
             // The ground is real: the layouts stand, and the golems are the ones a player builds.
             Assert.AreEqual(8, world.Golems.Count(g => !g.IsRemoved));
             Assert.IsTrue(world.Build.Buildings.Any(b => !b.IsRemoved && b.Cell == world.Tutorial.Boiler2Spot));
 
             var kit = world.Tutorial.Playtest.KitUses;
-            Assert.AreEqual(6, kit.Count, "the report says what was fast-forwarded");
+            Assert.AreEqual(7, kit.Count, "the report says what was fast-forwarded");
             StringAssert.Contains("chapter 1", kit[0]);
             StringAssert.Contains("Playtest kit", world.Tutorial.Playtest.Compose("", world.Tutorial.Now));
         }

@@ -29,6 +29,7 @@ namespace GolemFactory.Tutorial
             ("patent", 4, "Copies, turning and stalls"),
             ("r4-card", 5, "Metal, and its Slag"),
             ("copper", 6, "Belts, and a label"),
+            ("expand", 7, "Room to grow, and keeping it"),
         };
 
         /// <summary>The chapter the current step belongs to, and its title.</summary>
@@ -258,6 +259,19 @@ namespace GolemFactory.Tutorial
                 ProgramSlots(CopperUnloader, ("HaulScrap", ItemType.CopperOre, 1), ("PushOutput", null, 1));
             },
             ["work-unloader"] = () => CopperUnloader?.SetPlacement(UnloaderSpot, Facing.North),
+            ["expand"] = () =>
+            {
+                GrantCost(_world.FloorExpansion.NextCost());
+                _world.AssemblyLineBoard.ExtendFloor();
+            },
+            ["bays"] = () =>
+            {
+                GrantCost(_world.AssemblyBay.UpgradeCost);
+                _world.AssemblyLineBoard.UpgradeBays();
+            },
+            ["ledger"] = () => _world.LedgerReadout.Select("r2.reclamation"),
+            ["save"] = () => _world.SaveTo(KitSavePath),
+            ["load"] = () => _world.LoadFrom(KitSavePath),
             ["work-carrier"] = () =>
             {
                 Pressers.FirstOrDefault(IsCarrier)?.SetPlacement(CarrierSpot, Facing.North);
@@ -265,6 +279,12 @@ namespace GolemFactory.Tutorial
                 Grant(ItemType.Coke, 4);
             },
         };
+
+        /// <summary>Where the kit's save step saves: the player's own save slot, else a temp file.</summary>
+        private string KitSavePath => _world.DefaultSavePath
+            ?? (_kitScratchSave ??= System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"golem-factory-kit-{System.Guid.NewGuid():N}.json"));
+
+        private string _kitScratchSave;
 
         private void Grant(string item, int quantity) => _world.Buffers.Deposit(_world.StockpileBufferId, item, quantity);
 

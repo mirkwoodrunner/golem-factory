@@ -872,7 +872,25 @@ buildings. Includes the "no refund on load" duplicator regression.
     stall badge too: a carrier with "no Slag" yet, an unloader "waiting on Belt(0,-12)#3".
     Waiting is normal in a running factory, so the badge may be too loud, and that belt label
     is an internal id.
-  - Still to come: guide chapters 7-9, and the markdown script shrinking to a how-to.
+  - **Guide chapter 7: room to grow, and keeping it** (the script's F, G, I4 and H): Extend
+    the floor, upgrade the assembly bays, open a recipe in the Ledger, then Save and Load. The
+    Ledger's recipe pane moved onto `SandboxWorld.LedgerReadout` so the guide can see a recipe
+    was opened. A save settles the guide first (`TutorialGuide.Settle`, never `Update`, which
+    runs the kit), so a load lands past the Save step. New question: did the load bring
+    everything back.
+  - **Claims, from playtest** ("the claims still appear random... it should be ones I am
+    capable of claiming"). Two rules on the Assembly Line:
+    - A card is offered only once the factory has made every good its price asks for, read
+      from the same ever-growing ledger as the prerequisites, so it never flickers.
+    - The card the guide is asking for is always on show (`AssemblyLineState.Wanted`, from
+      `TutorialGuide.WantedCardAppendage`), taking a cycling verb's slot first. A one-off it
+      displaces goes to the front of the queue, so it is not lost.
+    `PlaytestKitTests.EveryClaimStep_ShowsTheCardItAsksFor_AndOnlyPayableCards` pins both; with
+    the second rule off, it fails at the Iron Smelting step.
+  - **Scenario runs never touch the player's save.** `PlaytestNode.UnderScenario` now reads the
+    command line itself. It used to be a flag the ScenarioRunner set, after `ManagementScreen`
+    had already chosen the player's real `save.json`, and a kit run overwrote one.
+  - Still to come: guide chapters 8-9, and the markdown script shrinking to a how-to.
 - **One Haul card; the player picks the good** (your call). Found while planning the smelting
   chapter: the deck's only Haul was typed to Scrap. No card could load Coke, ore or plate into
   a golem, so every two-input recipe (the Aether-Hauler's reason to exist) could not be fed,

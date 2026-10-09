@@ -118,17 +118,40 @@ namespace GolemFactory.Tutorial
         /// <summary>The world cell the arrow points at, or null.</summary>
         public Vector2Int? TargetCell => Current?.Target(_world);
 
+        /// <summary>
+        /// The card the current step asks the player to claim (by its appendage), or null. The
+        /// Assembly Line keeps it on show.
+        /// </summary>
+        public string WantedCardAppendage => IsShowing || KitRunning ? Current?.Id switch
+        {
+            "claim" => "AssembleScrapReclamation",
+            "coking-card" => "AssembleCoking",
+            "r4-card" => "AssembleIronSmelting",
+            _ => null,
+        } : null;
+
         /// <summary>Bumped whenever the step changes, so a view redraws on change only.</summary>
         public int Version { get; private set; }
 
         /// <summary>Moves past every step the world already shows done. Cheap; called each frame.</summary>
         public void Update()
         {
+            Settle();
+            KitTick();
+        }
+
+        /// <summary>
+        /// Moves past every step that is already done, and nothing else. A save calls this, never
+        /// <see cref="Update"/>: Update also runs the playtest kit, and a kit step called from
+        /// inside a save performed the NEXT step (Load) mid-save, which captured whatever the
+        /// stale file held.
+        /// </summary>
+        public void Settle()
+        {
             while (!IsFinished && Current.Done(_world))
             {
                 Enter(Index + 1);
             }
-            KitTick();
         }
 
         /// <summary>The panel's Skip guide button.</summary>
@@ -950,6 +973,46 @@ namespace GolemFactory.Tutorial
                 w => CopperUnloader != null && CopperUnloader.Cell != UnloaderSpot ? CopperUnloader.Cell : UnloaderSpot,
                 spot: UnloaderSpot,
                 spotFacing: Facing.North),
+
+            // --- Chapter 7: room to grow, and keeping it -------------------------------------------
+            // The playtest script's Floor Expansion, bay cap, card-gating and Ledger items (F, G,
+            // I4), and its save/load round trip (H).
+
+            new TutorialStep(
+                "expand", "More room",
+                "Eight golems fill a workshop fast. Press Tab, open the Assembly Line, and click Extend "
+                + "(80 Scrap + 40 Iron Plate): two more rows of workshop, floored and walled.",
+                w => _world.Bounds.NorthExtent > _world.Bounds.MinNorthExtent,
+                w => ScrapFirst(80, null),
+                w => Counts((ItemType.Scrap, 80), (ItemType.IronPlate, 40))),
+
+            new TutorialStep(
+                "bays", "More golems",
+                $"The station builds at most {AssemblyBayStructure.DefaultSlots} golems. On the same tab, click "
+                + "Upgrade on the assembly bays for six more.",
+                w => _world.AssemblyBay.Tier >= 2,
+                w => ScrapFirst(40, null),
+                w => $"Golems  {LiveGolems.Count()} / {_world.AssemblyBay.MaxGolemSlots}"),
+
+            new TutorialStep(
+                "ledger", "Read the Ledger",
+                "The Ledger maps everything you can build and how far you have come. Press Tab, open the "
+                + "Ledger, and click any recipe node to see what it costs and makes.",
+                w => _world.LedgerReadout.HasSelection,
+                w => null),
+
+            new TutorialStep(
+                "save", "Save",
+                "Press Tab, open Save/Load and click Save. Everything you built goes into the save: golems "
+                + "and their programs, buildings, the stockpile, your cards and this guide's place.",
+                w => _world.SavesMade > 0,
+                w => null),
+
+            new TutorialStep(
+                "load", "And load",
+                "Now click Load. Your factory comes back exactly as you saved it, mid-cycle and all.",
+                w => _world.LoadsMade > 0,
+                w => null),
 
             new TutorialStep(
                 "done", "A factory that feeds itself",

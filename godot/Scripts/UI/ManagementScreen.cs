@@ -67,7 +67,9 @@ namespace GolemFactory.Nodes
         public AssemblyLineTab AssemblyLine { get; private set; }
 
         /// <summary>Where Save writes and Load reads. A scenario points it at a scratch file.</summary>
-        public string SavePath { get; set; } = "user://" + Save.SaveFileIO.DefaultFileName;
+        public string SavePath { get; set; } = PlaytestNode.UnderScenario
+            ? "user://scenario-save.json" // a scenario run (the kit's save step included) never touches the player's save
+            : "user://" + Save.SaveFileIO.DefaultFileName;
 
         public Button SaveButton { get; private set; }
         public Button LoadButton { get; private set; }
@@ -91,9 +93,8 @@ namespace GolemFactory.Nodes
                 AssemblyLine = new AssemblyLineTab(_world.Sandbox.AssemblyLineBoard);
                 AddTab(ManagementTab.AssemblyLine, AssemblyLine);
             }
-            Ledger = new LedgerTab(_world.Sandbox.TechTree, new TechTreeReadout(
-                System.Linq.Enumerable.ToList(_world.Definitions.Recipes.Values), _world.Sandbox.Throughput,
-                _world.Sandbox.StockpileBufferId, _world.Clock.TicksPerSecond));
+            Ledger = new LedgerTab(_world.Sandbox.TechTree, _world.Sandbox.LedgerReadout);
+            _world.Sandbox.DefaultSavePath = ProjectSettings.GlobalizePath(SavePath);
             AddTab(ManagementTab.TechTree, Ledger);
             _root.Visible = false;
             _world.Sandbox.Screens.Register(this);

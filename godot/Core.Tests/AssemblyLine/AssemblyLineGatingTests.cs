@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using GolemFactory.Compat;
 using GolemFactory.AssemblyLine;
@@ -223,6 +224,48 @@ namespace GolemFactory.Tests.EditMode
 
             Assert.IsTrue(line.TryClaimSlot(0, User, Funded(), Wallet));
             Assert.AreSame(repeat, line.GetCard(0), "with nothing else waiting, the verb comes back");
+        }
+
+        [Test]
+        public void ACardWhosePriceNeedsAnUnmadeGood_IsNotOffered()
+        {
+            // G10, from playtest: "it should be ones I am capable of claiming". Casing Press asked
+            // for Brass before any Brass existed.
+            DraftableCardDefinition casing = MakeCard("CasingPress", Cost((ItemType.IronPlate, 16), (ItemType.Brass, 4)));
+            DraftableCardDefinition coking = MakeCard("Coking", Cost((ItemType.Coal, 4)));
+            var made = new System.Collections.Generic.HashSet<string> { ItemType.IronPlate, ItemType.Coal };
+
+            var line = new AssemblyLineState(2);
+            line.ConfigureUnlockContext(made.Contains);
+            line.SeedCandidates(new[] { casing, coking });
+
+            Assert.AreSame(coking, line.GetCard(0));
+            Assert.IsNull(line.GetCard(1), "Casing Press waits: no Brass has ever been made");
+            CollectionAssert.Contains(line.WaitingCards, casing);
+
+            made.Add(ItemType.Brass);
+            line.PromoteUnlockedCards();
+            Assert.AreSame(casing, line.GetCard(1), "offered the moment its price can be paid");
+        }
+
+        [Test]
+        public void TheWantedCard_IsPutOnShow_EvenOverAnotherOneOff()
+        {
+            // G10, from playtest: "I don't see the ones you want me to claim".
+            DraftableCardDefinition a = MakeCard("GearCutting");
+            DraftableCardDefinition b = MakeCard("IronSmelting");
+            DraftableCardDefinition wanted = MakeCard("Coking");
+            var line = new AssemblyLineState(2);
+            line.SeedCandidates(new[] { a, b, wanted });
+            Assert.IsFalse(Enumerable.Range(0, 2).Any(i => line.GetCard(i) == wanted), "precondition: the slots are full of others");
+
+            line.Wanted = card => card == wanted;
+            line.Tick(0.1f);
+
+            Assert.IsTrue(Enumerable.Range(0, 2).Any(i => line.GetCard(i) == wanted), "the wanted card is on show");
+            Assert.IsTrue(line.TryClaimSlot(Enumerable.Range(0, 2).First(i => line.GetCard(i) != wanted), User, Funded(), Wallet));
+            Assert.IsTrue(Enumerable.Range(0, 2).Any(i => line.GetCard(i) == b || line.GetCard(i) == a),
+                "the card it displaced came back round, not lost");
         }
 
         private StorageBufferRegistry Funded()

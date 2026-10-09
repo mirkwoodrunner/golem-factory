@@ -54,8 +54,19 @@ namespace GolemFactory.Nodes
 
         public const string ScenarioReportPath = "user://scenario-playtest-report.md";
 
-        /// <summary>Set by the ScenarioRunner before any _Ready runs.</summary>
-        public static bool UnderScenario { get; set; }
+        /// <summary>
+        /// Read from the command line itself, never from node order: a flag set by the
+        /// ScenarioRunner arrived after ManagementScreen had already chosen the player's real
+        /// save slot, and a kit run overwrote a real save.json.
+        /// </summary>
+        public static bool UnderScenario
+        {
+            get => _underScenario ?? (bool)(_underScenario = System.Array.Exists(OS.GetCmdlineUserArgs(),
+                a => a == "--scenario" || a == "--spike-check" || a == "--demo" || a == "--spike-demo"));
+            set => _underScenario = value;
+        }
+
+        private static bool? _underScenario;
 
         public override void _Ready()
         {
