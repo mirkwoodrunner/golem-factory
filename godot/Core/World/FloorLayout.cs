@@ -169,6 +169,12 @@ namespace GolemFactory.World
             {
                 yield return cell;
             }
+
+            // And the town square south of the street (G10): the Clock Tower's site.
+            foreach (Vector2Int cell in TownSquare.Cells())
+            {
+                yield return cell;
+            }
         }
 
         /// <summary>Whether a cell is inside the workshop room (as opposed to out on the street).</summary>
@@ -202,6 +208,13 @@ namespace GolemFactory.World
         public static bool IsInsideWorld(
             Vector2Int cell, int halfExtent, int streetDepth, int streetHalfExtent, int northExtent)
         {
+            // The town square hangs off the street's south side (G10). Ground like the street:
+            // a factory reaches the Clock Tower by building out to it.
+            if (TownSquare.Contains(cell))
+            {
+                return true;
+            }
+
             int north = northExtent < halfExtent ? halfExtent : northExtent;
             if (cell.y > north || cell.y < -halfExtent - streetDepth)
             {
@@ -484,6 +497,17 @@ namespace GolemFactory.World
             Vector2 nearest = (cellFraction - inRoom).sqrMagnitude <= (cellFraction - onRoad).sqrMagnitude
                 ? inRoom
                 : onRoad;
+
+            // The town square (G10), a third rectangle. Its top reaches the street's last row --
+            // the same overlap the road keeps with the room's front row -- or the nearest-
+            // rectangle rule would leave a one-cell gap between them that nobody could cross.
+            var inSquare = new Vector2(
+                Mathf.Clamp(cellFraction.x, -TownSquare.HalfExtent, TownSquare.HalfExtent),
+                Mathf.Clamp(cellFraction.y, TownSquare.Bottom, TownSquare.Top + 1f));
+            if ((cellFraction - inSquare).sqrMagnitude < (cellFraction - nearest).sqrMagnitude)
+            {
+                nearest = inSquare;
+            }
 
             return converter.CellFractionToWorld(nearest);
         }

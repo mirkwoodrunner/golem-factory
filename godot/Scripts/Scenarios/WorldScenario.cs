@@ -21,7 +21,9 @@ namespace GolemFactory.Nodes.Scenarios
     {
         private enum Phase { South, North, Settle }
 
-        private const double PhaseSeconds = 7.0;
+        // Long enough to walk from the room's middle out through the street and the town square
+        // (G10) to its far kerb, and back in again.
+        private const double PhaseSeconds = 9.0;
         private const double SettleSeconds = 2.0;
 
         private ScenarioRunner _runner;
@@ -159,7 +161,9 @@ namespace GolemFactory.Nodes.Scenarios
                     return null;
 
                 case Phase.Settle when _elapsed >= SettleSeconds:
-                    int farRow = -FloorLayout.HalfExtent - FloorLayout.StreetDepth;
+                    // Down the middle the street opens into the town square (G10), so the walk ends
+                    // at the SQUARE's kerb.
+                    int farRow = TownSquare.Bottom;
                     bool reachedStreetEnd = _southmost <= farRow + 0.5f;
                     bool stoppedByClamp = _southmost >= farRow - 0.5f;
                     bool backInside = y > -FloorLayout.HalfExtent;
@@ -167,7 +171,7 @@ namespace GolemFactory.Nodes.Scenarios
                     bool cameraFollowed = cameraGap < GridConversions.CellPixels / 2f;
                     bool pass = reachedStreetEnd && stoppedByClamp && backInside && cameraFollowed;
                     return new ScenarioResult(pass,
-                        $"{_staticReport}; walked south to y={_southmost:F2} (street end {farRow}), " +
+                        $"{_staticReport}; walked south to y={_southmost:F2} (the town square's kerb {farRow}), " +
                         $"back north to y={y:F2}; camera {cameraGap:F1}px from the player");
 
                 default:

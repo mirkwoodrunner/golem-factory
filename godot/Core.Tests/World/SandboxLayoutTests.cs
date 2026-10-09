@@ -29,7 +29,10 @@ namespace GolemFactory.Tests.World
         [TestCase("WallWest", 33)]
         [TestCase("WallNorth", 25)]
         [TestCase("SkirtSouth", 25)]
-        [TestCase("KerbStreet", 37)]
+        [TestCase("KerbStreet", 20)] // 37 in Unity's Sandbox, less the 17 the town square opens (G10)
+        [TestCase("SquareEast", TownSquare.Depth)]
+        [TestCase("SquareWest", TownSquare.Depth)]
+        [TestCase("KerbSquare", 2 * TownSquare.HalfExtent + 1)]
         [TestCase("WallShoulder", 12)]
         [TestCase("WallPost", 2)]
         public void WallCountsMatchUnitysSandbox(string kind, int expected)
@@ -121,7 +124,35 @@ namespace GolemFactory.Tests.World
             Dictionary<string, LayoutPiece> grown = ByName(SandboxLayout.Walls(FloorLayout.DefaultNorthExtent + 2));
             Assert.AreEqual(FloorLayout.DefaultNorthExtent + 2.5f, grown["WallNorth_0"].Anchor.y, 1e-4);
             Assert.AreEqual(FloorLayout.DefaultNorthExtent + 2.5f, grown["WallPost_0"].Anchor.y, 1e-4);
-            Assert.AreEqual(-20.5f, grown["KerbStreet_0"].Anchor.y, 1e-4, "the far kerb never moves");
+            Assert.AreEqual(-20.5f, grown["KerbStreet_12"].Anchor.y, 1e-4, "the far kerb never moves");
+        }
+
+        [Test]
+        public void TheTownSquareOpensOffTheStreet_AndIsWalledOnItsOtherThreeSides()
+        {
+            Dictionary<string, LayoutPiece> walls = ByName(SandboxLayout.Walls());
+            for (int x = -TownSquare.HalfExtent; x <= TownSquare.HalfExtent; x++)
+            {
+                Assert.IsFalse(walls.ContainsKey("KerbStreet_" + x), $"no kerb across the square's mouth at x = {x}");
+                Assert.IsTrue(walls.ContainsKey("KerbSquare_" + x), $"the square's far side is kerbed at x = {x}");
+            }
+            Assert.IsTrue(walls.ContainsKey("KerbStreet_" + (TownSquare.HalfExtent + 1)), "the street's kerb resumes past it");
+            for (int y = TownSquare.Top; y >= TownSquare.Bottom; y--)
+            {
+                Assert.AreEqual(TownSquare.HalfExtent + 0.5f, walls["SquareEast_" + y].Anchor.x, 1e-4);
+                Assert.AreEqual(-TownSquare.HalfExtent - 0.5f, walls["SquareWest_" + y].Anchor.x, 1e-4);
+            }
+        }
+
+        [Test]
+        public void TheTowerSiteSitsInTheSquare_WithRoomAllRound()
+        {
+            foreach (Vector2Int cell in TownSquare.TowerRing())
+            {
+                Assert.IsTrue(TownSquare.Contains(cell), $"{cell}: a golem can stand all the way round the tower");
+            }
+            Assert.AreEqual(9, TownSquare.TowerCells().Count());
+            Assert.IsTrue(TownSquare.IsTowerCell(TownSquare.TowerCentre));
         }
 
         [Test]

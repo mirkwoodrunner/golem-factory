@@ -50,7 +50,8 @@ each scene; `-- --scenario <name>` runs one to a verdict, prints
 `[scenario <name>] PASS|FAIL …` and exits 0/1. An unknown name fails and lists the known
 ones. Current scenarios:
 - `world` (Sandbox): the shell matches `SandboxLayout`, all nine stalls publish endpoints, and
-  the player walks to the street's far edge and back with the camera following.
+  the player walks down the street and through the town square to its far kerb and back,
+  with the camera following.
 - `build` (Sandbox): every placeable placed through the real build menu and cursor with
   synthetic mouse and key events, then drag runs, Escape, and a demolition that restores the
   stockpile exactly.

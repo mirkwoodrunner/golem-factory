@@ -77,6 +77,12 @@ namespace GolemFactory.Nodes
                 {
                     SetCell(new Vector2I(cell.x, -cell.y), streetIds[SandboxLayout.StreetTileVariant(cell)], Vector2I.Zero);
                 }
+
+                // The town square, cobbled like the street it opens off.
+                foreach (CoreVector2Int cell in TownSquare.Cells())
+                {
+                    SetCell(new Vector2I(cell.x, -cell.y), streetIds[SandboxLayout.StreetTileVariant(cell)], Vector2I.Zero);
+                }
             }
         }
 

@@ -926,8 +926,23 @@ buildings. Includes the "no refund on load" duplicator regression.
       Demolish
     - the known gaps
     - the tuning table, updated to the Godot numbers (3 Coke/min per working golem, no Focus)
-  - **Playtest mode is complete.** Still to come: the Clock Tower rework, whose chapter comes
-    with it, in its own PR.
+  - **Playtest mode is complete** (PR #46).
+- **The Clock Tower rework** (branch `conversion/g10-clock-tower`), at the user's call: the
+  tower "is supposed to be the final project", but it was available from the start and drawn
+  like a grandfather clock. Steps:
+  1. **The town square (done).** `Core/World/TownSquare`: 10 rows by 17 cells south of the
+     street, opening off its middle. The world is now a cross: workshop, street, square.
+     - `IsInsideWorld`, `GetWorldCells` and `ClampToFloor` include it. The clamp's square
+       rectangle overlaps the street's last row, as the road overlaps the room's front row,
+       so walking across the seam never snags.
+     - The street's kerb stops across the square's mouth. The square gets side walls and a
+       far kerb (187 wall pieces, up from 167).
+     - The tower's site is a fixed 3×3 footprint at the square's centre, with a free ring of
+       cells around it to stand and deliver from.
+  2. The site as a fixed multi-tile building, out of the build menu, roped off until the
+     factory has built a Zeppelin.
+  3. Staged art from a procedural generator, one picture per stage completed.
+  4. Its guide chapter, and save.
 - **One Haul card; the player picks the good** (your call). Found while planning the smelting
   chapter: the deck's only Haul was typed to Scrap. No card could load Coke, ore or plate into
   a golem, so every two-input recipe (the Aether-Hauler's reason to exist) could not be fed,

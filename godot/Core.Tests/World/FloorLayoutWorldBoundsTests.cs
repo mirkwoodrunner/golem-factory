@@ -43,7 +43,10 @@ namespace GolemFactory.Tests.EditMode
         [Test]
         public void IsInsideWorld_RejectsPastTheKerbAndPastTheWalls()
         {
-            Assert.IsFalse(FloorLayout.IsInsideWorld(new Vector2Int(0, FloorLayout.WorldMinY - 1)));
+            // Past the street's kerb beside the town square, and past the square's own (G10).
+            Assert.IsFalse(FloorLayout.IsInsideWorld(new Vector2Int(TownSquare.HalfExtent + 1, FloorLayout.WorldMinY - 1)));
+            Assert.IsFalse(FloorLayout.IsInsideWorld(new Vector2Int(0, TownSquare.Bottom - 1)));
+            Assert.IsTrue(FloorLayout.IsInsideWorld(new Vector2Int(0, FloorLayout.WorldMinY - 1)), "the square opens off the street");
             Assert.IsFalse(FloorLayout.IsInsideWorld(new Vector2Int(0, FloorLayout.WorldMaxY + 1)));
             Assert.IsFalse(FloorLayout.IsInsideWorld(new Vector2Int(FloorLayout.HalfExtent + 1, 0)));
             Assert.IsFalse(FloorLayout.IsInsideWorld(new Vector2Int(-FloorLayout.HalfExtent - 1, 0)));
