@@ -178,6 +178,13 @@ namespace GolemFactory.Nodes
                 }
                 GetViewport().SetInputAsHandled();
             }
+
+            // The playtest kit: playtest mode only, never in a normal game.
+            if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F9 } && Guide?.Playtest != null)
+            {
+                Guide.StartKit();
+                GetViewport().SetInputAsHandled();
+            }
         }
 
         public override void _Process(double delta)
@@ -213,7 +220,11 @@ namespace GolemFactory.Nodes
             {
                 _renderedVersion = guide.Version;
                 TutorialStep step = guide.Current;
-                _counter.Text = $"GUIDE  ·  step {guide.Index + 1} of {guide.StepCount}  ·  F1 hides";
+                int chapter = guide.ChapterOf(guide.Index);
+                _counter.Text = guide.KitRunning
+                    ? $"PLAYTEST KIT  ·  fast-forwarding chapter {chapter}..."
+                    : $"CHAPTER {chapter}  ·  {guide.Index + 1}/{guide.StepCount}  ·  F1 hides"
+                      + (guide.Playtest != null ? "  ·  F9 skips" : "");
                 _title.Text = step.Title;
                 _body.Text = step.Body + MenuKeyHint(step) + ReportHint(step, guide);
                 bool last = guide.Index == guide.StepCount - 1;

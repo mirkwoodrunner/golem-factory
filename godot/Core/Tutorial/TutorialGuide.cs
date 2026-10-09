@@ -81,7 +81,7 @@ namespace GolemFactory.Tutorial
     /// <see cref="Current"/>, its <see cref="Progress"/> and its <see cref="TargetCell"/>.
     /// </para>
     /// </summary>
-    public sealed class TutorialGuide
+    public sealed partial class TutorialGuide
     {
         private readonly SandboxWorld _world;
         private readonly List<TutorialStep> _steps;
@@ -128,6 +128,7 @@ namespace GolemFactory.Tutorial
             {
                 Enter(Index + 1);
             }
+            KitTick();
         }
 
         /// <summary>The panel's Skip guide button.</summary>

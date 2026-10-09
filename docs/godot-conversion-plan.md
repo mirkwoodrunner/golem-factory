@@ -816,8 +816,14 @@ buildings. Includes the "no refund on load" duplicator regression.
   - Typing a note doesn't walk or crank: `TextEntry.IsTyping` guards the player's polled keys.
   - On in `sandbox.json` (`"playtest": true`). Covered by `PlaytestSessionTests`, and by the
     `tutorial` scenario, which answers with a typed note and checks the report on disk.
-  - Still to come: the playtest kit, guide chapters 4-9, and the markdown script shrinking to
-    a how-to.
+  - **The playtest kit (F9, playtest mode only)** fast-forwards the current chapter by
+    PERFORMING its steps (`TutorialGuide.Kit.cs`). It grants each step's goods, places
+    buildings on their marked tiles through build mode, builds and programs golems, and waits
+    on the world's clock for steps that take time. The world afterwards is the one a player
+    who did the chapter would have. Every use goes in the report. `PlaytestKitTests` carries
+    a fresh game through all three chapters, and so does the `playtest-kit` scenario, by
+    pressing F9.
+  - Still to come: guide chapters 4-9, and the markdown script shrinking to a how-to.
 - **Newly unlocked Assembly Line cards jump the queue**, found writing that chapter. A card
   unlocks when the factory first makes what it needs, and it used to join the *back* of the
   queue, in reverse deck order. So R2 Scrap Reclamation, the first recipe a Presser runs, came
