@@ -153,8 +153,61 @@ namespace GolemFactory.Tests.Tutorial
             {
                 world.Advance(1f / 30f);
             }
-            Assert.AreEqual("done", StepId(world),
+            Assert.AreEqual("coking-card", StepId(world),
                 $"the Presser's first cycle ends chapter 2 (presser {presser.Program.State}, {presser.StallReason} {presser.StallResourceId})");
+
+            // --- Chapter 3: the Coke line -------------------------------------------------------
+            int cokingSlot = Enumerable.Range(0, world.AssemblyLine.SlotCount)
+                .FirstOrDefault(i => world.AssemblyLine.GetCard(i)?.appendage?.name == "AssembleCoking");
+            Assert.AreEqual("AssembleCoking", world.AssemblyLine.GetCard(cokingSlot)?.appendage?.name, "Coking is on show");
+            Assert.IsTrue(world.AssemblyLineBoard.Claim(cokingSlot), world.AssemblyLineBoard.Status);
+            Assert.AreEqual("presser2", StepId(world));
+
+            Give(world, ItemType.Scrap, 200);
+            Give(world, ItemType.IronPlate, 60);
+            Give(world, ItemType.Gear, 20);
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["BrassPresser"], out GolemEntity coker));
+            Assert.AreEqual("boiler2", StepId(world));
+
+            Place(world, "BoilerPrefab", world.Tutorial.Boiler2Spot.x, world.Tutorial.Boiler2Spot.y);
+            Assert.AreEqual("pipes2", StepId(world));
+            CollectionAssert.AreEqual(world.Tutorial.Pipe2Spots, world.Tutorial.Current.Spots);
+
+            foreach (Vector2Int pipe in world.Tutorial.Pipe2Spots)
+            {
+                Place(world, "SteamPipePrefab", pipe.x, pipe.y);
+            }
+            Assert.AreEqual("coal-order", StepId(world));
+
+            // Order the truckload at the stall, as the player does, and wait for the cart.
+            SandboxSetup.NodeEntry coalStall = world.Setup.nodes.Single(n => n.id == "CoalNode");
+            world.Interactor.Position = new Compat.Vector3(coalStall.x, coalStall.y + 1f, 0f);
+            world.Interactor.Poll();
+            Assert.IsTrue(world.Interactor.Interact(), "ordered: " + world.Interactor.LastStatusMessage);
+            for (int frame = 0; frame < 600 && StepId(world) == "coal-order"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("program-coker", StepId(world), "the cart arrived");
+
+            coker.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            Assert.IsTrue(coker.Program.TryAddAppendage(defs.Appendages["ExtractScrap"]));
+            Assert.IsTrue(coker.Program.TryAddAppendage(defs.Appendages["AssembleCoking"]));
+            Assert.IsTrue(coker.Program.TryAddAppendage(defs.Appendages["PushOutput"]));
+            Assert.AreEqual("work-coker", StepId(world));
+
+            // Coal stall behind, the new boiler in front -- and steam from the FIRST boiler, along
+            // the pipes, because the new one starts with no Coke at all.
+            PlaceableBoiler boiler2 = world.Build.Buildings.Single(b => !b.IsRemoved && b.Cell == world.Tutorial.Boiler2Spot).GetPart<PlaceableBoiler>();
+            Assert.AreEqual(0, boiler2.Boiler.CokeStock, "precondition: the new boiler starts empty");
+            coker.SetPlacement(world.Tutorial.CokerSpot, Facing.North);
+            for (int frame = 0; frame < 1200 && StepId(world) == "work-coker"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("done", StepId(world),
+                $"the coking Presser's first cycle ends chapter 3 (coker {coker.Program.State}, {coker.StallReason} {coker.StallResourceId})");
+            Assert.Greater(boiler2.Boiler.CokeStock, 0, "its Coke went into the new boiler's firebox");
 
             world.Tutorial.Finish();
             Assert.IsFalse(world.Tutorial.IsShowing);

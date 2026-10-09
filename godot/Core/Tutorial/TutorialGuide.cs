@@ -266,6 +266,52 @@ namespace GolemFactory.Tutorial
         private string Counts(params (string item, int goal)[] goals) =>
             string.Join("  \u00b7  ", goals.Select(g => Count(g.item, g.goal)));
 
+        // Chapter 3 builds a boiler that feeds itself, beside the Coal stall: a Presser extracts
+        // Coal from the stall behind it, cokes it, and pushes the Coke straight into a second
+        // boiler in front of it. A pipe run from the FIRST boiler, along the stalls' row and up
+        // one, powers the Presser before the new boiler has any Coke of its own (it starts empty,
+        // and a Presser beside only an empty boiler could never make the first Coke), and joins
+        // the two boilers into one network, so the coal line keeps the whole factory in steam.
+        //
+        //                          pipe  boiler 2
+        //     boiler 1  pipe ...  pipe  coking Presser
+        //                               Coal stall
+
+        private Vector2Int CoalCell => Stall("CoalNode") ?? new Vector2Int(4, 0);
+
+        /// <summary>Where the coking Presser stands: just north of the Coal stall.</summary>
+        public Vector2Int CokerSpot => CoalCell + new Vector2Int(0, 1);
+
+        /// <summary>The second boiler, in front of the coking Presser.</summary>
+        public Vector2Int Boiler2Spot => CoalCell + new Vector2Int(0, 2);
+
+        /// <summary>
+        /// From beside the first boiler east along its row to the coking Presser's west side,
+        /// then up one to sit beside the second boiler.
+        /// </summary>
+        public Vector2Int[] Pipe2Spots
+        {
+            get
+            {
+                var spots = new List<Vector2Int>();
+                for (int x = BoilerSpot.x + 1; x < CokerSpot.x; x++)
+                {
+                    spots.Add(new Vector2Int(x, BoilerSpot.y));
+                }
+                spots.Add(new Vector2Int(CokerSpot.x - 1, Boiler2Spot.y));
+                return spots.ToArray();
+            }
+        }
+
+        private bool IsCoker(GolemEntity golem) =>
+            golem.Program?.logicCore != null
+            && golem.Program.appendages.Any(a => a != null && a.name == "ExtractScrap")
+            && golem.Program.appendages.Any(a => a != null && a.name == "AssembleCoking")
+            && golem.Program.appendages.Any(a => a != null && a.name == "PushOutput");
+
+        private bool CoalStallStocked =>
+            _world.Nodes.TryGetNode("CoalNode", out var node) && node.RemainingQuantity > 0;
+
         private bool SteamReachesGolemSpot => _world.Steam.Reaches(GolemSpot, _world.Clock.CurrentTick);
 
         private IEnumerable<PlaceableBuilding> Built => _world.Build.Buildings.Where(b => !b.IsRemoved);
@@ -435,11 +481,75 @@ namespace GolemFactory.Tutorial
                 spot: PresserSpot,
                 spotFacing: Facing.North),
 
+            // --- Chapter 3: the Coke line ---------------------------------------------------------
+            // progression-design §9 Phase 2's wall: golems burn Coke, and the boiler's runs out.
+            // The answer is a coal line that feeds the boiler it runs on.
+
             new TutorialStep(
-                "done", "Iron Plate, on its own",
-                "Next, keep the boiler fed: claim R1 Coking, then build a Presser that runs Haul Coal, "
-                + "Assemble Coking, Push, fed by a Scavenger at the Coal stall. Tab shows your Inventory, "
-                + "the Assembly Line and the Ledger, which maps the road ahead. F1 brings this guide back.",
+                "coking-card", "Claim Coking",
+                "Your boiler burns the Coke you crank by hand, and it will run dry. Time to make Coke "
+                + "automatically. Press Tab, open the Assembly Line and claim Assemble Coking.",
+                w => HasClaimed("AssembleCoking"),
+                w => null),
+
+            new TutorialStep(
+                "presser2", "A second Presser",
+                "Build another Brass Presser at the station (60 Scrap + 20 Iron Plate + 10 Gear). Your first "
+                + "Presser is making the Iron Plate; cut the Gears at the bench (R8) as before.",
+                w => Pressers.Count() >= 2,
+                w => ScrapFirst(60, Station),
+                w => Counts((ItemType.Scrap, 60), (ItemType.IronPlate, 20), (ItemType.Gear, 10))),
+
+            new TutorialStep(
+                "boiler2", "A boiler for the coal line",
+                "Build a second Boiler on the marked tile, two north of the Coal stall. The coking Presser "
+                + "will stand between them and push its Coke straight into it.",
+                w => BoilerBuildings.Any(b => b.Cell == Boiler2Spot),
+                w => ScrapFirst(30, Boiler2Spot),
+                w => Counts((ItemType.Scrap, 30), (ItemType.IronPlate, 10)),
+                menuKey: "BoilerPrefab",
+                spot: Boiler2Spot),
+
+            new TutorialStep(
+                "pipes2", "Join the boilers",
+                "Lay Steam Pipe on the marked tiles, from your first boiler to the new one. The new boiler starts "
+                + "empty, so the first one powers the coking Presser until it has Coke of its own; after that, "
+                + "joined boilers share their golems.",
+                w => Pipe2Spots.All(c => _world.Steam.HasPipe(c)),
+                w => Pipe2Spots.Where(c => !_world.Steam.HasPipe(c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
+                w => $"Pipes  {Pipe2Spots.Count(c => _world.Steam.HasPipe(c))} / {Pipe2Spots.Length}",
+                menuKey: "SteamPipePrefab",
+                moreSpots: Pipe2Spots),
+
+            new TutorialStep(
+                "coal-order", "Stock the Coal stall",
+                "Golems take from a stall just as you do. Press E at the empty Coal stall to order a "
+                + "truckload (10 Scrap for 40 Coal); the cart takes a few seconds to arrive.",
+                w => CoalStallStocked,
+                w => Stall("CoalNode")),
+
+            new TutorialStep(
+                "program-coker", "Program the coking Presser",
+                "In the Workbench: Always On, then Extract Scrap, Assemble Coking and Push Output. Despite its "
+                + "name, Extract takes whatever the stall behind the golem holds: here, Coal.",
+                w => Pressers.Any(IsCoker),
+                w => Pressers.Where(g => !IsIronPresser(g)).Select(g => (Vector2Int?)g.Cell).FirstOrDefault()),
+
+            new TutorialStep(
+                "work-coker", "Feed the boiler",
+                "Move the coking Presser onto the marked tile between the Coal stall and the new boiler, "
+                + "facing the boiler (up). It extracts Coal, cokes it, and pushes the Coke into the firebox.",
+                w => Pressers.Any(g => IsCoker(g) && _completedSinceEntry.Contains(g.GolemId)),
+                w => Pressers.Any(g => IsCoker(g) && g.Cell == CokerSpot) ? CokerSpot
+                    : Pressers.Where(IsCoker).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? CokerSpot,
+                spot: CokerSpot,
+                spotFacing: Facing.North),
+
+            new TutorialStep(
+                "done", "A factory that feeds itself",
+                "Scrap, Iron Plate and Coke now run without you. Keep the Coal stall stocked (E when it runs "
+                + "dry). Tab shows your Inventory, the Assembly Line and the Ledger, which maps the road "
+                + "ahead: the Aether-Hauler and two-input recipes. F1 brings this guide back.",
                 w => false,
                 w => null),
         };
