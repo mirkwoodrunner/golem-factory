@@ -44,6 +44,19 @@ namespace GolemFactory.Tutorial
         /// </summary>
         public bool Workbench { get; }
 
+        /// <summary>
+        /// The kind of building the step's marked tiles are for, or null (a golem's tile, a goal).
+        /// The guide uses it to tell "something else is on the marked tile" from "the right thing".
+        /// </summary>
+        internal Func<PlaceableBuilding, bool> Builds { get; }
+
+        /// <summary>
+        /// Whether the step wants its building ON the marked tile because later steps are laid
+        /// out around it. Building it anywhere else then earns a note saying so. Pipes and the
+        /// mast take any spot that works, and say nothing.
+        /// </summary>
+        internal bool ExactTile { get; }
+
         internal Func<SandboxWorld, bool> Done { get; }
         internal Func<SandboxWorld, string> ProgressText { get; }
         internal Func<SandboxWorld, Vector2Int?> Target { get; }
@@ -52,8 +65,10 @@ namespace GolemFactory.Tutorial
             string id, string title, string body, Func<SandboxWorld, bool> done,
             Func<SandboxWorld, Vector2Int?> target, Func<SandboxWorld, string> progress = null, string menuKey = null,
             Vector2Int? spot = null, Facing? spotFacing = null, Vector2Int[] moreSpots = null, string card = null,
-            bool workbench = false)
+            bool workbench = false, Func<PlaceableBuilding, bool> builds = null, bool exactTile = false)
         {
+            Builds = builds;
+            ExactTile = exactTile;
             Card = card;
             Workbench = workbench;
             Spot = spot ?? (moreSpots != null && moreSpots.Length > 0 ? moreSpots[0] : (Vector2Int?)null);
@@ -221,6 +236,8 @@ namespace GolemFactory.Tutorial
             {
                 _golemsAtEntry.Add(golem.GolemId);
             }
+            _buildingsAtEntry.Clear();
+            _buildingsAtEntry.UnionWith(Built);
             Version++;
             ReportStep();
         }
@@ -245,6 +262,77 @@ namespace GolemFactory.Tutorial
 
         private readonly Dictionary<string, string> _roles = new Dictionary<string, string>();
         private readonly HashSet<string> _golemsAtEntry = new HashSet<string>();
+        private readonly HashSet<PlaceableBuilding> _buildingsAtEntry = new HashSet<PlaceableBuilding>();
+
+        // --- Why a step is waiting, when the answer is where something was built ---------------
+        //
+        // Round 2 of the exact-tile plan. Buildings later steps are laid out around stay on their
+        // marked tiles, but the guide no longer waits in silence: it says when the right building
+        // went up somewhere else, and when something else is sitting on a marked tile (a pipe laid
+        // on a free route, since round 1, can pave over a later chapter's tile).
+
+        /// <summary>A note under the step, or "": what is in the way of the marked tiles.</summary>
+        public string Notice => IsShowing ? NoticeFor(Current) : "";
+
+        private string NoticeFor(TutorialStep step)
+        {
+            if (step == null || step.Spots.Count == 0)
+            {
+                return "";
+            }
+
+            foreach (Vector2Int spot in step.Spots)
+            {
+                PlaceableBuilding there = BuildingOn(spot);
+                if (there == null || (step.Builds != null && step.Builds(there)))
+                {
+                    continue;
+                }
+                string what = NameOf(there);
+                return step.SpotFacing != null
+                    ? $"A {what} is on the golem's tile, and a golem can't stand on a building. Take it up with the wrecking bar (full refund)."
+                    : $"A {what} is on a marked tile. Click it to take it up (full refund), then click again to build.";
+            }
+
+            if (step.MenuKey == "BeltPrefab")
+            {
+                foreach (Vector2Int spot in step.Spots)
+                {
+                    if (_world.Belts.TryGetBelt(spot, out PlacedBelt belt) && belt.Facing != Facing.North)
+                    {
+                        return $"A belt on the run points {Way(belt.Facing)}, and the run must point up. "
+                            + "Click it to take it up (full refund) and drag the run again from the bottom.";
+                    }
+                }
+            }
+
+            if (step.ExactTile && step.Builds != null)
+            {
+                PlaceableBuilding stray = Built.FirstOrDefault(b =>
+                    !_buildingsAtEntry.Contains(b) && step.Builds(b) && !step.Spots.Contains(b.Cell));
+                if (stray != null)
+                {
+                    return $"That {NameOf(stray)} is off the marked tile, and later steps are laid out around the marked one. "
+                        + "Click it again to take it back (full refund).";
+                }
+            }
+            return "";
+        }
+
+        private PlaceableBuilding BuildingOn(Vector2Int cell) =>
+            _world.Grid.TryGetOccupant(cell, out object occupant) ? occupant as PlaceableBuilding : null;
+
+        private static string NameOf(PlaceableBuilding building) =>
+            UI.BuildMenuLabels.NameFor(building.PrefabKey ?? building.name);
+
+        private static string Way(Facing facing) =>
+            facing == Facing.North ? "up" : facing == Facing.East ? "right" : facing == Facing.South ? "down" : "left";
+
+        private static bool IsDepot(PlaceableBuilding b) => b.GetPart<PlaceableDepot>() != null;
+
+        private static bool IsBoiler(PlaceableBuilding b) => b.GetPart<PlaceableBoiler>() != null;
+
+        private static bool IsPipe(PlaceableBuilding b) => b.GetPart<PlaceableSteamPipe>() != null;
 
         /// <summary>
         /// The golem playing <paramref name="role"/>, or null before its step has built one.
@@ -801,7 +889,8 @@ namespace GolemFactory.Tutorial
                 w => ScrapFirst(30, BoilerSpot),
                 w => Count(ItemType.Scrap, 30),
                 menuKey: "BoilerPrefab",
-                spot: BoilerSpot),
+                spot: BoilerSpot,
+                builds: IsBoiler, exactTile: true),
 
             new TutorialStep(
                 "fuel", "Fuel the Boiler",
@@ -832,7 +921,8 @@ namespace GolemFactory.Tutorial
                 w => ScrapFirst(15, DepotSpot),
                 w => Count(ItemType.Scrap, 15),
                 menuKey: "DepotPrefab",
-                spot: DepotSpot),
+                spot: DepotSpot,
+                builds: IsDepot, exactTile: true),
 
             new TutorialStep(
                 "work", "Put it to work",
@@ -881,7 +971,8 @@ namespace GolemFactory.Tutorial
                 w => SteamReachesPresserSpot,
                 w => PipeSpots[0],
                 menuKey: "SteamPipePrefab",
-                moreSpots: PipeSpots),
+                moreSpots: PipeSpots,
+                builds: IsPipe),
 
             new TutorialStep(
                 "depot2", "A depot for its output",
@@ -891,7 +982,8 @@ namespace GolemFactory.Tutorial
                 w => ScrapFirst(15, PresserDepotSpot),
                 w => Count(ItemType.Scrap, 15),
                 menuKey: "DepotPrefab",
-                spot: PresserDepotSpot),
+                spot: PresserDepotSpot,
+                builds: IsDepot, exactTile: true),
 
             new TutorialStep(
                 "program-presser", "Program the Presser",
@@ -942,7 +1034,8 @@ namespace GolemFactory.Tutorial
                 w => ScrapFirst(30, Boiler2Spot),
                 w => Counts((ItemType.Scrap, 30), (ItemType.IronPlate, 10)),
                 menuKey: "BoilerPrefab",
-                spot: Boiler2Spot),
+                spot: Boiler2Spot,
+                builds: IsBoiler, exactTile: true),
 
             new TutorialStep(
                 "pipes2", "Join the boilers",
@@ -955,7 +1048,8 @@ namespace GolemFactory.Tutorial
                 w => Pipe2Spots.Where(c => !_world.Steam.HasPipe(c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
                 w => $"Pipes  {Pipe2Spots.Count(c => _world.Steam.HasPipe(c))} / {Pipe2Spots.Length}",
                 menuKey: "SteamPipePrefab",
-                moreSpots: Pipe2Spots),
+                moreSpots: Pipe2Spots,
+                builds: IsPipe),
 
             new TutorialStep(
                 "coal-order", "Stock the Coal stall",
@@ -1021,7 +1115,8 @@ namespace GolemFactory.Tutorial
                 w => ScrapFirst(15, Depot3Spot),
                 w => Count(ItemType.Scrap, 15),
                 menuKey: "DepotPrefab",
-                spot: Depot3Spot),
+                spot: Depot3Spot,
+                builds: IsDepot, exactTile: true),
 
             new TutorialStep(
                 "turn", "Turn it with R",
@@ -1080,7 +1175,8 @@ namespace GolemFactory.Tutorial
                 w => new[] { SmeltInSpot, SmeltOutSpot }.Where(c => !Built.Any(b => b.Cell == c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
                 w => Count(ItemType.Scrap, 30),
                 menuKey: "DepotPrefab",
-                moreSpots: new[] { SmeltInSpot, SmeltOutSpot }),
+                moreSpots: new[] { SmeltInSpot, SmeltOutSpot },
+                builds: IsDepot, exactTile: true),
 
             new TutorialStep(
                 "pipes3", "Steam for the column",
@@ -1091,7 +1187,8 @@ namespace GolemFactory.Tutorial
                 w => Pipe3Spots.Where(c => !_world.Steam.HasPipe(c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
                 w => $"Pipes  {Pipe3Spots.Count(c => _world.Steam.HasPipe(c))} / {Pipe3Spots.Length}",
                 menuKey: "SteamPipePrefab",
-                moreSpots: Pipe3Spots),
+                moreSpots: Pipe3Spots,
+                builds: IsPipe),
 
             new TutorialStep(
                 "program-smelter", "Two Hauls, two goods",
@@ -1119,7 +1216,8 @@ namespace GolemFactory.Tutorial
                 w => ScrapFirst(20, SlagHeapSpot),
                 w => Counts((ItemType.Scrap, 20), (ItemType.IronPlate, 10)),
                 menuKey: "SlagHeapPrefab",
-                spot: SlagHeapSpot),
+                spot: SlagHeapSpot,
+                builds: b => b.GetPart<PlaceableSlagHeap>() != null, exactTile: true),
 
             new TutorialStep(
                 "carrier", "A carrier",
@@ -1167,7 +1265,8 @@ namespace GolemFactory.Tutorial
                 w => BeltSpots.Where(c => !_world.Belts.HasBelt(c)).Select(c => (Vector2Int?)c).FirstOrDefault() ?? BeltSpots[0],
                 w => $"Belts  {BeltSpots.Count(c => _world.Belts.HasBelt(c))} / {BeltSpots.Length}",
                 menuKey: "BeltPrefab",
-                moreSpots: BeltSpots),
+                moreSpots: BeltSpots,
+                builds: b => b.GetPart<PlaceableBelt>() != null),
 
             new TutorialStep(
                 "pipes4", "Drag a pipe run",
@@ -1178,7 +1277,8 @@ namespace GolemFactory.Tutorial
                 w => Pipe4Spots.Where(c => !_world.Steam.HasPipe(c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
                 w => $"Pipes  {Pipe4Spots.Count(c => _world.Steam.HasPipe(c))} / {Pipe4Spots.Length}",
                 menuKey: "SteamPipePrefab",
-                moreSpots: Pipe4Spots),
+                moreSpots: Pipe4Spots,
+                builds: IsPipe),
 
             new TutorialStep(
                 "scav3", "An extractor",
@@ -1204,7 +1304,8 @@ namespace GolemFactory.Tutorial
                 w => DepotAt(CopperDepotSpot) == null ? ScrapFirst(15, CopperDepotSpot) : CopperDepotSpot,
                 w => DepotAt(CopperDepotSpot) == null ? Count(ItemType.Scrap, 15) : "Label: " + DepotAt(CopperDepotSpot).FilterLabel,
                 menuKey: "DepotPrefab",
-                spot: CopperDepotSpot),
+                spot: CopperDepotSpot,
+                builds: IsDepot, exactTile: true),
 
             new TutorialStep(
                 "unloader", "An unloader",
@@ -1344,7 +1445,8 @@ namespace GolemFactory.Tutorial
                 w => HasMast ? (Vector2Int?)null : MastSpot,
                 w => Counts((ItemType.Brass, 20), (ItemType.Casing, 10)),
                 menuKey: "FreightMastPrefab",
-                spot: MastSpot),
+                spot: MastSpot,
+                builds: b => b.GetPart<PlaceableFreightMast>() != null),
 
             new TutorialStep(
                 "zeppelin-pipe", "Steam for it",
@@ -1353,7 +1455,8 @@ namespace GolemFactory.Tutorial
                 w => SteamReaches(ZeppelinSpot),
                 w => ZeppelinPipeSpot,
                 menuKey: "SteamPipePrefab",
-                spot: ZeppelinPipeSpot),
+                spot: ZeppelinPipeSpot,
+                builds: IsPipe),
 
             new TutorialStep(
                 "program-zeppelin", "Program the Zeppelin",

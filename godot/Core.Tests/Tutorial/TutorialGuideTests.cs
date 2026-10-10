@@ -1068,6 +1068,74 @@ namespace GolemFactory.Tests.Tutorial
             }
         }
 
+        // --- Round 2: the guide says what is in the way of a marked tile ------------------------
+
+        [Test]
+        public void ADepotBuiltOffTheMarkedTile_EarnsANote_AndTheStepStillWaits()
+        {
+            SandboxWorld world = Plenty();
+            Place(world, "DepotPrefab", 8, 8); // built before the step: not the step's business
+            GoTo(world, "depot");
+            Assert.AreEqual("", world.Tutorial.Notice, "a depot from before the step is not a stray");
+
+            Vector2Int off = world.Tutorial.DepotSpot + new Vector2Int(1, 0);
+            Place(world, "DepotPrefab", off.x, off.y);
+            Assert.AreEqual("depot", StepId(world));
+            StringAssert.Contains("Depot is off the marked tile", world.Tutorial.Notice);
+
+            Place(world, "DepotPrefab", world.Tutorial.DepotSpot.x, world.Tutorial.DepotSpot.y);
+            Assert.AreEqual("work", StepId(world));
+        }
+
+        [Test]
+        public void SomethingElseOnAMarkedBuildTile_IsNamed()
+        {
+            SandboxWorld world = Plenty();
+            Vector2Int spot = world.Tutorial.Boiler2Spot;
+            Place(world, "SteamPipePrefab", spot.x, spot.y); // a free-routed pipe, paving the tile
+            GoTo(world, "boiler2");
+
+            StringAssert.StartsWith("A Steam Pipe is on a marked tile", world.Tutorial.Notice);
+            StringAssert.Contains("Click it to take it up", world.Tutorial.Notice);
+        }
+
+        [Test]
+        public void ABuildingOnTheGolemsTile_IsNamed_BecauseAGolemCannotStandThere()
+        {
+            SandboxWorld world = Plenty();
+            Vector2Int spot = world.Tutorial.CokerSpot;
+            Place(world, "SteamPipePrefab", spot.x, spot.y);
+            GoTo(world, "work-coker");
+
+            StringAssert.StartsWith("A Steam Pipe is on the golem's tile", world.Tutorial.Notice);
+        }
+
+        [Test]
+        public void ABeltOnTheRunPointingTheWrongWay_IsNamed()
+        {
+            SandboxWorld world = Plenty();
+            GoTo(world, "belts");
+            Vector2Int first = world.Tutorial.BeltSpots[0];
+            world.Build.SetActivePrefab(world.Placeables.Single(p => p.Key == "BeltPrefab").Prefab);
+            world.Build.RotatePlacement(); // east
+            world.Build.PlaceOrRemove(first);
+            world.Build.CancelPlacement();
+
+            StringAssert.StartsWith("A belt on the run points right", world.Tutorial.Notice);
+        }
+
+        [Test]
+        public void ACleanStep_HasNoNote_AndAPipeOffTheMarksIsNoStray()
+        {
+            SandboxWorld world = Plenty();
+            Place(world, "BoilerPrefab", world.Tutorial.Boiler2Spot.x, world.Tutorial.Boiler2Spot.y);
+            GoTo(world, "pipes3");
+            Assert.AreEqual("", world.Tutorial.Notice);
+
+            Pipe(world, world.Tutorial.SmelterSpot + new Vector2Int(-2, 1)); // a route of its own (round 1)
+            Assert.AreEqual("", world.Tutorial.Notice, "pipes take any route that works");
+        }
+
         [Test]
         public void SkipAndReopen_AndTheStepIsSaved()
         {
