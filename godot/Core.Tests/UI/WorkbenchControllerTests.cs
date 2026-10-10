@@ -20,7 +20,7 @@ namespace GolemFactory.Tests.UI
     /// commit through a socket -- and are checked by the `workbench` scenario against the Godot
     /// screen instead. SlotCaptions_SurviveARowWithNoCaptionChild is retired: the session
     /// computes captions as strings, and there is no caption child to be missing.
-    /// docs/godot-test-ledger.md lists each.
+    /// docs/history/godot-test-ledger.md lists each.
     /// </para>
     /// </summary>
     public class WorkbenchControllerTests

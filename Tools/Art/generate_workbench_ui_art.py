@@ -3,11 +3,11 @@
 docs/digital-design.md, "The Programming Interface"). Companion to
 generate_placeholder_art.py -- same free/Pillow-only approach, but these are 9-sliced /
 tiled *UI* sprites rather than world art, so they live under
-Assets/_Project/Art/UI/Workbench/ next to the third-party Steampunk pack.
+godot/art/UI/Workbench/ next to the third-party Steampunk pack.
 
 Every panel/plate/card sprite is authored with an explicit 9-slice border and is meant to
 be imported with that border (see the "Workbench UI reskin" notes in
-docs/unity-implementation-plan.md); the big backdrops are drawn to tile seamlessly in
+docs/history/unity-implementation-plan.md); the big backdrops are drawn to tile seamlessly in
 their centre region so Unity's Image.Type.Tiled gives real grain across a full-height
 column instead of one stretched flat block.
 

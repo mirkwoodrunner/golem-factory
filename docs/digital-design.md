@@ -4,7 +4,7 @@
 
 - `docs/game-design.md` is the original tabletop concept (spiral Time Track, Brass
   Cog triggers, physical punch-card tiles).
-- `docs/unity-implementation-plan.md` is the solo-digital architecture/milestone plan
+- `docs/history/unity-implementation-plan.md` is the solo-digital architecture/milestone plan
   derived from it.
 - This doc captures three settled design decisions for the digital version that
   sharpen or supersede earlier calls: the **visual style**, the **concrete golem

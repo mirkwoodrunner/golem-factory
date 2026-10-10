@@ -127,7 +127,7 @@ design work (layout, feel), not translation.
    I'd lean JSON, because it keeps the line that made this port cheap. A one-time converter
    from the existing `.asset` YAML would carry the current data over.
 2. **Where the Unity project goes once Godot passes it.** Archive it on a branch, and turn
-   `docs/unity-implementation-plan.md` into history.
+   `docs/history/unity-implementation-plan.md` into history.
 3. **The Workbench's look.** It's the largest rebuild and the most player-facing. The
    mahogany-and-brass art in `Art/UI/` is reusable as 9-slice textures in a Godot theme.
 
