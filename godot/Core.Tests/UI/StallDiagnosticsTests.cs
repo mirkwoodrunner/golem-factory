@@ -488,5 +488,43 @@ namespace GolemFactory.Tests.EditMode
                 }
             }
         }
-    }
+    
+        // --- A belt the player laid is named, not keyed ----------------------------------------
+        // The playtest kit's frames showed a badge reading "waiting on Belt(0,-12)#3".
+
+        [Test]
+        public void APlacedBelt_ReadsAsTheBeltBehindOrInFront_OnTheBadge()
+        {
+            Assert.AreEqual("waiting on the belt behind me",
+                StallDiagnostics.DescribeShort(StallReason.BeltEmpty, "Belt(0,-12)#3"));
+            Assert.AreEqual("the belt in front of me is full",
+                StallDiagnostics.DescribeShort(StallReason.BeltFull, "Belt(-4,7)#12"));
+        }
+
+        [Test]
+        public void APlacedBelt_ReadsAsItsCell_OnTheStrip()
+        {
+            Assert.AreEqual("G1 stalled: waiting for items on the belt at (0,-12)",
+                StallDiagnostics.Describe("G1", StallReason.BeltEmpty, "Belt(0,-12)#3"));
+            Assert.AreEqual("G1 stalled: the belt at (-4,7) is full",
+                StallDiagnostics.Describe("G1", StallReason.BeltFull, "Belt(-4,7)#12"));
+        }
+
+        [Test]
+        public void TheIdABeltIsLaidWith_IsOneTheBadgeRecognises()
+        {
+            var network = new GolemFactory.World.BeltNetwork();
+            Assert.IsTrue(network.TryPlace(new GolemFactory.Compat.Vector2Int(0, -12), GolemFactory.World.Facing.North,
+                out GolemFactory.World.PlacedBelt belt));
+            Assert.AreEqual("(0,-12)", StallDiagnostics.PlacedBeltCell(belt.Segment.SegmentId),
+                "if BeltNetwork's id format changes, the badge must change with it");
+        }
+
+        [Test]
+        public void AnAuthoredBeltId_IsStillNamedAsItIs()
+        {
+            Assert.AreEqual("ScrapBeltA full", StallDiagnostics.DescribeShort(StallReason.BeltFull, "ScrapBeltA"));
+            Assert.IsNull(StallDiagnostics.PlacedBeltCell("ScrapBeltA"));
+        }
+}
 }
