@@ -126,6 +126,12 @@ Buildings are Core `PlaceableBuilding`s. Godot draws them in `Scripts/Buildings/
 one `BuildingView` each, by listening to `BuildingPlaced`, `BuildingRemoved` and
 `ConnectedShapesChanged`. Don't give a building its own scene with logic in it.
 
+**Where a carried golem lands is `PlayerInteractor.CarryDropCell`**, the tile under the
+player's feet. `GolemNode` outlines it (red where `CarryDropBlocked`) with the golem's source
+and target tiles around it, and `[G]` drops on it, so the preview and the drop read one
+answer. The carried sprite rides half a tile above the player and is not a guide to it. While
+carrying, `R` turns the carried golem, never a nearer one or a bench.
+
 **The player's hands are Core's `PlayerInteractor`** (`SandboxWorld.Interactor`). `PlayerNode`
 only feeds it the position and the keys. A full screen joins the `ModalScreens` group and
 implements `IScreen`; while one is open the player stays still and the world prompt hides. A

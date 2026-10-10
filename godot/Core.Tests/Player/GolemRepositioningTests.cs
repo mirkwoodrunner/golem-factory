@@ -251,6 +251,92 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(new Vector2Int(5, 5), golem.Cell, "a refused drop moved the golem anyway");
         }
 
+        // --- The landing preview -------------------------------------------------------------
+        // The carried golem is drawn in the player's hands, half a tile above the tile it lands
+        // on, so the floor outlines that tile instead. The outline reads CarryDropCell, and so
+        // does the drop: these pin that the two can never disagree.
+
+        [TestCase(2.0f, -3.0f)]
+        [TestCase(2.49f, -2.76f)]   // just inside a tile's edges
+        [TestCase(2.51f, -2.74f)]   // just across them
+        public void TheLandingTile_IsTheTileTheGolemIsSetDownOn(float x, float y)
+        {
+            GolemEntity golem = NewGolem("G1", new Vector2Int(5, 5), Facing.East, Vector3.zero);
+            PlayerInteractor interactor = NewPlayerAt(new Vector3(0.2f, 0f, 0f), new GridMap());
+            Assert.IsNull(interactor.CarryDropCell, "nothing in hand, nothing to preview");
+            Assert.IsTrue(interactor.TryPickUpNearestGolem());
+
+            interactor.Position = new Vector3(x, y, 0f);
+            Vector2Int? previewed = interactor.CarryDropCell;
+            Assert.IsNotNull(previewed);
+            Assert.IsFalse(interactor.CarryDropBlocked);
+
+            Assert.IsTrue(interactor.TryDropCarriedGolem());
+            Assert.AreEqual(previewed.Value, golem.Cell);
+            Assert.IsNull(interactor.CarryDropCell);
+        }
+
+        [Test]
+        public void TheLandingTile_IsBlocked_WhereTheDropWouldBeRefused()
+        {
+            var gridMap = new GridMap();
+            NewGolem("G1", new Vector2Int(5, 5), Facing.North, Vector3.zero);
+            PlayerInteractor interactor = NewPlayerAt(new Vector3(0.2f, 0f, 0f), gridMap);
+            Assert.IsTrue(interactor.TryPickUpNearestGolem());
+
+            var converter = new GridCoordinateConverter(new Vector2(1f, 0.5f));
+            var pipe = new Vector2Int(1, 1);
+            gridMap.TryOccupy(pipe, new object());
+            interactor.Position = converter.CellToWorldCenter(pipe);
+
+            Assert.AreEqual(pipe, interactor.CarryDropCell);
+            Assert.IsTrue(interactor.CarryDropBlocked, "red before the press, not only a refusal after it");
+            Assert.IsFalse(interactor.TryDropCarriedGolem());
+
+            interactor.Position = converter.CellToWorldCenter(new Vector2Int(2, 1));
+            Assert.IsFalse(interactor.CarryDropBlocked);
+        }
+
+        [Test]
+        public void R_TurnsTheCarriedGolem_EvenWithAnotherGolemNearer()
+        {
+            GolemEntity carried = NewGolem("Carried", new Vector2Int(5, 5), Facing.North, new Vector3(0.3f, 0f, 0f));
+            PlayerInteractor interactor = NewPlayerAt(new Vector3(0.2f, 0f, 0f), null);
+            Assert.IsTrue(interactor.TryPickUpNearestGolem());
+            Assert.AreSame(carried, interactor.CarriedGolem);
+
+            // A placed golem right at the player's feet: the nearest golem, and not the one in hand.
+            GolemEntity placed = NewGolem("Placed", new Vector2Int(0, 0), Facing.North, new Vector3(0.2f, 0f, 0f));
+            interactor.RefreshInteractables();
+
+            Assert.IsTrue(interactor.RotateKey());
+            Assert.AreEqual(Facing.East, carried.Facing, "R turns what you are holding");
+            Assert.AreEqual(Facing.North, placed.Facing, "and leaves the golem on the floor alone");
+            Assert.IsTrue(carried.IsHeld, "turning it does not set it down");
+        }
+
+        [Test]
+        public void TurningACarriedGolem_DoesNotPutItBackOnABoiler()
+        {
+            var steam = new GolemFactory.Steam.SteamNetwork();
+            GolemEntity golem = new GolemEntity();
+            golem.Configure("G1", null);
+            golem.ConfigureSteam(steam);
+            golem.SetPlacement(new Vector2Int(0, 0), Facing.North);
+            Assert.IsTrue(steam.HasConsumer("G1"), "precondition: standing, it draws steam");
+
+            golem.SetHeld(true);
+            Assert.IsFalse(steam.HasConsumer("G1"), "precondition: carried, it does not");
+
+            golem.SetPlacement(golem.Cell, Facing.East); // what R does to a carried golem
+            Assert.IsFalse(steam.HasConsumer("G1"),
+                "a carried golem held one of a boiler's 8 slots after being turned");
+
+            golem.SetPlacement(new Vector2Int(3, 0), Facing.East);
+            golem.SetHeld(false);
+            Assert.IsTrue(steam.HasConsumer("G1"), "set down, it draws steam again");
+        }
+
         [Test]
         public void ToggleCarry_PicksUpThenSetsDown()
         {
