@@ -667,9 +667,9 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "work", "Put it to work",
-                "Press G by the golem to pick it up, then G again to set it down on the marked tile, between the "
-                + "Scrap stall and the depot. Press R by it until it faces the depot (up): it takes Scrap from "
-                + "behind and pushes it forward.",
+                "Press G by the golem to pick it up, walk until the outline under you is on the marked tile, between "
+                + "the Scrap stall and the depot, and press G again. Press R to turn it until it faces the depot (up): "
+                + "it takes Scrap from behind and pushes it forward.",
                 w => _cycleSeen,
                 w => LiveGolems.Any(g => g.Cell == GolemSpot) ? GolemSpot
                     : LiveGolems.Where(IsProgrammed).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? GolemSpot,
