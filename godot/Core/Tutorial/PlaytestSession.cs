@@ -54,7 +54,10 @@ namespace GolemFactory.Tutorial
         /// <summary>
         /// The script's questions, keyed to the step that FOLLOWS the experience they ask about:
         /// the light on the first step, the manual era once the first Presser runs, the market
-        /// once Coal has been bought, the burn once the coal line feeds its boiler.
+        /// once Coal has been bought, the burn once the coal line feeds its boiler. Each chapter's
+        /// question is asked as the next chapter opens; only the tower's and the guide's own wait
+        /// for the end. (Nine used to wait for "done", after the Clock Tower's Foundation, so a
+        /// playtest that stopped sooner never asked them, and one that didn't asked hours late.)
         /// </summary>
         public static IReadOnlyList<PlaytestQuestion> Questions { get; } = new[]
         {
@@ -70,6 +73,9 @@ namespace GolemFactory.Tutorial
             new PlaytestQuestion("walking", "coking-card",
                 "How much of that time was walking between the workshop and the stalls?",
                 "Most of it", "About half", "Not much"),
+            new PlaytestQuestion("carry", "gears",
+                "When you carried the golem, did the outline on the floor make it clear where it would land?",
+                "Clear", "Mostly", "I still guessed"),
             new PlaytestQuestion("market", "program-coker",
                 "You bought Coal by the truckload. Does the market feel like an economy, or a toll booth?",
                 "An economy", "In between", "A toll booth"),
@@ -79,29 +85,32 @@ namespace GolemFactory.Tutorial
             new PlaytestQuestion("labels", "unloader",
                 "You labelled a depot by pressing E until it said Copper Ore. A decent control, or do you want a picker?",
                 "Decent", "Fiddly", "Want a picker"),
-            new PlaytestQuestion("drag", "done",
+            new PlaytestQuestion("drag", "scav3",
                 "Did laying belts and pipes by dragging feel good?",
                 "Good", "Fiddly", "Didn't work how I expected"),
             new PlaytestQuestion("tower", "done",
                 "The Clock Tower now waits in the town square until the end game. Does it feel like the goal "
                 + "the whole factory was for?",
                 "Yes", "Not yet (say why)", "It should come sooner"),
-            new PlaytestQuestion("zeppelin", "done",
+            new PlaytestQuestion("zeppelin", "tower-visit",
                 "The Zeppelin was the end of a long chain. Did flying goods to a mast feel worth it?",
                 "Worth it", "Underwhelming", "Didn't get it working (say what)"),
-            new PlaytestQuestion("goals", "done",
+            new PlaytestQuestion("goals", "zeppelin-card",
                 "Chapter 8 named a good and left the building to you. Did you know what to build next?",
                 "Yes", "Mostly", "I was lost (say where)"),
-            new PlaytestQuestion("save-load", "done",
+            new PlaytestQuestion("save-load", "copper-ingot",
                 "After you loaded, did everything come back as you left it?",
                 "Everything", "Something was missing (say what)", "Something was wrong (say what)"),
-            new PlaytestQuestion("slag", "done",
+            new PlaytestQuestion("slag", "copper",
                 "Slag had to be carried away, with Coke to burn it. A real problem worth solving, or a chore?",
                 "A real problem", "Somewhere between", "A chore"),
-            new PlaytestQuestion("badge", "done",
+            new PlaytestQuestion("marked-tiles", "copper",
+                "Chapter 5 marked a tile for everything you built. Did the marks help, or did you want to place things your own way?",
+                "They helped", "Fine either way", "In my way (say where)"),
+            new PlaytestQuestion("badge", "r4-card",
                 "When the golem stalled, did its badge tell you what was wrong?",
                 "Clearly", "Vaguely", "I didn't notice it"),
-            new PlaytestQuestion("coke-burn", "done",
+            new PlaytestQuestion("coke-burn", "patent",
                 "Your coal line feeds its boiler. Is Coke upkeep a cost worth managing, or a coal simulator?",
                 "Burns too fast", "About right", "Too slow to matter"),
             new PlaytestQuestion("guide", "done",
