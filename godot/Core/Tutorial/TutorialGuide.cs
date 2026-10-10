@@ -220,14 +220,25 @@ namespace GolemFactory.Tutorial
             if (stepId == FinishedStepId)
             {
                 Enter(_steps.Count);
-                return;
             }
-            int byId = string.IsNullOrEmpty(stepId) ? -1 : _steps.FindIndex(s => s.Id == stepId);
-            Enter(byId >= 0 ? byId : Math.Max(0, Math.Min(index, _steps.Count)));
+            else
+            {
+                int byId = string.IsNullOrEmpty(stepId) ? -1 : _steps.FindIndex(s => s.Id == stepId);
+                Enter(byId >= 0 ? byId : Math.Max(0, Math.Min(index, _steps.Count)));
+            }
+            _enteredByLoad = true;
         }
+
+        // Set when the current step was entered by a load rather than reached in play: every
+        // golem then predates the step, including one the player built for it before saving.
+        private bool _enteredByLoad;
+
+        // A save from before roles were saved: its golems have no recorded roles at all.
+        private bool _rolesFromOldSave;
 
         private void Enter(int index)
         {
+            _enteredByLoad = false;
             Index = index;
             _cycleSeen = false;
             _completedSinceEntry.Clear();
@@ -349,11 +360,15 @@ namespace GolemFactory.Tutorial
 
         private GolemEntity LiveGolem(string id) => LiveGolems.FirstOrDefault(g => g.GolemId == id);
 
+        private int[] _roleOpeningIndex;
+
         private void ResolveRoles()
         {
-            foreach ((string role, string stepId, string chassis) in RoleOpenings)
+            _roleOpeningIndex ??= RoleOpenings.Select(r => _steps.FindIndex(s => s.Id == r.stepId)).ToArray();
+            for (int r = 0; r < RoleOpenings.Length; r++)
             {
-                int opening = _steps.FindIndex(s => s.Id == stepId);
+                (string role, string _, string chassis) = RoleOpenings[r];
+                int opening = _roleOpeningIndex[r];
                 if (opening < 0 || Index < opening)
                 {
                     return; // later roles open later still
@@ -365,9 +380,15 @@ namespace GolemFactory.Tutorial
 
                 IEnumerable<GolemEntity> free = LiveGolems.Where(g =>
                     g.Program?.chassis?.name == chassis && !_roles.Values.Contains(g.GolemId));
+                // The step that builds this role's golem takes one built since it began -- or,
+                // loading a save from before roles, the newest free one, since everything
+                // predates a load and that save could not say which golem it built. A
+                // PAST role refills only from golems that predate the current step, so a role
+                // whose golem was dismantled cannot take the golem just built for this step
+                // (from review: the extractor's new golem went to chapter 4's empty role).
                 GolemEntity pick = Index == opening
-                    ? free.LastOrDefault(g => !_golemsAtEntry.Contains(g.GolemId))
-                    : free.FirstOrDefault();
+                    ? free.LastOrDefault(g => (_enteredByLoad && _rolesFromOldSave) || !_golemsAtEntry.Contains(g.GolemId))
+                    : free.FirstOrDefault(g => _golemsAtEntry.Contains(g.GolemId));
                 if (pick != null)
                 {
                     _roles[role] = pick.GolemId;
@@ -389,6 +410,7 @@ namespace GolemFactory.Tutorial
         public void RestoreRoles(IEnumerable<string> entries)
         {
             _roles.Clear();
+            _rolesFromOldSave = entries == null || !entries.Any();
             foreach (string entry in entries ?? Enumerable.Empty<string>())
             {
                 int split = entry?.IndexOf('=') ?? -1;

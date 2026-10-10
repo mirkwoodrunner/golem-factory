@@ -273,6 +273,11 @@ namespace GolemFactory.ClockTower
             _stageIndex = stageIndex < 0 ? 0 : (stageIndex > _stages.Count ? _stages.Count : stageIndex);
             _progressUnits = progressUnits < 0L ? 0L : progressUnits;
             _complete = complete || _stageIndex >= _stages.Count;
+            // A stage saved part-built had been fed, so its alarm is armed: a load into a factory
+            // whose line has since broken must still say so. (Unarmed, it never would, since no
+            // delivery ever comes. The cost: right after a load, a working line's alarm can show
+            // until its first delivery lands, because the meters are not saved.)
+            _fedThisStage = _progressUnits > 0L;
         }
 
         /// <summary>

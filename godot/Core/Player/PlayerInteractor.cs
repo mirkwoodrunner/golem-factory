@@ -556,7 +556,23 @@ namespace GolemFactory.Player
         // GridMap is the simulation truth for occupancy. Dropping a golem inside a depot would
         // give it that depot's tile as its own, so its source/target would read the depot's
         // neighbours instead of the ones the player was aiming at.
-        private bool IsDropBlocked(Vector2Int cell) => _gridMap != null && _gridMap.IsOccupied(cell);
+        private bool IsDropBlocked(Vector2Int cell) =>
+            (_gridMap != null && _gridMap.IsOccupied(cell)) || OtherGolemOn(cell) != null;
+
+        // Golems are NOT GridMap occupants (root CLAUDE.md), so "is a golem standing here" is a
+        // scan. Two golems on one tile share a source and a target, and the landing preview
+        // showed that tile as fine (from review).
+        private GolemEntity OtherGolemOn(Vector2Int cell)
+        {
+            foreach (GolemEntity golem in _golemSource?.Invoke() ?? _golems)
+            {
+                if (golem != null && golem != CarriedGolem && !golem.IsRemoved && !golem.IsHeld && golem.Cell == cell)
+                {
+                    return golem;
+                }
+            }
+            return null;
+        }
 
         public bool TryDropCarriedGolem()
         {
@@ -567,6 +583,13 @@ namespace GolemFactory.Player
             }
 
             Vector2Int cell = CarryDropCell.Value;
+            GolemEntity standing = OtherGolemOn(cell);
+            if (standing != null)
+            {
+                LastStatusMessage = $"{standing.GolemId} is already standing on this tile.";
+                Popup(Position, "Tile occupied", InteractionPopupKind.Refused);
+                return false;
+            }
             if (IsDropBlocked(cell))
             {
                 LastStatusMessage = "Something is already built on this tile.";
@@ -602,7 +625,7 @@ namespace GolemFactory.Player
             }
 
             Facing rotated = FacingUtility.RotateClockwise(golem.Facing);
-            golem.SetPlacement(golem.Cell, rotated);
+            golem.SetFacing(rotated);
             LastStatusMessage = $"{golem.GolemId} will face {FacingVisuals.Describe(rotated)}.";
             Popup(PositionOf(golem), "Facing " + FacingVisuals.Describe(rotated), InteractionPopupKind.Gain);
             return true;
@@ -626,7 +649,7 @@ namespace GolemFactory.Player
             }
 
             Facing rotated = FacingUtility.RotateClockwise(golem.Facing);
-            golem.SetPlacement(golem.Cell, rotated);
+            golem.SetFacing(rotated);
             LastStatusMessage = $"{golem.GolemId} now faces {FacingVisuals.Describe(rotated)}.";
             Popup(PositionOf(golem), "Facing " + FacingVisuals.Describe(rotated), InteractionPopupKind.Gain);
             return true;

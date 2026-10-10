@@ -298,6 +298,24 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void TheLandingTile_IsBlocked_WhereAnotherGolemStands()
+        {
+            // Golems are not GridMap occupants, so the drop never saw them: two golems ended up
+            // on one tile, sharing a source and a target, under a preview that said it was fine.
+            GolemEntity carried = NewGolem("Carried", new Vector2Int(5, 5), Facing.North, Vector3.zero);
+            GolemEntity standing = NewGolem("Standing", new Vector2Int(1, 1), Facing.North, new Vector3(9f, 0f, 0f));
+            PlayerInteractor interactor = NewPlayerAt(new Vector3(0.2f, 0f, 0f), new GridMap());
+            Assert.IsTrue(interactor.TryPickUpNearestGolem());
+            Assert.AreSame(carried, interactor.CarriedGolem);
+
+            interactor.Position = new GridCoordinateConverter(new Vector2(1f, 0.5f)).CellToWorldCenter(standing.Cell);
+            Assert.IsTrue(interactor.CarryDropBlocked, "red over another golem");
+            Assert.IsFalse(interactor.TryDropCarriedGolem());
+            StringAssert.Contains("Standing", interactor.LastStatusMessage);
+            Assert.AreEqual(new Vector2Int(5, 5), carried.Cell, "still in hand, not moved");
+        }
+
+        [Test]
         public void R_TurnsTheCarriedGolem_EvenWithAnotherGolemNearer()
         {
             GolemEntity carried = NewGolem("Carried", new Vector2Int(5, 5), Facing.North, new Vector3(0.3f, 0f, 0f));

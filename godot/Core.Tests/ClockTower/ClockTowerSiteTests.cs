@@ -434,6 +434,18 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void ALoadPartWayThroughAStage_KeepsItsAlarmArmed()
+        {
+            // The stage had been fed before the save, so a line that broke since must still be
+            // named: no delivery will ever come to arm it.
+            var site = new ClockTowerSite();
+            site.SetStages(AllStages());
+            site.RestoreProgress(0, 5000L, false);
+            site.Tick(0);
+            Assert.AreEqual(ItemType.FrameSection, site.StarvedItemType);
+        }
+
+        [Test]
         public void ARopedOffSite_StillAgesItsProductionWindows()
         {
             // Fresh production is recorded while the rope is up; untrimmed, a whole game of it

@@ -1000,6 +1000,23 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
+        public void ADismantledEarlierGolem_DoesNotTakeTheGolemBuiltForThisStep()
+        {
+            SandboxWorld world = Plenty();
+            Scavenger(world, "ExtractScrap", "PushOutput"); // chapter 1's
+            GolemEntity chapter4 = Scavenger(world, "ExtractScrap", "PushOutput");
+            GoTo(world, "scav3");
+            StringAssert.Contains("scav2=" + chapter4.GolemId, string.Join(",", world.Tutorial.RoleEntries));
+
+            // The wrecking bar takes chapter 4's golem; then the player builds the extractor.
+            Assert.IsTrue(world.StarterStation.TryDismantleGolem(chapter4, out _, out string refusal), refusal);
+            GolemEntity extractor = Scavenger(world, "ExtractScrap", "PushOutput");
+
+            Assert.AreNotEqual("scav3", StepId(world), "the new golem is the extractor, not chapter 4's replacement");
+            StringAssert.Contains("extractor=" + extractor.GolemId, string.Join(",", world.Tutorial.RoleEntries));
+        }
+
+        [Test]
         public void ALoadOnAndBackToWork_StillFinishesIt()
         {
             string path = Path.Combine(Path.GetTempPath(), "golem-factory-guide-" + System.Guid.NewGuid() + ".json");
