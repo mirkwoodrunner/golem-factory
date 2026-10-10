@@ -7,17 +7,50 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 | Milestone | Status |
 |---|---|
 | G0: Land the spike | **done**: PR #28, merged 2026-10-04 |
-| G1: Authored data as JSON | in review: PR #29 |
-| G2: Gameplay services into Core | **built**, in review as stacked sub-PRs: G2a station + assembly bay, G2b build mode, G2c interactions, G2d save + the rest |
-| G3: Art and fonts pipeline | in review |
-| G4: The world scene | in review |
-| G5: Buildings and build mode | in review; **waiting on your hands-on check** |
-| G5b: The player's hands (pulled forward from G6) | in review |
-| G6: Golems in full | in review |
-| G7: The Workbench | in review (you approved the screenshot) |
-| G8: Management HUD and remaining screens | in review |
-| G9: Save and load end to end | in review |
-| G10: Parity playtest and cutover | not started; **needs you to play it** |
+| G1: Authored data as JSON | **done**: PR #29 |
+| G2: Gameplay services into Core | **done**: PRs #30–#33 (G2a–G2d) |
+| G3: Art and fonts pipeline | **done**: PR #34 |
+| G4: The world scene | **done**: PR #35 |
+| G5: Buildings and build mode | **done**: PR #36 |
+| G5b: The player's hands (pulled forward from G6) | **done**: PR #37 |
+| G6: Golems in full | **done**: PR #38 |
+| G7: The Workbench | **done**: PR #39 |
+| G8: Management HUD and remaining screens | **done**: PR #40 |
+| G9: Save and load end to end | **done**: PR #41 (all of #30–#42 landed on `main` through #43, 2026-10-08) |
+| G10: Parity playtest and cutover | **in progress**: playtest fixes #42, #44, #45 merged; #46 (playtest mode) and #47 (Clock Tower) open; then your playtest, then the cutover PR |
+
+## Next session: start here
+
+State as of 2026-10-09:
+
+1. **Two PRs await your merge, in order:** #46 (`conversion/g10-playtest-mode`: playtest
+   mode, guide chapters 4–9, the Haul good picker, claims that are never random) and then
+   #47 (`conversion/g10-clock-tower`, based on #46: the town square, the roped-off tower site,
+   staged art, guide chapter 10). If #46 is squash-merged, rebase #47 onto `main` before
+   merging it. Never merge them on your own.
+2. **Your playtest.** You last played to just before Coke automation (chapter 3) and reported
+   that claims looked random; #46 fixes that (see "Claims, from playtest" below), but you
+   haven't confirmed it in play yet. Play from a fresh game with `"playtest": true` in
+   `godot/data/sandbox.json`; the guide asks the questions, F9 skips a chapter, and the report
+   is `%APPDATA%\Godot\app_userdata\Golem Factory\playtest-report.md`. How-to:
+   `testscript/phase-1-playtest.md`.
+3. **Fix what the report finds.** Already noticed and left for the playtest to judge:
+   - golems that are only *waiting* for input wear the red stall badge (maybe too loud);
+   - one stall badge shows a raw belt id, `Belt(0,-12)#3`;
+   - the old single-cell `godot/art/clock_tower.png` is unused since the staged art (delete
+     at cutover);
+   - the "Extract Scrap" card takes whatever the stall behind holds (Coal, in chapter 3), so
+     rename it once the card data is hand-edited after cutover.
+4. **Then the cutover PR** (the G10 list below): tag `unity-final`, delete `Assets/`,
+   `Packages/`, `ProjectSettings/` and the Unity `.gitignore` rules, retire the Unity Editor
+   tooling and `Tools/Data/convert_unity_assets.py`'s source-of-truth role (the JSON becomes
+   hand-edited), move `docs/unity-implementation-plan.md` to `docs/history/`, rewrite the root
+   `CLAUDE.md` from `godot/CLAUDE.md`, and update `docs/open-items.md` (still Unity-era).
+
+Standing rules: leave the modified `Assets/TextMesh Pro/.../LiberationSans SDF - Fallback.asset`
+uncommitted; nothing under `Assets/` changes before the cutover; tests and scenarios never write
+the player's real `save.json`. Last full run: **1629/1629** Core tests, all eleven scenarios
+pass, `verify_art.py` clean.
 
 ## Context
 
@@ -926,8 +959,63 @@ buildings. Includes the "no refund on load" duplicator regression.
       Demolish
     - the known gaps
     - the tuning table, updated to the Godot numbers (3 Coke/min per working golem, no Focus)
-  - **Playtest mode is complete.** Still to come: the Clock Tower rework, whose chapter comes
-    with it, in its own PR.
+  - **Playtest mode is complete** (PR #46).
+- **The Clock Tower rework** (branch `conversion/g10-clock-tower`), at the user's call: the
+  tower "is supposed to be the final project", but it was available from the start and drawn
+  like a grandfather clock. Steps:
+  1. **The town square (done).** `Core/World/TownSquare`: 10 rows by 17 cells south of the
+     street, opening off its middle. The world is now a cross: workshop, street, square.
+     - `IsInsideWorld`, `GetWorldCells` and `ClampToFloor` include it. The clamp's square
+       rectangle overlaps the street's last row, as the road overlaps the room's front row,
+       so walking across the seam never snags.
+     - The street's kerb stops across the square's mouth. The square gets side walls and a
+       far kerb (187 wall pieces, up from 167).
+     - The tower's site is a fixed 3×3 footprint at the square's centre, with a free ring of
+       cells around it to stand and deliver from.
+  2. **The site (done).** The tower stands from the start on the 3×3 footprint and is
+     never in the build menu (`SandboxWorld.Placeables` versus `AllPlaceables`).
+     - It's a **fixture** (`PlaceableBuilding.IsFixture`, `BuildModeController.RegisterFixture`):
+       it occupies all nine cells, and the wrecking bar refuses it by click or drag.
+     - It stays out of `Build.Buildings`, which is the factory, read by the save, the refund and
+       every count. It joins the authored buildings, as the starter bench and station do.
+     - Every footprint cell is its input, so it can be fed from any side.
+     - It's **roped off** (`ClockTowerSite.OpenWhen`) until the tech-tree ledger has seen a
+       Zeppelin. While closed it refuses deliveries, accrues nothing, and the HUD reads
+       "Clock Tower site roped off until you build a Zeppelin".
+  3. **Staged art (done).** `Tools/Art/generate_clock_tower_art.py` draws six pictures:
+     - `clock_tower_site` (roped off: brass posts, a sagging rope, a sign)
+     - `stage0` (open: the plinth chalked out)
+     - `stage1` (Foundation: a stone plinth under scaffolding)
+     - `stage2` (The Movement: the brick shaft, its great cog showing)
+     - `stage3` (Aether Illumination: a band of glowing lenses)
+     - `stage4` (The Chronometer: belfry, clock face, slate spire)
+
+     All six share one untrimmed 192×448 canvas with the bottom row on the footprint's south
+     edge, so the stages swap in place. `verify_art.py` runs the generator.
+     `ClockTowerArt.SpriteFor` picks the picture (Core, tested). The view puts the tower's node
+     at the footprint's south edge, because a standing sprite's feet go on its node's origin;
+     the `world` scenario caught the first draft offsetting them. The old single-cell
+     `clock_tower.png` is now unused.
+  4. **Save, and guide chapter 10 (done).**
+     - **Save:** the tower's stage and progress ride in the save's `ProgressEntry`. A
+       fixture is never in the building list, where a placed tower's progress used to go, so
+       without this a load reset the endgame.
+     - **Chapter 10, the Clock Tower:**
+       1. Walk into the town square.
+       2. Make Frame Sections (a goal step).
+       3. Feed them to the tower.
+       4. Lay the Foundation.
+
+       The guide test feeds it for real, 6 a minute of freshly assembled Frame Sections
+       through a footprint cell's input, until stage 1 completes and the picture changes.
+       The guide says plainly that a stockpile builds nothing, which is the tower's
+       fresh-production rule. The kit teleports the player through
+       `PlayerInteractor.Teleport`, which the Godot player node consumes; a bare Position
+       write was overwritten by the node on its next frame.
+     - **Found in the kit's frames:** the instant the rope came down, the HUD raised
+       "starved of FrameSection, progress frozen" over a site nobody had fed. A site is now
+       starved only once it has `HasStarted`: the alarm waits for the first delivery, though
+       progress still freezes.
 - **One Haul card; the player picks the good** (your call). Found while planning the smelting
   chapter: the deck's only Haul was typed to Scrap. No card could load Coke, ore or plate into
   a golem, so every two-input recipe (the Aether-Hauler's reason to exist) could not be fed,

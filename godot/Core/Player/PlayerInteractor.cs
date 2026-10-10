@@ -147,6 +147,28 @@ namespace GolemFactory.Player
         /// <summary>Where the player stands, in world units. Unity's transform.position.</summary>
         public Vector3 Position { get; set; }
 
+        /// <summary>
+        /// Moves the player, and asks whatever draws them to follow (G10: the playtest kit walks
+        /// the player out to the town square). Setting <see cref="Position"/> alone is overwritten
+        /// by the Godot player node on its next frame, which feeds its own walker's position in;
+        /// the node consumes this request first, with <see cref="TryTakeTeleport"/>.
+        /// </summary>
+        public void Teleport(Vector3 at)
+        {
+            Position = at;
+            _pendingTeleport = at;
+        }
+
+        public bool TryTakeTeleport(out Vector3 at)
+        {
+            at = _pendingTeleport ?? default;
+            bool pending = _pendingTeleport != null;
+            _pendingTeleport = null;
+            return pending;
+        }
+
+        private Vector3? _pendingTeleport;
+
         /// <summary>Raised for every popup Unity spawned.</summary>
         public event Action<InteractionPopup> PopupRaised;
 

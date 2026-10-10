@@ -50,7 +50,8 @@ each scene; `-- --scenario <name>` runs one to a verdict, prints
 `[scenario <name>] PASS|FAIL …` and exits 0/1. An unknown name fails and lists the known
 ones. Current scenarios:
 - `world` (Sandbox): the shell matches `SandboxLayout`, all nine stalls publish endpoints, and
-  the player walks to the street's far edge and back with the camera following.
+  the player walks down the street and through the town square to its far kerb and back,
+  with the camera following.
 - `build` (Sandbox): every placeable placed through the real build menu and cursor with
   synthetic mouse and key events, then drag runs, Escape, and a demolition that restores the
   stockpile exactly.
@@ -76,7 +77,7 @@ ones. Current scenarios:
   - Gathering advances it, and the Boiler step outlines its build-menu row.
   - F1 hides and shows it, it steps aside over Management, and Skip guide puts it away.
   - In the Workbench on "Program it", it sits clear of the sockets, the lever and the vault.
-- `playtest-kit` (Sandbox): F9 once per chapter from a fresh game (seven so far). The kit must
+- `playtest-kit` (Sandbox): F9 once per chapter from a fresh game (all ten). The kit must
   fast-forward every guide chapter, leaving the golems and buildings a player would have
   built, and the report must record it. Its Save and Load steps use
   `user://scenario-save.json`.
@@ -138,6 +139,21 @@ step that happens inside a full screen must also be placed clear of that screen'
 **A new guide step needs a kit action** (`TutorialGuide.Kit.cs`, `Performs`): what the
 playtest kit does to complete it, using the player's own verbs. `PlaytestKitTests` fails for
 a step without one.
+
+A step that wants a card claimed names it (`TutorialStep.Card`), and the Assembly Line always
+shows that card (`AssemblyLineState.Wanted`). The line otherwise offers a card only once the
+factory has made every good its price asks for, so a claim is never one the player can't pay.
+A step shown over the Workbench sets `TutorialStep.Workbench`. A kit action that moves the
+player calls `PlayerInteractor.Teleport`; a bare `Position` write is overwritten by
+`PlayerNode` on its next frame.
+
+**The Clock Tower is a fixture** (`PlaceableBuilding.IsFixture`,
+`BuildModeController.RegisterFixture`): it stands from the start on a 3×3 footprint in the
+town square (`Core/World/TownSquare`), is not in the build menu (`SandboxWorld.Placeables`
+versus `AllPlaceables`), and the wrecking bar refuses it. A fixture is never in
+`Build.Buildings`, which is the player's factory (save, refund, counts); its progress saves in
+`ProgressEntry` instead. It is roped off until the ledger has seen a Zeppelin
+(`ClockTowerSite.OpenWhen`), and only freshly assembled goods count toward a stage.
 
 **Playtest mode writes `user://playtest-report.md`.** Scenario runs write
 `user://scenario-playtest-report.md` instead, and save to `user://scenario-save.json`

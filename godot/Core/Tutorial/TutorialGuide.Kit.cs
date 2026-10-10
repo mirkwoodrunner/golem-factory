@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using GolemFactory.AssemblyLine;
+using GolemFactory.Belts;
 using GolemFactory.Buildings;
 using GolemFactory.Compat;
 using GolemFactory.Economy;
@@ -32,6 +33,7 @@ namespace GolemFactory.Tutorial
             ("expand", 7, "Room to grow, and keeping it"),
             ("copper-ingot", 8, "Brass, and the goods beyond"),
             ("zeppelin-card", 9, "The Zeppelin"),
+            ("tower-visit", 10, "The Clock Tower"),
         };
 
         /// <summary>The chapter the current step belongs to, and its title.</summary>
@@ -289,6 +291,20 @@ namespace GolemFactory.Tutorial
             ["zeppelin-pipe"] = () => PlaceGranted("SteamPipePrefab", ZeppelinPipeSpot, Facing.North),
             ["program-zeppelin"] = () => ProgramSlots(Zeppelin, ("HaulScrap", ItemType.CopperOre, 1), ("FreightLaunch", null, 1)),
             ["launch"] = () => Zeppelin?.SetPlacement(ZeppelinSpot, Facing.North),
+            ["tower-visit"] = () =>
+                _world.Interactor.Teleport(new Compat.Vector3(TownSquare.TowerCentre.x, TownSquare.TowerCentre.y - 3, 0f)),
+            ["frame-section"] = () => MakeGood("AssembleFrameSection", ItemType.FrameSection, 12),
+            // A golem's push, as the endpoint takes one: into a footprint cell.
+            ["tower-feed"] = () =>
+            {
+                if (_world.Endpoints.TryGetEndpoint(TownSquare.TowerOrigin, out IItemEndpoint tower))
+                {
+                    tower.TryGive(new ItemStack { ItemType = ItemType.FrameSection });
+                }
+            },
+            // Stage 1 takes six minutes of steady supply; the kit hands it over complete, as a
+            // line that ran that long would.
+            ["stage1"] = () => _world.ClockTower.Site.RestoreProgress(1, 0, false),
             ["work-carrier"] = () =>
             {
                 Pressers.FirstOrDefault(IsCarrier)?.SetPlacement(CarrierSpot, Facing.North);

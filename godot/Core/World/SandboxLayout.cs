@@ -97,10 +97,27 @@ namespace GolemFactory.World
 
             // The far kerb runs the STREET's width, not the room's: the road is wider than the
             // building, and reusing the skirting's loop would leave its outer cells unedged.
+            // ...except where the town square opens off it (G10).
             foreach (int index in FloorLayout.GetStreetEdgeIndices())
             {
+                if (index >= -TownSquare.HalfExtent && index <= TownSquare.HalfExtent)
+                {
+                    continue;
+                }
                 pieces.Add(new LayoutPiece("KerbStreet_" + index, "street_edge",
                     FloorLayout.GetWorldEdgeAnchor(FloorLayout.Edge.South, index, he, depth, northExtent)));
+            }
+
+            // The town square's own edges: side walls down its flanks, a kerb along its far side.
+            float squareOuter = TownSquare.HalfExtent + 0.5f;
+            for (int y = TownSquare.Top; y >= TownSquare.Bottom; y--)
+            {
+                pieces.Add(new LayoutPiece("SquareEast_" + y, "wall_side_e", new Vector2(squareOuter, y)));
+                pieces.Add(new LayoutPiece("SquareWest_" + y, "wall_side_w", new Vector2(-squareOuter, y)));
+            }
+            for (int x = -TownSquare.HalfExtent; x <= TownSquare.HalfExtent; x++)
+            {
+                pieces.Add(new LayoutPiece("KerbSquare_" + x, "street_edge", new Vector2(x, TownSquare.Bottom - 0.5f)));
             }
 
             // The shoulders: the building's south face where it is no longer the world's edge.

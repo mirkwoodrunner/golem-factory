@@ -70,7 +70,7 @@ namespace GolemFactory.ClockTower
         /// different questions and this is exactly the endpoint they diverge on.
         /// </para>
         /// </summary>
-        public bool CanGive() => _site != null && _site.AcceptsAnything;
+        public bool CanGive() => _site != null && _site.IsOpen && _site.AcceptsAnything;
 
         /// <summary>
         /// The typed question, and the one carrying real backpressure: does the RUNNING STAGE
@@ -83,7 +83,7 @@ namespace GolemFactory.ClockTower
         /// <c>StorageBufferEndpoint.TryGive</c> protects at the other end of the same push.
         /// </para>
         /// </summary>
-        public bool CanGive(string itemType) => _site != null && _site.Demands(itemType);
+        public bool CanGive(string itemType) => _site != null && _site.IsOpen && _site.Demands(itemType);
 
         /// <summary>
         /// Delivers one unit. Stamped with the site's <see cref="ClockTowerSite.CurrentTick"/>,
@@ -92,7 +92,7 @@ namespace GolemFactory.ClockTower
         /// </summary>
         public bool TryGive(ItemStack item)
         {
-            if (_site == null || string.IsNullOrEmpty(item.ItemType))
+            if (_site == null || !_site.IsOpen || string.IsNullOrEmpty(item.ItemType))
             {
                 return false;
             }

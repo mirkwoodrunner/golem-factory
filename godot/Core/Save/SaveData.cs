@@ -46,6 +46,15 @@ namespace GolemFactory.Save
         public bool clockPaused;
         public int tutorialStep;
         public bool tutorialDismissed;
+
+        /// <summary>
+        /// The Clock Tower on its town-square site (G10). A fixture is never in the building
+        /// list -- only what the player placed is -- so its progress rides here instead of on a
+        /// BuildingEntry, which is where a placed tower's always went.
+        /// </summary>
+        public int clockTowerStageIndex;
+        public long clockTowerProgressUnits;
+        public bool clockTowerComplete;
     }
 
     /// <summary>

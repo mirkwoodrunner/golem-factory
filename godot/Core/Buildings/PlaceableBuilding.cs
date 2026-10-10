@@ -73,6 +73,13 @@ namespace GolemFactory.Buildings
         /// </summary>
         public bool IsRuntimePlaced => _isRuntimePlaced;
 
+        /// <summary>
+        /// A building that is part of the world rather than the factory: the Clock Tower on its
+        /// site (G10). The wrecking bar cannot take it, by click or by drag. Scene furniture the
+        /// player could still clear is NOT a fixture; this is for the landmarks.
+        /// </summary>
+        public bool IsFixture { get; set; }
+
         /// <summary>Which prefab to rebuild this from. Null for scene furniture.</summary>
         public string PrefabKey { get; private set; }
 

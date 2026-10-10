@@ -82,6 +82,10 @@ namespace GolemFactory.Tutorial
             new PlaytestQuestion("drag", "done",
                 "Did laying belts and pipes by dragging feel good?",
                 "Good", "Fiddly", "Didn't work how I expected"),
+            new PlaytestQuestion("tower", "done",
+                "The Clock Tower now waits in the town square until the end game. Does it feel like the goal "
+                + "the whole factory was for?",
+                "Yes", "Not yet (say why)", "It should come sooner"),
             new PlaytestQuestion("zeppelin", "done",
                 "The Zeppelin was the end of a long chain. Did flying goods to a mast feel worth it?",
                 "Worth it", "Underwhelming", "Didn't get it working (say what)"),

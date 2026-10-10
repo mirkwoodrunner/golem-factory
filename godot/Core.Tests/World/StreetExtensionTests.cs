@@ -108,7 +108,9 @@ namespace GolemFactory.Tests.EditMode
         public void ClampToFloor_OffTheSouthEndAtAnOuterX_StaysOnTheStreet()
         {
             var converter = new GridCoordinateConverter(CellSize);
-            Vector3 wanted = converter.CellFractionToWorld(new Vector2(17f, -40f));
+            // One cell past the kerb, not twenty: from far enough south the town square (G10) is
+            // the nearer ground, which is right for a teleport and never reached by walking.
+            Vector3 wanted = converter.CellFractionToWorld(new Vector2(17f, FloorLayout.WorldMinY - 1f));
 
             Vector2 cell = converter.WorldToCellFraction(FloorLayout.ClampToFloor(wanted, converter));
 
@@ -142,6 +144,39 @@ namespace GolemFactory.Tests.EditMode
                 Assert.LessOrEqual(onTheStreet.y, -FloorLayout.HalfExtent - 1f + 0.001f,
                     "and must be held south of the shop front, at step " + step);
             }
+        }
+
+        [Test]
+        public void WalkingSouthDownTheMiddle_CrossesIntoTheTownSquare_AndStopsAtItsKerb()
+        {
+            // G10: the square opens off the street. The street-to-square seam must not snag a
+            // walking player, and the square's far kerb must stop them.
+            var converter = new GridCoordinateConverter(CellSize);
+            var at = new Vector2(0f, -16f);
+            for (int step = 0; step < 200; step++)
+            {
+                Vector3 wanted = converter.CellFractionToWorld(at + new Vector2(0f, -0.15f));
+                at = converter.WorldToCellFraction(FloorLayout.ClampToFloor(wanted, converter));
+                Assert.AreEqual(0f, at.x, 0.001f, "straight down the middle, at step " + step);
+            }
+            Assert.AreEqual(TownSquare.Bottom, at.y, 0.001f, "walked the whole square, to its kerb");
+        }
+
+        [Test]
+        public void WalkingSouthBesideTheSquare_StopsAtTheStreetKerb()
+        {
+            // And past the square's flank there is still kerb: a player there is not pulled
+            // sideways into the square.
+            var converter = new GridCoordinateConverter(CellSize);
+            float x = TownSquare.HalfExtent + 3f;
+            var at = new Vector2(x, -16f);
+            for (int step = 0; step < 100; step++)
+            {
+                Vector3 wanted = converter.CellFractionToWorld(at + new Vector2(0f, -0.15f));
+                at = converter.WorldToCellFraction(FloorLayout.ClampToFloor(wanted, converter));
+                Assert.AreEqual(x, at.x, 0.001f, "never pulled sideways, at step " + step);
+            }
+            Assert.AreEqual(FloorLayout.WorldMinY, at.y, 0.001f, "held at the street's kerb");
         }
 
         [Test]
