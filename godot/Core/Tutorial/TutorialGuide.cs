@@ -1511,11 +1511,10 @@ namespace GolemFactory.Tutorial
                 w => ClockTower.ClockTowerReadout.FormatHeadline(TowerSite.BuildReading())),
 
             new TutorialStep(
-                "done", "A factory that feeds itself",
-                "Scrap, Iron Plate and Coke now run without you, and a patent copies a program in a click. "
-                + "Keep the Coal stall stocked (E when it runs dry). Tab shows your Inventory, the Assembly Line "
-                + "and the Ledger, which maps the road ahead: the Aether-Hauler and two-input recipes. "
-                + "F1 brings this guide back.",
+                "done", "The Foundation is laid",
+                "The guide ends here; the tower doesn't. Three stages remain: The Movement, Aether Illumination "
+                + "and The Chronometer, each wanting its own goods at a steady rate. The Ledger (Tab) maps every "
+                + "recipe they need, and the tower's panel shows what it wants now. F1 brings this guide back.",
                 w => false,
                 w => null),
         };
