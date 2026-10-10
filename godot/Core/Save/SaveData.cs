@@ -126,6 +126,10 @@ namespace GolemFactory.Save
         public string chassisName;
         public string logicCoreName;
         public List<string> appendageNames = new List<string>();
+
+        // G10: each slot's hauled good and batch. Absent in an older save: the cards' own.
+        public List<string> appendageItemTypes = new List<string>();
+        public List<int> appendageQuantities = new List<int>();
     }
 
     [Serializable]
@@ -162,6 +166,9 @@ namespace GolemFactory.Save
         // save, which restores fine -- GolemProgram self-heals a short list back to the
         // authored per-card defaults.
         public List<int> appendageQuantities = new List<int>();
+
+        /// <summary>G10: each slot's hauled good. Absent in an older save: the cards' own.</summary>
+        public List<string> appendageItemTypes = new List<string>();
 
         // The golem's internal input/output stock. Parallel string/int lists per stock rather
         // than a dictionary, following BufferEntry exactly, because JsonUtility serializes

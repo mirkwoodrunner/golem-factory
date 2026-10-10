@@ -31,6 +31,14 @@ namespace GolemFactory.Golems
         // BufferEntry idiom.
         public List<int> appendageQuantities = new List<int>();
 
+        /// <summary>
+        /// Per-slot good for a Haul (G10, at the user's call: one Haul card, the player picks the
+        /// good). Parallel to <see cref="appendageQuantities"/> and kept on the PROGRAM for the
+        /// same reason: the card is a shared asset, so writing a player's choice onto it would
+        /// change every golem holding the card. Empty means the card's own inputItemType.
+        /// </summary>
+        public List<string> appendageItemTypes = new List<string>();
+
         public int CurrentStepIndex { get; set; }
         public GolemState State { get; set; } = GolemState.Idle;
 
@@ -98,6 +106,7 @@ namespace GolemFactory.Golems
             SyncQuantities();
             appendages.Add(appendage);
             appendageQuantities.Add(ClampQuantity(appendage.haulQuantity));
+            appendageItemTypes.Add(appendage.inputItemType ?? "");
             return true;
         }
 
@@ -139,6 +148,7 @@ namespace GolemFactory.Golems
             SyncQuantities();
             appendages.RemoveAt(index);
             appendageQuantities.RemoveAt(index);
+            appendageItemTypes.RemoveAt(index);
         }
 
         // --- Per-slot quantity ---------------------------------------------------------------
@@ -176,6 +186,32 @@ namespace GolemFactory.Golems
         }
 
         /// <summary>
+        /// The good the Haul in <paramref name="index"/> takes: the player's pick, else the card's
+        /// own type ("" = whatever the tile offers).
+        /// </summary>
+        public string GetItemTypeAt(int index)
+        {
+            SyncQuantities();
+            if (index < 0 || index >= appendages.Count)
+            {
+                return "";
+            }
+            string picked = appendageItemTypes[index];
+            return !string.IsNullOrEmpty(picked) ? picked : appendages[index]?.inputItemType ?? "";
+        }
+
+        /// <summary>Sets the good a Haul slot takes. Only a Haul has one; other slots ignore it.</summary>
+        public void SetItemTypeAt(int index, string itemType)
+        {
+            SyncQuantities();
+            if (index < 0 || index >= appendages.Count)
+            {
+                return;
+            }
+            appendageItemTypes[index] = itemType ?? "";
+        }
+
+        /// <summary>
         /// True if any slot holds an Assemble card. This is the test behind the pure-logistics
         /// rule (progression-design §2): a program with no Assemble treats its input stock as
         /// its output stock, so Haul -> Push cycles forever instead of filling input to the
@@ -205,6 +241,16 @@ namespace GolemFactory.Golems
         // exactly that, on purpose). A desync there must not be able to break a golem's tick.
         private void SyncQuantities()
         {
+            while (appendageItemTypes.Count > appendages.Count)
+            {
+                appendageItemTypes.RemoveAt(appendageItemTypes.Count - 1);
+            }
+
+            while (appendageItemTypes.Count < appendages.Count)
+            {
+                appendageItemTypes.Add(appendages[appendageItemTypes.Count]?.inputItemType ?? "");
+            }
+
             while (appendageQuantities.Count > appendages.Count)
             {
                 appendageQuantities.RemoveAt(appendageQuantities.Count - 1);

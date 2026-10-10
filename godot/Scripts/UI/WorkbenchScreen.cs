@@ -315,15 +315,49 @@ namespace GolemFactory.Nodes
         {
             var face = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
             Ugui.Fill(face);
-            face.AddChild(Ugui.Place(Ugui.Text("Label", WorkbenchSession.CardDisplayName(card.LogicCore, card.Appendage), 15, CardInk),
-                0.06f, 0.40f, 0.98f, 0.98f));
-            face.AddChild(Ugui.Place(Ugui.Text("Subtitle", WorkbenchSession.CardSubtitle(card.LogicCore, card.Appendage), 11, CardSubInk),
+            // A socketed Haul names its good with a picker (G10): "Haul  < Coke >". The card's own
+            // name ("Haul Scrap") is only where it starts.
+            bool goodPicker = withStepper && _session.IsDraftHaul(card.SourceAppendageIndex);
+            face.AddChild(Ugui.Place(Ugui.Text("Label", goodPicker ? "Haul" : WorkbenchSession.CardDisplayName(card.LogicCore, card.Appendage), 15, CardInk),
+                0.06f, 0.40f, goodPicker ? 0.34f : 0.98f, 0.98f));
+            if (goodPicker)
+            {
+                face.AddChild(GoodPicker(card.SourceAppendageIndex));
+            }
+            // The card's subtitle names an old routing id ("ScrapNode -> ScrapBuffer") that a placed
+            // golem never uses; a Haul with a picker says where it actually takes from.
+            string subtitle = goodPicker ? "from the tile behind" : WorkbenchSession.CardSubtitle(card.LogicCore, card.Appendage);
+            face.AddChild(Ugui.Place(Ugui.Text("Subtitle", subtitle, 11, CardSubInk),
                 0.06f, 0.04f, withStepper ? 0.60f : 0.98f, 0.42f));
             if (withStepper)
             {
                 face.AddChild(Stepper(card.SourceAppendageIndex, card.Appendage));
             }
             return face;
+        }
+
+        /// <summary>The good a Haul slot takes, with arrows to change it (WorkbenchSession.CycleDraftItemType).</summary>
+        private Control GoodPicker(int slot)
+        {
+            var row = Ugui.Place(new Control { Name = "Good", MouseFilter = Control.MouseFilterEnum.Ignore }, 0.34f, 0.46f, 0.98f, 0.96f);
+            row.AddChild(PickerButton("PreviousGood", "<", 0f, 0.16f, () => _session.CycleDraftItemType(slot, -1)));
+            row.AddChild(Ugui.Place(Ugui.Text("Value", GolemFactory.Economy.ItemTiers.DisplayName(_session.DraftItemTypeAt(slot)), 13, CardInk, align: 2, bold: true),
+                0.17f, 0f, 0.83f, 1f));
+            row.AddChild(PickerButton("NextGood", ">", 0.84f, 1f, () => _session.CycleDraftItemType(slot, +1)));
+            return row;
+        }
+
+        private Button PickerButton(string name, string glyph, float minX, float maxX, System.Action pressed)
+        {
+            var button = Ugui.Place(new Button { Name = name, FocusMode = Control.FocusModeEnum.None }, minX, 0f, maxX, 1f);
+            var face = new StyleBoxFlat { BgColor = StepperFace };
+            foreach (string state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
+            {
+                button.AddThemeStyleboxOverride(state, face);
+            }
+            button.AddChild(Ugui.Fill(Ugui.Text("Label", glyph, 14, CardInk, align: 2)));
+            button.Pressed += pressed;
+            return button;
         }
 
         private Control Stepper(int slot, AppendageActionDefinition card)

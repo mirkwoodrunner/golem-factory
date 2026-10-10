@@ -218,6 +218,14 @@ namespace GolemFactory.World
             if (setup.tutorial)
             {
                 Tutorial = new Tutorial.TutorialGuide(this);
+                if (AssemblyLine != null)
+                {
+                    AssemblyLine.Wanted = card => card != null && GolemFactory.Tutorial.TutorialGuide.CardKey(card) == Tutorial.WantedCardAppendage;
+                }
+                if (setup.playtest)
+                {
+                    Tutorial.AttachPlaytest(new Tutorial.PlaytestSession(), () => _realSeconds);
+                }
             }
         }
 
@@ -269,6 +277,10 @@ namespace GolemFactory.World
             }
             TechTree.ConfigureCardClaims(AssemblyLine, setup.claimUserId);
 
+            // A Haul offers the goods the factory has made (G10): the ledger only grows, so a good
+            // once offered stays offered.
+            Workbench.HaulableGood = item => TechTree.Ledger.HasItem(item);
+
             AssemblyLineBoard = new AssemblyLineBoard(AssemblyLine, Buffers, _stockpileBufferId, setup.claimUserId);
             AssemblyLineBoard.ConfigureBays(AssemblyBay, _stockpileBufferId);
             AssemblyLineBoard.ConfigureFloorExpansion(FloorExpansion);
@@ -315,8 +327,31 @@ namespace GolemFactory.World
         /// golem's program and placement, and every building the player placed. Returns the
         /// status line Unity's SaveLoadPanel printed.
         /// </summary>
+        /// <summary>
+        /// The Ledger's recipe pane (G10: on the world rather than the tab, so the guide can see a
+        /// recipe was opened). The Godot Ledger tab draws this one.
+        /// </summary>
+        public TechTreeReadout LedgerReadout =>
+            _ledgerReadout ??= new TechTreeReadout(Definitions.Recipes.Values.ToList(), Throughput, _stockpileBufferId, Clock.TicksPerSecond);
+
+        private TechTreeReadout _ledgerReadout;
+
+        /// <summary>Saves and loads this session, for the guide's save/load steps.</summary>
+        public int SavesMade { get; private set; }
+        public int LoadsMade { get; private set; }
+
+        /// <summary>
+        /// Where the SaveLoad tab saves -- set by the Godot layer (user://save.json, globalized) --
+        /// so the playtest kit's save step writes where the player's own Save does.
+        /// </summary>
+        public string DefaultSavePath { get; set; }
+
         public string SaveTo(string path)
         {
+            SavesMade++;
+            // The guide's Save step is done by saving, so it moves on BEFORE the save records its
+            // place: otherwise a load lands back on Save, and saving again loops (the kit did).
+            Tutorial?.Settle();
             List<GolemEntity> live = LiveGolems();
             SaveData data = SaveLoadService.CaptureState(Buffers, Patents, live, Build.Buildings);
             data.progress = CaptureProgress();
@@ -334,6 +369,7 @@ namespace GolemFactory.World
         /// </summary>
         public string LoadFrom(string path)
         {
+            LoadsMade++;
             SaveData data = SaveFileIO.ReadFromFile(path);
             if (data == null)
             {

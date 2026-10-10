@@ -801,6 +801,147 @@ buildings. Includes the "no refund on load" duplicator regression.
 
   `TutorialGuideTests` plays all three chapters through to Coke in the new firebox, and the
   `tutorial` scenario checks the chapter-3 pipe markers.
+- **Playtest mode, part 1: questions, timings and the report** (your call: "integrate the
+  playtest script into the tutorial").
+  - `Core/Tutorial/PlaytestSession` asks the script's judgement questions in the guide, each at
+    the step that follows what it asks about: the light, the Workbench, the manual era and the
+    walking, the market, Coke upkeep, and the guide itself.
+  - It times every step in real seconds and composes a Markdown report: answers with notes,
+    step timings, playtest-kit uses, and the errors the game logged.
+  - `Scripts/UI/PlaytestNode` shows the "your call" card in the guide plate's place, with
+    answer buttons, a note field and Skip. It hooks Godot's `Logger` for errors and writes
+    `user://playtest-report.md` as the session changes. **Scenario runs write
+    `scenario-playtest-report.md` instead**, so a test run can't overwrite a real playtest's
+    report.
+  - Typing a note doesn't walk or crank: `TextEntry.IsTyping` guards the player's polled keys.
+  - On in `sandbox.json` (`"playtest": true`). Covered by `PlaytestSessionTests`, and by the
+    `tutorial` scenario, which answers with a typed note and checks the report on disk.
+  - **The playtest kit (F9, playtest mode only)** fast-forwards the current chapter by
+    PERFORMING its steps (`TutorialGuide.Kit.cs`). It grants each step's goods, places
+    buildings on their marked tiles through build mode, builds and programs golems, and waits
+    on the world's clock for steps that take time. The world afterwards is the one a player
+    who did the chapter would have. Every use goes in the report. `PlaytestKitTests` carries
+    a fresh game through all three chapters, and so does the `playtest-kit` scenario, by
+    pressing F9.
+  - **Guide chapter 4: copies, turning and stalls** (the script's Part C and the badge half
+    of I1). Seven steps:
+    1. Patent the first Scavenger's program.
+    2. Build a second Scavenger.
+    3. Stamp the patent onto it (Patents → Load, then ENGAGE).
+    4. Build a third depot on its marked tile.
+    5. Stand the golem on the Scrap stall's east side, facing EAST: the first lesson in R.
+       Boiler 1 is right above it, so it needs no pipe.
+    6. Turn it to face up, so it stalls with "nothing behind me".
+    7. Turn it back; it resumes.
+
+    New questions: did stamping feel better than reprogramming, and did the badge say what
+    was wrong. Facing south was the first try, but it backs onto the boiler and stalls as
+    "waiting on Boiler(-7,-15)", true but confusing, so the step asks for up.
+  - **Guide chapter 5: metal, and its Slag** (progression Phase 4; the script's F and I3).
+    Ten steps:
+    1. Claim Iron Smelting.
+    2. Build an Aether-Hauler.
+    3. Build two depots on marked tiles: one behind the smelter, one in front.
+    4. Lay three marked pipes straight off the coal line's boiler.
+    5. Program Haul (Scrap ×2), Haul (Coke, set with the picker), Assemble Iron Smelting and
+       Push.
+    6. Set the smelter to work: it pushes Iron Plate and Slag.
+    7. Build a Slag Heap on its marked tile.
+    8. Build a carrier Presser.
+    9. Program it Haul (Slag ×4), Haul (Coke ×1), Push: the four Slag and the one Coke the
+       heap burns them with.
+    10. Set it to work. Done when the heap burns its first Slag.
+
+    New question: was Slag a real problem or a chore. The playtest kit now fast-forwards five
+    chapters to a 6-golem factory.
+  - **Guide chapter 6: belts, and a label** (the script's F and I2), at the Copper stall.
+    Eight steps:
+    1. Buy a Copper truckload and take one by hand, so the label can offer it.
+    2. Drag a belt run north on the marked tiles.
+    3. Drag a long pipe run up beside it and across to chapter 5's pipes.
+    4. Build and program an extractor (Extract → Push).
+    5. Set it to push ore onto the belt.
+    6. Build a depot past the belt's end and label it Copper Ore with E.
+    7. Build an unloader (Haul ‹Copper Ore› → Push).
+    8. Set it between the belt's end and the depot.
+
+    New questions: is E-cycling a decent way to label, and did dragging feel good. F9 now
+    fast-forwards six chapters to an 8-golem factory.
+
+    **Noticed in the frames, left for the playtest:** golems waiting for input wear the red
+    stall badge too: a carrier with "no Slag" yet, an unloader "waiting on Belt(0,-12)#3".
+    Waiting is normal in a running factory, so the badge may be too loud, and that belt label
+    is an internal id.
+  - **Guide chapter 7: room to grow, and keeping it** (the script's F, G, I4 and H): Extend
+    the floor, upgrade the assembly bays, open a recipe in the Ledger, then Save and Load. The
+    Ledger's recipe pane moved onto `SandboxWorld.LedgerReadout` so the guide can see a recipe
+    was opened. A save settles the guide first (`TutorialGuide.Settle`, never `Update`, which
+    runs the kit), so a load lands past the Save step. New question: did the load bring
+    everything back.
+  - **Claims, from playtest** ("the claims still appear random... it should be ones I am
+    capable of claiming"). Two rules on the Assembly Line:
+    - A card is offered only once the factory has made every good its price asks for, read
+      from the same ever-growing ledger as the prerequisites, so it never flickers.
+    - The card the guide is asking for is always on show (`AssemblyLineState.Wanted`, from
+      `TutorialGuide.WantedCardAppendage`), taking a cycling verb's slot first. A one-off it
+      displaces goes to the front of the queue, so it is not lost.
+    `PlaytestKitTests.EveryClaimStep_ShowsTheCardItAsksFor_AndOnlyPayableCards` pins both; with
+    the second rule off, it fails at the Iron Smelting step.
+  - **Scenario runs never touch the player's save.** `PlaytestNode.UnderScenario` now reads the
+    command line itself. It used to be a flag the ScenarioRunner set, after `ManagementScreen`
+    had already chosen the player's real `save.json`, and a kit run overwrote one.
+  - **Guide chapter 8: Brass, and the goods beyond.** Eight **goal steps**, one for each good
+    the Zeppelin costs: Copper Ingot, Zinc Ingot, Brass, Casing, Glass, Lens, Mainspring and
+    Aether Cell.
+    - Each step names its card (a new `TutorialStep.Card`, which also replaced the guide's
+      switch for the three earlier claim steps) and its recipe.
+    - A step is done once the tech-tree ledger has seen the good, the same question the
+      line asks of a card's price.
+    - No marked tiles: by now the player has built every shape of line these need.
+    - In this order every card's price is payable when its step comes.
+    - The kit claims each card and grants the good, as the gears step already did.
+    - New question: did you know what to build next?
+  - **Guide chapter 9: the Zeppelin** (the script's Freight Link, Part G). Six steps:
+    1. Claim its chassis card. Chassis cards are now matched too, through `TutorialGuide.CardKey`.
+    2. Build the Zeppelin.
+    3. Raise a Freight Mast.
+    4. Lay one pipe for steam.
+    5. Program it: Haul ‹Copper Ore›, then Freight Launch.
+    6. Set it past chapter 6's labelled Copper depot, **with the depot behind it**: a golem hauls
+       from behind. The first draft had it facing the depot, and the guide test caught it
+       stalling on `NoSourceAtTile`.
+
+    The guide test plays it for real: the Zeppelin flies and the ore lands in the stockpile
+    through the mast. New question: did flying goods to a mast feel worth it?
+  - **The guide stays on show over the Workbench for every step done there.** This is now a
+    `TutorialStep.Workbench` flag, not a list in the panel. The list had stopped at chapter 3, so
+    the guide stepped aside exactly when programming the smelter's two Hauls, the hardest
+    Workbench step in the guide.
+  - **`testscript/phase-1-playtest.md` is a how-to now**, down from 518 lines. The guide runs
+    what Parts A-H walked through. The page keeps:
+    - how to start, and where the report lands
+    - the keys
+    - a chapter map back to the old parts
+    - the checks the guide never reaches: moods, the Recycler, the splitter, the workshop and
+      Demolish
+    - the known gaps
+    - the tuning table, updated to the Godot numbers (3 Coke/min per working golem, no Focus)
+  - **Playtest mode is complete.** Still to come: the Clock Tower rework, whose chapter comes
+    with it, in its own PR.
+- **One Haul card; the player picks the good** (your call). Found while planning the smelting
+  chapter: the deck's only Haul was typed to Scrap. No card could load Coke, ore or plate into
+  a golem, so every two-input recipe (the Aether-Hauler's reason to exist) could not be fed,
+  in Unity too.
+  - Each Haul slot now has a good on the program (`GolemProgram.appendageItemTypes`, parallel
+    to the batch sizes and for the same reason: the card is a shared asset). It defaults to
+    the card's own type.
+  - The Workbench shows `Haul < good >` on a socketed Haul, offering the goods the factory has
+    made plus Scrap. ENGAGE commits the pick.
+  - Patents keep each slot's good and batch size, and the save carries both for golems and
+    patents. An older save keeps the cards' defaults.
+  - `HaulItemTypeTests` covers it, including an Aether-Hauler smelting Iron Plate from Scrap
+    and Coke hauled from one depot. The `workbench` scenario clicks the picker and checks
+    ENGAGE commits it.
 - **Newly unlocked Assembly Line cards jump the queue**, found writing that chapter. A card
   unlocks when the factory first makes what it needs, and it used to join the *back* of the
   queue, in reverse deck order. So R2 Scrap Reclamation, the first recipe a Presser runs, came

@@ -39,7 +39,9 @@ namespace GolemFactory.Save
                     ownerId = blueprint.OwnerId,
                     chassisName = blueprint.Chassis != null ? blueprint.Chassis.name : null,
                     logicCoreName = blueprint.LogicCore != null ? blueprint.LogicCore.name : null,
-                    appendageNames = blueprint.Appendages.Select(a => a.name).ToList()
+                    appendageNames = blueprint.Appendages.Select(a => a.name).ToList(),
+                    appendageItemTypes = blueprint.ItemTypes?.ToList() ?? new List<string>(),
+                    appendageQuantities = blueprint.Quantities?.ToList() ?? new List<int>(),
                 });
             }
 
@@ -66,6 +68,7 @@ namespace GolemFactory.Save
                 for (int i = 0; i < program.appendages.Count; i++)
                 {
                     entry.appendageQuantities.Add(program.GetQuantityAt(i));
+                    entry.appendageItemTypes.Add(program.GetItemTypeAt(i));
                 }
 
                 CaptureStock(golem.Inventory.Input, entry.inputStockTypes, entry.inputStockQuantities);
@@ -239,7 +242,9 @@ namespace GolemFactory.Save
                 var blueprint = new Blueprint(
                     entry.blueprintId, entry.ownerId,
                     catalog.FindChassis(entry.chassisName), catalog.FindLogicCore(entry.logicCoreName),
-                    entry.appendageNames.Select(catalog.FindAppendage).Where(a => a != null).ToList());
+                    entry.appendageNames.Select(catalog.FindAppendage).Where(a => a != null).ToList(),
+                    entry.appendageItemTypes != null && entry.appendageItemTypes.Count > 0 ? entry.appendageItemTypes : null,
+                    entry.appendageQuantities != null && entry.appendageQuantities.Count > 0 ? entry.appendageQuantities : null);
                 patents.TryPatent(blueprint);
             }
 
@@ -312,6 +317,17 @@ namespace GolemFactory.Save
                     for (int i = 0; i < quantityCount; i++)
                     {
                         program.SetQuantityAt(i, entry.appendageQuantities[i]);
+                    }
+                }
+
+                // G10: each Haul slot's good, the same way. An older save has none, and every
+                // slot keeps its card's own type.
+                if (entry.appendageItemTypes != null)
+                {
+                    int typeCount = System.Math.Min(entry.appendageItemTypes.Count, program.appendages.Count);
+                    for (int i = 0; i < typeCount; i++)
+                    {
+                        program.SetItemTypeAt(i, entry.appendageItemTypes[i]);
                     }
                 }
 

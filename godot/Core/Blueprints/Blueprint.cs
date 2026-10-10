@@ -16,10 +16,19 @@ namespace GolemFactory.Blueprints
         public LogicCoreDefinition LogicCore { get; }
         public IReadOnlyList<AppendageActionDefinition> Appendages { get; }
 
+        /// <summary>Each slot's hauled good (G10), or null for a patent from before there was one.</summary>
+        public IReadOnlyList<string> ItemTypes { get; }
+
+        /// <summary>Each slot's batch size, or null for a patent from before there was one.</summary>
+        public IReadOnlyList<int> Quantities { get; }
+
         public Blueprint(
             string blueprintId, string ownerId, ChassisDefinition chassis,
-            LogicCoreDefinition logicCore, IReadOnlyList<AppendageActionDefinition> appendages)
+            LogicCoreDefinition logicCore, IReadOnlyList<AppendageActionDefinition> appendages,
+            IReadOnlyList<string> itemTypes = null, IReadOnlyList<int> quantities = null)
         {
+            ItemTypes = itemTypes;
+            Quantities = quantities;
             BlueprintId = blueprintId;
             OwnerId = ownerId;
             Chassis = chassis;

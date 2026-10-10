@@ -161,9 +161,6 @@ namespace GolemFactory.Nodes
             }
         }
 
-        /// <summary>The steps done inside the Workbench, and so shown over it.</summary>
-        private static readonly string[] WorkbenchStepIds = { "program", "program-presser", "program-coker" };
-
         public override void _UnhandledInput(InputEvent e)
         {
             if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F1 } && Guide != null)
@@ -178,6 +175,13 @@ namespace GolemFactory.Nodes
                 }
                 GetViewport().SetInputAsHandled();
             }
+
+            // The playtest kit: playtest mode only, never in a normal game.
+            if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F9 } && Guide?.Playtest != null)
+            {
+                Guide.StartKit();
+                GetViewport().SetInputAsHandled();
+            }
         }
 
         public override void _Process(double delta)
@@ -186,12 +190,15 @@ namespace GolemFactory.Nodes
             TutorialGuide guide = Guide;
             bool screenOpen = ModalScreens.AnyOpen(GetTree());
             _workbench ??= GetTree().Root.FindChild("Workbench", true, false) as WorkbenchScreen;
-            bool inWorkbench = screenOpen && _workbench != null && _workbench.IsOpen && System.Array.IndexOf(WorkbenchStepIds, guide?.Current?.Id) >= 0;
+            bool inWorkbench = screenOpen && _workbench != null && _workbench.IsOpen && guide?.Current?.Workbench == true;
 
             // Over a full screen the guide shows only for the step that happens there; every other
             // step is about the world behind the screen, and the screens have no room to spare.
+            // A playtest question takes the plate's place while it waits (PlaytestNode); the arrow,
+            // markers and outline stay, so the step is still pointed at.
+            bool asking = guide?.Playtest?.Current != null && !screenOpen;
             bool showing = guide != null && guide.IsShowing && (!screenOpen || inWorkbench);
-            _plate.Visible = showing;
+            _plate.Visible = showing && !asking;
             if (!showing)
             {
                 _arrow.Visible = false;
@@ -210,9 +217,13 @@ namespace GolemFactory.Nodes
             {
                 _renderedVersion = guide.Version;
                 TutorialStep step = guide.Current;
-                _counter.Text = $"GUIDE  ·  step {guide.Index + 1} of {guide.StepCount}  ·  F1 hides";
+                int chapter = guide.ChapterOf(guide.Index);
+                _counter.Text = guide.KitRunning
+                    ? $"PLAYTEST KIT  ·  fast-forwarding chapter {chapter}..."
+                    : $"CHAPTER {chapter}  ·  {guide.Index + 1}/{guide.StepCount}  ·  F1 hides"
+                      + (guide.Playtest != null ? "  ·  F9 skips" : "");
                 _title.Text = step.Title;
-                _body.Text = step.Body + MenuKeyHint(step);
+                _body.Text = step.Body + MenuKeyHint(step) + ReportHint(step, guide);
                 bool last = guide.Index == guide.StepCount - 1;
                 _finish.Visible = last;
                 _skip.Visible = !last;
@@ -374,6 +385,12 @@ namespace GolemFactory.Nodes
             }
             return "";
         }
+
+        /// <summary>On the last step of a playtest, where the report is: the thing to send back.</summary>
+        private static string ReportHint(TutorialStep step, TutorialGuide guide) =>
+            guide.Playtest != null && step.Id == "done"
+                ? "\n\nPlaytest report (updates as you play): " + PlaytestNode.ReportFile
+                : "";
 
         private void HighlightRow(TutorialGuide guide, bool screenOpen)
         {

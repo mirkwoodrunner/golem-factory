@@ -57,7 +57,7 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
-        public void TheWholeGuide_FromAColdStartToTheFirstIronPlate()
+        public void TheWholeGuide_FromAColdStartToTheLastChapter()
         {
             SandboxWorld world = Compose();
             DefinitionSet defs = world.Definitions;
@@ -205,9 +205,283 @@ namespace GolemFactory.Tests.Tutorial
             {
                 world.Advance(1f / 30f);
             }
-            Assert.AreEqual("done", StepId(world),
+            Assert.AreEqual("patent", StepId(world),
                 $"the coking Presser's first cycle ends chapter 3 (coker {coker.Program.State}, {coker.StallReason} {coker.StallResourceId})");
             Assert.Greater(boiler2.Boiler.CokeStock, 0, "its Coke went into the new boiler's firebox");
+
+            // --- Chapter 4: a patent, R, and a stall on purpose ------------------------------------
+            Assert.IsTrue(world.Patents.TryPatent(new GolemFactory.Blueprints.Blueprint(
+                "BP-001", "LocalPlayer", golem.Program.chassis, golem.Program.logicCore, golem.Program.appendages.ToList())));
+            Assert.AreEqual("scav2", StepId(world));
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["ClockworkScavenger"], out GolemEntity scav2));
+            Assert.AreEqual("stamp", StepId(world));
+
+            // Stamping is the Patents tab's Load: the blueprint's program onto the new golem.
+            var blueprint = world.Patents.Blueprints.Values.Single();
+            scav2.Program.logicCore = blueprint.LogicCore;
+            foreach (var card in blueprint.Appendages)
+            {
+                scav2.Program.TryAddAppendage(card);
+            }
+            Assert.AreEqual("depot3", StepId(world));
+
+            Place(world, "DepotPrefab", world.Tutorial.Depot3Spot.x, world.Tutorial.Depot3Spot.y);
+            Assert.AreEqual("turn", StepId(world));
+            Assert.AreEqual(Facing.East, world.Tutorial.Current.SpotFacing, "the marker shows east");
+
+            scav2.SetPlacement(world.Tutorial.Scav2Spot, Facing.East);
+            for (int frame = 0; frame < 900 && StepId(world) == "turn"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("stall", StepId(world), $"facing the depot, it works ({scav2.StallReason} {scav2.StallResourceId})");
+
+            scav2.SetPlacement(world.Tutorial.Scav2Spot, Facing.North);
+            for (int frame = 0; frame < 300 && StepId(world) == "stall"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual(Events.StallReason.NoSourceAtTile, scav2.StallReason, "the street behind it: 'nothing behind me'");
+            Assert.AreEqual("unstall", StepId(world), $"facing away, it stalls ({scav2.Program.State} {scav2.StallReason} {scav2.StallResourceId} step {scav2.Program.CurrentStepIndex} cell {scav2.Cell} facing {scav2.Facing})");
+
+            scav2.SetPlacement(world.Tutorial.Scav2Spot, Facing.East);
+            for (int frame = 0; frame < 900 && StepId(world) == "unstall"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("r4-card", StepId(world), "turned back, it resumes");
+
+            // --- Chapter 5: metal, and its Slag ---------------------------------------------------
+            Give(world, ItemType.Scrap, 400);
+            Give(world, ItemType.IronPlate, 200);
+            Give(world, ItemType.Gear, 60);
+            Give(world, ItemType.Coke, 120);
+            int r4 = Enumerable.Range(0, world.AssemblyLine.SlotCount)
+                .FirstOrDefault(i => world.AssemblyLine.GetCard(i)?.appendage?.name == "AssembleIronSmelting");
+            Assert.AreEqual("AssembleIronSmelting", world.AssemblyLine.GetCard(r4)?.appendage?.name, "Iron Smelting is on show");
+            Assert.IsTrue(world.AssemblyLineBoard.Claim(r4), world.AssemblyLineBoard.Status);
+            Assert.AreEqual("hauler", StepId(world));
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["AetherHauler"], out GolemEntity smelter));
+            Assert.AreEqual("smelt-depots", StepId(world));
+            Place(world, "DepotPrefab", world.Tutorial.SmeltInSpot.x, world.Tutorial.SmeltInSpot.y);
+            Place(world, "DepotPrefab", world.Tutorial.SmeltOutSpot.x, world.Tutorial.SmeltOutSpot.y);
+            Assert.AreEqual("pipes3", StepId(world));
+            foreach (Vector2Int pipe in world.Tutorial.Pipe3Spots)
+            {
+                Place(world, "SteamPipePrefab", pipe.x, pipe.y);
+            }
+            Assert.AreEqual("program-smelter", StepId(world));
+
+            // Two Hauls of the one card, set to two goods with the picker.
+            smelter.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            smelter.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
+            smelter.Program.SetQuantityAt(0, 2);
+            smelter.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
+            smelter.Program.SetItemTypeAt(1, ItemType.Coke);
+            Assert.IsTrue(smelter.Program.TryAddAppendage(defs.Appendages["AssembleIronSmelting"]));
+            Assert.IsTrue(smelter.Program.TryAddAppendage(defs.Appendages["PushOutput"]));
+            Assert.AreEqual("work-smelter", StepId(world));
+
+            smelter.SetPlacement(world.Tutorial.SmelterSpot, Facing.North);
+            for (int frame = 0; frame < 900 && StepId(world) == "work-smelter"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("slag-heap", StepId(world), $"the smelter cycles ({smelter.StallReason} {smelter.StallResourceId})");
+            Assert.Greater(world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.Slag), 0, "and makes Slag");
+
+            Place(world, "SlagHeapPrefab", world.Tutorial.SlagHeapSpot.x, world.Tutorial.SlagHeapSpot.y);
+            Assert.AreEqual("carrier", StepId(world));
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["BrassPresser"], out GolemEntity carrier));
+            Assert.AreEqual("program-carrier", StepId(world));
+
+            carrier.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            carrier.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
+            carrier.Program.SetItemTypeAt(0, ItemType.Slag);
+            carrier.Program.SetQuantityAt(0, 4);
+            carrier.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
+            carrier.Program.SetItemTypeAt(1, ItemType.Coke);
+            carrier.Program.TryAddAppendage(defs.Appendages["PushOutput"]);
+            Assert.AreEqual("work-carrier", StepId(world));
+
+            Give(world, ItemType.Slag, 8);
+            carrier.SetPlacement(world.Tutorial.CarrierSpot, Facing.North);
+            for (int frame = 0; frame < 1200 && StepId(world) == "work-carrier"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("copper", StepId(world), $"the heap burns Slag ({carrier.StallReason} {carrier.StallResourceId})");
+
+            // --- Chapter 6: belts, and a label ------------------------------------------------------
+            // Order Copper at the stall, wait for the cart, take one by hand.
+            SandboxSetup.NodeEntry copperStall = world.Setup.nodes.Single(n => n.id == "CopperOreNode");
+            world.Interactor.Position = new Compat.Vector3(copperStall.x, copperStall.y + 1f, 0f);
+            world.Interactor.Poll();
+            Assert.IsTrue(world.Interactor.Interact(), "ordered Copper: " + world.Interactor.LastStatusMessage);
+            for (int frame = 0; frame < 600 && !world.Nodes.TryGetNode("CopperOreNode", out var n) | (n != null && n.RemainingQuantity == 0); frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            world.Interactor.Poll();
+            Assert.IsTrue(world.Interactor.Interact(), "harvested one: " + world.Interactor.LastStatusMessage);
+            Assert.AreEqual("belts", StepId(world));
+
+            // A dragged run: build mode's own drag, which points the run along itself.
+            world.Build.SetActivePrefab(world.Placeables.Single(p => p.Key == "BeltPrefab").Prefab);
+            Vector2Int[] belts = world.Tutorial.BeltSpots;
+            world.Build.Click(belts[0], false);       // press on the first tile...
+            foreach (Vector2Int cell in belts.Skip(1))
+            {
+                world.Build.Hover(cell);              // ...drag along the run...
+            }
+            world.Build.Release();                    // ...and let go
+            world.Build.CancelPlacement();
+            Assert.AreEqual("pipes4", StepId(world), "a north run on the marked tiles");
+
+            foreach (Vector2Int pipe in world.Tutorial.Pipe4Spots)
+            {
+                Place(world, "SteamPipePrefab", pipe.x, pipe.y);
+            }
+            Assert.AreEqual("scav3", StepId(world));
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["ClockworkScavenger"], out GolemEntity extractor));
+            extractor.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            extractor.Program.TryAddAppendage(defs.Appendages["ExtractScrap"]);
+            extractor.Program.TryAddAppendage(defs.Appendages["PushOutput"]);
+            Assert.AreEqual("work-extractor", StepId(world));
+
+            extractor.SetPlacement(world.Tutorial.ExtractorSpot, Facing.North);
+            for (int frame = 0; frame < 900 && StepId(world) == "work-extractor"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("copper-depot", StepId(world), $"ore rides the belt ({extractor.StallReason} {extractor.StallResourceId})");
+
+            Place(world, "DepotPrefab", world.Tutorial.CopperDepotSpot.x, world.Tutorial.CopperDepotSpot.y);
+            PlaceableDepot copperDepot = world.Build.Buildings.Single(b => !b.IsRemoved && b.Cell == world.Tutorial.CopperDepotSpot).GetPart<PlaceableDepot>();
+            for (int press = 0; press < 30 && copperDepot.FilterItemType != ItemType.CopperOre; press++)
+            {
+                Assert.IsTrue(world.Interactor.TryRelabelDepot(copperDepot)); // [E] at the depot
+            }
+            Assert.AreEqual("unloader", StepId(world), "labelled Copper Ore by pressing E");
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["ClockworkScavenger"], out GolemEntity unloader));
+            unloader.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            unloader.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
+            unloader.Program.SetItemTypeAt(0, ItemType.CopperOre);
+            unloader.Program.TryAddAppendage(defs.Appendages["PushOutput"]);
+            Assert.AreEqual("work-unloader", StepId(world));
+
+            unloader.SetPlacement(world.Tutorial.UnloaderSpot, Facing.North);
+            for (int frame = 0; frame < 900 && StepId(world) == "work-unloader"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("expand", StepId(world), $"the unloader empties the belt into the labelled depot ({unloader.StallReason} {unloader.StallResourceId})");
+
+            // --- Chapter 7: room to grow, and keeping it -------------------------------------------
+            Give(world, ItemType.Scrap, 200);
+            Give(world, ItemType.IronPlate, 100);
+            Assert.IsTrue(world.AssemblyLineBoard.ExtendFloor(), world.AssemblyLineBoard.Status);
+            Assert.AreEqual("bays", StepId(world));
+            Assert.IsTrue(world.AssemblyLineBoard.UpgradeBays(), world.AssemblyLineBoard.Status);
+            Assert.AreEqual("ledger", StepId(world));
+            world.LedgerReadout.Select("r1.coking");
+            Assert.AreEqual("save", StepId(world));
+
+            string savePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "golem-factory-guide-" + System.Guid.NewGuid() + ".json");
+            try
+            {
+                world.SaveTo(savePath);
+                Assert.AreEqual("load", StepId(world));
+                world.LoadFrom(savePath);
+                Assert.AreEqual("copper-ingot", StepId(world), "the load lands past the Save step, and completes Load");
+            }
+            finally
+            {
+                System.IO.File.Delete(savePath);
+            }
+
+            // --- Chapter 8: goal steps ---------------------------------------------------------------
+            // Each asks for a card -- which the line must be showing -- then a good. Made here by
+            // depositing it: the lines that make them are chapters 2-6's shapes again.
+            (string step, string card, string good)[] goals =
+            {
+                ("copper-ingot", "AssembleCopperSmelting", ItemType.CopperIngot),
+                ("zinc-ingot", "AssembleZincSmelting", ItemType.ZincIngot),
+                ("brass", "AssembleBrassAlloying", ItemType.Brass),
+                ("casing", "AssembleCasingPress", ItemType.Casing),
+                ("glass", "AssembleGlassmaking", ItemType.Glass),
+                ("lens", "AssembleLensGrinding", ItemType.Lens),
+                ("mainspring", "AssembleMainspringWinding", ItemType.Mainspring),
+                ("aether-cell", "AssembleAetherContainment", ItemType.AetherCell),
+            };
+            Give(world, ItemType.ZincOre, 8);   // bought at the Zinc stall
+            Give(world, ItemType.Aether, 4);    // and the Aether stall
+            foreach ((string step, string card, string good) in goals)
+            {
+                world.Advance(1f / 30f);
+                Assert.AreEqual(step, StepId(world));
+                var line = world.AssemblyLine;
+                int slot = Enumerable.Range(0, line.SlotCount).FirstOrDefault(i => line.GetCard(i)?.appendage?.name == card, -1);
+                Assert.GreaterOrEqual(slot, 0, $"{step}: {card} is on the line");
+                Give(world, ItemType.Scrap, 100);
+                Give(world, ItemType.IronPlate, 100);
+                Give(world, ItemType.Gear, 50);
+                foreach (var cost in line.GetCurrentCostBundle(slot))
+                {
+                    Give(world, cost.itemType, cost.quantity);
+                }
+                Assert.IsTrue(world.AssemblyLineBoard.Claim(slot), $"{step}: claimed {card}");
+                Give(world, good, 10);
+                for (int frame = 0; frame < 60; frame++) // the tech tree polls the stockpile, not every frame
+                {
+                    world.Advance(1f / 30f);
+                }
+            }
+            Assert.AreEqual("zeppelin-card", StepId(world), "every good the Zeppelin costs has been made");
+
+            // --- Chapter 9: the Zeppelin --------------------------------------------------------------
+            var zline = world.AssemblyLine;
+            int zslot = Enumerable.Range(0, zline.SlotCount).FirstOrDefault(i => zline.GetCard(i)?.chassis?.name == "ZeppelinFreightLoader", -1);
+            Assert.GreaterOrEqual(zslot, 0, "the Zeppelin's card is on the line");
+            foreach (var cost in zline.GetCurrentCostBundle(zslot))
+            {
+                Give(world, cost.itemType, cost.quantity);
+            }
+            Assert.IsTrue(world.AssemblyLineBoard.Claim(zslot));
+            Assert.AreEqual("zeppelin", StepId(world));
+
+            Give(world, ItemType.Mainspring, 6);
+            Give(world, ItemType.Lens, 8);
+            Give(world, ItemType.AetherCell, 3);
+            Give(world, ItemType.Casing, 40);
+            Give(world, ItemType.Brass, 60);
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["ZeppelinFreightLoader"], out GolemEntity zeppelin));
+            Assert.AreEqual("mast", StepId(world));
+
+            Place(world, "FreightMastPrefab", world.Tutorial.MastSpot.x, world.Tutorial.MastSpot.y);
+            Assert.AreEqual("zeppelin-pipe", StepId(world));
+            Place(world, "SteamPipePrefab", world.Tutorial.ZeppelinPipeSpot.x, world.Tutorial.ZeppelinPipeSpot.y);
+            Assert.AreEqual("program-zeppelin", StepId(world));
+
+            zeppelin.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            Assert.IsTrue(zeppelin.Program.TryAddAppendage(defs.Appendages["HaulScrap"]));
+            zeppelin.Program.SetItemTypeAt(0, ItemType.CopperOre);
+            Assert.IsTrue(zeppelin.Program.TryAddAppendage(defs.Appendages["FreightLaunch"]));
+            Assert.AreEqual("launch", StepId(world));
+
+            int oreBefore = world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.CopperOre);
+            zeppelin.SetPlacement(world.Tutorial.ZeppelinSpot, Facing.North);
+            for (int frame = 0; frame < 1800 && StepId(world) == "launch"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("done", StepId(world), $"the Zeppelin flies ({zeppelin.StallReason} {zeppelin.StallResourceId})");
+            Assert.Greater(world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.CopperOre), oreBefore,
+                "the ore it flew landed in the stockpile, through the mast");
 
             world.Tutorial.Finish();
             Assert.IsFalse(world.Tutorial.IsShowing);

@@ -70,6 +70,64 @@ namespace GolemFactory.Nodes.Scenarios
             PlanFailedDrags();
             PlanEngageAndPatent();
             PlanCloseAndReopen();
+            PlanHaulPicker();
+        }
+
+        /// <summary>
+        /// G10: one Haul card, the player picks the good. A socketed Haul shows "Haul &lt; good &gt;";
+        /// the arrows change the good, and ENGAGE commits it to the golem's program.
+        /// </summary>
+        private void PlanHaulPicker()
+        {
+            Do("the factory has made Coke, so a Haul can take it", () =>
+            {
+                _world.Buffers.Deposit(_world.StockpileBufferId, Economy.ItemType.Coke, 5);
+                return null;
+            });
+            Do("retarget onto the golem", () => { _world.Workbench.ConfigureGolem(_golem); return null; });
+            // A socket takes a card only when empty: lift Extract out first, onto nothing.
+            DragCard(() => _screen.StepRows[0].Card, () => (Control)_screen.TargetLabelControl);
+            DragCard("HaulScrap", () => _screen.StepRows[0].Socket);
+            Do("Haul sits in STEP 1, naming Scrap", () =>
+            {
+                if (Draft(0) != "HaulScrap")
+                {
+                    return $"STEP 1 holds {Draft(0)}";
+                }
+                Label value = _screen.StepRows[0].Card?.FindChild("Good", true, false)?.FindChild("Value", true, false) as Label;
+                return value?.Text == "Scrap" ? null : $"the picker reads '{value?.Text}'";
+            });
+            Do("click > on the picker", () =>
+            {
+                Button next = _screen.StepRows[0].Card?.FindChild("NextGood", true, false) as Button;
+                if (next == null)
+                {
+                    return "a socketed Haul has no good picker";
+                }
+                Click(next);
+                return null;
+            });
+            Do("the Haul now takes another good", () =>
+            {
+                string good = _world.Workbench.DraftItemTypeAt(0);
+                Label value = _screen.StepRows[0].Card?.FindChild("Good", true, false)?.FindChild("Value", true, false) as Label;
+                if (good == Economy.ItemType.Scrap || value?.Text != Economy.ItemTiers.DisplayName(good))
+                {
+                    return $"draft good {good}, picker reads '{value?.Text}'";
+                }
+                return null;
+            });
+            Do("ENGAGE", () => { Click(_screen.Lever); return null; });
+            Do("the golem hauls the picked good", () =>
+            {
+                string committed = _golem.Program.GetItemTypeAt(0);
+                if (committed == Economy.ItemType.Scrap || committed != _world.Workbench.DraftItemTypeAt(0))
+                {
+                    return $"the golem's Haul takes {committed}";
+                }
+                _log.Add($"Haul's good picker: Scrap -> {Economy.ItemTiers.DisplayName(committed)}, committed by ENGAGE");
+                return null;
+            });
         }
 
         public ScenarioResult? Step(double delta)

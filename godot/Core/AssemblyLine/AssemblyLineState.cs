@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using GolemFactory.Compat;
 using GolemFactory.Economy;
 using GolemFactory.PunchCards;
@@ -101,12 +102,38 @@ namespace GolemFactory.AssemblyLine
                 }
             }
 
-            if (!string.IsNullOrEmpty(card.prerequisiteItemProduced))
+            // No context wired means the question cannot be asked, and an unanswerable
+            // prerequisite passes rather than locking the card out of a scene that never opted
+            // into gating.
+            if (_hasProducedItem == null)
             {
-                // No context wired means the question cannot be asked, and an unanswerable
-                // prerequisite passes rather than locking the card out of a scene that never
-                // opted into gating.
-                return _hasProducedItem == null || _hasProducedItem(card.prerequisiteItemProduced);
+                return true;
+            }
+
+            if (!string.IsNullOrEmpty(card.prerequisiteItemProduced) && !_hasProducedItem(card.prerequisiteItemProduced))
+            {
+                return false;
+            }
+
+            // G10, from playtest ("it shouldn't be random, it should be ones I am capable of
+            // claiming"): a card is offered only once the factory has made every good its PRICE
+            // asks for. Casing Press used to sit in a slot asking for Brass before Brass existed,
+            // claimable by nobody. Answered from the same ever-growing ledger as the
+            // prerequisite, so it never flickers as stock rises and falls -- once you could pay
+            // for a card in principle, it stays offered.
+            if (card.HasBundleCost)
+            {
+                foreach (RecipeIngredient c in card.claimCost)
+                {
+                    if (c.quantity > 0 && !string.IsNullOrEmpty(c.itemType) && !_hasProducedItem(c.itemType))
+                    {
+                        return false;
+                    }
+                }
+            }
+            else if (card.baseCost > 0 && !_hasProducedItem(ItemType.Scrap))
+            {
+                return false;
             }
 
             return true;
@@ -578,8 +605,16 @@ namespace GolemFactory.AssemblyLine
         /// Called on promotion and every tick, so a line that was already full of verbs when a
         /// card unlocked -- a saved game, say -- puts the card on show the next frame.
         /// </summary>
+        /// <summary>
+        /// The card the player is being asked for right now (the guide's claim steps), or null.
+        /// <see cref="Rebalance"/> keeps it on show (G10: "I don't see the ones you want me to claim").
+        /// </summary>
+        public Func<DraftableCardDefinition, bool> Wanted { get; set; }
+
         public void Rebalance()
         {
+            ShowWanted();
+
             bool cleared = false;
             for (int i = 0; i < SlotCount; i++)
             {
@@ -595,6 +630,64 @@ namespace GolemFactory.AssemblyLine
             {
                 RefillEmptySlots();
             }
+        }
+
+        /// <summary>
+        /// Puts a wanted card that is unlocked and waiting in the queue onto the line: into a
+        /// cycling verb's slot if there is one, else the last slot, whose card goes back to the
+        /// FRONT of the queue so it is next up again.
+        /// </summary>
+        private void ShowWanted()
+        {
+            if (Wanted == null)
+            {
+                return;
+            }
+            for (int i = 0; i < SlotCount; i++)
+            {
+                if (_slots[i] != null && Wanted(_slots[i]))
+                {
+                    return; // already on show
+                }
+            }
+
+            DraftableCardDefinition wanted = null;
+            foreach (DraftableCardDefinition card in _refillQueue)
+            {
+                if (Wanted(card) && !IsClaimedByAnyone(card))
+                {
+                    wanted = card;
+                    break;
+                }
+            }
+            if (wanted == null)
+            {
+                return;
+            }
+
+            int slot = SlotCount - 1;
+            for (int i = 0; i < SlotCount; i++)
+            {
+                if (_slots[i] == null || !_slots[i].isUnique)
+                {
+                    slot = i;
+                    break;
+                }
+            }
+
+            var rest = _refillQueue.Where(c => c != wanted).ToList();
+            _refillQueue.Clear();
+            DraftableCardDefinition displaced = _slots[slot];
+            if (displaced != null && displaced.isUnique)
+            {
+                _refillQueue.Enqueue(displaced); // next up again, not lost
+            }
+            foreach (DraftableCardDefinition card in rest)
+            {
+                _refillQueue.Enqueue(card);
+            }
+            _slots[slot] = wanted;
+            _secondsOnLine[slot] = 0f;
         }
 
         private bool QueueHoldsUnownedOneOff()

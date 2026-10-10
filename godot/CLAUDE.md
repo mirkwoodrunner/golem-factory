@@ -76,6 +76,10 @@ ones. Current scenarios:
   - Gathering advances it, and the Boiler step outlines its build-menu row.
   - F1 hides and shows it, it steps aside over Management, and Skip guide puts it away.
   - In the Workbench on "Program it", it sits clear of the sockets, the lever and the vault.
+- `playtest-kit` (Sandbox): F9 once per chapter from a fresh game (seven so far). The kit must
+  fast-forward every guide chapter, leaving the golems and buildings a player would have
+  built, and the report must record it. Its Save and Load steps use
+  `user://scenario-save.json`.
 - `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
   into the stockpile, over 600 ticks. `--spike-check` is an alias.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
@@ -130,6 +134,18 @@ new screen gets that for free.
 gets a `Done` check that reads the world, never a call from the code that does the thing. A
 step that happens inside a full screen must also be placed clear of that screen's controls
 (see `TutorialPanel.Dock`).
+
+**A new guide step needs a kit action** (`TutorialGuide.Kit.cs`, `Performs`): what the
+playtest kit does to complete it, using the player's own verbs. `PlaytestKitTests` fails for
+a step without one.
+
+**Playtest mode writes `user://playtest-report.md`.** Scenario runs write
+`user://scenario-playtest-report.md` instead, and save to `user://scenario-save.json`
+(`PlaytestNode.UnderScenario`, which reads `--scenario` off the command line itself: a flag
+set by the ScenarioRunner arrived too late, and a kit run overwrote a player's save). Never
+point a test at the real paths. **A save calls `TutorialGuide.Settle`, never `Update`**:
+`Update` also runs the playtest kit, which then performed its Load step from inside the save. Anything that POLLS the keyboard
+must also check `TextEntry.IsTyping`, or typing into a field walks the player.
 
 **Full screens report to `SandboxWorld.Screens`** (`ScreenCoordinator`). Implement
 `IClosableScreen`, `Register` in `_Ready`, and call `Screens.Opening(this)` in `Open`; every
