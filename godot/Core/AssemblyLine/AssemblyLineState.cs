@@ -169,6 +169,27 @@ namespace GolemFactory.AssemblyLine
                 missing.Add(card.prerequisiteItemProduced);
             }
 
+            // The price gate IsUnlocked applies (G10): a good the factory has never made. Without
+            // it a card locked only by its price read "needs " and then nothing (from review).
+            if (_hasProducedItem != null)
+            {
+                if (card.HasBundleCost)
+                {
+                    foreach (RecipeIngredient c in card.claimCost)
+                    {
+                        if (c.quantity > 0 && !string.IsNullOrEmpty(c.itemType) && !_hasProducedItem(c.itemType)
+                            && !missing.Contains(c.itemType))
+                        {
+                            missing.Add(c.itemType);
+                        }
+                    }
+                }
+                else if (card.baseCost > 0 && !_hasProducedItem(ItemType.Scrap) && !missing.Contains(ItemType.Scrap))
+                {
+                    missing.Add(ItemType.Scrap);
+                }
+            }
+
             return missing.Count == 0 ? "" : string.Join(", ", missing);
         }
 
@@ -618,7 +639,11 @@ namespace GolemFactory.AssemblyLine
             bool cleared = false;
             for (int i = 0; i < SlotCount; i++)
             {
-                if (_slots[i] != null && !_slots[i].isUnique && QueueHoldsUnownedOneOff())
+                // Never the card the guide is asking for: a wanted cycling verb (Freight Launch)
+                // was put on show by ShowWanted and cleared again by this loop in the same call,
+                // so it never stayed on the line (from review).
+                if (_slots[i] != null && !_slots[i].isUnique && !(Wanted?.Invoke(_slots[i]) ?? false)
+                    && QueueHoldsUnownedOneOff())
                 {
                     _slots[i] = null;
                     _secondsOnLine[i] = 0f;
