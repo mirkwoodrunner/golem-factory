@@ -961,6 +961,73 @@ namespace GolemFactory.Tests.Tutorial
                 $"the tower took a delivery ({feeder.Program.State}, {feeder.StallReason} {feeder.StallResourceId})");
         }
 
+        // --- The golem a step means is the one it built, not the Nth by build order -----------
+
+        private static GolemEntity Scavenger(SandboxWorld world, params string[] cards)
+        {
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(world.Definitions.Chassis["ClockworkScavenger"], out GolemEntity golem));
+            if (cards.Length > 0)
+            {
+                Program(world, golem, cards);
+            }
+            return golem;
+        }
+
+        [Test]
+        public void ASpareScavenger_DoesNotStandInForTheExtractorOrTheUnloader()
+        {
+            SandboxWorld world = Plenty();
+            world.AssemblyBay.RestoreTier(2); // room for six
+            Scavenger(world, "ExtractScrap", "PushOutput"); // chapter 1's
+            Scavenger(world, "ExtractScrap", "PushOutput"); // chapter 4's
+            Scavenger(world, "ExtractScrap", "PushOutput"); // a spare, built along the way
+
+            // Build order would call the spare "the third Scavenger" and finish this step at once.
+            GoTo(world, "scav3");
+            Assert.AreEqual("scav3", StepId(world), "the spare is not the extractor");
+
+            GolemEntity extractor = Scavenger(world, "ExtractScrap", "PushOutput");
+            Assert.AreNotEqual("scav3", StepId(world), "the one built for the step is");
+
+            // And "An unloader" waits on the golem built for IT -- the old Skip(3) found the
+            // extractor, which has no Haul, and never finished.
+            GoTo(world, "unloader");
+            GolemEntity unloader = Scavenger(world, "HaulScrap", "PushOutput");
+            unloader.Program.SetItemTypeAt(0, ItemType.CopperOre);
+            Assert.AreNotEqual("unloader", StepId(world));
+            StringAssert.Contains("extractor=" + extractor.GolemId, string.Join(",", world.Tutorial.RoleEntries));
+            StringAssert.Contains("unloader=" + unloader.GolemId, string.Join(",", world.Tutorial.RoleEntries));
+        }
+
+        [Test]
+        public void ALoadOnAndBackToWork_StillFinishesIt()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "golem-factory-guide-" + System.Guid.NewGuid() + ".json");
+            try
+            {
+                SandboxWorld world = Plenty();
+                Scavenger(world, "ExtractScrap", "PushOutput");
+                GoTo(world, "scav2");
+                GolemEntity scav2 = Scavenger(world, "ExtractScrap", "PushOutput");
+                GoTo(world, "unstall");
+                world.SaveTo(path);
+
+                SandboxWorld fresh = Compose();
+                fresh.LoadFrom(path);
+                Assert.AreEqual("unstall", fresh.Tutorial.Current?.Id);
+                Assert.IsTrue(fresh.Golems.Any(g => g.GolemId == scav2.GolemId), "precondition: it came back");
+
+                // Its next finished cycle ends the step, as it does without the load. The stalled
+                // golem's id used to live only in the last session, so this never happened.
+                EventBus.Publish(new GolemCompletedEvent(scav2.GolemId));
+                Assert.AreEqual("r4-card", StepId(fresh));
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
         [Test]
         public void SkipAndReopen_AndTheStepIsSaved()
         {

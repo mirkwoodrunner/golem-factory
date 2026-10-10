@@ -216,8 +216,99 @@ namespace GolemFactory.Tutorial
             Index = index;
             _cycleSeen = false;
             _completedSinceEntry.Clear();
+            _golemsAtEntry.Clear();
+            foreach (GolemEntity golem in LiveGolems)
+            {
+                _golemsAtEntry.Add(golem.GolemId);
+            }
             Version++;
             ReportStep();
+        }
+
+        // --- Which golem a step means ---------------------------------------------------------
+        //
+        // Chapters 4 to 6 each build a Scavenger and then talk about THAT golem for several steps.
+        // They used to find it by build order (the second Scavenger, the third, the fourth), so a
+        // spare built along the way, or one taken down with the wrecking bar, made every later
+        // step check the wrong golem: "An extractor" completed on a spare at once, and "An
+        // unloader" then waited forever on a golem with no Haul (from review). Now the golem a
+        // step builds is remembered by id the moment it appears, and the save keeps it.
+
+        /// <summary>Each role, the step that builds its golem, and the golem's chassis, in guide order.</summary>
+        private static readonly (string role, string stepId, string chassis)[] RoleOpenings =
+        {
+            ("first", "golem", "ClockworkScavenger"),
+            ("scav2", "scav2", "ClockworkScavenger"),
+            ("extractor", "scav3", "ClockworkScavenger"),
+            ("unloader", "unloader", "ClockworkScavenger"),
+        };
+
+        private readonly Dictionary<string, string> _roles = new Dictionary<string, string>();
+        private readonly HashSet<string> _golemsAtEntry = new HashSet<string>();
+
+        /// <summary>
+        /// The golem playing <paramref name="role"/>, or null before its step has built one.
+        /// Assigned on the step that builds it, to a golem of its chassis that was not standing
+        /// when the step began. A role whose golem is gone (dismantled), or that a save from
+        /// before roles never recorded, falls to the oldest golem of its chassis holding no
+        /// other role -- what build order used to answer, minus the golems already spoken for.
+        /// </summary>
+        private GolemEntity Role(string role)
+        {
+            ResolveRoles();
+            return _roles.TryGetValue(role, out string id) ? LiveGolem(id) : null;
+        }
+
+        private GolemEntity LiveGolem(string id) => LiveGolems.FirstOrDefault(g => g.GolemId == id);
+
+        private void ResolveRoles()
+        {
+            foreach ((string role, string stepId, string chassis) in RoleOpenings)
+            {
+                int opening = _steps.FindIndex(s => s.Id == stepId);
+                if (opening < 0 || Index < opening)
+                {
+                    return; // later roles open later still
+                }
+                if (_roles.TryGetValue(role, out string held) && LiveGolem(held) != null)
+                {
+                    continue;
+                }
+
+                IEnumerable<GolemEntity> free = LiveGolems.Where(g =>
+                    g.Program?.chassis?.name == chassis && !_roles.Values.Contains(g.GolemId));
+                GolemEntity pick = Index == opening
+                    ? free.LastOrDefault(g => !_golemsAtEntry.Contains(g.GolemId))
+                    : free.FirstOrDefault();
+                if (pick != null)
+                {
+                    _roles[role] = pick.GolemId;
+                }
+            }
+        }
+
+        /// <summary>What a save records of the roles: "role=golemId" pairs.</summary>
+        public IEnumerable<string> RoleEntries
+        {
+            get
+            {
+                ResolveRoles();
+                return _roles.OrderBy(r => r.Key).Select(r => r.Key + "=" + r.Value).ToList();
+            }
+        }
+
+        /// <summary>A load: the roles a save recorded. Call before <see cref="Restore"/>.</summary>
+        public void RestoreRoles(IEnumerable<string> entries)
+        {
+            _roles.Clear();
+            foreach (string entry in entries ?? Enumerable.Empty<string>())
+            {
+                int split = entry?.IndexOf('=') ?? -1;
+                if (split > 0)
+                {
+                    _roles[entry.Substring(0, split)] = entry.Substring(split + 1);
+                }
+            }
         }
 
         /// <summary>Playtest mode, when on: questions and timings ride along with the steps.</summary>
@@ -484,9 +575,7 @@ namespace GolemFactory.Tutorial
             LiveGolems.Where(g => g.Program?.chassis != null && g.Program.chassis.name == "ClockworkScavenger");
 
         /// <summary>The Scavenger that is not the first one: chapter 4's.</summary>
-        private GolemEntity SecondScavenger => Scavengers.Skip(1).FirstOrDefault();
-
-        private string _stalledGolemId;
+        private GolemEntity SecondScavenger => Role("scav2");
 
         // Chapter 5 smelts: an Aether-Hauler hauls Scrap AND Coke (the Haul good picker) and runs
         // R4, which makes Slag whether you want it or not. A carrier Presser hauls the Slag, with
@@ -594,9 +683,9 @@ namespace GolemFactory.Tutorial
             return spots.ToArray();
         }
 
-        private GolemEntity CopperExtractor => Scavengers.Skip(2).FirstOrDefault();
+        private GolemEntity CopperExtractor => Role("extractor");
 
-        private GolemEntity CopperUnloader => Scavengers.Skip(3).FirstOrDefault();
+        private GolemEntity CopperUnloader => Role("unloader");
 
         private bool BeltsLaid => BeltSpots.All(c => _world.Belts.TryGetBelt(c, out PlacedBelt belt) && belt.Facing == Facing.North);
 
@@ -914,7 +1003,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "scav2", "Build a second Scavenger",
                 "At the construction station, build another Clockwork Scavenger (12 Scrap).",
-                w => Scavengers.Count() >= 2,
+                w => SecondScavenger != null,
                 w => ScrapFirst(12, Station),
                 w => Count(ItemType.Scrap, 12)),
 
@@ -948,26 +1037,19 @@ namespace GolemFactory.Tutorial
                 "stall", "Stall it on purpose",
                 "Golems never improvise. Press R by the new Scavenger until it faces up, at the boiler. With "
                 + "the street behind it instead of the stall, it stops, and its badge says what is missing.",
-                w =>
-                {
-                    // Any stall of chapter 4's golem: which way the player turned it decides the
-                    // reason, and every reason's badge names the problem.
-                    GolemEntity scav2 = SecondScavenger;
-                    if (scav2 != null && scav2.Program.State == GolemState.Stalled)
-                    {
-                        _stalledGolemId = scav2.GolemId;
-                        return true;
-                    }
-                    return false;
-                },
+                // Any stall of chapter 4's golem: which way the player turned it decides the
+                // reason, and every reason's badge names the problem.
+                w => SecondScavenger != null && SecondScavenger.Program.State == GolemState.Stalled,
                 w => SecondScavenger?.Cell),
 
             new TutorialStep(
                 "unstall", "And back to work",
                 "Turn it back to face the depot (R). A stalled golem waits rather than skipping ahead, and "
                 + "picks up the moment its tile is right again.",
-                w => _stalledGolemId != null && _completedSinceEntry.Contains(_stalledGolemId),
-                w => LiveGolems.Where(g => g.GolemId == _stalledGolemId).Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
+                // The golem chapter 4 built, by its saved role: a load on this step used to leave the
+                // stalled golem's id behind in the last session, and the step could never finish.
+                w => SecondScavenger != null && _completedSinceEntry.Contains(SecondScavenger.GolemId),
+                w => SecondScavenger?.Cell,
                 spot: Scav2Spot,
                 spotFacing: Facing.East),
 

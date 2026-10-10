@@ -401,6 +401,14 @@ namespace GolemFactory.World
                 new BuildModeBuildingRebuilder(Build));
             Interactor.RefreshInteractables();
 
+            // The guide last, once its golems are back: entering a step notes which golems were
+            // already standing, and a role names a golem by id, so both want the loaded world.
+            if (data.progress != null && Tutorial != null)
+            {
+                Tutorial.RestoreRoles(data.progress.tutorialRoles);
+                Tutorial.Restore(data.progress.tutorialStepId, data.progress.tutorialStep, data.progress.tutorialDismissed);
+            }
+
             string golems = report.Skipped > 0
                 ? $"Loaded {report.Restored} golems, rebuilt {report.Respawned}, skipped {report.Skipped}"
                 : $"Loaded {report.Restored} golems, rebuilt {report.Respawned}";
@@ -436,6 +444,10 @@ namespace GolemFactory.World
             if (AssemblyLine != null)
             {
                 progress.claimedCards.AddRange(AssemblyLine.GetClaimedCards(_claimUserId).Select(c => c.name));
+            }
+            if (Tutorial != null)
+            {
+                progress.tutorialRoles.AddRange(Tutorial.RoleEntries);
             }
             return progress;
         }
@@ -480,7 +492,6 @@ namespace GolemFactory.World
                     progress.clockTowerStageIndex, progress.clockTowerProgressUnits, progress.clockTowerComplete);
             }
 
-            Tutorial?.Restore(progress.tutorialStepId, progress.tutorialStep, progress.tutorialDismissed);
 
             Clock.Speed = progress.clockSpeed > 0f ? progress.clockSpeed : 1f;
             if (progress.clockPaused)
