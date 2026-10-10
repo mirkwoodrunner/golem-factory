@@ -453,6 +453,19 @@ namespace GolemFactory.Tests.Tutorial
                 Give(world, cost.itemType, cost.quantity);
             }
             Assert.IsTrue(world.AssemblyLineBoard.Claim(zslot));
+            Assert.AreEqual("freight-card", StepId(world));
+
+            // The Workbench offers only owned cards from its roster: Freight Launch must be both,
+            // or the Zeppelin can never be programmed by hand (it once was neither).
+            Assert.IsFalse(world.Workbench.VaultAppendages.Any(a => a.name == "FreightLaunch"), "precondition: not owned yet");
+            for (int frame = 0; frame < 3; frame++)
+            {
+                world.Advance(1f / 30f); // the line rebalances on its tick
+            }
+            int launchSlot = Enumerable.Range(0, zline.SlotCount).FirstOrDefault(i => zline.GetCard(i)?.appendage?.name == "FreightLaunch", -1);
+            Assert.GreaterOrEqual(launchSlot, 0, "the guide keeps Freight Launch on show");
+            Assert.IsTrue(world.AssemblyLineBoard.Claim(launchSlot), world.AssemblyLineBoard.Status);
+            Assert.IsTrue(world.Workbench.VaultAppendages.Any(a => a.name == "FreightLaunch"), "claimed, the vault offers it");
             Assert.AreEqual("zeppelin", StepId(world));
 
             Give(world, ItemType.Mainspring, 6);
@@ -625,6 +638,763 @@ namespace GolemFactory.Tests.Tutorial
             Place(world, "DepotPrefab", world.Tutorial.DepotSpot.x, world.Tutorial.DepotSpot.y);
             Assert.AreEqual("work", StepId(world));
             Assert.AreEqual(world.Tutorial.GolemSpot, world.Tutorial.Current.Spot);
+        }
+
+        private static void Program(SandboxWorld world, GolemEntity golem, params string[] cards)
+        {
+            golem.Program.logicCore = world.Definitions.LogicCores["AlwaysOnCore"];
+            foreach (string card in cards)
+            {
+                Assert.IsTrue(golem.Program.TryAddAppendage(world.Definitions.Appendages[card]), card);
+            }
+        }
+
+        private static void GoTo(SandboxWorld world, string stepId)
+        {
+            world.Tutorial.Restore(stepId, 0, false);
+            Assert.AreEqual(stepId, world.Tutorial.Current?.Id, "precondition: on " + stepId);
+        }
+
+        [Test]
+        public void ASavedStep_IsRestoredByItsId_NotItsIndex()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "golem-factory-guide-" + System.Guid.NewGuid() + ".json");
+            try
+            {
+                // A finished guide, saved with the index a SHORTER guide had for its end: every
+                // chapter added since has inserted steps, and the bare index used to bring the
+                // finished guide back mid-chapter.
+                SandboxWorld world = Compose();
+                world.Tutorial.Finish();
+                world.SaveTo(path);
+                File.WriteAllText(path, System.Text.RegularExpressions.Regex.Replace(
+                    File.ReadAllText(path), "\"tutorialStep\"\\s*:\\s*\\d+", "\"tutorialStep\": 18"));
+
+                SandboxWorld fresh = Compose();
+                fresh.LoadFrom(path);
+                Assert.IsTrue(fresh.Tutorial.IsFinished, $"still finished, not on '{fresh.Tutorial.Current?.Id}'");
+
+                // A step in the middle comes back by id the same way.
+                world.Tutorial.Restore("coal-order", 0, false);
+                world.SaveTo(path);
+                File.WriteAllText(path, System.Text.RegularExpressions.Regex.Replace(
+                    File.ReadAllText(path), "\"tutorialStep\"\\s*:\\s*\\d+", "\"tutorialStep\": 3"));
+                fresh = Compose();
+                fresh.LoadFrom(path);
+                Assert.AreEqual("coal-order", fresh.Tutorial.Current?.Id);
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Test]
+        public void ASaveWithNoStepId_FallsBackToItsIndex()
+        {
+            SandboxWorld world = Compose();
+            world.Tutorial.Restore(null, 2, false);
+            Assert.AreEqual(2, world.Tutorial.Index, "a save from before ids were saved");
+            world.Tutorial.Restore("a-step-this-build-dropped", 3, false);
+            Assert.AreEqual(3, world.Tutorial.Index, "an id this build does not have");
+        }
+
+        [Test]
+        public void ClaimCoking_PointsAtTheCoalStall_WhileShortOfItsCoal()
+        {
+            SandboxWorld world = Compose();
+            GoTo(world, "coking-card");
+            SandboxSetup.NodeEntry coal = world.Setup.nodes.Single(n => n.id == "CoalNode");
+
+            Assert.AreEqual(new Vector2Int(coal.x, coal.y), world.Tutorial.TargetCell, "chapter 1 cranked every Coal into Coke");
+            Assert.AreEqual("Coal  0 / 4", world.Tutorial.Progress, "the card's claimCost");
+            StringAssert.Contains("Coal", world.Tutorial.Current.Body);
+
+            Give(world, ItemType.Coal, 4);
+            Assert.IsNull(world.Tutorial.TargetCell, "enough Coal: the claim is in Management");
+        }
+
+        [Test]
+        public void ProgramTheCoker_PointsAtTheNewPresser_EvenIfTheFirstWasProgrammedDifferently()
+        {
+            SandboxWorld world = Compose();
+            DefinitionSet defs = world.Definitions;
+            Give(world, ItemType.Scrap, 400);
+            Give(world, ItemType.IronPlate, 100);
+            Give(world, ItemType.Gear, 40);
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["BrassPresser"], out GolemEntity first));
+            Program(world, first, "HaulScrap", "AssembleGearCutting", "PushOutput"); // not the guide's iron program
+            first.SetPlacement(world.Tutorial.PresserSpot, Facing.North);
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["BrassPresser"], out GolemEntity second));
+            Assert.AreNotEqual(first.Cell, second.Cell, "precondition: two tiles to tell apart");
+
+            GoTo(world, "program-coker");
+            Assert.AreEqual(second.Cell, world.Tutorial.TargetCell, "the Presser just built, not the working one");
+        }
+
+        [Test]
+        public void FeedTheBoiler_OnDryBoilers_PointsAtTheNewBoiler_AndRecoversOnceFuelled()
+        {
+            SandboxWorld world = Compose();
+            DefinitionSet defs = world.Definitions;
+            TutorialGuide guide = world.Tutorial;
+            Give(world, ItemType.Scrap, 400);
+            Give(world, ItemType.IronPlate, 100);
+            Give(world, ItemType.Gear, 20);
+            Place(world, "BoilerPrefab", guide.BoilerSpot.x, guide.BoilerSpot.y);
+            PlaceableBoiler boiler2 = Place(world, "BoilerPrefab", guide.Boiler2Spot.x, guide.Boiler2Spot.y).GetPart<PlaceableBoiler>();
+            foreach (Vector2Int pipe in guide.Pipe2Spots)
+            {
+                Place(world, "SteamPipePrefab", pipe.x, pipe.y);
+            }
+            Assert.IsTrue(world.Nodes.TryGetNode("CoalNode", out ResourceNode coalStall));
+            coalStall.Deliver(40);
+
+            // Chapter 1's few Coke long burned: both boilers dry, and the coker can never make
+            // the first Coke that would fuel them.
+            Assert.AreEqual(0, world.Steam.TotalCokeStock, "precondition: dry");
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["BrassPresser"], out GolemEntity coker));
+            Program(world, coker, "ExtractScrap", "AssembleCoking", "PushOutput");
+            coker.SetPlacement(guide.CokerSpot, Facing.North);
+            GoTo(world, "work-coker");
+
+            world.Clock.Play();
+            for (int frame = 0; frame < 300; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("work-coker", StepId(world), "no steam, no cycle");
+            Assert.AreEqual(guide.Boiler2Spot, guide.TargetCell, "the arrow goes to the boiler in front of the coker");
+            StringAssert.StartsWith("Boilers dry", guide.Progress);
+
+            Give(world, ItemType.Coke, 2);
+            Assert.IsTrue(world.Interactor.TryRefuelBoiler(boiler2));
+            for (int frame = 0; frame < 1200 && StepId(world) == "work-coker"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("patent", StepId(world), $"fuelled, the coker runs ({coker.Program.State}, {coker.StallReason})");
+        }
+
+        // --- Pipe steps are done by where the steam goes, not by which tiles hold pipe ---------
+
+        private static SandboxWorld Plenty()
+        {
+            SandboxWorld world = Compose();
+            Give(world, ItemType.Scrap, 1000);
+            Give(world, ItemType.IronPlate, 500);
+            return world;
+        }
+
+        private static void Pipe(SandboxWorld world, params Vector2Int[] cells)
+        {
+            foreach (Vector2Int cell in cells)
+            {
+                Place(world, "SteamPipePrefab", cell.x, cell.y);
+            }
+        }
+
+        /// <summary>Both boilers and chapter 2's pipes: the ground "Join the boilers" opens on.</summary>
+        private static SandboxWorld AtJoinTheBoilers()
+        {
+            SandboxWorld world = Plenty();
+            TutorialGuide guide = world.Tutorial;
+            Place(world, "BoilerPrefab", guide.BoilerSpot.x, guide.BoilerSpot.y);
+            Pipe(world, guide.PipeSpots);
+            Place(world, "BoilerPrefab", guide.Boiler2Spot.x, guide.Boiler2Spot.y);
+            GoTo(world, "pipes2");
+            return world;
+        }
+
+        [Test]
+        public void JoinTheBoilers_IsNotDone_ByTheNewBoilerAloneReachingTheCoker()
+        {
+            SandboxWorld world = AtJoinTheBoilers();
+            Assert.IsTrue(world.Steam.Reaches(world.Tutorial.CokerSpot, world.Clock.CurrentTick),
+                "precondition: the new boiler's own neighbour, so ANY-boiler reach is already true");
+            Assert.AreEqual("pipes2", StepId(world));
+        }
+
+        [Test]
+        public void JoinTheBoilers_NeedsAPipeTouchingBothBoilers()
+        {
+            SandboxWorld world = AtJoinTheBoilers();
+            TutorialGuide guide = world.Tutorial;
+            // Every marked tile but the one beside the new boiler: the first boiler reaches the
+            // coker's tile, but nothing joins them. A golem standing between does not count.
+            Pipe(world, guide.Pipe2Spots.Take(guide.Pipe2Spots.Length - 1).ToArray());
+            Assert.AreEqual("pipes2", StepId(world), "reaches the coker, not joined");
+
+            Pipe(world, guide.Pipe2Spots.Last());
+            Assert.AreNotEqual("pipes2", StepId(world), "joined");
+        }
+
+        [Test]
+        public void JoinTheBoilers_IsDone_ByAnotherRouteThatDoesBothJobs()
+        {
+            SandboxWorld world = AtJoinTheBoilers();
+            TutorialGuide guide = world.Tutorial;
+            // Off chapter 2's pipe, along the new boiler's row, then down beside the coker.
+            Vector2Int fromChapter2 = guide.Boiler2Spot + new Vector2Int(-2, 0);
+            Assert.IsTrue(guide.PipeSpots.Any(p => GolemFactory.Steam.SteamPipeRules.AreOrthogonallyAdjacent(p, fromChapter2)),
+                "precondition: the route leaves chapter 2's run");
+            Pipe(world, fromChapter2, guide.Boiler2Spot + new Vector2Int(-1, 0), guide.CokerSpot + new Vector2Int(-1, 0));
+            Assert.IsFalse(world.Steam.HasPipe(guide.Pipe2Spots[0]), "precondition: a marked tile left bare");
+
+            Assert.AreNotEqual("pipes2", StepId(world));
+        }
+
+        [Test]
+        public void JoinTheBoilers_IsNotDone_ByARouteThatJoinsButLeavesTheCokerToTheEmptyBoiler()
+        {
+            SandboxWorld world = AtJoinTheBoilers();
+            TutorialGuide guide = world.Tutorial;
+            Pipe(world, guide.Boiler2Spot + new Vector2Int(-2, 0), guide.Boiler2Spot + new Vector2Int(-1, 0));
+            Assert.IsTrue(world.Steam.AreJoined(guide.BoilerSpot, guide.Boiler2Spot, world.Clock.CurrentTick), "precondition: joined");
+
+            Assert.AreEqual("pipes2", StepId(world),
+                "steam never passes through the new boiler to its neighbours: the coker would sit beside a cold firebox");
+        }
+
+        private static SandboxWorld AtColumnPipes()
+        {
+            SandboxWorld world = Plenty();
+            // The first boiler, then the coal line's: the coal line is a SECOND boiler.
+            Place(world, "BoilerPrefab", world.Tutorial.BoilerSpot.x, world.Tutorial.BoilerSpot.y);
+            Place(world, "BoilerPrefab", world.Tutorial.Boiler2Spot.x, world.Tutorial.Boiler2Spot.y);
+            GoTo(world, "pipes3");
+            return world;
+        }
+
+        [Test]
+        public void SteamForTheColumn_IsDone_ByARouteAroundAMarkedTile()
+        {
+            SandboxWorld world = AtColumnPipes();
+            TutorialGuide guide = world.Tutorial;
+            Vector2Int column = guide.SmelterSpot;
+            Pipe(world, column + new Vector2Int(-1, 0));
+            Assert.AreEqual("pipes3", StepId(world), "the smelter's tile only");
+
+            // Up the boiler's north side instead of the column's middle tile.
+            Pipe(world, column + new Vector2Int(-2, 1), column + new Vector2Int(-2, 2), column + new Vector2Int(-1, 2));
+            Assert.IsFalse(world.Steam.HasPipe(guide.Pipe3Spots[1]), "precondition: the middle marked tile bare");
+            Assert.AreNotEqual("pipes3", StepId(world));
+        }
+
+        [Test]
+        public void DragAPipeRun_IsDone_ByARunWithADetour()
+        {
+            SandboxWorld world = AtColumnPipes();
+            TutorialGuide guide = world.Tutorial;
+            Pipe(world, guide.Pipe3Spots);
+            GoTo(world, "pipes4");
+
+            // One tile of the run's westward stretch swapped for a hop over it, to the north.
+            Vector2Int[] run = guide.Pipe4Spots;
+            Vector2Int skipped = run.First(c => c.y == guide.UnloaderSpot.y + 1
+                && run.Contains(c + new Vector2Int(1, 0)) && run.Contains(c + new Vector2Int(-1, 0)));
+            Pipe(world, run.Where(c => c != skipped).ToArray());
+            Assert.AreEqual("pipes4", StepId(world), "a gap ends the run");
+
+            Pipe(world, skipped + new Vector2Int(1, 1), skipped + new Vector2Int(0, 1), skipped + new Vector2Int(-1, 1));
+            Assert.AreNotEqual("pipes4", StepId(world));
+        }
+
+        [Test]
+        public void SteamForTheZeppelin_IsDone_FromAnotherSide()
+        {
+            SandboxWorld world = AtColumnPipes();
+            TutorialGuide guide = world.Tutorial;
+            Pipe(world, guide.Pipe3Spots);
+            Pipe(world, guide.Pipe4Spots);
+            GoTo(world, "zeppelin-pipe");
+
+            // Off the run's westward stretch and round to the Zeppelin's north side.
+            Vector2Int z = guide.ZeppelinSpot;
+            Assert.IsTrue(world.Steam.HasPipe(z + new Vector2Int(-2, -1)), "precondition: the route leaves the run");
+            Pipe(world, z + new Vector2Int(-2, 0), z + new Vector2Int(-2, 1), z + new Vector2Int(-1, 1), z + new Vector2Int(0, 1));
+            Assert.IsFalse(world.Steam.HasPipe(guide.ZeppelinPipeSpot), "precondition: the marked tile bare");
+
+            Assert.AreNotEqual("zeppelin-pipe", StepId(world));
+        }
+
+        [Test]
+        public void ClearTheSlag_IsDone_ByAHeapOffItsMarkedTile()
+        {
+            SandboxWorld world = Plenty();
+            Vector2Int elsewhere = world.Tutorial.SlagHeapSpot + new Vector2Int(3, 0);
+            SlagHeap heap = Place(world, "SlagHeapPrefab", elsewhere.x, elsewhere.y).GetPart<PlaceableSlagHeap>().Heap;
+            GoTo(world, "work-carrier");
+
+            heap.AddCoke(1);
+            Assert.IsTrue(heap.TryVoid(), "precondition: it burns");
+            Assert.AreNotEqual("work-carrier", StepId(world));
+        }
+
+        [Test]
+        public void FeedTheTower_TheWayTheStepSays_ADepotAGolemAndABoilerInTheSquare()
+        {
+            SandboxWorld world = Plenty();
+            DefinitionSet defs = world.Definitions;
+            world.TechTree.Ledger.RecordChassis(SandboxWorld.ZeppelinChassis); // the rope is down
+            Assert.IsTrue(world.ClockTower.Site.IsOpen, "precondition: open");
+
+            // West of the footprint's bottom-left cell: depot, golem facing the tower, boiler below.
+            Vector2Int tower = TownSquare.TowerOrigin;
+            Vector2Int golemCell = tower + new Vector2Int(-1, 0);
+            Place(world, "DepotPrefab", golemCell.x - 1, golemCell.y);
+            PlaceableBoiler boiler = Place(world, "BoilerPrefab", golemCell.x, golemCell.y - 1).GetPart<PlaceableBoiler>();
+            Give(world, ItemType.Coke, 10);
+            Assert.IsTrue(world.Interactor.TryRefuelBoiler(boiler));
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["ClockworkScavenger"], out GolemEntity feeder));
+            Program(world, feeder, "HaulScrap", "PushOutput");
+            feeder.Program.SetItemTypeAt(0, ItemType.FrameSection);
+            feeder.SetPlacement(golemCell, Facing.East);
+            Give(world, ItemType.FrameSection, 20);
+
+            GoTo(world, "tower-feed");
+            world.Clock.Play();
+            for (int frame = 0; frame < 900 && StepId(world) == "tower-feed"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreNotEqual("tower-feed", StepId(world),
+                $"the tower took a delivery ({feeder.Program.State}, {feeder.StallReason} {feeder.StallResourceId})");
+        }
+
+        // --- The golem a step means is the one it built, not the Nth by build order -----------
+
+        private static GolemEntity Scavenger(SandboxWorld world, params string[] cards)
+        {
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(world.Definitions.Chassis["ClockworkScavenger"], out GolemEntity golem));
+            if (cards.Length > 0)
+            {
+                Program(world, golem, cards);
+            }
+            return golem;
+        }
+
+        [Test]
+        public void ASpareScavenger_DoesNotStandInForTheExtractorOrTheUnloader()
+        {
+            SandboxWorld world = Plenty();
+            world.AssemblyBay.RestoreTier(2); // room for six
+            Scavenger(world, "ExtractScrap", "PushOutput"); // chapter 1's
+            Scavenger(world, "ExtractScrap", "PushOutput"); // chapter 4's
+            Scavenger(world, "ExtractScrap", "PushOutput"); // a spare, built along the way
+
+            // Build order would call the spare "the third Scavenger" and finish this step at once.
+            GoTo(world, "scav3");
+            Assert.AreEqual("scav3", StepId(world), "the spare is not the extractor");
+
+            GolemEntity extractor = Scavenger(world, "ExtractScrap", "PushOutput");
+            Assert.AreNotEqual("scav3", StepId(world), "the one built for the step is");
+
+            // And "An unloader" waits on the golem built for IT -- the old Skip(3) found the
+            // extractor, which has no Haul, and never finished.
+            GoTo(world, "unloader");
+            GolemEntity unloader = Scavenger(world, "HaulScrap", "PushOutput");
+            unloader.Program.SetItemTypeAt(0, ItemType.CopperOre);
+            Assert.AreNotEqual("unloader", StepId(world));
+            StringAssert.Contains("extractor=" + extractor.GolemId, string.Join(",", world.Tutorial.RoleEntries));
+            StringAssert.Contains("unloader=" + unloader.GolemId, string.Join(",", world.Tutorial.RoleEntries));
+        }
+
+        [Test]
+        public void ADismantledEarlierGolem_DoesNotTakeTheGolemBuiltForThisStep()
+        {
+            SandboxWorld world = Plenty();
+            Scavenger(world, "ExtractScrap", "PushOutput"); // chapter 1's
+            GolemEntity chapter4 = Scavenger(world, "ExtractScrap", "PushOutput");
+            GoTo(world, "scav3");
+            StringAssert.Contains("scav2=" + chapter4.GolemId, string.Join(",", world.Tutorial.RoleEntries));
+
+            // The wrecking bar takes chapter 4's golem; then the player builds the extractor.
+            Assert.IsTrue(world.StarterStation.TryDismantleGolem(chapter4, out _, out string refusal), refusal);
+            GolemEntity extractor = Scavenger(world, "ExtractScrap", "PushOutput");
+
+            Assert.AreNotEqual("scav3", StepId(world), "the new golem is the extractor, not chapter 4's replacement");
+            StringAssert.Contains("extractor=" + extractor.GolemId, string.Join(",", world.Tutorial.RoleEntries));
+        }
+
+        [Test]
+        public void ALoadOnAndBackToWork_StillFinishesIt()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "golem-factory-guide-" + System.Guid.NewGuid() + ".json");
+            try
+            {
+                SandboxWorld world = Plenty();
+                Scavenger(world, "ExtractScrap", "PushOutput");
+                GoTo(world, "scav2");
+                GolemEntity scav2 = Scavenger(world, "ExtractScrap", "PushOutput");
+                GoTo(world, "unstall");
+                world.SaveTo(path);
+
+                SandboxWorld fresh = Compose();
+                fresh.LoadFrom(path);
+                Assert.AreEqual("unstall", fresh.Tutorial.Current?.Id);
+                Assert.IsTrue(fresh.Golems.Any(g => g.GolemId == scav2.GolemId), "precondition: it came back");
+
+                // Its next finished cycle ends the step, as it does without the load. The stalled
+                // golem's id used to live only in the last session, so this never happened.
+                EventBus.Publish(new GolemCompletedEvent(scav2.GolemId));
+                Assert.AreEqual("r4-card", StepId(fresh));
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Test]
+        public void TheLedgersClockTower_LightsWhenTheTowerIsFed_NotBecauseItStands()
+        {
+            SandboxWorld world = Compose();
+            for (int frame = 0; frame < 60; frame++)
+            {
+                world.Advance(1f / 30f); // the tracker polls
+            }
+            Assert.IsFalse(world.TechTree.Ledger.HasBuilding(GolemFactory.Progression.TechTreeCatalog.BuildingClockTower),
+                "the town square's fixture stands from the first frame; that is not building it");
+
+            world.ClockTower.Site.RecordDelivery(ItemType.FrameSection, 1, world.Clock.CurrentTick);
+            for (int frame = 0; frame < 60; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.IsTrue(world.TechTree.Ledger.HasBuilding(GolemFactory.Progression.TechTreeCatalog.BuildingClockTower));
+        }
+
+        [Test]
+        public void ALoad_StartsTheTowersRatesAfresh()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "golem-factory-tower-" + System.Guid.NewGuid() + ".json");
+            try
+            {
+                SandboxWorld world = Compose();
+                world.SaveTo(path);
+                world.ClockTower.Site.RecordDelivery(ItemType.FrameSection, 6, world.Clock.CurrentTick);
+                Assert.Greater(world.ClockTower.Site.DeliveryRatePerMinute(ItemType.FrameSection), 0, "precondition: fed");
+
+                world.LoadFrom(path);
+                Assert.AreEqual(0, world.ClockTower.Site.DeliveryRatePerMinute(ItemType.FrameSection),
+                    "deliveries from the abandoned session do not carry into the loaded one");
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        // --- Round 2: the guide says what is in the way of a marked tile ------------------------
+
+        [Test]
+        public void ADepotBuiltOffTheMarkedTile_EarnsANote_AndTheStepStillWaits()
+        {
+            SandboxWorld world = Plenty();
+            Place(world, "DepotPrefab", 8, 8); // built before the step: not the step's business
+            GoTo(world, "depot");
+            Assert.AreEqual("", world.Tutorial.Notice, "a depot from before the step is not a stray");
+
+            Vector2Int off = world.Tutorial.DepotSpot + new Vector2Int(1, 0);
+            Place(world, "DepotPrefab", off.x, off.y);
+            Assert.AreEqual("depot", StepId(world));
+            StringAssert.Contains("That Depot doesn't line up", world.Tutorial.Notice);
+
+            Place(world, "DepotPrefab", world.Tutorial.DepotSpot.x, world.Tutorial.DepotSpot.y);
+            Assert.AreEqual("work", StepId(world));
+        }
+
+        /// <summary>Lays a pipe on each of these cells that can take one; returns how many it laid.</summary>
+        private static int PaveWherePossible(SandboxWorld world, params Vector2Int[] cells)
+        {
+            world.Build.SetActivePrefab(world.Placeables.Single(p => p.Key == "SteamPipePrefab").Prefab);
+            foreach (Vector2Int cell in cells)
+            {
+                world.Build.PlaceOrRemove(cell);
+            }
+            world.Build.CancelPlacement();
+            return cells.Count(c => world.Steam.HasPipe(c));
+        }
+
+        private static readonly Vector2Int[] Sides =
+            { new Vector2Int(0, 1), new Vector2Int(1, 0), new Vector2Int(0, -1), new Vector2Int(-1, 0) };
+
+        [Test]
+        public void APavedMarkedTile_MovesTheLayoutToAFreeLine_WithoutANote()
+        {
+            // Round 3: the marks plan around what is built. A pipe on the coal line's default
+            // boiler tile moves the line to another side of the Coal stall.
+            SandboxWorld world = Plenty();
+            Vector2Int paved = world.Tutorial.Boiler2Spot;
+            Place(world, "SteamPipePrefab", paved.x, paved.y);
+            GoTo(world, "boiler2");
+
+            Assert.AreNotEqual(paved, world.Tutorial.Boiler2Spot, "the marks moved off the pipe");
+            Vector2Int coal = new Vector2Int(world.Setup.nodes.Single(n => n.id == "CoalNode").x, world.Setup.nodes.Single(n => n.id == "CoalNode").y);
+            Vector2Int step = world.Tutorial.CokerSpot - coal;
+            Assert.AreEqual(world.Tutorial.CokerSpot + step, world.Tutorial.Boiler2Spot, "a straight line from the stall");
+            Assert.AreEqual("", world.Tutorial.Notice);
+        }
+
+        [Test]
+        public void WhenNoLineIsFree_TheMarkedTileIsNamed()
+        {
+            SandboxWorld world = Plenty();
+            Vector2Int coal = new Vector2Int(world.Setup.nodes.Single(n => n.id == "CoalNode").x, world.Setup.nodes.Single(n => n.id == "CoalNode").y);
+            PaveWherePossible(world, Sides.Select(d => coal + d * 2).ToArray()); // every boiler tile
+            GoTo(world, "boiler2");
+
+            StringAssert.StartsWith("A Steam Pipe is on a marked tile", world.Tutorial.Notice);
+            StringAssert.Contains("Click it to take it up", world.Tutorial.Notice);
+        }
+
+        [Test]
+        public void WhenNoGolemTileIsFree_TheBuildingOnItIsNamed()
+        {
+            SandboxWorld world = Plenty();
+            Vector2Int coal = new Vector2Int(world.Setup.nodes.Single(n => n.id == "CoalNode").x, world.Setup.nodes.Single(n => n.id == "CoalNode").y);
+            PaveWherePossible(world, Sides.Select(d => coal + d).ToArray()); // every tile beside the stall
+            GoTo(world, "work-coker");
+
+            StringAssert.StartsWith("A Steam Pipe is on the golem's tile", world.Tutorial.Notice);
+        }
+
+        // --- Round 3: a chapter built its own way still finishes, and later marks follow it ----
+
+        private static Vector2Int StallOf(SandboxWorld world, string id)
+        {
+            SandboxSetup.NodeEntry node = world.Setup.nodes.Single(n => n.id == id);
+            return new Vector2Int(node.x, node.y);
+        }
+
+        [Test]
+        public void ChapterOne_OnAnotherSideOfTheStall_ByWhereTheDepotGoes()
+        {
+            SandboxWorld world = Plenty();
+            TutorialGuide guide = world.Tutorial;
+            Vector2Int scrap = StallOf(world, "ScrapNode");
+            Place(world, "BoilerPrefab", guide.BoilerSpot.x, guide.BoilerSpot.y);
+            GoTo(world, "depot");
+
+            // East of the stall instead of north: the boiler beside the golem's tile steams it too.
+            Place(world, "DepotPrefab", scrap.x + 2, scrap.y);
+            Assert.AreEqual("work", StepId(world), "a depot in a working line finishes the step");
+            Assert.AreEqual(scrap + new Vector2Int(1, 0), guide.GolemSpot);
+            Assert.AreEqual(Facing.East, guide.GolemFacing);
+            Assert.AreEqual(Facing.East, guide.Current.SpotFacing, "the marker shows it");
+
+            // Chapter 4's second Scavenger takes a side the first one didn't.
+            Assert.AreNotEqual(Facing.East, guide.Scav2Facing);
+            Assert.AreNotEqual(guide.GolemSpot, guide.Scav2Spot);
+        }
+
+        [Test]
+        public void ChapterThree_OnAnotherSideOfTheCoalStall_ItsRouteJoinsBothBoilers()
+        {
+            SandboxWorld world = Plenty();
+            TutorialGuide guide = world.Tutorial;
+            Vector2Int coal = StallOf(world, "CoalNode");
+            Place(world, "BoilerPrefab", guide.BoilerSpot.x, guide.BoilerSpot.y);
+            GoTo(world, "boiler2");
+
+            Place(world, "BoilerPrefab", coal.x + 2, coal.y); // east of the stall, along the street
+            Assert.AreEqual("pipes2", StepId(world));
+            Assert.AreEqual(coal + new Vector2Int(1, 0), guide.CokerSpot);
+            Assert.AreEqual(Facing.East, guide.CokerFacing);
+
+            Assert.Greater(guide.Pipe2Spots.Length, 0, "a route to lay");
+            Pipe(world, guide.Pipe2Spots);
+            Assert.AreNotEqual("pipes2", StepId(world), "the suggested route powers the coker from the first boiler and joins both");
+        }
+
+        [Test]
+        public void ChapterFive_AnotherPairOfDepots_MovesTheSmelterAndItsPipes()
+        {
+            SandboxWorld world = Plenty();
+            TutorialGuide guide = world.Tutorial;
+            Place(world, "BoilerPrefab", guide.BoilerSpot.x, guide.BoilerSpot.y);
+            Place(world, "BoilerPrefab", guide.Boiler2Spot.x, guide.Boiler2Spot.y);
+            GoTo(world, "smelt-depots");
+
+            // A pair of the player's own, up in the workshop rather than on the street.
+            Vector2Int a = guide.SmelterSpot + new Vector2Int(0, 3);
+            Place(world, "DepotPrefab", a.x, a.y);
+            Place(world, "DepotPrefab", a.x, a.y + 2);
+            Assert.AreEqual("pipes3", StepId(world));
+            Assert.AreEqual(a + new Vector2Int(0, 1), guide.SmelterSpot);
+            Assert.AreEqual(guide.SmeltOutSpot + (guide.SmeltOutSpot - guide.SmelterSpot), guide.CarrierSpot, "the carrier carries the line on");
+
+            Vector2Int[] route = guide.Pipe3Spots;
+            Pipe(world, route);
+            Assert.AreNotEqual("pipes3", StepId(world),
+                $"the suggested route steams the smelter and the carrier: smelter {guide.SmelterSpot} carrier {guide.CarrierSpot} "
+                + $"route {string.Join(" ", route)} boilers {guide.BoilerSpot} {guide.Boiler2Spot} "
+                + $"reach {world.Steam.Reaches(guide.SmelterSpot, world.Clock.CurrentTick)} {world.Steam.Reaches(guide.CarrierSpot, world.Clock.CurrentTick)}");
+        }
+
+        [Test]
+        public void ALaterChaptersDepot_NeverTakesOverAnEarlierChaptersLine()
+        {
+            // The first depot east of the stall; chapter 4's depot then goes on its own marks.
+            // "Any depot two out" used to hand chapter 1 to chapter 4's depot, and chapter 4 then
+            // marked the first golem's own tile.
+            SandboxWorld world = Plenty();
+            TutorialGuide guide = world.Tutorial;
+            Vector2Int scrap = StallOf(world, "ScrapNode");
+            Place(world, "BoilerPrefab", guide.BoilerSpot.x, guide.BoilerSpot.y);
+            Place(world, "DepotPrefab", scrap.x + 2, scrap.y);
+            Assert.AreEqual(Facing.East, guide.GolemFacing, "precondition: chapter 1 east");
+            Vector2Int golem1 = guide.GolemSpot;
+
+            Place(world, "DepotPrefab", guide.Depot3Spot.x, guide.Depot3Spot.y);
+            Assert.AreEqual(Facing.East, guide.GolemFacing, "chapter 1 stays where it was built");
+            Assert.AreEqual(golem1, guide.GolemSpot);
+            Assert.AreNotEqual(guide.GolemSpot, guide.Scav2Spot, "chapter 4 never marks the first golem's tile");
+        }
+
+        [Test]
+        public void ACoalLineBuiltSideways_KeepsTheSmeltersMarksOffTheStalls()
+        {
+            SandboxWorld world = Plenty();
+            TutorialGuide guide = world.Tutorial;
+            Vector2Int coal = StallOf(world, "CoalNode");
+            Place(world, "BoilerPrefab", guide.BoilerSpot.x, guide.BoilerSpot.y);
+            Place(world, "BoilerPrefab", coal.x + 2, coal.y);
+            Assert.AreEqual(Facing.East, guide.CokerFacing, "precondition: the coal line runs east");
+
+            var stalls = new System.Collections.Generic.HashSet<Vector2Int>(world.Setup.nodes.Select(n => new Vector2Int(n.x, n.y)));
+            foreach (Vector2Int tile in new[] { guide.SmelterSpot, guide.SmeltInSpot, guide.SmeltOutSpot, guide.CarrierSpot, guide.SlagHeapSpot })
+            {
+                Assert.IsFalse(stalls.Contains(tile), $"chapter 5 marked {tile}, a stall");
+                Assert.IsFalse(world.Grid.IsOccupied(tile), $"chapter 5 marked {tile}, which is built on");
+            }
+        }
+
+        [Test]
+        public void AFinishedSmelter_StaysPut_WhenALaterPairOfDepotsGoesUp()
+        {
+            SandboxWorld world = Plenty();
+            TutorialGuide guide = world.Tutorial;
+            Place(world, "BoilerPrefab", guide.BoilerSpot.x, guide.BoilerSpot.y);
+            Place(world, "BoilerPrefab", guide.Boiler2Spot.x, guide.Boiler2Spot.y);
+            Vector2Int defaultSmelter = guide.SmelterSpot;
+            Vector2Int a = defaultSmelter + new Vector2Int(0, 3);
+            Place(world, "DepotPrefab", a.x, a.y);
+            Place(world, "DepotPrefab", a.x, a.y + 2);
+            Vector2Int smelter = guide.SmelterSpot;
+            Assert.AreEqual(a + new Vector2Int(0, 1), smelter, "precondition: the player's own pair");
+
+            // Later, an ordinary depot pair right on the default column.
+            Place(world, "DepotPrefab", defaultSmelter.x, defaultSmelter.y - 1);
+            Place(world, "DepotPrefab", defaultSmelter.x, defaultSmelter.y + 1);
+            Assert.AreEqual(smelter, guide.SmelterSpot, "the pair finished first keeps the smelter");
+        }
+
+        [Test]
+        public void TheFirstBoiler_NeverCommitsTheCoalLine()
+        {
+            // The very first boiler happens to stand two out from the Coal stall: the coal line
+            // is a SECOND boiler, and chapter 3's pipes join the two.
+            SandboxWorld world = Plenty();
+            TutorialGuide guide = world.Tutorial;
+            Vector2Int coal = StallOf(world, "CoalNode");
+            Place(world, "BoilerPrefab", coal.x, coal.y + 2);
+            GoTo(world, "boiler2");
+
+            Assert.AreNotEqual(coal + new Vector2Int(0, 2), guide.Boiler2Spot);
+            Assert.AreEqual("boiler2", StepId(world), "no second boiler yet");
+        }
+
+        [Test]
+        public void AFirstBoilerBuiltElsewhere_GetsAPipeRouteThatReachesThePresser()
+        {
+            // Its steam still reaches the default golem tile, so chapter 1 stays put -- but the
+            // hand-drawn pipe beside the default boiler tile would join nothing.
+            SandboxWorld world = Plenty();
+            TutorialGuide guide = world.Tutorial;
+            Vector2Int scrap = StallOf(world, "ScrapNode");
+            Place(world, "BoilerPrefab", scrap.x - 1, scrap.y + 1);
+            Place(world, "DepotPrefab", guide.DepotSpot.x, guide.DepotSpot.y);
+            Assert.AreEqual(Facing.North, guide.GolemFacing, "precondition: chapter 1 as marked");
+            GoTo(world, "pipe");
+
+            Assert.Greater(guide.PipeSpots.Length, 0);
+            Pipe(world, guide.PipeSpots);
+            Assert.IsTrue(world.Steam.Reaches(guide.PresserSpot, world.Clock.CurrentTick), "the suggested route works");
+        }
+
+        [Test]
+        public void TheFirstDepotOfAPairOfYourOwn_IsNotCalledAStray()
+        {
+            SandboxWorld world = Plenty();
+            TutorialGuide guide = world.Tutorial;
+            Place(world, "BoilerPrefab", guide.BoilerSpot.x, guide.BoilerSpot.y);
+            Place(world, "BoilerPrefab", guide.Boiler2Spot.x, guide.Boiler2Spot.y);
+            GoTo(world, "smelt-depots");
+
+            Vector2Int a = guide.SmelterSpot + new Vector2Int(0, 3);
+            Place(world, "DepotPrefab", a.x, a.y);
+            Assert.AreEqual("", guide.Notice, "half a pair is not a mistake");
+        }
+
+        [Test]
+        public void AnEmptyPipeRoute_StillHasSomewhereToPoint()
+        {
+            // No boiler at all: nothing to route from, so the route is empty. The arrow used to
+            // index its first tile and throw every frame.
+            SandboxWorld world = Plenty();
+            GoTo(world, "pipe");
+            Assert.AreEqual(0, world.Tutorial.PipeSpots.Length, "precondition: no route");
+            Assert.AreEqual(world.Tutorial.PresserSpot, world.Tutorial.TargetCell);
+        }
+
+        [Test]
+        public void ChapterTwo_ThePresserCanStandOnAnotherSideOfTheFirstDepot()
+        {
+            SandboxWorld world = Plenty();
+            TutorialGuide guide = world.Tutorial;
+            Place(world, "BoilerPrefab", guide.BoilerSpot.x, guide.BoilerSpot.y);
+            Place(world, "DepotPrefab", guide.DepotSpot.x, guide.DepotSpot.y);
+            GoTo(world, "depot2");
+
+            Vector2Int west = guide.DepotSpot + new Vector2Int(-2, 0);
+            Place(world, "DepotPrefab", west.x, west.y);
+            Assert.AreEqual(guide.DepotSpot + new Vector2Int(-1, 0), guide.PresserSpot);
+            Assert.AreEqual(Facing.West, guide.PresserFacing);
+            Assert.AreNotEqual("depot2", StepId(world));
+
+            // No pipe reaches the new tile: the step that stands the Presser there says so.
+            GoTo(world, "work-presser");
+            Assert.AreEqual(guide.PresserSpot, guide.Current.Spot);
+            StringAssert.StartsWith("No steam reaches the marked tile", guide.Notice);
+        }
+
+        [Test]
+        public void ABeltOnTheRunPointingTheWrongWay_IsNamed()
+        {
+            SandboxWorld world = Plenty();
+            GoTo(world, "belts");
+            Vector2Int first = world.Tutorial.BeltSpots[0];
+            world.Build.SetActivePrefab(world.Placeables.Single(p => p.Key == "BeltPrefab").Prefab);
+            world.Build.RotatePlacement(); // east
+            world.Build.PlaceOrRemove(first);
+            world.Build.CancelPlacement();
+
+            StringAssert.StartsWith("A belt on the run points right", world.Tutorial.Notice);
+        }
+
+        [Test]
+        public void ACleanStep_HasNoNote_AndAPipeOffTheMarksIsNoStray()
+        {
+            SandboxWorld world = Plenty();
+            Place(world, "BoilerPrefab", world.Tutorial.Boiler2Spot.x, world.Tutorial.Boiler2Spot.y);
+            GoTo(world, "pipes3");
+            Assert.AreEqual("", world.Tutorial.Notice);
+
+            Pipe(world, world.Tutorial.SmelterSpot + new Vector2Int(-2, 1)); // a route of its own (round 1)
+            Assert.AreEqual("", world.Tutorial.Notice, "pipes take any route that works");
         }
 
         [Test]

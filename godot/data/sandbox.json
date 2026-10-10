@@ -20,6 +20,7 @@
       "HaulScrap",
       "PushOutput",
       "RepeatAssembly",
+      "FreightLaunch",
       "LoadIntoScrapBuffer",
       "AssembleCoking",
       "AssembleScrapReclamation",

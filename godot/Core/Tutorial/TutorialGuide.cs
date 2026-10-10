@@ -23,14 +23,58 @@ namespace GolemFactory.Tutorial
 
         /// <summary>
         /// The tile the step wants something placed on, or null. The panel marks it on the floor;
-        /// with <see cref="SpotFacing"/> set, the marker also shows which way to face.
+        /// with <see cref="SpotFacing"/> set, the marker also shows which way to face. Read live:
+        /// the guide lays its later tiles out around where the player actually built (round 3).
         /// </summary>
-        public Vector2Int? Spot { get; }
+        public Vector2Int? Spot
+        {
+            get
+            {
+                IReadOnlyList<Vector2Int> spots = Spots;
+                return spots.Count > 0 ? spots[0] : (Vector2Int?)null;
+            }
+        }
 
         /// <summary>Every tile the step marks: <see cref="Spot"/> first, then any others (a pipe run).</summary>
-        public IReadOnlyList<Vector2Int> Spots { get; }
+        public IReadOnlyList<Vector2Int> Spots
+        {
+            get
+            {
+                // Cached per layout: the panel and the notes read these many times a frame, and
+                // they change only when the guide's plan does.
+                int version = MarksVersion?.Invoke() ?? -1;
+                if (_cachedSpots != null && version >= 0 && version == _cachedVersion)
+                {
+                    return _cachedSpots;
+                }
+                var spots = new List<Vector2Int>();
+                Vector2Int? spot = _spot?.Invoke();
+                if (spot != null)
+                {
+                    spots.Add(spot.Value);
+                }
+                Vector2Int[] more = _moreSpots?.Invoke();
+                if (more != null)
+                {
+                    spots.AddRange(more);
+                }
+                _cachedSpots = spots;
+                _cachedVersion = version;
+                return spots;
+            }
+        }
 
-        public Facing? SpotFacing { get; }
+        /// <summary>The guide's plan version, set by the guide; marks are cached while it holds.</summary>
+        internal Func<int> MarksVersion { get; set; }
+
+        private IReadOnlyList<Vector2Int> _cachedSpots;
+        private int _cachedVersion = -1;
+
+        public Facing? SpotFacing => _spotFacing?.Invoke();
+
+        private readonly Func<Vector2Int?> _spot;
+        private readonly Func<Vector2Int[]> _moreSpots;
+        private readonly Func<Facing?> _spotFacing;
 
         /// <summary>
         /// The card this step asks the player to claim (its appendage's name), or null. The
@@ -44,6 +88,19 @@ namespace GolemFactory.Tutorial
         /// </summary>
         public bool Workbench { get; }
 
+        /// <summary>
+        /// The kind of building the step's marked tiles are for, or null (a golem's tile, a goal).
+        /// The guide uses it to tell "something else is on the marked tile" from "the right thing".
+        /// </summary>
+        internal Func<PlaceableBuilding, bool> Builds { get; }
+
+        /// <summary>
+        /// Whether the step wants its building ON the marked tile because later steps are laid
+        /// out around it. Building it anywhere else then earns a note saying so. Pipes and the
+        /// mast take any spot that works, and say nothing.
+        /// </summary>
+        internal bool ExactTile { get; }
+
         internal Func<SandboxWorld, bool> Done { get; }
         internal Func<SandboxWorld, string> ProgressText { get; }
         internal Func<SandboxWorld, Vector2Int?> Target { get; }
@@ -51,23 +108,16 @@ namespace GolemFactory.Tutorial
         internal TutorialStep(
             string id, string title, string body, Func<SandboxWorld, bool> done,
             Func<SandboxWorld, Vector2Int?> target, Func<SandboxWorld, string> progress = null, string menuKey = null,
-            Vector2Int? spot = null, Facing? spotFacing = null, Vector2Int[] moreSpots = null, string card = null,
-            bool workbench = false)
+            Func<Vector2Int?> spot = null, Func<Facing?> spotFacing = null, Func<Vector2Int[]> moreSpots = null, string card = null,
+            bool workbench = false, Func<PlaceableBuilding, bool> builds = null, bool exactTile = false)
         {
+            Builds = builds;
+            ExactTile = exactTile;
             Card = card;
             Workbench = workbench;
-            Spot = spot ?? (moreSpots != null && moreSpots.Length > 0 ? moreSpots[0] : (Vector2Int?)null);
-            SpotFacing = spotFacing;
-            var spots = new List<Vector2Int>();
-            if (spot != null)
-            {
-                spots.Add(spot.Value);
-            }
-            if (moreSpots != null)
-            {
-                spots.AddRange(moreSpots);
-            }
-            Spots = spots;
+            _spot = spot;
+            _spotFacing = spotFacing;
+            _moreSpots = moreSpots;
             Id = id;
             Title = title;
             Body = body;
@@ -108,6 +158,10 @@ namespace GolemFactory.Tutorial
         {
             _world = world;
             _steps = BuildSteps();
+            foreach (TutorialStep step in _steps)
+            {
+                step.MarksVersion = () => PlanVersion;
+            }
             EventBus.GolemCompleted += OnGolemCompleted;
         }
 
@@ -186,20 +240,234 @@ namespace GolemFactory.Tutorial
         /// <summary>The last step's Finish button.</summary>
         public void Finish() => Enter(_steps.Count);
 
-        /// <summary>A load: the saved step and whether the guide was put away.</summary>
-        public void Restore(int index, bool dismissed)
+        /// <summary>What a save records once the guide is finished: no step has this id.</summary>
+        public const string FinishedStepId = "finished";
+
+        /// <summary>The current step's id, or <see cref="FinishedStepId"/>: what a save records.</summary>
+        public string CurrentStepId => Current?.Id ?? FinishedStepId;
+
+        /// <summary>
+        /// A load: the saved step and whether the guide was put away. The step is found by its
+        /// <paramref name="stepId"/>, because every chapter added since the guide shipped has
+        /// inserted steps, and a bare index then names a different step (a finished guide came
+        /// back on chapter 3). <paramref name="index"/> is only the fallback for a save written
+        /// before ids were saved, or one naming a step this build no longer has.
+        /// </summary>
+        public void Restore(string stepId, int index, bool dismissed)
         {
             Dismissed = dismissed;
-            Enter(Math.Max(0, Math.Min(index, _steps.Count)));
+            if (stepId == FinishedStepId)
+            {
+                Enter(_steps.Count);
+            }
+            else
+            {
+                int byId = string.IsNullOrEmpty(stepId) ? -1 : _steps.FindIndex(s => s.Id == stepId);
+                Enter(byId >= 0 ? byId : Math.Max(0, Math.Min(index, _steps.Count)));
+            }
+            _enteredByLoad = true;
         }
+
+        // Set when the current step was entered by a load rather than reached in play: every
+        // golem then predates the step, including one the player built for it before saving.
+        private bool _enteredByLoad;
+
+        // A save from before roles were saved: its golems have no recorded roles at all.
+        private bool _rolesFromOldSave;
 
         private void Enter(int index)
         {
+            _enteredByLoad = false;
             Index = index;
             _cycleSeen = false;
             _completedSinceEntry.Clear();
+            _golemsAtEntry.Clear();
+            foreach (GolemEntity golem in LiveGolems)
+            {
+                _golemsAtEntry.Add(golem.GolemId);
+            }
+            _buildingsAtEntry.Clear();
+            _buildingsAtEntry.UnionWith(Built);
             Version++;
             ReportStep();
+        }
+
+        // --- Which golem a step means ---------------------------------------------------------
+        //
+        // Chapters 4 to 6 each build a Scavenger and then talk about THAT golem for several steps.
+        // They used to find it by build order (the second Scavenger, the third, the fourth), so a
+        // spare built along the way, or one taken down with the wrecking bar, made every later
+        // step check the wrong golem: "An extractor" completed on a spare at once, and "An
+        // unloader" then waited forever on a golem with no Haul (from review). Now the golem a
+        // step builds is remembered by id the moment it appears, and the save keeps it.
+
+        /// <summary>Each role, the step that builds its golem, and the golem's chassis, in guide order.</summary>
+        private static readonly (string role, string stepId, string chassis)[] RoleOpenings =
+        {
+            ("first", "golem", "ClockworkScavenger"),
+            ("scav2", "scav2", "ClockworkScavenger"),
+            ("extractor", "scav3", "ClockworkScavenger"),
+            ("unloader", "unloader", "ClockworkScavenger"),
+        };
+
+        private readonly Dictionary<string, string> _roles = new Dictionary<string, string>();
+        private readonly HashSet<string> _golemsAtEntry = new HashSet<string>();
+        private readonly HashSet<PlaceableBuilding> _buildingsAtEntry = new HashSet<PlaceableBuilding>();
+
+        // --- Why a step is waiting, when the answer is where something was built ---------------
+        //
+        // Round 2 of the exact-tile plan. Buildings later steps are laid out around stay on their
+        // marked tiles, but the guide no longer waits in silence: it says when the right building
+        // went up somewhere else, and when something else is sitting on a marked tile (a pipe laid
+        // on a free route, since round 1, can pave over a later chapter's tile).
+
+        /// <summary>A note under the step, or "": what is in the way of the marked tiles.</summary>
+        public string Notice => IsShowing ? NoticeFor(Current) : "";
+
+        private string NoticeFor(TutorialStep step)
+        {
+            if (step == null || step.Spots.Count == 0)
+            {
+                return "";
+            }
+
+            foreach (Vector2Int spot in step.Spots)
+            {
+                PlaceableBuilding there = BuildingOn(spot);
+                if (there == null || (step.Builds != null && step.Builds(there)))
+                {
+                    continue;
+                }
+                string what = NameOf(there);
+                return step.SpotFacing != null
+                    ? $"A {what} is on the golem's tile, and a golem can't stand on a building. Take it up with the wrecking bar (full refund)."
+                    : $"A {what} is on a marked tile. Click it to take it up (full refund), then click again to build.";
+            }
+
+            // A golem's tile the layout moved somewhere steam doesn't reach yet (round 3).
+            if (step.SpotFacing != null && step.Spot is Vector2Int golemTile && !SteamReaches(golemTile))
+            {
+                return "No steam reaches the marked tile yet: lay a Steam Pipe beside it from your boilers.";
+            }
+
+            if (step.MenuKey == "BeltPrefab")
+            {
+                foreach (Vector2Int spot in step.Spots)
+                {
+                    if (_world.Belts.TryGetBelt(spot, out PlacedBelt belt) && belt.Facing != CopperFacing)
+                    {
+                        return $"A belt on the run points {Way(belt.Facing)}, and the run must point {Way(CopperFacing)}, "
+                            + "away from the stall. Click it to take it up (full refund) and drag the run again from the stall's end.";
+                    }
+                }
+            }
+
+            if (step.ExactTile && step.Builds != null)
+            {
+                IReadOnlyList<Vector2Int> marks = step.Spots;
+                List<PlaceableBuilding> strays = Built.Where(b =>
+                    !_buildingsAtEntry.Contains(b) && step.Builds(b) && !marks.Contains(b.Cell)).ToList();
+                // The smelter's depots commit as a PAIR, so the first of the player's own pair is
+                // not a stray yet: telling them to take it back would stop them building the second.
+                PlaceableBuilding stray = step.Id == "smelt-depots" && strays.Count < 2 ? null : strays.FirstOrDefault();
+                if (stray != null)
+                {
+                    return $"That {NameOf(stray)} doesn't line up: a golem works between two things two tiles apart in a "
+                        + "straight line, with the tile between them free. Click it again to take it back (full refund).";
+                }
+            }
+            return "";
+        }
+
+        private PlaceableBuilding BuildingOn(Vector2Int cell) =>
+            _world.Grid.TryGetOccupant(cell, out object occupant) ? occupant as PlaceableBuilding : null;
+
+        private static string NameOf(PlaceableBuilding building) =>
+            UI.BuildMenuLabels.NameFor(building.PrefabKey ?? building.name);
+
+        private static string Way(Facing facing) =>
+            facing == Facing.North ? "up" : facing == Facing.East ? "right" : facing == Facing.South ? "down" : "left";
+
+        private static bool IsDepot(PlaceableBuilding b) => b.GetPart<PlaceableDepot>() != null;
+
+        private static bool IsBoiler(PlaceableBuilding b) => b.GetPart<PlaceableBoiler>() != null;
+
+        private static bool IsPipe(PlaceableBuilding b) => b.GetPart<PlaceableSteamPipe>() != null;
+
+        /// <summary>
+        /// The golem playing <paramref name="role"/>, or null before its step has built one.
+        /// Assigned on the step that builds it, to a golem of its chassis that was not standing
+        /// when the step began. A role whose golem is gone (dismantled), or that a save from
+        /// before roles never recorded, falls to the oldest golem of its chassis holding no
+        /// other role -- what build order used to answer, minus the golems already spoken for.
+        /// </summary>
+        private GolemEntity Role(string role)
+        {
+            ResolveRoles();
+            return _roles.TryGetValue(role, out string id) ? LiveGolem(id) : null;
+        }
+
+        private GolemEntity LiveGolem(string id) => LiveGolems.FirstOrDefault(g => g.GolemId == id);
+
+        private int[] _roleOpeningIndex;
+
+        private void ResolveRoles()
+        {
+            _roleOpeningIndex ??= RoleOpenings.Select(r => _steps.FindIndex(s => s.Id == r.stepId)).ToArray();
+            for (int r = 0; r < RoleOpenings.Length; r++)
+            {
+                (string role, string _, string chassis) = RoleOpenings[r];
+                int opening = _roleOpeningIndex[r];
+                if (opening < 0 || Index < opening)
+                {
+                    return; // later roles open later still
+                }
+                if (_roles.TryGetValue(role, out string held) && LiveGolem(held) != null)
+                {
+                    continue;
+                }
+
+                IEnumerable<GolemEntity> free = LiveGolems.Where(g =>
+                    g.Program?.chassis?.name == chassis && !_roles.Values.Contains(g.GolemId));
+                // The step that builds this role's golem takes one built since it began -- or,
+                // loading a save from before roles, the newest free one, since everything
+                // predates a load and that save could not say which golem it built. A
+                // PAST role refills only from golems that predate the current step, so a role
+                // whose golem was dismantled cannot take the golem just built for this step
+                // (from review: the extractor's new golem went to chapter 4's empty role).
+                GolemEntity pick = Index == opening
+                    ? free.LastOrDefault(g => (_enteredByLoad && _rolesFromOldSave) || !_golemsAtEntry.Contains(g.GolemId))
+                    : free.FirstOrDefault(g => _golemsAtEntry.Contains(g.GolemId));
+                if (pick != null)
+                {
+                    _roles[role] = pick.GolemId;
+                }
+            }
+        }
+
+        /// <summary>What a save records of the roles: "role=golemId" pairs.</summary>
+        public IEnumerable<string> RoleEntries
+        {
+            get
+            {
+                ResolveRoles();
+                return _roles.OrderBy(r => r.Key).Select(r => r.Key + "=" + r.Value).ToList();
+            }
+        }
+
+        /// <summary>A load: the roles a save recorded. Call before <see cref="Restore"/>.</summary>
+        public void RestoreRoles(IEnumerable<string> entries)
+        {
+            _roles.Clear();
+            _rolesFromOldSave = entries == null || !entries.Any();
+            foreach (string entry in entries ?? Enumerable.Empty<string>())
+            {
+                int split = entry?.IndexOf('=') ?? -1;
+                if (split > 0)
+                {
+                    _roles[entry.Substring(0, split)] = entry.Substring(split + 1);
+                }
+            }
         }
 
         /// <summary>Playtest mode, when on: questions and timings ride along with the steps.</summary>
@@ -273,15 +541,19 @@ namespace GolemFactory.Tutorial
         //     Scrap stall  <- behind: the golem extracts from it
         //
         // The golem faces north, away from the stall. Every cell is a street cell the golems
-        // scenario has already built on.
+        // scenario has already built on. That is the DEFAULT: the marks follow what the player
+        // actually builds (round 3, TutorialGuide.Layout.cs).
 
         private Vector2Int StallCell => Stall("ScrapNode") ?? new Vector2Int(0, 0);
 
-        /// <summary>Where the first golem stands: just north of the Scrap stall.</summary>
-        public Vector2Int GolemSpot => StallCell + new Vector2Int(0, 1);
+        /// <summary>Where the first golem stands: beside the Scrap stall (north by default).</summary>
+        public Vector2Int GolemSpot => Plan.Golem1;
+
+        /// <summary>Which way the first golem faces: away from the stall, at its depot.</summary>
+        public Facing GolemFacing => Plan.Facing1;
 
         /// <summary>In front of the golem.</summary>
-        public Vector2Int DepotSpot => StallCell + new Vector2Int(0, 2);
+        public Vector2Int DepotSpot => Plan.Depot1;
 
         /// <summary>Beside the golem, east of it.</summary>
         public Vector2Int BoilerSpot => StallCell + new Vector2Int(1, 1);
@@ -297,25 +569,69 @@ namespace GolemFactory.Tutorial
         //     golem boiler
         //     Scrap stall
 
-        /// <summary>Where the first Brass Presser stands: just north of the first depot.</summary>
-        public Vector2Int PresserSpot => StallCell + new Vector2Int(0, 3);
+        /// <summary>Where the first Brass Presser stands: on the first depot's far side.</summary>
+        public Vector2Int PresserSpot => Plan.Presser;
+
+        public Facing PresserFacing => Plan.PresserFacing;
 
         /// <summary>In front of the Presser.</summary>
-        public Vector2Int PresserDepotSpot => StallCell + new Vector2Int(0, 4);
+        public Vector2Int PresserDepotSpot => Plan.PresserDepot;
 
-        /// <summary>The pipe run from the boiler up the Presser's east side.</summary>
-        public Vector2Int[] PipeSpots => new[] { StallCell + new Vector2Int(1, 2), StallCell + new Vector2Int(1, 3) };
+        /// <summary>The pipe run from the boiler to the Presser's side.</summary>
+        public Vector2Int[] PipeSpots => Plan.Pipe1;
 
-        private bool SteamReachesPresserSpot => _world.Steam.Reaches(PresserSpot, _world.Clock.CurrentTick);
+        private bool SteamReachesPresserSpot => SteamReaches(PresserSpot);
+
+        // --- Pipe steps are done by what the steam does, not by which tiles hold pipe ------------
+        //
+        // The marked tiles are a suggestion the guide draws; a player who routes a pipe another
+        // way and gets the same steam to the same golem tiles is done too (from review: a working
+        // factory stuck on "Join the boilers" because three exact tiles were bare). Steam reach is
+        // a layout question, so these ignore Coke: fuel is a different step's problem.
+
+        /// <summary>"Pipes to lay  3": how many marked pipe tiles are still bare.</summary>
+        private string PipesLeft(Vector2Int[] route) => $"Pipes to lay  {route.Count(c => !_world.Steam.HasPipe(c))}";
+
+        /// <summary>Whether any boiler's pipes reach <paramref name="cell"/>, fuelled or not.</summary>
+        private bool SteamReaches(Vector2Int cell) => _world.Steam.Reaches(cell, _world.Clock.CurrentTick);
+
+        /// <summary>
+        /// Chapter 3's pipes do two jobs: an older boiler's run reaches the coker's tile, so it
+        /// powers the coker before the new boiler has any Coke, and the same run touches the new
+        /// boiler, joining them. Only a pipe joins boilers, never a golem standing between them,
+        /// and the new boiler's own neighbours are its alone, so a route that joins them but
+        /// stops short of the coker's tile does not count: the coker would sit beside a cold
+        /// firebox.
+        /// </summary>
+        private bool FirstBoilerPowersCokerAndJoins
+        {
+            get
+            {
+                long tick = _world.Clock.CurrentTick;
+                return BoilerBuildings.Any(b => b.Cell != Boiler2Spot
+                    && _world.Steam.ReachesFrom(b.Cell, CokerSpot, tick)
+                    && _world.Steam.AreJoined(b.Cell, Boiler2Spot, tick));
+            }
+        }
 
         private IEnumerable<GolemEntity> Pressers =>
             LiveGolems.Where(g => g.Program?.chassis != null && g.Program.chassis.name == "BrassPresser");
 
-        private bool IsIronPresser(GolemEntity golem) =>
+        /// <summary>Whether a golem has a logic core and every one of these cards, in any slot.</summary>
+        private static bool HasCards(GolemEntity golem, params string[] cards) =>
             golem.Program?.logicCore != null
-            && golem.Program.appendages.Any(a => a != null && a.name == "HaulScrap")
-            && golem.Program.appendages.Any(a => a != null && a.name == "AssembleScrapReclamation")
-            && golem.Program.appendages.Any(a => a != null && a.name == "PushOutput");
+            && cards.All(card => golem.Program.appendages.Any(a => a != null && a.name == card));
+
+        private bool IsIronPresser(GolemEntity golem) =>
+            HasCards(golem, "HaulScrap", "AssembleScrapReclamation", "PushOutput");
+
+        /// <summary>
+        /// The Presser built last: the one a "program the new Presser" step means. Picking by
+        /// program instead ("not the iron Presser") pointed at the WORKING Presser whenever the
+        /// player had programmed it any differently from the guide, e.g. cutting Gears instead.
+        /// Golems are listed in the order they were built.
+        /// </summary>
+        private GolemEntity NewestPresser => Pressers.LastOrDefault();
 
         /// <summary>
         /// What a step calls a card by: its appendage's name, or for a chassis card the chassis's.
@@ -346,35 +662,52 @@ namespace GolemFactory.Tutorial
 
         private Vector2Int CoalCell => Stall("CoalNode") ?? new Vector2Int(4, 0);
 
-        /// <summary>Where the coking Presser stands: just north of the Coal stall.</summary>
-        public Vector2Int CokerSpot => CoalCell + new Vector2Int(0, 1);
+        /// <summary>Where the coking Presser stands: beside the Coal stall.</summary>
+        public Vector2Int CokerSpot => Plan.Coker;
+
+        public Facing CokerFacing => Plan.CokerFacing;
 
         /// <summary>The second boiler, in front of the coking Presser.</summary>
-        public Vector2Int Boiler2Spot => CoalCell + new Vector2Int(0, 2);
+        public Vector2Int Boiler2Spot => Plan.Boiler2;
 
         /// <summary>
-        /// From beside the first boiler east along its row to the coking Presser's west side,
-        /// then up one to sit beside the second boiler.
+        /// From the first boiler's run to the coking Presser's side, then on to touch the second
+        /// boiler. By default, east along the stalls' row and up one.
         /// </summary>
-        public Vector2Int[] Pipe2Spots
+        public Vector2Int[] Pipe2Spots => Plan.Pipe2;
+
+        private bool IsCoker(GolemEntity golem) => HasCards(golem, "ExtractScrap", "AssembleCoking", "PushOutput");
+
+        /// <summary>
+        /// What claiming a card costs in one good right now: its slot's current price if the line
+        /// shows it (prices decay), else the card's full claimCost.
+        /// </summary>
+        private int ClaimCost(string card, string item)
         {
-            get
+            AssemblyLineState line = _world.AssemblyLine;
+            for (int i = 0; line != null && i < line.SlotCount; i++)
             {
-                var spots = new List<Vector2Int>();
-                for (int x = BoilerSpot.x + 1; x < CokerSpot.x; x++)
+                if (CardKey(line.GetCard(i)) == card)
                 {
-                    spots.Add(new Vector2Int(x, BoilerSpot.y));
+                    return line.GetCurrentCostBundle(i).Where(c => c.itemType == item).Sum(c => c.quantity);
                 }
-                spots.Add(new Vector2Int(CokerSpot.x - 1, Boiler2Spot.y));
-                return spots.ToArray();
             }
+            string deck = _world.Setup?.assemblyLine?.deck;
+            DraftableCardDefinition def = deck != null && _world.Definitions.Decks.TryGetValue(deck, out DraftableCardCatalog catalog)
+                ? catalog.Cards.FirstOrDefault(c => CardKey(c) == card)
+                : null;
+            return def?.claimCost?.Where(c => c.itemType == item).Sum(c => c.quantity) ?? 0;
         }
 
-        private bool IsCoker(GolemEntity golem) =>
-            golem.Program?.logicCore != null
-            && golem.Program.appendages.Any(a => a != null && a.name == "ExtractScrap")
-            && golem.Program.appendages.Any(a => a != null && a.name == "AssembleCoking")
-            && golem.Program.appendages.Any(a => a != null && a.name == "PushOutput");
+        private int CokingClaimCoal => ClaimCost("AssembleCoking", ItemType.Coal);
+
+        /// <summary>Whether a coker stands where steam reaches it, but every boiler that does is out of Coke.</summary>
+        private bool CokerOutOfCoke => Pressers.Any(g => IsCoker(g)
+            && _world.Steam.Diagnose(g.GolemId, _world.Clock.CurrentTick) == Steam.SteamShortage.BoilerOutOfCoke);
+
+        /// <summary>The coal line's boiler if it stands on its tile, else the first boiler.</summary>
+        private Vector2Int? Boiler2OrFirst =>
+            BoilerBuildings.OrderBy(b => b.Cell == Boiler2Spot ? 0 : 1).Select(b => (Vector2Int?)b.Cell).FirstOrDefault();
 
         private bool CoalStallStocked =>
             _world.Nodes.TryGetNode("CoalNode", out var node) && node.RemainingQuantity > 0;
@@ -386,19 +719,19 @@ namespace GolemFactory.Tutorial
         //     golem 1   boiler 1
         //     Scrap     golem 2  -> depot 3
 
-        /// <summary>The second Scavenger: east of the Scrap stall, under the first boiler.</summary>
-        public Vector2Int Scav2Spot => StallCell + new Vector2Int(1, 0);
+        /// <summary>The second Scavenger: on another side of the Scrap stall (east by default).</summary>
+        public Vector2Int Scav2Spot => Plan.Scav2;
 
-        /// <summary>East of the second Scavenger.</summary>
-        public Vector2Int Depot3Spot => StallCell + new Vector2Int(2, 0);
+        public Facing Scav2Facing => Plan.Scav2Facing;
+
+        /// <summary>In front of the second Scavenger.</summary>
+        public Vector2Int Depot3Spot => Plan.Depot3;
 
         private IEnumerable<GolemEntity> Scavengers =>
             LiveGolems.Where(g => g.Program?.chassis != null && g.Program.chassis.name == "ClockworkScavenger");
 
         /// <summary>The Scavenger that is not the first one: chapter 4's.</summary>
-        private GolemEntity SecondScavenger => Scavengers.Skip(1).FirstOrDefault();
-
-        private string _stalledGolemId;
+        private GolemEntity SecondScavenger => Role("scav2");
 
         // Chapter 5 smelts: an Aether-Hauler hauls Scrap AND Coke (the Haul good picker) and runs
         // R4, which makes Slag whether you want it or not. A carrier Presser hauls the Slag, with
@@ -411,28 +744,27 @@ namespace GolemFactory.Tutorial
         //     smelter    pipe
         //     depot A
 
-        private Vector2Int SmeltColumn => Boiler2Spot + new Vector2Int(2, 0);
+        /// <summary>The Aether-Hauler that smelts: two east of the coal line's boiler by default.</summary>
+        public Vector2Int SmelterSpot => Plan.Smelter;
 
-        /// <summary>The Aether-Hauler that smelts: two east of the coal line's boiler.</summary>
-        public Vector2Int SmelterSpot => SmeltColumn;
+        public Facing SmelterFacing => Plan.SmelterFacing;
 
         /// <summary>Behind the smelter: its Scrap and Coke, from the stockpile.</summary>
-        public Vector2Int SmeltInSpot => SmeltColumn + new Vector2Int(0, -1);
+        public Vector2Int SmeltInSpot => Plan.SmeltIn;
 
         /// <summary>In front of the smelter, behind the carrier: Iron Plate and Slag land here.</summary>
-        public Vector2Int SmeltOutSpot => SmeltColumn + new Vector2Int(0, 1);
+        public Vector2Int SmeltOutSpot => Plan.SmeltOut;
 
-        /// <summary>The carrier Presser, in front of depot B.</summary>
-        public Vector2Int CarrierSpot => SmeltColumn + new Vector2Int(0, 2);
+        /// <summary>The carrier Presser, beyond depot B.</summary>
+        public Vector2Int CarrierSpot => Plan.Carrier;
+
+        public Facing CarrierFacing => Plan.CarrierFacing;
 
         /// <summary>The Slag Heap, in front of the carrier.</summary>
-        public Vector2Int SlagHeapSpot => SmeltColumn + new Vector2Int(0, 3);
+        public Vector2Int SlagHeapSpot => Plan.SlagHeap;
 
-        /// <summary>Beside boiler 2 and up the column's west side.</summary>
-        public Vector2Int[] Pipe3Spots => new[]
-        {
-            SmeltColumn + new Vector2Int(-1, 0), SmeltColumn + new Vector2Int(-1, 1), SmeltColumn + new Vector2Int(-1, 2),
-        };
+        /// <summary>Pipe to the smelter's and the carrier's sides: by default, up the column's west side.</summary>
+        public Vector2Int[] Pipe3Spots => Plan.Pipe3;
 
         private IEnumerable<GolemEntity> Haulers =>
             LiveGolems.Where(g => g.Program?.chassis != null && g.Program.chassis.name == "AetherHauler");
@@ -443,14 +775,11 @@ namespace GolemFactory.Tutorial
                 && golem.Program.GetItemTypeAt(i) == itemType);
 
         private bool IsSmelter(GolemEntity golem) =>
-            golem.Program?.logicCore != null
-            && golem.Program.appendages.Any(a => a?.name == "AssembleIronSmelting")
-            && golem.Program.appendages.Any(a => a?.name == "PushOutput")
+            HasCards(golem, "AssembleIronSmelting", "PushOutput")
             && HaulsOf(golem, ItemType.Scrap) > 0 && HaulsOf(golem, ItemType.Coke) > 0;
 
         private bool IsCarrier(GolemEntity golem) =>
-            golem.Program?.logicCore != null
-            && golem.Program.appendages.Any(a => a?.name == "PushOutput")
+            HasCards(golem, "PushOutput")
             && HaulsOf(golem, ItemType.Slag) > 0 && HaulsOf(golem, ItemType.Coke) > 0;
 
         // Chapter 6 moves goods with a belt and sorts them with a label, at the Copper stall: an
@@ -468,53 +797,32 @@ namespace GolemFactory.Tutorial
 
         private Vector2Int CopperCell => Stall("CopperOreNode") ?? new Vector2Int(8, 0);
 
-        /// <summary>The copper extractor, just north of the Copper stall.</summary>
-        public Vector2Int ExtractorSpot => CopperCell + new Vector2Int(0, 1);
+        /// <summary>The copper extractor, beside the Copper stall (north by default).</summary>
+        public Vector2Int ExtractorSpot => Plan.Extractor;
 
-        /// <summary>The belt run north from the extractor, three cells.</summary>
-        public Vector2Int[] BeltSpots => new[]
-        {
-            CopperCell + new Vector2Int(0, 2), CopperCell + new Vector2Int(0, 3), CopperCell + new Vector2Int(0, 4),
-        };
+        /// <summary>Which way the copper line runs: away from the stall, along the belt.</summary>
+        public Facing CopperFacing => Plan.CopperFacing;
+
+        /// <summary>The belt run from the extractor, three cells.</summary>
+        public Vector2Int[] BeltSpots => Plan.Belts;
 
         /// <summary>The unloader, at the belt's end.</summary>
-        public Vector2Int UnloaderSpot => CopperCell + new Vector2Int(0, 5);
+        public Vector2Int UnloaderSpot => Plan.Unloader;
 
         /// <summary>The labelled depot, in front of the unloader.</summary>
-        public Vector2Int CopperDepotSpot => CopperCell + new Vector2Int(0, 6);
+        public Vector2Int CopperDepotSpot => Plan.CopperDepot;
 
         /// <summary>
-        /// Up the copper line's west side, then west and down to the top of chapter 5's pipes.
+        /// Pipe to the extractor's and the unloader's sides. By default up the copper line's west
+        /// side, then west and down to the top of chapter 5's pipes.
         /// </summary>
-        public Vector2Int[] Pipe4Spots
-        {
-            get
-            {
-                var spots = new List<Vector2Int>();
-                int west = CopperCell.x - 1;
-                for (int y = ExtractorSpot.y; y <= UnloaderSpot.y + 1; y++)
-                {
-                    spots.Add(new Vector2Int(west, y));
-                }
-                Vector2Int top = Pipe3Spots[Pipe3Spots.Length - 1];
-                int row = UnloaderSpot.y + 1;
-                for (int x = west - 1; x >= top.x; x--)
-                {
-                    spots.Add(new Vector2Int(x, row));
-                }
-                for (int y = row - 1; y > top.y; y--)
-                {
-                    spots.Add(new Vector2Int(top.x, y));
-                }
-                return spots.ToArray();
-            }
-        }
+        public Vector2Int[] Pipe4Spots => Plan.Pipe4;
 
-        private GolemEntity CopperExtractor => Scavengers.Skip(2).FirstOrDefault();
+        private GolemEntity CopperExtractor => Role("extractor");
 
-        private GolemEntity CopperUnloader => Scavengers.Skip(3).FirstOrDefault();
+        private GolemEntity CopperUnloader => Role("unloader");
 
-        private bool BeltsLaid => BeltSpots.All(c => _world.Belts.TryGetBelt(c, out PlacedBelt belt) && belt.Facing == Facing.North);
+        private bool BeltsLaid => BeltSpots.All(c => _world.Belts.TryGetBelt(c, out PlacedBelt belt) && belt.Facing == CopperFacing);
 
         private PlaceableDepot DepotAt(Vector2Int cell) =>
             Built.FirstOrDefault(b => b.Cell == cell)?.GetPart<PlaceableDepot>();
@@ -542,13 +850,16 @@ namespace GolemFactory.Tutorial
         //     pipe  labelled Copper depot
 
         /// <summary>The Zeppelin's tile: just past the labelled Copper depot.</summary>
-        public Vector2Int ZeppelinSpot => CopperDepotSpot + new Vector2Int(0, 1);
+        public Vector2Int ZeppelinSpot => Plan.Zeppelin;
 
-        /// <summary>The pipe beside it, on top of chapter 6's run.</summary>
-        public Vector2Int ZeppelinPipeSpot => ZeppelinSpot + new Vector2Int(-1, 0);
+        /// <summary>The pipe that steams it: by default one tile, on top of chapter 6's run.</summary>
+        public Vector2Int[] ZeppelinPipeSpots => Plan.ZeppelinPipe;
+
+        /// <summary>The first of <see cref="ZeppelinPipeSpots"/>, or the Zeppelin's tile if steam already reaches it.</summary>
+        public Vector2Int ZeppelinPipeSpot => ZeppelinPipeSpots.Length > 0 ? ZeppelinPipeSpots[0] : ZeppelinSpot;
 
         /// <summary>Where the guide suggests the mast: a few tiles off, across open floor.</summary>
-        public Vector2Int MastSpot => ZeppelinSpot + new Vector2Int(4, 3);
+        public Vector2Int MastSpot => Plan.Mast;
 
         private GolemEntity Zeppelin =>
             LiveGolems.FirstOrDefault(g => g.Program?.chassis != null && g.Program.chassis.name == "ZeppelinFreightLoader");
@@ -560,8 +871,7 @@ namespace GolemFactory.Tutorial
         {
             get
             {
-                Compat.Vector3 at = _world.Interactor.Position;
-                return TownSquare.Contains(new Vector2Int(Mathf.RoundToInt(at.x), Mathf.RoundToInt(at.y)));
+                return TownSquare.Contains(_world.Interactor.PlayerCell);
             }
         }
 
@@ -569,8 +879,6 @@ namespace GolemFactory.Tutorial
 
         private SlagHeap HeapAt(Vector2Int cell) =>
             Built.FirstOrDefault(b => b.Cell == cell)?.GetPart<PlaceableSlagHeap>()?.Heap;
-
-        private bool SteamReachesGolemSpot => _world.Steam.Reaches(GolemSpot, _world.Clock.CurrentTick);
 
         private IEnumerable<PlaceableBuilding> Built => _world.Build.Buildings.Where(b => !b.IsRemoved);
 
@@ -580,10 +888,7 @@ namespace GolemFactory.Tutorial
 
         private IEnumerable<GolemEntity> LiveGolems => _world.Golems.Where(g => g != null && !g.IsRemoved);
 
-        private bool IsProgrammed(GolemEntity golem) =>
-            golem.Program?.logicCore != null
-            && golem.Program.appendages.Any(a => a != null && a.name == "ExtractScrap")
-            && golem.Program.appendages.Any(a => a != null && a.name == "PushOutput");
+        private bool IsProgrammed(GolemEntity golem) => HasCards(golem, "ExtractScrap", "PushOutput");
 
         private Vector2Int? FirstGolem => LiveGolems.Select(g => (Vector2Int?)g.Cell).FirstOrDefault();
 
@@ -628,11 +933,12 @@ namespace GolemFactory.Tutorial
                 "Every golem runs on steam. Click Boiler in the build menu (30 Scrap + 10 Iron Plate) and place it "
                 + "on the marked tile beside the Scrap stall, then press Escape. Your first golem will stand next to it.",
                 // Its own layout counts too, if steam from it already reaches the golem's tile.
-                w => BoilerBuildings.Any(b => b.Cell == BoilerSpot) || SteamReachesGolemSpot,
+                w => BoilerBuildings.Any(b => b.Cell == BoilerSpot) || Plan.Golem1Steamable,
                 w => ScrapFirst(30, BoilerSpot),
                 w => Count(ItemType.Scrap, 30),
                 menuKey: "BoilerPrefab",
-                spot: BoilerSpot),
+                spot: () => BoilerSpot,
+                builds: IsBoiler, exactTile: true),
 
             new TutorialStep(
                 "fuel", "Fuel the Boiler",
@@ -658,23 +964,25 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "depot", "Build a Depot",
                 "A golem delivers into whatever is in front of it. Build a Depot (15 Scrap) on the marked tile, "
-                + "two north of the Scrap stall: the golem will stand between them. Misplaced? Demolish refunds in full.",
+                + "two tiles out from the Scrap stall: the golem will stand between them. Another side of the stall "
+                + "works too, and the marks follow it. Misplaced? Demolish refunds in full.",
                 w => Built.Any(b => b.Cell == DepotSpot && b.GetPart<PlaceableDepot>() != null),
                 w => ScrapFirst(15, DepotSpot),
                 w => Count(ItemType.Scrap, 15),
                 menuKey: "DepotPrefab",
-                spot: DepotSpot),
+                spot: () => DepotSpot,
+                builds: IsDepot, exactTile: true),
 
             new TutorialStep(
                 "work", "Put it to work",
-                "Press G by the golem to pick it up, then G again to set it down on the marked tile, between the "
-                + "Scrap stall and the depot. Press R by it until it faces the depot (up): it takes Scrap from "
-                + "behind and pushes it forward.",
+                "Press G by the golem to pick it up, walk until the outline under you is on the marked tile, between "
+                + "the Scrap stall and the depot, and press G again. Press R to turn it until it faces the depot "
+                + "(the arrow on the tile): it takes Scrap from behind and pushes it forward.",
                 w => _cycleSeen,
                 w => LiveGolems.Any(g => g.Cell == GolemSpot) ? GolemSpot
                     : LiveGolems.Where(IsProgrammed).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? GolemSpot,
-                spot: GolemSpot,
-                spotFacing: Facing.North),
+                spot: () => GolemSpot,
+                spotFacing: () => GolemFacing),
 
             // --- Chapter 2: the first machine that CRAFTS --------------------------------------
             // progression-design §9 Phase 1's goal and Phase 2's lesson: a Scavenger gathers but
@@ -710,9 +1018,11 @@ namespace GolemFactory.Tutorial
                 "The Presser will stand two tiles from the boiler, out of its reach. Build Steam Pipe "
                 + "(1 Iron Plate each) on the two marked tiles: steam runs along pipes to any golem beside them.",
                 w => SteamReachesPresserSpot,
-                w => PipeSpots[0],
+                // The route can be empty (steam already there, or nothing to build it from).
+                w => PipeSpots.Length > 0 ? PipeSpots[0] : PresserSpot,
                 menuKey: "SteamPipePrefab",
-                moreSpots: PipeSpots),
+                moreSpots: () => PipeSpots,
+                builds: IsPipe),
 
             new TutorialStep(
                 "depot2", "A depot for its output",
@@ -722,7 +1032,8 @@ namespace GolemFactory.Tutorial
                 w => ScrapFirst(15, PresserDepotSpot),
                 w => Count(ItemType.Scrap, 15),
                 menuKey: "DepotPrefab",
-                spot: PresserDepotSpot),
+                spot: () => PresserDepotSpot,
+                builds: IsDepot, exactTile: true),
 
             new TutorialStep(
                 "program-presser", "Program the Presser",
@@ -735,12 +1046,12 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "work-presser", "Make Iron Plate",
                 "Move the Presser with G onto the marked tile, between the two depots, and press R until it "
-                + "faces up. It hauls Scrap from behind, presses it into Iron Plate, and pushes it forward.",
+                + "faces the new depot. It hauls Scrap from behind, presses it into Iron Plate, and pushes it forward.",
                 w => Pressers.Any(g => _completedSinceEntry.Contains(g.GolemId)),
                 w => Pressers.Any(g => g.Cell == PresserSpot) ? PresserSpot
                     : Pressers.Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? PresserSpot,
-                spot: PresserSpot,
-                spotFacing: Facing.North),
+                spot: () => PresserSpot,
+                spotFacing: () => PresserFacing),
 
             // --- Chapter 3: the Coke line ---------------------------------------------------------
             // progression-design §9 Phase 2's wall: golems burn Coke, and the boiler's runs out.
@@ -749,9 +1060,12 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "coking-card", "Claim Coking",
                 "Your boiler burns the Coke you crank by hand, and it will run dry. Time to make Coke "
-                + "automatically. Press Tab, open the Assembly Line and claim Assemble Coking.",
+                + "automatically. Press Tab, open the Assembly Line and claim Assemble Coking. Its price is Coal: "
+                + "short? Take some at the Coal stall with E (order a truckload if it is empty).",
                 w => HasClaimed("AssembleCoking"),
-                w => null,
+                // Chapter 1 cranks every Coal into Coke, so the stockpile is usually out.
+                w => Stock(ItemType.Coal) < CokingClaimCoal ? Stall("CoalNode") : null,
+                w => Count(ItemType.Coal, CokingClaimCoal),
                 card: "AssembleCoking"),
 
             new TutorialStep(
@@ -764,24 +1078,28 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "boiler2", "A boiler for the coal line",
-                "Build a second Boiler on the marked tile, two north of the Coal stall. The coking Presser "
+                "Build a second Boiler on the marked tile, two tiles out from the Coal stall. The coking Presser "
                 + "will stand between them and push its Coke straight into it.",
                 w => BoilerBuildings.Any(b => b.Cell == Boiler2Spot),
                 w => ScrapFirst(30, Boiler2Spot),
                 w => Counts((ItemType.Scrap, 30), (ItemType.IronPlate, 10)),
                 menuKey: "BoilerPrefab",
-                spot: Boiler2Spot),
+                spot: () => Boiler2Spot,
+                builds: IsBoiler, exactTile: true),
 
             new TutorialStep(
                 "pipes2", "Join the boilers",
                 "Lay Steam Pipe on the marked tiles, from your first boiler to the new one. The new boiler starts "
                 + "empty, so the first one powers the coking Presser until it has Coke of its own; after that, "
-                + "joined boilers share their golems.",
-                w => Pipe2Spots.All(c => _world.Steam.HasPipe(c)),
+                + "joined boilers share their golems. Your own route counts too, if its pipe reaches the coking "
+                + "Presser's tile and touches the new boiler.",
+                // The OUTCOME, not the marked tiles: any route that does both jobs the body names.
+                w => FirstBoilerPowersCokerAndJoins,
                 w => Pipe2Spots.Where(c => !_world.Steam.HasPipe(c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
-                w => $"Pipes  {Pipe2Spots.Count(c => _world.Steam.HasPipe(c))} / {Pipe2Spots.Length}",
+                w => PipesLeft(Pipe2Spots),
                 menuKey: "SteamPipePrefab",
-                moreSpots: Pipe2Spots),
+                moreSpots: () => Pipe2Spots,
+                builds: IsPipe),
 
             new TutorialStep(
                 "coal-order", "Stock the Coal stall",
@@ -795,18 +1113,23 @@ namespace GolemFactory.Tutorial
                 "In the Workbench: Always On, then Extract Scrap, Assemble Coking and Push Output. Despite its "
                 + "name, Extract takes whatever the stall behind the golem holds: here, Coal.",
                 w => Pressers.Any(IsCoker),
-                w => Pressers.Where(g => !IsIronPresser(g)).Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
+                w => NewestPresser?.Cell,
                 workbench: true),
 
             new TutorialStep(
                 "work-coker", "Feed the boiler",
                 "Move the coking Presser onto the marked tile between the Coal stall and the new boiler, "
-                + "facing the boiler (up). It extracts Coal, cokes it, and pushes the Coke into the firebox.",
+                + "facing the boiler. It extracts Coal, cokes it, and pushes the Coke into the firebox. "
+                + "It needs steam to make the first Coke: if your boilers have run dry, load Coke into the new one (E).",
                 w => Pressers.Any(g => IsCoker(g) && _completedSinceEntry.Contains(g.GolemId)),
-                w => Pressers.Any(g => IsCoker(g) && g.Cell == CokerSpot) ? CokerSpot
+                // A coker on dry boilers can never make the Coke that would fuel them, so point at
+                // the new boiler (right in front of it) until one has Coke again.
+                w => CokerOutOfCoke ? Boiler2OrFirst
+                    : Pressers.Any(g => IsCoker(g) && g.Cell == CokerSpot) ? CokerSpot
                     : Pressers.Where(IsCoker).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? CokerSpot,
-                spot: CokerSpot,
-                spotFacing: Facing.North),
+                w => CokerOutOfCoke ? "Boilers dry: load Coke  " + Count(ItemType.Coke, 1) : "",
+                spot: () => CokerSpot,
+                spotFacing: () => CokerFacing),
 
             // --- Chapter 4: copies, turning, and a stall on purpose --------------------------------
             // The playtest script's Part C: a patent stamped onto a second golem, R to turn it, and
@@ -823,7 +1146,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "scav2", "Build a second Scavenger",
                 "At the construction station, build another Clockwork Scavenger (12 Scrap).",
-                w => Scavengers.Count() >= 2,
+                w => SecondScavenger != null,
                 w => ScrapFirst(12, Station),
                 w => Count(ItemType.Scrap, 12)),
 
@@ -837,48 +1160,43 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "depot3", "A depot beside the stall",
-                "Build a Depot on the marked tile, two east of the Scrap stall.",
+                "Build a Depot on the marked tile, two tiles out from another side of the Scrap stall.",
                 w => Built.Any(b => b.Cell == Depot3Spot && b.GetPart<PlaceableDepot>() != null),
                 w => ScrapFirst(15, Depot3Spot),
                 w => Count(ItemType.Scrap, 15),
                 menuKey: "DepotPrefab",
-                spot: Depot3Spot),
+                spot: () => Depot3Spot,
+                builds: IsDepot, exactTile: true),
 
             new TutorialStep(
                 "turn", "Turn it with R",
-                "Move the new Scavenger onto the marked tile beside the Scrap stall (G). This one must face "
-                + "EAST, at the depot: stand next to it and press R to turn it. It needs the stall behind it.",
+                "Move the new Scavenger onto the marked tile beside the Scrap stall (G). This one faces another way "
+                + "from your first golem, at its depot: stand next to it and press R to turn it. It needs the stall "
+                + "behind it.",
                 w => SecondScavenger != null && _completedSinceEntry.Contains(SecondScavenger.GolemId),
                 w => SecondScavenger != null && SecondScavenger.Cell != Scav2Spot ? SecondScavenger.Cell : Scav2Spot,
-                spot: Scav2Spot,
-                spotFacing: Facing.East),
+                spot: () => Scav2Spot,
+                spotFacing: () => Scav2Facing),
 
             new TutorialStep(
                 "stall", "Stall it on purpose",
-                "Golems never improvise. Press R by the new Scavenger until it faces up, at the boiler. With "
-                + "the street behind it instead of the stall, it stops, and its badge says what is missing.",
-                w =>
-                {
-                    // Any stall of chapter 4's golem: which way the player turned it decides the
-                    // reason, and every reason's badge names the problem.
-                    GolemEntity scav2 = SecondScavenger;
-                    if (scav2 != null && scav2.Program.State == GolemState.Stalled)
-                    {
-                        _stalledGolemId = scav2.GolemId;
-                        return true;
-                    }
-                    return false;
-                },
+                "Golems never improvise. Press R by the new Scavenger to turn it away from the depot. With the "
+                + "stall no longer behind it, it stops, and its badge says what is missing.",
+                // Any stall of chapter 4's golem: which way the player turned it decides the
+                // reason, and every reason's badge names the problem.
+                w => SecondScavenger != null && SecondScavenger.Program.State == GolemState.Stalled,
                 w => SecondScavenger?.Cell),
 
             new TutorialStep(
                 "unstall", "And back to work",
                 "Turn it back to face the depot (R). A stalled golem waits rather than skipping ahead, and "
                 + "picks up the moment its tile is right again.",
-                w => _stalledGolemId != null && _completedSinceEntry.Contains(_stalledGolemId),
-                w => LiveGolems.Where(g => g.GolemId == _stalledGolemId).Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
-                spot: Scav2Spot,
-                spotFacing: Facing.East),
+                // The golem chapter 4 built, by its saved role: a load on this step used to leave the
+                // stalled golem's id behind in the last session, and the step could never finish.
+                w => SecondScavenger != null && _completedSinceEntry.Contains(SecondScavenger.GolemId),
+                w => SecondScavenger?.Cell,
+                spot: () => Scav2Spot,
+                spotFacing: () => Scav2Facing),
 
             // --- Chapter 5: metal, and its Slag ---------------------------------------------------
             // progression-design Phase 4: the Aether-Hauler opens two-input recipes, and R4 Iron
@@ -902,23 +1220,25 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "smelt-depots", "Depots for the smelter",
-                "Build two Depots on the marked tiles, east of the coal line's boiler: one behind the smelter "
-                + "for its Scrap and Coke, one in front for its Iron Plate.",
+                "Build two Depots on the marked tiles, two apart with a free tile between: one behind the smelter "
+                + "for its Scrap and Coke, one in front for its Iron Plate. A pair of your own works too.",
                 w => new[] { SmeltInSpot, SmeltOutSpot }.All(c => Built.Any(b => b.Cell == c && b.GetPart<PlaceableDepot>() != null)),
                 w => new[] { SmeltInSpot, SmeltOutSpot }.Where(c => !Built.Any(b => b.Cell == c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
                 w => Count(ItemType.Scrap, 30),
                 menuKey: "DepotPrefab",
-                moreSpots: new[] { SmeltInSpot, SmeltOutSpot }),
+                moreSpots: () => new[] { SmeltInSpot, SmeltOutSpot },
+                builds: IsDepot, exactTile: true),
 
             new TutorialStep(
                 "pipes3", "Steam for the column",
-                "Lay Steam Pipe on the three marked tiles, from beside the coal line's boiler up the column. "
-                + "The smelter and the carrier you build next both stand beside it.",
-                w => Pipe3Spots.All(c => _world.Steam.HasPipe(c)),
+                "Lay Steam Pipe on the marked tiles, from your steam to the smelter's and the carrier's tiles, "
+                + "which you'll fill next. Any route that gets steam to both their tiles counts.",
+                w => SteamReaches(SmelterSpot) && SteamReaches(CarrierSpot),
                 w => Pipe3Spots.Where(c => !_world.Steam.HasPipe(c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
-                w => $"Pipes  {Pipe3Spots.Count(c => _world.Steam.HasPipe(c))} / {Pipe3Spots.Length}",
+                w => PipesLeft(Pipe3Spots),
                 menuKey: "SteamPipePrefab",
-                moreSpots: Pipe3Spots),
+                moreSpots: () => Pipe3Spots,
+                builds: IsPipe),
 
             new TutorialStep(
                 "program-smelter", "Two Hauls, two goods",
@@ -930,13 +1250,13 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "work-smelter", "Smelt",
-                "Put the Aether-Hauler on the marked tile between the two depots, facing up. Watch what it "
+                "Put the Aether-Hauler on the marked tile between the two depots, facing the second. Watch what it "
                 + "pushes: Iron Plate, and Slag with it.",
                 w => Haulers.Any(g => IsSmelter(g) && _completedSinceEntry.Contains(g.GolemId)),
                 w => Haulers.Any(g => g.Cell == SmelterSpot) ? SmelterSpot
                     : Haulers.Where(IsSmelter).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? SmelterSpot,
-                spot: SmelterSpot,
-                spotFacing: Facing.North),
+                spot: () => SmelterSpot,
+                spotFacing: () => SmelterFacing),
 
             new TutorialStep(
                 "slag-heap", "Somewhere for the Slag",
@@ -946,7 +1266,8 @@ namespace GolemFactory.Tutorial
                 w => ScrapFirst(20, SlagHeapSpot),
                 w => Counts((ItemType.Scrap, 20), (ItemType.IronPlate, 10)),
                 menuKey: "SlagHeapPrefab",
-                spot: SlagHeapSpot),
+                spot: () => SlagHeapSpot,
+                builds: b => b.GetPart<PlaceableSlagHeap>() != null, exactTile: true),
 
             new TutorialStep(
                 "carrier", "A carrier",
@@ -960,18 +1281,19 @@ namespace GolemFactory.Tutorial
                 "Program it: Always On, Haul set to Slag with the dial at 4, Haul set to Coke at 1, then Push "
                 + "Output. Four Slag and the one Coke that burns them, every trip.",
                 w => Pressers.Any(IsCarrier),
-                w => Pressers.Where(g => !IsIronPresser(g) && !IsCoker(g)).Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
+                w => NewestPresser?.Cell,
                 workbench: true),
 
             new TutorialStep(
                 "work-carrier", "Clear the Slag",
-                "Put the carrier on the marked tile between depot and heap, facing up. When the heap starts "
+                "Put the carrier on the marked tile between depot and heap, facing the heap. When the heap starts "
                 + "burning Slag, the iron line is safe.",
-                w => HeapAt(SlagHeapSpot)?.TotalVoided > 0,
+                // Any heap: the carrier's job is done wherever the heap stands.
+                w => Built.Any(b => b.GetPart<PlaceableSlagHeap>()?.Heap?.TotalVoided > 0),
                 w => Pressers.Any(g => IsCarrier(g) && g.Cell == CarrierSpot) ? CarrierSpot
                     : Pressers.Where(IsCarrier).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? CarrierSpot,
-                spot: CarrierSpot,
-                spotFacing: Facing.North),
+                spot: () => CarrierSpot,
+                spotFacing: () => CarrierFacing),
 
             // --- Chapter 6: belts, and a label ---------------------------------------------------
             // The playtest script's belt and labelled-depot items (F, I2): a belt carries goods a
@@ -987,23 +1309,25 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "belts", "Lay a belt",
-                "Pick Belt in the build menu and DRAG from the tile above the Copper stall's front up the "
-                + "marked run: a dragged run points along itself, here north.",
+                "Pick Belt in the build menu and DRAG along the marked run, starting from the end nearest the "
+                + "Copper stall: a dragged run points along itself, away from the stall.",
                 w => BeltsLaid,
                 w => BeltSpots.Where(c => !_world.Belts.HasBelt(c)).Select(c => (Vector2Int?)c).FirstOrDefault() ?? BeltSpots[0],
                 w => $"Belts  {BeltSpots.Count(c => _world.Belts.HasBelt(c))} / {BeltSpots.Length}",
                 menuKey: "BeltPrefab",
-                moreSpots: BeltSpots),
+                moreSpots: () => BeltSpots,
+                builds: b => b.GetPart<PlaceableBelt>() != null),
 
             new TutorialStep(
                 "pipes4", "Drag a pipe run",
-                "Steam Pipe drags too. Lay it along the marked run, up beside the belt and across to the "
-                + "smelter's pipes: one long stroke per straight stretch.",
-                w => Pipe4Spots.All(c => _world.Steam.HasPipe(c)),
+                "Steam Pipe drags too. Lay it along the marked run, from your steam to beside the belt: one long "
+                + "stroke per straight stretch. Any route that steams the extractor's and the unloader's tiles counts.",
+                w => SteamReaches(ExtractorSpot) && SteamReaches(UnloaderSpot),
                 w => Pipe4Spots.Where(c => !_world.Steam.HasPipe(c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
-                w => $"Pipes  {Pipe4Spots.Count(c => _world.Steam.HasPipe(c))} / {Pipe4Spots.Length}",
+                w => PipesLeft(Pipe4Spots),
                 menuKey: "SteamPipePrefab",
-                moreSpots: Pipe4Spots),
+                moreSpots: () => Pipe4Spots,
+                builds: IsPipe),
 
             new TutorialStep(
                 "scav3", "An extractor",
@@ -1015,11 +1339,11 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "work-extractor", "Onto the belt",
-                "Put it on the marked tile above the Copper stall, facing the belt (up). Watch the ore ride north.",
+                "Put it on the marked tile beside the Copper stall, facing the belt. Watch the ore ride away.",
                 w => BeltSpots.Any(c => _world.Belts.TryGetBelt(c, out PlacedBelt belt) && belt.Segment.Items.Count > 0),
                 w => CopperExtractor != null && CopperExtractor.Cell != ExtractorSpot ? CopperExtractor.Cell : ExtractorSpot,
-                spot: ExtractorSpot,
-                spotFacing: Facing.North),
+                spot: () => ExtractorSpot,
+                spotFacing: () => CopperFacing),
 
             new TutorialStep(
                 "copper-depot", "A labelled depot",
@@ -1029,7 +1353,8 @@ namespace GolemFactory.Tutorial
                 w => DepotAt(CopperDepotSpot) == null ? ScrapFirst(15, CopperDepotSpot) : CopperDepotSpot,
                 w => DepotAt(CopperDepotSpot) == null ? Count(ItemType.Scrap, 15) : "Label: " + DepotAt(CopperDepotSpot).FilterLabel,
                 menuKey: "DepotPrefab",
-                spot: CopperDepotSpot),
+                spot: () => CopperDepotSpot,
+                builds: IsDepot, exactTile: true),
 
             new TutorialStep(
                 "unloader", "An unloader",
@@ -1043,12 +1368,12 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "work-unloader", "Off the belt",
-                "Put it on the marked tile at the belt's end, facing the depot (up). Belt, golem, labelled "
+                "Put it on the marked tile at the belt's end, facing the depot. Belt, golem, labelled "
                 + "depot: the shape of every long haul.",
                 w => CopperUnloader != null && _completedSinceEntry.Contains(CopperUnloader.GolemId),
                 w => CopperUnloader != null && CopperUnloader.Cell != UnloaderSpot ? CopperUnloader.Cell : UnloaderSpot,
-                spot: UnloaderSpot,
-                spotFacing: Facing.North),
+                spot: () => UnloaderSpot,
+                spotFacing: () => CopperFacing),
 
             // --- Chapter 7: room to grow, and keeping it -------------------------------------------
             // The playtest script's Floor Expansion, bay cap, card-gating and Ledger items (F, G,
@@ -1104,11 +1429,13 @@ namespace GolemFactory.Tutorial
                 ItemType.ZincIngot, "AssembleZincSmelting", "2 Zinc Ore + 1 Coke → 1 Zinc Ingot", "ZincOreNode"),
 
             Goal("brass", "Alloy Brass",
-                "Brass is two ingots in one: claim Brass Alloying and feed one golem Copper and Zinc Ingot.",
+                "Brass is two ingots in one: claim Brass Alloying and feed one golem Copper and Zinc Ingot. "
+                + "Two inputs, so an Aether-Hauler.",
                 ItemType.Brass, "AssembleBrassAlloying", "2 Copper Ingot + 1 Zinc Ingot → 1 Brass"),
 
             Goal("casing", "Press Casings",
-                "Claim Casing Press. A Brass Presser can run it: Iron Plate and Brass in, a Casing out.",
+                "Claim Casing Press: Iron Plate and Brass in, a Casing out. Two Hauls, an Assemble and a Push "
+                + "fill an Aether-Hauler's four slots; a Brass Presser has only three.",
                 ItemType.Casing, "AssembleCasingPress", "4 Iron Plate + 1 Brass → 1 Casing"),
 
             Goal("glass", "Glass from Slag",
@@ -1117,15 +1444,16 @@ namespace GolemFactory.Tutorial
                 ItemType.Glass, "AssembleGlassmaking", "1 Slag → 1 Glass"),
 
             Goal("lens", "Grind a Lens",
-                "Claim Lens Grinding: Glass and Brass make a Lens.",
+                "Claim Lens Grinding: Glass and Brass make a Lens, on an Aether-Hauler.",
                 ItemType.Lens, "AssembleLensGrinding", "2 Glass + 1 Brass → 1 Lens"),
 
             Goal("mainspring", "Wind a Mainspring",
-                "Claim Mainspring Winding: Brass and Gears make a Mainspring.",
+                "Claim Mainspring Winding: Brass and Gears make a Mainspring, on an Aether-Hauler.",
                 ItemType.Mainspring, "AssembleMainspringWinding", "3 Brass + 2 Gear → 1 Mainspring"),
 
             Goal("aether-cell", "Bottle the Aether",
-                "Order Aether at the Aether stall, claim Aether Containment, and seal it behind Lenses.",
+                "Order Aether at the Aether stall, claim Aether Containment, and seal it behind Lenses on an "
+                + "Aether-Hauler.",
                 ItemType.AetherCell, "AssembleAetherContainment", "1 Aether + 2 Lens → 1 Aether Cell", "AetherNode"),
 
             // --- Chapter 9: the Zeppelin ---------------------------------------------------------------
@@ -1139,6 +1467,16 @@ namespace GolemFactory.Tutorial
                 w => HasClaimed("ZeppelinFreightLoader"),
                 w => null,
                 card: "ZeppelinFreightLoader"),
+
+            // The Zeppelin's own verb is a card like any other, and the Workbench only offers
+            // cards you own: without this claim chapter 9 could not be programmed (from review).
+            new TutorialStep(
+                "freight-card", "Claim Freight Launch",
+                "A Zeppelin flies what it holds with Freight Launch, and a golem can only use cards you own. "
+                + "Press Tab, open the Assembly Line and claim it: it's free.",
+                w => HasClaimed("FreightLaunch"),
+                w => null,
+                card: "FreightLaunch"),
 
             new TutorialStep(
                 "zeppelin", "Build the Zeppelin",
@@ -1156,15 +1494,18 @@ namespace GolemFactory.Tutorial
                 w => HasMast ? (Vector2Int?)null : MastSpot,
                 w => Counts((ItemType.Brass, 20), (ItemType.Casing, 10)),
                 menuKey: "FreightMastPrefab",
-                spot: MastSpot),
+                spot: () => MastSpot,
+                builds: b => b.GetPart<PlaceableFreightMast>() != null),
 
             new TutorialStep(
                 "zeppelin-pipe", "Steam for it",
-                "One more pipe, on the marked tile at the top of the copper line's run.",
-                w => _world.Steam.HasPipe(ZeppelinPipeSpot),
+                "Steam Pipe on the marked tiles, from the copper line's run to the Zeppelin's side: anything "
+                + "that gets steam to the Zeppelin's tile counts.",
+                w => SteamReaches(ZeppelinSpot),
                 w => ZeppelinPipeSpot,
                 menuKey: "SteamPipePrefab",
-                spot: ZeppelinPipeSpot),
+                moreSpots: () => ZeppelinPipeSpots,
+                builds: IsPipe),
 
             new TutorialStep(
                 "program-zeppelin", "Program the Zeppelin",
@@ -1177,11 +1518,11 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "launch", "Fly the Copper home",
                 "Put it on the marked tile past the labelled Copper depot, with the depot BEHIND it (facing "
-                + "up): it hauls from behind, like every golem. Each flight takes 24 ticks, however far the mast.",
+                + "away): it hauls from behind, like every golem. Each flight takes 24 ticks, however far the mast.",
                 w => Zeppelin != null && _completedSinceEntry.Contains(Zeppelin.GolemId),
                 w => Zeppelin != null && Zeppelin.Cell != ZeppelinSpot ? Zeppelin.Cell : ZeppelinSpot,
-                spot: ZeppelinSpot,
-                spotFacing: Facing.North),
+                spot: () => ZeppelinSpot,
+                spotFacing: () => CopperFacing),
 
             // --- Chapter 10: the Clock Tower ------------------------------------------------------------
             // The endgame (G10, the user's call): the tower in the town square, roped off until a
@@ -1197,13 +1538,15 @@ namespace GolemFactory.Tutorial
 
             Goal("frame-section", "Frame Sections",
                 "Stage 1, the Foundation, wants Frame Sections, and keeps wanting them: 6 a minute, every minute, "
-                + "until it is built. Claim the card and start a line.",
+                + "until it is built. Claim the card and start a line. Three inputs need five slots: build a "
+                + "Mainspring Overclocker at the station.",
                 ItemType.FrameSection, "AssembleFrameSection", "10 Casing + 6 Iron Plate + 4 Brass → 1 Frame Section"),
 
             new TutorialStep(
                 "tower-feed", "Feed the tower",
-                "Get Frame Sections to the tower: a golem beside its footprint, pushing into it, from any side. "
-                + "A Zeppelin can fly them out to a mast beside the square.",
+                "Every depot opens onto the stockpile, so build one in the square and stand a golem between it "
+                + "and the tower: Haul set to Frame Section, then Push. It pushes in from any side. It needs "
+                + "steam out here too: a boiler beside it, fuelled, or a pipe run from the workshop.",
                 w => TowerSite.DeliveryRatePerMinute(ItemType.FrameSection) > 0,
                 w => TownSquare.TowerCentre),
 
@@ -1217,11 +1560,10 @@ namespace GolemFactory.Tutorial
                 w => ClockTower.ClockTowerReadout.FormatHeadline(TowerSite.BuildReading())),
 
             new TutorialStep(
-                "done", "A factory that feeds itself",
-                "Scrap, Iron Plate and Coke now run without you, and a patent copies a program in a click. "
-                + "Keep the Coal stall stocked (E when it runs dry). Tab shows your Inventory, the Assembly Line "
-                + "and the Ledger, which maps the road ahead: the Aether-Hauler and two-input recipes. "
-                + "F1 brings this guide back.",
+                "done", "The Foundation is laid",
+                "The guide ends here; the tower doesn't. Three stages remain: The Movement, Aether Illumination "
+                + "and The Chronometer, each wanting its own goods at a steady rate. The Ledger (Tab) maps every "
+                + "recipe they need, and the tower's panel shows what it wants now. F1 brings this guide back.",
                 w => false,
                 w => null),
         };

@@ -81,6 +81,7 @@ namespace GolemFactory.Nodes
             _logger = new PlaytestLogger();
             OS.AddLogger(_logger);
             BuildCard();
+            ArchivePreviousReport();
             WriteReport();
         }
 
@@ -221,6 +222,34 @@ namespace GolemFactory.Nodes
             _note.ReleaseFocus();
             _shown = null;
             WriteReport();
+        }
+
+        /// <summary>
+        /// Keeps the last session's report under a dated name before this session starts its
+        /// own. Every launch used to overwrite it on the first frame, so a playtest played over
+        /// several sittings kept only the last one, and relaunching after a crash erased the
+        /// report the crash had left (from review). Scenario reports are scratch and are not kept.
+        /// </summary>
+        private static void ArchivePreviousReport()
+        {
+            if (UnderScenario)
+            {
+                return;
+            }
+            try
+            {
+                string current = ReportFile;
+                if (!File.Exists(current))
+                {
+                    return;
+                }
+                string archive = PlaytestReportArchive.NameFor(current, File.GetLastWriteTime(current), File.Exists);
+                File.Move(current, archive);
+            }
+            catch (Exception e)
+            {
+                GD.Print("[playtest] could not keep the previous report: " + e.Message);
+            }
         }
 
         private void WriteReport()

@@ -304,7 +304,7 @@ namespace GolemFactory.Progression
 
             // ---- VI · The Clock Tower -------------------------------------------------------
             new TechTreeNode(
-                "bldg.clocktower", "The Clock Tower", "Free to place · building it starts stage 1",
+                "bldg.clocktower", "The Clock Tower", "Opens once you build a Zeppelin · its first delivery starts stage 1",
                 TechTreeNodeKind.Building, 5, 0,
                 TechTreeUnlockSignal.Building, BuildingClockTower,
                 new[] { "r15.framesection" }, isKeystone: true),

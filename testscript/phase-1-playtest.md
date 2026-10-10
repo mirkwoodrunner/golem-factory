@@ -21,7 +21,9 @@ and what to look at that the guide does not reach.
 
 **The report** is `user://playtest-report.md`, which on Windows is
 `%APPDATA%\Godot\app_userdata\Golem Factory\playtest-report.md`. It is rewritten as you go, so
-quitting at any point still leaves it complete up to there. Send that file.
+quitting at any point still leaves it complete up to there. **Playing over several sittings is
+fine:** each launch keeps the previous session's report as `playtest-report-<date>-<time>.md` in
+the same folder before starting a new one. Send all of them.
 
 ---
 
@@ -31,8 +33,8 @@ quitting at any point still leaves it complete up to there. Send that file.
 |---|---|
 | **WASD** | Move |
 | **E** | Interact: **tap** to harvest a stall, order a truckload from an empty one, fuel a boiler, label a depot, or program a golem. **Hold** at the Hand-Crank Bench to crank. |
-| **R** | Turn the build ghost while holding a placeable. Otherwise, cycle the bench's recipe, or turn the golem you are standing by. |
-| **G** | Pick up the golem you stand by; press again to set it down. |
+| **R** | Turn the build ghost while holding a placeable, or the golem you are carrying. Otherwise, cycle the bench's recipe, or turn the golem you are standing by. |
+| **G** | Pick up the golem you stand by; press again to set it down. While you carry it, an outline on the floor shows the tile it will land on (red where it can't), with the tiles it will take from and push to. |
 | **1–9, 0, -, =** | Pick a build-menu tile. **X** is Demolish. Hover a tile for its cost. |
 | **Left click / drag** | Place a building; belts and pipes lay a run as you drag. |
 | **Escape / right click** | Put the placeable down. |
@@ -48,6 +50,7 @@ quitting at any point still leaves it complete up to there. Send that file.
 the depots and pipes, and programs them, so you land on the ground a player who did the chapter
 would stand on. Use it to reach a later chapter quickly, or to get past one you are stuck on.
 The report records every chapter you skipped, so skipped and played time are never confused.
+Chapter 7's Save and Load, done by F9, use their own file (`kit-save.json`), never your save.
 
 | Ch. | Guide chapter | Old script part |
 |---|---|---|
@@ -59,7 +62,7 @@ The report records every chapter you skipped, so skipped and played time are nev
 | 6 | Belts and a labelled depot at the Copper stall | F, I2 |
 | 7 | Floor Expansion, the bay upgrade, the Ledger, save and load | F, G, H, I4 |
 | 8 | Goal steps: every good the Zeppelin costs | F, G |
-| 9 | The Zeppelin and a Freight Mast | G |
+| 9 | The Zeppelin, its Freight Launch card, and a Freight Mast | G |
 | 10 | The Clock Tower in the town square: Frame Sections, and its Foundation | (new) |
 
 ---

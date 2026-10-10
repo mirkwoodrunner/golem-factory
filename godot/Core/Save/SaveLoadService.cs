@@ -239,12 +239,26 @@ namespace GolemFactory.Save
 
             foreach (BlueprintEntry entry in data.blueprints)
             {
+                // A card this build cannot resolve (renamed, removed) drops out WITH its slot's good
+                // and batch size: compacting only the cards shifted every later slot onto the
+                // previous slot's settings, so a stamped Haul could haul the wrong good.
+                var kept = new List<int>();
+                var cards = new List<AppendageActionDefinition>();
+                for (int i = 0; i < entry.appendageNames.Count; i++)
+                {
+                    AppendageActionDefinition card = catalog.FindAppendage(entry.appendageNames[i]);
+                    if (card != null)
+                    {
+                        kept.Add(i);
+                        cards.Add(card);
+                    }
+                }
                 var blueprint = new Blueprint(
                     entry.blueprintId, entry.ownerId,
                     catalog.FindChassis(entry.chassisName), catalog.FindLogicCore(entry.logicCoreName),
-                    entry.appendageNames.Select(catalog.FindAppendage).Where(a => a != null).ToList(),
-                    entry.appendageItemTypes != null && entry.appendageItemTypes.Count > 0 ? entry.appendageItemTypes : null,
-                    entry.appendageQuantities != null && entry.appendageQuantities.Count > 0 ? entry.appendageQuantities : null);
+                    cards,
+                    entry.appendageItemTypes != null && entry.appendageItemTypes.Count > 0 ? KeepSlots(entry.appendageItemTypes, kept) : null,
+                    entry.appendageQuantities != null && entry.appendageQuantities.Count > 0 ? KeepSlots(entry.appendageQuantities, kept) : null);
                 patents.TryPatent(blueprint);
             }
 
@@ -295,12 +309,16 @@ namespace GolemFactory.Save
                     program.TryAssignChassis(chassis);
                 }
 
-                foreach (string appendageName in entry.appendageNames)
+                // Which saved slot each program slot came from: a card that cannot be resolved,
+                // or will not fit, is skipped, and its good and batch size go with it rather than
+                // shifting onto the next slot.
+                var kept = new List<int>();
+                for (int i = 0; i < entry.appendageNames.Count; i++)
                 {
-                    AppendageActionDefinition appendage = catalog.FindAppendage(appendageName);
-                    if (appendage != null)
+                    AppendageActionDefinition appendage = catalog.FindAppendage(entry.appendageNames[i]);
+                    if (appendage != null && program.TryAddAppendage(appendage))
                     {
-                        program.TryAddAppendage(appendage);
+                        kept.Add(i);
                     }
                 }
 
@@ -311,12 +329,12 @@ namespace GolemFactory.Save
                 // quantity list, and an older save has no list at all.
                 if (entry.appendageQuantities != null)
                 {
-                    int quantityCount = entry.appendageQuantities.Count < program.appendages.Count
-                        ? entry.appendageQuantities.Count
-                        : program.appendages.Count;
-                    for (int i = 0; i < quantityCount; i++)
+                    for (int slot = 0; slot < kept.Count && slot < program.appendages.Count; slot++)
                     {
-                        program.SetQuantityAt(i, entry.appendageQuantities[i]);
+                        if (kept[slot] < entry.appendageQuantities.Count)
+                        {
+                            program.SetQuantityAt(slot, entry.appendageQuantities[kept[slot]]);
+                        }
                     }
                 }
 
@@ -324,10 +342,12 @@ namespace GolemFactory.Save
                 // slot keeps its card's own type.
                 if (entry.appendageItemTypes != null)
                 {
-                    int typeCount = System.Math.Min(entry.appendageItemTypes.Count, program.appendages.Count);
-                    for (int i = 0; i < typeCount; i++)
+                    for (int slot = 0; slot < kept.Count && slot < program.appendages.Count; slot++)
                     {
-                        program.SetItemTypeAt(i, entry.appendageItemTypes[i]);
+                        if (kept[slot] < entry.appendageItemTypes.Count)
+                        {
+                            program.SetItemTypeAt(slot, entry.appendageItemTypes[kept[slot]]);
+                        }
                     }
                 }
 
@@ -476,5 +496,9 @@ namespace GolemFactory.Save
                 (GolemFactory.World.Facing)entry.facing,
                 out golem) && golem != null;
         }
+
+        /// <summary>The entries of a per-slot list at the saved slots that were kept, in order.</summary>
+        private static List<T> KeepSlots<T>(List<T> perSlot, List<int> kept) =>
+            kept.Where(i => i < perSlot.Count).Select(i => perSlot[i]).ToList();
     }
 }
