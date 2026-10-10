@@ -141,7 +141,7 @@ namespace GolemFactory.Tutorial
             ["program"] = () => Program(LiveGolems.FirstOrDefault(g => g.Program?.chassis?.name == "ClockworkScavenger"),
                 "ExtractScrap", "PushOutput"),
             ["depot"] = () => PlaceGranted("DepotPrefab", DepotSpot, Facing.North),
-            ["work"] = () => LiveGolems.FirstOrDefault(IsProgrammed)?.SetPlacement(GolemSpot, Facing.North),
+            ["work"] = () => LiveGolems.FirstOrDefault(IsProgrammed)?.SetPlacement(GolemSpot, GolemFacing),
 
             ["gears"] = () => Grant(ItemType.Gear, 10),
             ["claim"] = () => Claim("AssembleScrapReclamation"),
@@ -156,7 +156,7 @@ namespace GolemFactory.Tutorial
             ["depot2"] = () => PlaceGranted("DepotPrefab", PresserDepotSpot, Facing.North),
             ["program-presser"] = () => Program(Pressers.FirstOrDefault(),
                 "HaulScrap", "AssembleScrapReclamation", "PushOutput"),
-            ["work-presser"] = () => Pressers.FirstOrDefault(IsIronPresser)?.SetPlacement(PresserSpot, Facing.North),
+            ["work-presser"] = () => Pressers.FirstOrDefault(IsIronPresser)?.SetPlacement(PresserSpot, PresserFacing),
 
             ["coking-card"] = () => Claim("AssembleCoking"),
             ["presser2"] = () => BuildGolem("BrassPresser"),
@@ -178,7 +178,7 @@ namespace GolemFactory.Tutorial
             ["program-coker"] = () => Program(NewestPresser, "ExtractScrap", "AssembleCoking", "PushOutput"),
             ["work-coker"] = () =>
             {
-                Pressers.FirstOrDefault(IsCoker)?.SetPlacement(CokerSpot, Facing.North);
+                Pressers.FirstOrDefault(IsCoker)?.SetPlacement(CokerSpot, CokerFacing);
                 // What the step tells a player on dry boilers: load Coke into the new one.
                 PlaceableBoiler boiler2 = BoilerBuildings.FirstOrDefault(b => b.Cell == Boiler2Spot)?.GetPart<PlaceableBoiler>();
                 if (boiler2 != null && Boilers.All(b => b.Boiler == null || b.Boiler.CokeStock == 0))
@@ -201,9 +201,11 @@ namespace GolemFactory.Tutorial
             ["scav2"] = () => BuildGolem("ClockworkScavenger"),
             ["stamp"] = () => Program(SecondScavenger, "ExtractScrap", "PushOutput"),
             ["depot3"] = () => PlaceGranted("DepotPrefab", Depot3Spot, Facing.North),
-            ["turn"] = () => SecondScavenger?.SetPlacement(Scav2Spot, Facing.East),
-            ["stall"] = () => SecondScavenger?.SetPlacement(Scav2Spot, Facing.North),
-            ["unstall"] = () => SecondScavenger?.SetPlacement(Scav2Spot, Facing.East),
+            ["turn"] = () => SecondScavenger?.SetPlacement(Scav2Spot, Scav2Facing),
+            // A quarter turn back (three of R's): east turns north, its back to the street.
+            ["stall"] = () => SecondScavenger?.SetPlacement(Scav2Spot,
+                FacingUtility.RotateClockwise(FacingUtility.RotateClockwise(FacingUtility.RotateClockwise(Scav2Facing)))),
+            ["unstall"] = () => SecondScavenger?.SetPlacement(Scav2Spot, Scav2Facing),
 
             ["r4-card"] = () => Claim("AssembleIronSmelting"),
             ["hauler"] = () => BuildGolem("AetherHauler"),
@@ -228,7 +230,7 @@ namespace GolemFactory.Tutorial
                 Grant(ItemType.Scrap, 40);
                 Grant(ItemType.Coke, 20);
             },
-            ["work-smelter"] = () => Haulers.FirstOrDefault(IsSmelter)?.SetPlacement(SmelterSpot, Facing.North),
+            ["work-smelter"] = () => Haulers.FirstOrDefault(IsSmelter)?.SetPlacement(SmelterSpot, SmelterFacing),
             ["slag-heap"] = () => PlaceGranted("SlagHeapPrefab", SlagHeapSpot, Facing.North),
             ["carrier"] = () => BuildGolem("BrassPresser"),
             ["program-carrier"] = () => ProgramSlots(NewestPresser,
@@ -245,7 +247,7 @@ namespace GolemFactory.Tutorial
             {
                 foreach (Vector2Int cell in BeltSpots)
                 {
-                    PlaceGranted("BeltPrefab", cell, Facing.North);
+                    PlaceGranted("BeltPrefab", cell, CopperFacing);
                 }
             },
             ["pipes4"] = () =>
@@ -260,7 +262,7 @@ namespace GolemFactory.Tutorial
                 BuildGolem("ClockworkScavenger");
                 Program(CopperExtractor, "ExtractScrap", "PushOutput");
             },
-            ["work-extractor"] = () => CopperExtractor?.SetPlacement(ExtractorSpot, Facing.North),
+            ["work-extractor"] = () => CopperExtractor?.SetPlacement(ExtractorSpot, CopperFacing),
             ["copper-depot"] = () =>
             {
                 PlaceGranted("DepotPrefab", CopperDepotSpot, Facing.North);
@@ -271,7 +273,7 @@ namespace GolemFactory.Tutorial
                 BuildGolem("ClockworkScavenger");
                 ProgramSlots(CopperUnloader, ("HaulScrap", ItemType.CopperOre, 1), ("PushOutput", null, 1));
             },
-            ["work-unloader"] = () => CopperUnloader?.SetPlacement(UnloaderSpot, Facing.North),
+            ["work-unloader"] = () => CopperUnloader?.SetPlacement(UnloaderSpot, CopperFacing),
             ["expand"] = () =>
             {
                 GrantCost(_world.FloorExpansion.NextCost());
@@ -298,9 +300,15 @@ namespace GolemFactory.Tutorial
             ["freight-card"] = () => Claim("FreightLaunch"),
             ["zeppelin"] = () => BuildGolem("ZeppelinFreightLoader"),
             ["mast"] = () => PlaceGranted("FreightMastPrefab", MastSpot, Facing.North),
-            ["zeppelin-pipe"] = () => PlaceGranted("SteamPipePrefab", ZeppelinPipeSpot, Facing.North),
+            ["zeppelin-pipe"] = () =>
+            {
+                foreach (Vector2Int cell in ZeppelinPipeSpots)
+                {
+                    PlaceGranted("SteamPipePrefab", cell, Facing.North);
+                }
+            },
             ["program-zeppelin"] = () => ProgramSlots(Zeppelin, ("HaulScrap", ItemType.CopperOre, 1), ("FreightLaunch", null, 1)),
-            ["launch"] = () => Zeppelin?.SetPlacement(ZeppelinSpot, Facing.North),
+            ["launch"] = () => Zeppelin?.SetPlacement(ZeppelinSpot, CopperFacing),
             ["tower-visit"] = () =>
                 _world.Interactor.Teleport(new Compat.Vector3(TownSquare.TowerCentre.x, TownSquare.TowerCentre.y - 3, 0f)),
             ["frame-section"] = () => MakeGood("AssembleFrameSection", ItemType.FrameSection, 12),
@@ -317,7 +325,7 @@ namespace GolemFactory.Tutorial
             ["stage1"] = () => _world.ClockTower.Site.RestoreProgress(1, 0, false),
             ["work-carrier"] = () =>
             {
-                Pressers.FirstOrDefault(IsCarrier)?.SetPlacement(CarrierSpot, Facing.North);
+                Pressers.FirstOrDefault(IsCarrier)?.SetPlacement(CarrierSpot, CarrierFacing);
                 Grant(ItemType.Slag, 8); // enough for the heap's first burn, even before the smelter's lands
                 Grant(ItemType.Coke, 4);
             },
