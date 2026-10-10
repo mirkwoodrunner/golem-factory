@@ -555,6 +555,18 @@ namespace GolemFactory.Tutorial
 
         private bool HasMast => Built.Any(b => b.GetPart<PlaceableFreightMast>() != null);
 
+        /// <summary>Whether the player is standing in the town square (G10).</summary>
+        private bool PlayerInSquare
+        {
+            get
+            {
+                Compat.Vector3 at = _world.Interactor.Position;
+                return TownSquare.Contains(new Vector2Int(Mathf.RoundToInt(at.x), Mathf.RoundToInt(at.y)));
+            }
+        }
+
+        private ClockTower.ClockTowerSite TowerSite => _world.ClockTower.Site;
+
         private SlagHeap HeapAt(Vector2Int cell) =>
             Built.FirstOrDefault(b => b.Cell == cell)?.GetPart<PlaceableSlagHeap>()?.Heap;
 
@@ -1170,6 +1182,39 @@ namespace GolemFactory.Tutorial
                 w => Zeppelin != null && Zeppelin.Cell != ZeppelinSpot ? Zeppelin.Cell : ZeppelinSpot,
                 spot: ZeppelinSpot,
                 spotFacing: Facing.North),
+
+            // --- Chapter 10: the Clock Tower ------------------------------------------------------------
+            // The endgame (G10, the user's call): the tower in the town square, roped off until a
+            // Zeppelin flew, now open. It is built in stages, each demanding a steady RATE of a
+            // megaproject good rather than a pile of it.
+
+            new TutorialStep(
+                "tower-visit", "The town square",
+                "Your Zeppelin flew, so the rope is down. Walk out of the workshop, down the street and into "
+                + "the town square to the south: the Clock Tower's site is waiting.",
+                w => PlayerInSquare,
+                w => TownSquare.TowerCentre),
+
+            Goal("frame-section", "Frame Sections",
+                "Stage 1, the Foundation, wants Frame Sections, and keeps wanting them: 6 a minute, every minute, "
+                + "until it is built. Claim the card and start a line.",
+                ItemType.FrameSection, "AssembleFrameSection", "10 Casing + 6 Iron Plate + 4 Brass → 1 Frame Section"),
+
+            new TutorialStep(
+                "tower-feed", "Feed the tower",
+                "Get Frame Sections to the tower: a golem beside its footprint, pushing into it, from any side. "
+                + "A Zeppelin can fly them out to a mast beside the square.",
+                w => TowerSite.DeliveryRatePerMinute(ItemType.FrameSection) > 0,
+                w => TownSquare.TowerCentre),
+
+            new TutorialStep(
+                "stage1", "Lay the Foundation",
+                "The tower builds at the rate you feed it, and it only counts Frame Sections your line is making "
+                + "now: a stockpile emptied into it builds nothing. Short of 6 a minute it still builds, just "
+                + "slower. Keep the line running until the Foundation is laid.",
+                w => TowerSite.StageIndex >= 1 || TowerSite.IsComplete,
+                w => TownSquare.TowerCentre,
+                w => ClockTower.ClockTowerReadout.FormatHeadline(TowerSite.BuildReading())),
 
             new TutorialStep(
                 "done", "A factory that feeds itself",

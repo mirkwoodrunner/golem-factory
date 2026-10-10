@@ -102,6 +102,12 @@ namespace GolemFactory.Nodes
 
             // Bounded by the WORLD (workshop + street), with the north wall wherever Floor
             // Expansion has pushed it -- the clamp Unity's PlayerController applied.
+            // A teleport Core asked for (the playtest kit) lands before this frame's walk.
+            if (_interactor != null && _interactor.TryTakeTeleport(out CoreVector3 teleport))
+            {
+                TeleportTo(teleport);
+            }
+
             FloorBounds bounds = WorldNode.Find(this)?.Bounds ?? new FloorBounds();
             _walker.SetNorthExtent(bounds.NorthExtent);
             _walker.MoveBy(new CoreVector2(input.X, input.Y), (float)delta);

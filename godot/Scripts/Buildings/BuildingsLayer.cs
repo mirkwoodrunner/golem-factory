@@ -4,6 +4,7 @@ using Godot;
 using CoreVector2 = GolemFactory.Compat.Vector2;
 using GolemFactory.Belts;
 using GolemFactory.Buildings;
+using GolemFactory.ClockTower;
 using GolemFactory.Data;
 using GolemFactory.Steam;
 using GolemFactory.World;
@@ -33,6 +34,9 @@ namespace GolemFactory.Nodes
 
         public int ViewCount => _views.Count;
 
+        /// <summary>Views of the player's buildings: every view but the fixtures' (the Clock Tower).</summary>
+        public int PlayerViewCount => _views.Keys.Count(b => !b.IsFixture);
+
         public bool TryGetView(PlaceableBuilding building, out BuildingView view) => _views.TryGetValue(building, out view);
 
         public override void _EnterTree() => AddToGroup(GroupName);
@@ -42,7 +46,7 @@ namespace GolemFactory.Nodes
             YSortEnabled = true;
             _world = WorldNode.Find(this);
             SandboxWorld sandbox = _world.Sandbox;
-            _entries = sandbox.Placeables.ToDictionary(p => p.Key);
+            _entries = sandbox.AllPlaceables.ToDictionary(p => p.Key);
 
             sandbox.Build.BuildingPlaced += OnPlaced;
             sandbox.Build.BuildingRemoved += OnRemoved;
@@ -50,6 +54,13 @@ namespace GolemFactory.Nodes
             foreach (PlaceableBuilding existing in sandbox.Build.Buildings)
             {
                 OnPlaced(existing);
+            }
+
+            // The Clock Tower stands on its site from the start (G10), a fixture rather than
+            // one of the player's buildings.
+            if (sandbox.ClockTowerBuilding != null)
+            {
+                OnPlaced(sandbox.ClockTowerBuilding);
             }
         }
 
@@ -101,6 +112,7 @@ namespace GolemFactory.Nodes
         private readonly WorldNode _world;
         private readonly PlaceableBelt _belt;
         private readonly PlaceableSteamPipe _pipe;
+        private readonly PlaceableClockTower _tower;
         private Sprite2D _sprite;
         private readonly Dictionary<string, Texture2D> _itemTextures = new Dictionary<string, Texture2D>();
         private Texture2D _fallbackItem;
@@ -119,8 +131,16 @@ namespace GolemFactory.Nodes
             _world = world;
             _belt = building.GetPart<PlaceableBelt>();
             _pipe = building.GetPart<PlaceableSteamPipe>();
+            _tower = building.IsFixture ? building.GetPart<PlaceableClockTower>() : null;
             Name = $"{building.name}_{building.Cell.x}_{building.Cell.y}";
             Position = GridConversions.CellToWorld(building.Cell);
+            if (_tower != null)
+            {
+                // The tower's FEET are its footprint's south edge, a cell and a half below its
+                // centre cell, and a standing sprite's feet go on its node's origin (y-sort
+                // compares origins): so the node moves there, not the picture.
+                Position += new Vector2(0f, TownSquare.TowerSize * GridConversions.CellPixels / 2f);
+            }
         }
 
         public override void _Ready()
@@ -189,7 +209,32 @@ namespace GolemFactory.Nodes
                 return;
             }
 
+            if (_tower != null)
+            {
+                RefreshTower();
+                return;
+            }
+
             SetSprite(_entry?.Sprite ?? "ghost_placeholder", centred: false);
+        }
+
+        /// <summary>
+        /// The Clock Tower on its site (G10) wears the picture for how far it has been built:
+        /// roped off, then one per completed stage (Core's ClockTowerArt). Every picture shares
+        /// one canvas, its bottom row on this node's origin (the footprint's south edge, see the
+        /// constructor), so the stages swap in place.
+        /// </summary>
+        private void RefreshTower()
+        {
+            string name = ClockTowerArt.SpriteFor(_tower.Site);
+            if (name == SpriteName)
+            {
+                return;
+            }
+            SpriteName = name;
+            _sprite.Texture = GD.Load<Texture2D>("res://art/" + name + ".png");
+            _sprite.Centered = false;
+            _sprite.Offset = new Vector2(-ClockTowerArt.CanvasWidth / 2f, -ClockTowerArt.CanvasHeight);
         }
 
         private string Shape(string role, string fallback) =>
@@ -216,6 +261,10 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            if (_tower != null)
+            {
+                RefreshTower(); // a stage completing, or the rope coming down, changes the picture
+            }
             if (_belt?.Segment != null)
             {
                 QueueRedraw();

@@ -60,6 +60,7 @@ The report records every chapter you skipped, so skipped and played time are nev
 | 7 | Floor Expansion, the bay upgrade, the Ledger, save and load | F, G, H, I4 |
 | 8 | Goal steps: every good the Zeppelin costs | F, G |
 | 9 | The Zeppelin and a Freight Mast | G |
+| 10 | The Clock Tower in the town square: Frame Sections, and its Foundation | (new) |
 
 ---
 
@@ -77,6 +78,9 @@ The guide never sends you to these. Each one is a judgement call that only a per
 - **The belt splitter.** Split one belt into two lines. Does it do what you expected?
 - **The workshop.** Look at the hearth and shelves on the back wall. Do they read as somebody's
   workshop? Is anything standing where you wanted to build?
+- **The Clock Tower** waits in the town square south of the street, roped off until you build a
+  Zeppelin, and its picture grows with every stage you complete. Is it a goal worth the whole
+  factory? Each stage wants a steady **rate** of freshly made goods, not a pile of them.
 - **Demolish (X)** refunds the full cost, plus what the building held. That is settled, not a
   tuning question. Did moving things around ever feel punishing anyway?
 
@@ -86,8 +90,6 @@ The guide never sends you to these. Each one is a judgement call that only a per
 
 - **A belt hands off only to another belt.** Getting goods into a depot needs a golem doing
   Push at the end of the run. This is deliberate.
-- **The Clock Tower** is still the old one: free to place and drawn like a grandfather clock. It
-  is being reworked into the endgame: a fixed site in a town square, built in stages.
 - **No player collision.** You walk through everything.
 - **The art is placeholder** throughout.
 

@@ -37,7 +37,8 @@ namespace GolemFactory.Tests.EditMode
         public void PlaceOrRemove_PastTheKerb_RefusesAndLeavesTheCellFree()
         {
             (BuildModeController controller, GridMap map) = Build(bounded: true);
-            var offGround = new Vector2Int(0, FloorLayout.WorldMinY - 2);
+            // Past the TOWN SQUARE's kerb (G10): below the street is ground now where the square is.
+            var offGround = new Vector2Int(0, TownSquare.Bottom - 1);
 
             controller.PlaceOrRemove(offGround);
 

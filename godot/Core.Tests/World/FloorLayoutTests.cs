@@ -236,12 +236,12 @@ namespace GolemFactory.Tests.EditMode
             var converter = new GridCoordinateConverter(CellSize);
             Vector3 pastCorner = converter.CellToWorldCenter(new Vector2Int(20, -40));
 
-            // X CLAMPS TO THE STREET'S WIDTH HERE, NOT THE WORKSHOP'S, and that is §13.1
-            // working: the road runs past the building now, so a player off its south-east
-            // corner is stopped by the street's edge. This test read 12 while the world was a
-            // rectangle; the world is a T.
+            // CHANGED AGAIN WITH THE TOWN SQUARE (G10). This read the street's far corner while
+            // the world was a T. Now a cross: from this far off, the square's south-east corner
+            // is the nearest ground, and "nearest legal point" is what a teleport gets. A WALKING
+            // player cannot cut the corner -- StreetExtensionTests pins that.
             Vector3 expectedCorner = converter.CellToWorldCenter(
-                new Vector2Int(FloorLayout.StreetHalfExtent, FloorLayout.WorldMinY));
+                new Vector2Int(TownSquare.HalfExtent, TownSquare.Bottom));
 
             Vector3 result = FloorLayout.ClampToFloor(pastCorner, converter, 12);
 
@@ -278,13 +278,14 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void GetWorldCells_IsExactlyTheWorkshopPlusTheStreet()
+        public void GetWorldCells_IsExactlyTheWorkshopPlusTheStreetPlusTheSquare()
         {
             int workshop = FloorLayout.GetFloorCells().Count();
             int street = FloorLayout.GetStreetCells().Count();
+            int square = TownSquare.Cells().Count();
             var world = FloorLayout.GetWorldCells().ToList();
 
-            Assert.AreEqual(workshop + street, world.Count);
+            Assert.AreEqual(workshop + street + square, world.Count);
             Assert.AreEqual(world.Count, new HashSet<Vector2Int>(world).Count, "no cell may repeat");
         }
 
@@ -314,8 +315,9 @@ namespace GolemFactory.Tests.EditMode
         {
             // The defect this pins: the side runs used to walk the WORKSHOP's indices, so they
             // stopped dead at the shop front and the street's west and east edges were undrawn.
+            // The town square's rows are walled by its own runs (SandboxLayoutTests).
             var covered = new HashSet<int>(FloorLayout.GetWorldEdgeIndices());
-            foreach (Vector2Int cell in FloorLayout.GetWorldCells())
+            foreach (Vector2Int cell in FloorLayout.GetWorldCells().Where(c => !TownSquare.Contains(c)))
             {
                 Assert.IsTrue(covered.Contains(cell.y),
                     "row " + cell.y + " of ground has no side-wall piece beside it");
