@@ -169,6 +169,27 @@ namespace GolemFactory.AssemblyLine
                 missing.Add(card.prerequisiteItemProduced);
             }
 
+            // The price gate IsUnlocked applies (G10): a good the factory has never made. Without
+            // it a card locked only by its price read "needs " and then nothing (from review).
+            if (_hasProducedItem != null)
+            {
+                if (card.HasBundleCost)
+                {
+                    foreach (RecipeIngredient c in card.claimCost)
+                    {
+                        if (c.quantity > 0 && !string.IsNullOrEmpty(c.itemType) && !_hasProducedItem(c.itemType)
+                            && !missing.Contains(c.itemType))
+                        {
+                            missing.Add(c.itemType);
+                        }
+                    }
+                }
+                else if (card.baseCost > 0 && !_hasProducedItem(ItemType.Scrap) && !missing.Contains(ItemType.Scrap))
+                {
+                    missing.Add(ItemType.Scrap);
+                }
+            }
+
             return missing.Count == 0 ? "" : string.Join(", ", missing);
         }
 
