@@ -1198,11 +1198,13 @@ namespace GolemFactory.Tutorial
                 ItemType.ZincIngot, "AssembleZincSmelting", "2 Zinc Ore + 1 Coke → 1 Zinc Ingot", "ZincOreNode"),
 
             Goal("brass", "Alloy Brass",
-                "Brass is two ingots in one: claim Brass Alloying and feed one golem Copper and Zinc Ingot.",
+                "Brass is two ingots in one: claim Brass Alloying and feed one golem Copper and Zinc Ingot. "
+                + "Two inputs, so an Aether-Hauler.",
                 ItemType.Brass, "AssembleBrassAlloying", "2 Copper Ingot + 1 Zinc Ingot → 1 Brass"),
 
             Goal("casing", "Press Casings",
-                "Claim Casing Press. A Brass Presser can run it: Iron Plate and Brass in, a Casing out.",
+                "Claim Casing Press: Iron Plate and Brass in, a Casing out. Two Hauls, an Assemble and a Push "
+                + "fill an Aether-Hauler's four slots; a Brass Presser has only three.",
                 ItemType.Casing, "AssembleCasingPress", "4 Iron Plate + 1 Brass → 1 Casing"),
 
             Goal("glass", "Glass from Slag",
@@ -1211,15 +1213,16 @@ namespace GolemFactory.Tutorial
                 ItemType.Glass, "AssembleGlassmaking", "1 Slag → 1 Glass"),
 
             Goal("lens", "Grind a Lens",
-                "Claim Lens Grinding: Glass and Brass make a Lens.",
+                "Claim Lens Grinding: Glass and Brass make a Lens, on an Aether-Hauler.",
                 ItemType.Lens, "AssembleLensGrinding", "2 Glass + 1 Brass → 1 Lens"),
 
             Goal("mainspring", "Wind a Mainspring",
-                "Claim Mainspring Winding: Brass and Gears make a Mainspring.",
+                "Claim Mainspring Winding: Brass and Gears make a Mainspring, on an Aether-Hauler.",
                 ItemType.Mainspring, "AssembleMainspringWinding", "3 Brass + 2 Gear → 1 Mainspring"),
 
             Goal("aether-cell", "Bottle the Aether",
-                "Order Aether at the Aether stall, claim Aether Containment, and seal it behind Lenses.",
+                "Order Aether at the Aether stall, claim Aether Containment, and seal it behind Lenses on an "
+                + "Aether-Hauler.",
                 ItemType.AetherCell, "AssembleAetherContainment", "1 Aether + 2 Lens → 1 Aether Cell", "AetherNode"),
 
             // --- Chapter 9: the Zeppelin ---------------------------------------------------------------
@@ -1302,13 +1305,15 @@ namespace GolemFactory.Tutorial
 
             Goal("frame-section", "Frame Sections",
                 "Stage 1, the Foundation, wants Frame Sections, and keeps wanting them: 6 a minute, every minute, "
-                + "until it is built. Claim the card and start a line.",
+                + "until it is built. Claim the card and start a line. Three inputs need five slots: build a "
+                + "Mainspring Overclocker at the station.",
                 ItemType.FrameSection, "AssembleFrameSection", "10 Casing + 6 Iron Plate + 4 Brass → 1 Frame Section"),
 
             new TutorialStep(
                 "tower-feed", "Feed the tower",
-                "Get Frame Sections to the tower: a golem beside its footprint, pushing into it, from any side. "
-                + "A Zeppelin can fly them out to a mast beside the square.",
+                "Every depot opens onto the stockpile, so build one in the square and stand a golem between it "
+                + "and the tower: Haul set to Frame Section, then Push. It pushes in from any side. It needs "
+                + "steam out here too: a boiler beside it, fuelled, or a pipe run from the workshop.",
                 w => TowerSite.DeliveryRatePerMinute(ItemType.FrameSection) > 0,
                 w => TownSquare.TowerCentre),
 

@@ -930,6 +930,38 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
+        public void FeedTheTower_TheWayTheStepSays_ADepotAGolemAndABoilerInTheSquare()
+        {
+            SandboxWorld world = Plenty();
+            DefinitionSet defs = world.Definitions;
+            world.TechTree.Ledger.RecordChassis(SandboxWorld.ZeppelinChassis); // the rope is down
+            Assert.IsTrue(world.ClockTower.Site.IsOpen, "precondition: open");
+
+            // West of the footprint's bottom-left cell: depot, golem facing the tower, boiler below.
+            Vector2Int tower = TownSquare.TowerOrigin;
+            Vector2Int golemCell = tower + new Vector2Int(-1, 0);
+            Place(world, "DepotPrefab", golemCell.x - 1, golemCell.y);
+            PlaceableBoiler boiler = Place(world, "BoilerPrefab", golemCell.x, golemCell.y - 1).GetPart<PlaceableBoiler>();
+            Give(world, ItemType.Coke, 10);
+            Assert.IsTrue(world.Interactor.TryRefuelBoiler(boiler));
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["ClockworkScavenger"], out GolemEntity feeder));
+            Program(world, feeder, "HaulScrap", "PushOutput");
+            feeder.Program.SetItemTypeAt(0, ItemType.FrameSection);
+            feeder.SetPlacement(golemCell, Facing.East);
+            Give(world, ItemType.FrameSection, 20);
+
+            GoTo(world, "tower-feed");
+            world.Clock.Play();
+            for (int frame = 0; frame < 900 && StepId(world) == "tower-feed"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreNotEqual("tower-feed", StepId(world),
+                $"the tower took a delivery ({feeder.Program.State}, {feeder.StallReason} {feeder.StallResourceId})");
+        }
+
+        [Test]
         public void SkipAndReopen_AndTheStepIsSaved()
         {
             string path = Path.Combine(Path.GetTempPath(), "golem-factory-guide-" + System.Guid.NewGuid() + ".json");
