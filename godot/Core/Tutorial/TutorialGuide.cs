@@ -40,6 +40,13 @@ namespace GolemFactory.Tutorial
         {
             get
             {
+                // Cached per layout: the panel and the notes read these many times a frame, and
+                // they change only when the guide's plan does.
+                int version = MarksVersion?.Invoke() ?? -1;
+                if (_cachedSpots != null && version >= 0 && version == _cachedVersion)
+                {
+                    return _cachedSpots;
+                }
                 var spots = new List<Vector2Int>();
                 Vector2Int? spot = _spot?.Invoke();
                 if (spot != null)
@@ -51,9 +58,17 @@ namespace GolemFactory.Tutorial
                 {
                     spots.AddRange(more);
                 }
+                _cachedSpots = spots;
+                _cachedVersion = version;
                 return spots;
             }
         }
+
+        /// <summary>The guide's plan version, set by the guide; marks are cached while it holds.</summary>
+        internal Func<int> MarksVersion { get; set; }
+
+        private IReadOnlyList<Vector2Int> _cachedSpots;
+        private int _cachedVersion = -1;
 
         public Facing? SpotFacing => _spotFacing?.Invoke();
 
@@ -143,6 +158,10 @@ namespace GolemFactory.Tutorial
         {
             _world = world;
             _steps = BuildSteps();
+            foreach (TutorialStep step in _steps)
+            {
+                step.MarksVersion = () => PlanVersion;
+            }
             EventBus.GolemCompleted += OnGolemCompleted;
         }
 
@@ -345,8 +364,12 @@ namespace GolemFactory.Tutorial
 
             if (step.ExactTile && step.Builds != null)
             {
-                PlaceableBuilding stray = Built.FirstOrDefault(b =>
-                    !_buildingsAtEntry.Contains(b) && step.Builds(b) && !step.Spots.Contains(b.Cell));
+                IReadOnlyList<Vector2Int> marks = step.Spots;
+                List<PlaceableBuilding> strays = Built.Where(b =>
+                    !_buildingsAtEntry.Contains(b) && step.Builds(b) && !marks.Contains(b.Cell)).ToList();
+                // The smelter's depots commit as a PAIR, so the first of the player's own pair is
+                // not a stray yet: telling them to take it back would stop them building the second.
+                PlaceableBuilding stray = step.Id == "smelt-depots" && strays.Count < 2 ? null : strays.FirstOrDefault();
                 if (stray != null)
                 {
                     return $"That {NameOf(stray)} doesn't line up: a golem works between two things two tiles apart in a "
@@ -995,7 +1018,8 @@ namespace GolemFactory.Tutorial
                 "The Presser will stand two tiles from the boiler, out of its reach. Build Steam Pipe "
                 + "(1 Iron Plate each) on the two marked tiles: steam runs along pipes to any golem beside them.",
                 w => SteamReachesPresserSpot,
-                w => PipeSpots[0],
+                // The route can be empty (steam already there, or nothing to build it from).
+                w => PipeSpots.Length > 0 ? PipeSpots[0] : PresserSpot,
                 menuKey: "SteamPipePrefab",
                 moreSpots: () => PipeSpots,
                 builds: IsPipe),

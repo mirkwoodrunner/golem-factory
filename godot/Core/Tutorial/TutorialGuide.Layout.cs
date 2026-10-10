@@ -51,6 +51,19 @@ namespace GolemFactory.Tutorial
         private LayoutPlan _plan;
         private bool _planDirty = true;
         private bool _planWired;
+        private int _planNorthExtent = int.MinValue;
+
+        /// <summary>Bumped each time the plan is recomputed, so a step can cache its marks.</summary>
+        internal int PlanVersion
+        {
+            get
+            {
+                _ = Plan;
+                return _planVersion;
+            }
+        }
+
+        private int _planVersion;
 
         private LayoutPlan Plan
         {
@@ -63,10 +76,16 @@ namespace GolemFactory.Tutorial
                     _world.Build.BuildingRemoved += _ => _planDirty = true;
                     _world.Build.ConnectedShapesChanged += () => _planDirty = true;
                 }
-                if (_planDirty || _plan == null)
+                // Buildable ground changes with Floor Expansion (and a load that restores fewer
+                // rows) without any building event, so the floor's extent is part of the key.
+                int north = _world.Bounds?.NorthExtent ?? 0;
+                if (_planDirty || _plan == null || north != _planNorthExtent)
                 {
                     _planDirty = false;
+                    _planNorthExtent = north;
+                    _buildOrder = null;
                     _plan = ComputePlan();
+                    _planVersion++;
                 }
                 return _plan;
             }
@@ -80,6 +99,25 @@ namespace GolemFactory.Tutorial
 
         private static Vector2Int D(Facing f) => FacingUtility.Delta(f);
 
+        // Where each building stands in the order it was built. A save keeps that order, so the
+        // same buildings commit the same layout after a load.
+        private Dictionary<PlaceableBuilding, int> _buildOrder;
+
+        private int BuildIndex(PlaceableBuilding building)
+        {
+            if (_buildOrder == null)
+            {
+                _buildOrder = new Dictionary<PlaceableBuilding, int>();
+                int i = 0;
+                foreach (PlaceableBuilding b in Built)
+                {
+                    _buildOrder[b] = i++;
+                }
+            }
+            return building != null && _buildOrder.TryGetValue(building, out int index) ? index : int.MaxValue;
+        }
+
+        // The stalls are fixed by sandbox.json for the life of the world, so this is built once.
         private HashSet<Vector2Int> _stallCells;
 
         private bool IsStallCell(Vector2Int cell)
@@ -118,20 +156,30 @@ namespace GolemFactory.Tutorial
 
         /// <summary>
         /// The direction a golem standing beside <paramref name="source"/> faces, with the target
-        /// two tiles out: the one where a <paramref name="committed"/> building already stands,
-        /// else <paramref name="preferred"/> if that line is free, else the first free line.
+        /// two tiles out: the line where a <paramref name="committed"/> building stands -- the
+        /// EARLIEST built, so a later building of the same kind (chapter 4's depot beside the
+        /// Scrap stall) can never take over a line an earlier chapter committed -- else
+        /// <paramref name="preferred"/> if that line is free, else the first free line.
         /// </summary>
         private Facing Line(Vector2Int source, Facing preferred, System.Func<PlaceableBuilding, bool> committed,
             System.Func<Facing, bool> allowed = null, System.Func<Facing, bool> secondChoice = null)
         {
             var lines = Prefer(preferred).Where(f => (allowed == null || allowed(f))
                 && Usable(source + D(f)) && (Usable(source + D(f) * 2) || IsAt(source + D(f) * 2, committed))).ToList();
+            Facing? earliest = null;
+            int earliestIndex = int.MaxValue;
             foreach (Facing f in lines)
             {
-                if (IsAt(source + D(f) * 2, committed))
+                PlaceableBuilding there = BuildingOn(source + D(f) * 2);
+                if (there != null && committed(there) && BuildIndex(there) < earliestIndex)
                 {
-                    return f;
+                    earliestIndex = BuildIndex(there);
+                    earliest = f;
                 }
+            }
+            if (earliest != null)
+            {
+                return earliest.Value;
             }
             if (secondChoice != null)
             {
@@ -143,7 +191,13 @@ namespace GolemFactory.Tutorial
                     }
                 }
             }
-            return lines.Count > 0 ? lines[0] : preferred;
+            if (lines.Count > 0)
+            {
+                return lines[0];
+            }
+            // Nothing free: the preferred line if it is allowed (the notes then name what is in the
+            // way), never one the caller ruled out, such as the first golem's own side.
+            return Prefer(preferred).Where(f => allowed == null || allowed(f)).DefaultIfEmpty(preferred).First();
         }
 
         private LayoutPlan ComputePlan()
@@ -172,7 +226,10 @@ namespace GolemFactory.Tutorial
             _taken.UnionWith(new[] { p.Presser, p.PresserDepot });
 
             // Chapter 3: the coking Presser between the Coal stall and the coal line's boiler.
-            p.CokerFacing = Line(coal, Facing.North, IsBoiler);
+            // Never the FIRST boiler (the earliest built): the coal line's is a second one, and
+            // chapter 3's pipes join the two.
+            PlaceableBuilding firstBoiler = BoilerBuildings.OrderBy(BuildIndex).FirstOrDefault();
+            p.CokerFacing = Line(coal, Facing.North, b => IsBoiler(b) && b != firstBoiler);
             p.Coker = coal + D(p.CokerFacing);
             p.Boiler2 = coal + D(p.CokerFacing) * 2;
             _taken.UnionWith(new[] { p.Coker, p.Boiler2 });
@@ -188,7 +245,7 @@ namespace GolemFactory.Tutorial
 
             // Chapter 5: the smelter between two depots, the carrier beyond the second, the heap
             // beyond that. By default a column two east of the coal line's boiler, facing north.
-            Vector2Int defaultSmelter = p.Boiler2 + new Vector2Int(2, 0);
+            Vector2Int defaultSmelter = DefaultSmelter(p.Boiler2);
             (Vector2Int smelter, Facing facing) = SmelterLine(defaultSmelter, used);
             p.Smelter = smelter;
             p.SmelterFacing = facing;
@@ -227,10 +284,10 @@ namespace GolemFactory.Tutorial
             reserved.UnionWith(p.Belts);
 
             bool defaultCh1 = p.Facing1 == Facing.North && p.PresserFacing == Facing.North;
-            p.Pipe1 = HandRoute(defaultCh1, new[] { scrap + new Vector2Int(1, 2), scrap + new Vector2Int(1, 3) })
+            p.Pipe1 = HandRoute(defaultCh1, new[] { scrap + new Vector2Int(1, 2), scrap + new Vector2Int(1, 3) }, p.Presser)
                 ?? RouteTo(AllNetworks(), new[] { p.Presser }, reserved);
 
-            p.Pipe2 = HandRoute(p.CokerFacing == Facing.North && p.Facing1 == Facing.North, DefaultPipe2(p))
+            p.Pipe2 = HandRoute(p.CokerFacing == Facing.North && p.Facing1 == Facing.North, DefaultPipe2(p), p.Coker)
                 ?? CokerRoute(p, reserved);
 
             bool defaultCh5 = p.CokerFacing == Facing.North && p.SmelterFacing == Facing.North
@@ -238,14 +295,14 @@ namespace GolemFactory.Tutorial
             p.Pipe3 = HandRoute(defaultCh5, new[]
                 {
                     p.Smelter + new Vector2Int(-1, 0), p.Smelter + new Vector2Int(-1, 1), p.Smelter + new Vector2Int(-1, 2),
-                })
+                }, p.Smelter, p.Carrier)
                 ?? RouteTo(AllNetworks(), new[] { p.Smelter, p.Carrier }, reserved);
 
             bool defaultCh6 = defaultCh5 && p.CopperFacing == Facing.North;
-            p.Pipe4 = HandRoute(defaultCh6, DefaultPipe4(p))
+            p.Pipe4 = HandRoute(defaultCh6, DefaultPipe4(p), p.Extractor, p.Unloader)
                 ?? RouteTo(AllNetworks(), new[] { p.Extractor, p.Unloader }, reserved);
 
-            p.ZeppelinPipe = HandRoute(defaultCh6, new[] { p.Zeppelin + new Vector2Int(-1, 0) })
+            p.ZeppelinPipe = HandRoute(defaultCh6, new[] { p.Zeppelin + new Vector2Int(-1, 0) }, p.Zeppelin)
                 ?? RouteTo(AllNetworks(), new[] { p.Zeppelin }, reserved);
             return p;
         }
@@ -273,6 +330,29 @@ namespace GolemFactory.Tutorial
 
         // --- Chapter 5's pair of depots ---------------------------------------------------------
 
+        /// <summary>
+        /// Where the smelter goes before any pair commits it: two east of the coal line's boiler,
+        /// facing north, as the guide always drew it -- or, with the coal line built another way,
+        /// two out on whichever side of the boiler has room for the whole column, so the marks never
+        /// land on a stall.
+        /// </summary>
+        private Vector2Int DefaultSmelter(Vector2Int boiler2)
+        {
+            foreach (Vector2Int offset in new[] { new Vector2Int(2, 0), new Vector2Int(-2, 0), new Vector2Int(0, 2), new Vector2Int(0, -2) })
+            {
+                Vector2Int smelter = boiler2 + offset;
+                Vector2Int up = D(Facing.North);
+                // Free, or already holding the column's own building (the player is following it).
+                bool depot(Vector2Int c) => Usable(c) || IsAt(c, IsDepot);
+                bool heap(Vector2Int c) => Usable(c) || IsAt(c, b => b.GetPart<PlaceableSlagHeap>() != null);
+                if (Usable(smelter) && depot(smelter - up) && depot(smelter + up) && Usable(smelter + up * 2) && heap(smelter + up * 3))
+                {
+                    return smelter;
+                }
+            }
+            return boiler2 + new Vector2Int(2, 0);
+        }
+
         private (Vector2Int smelter, Facing facing) SmelterLine(Vector2Int defaultSmelter, HashSet<Vector2Int> used)
         {
             // Two new depots two apart in a straight line, the tile between them free: that is a
@@ -291,10 +371,12 @@ namespace GolemFactory.Tutorial
                         continue;
                     }
                     // Which end is the smelter's input: the one that leaves the carrier room.
+                    // The pair finished FIRST wins (by its later depot's build order), so a depot
+                    // pair built in a later chapter never moves a finished smelter. Then which way
+                    // round: the end that leaves the carrier room, north first.
                     Vector2Int beyond = a + D(f) * 3;
-                    Vector2Int off = middle - defaultSmelter;
-                    int score = (off.x * off.x + off.y * off.y) * 4
-                        + (f == Facing.North ? 0 : 1) + (Usable(beyond) ? 0 : 2);
+                    int completed = System.Math.Max(BuildIndex(BuildingOn(a)), BuildIndex(BuildingOn(a + D(f) * 2)));
+                    int score = completed * 16 + (Usable(beyond) ? 0 : 4) + (f == Facing.North ? 0 : 1);
                     if (score < bestScore)
                     {
                         bestScore = score;
@@ -307,9 +389,37 @@ namespace GolemFactory.Tutorial
 
         // --- Pipe routes ----------------------------------------------------------------------
 
-        /// <summary>The hand-drawn default route, while the layout is the default and the route is clear.</summary>
-        private Vector2Int[] HandRoute(bool layoutIsDefault, Vector2Int[] route) =>
-            layoutIsDefault && route.All(c => Open(c) || _world.Steam.HasPipe(c)) ? route : null;
+        /// <summary>
+        /// The hand-drawn default route, while the layout is the default, the route is clear, and
+        /// laying it would actually steam <paramref name="golemTiles"/> from a boiler. (A first
+        /// boiler built elsewhere, or a chapter 5 steamed another way, leaves the hand route
+        /// joined to nothing; the shortest-path route is used instead.)
+        /// </summary>
+        private Vector2Int[] HandRoute(bool layoutIsDefault, Vector2Int[] route, params Vector2Int[] golemTiles)
+        {
+            if (!layoutIsDefault || !route.All(c => Open(c) || _world.Steam.HasPipe(c)))
+            {
+                return null;
+            }
+            // Grow the steam network through the route's cells; every golem tile must end up
+            // beside it.
+            HashSet<Vector2Int> network = AllNetworks();
+            var routeCells = new HashSet<Vector2Int>(route);
+            var frontier = new Queue<Vector2Int>(network);
+            var reached = new HashSet<Vector2Int>(network);
+            while (frontier.Count > 0)
+            {
+                Vector2Int cell = frontier.Dequeue();
+                foreach (Vector2Int n in Neighbours(cell))
+                {
+                    if (routeCells.Contains(n) && reached.Add(n))
+                    {
+                        frontier.Enqueue(n);
+                    }
+                }
+            }
+            return golemTiles.All(g => Neighbours(g).Any(reached.Contains)) ? route : null;
+        }
 
         private Vector2Int[] DefaultPipe2(LayoutPlan p)
         {
@@ -390,7 +500,7 @@ namespace GolemFactory.Tutorial
         private Vector2Int[] CokerRoute(LayoutPlan p, HashSet<Vector2Int> reserved)
         {
             Vector2Int? first = BoilerBuildings.Where(b => b.Cell != p.Boiler2)
-                .OrderBy(b => b.Cell == BoilerSpot ? 0 : 1).Select(b => (Vector2Int?)b.Cell).FirstOrDefault();
+                .OrderBy(BuildIndex).Select(b => (Vector2Int?)b.Cell).FirstOrDefault();
             if (first == null)
             {
                 return new Vector2Int[0];
