@@ -324,7 +324,36 @@ namespace GolemFactory.Tutorial
         /// <summary>The pipe run from the boiler up the Presser's east side.</summary>
         public Vector2Int[] PipeSpots => new[] { StallCell + new Vector2Int(1, 2), StallCell + new Vector2Int(1, 3) };
 
-        private bool SteamReachesPresserSpot => _world.Steam.Reaches(PresserSpot, _world.Clock.CurrentTick);
+        private bool SteamReachesPresserSpot => SteamReaches(PresserSpot);
+
+        // --- Pipe steps are done by what the steam does, not by which tiles hold pipe ------------
+        //
+        // The marked tiles are a suggestion the guide draws; a player who routes a pipe another
+        // way and gets the same steam to the same golem tiles is done too (from review: a working
+        // factory stuck on "Join the boilers" because three exact tiles were bare). Steam reach is
+        // a layout question, so these ignore Coke: fuel is a different step's problem.
+
+        /// <summary>Whether any boiler's pipes reach <paramref name="cell"/>, fuelled or not.</summary>
+        private bool SteamReaches(Vector2Int cell) => _world.Steam.Reaches(cell, _world.Clock.CurrentTick);
+
+        /// <summary>
+        /// Chapter 3's pipes do two jobs: an older boiler's run reaches the coker's tile, so it
+        /// powers the coker before the new boiler has any Coke, and the same run touches the new
+        /// boiler, joining them. Only a pipe joins boilers, never a golem standing between them,
+        /// and the new boiler's own neighbours are its alone, so a route that joins them but
+        /// stops short of the coker's tile does not count: the coker would sit beside a cold
+        /// firebox.
+        /// </summary>
+        private bool FirstBoilerPowersCokerAndJoins
+        {
+            get
+            {
+                long tick = _world.Clock.CurrentTick;
+                return BoilerBuildings.Any(b => b.Cell != Boiler2Spot
+                    && _world.Steam.ReachesFrom(b.Cell, CokerSpot, tick)
+                    && _world.Steam.AreJoined(b.Cell, Boiler2Spot, tick));
+            }
+        }
 
         private IEnumerable<GolemEntity> Pressers =>
             LiveGolems.Where(g => g.Program?.chassis != null && g.Program.chassis.name == "BrassPresser");
@@ -831,8 +860,10 @@ namespace GolemFactory.Tutorial
                 "pipes2", "Join the boilers",
                 "Lay Steam Pipe on the marked tiles, from your first boiler to the new one. The new boiler starts "
                 + "empty, so the first one powers the coking Presser until it has Coke of its own; after that, "
-                + "joined boilers share their golems.",
-                w => Pipe2Spots.All(c => _world.Steam.HasPipe(c)),
+                + "joined boilers share their golems. Your own route counts too, if its pipe reaches the coking "
+                + "Presser's tile and touches the new boiler.",
+                // The OUTCOME, not the marked tiles: any route that does both jobs the body names.
+                w => FirstBoilerPowersCokerAndJoins,
                 w => Pipe2Spots.Where(c => !_world.Steam.HasPipe(c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
                 w => $"Pipes  {Pipe2Spots.Count(c => _world.Steam.HasPipe(c))} / {Pipe2Spots.Length}",
                 menuKey: "SteamPipePrefab",
@@ -973,8 +1004,9 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "pipes3", "Steam for the column",
                 "Lay Steam Pipe on the three marked tiles, from beside the coal line's boiler up the column. "
-                + "The smelter and the carrier you build next both stand beside it.",
-                w => Pipe3Spots.All(c => _world.Steam.HasPipe(c)),
+                + "The smelter and the carrier you build next both stand beside it. Any route that gets steam to "
+                + "both their tiles counts.",
+                w => SteamReaches(SmelterSpot) && SteamReaches(CarrierSpot),
                 w => Pipe3Spots.Where(c => !_world.Steam.HasPipe(c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
                 w => $"Pipes  {Pipe3Spots.Count(c => _world.Steam.HasPipe(c))} / {Pipe3Spots.Length}",
                 menuKey: "SteamPipePrefab",
@@ -1027,7 +1059,8 @@ namespace GolemFactory.Tutorial
                 "work-carrier", "Clear the Slag",
                 "Put the carrier on the marked tile between depot and heap, facing up. When the heap starts "
                 + "burning Slag, the iron line is safe.",
-                w => HeapAt(SlagHeapSpot)?.TotalVoided > 0,
+                // Any heap: the carrier's job is done wherever the heap stands.
+                w => Built.Any(b => b.GetPart<PlaceableSlagHeap>()?.Heap?.TotalVoided > 0),
                 w => Pressers.Any(g => IsCarrier(g) && g.Cell == CarrierSpot) ? CarrierSpot
                     : Pressers.Where(IsCarrier).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? CarrierSpot,
                 spot: CarrierSpot,
@@ -1058,8 +1091,9 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "pipes4", "Drag a pipe run",
                 "Steam Pipe drags too. Lay it along the marked run, up beside the belt and across to the "
-                + "smelter's pipes: one long stroke per straight stretch.",
-                w => Pipe4Spots.All(c => _world.Steam.HasPipe(c)),
+                + "smelter's pipes: one long stroke per straight stretch. Any route that steams the extractor's "
+                + "and the unloader's tiles counts.",
+                w => SteamReaches(ExtractorSpot) && SteamReaches(UnloaderSpot),
                 w => Pipe4Spots.Where(c => !_world.Steam.HasPipe(c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
                 w => $"Pipes  {Pipe4Spots.Count(c => _world.Steam.HasPipe(c))} / {Pipe4Spots.Length}",
                 menuKey: "SteamPipePrefab",
@@ -1220,8 +1254,9 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "zeppelin-pipe", "Steam for it",
-                "One more pipe, on the marked tile at the top of the copper line's run.",
-                w => _world.Steam.HasPipe(ZeppelinPipeSpot),
+                "One more pipe, on the marked tile at the top of the copper line's run: anything that gets "
+                + "steam to the Zeppelin's tile counts.",
+                w => SteamReaches(ZeppelinSpot),
                 w => ZeppelinPipeSpot,
                 menuKey: "SteamPipePrefab",
                 spot: ZeppelinPipeSpot),

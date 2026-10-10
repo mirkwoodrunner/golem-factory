@@ -91,6 +91,11 @@ namespace GolemFactory.Steam
         // was built and the per-tick cost is a set lookup per golem.
         private readonly Dictionary<string, HashSet<Vector2Int>> _poweredCellsByBoiler =
             new Dictionary<string, HashSet<Vector2Int>>();
+
+        // boilerId -> the pipe cells connected back to it. Same topology-only lifetime as the
+        // powered cells; kept so the guide can ask whether two boilers share a run.
+        private readonly Dictionary<string, HashSet<Vector2Int>> _pipesByBoiler =
+            new Dictionary<string, HashSet<Vector2Int>>();
         private bool _topologyDirty = true;
 
         // golemId -> the boiler currently powering it. Rebuilt per tick.
@@ -338,6 +343,49 @@ namespace GolemFactory.Steam
             return false;
         }
 
+        /// <summary>
+        /// Whether the boiler standing on <paramref name="boilerCell"/> reaches
+        /// <paramref name="cell"/>, regardless of Coke. A boiler's own neighbours are powered by
+        /// that boiler alone: steam never passes through a second boiler, or a golem, to reach
+        /// them. For the guide (G10), which must tell "the first boiler powers the coker" from
+        /// "the coker stands beside an empty boiler".
+        /// </summary>
+        public bool ReachesFrom(Vector2Int boilerCell, Vector2Int cell, long tick)
+        {
+            Evaluate(tick);
+            return TryGetBoilerIdAt(boilerCell, out string id)
+                && _poweredCellsByBoiler.TryGetValue(id, out HashSet<Vector2Int> reach)
+                && reach.Contains(cell);
+        }
+
+        /// <summary>
+        /// Whether the boilers on <paramref name="a"/> and <paramref name="b"/> are joined: one
+        /// pipe run touches both. Golems never join boilers; only a pipe does.
+        /// </summary>
+        public bool AreJoined(Vector2Int a, Vector2Int b, long tick)
+        {
+            Evaluate(tick);
+            return TryGetBoilerIdAt(a, out string idA) && TryGetBoilerIdAt(b, out string idB) && idA != idB
+                && _pipesByBoiler.TryGetValue(idA, out HashSet<Vector2Int> pipesA)
+                && _pipesByBoiler.TryGetValue(idB, out HashSet<Vector2Int> pipesB)
+                && pipesA.Overlaps(pipesB);
+        }
+
+        private bool TryGetBoilerIdAt(Vector2Int cell, out string boilerId)
+        {
+            foreach (SteamBoiler boiler in _boilers.Values)
+            {
+                if (boiler.Cell == cell)
+                {
+                    boilerId = boiler.BoilerId;
+                    return true;
+                }
+            }
+
+            boilerId = null;
+            return false;
+        }
+
         public bool TryGetPoweringBoiler(string consumerId, long tick, out string boilerId)
         {
             boilerId = null;
@@ -465,6 +513,7 @@ namespace GolemFactory.Steam
             _pipes.Clear();
             _consumerCells.Clear();
             _poweredCellsByBoiler.Clear();
+            _pipesByBoiler.Clear();
             _poweredBy.Clear();
             _boilerOrder.Clear();
             _consumerOrder.Clear();
@@ -601,6 +650,7 @@ namespace GolemFactory.Steam
 
             _topologyDirty = false;
             _poweredCellsByBoiler.Clear();
+            _pipesByBoiler.Clear();
 
             for (int i = 0; i < _boilerOrder.Count; i++)
             {
@@ -609,6 +659,7 @@ namespace GolemFactory.Steam
                 SteamPipeRules.CollectConnectedPipes(boiler.Cell, _pipes, _connectedScratch);
                 SteamPipeRules.CollectPoweredCells(boiler.Cell, _connectedScratch, powered);
                 _poweredCellsByBoiler[boiler.BoilerId] = powered;
+                _pipesByBoiler[boiler.BoilerId] = new HashSet<Vector2Int>(_connectedScratch);
             }
         }
     }
