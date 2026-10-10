@@ -488,6 +488,10 @@ namespace GolemFactory.World
             // The tower on its site (G10), a fixture the building list never holds.
             if (ClockTowerBuilding != null)
             {
+                // From a clean site: the windows, meters and armed alarms are the session being
+                // abandoned, and kept, they credited the loaded tower with goods never delivered
+                // in its timeline (from review).
+                ClockTower.Site.Reset();
                 ClockTower.Site.RestoreProgress(
                     progress.clockTowerStageIndex, progress.clockTowerProgressUnits, progress.clockTowerComplete);
             }
@@ -578,7 +582,7 @@ namespace GolemFactory.World
         }
 
         /// <summary>What opens the tower's site: the factory has built one of these.</summary>
-        public const string ZeppelinChassis = "ZeppelinFreightLoader";
+        public const string ZeppelinChassis = Progression.TechTreeCatalog.ChassisZeppelin;
 
         private void WireBuildMode()
         {

@@ -413,6 +413,44 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(0L, site.ProgressUnits, "and nothing at all was earned");
         }
 
+        [Test]
+        public void ANewStage_RaisesNoStarvedAlarm_UntilItsFirstDelivery()
+        {
+            // A load on stage 2 (or the moment stage 1 completes): nothing has been delivered to
+            // this stage yet, so nothing is starved, only waiting. The alarm used to fire at once.
+            var site = new ClockTowerSite();
+            site.SetStages(AllStages());
+            site.RestoreProgress(1, 0L, false);
+            for (long tick = 0; tick < 10; tick++)
+            {
+                site.Tick(tick);
+            }
+            Assert.IsNull(site.StarvedItemType, "waiting, not starved");
+
+            // Once Frame Sections flow, the line with nothing at all IS starved -- §8's stage 2.
+            site.RecordDelivery(ItemType.FrameSection, 3, 10);
+            site.Tick(11);
+            Assert.AreEqual(ItemType.GreatCog, site.StarvedItemType);
+        }
+
+        [Test]
+        public void ARopedOffSite_StillAgesItsProductionWindows()
+        {
+            // Fresh production is recorded while the rope is up; untrimmed, a whole game of it
+            // read as one minute's rate the moment the rope came down.
+            var site = new ClockTowerSite();
+            site.SetStages(AllStages());
+            bool open = false;
+            site.OpenWhen = () => open;
+
+            site.RecordFreshProduction(ItemType.FrameSection, 50, 0);
+            site.Tick(ClockTowerProgress.SupplyWindowTicks * 3);
+            open = true;
+
+            Assert.AreEqual(0, site.FreshProductionRatePerMinute(ItemType.FrameSection),
+                "three minutes ago is not this minute");
+        }
+
         // --- Stage advance and the win -------------------------------------------------------------
 
         [Test]

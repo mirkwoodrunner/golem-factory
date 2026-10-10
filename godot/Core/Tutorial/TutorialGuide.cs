@@ -733,8 +733,7 @@ namespace GolemFactory.Tutorial
         {
             get
             {
-                Compat.Vector3 at = _world.Interactor.Position;
-                return TownSquare.Contains(new Vector2Int(Mathf.RoundToInt(at.x), Mathf.RoundToInt(at.y)));
+                return TownSquare.Contains(_world.Interactor.PlayerCell);
             }
         }
 

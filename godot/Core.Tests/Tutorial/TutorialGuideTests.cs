@@ -1029,6 +1029,46 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
+        public void TheLedgersClockTower_LightsWhenTheTowerIsFed_NotBecauseItStands()
+        {
+            SandboxWorld world = Compose();
+            for (int frame = 0; frame < 60; frame++)
+            {
+                world.Advance(1f / 30f); // the tracker polls
+            }
+            Assert.IsFalse(world.TechTree.Ledger.HasBuilding(GolemFactory.Progression.TechTreeCatalog.BuildingClockTower),
+                "the town square's fixture stands from the first frame; that is not building it");
+
+            world.ClockTower.Site.RecordDelivery(ItemType.FrameSection, 1, world.Clock.CurrentTick);
+            for (int frame = 0; frame < 60; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.IsTrue(world.TechTree.Ledger.HasBuilding(GolemFactory.Progression.TechTreeCatalog.BuildingClockTower));
+        }
+
+        [Test]
+        public void ALoad_StartsTheTowersRatesAfresh()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "golem-factory-tower-" + System.Guid.NewGuid() + ".json");
+            try
+            {
+                SandboxWorld world = Compose();
+                world.SaveTo(path);
+                world.ClockTower.Site.RecordDelivery(ItemType.FrameSection, 6, world.Clock.CurrentTick);
+                Assert.Greater(world.ClockTower.Site.DeliveryRatePerMinute(ItemType.FrameSection), 0, "precondition: fed");
+
+                world.LoadFrom(path);
+                Assert.AreEqual(0, world.ClockTower.Site.DeliveryRatePerMinute(ItemType.FrameSection),
+                    "deliveries from the abandoned session do not carry into the loaded one");
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Test]
         public void SkipAndReopen_AndTheStepIsSaved()
         {
             string path = Path.Combine(Path.GetTempPath(), "golem-factory-guide-" + System.Guid.NewGuid() + ".json");

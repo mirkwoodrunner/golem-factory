@@ -545,7 +545,10 @@ namespace GolemFactory.Player
         /// the outline can never promise a tile the golem does not land on. (The carried sprite
         /// rides half a tile above the player, so it is NOT a guide to where it lands.)
         /// </summary>
-        public Vector2Int? CarryDropCell => CarriedGolem != null ? _converter.WorldToCell(Position) : (Vector2Int?)null;
+        public Vector2Int? CarryDropCell => CarriedGolem != null ? PlayerCell : (Vector2Int?)null;
+
+        /// <summary>The tile under the player's feet, by the same converter everything else uses.</summary>
+        public Vector2Int PlayerCell => _converter.WorldToCell(Position);
 
         /// <summary>Whether [G] would refuse to set the carried golem down where it stands.</summary>
         public bool CarryDropBlocked => CarryDropCell is Vector2Int cell && IsDropBlocked(cell);
