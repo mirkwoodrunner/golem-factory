@@ -453,6 +453,19 @@ namespace GolemFactory.Tests.Tutorial
                 Give(world, cost.itemType, cost.quantity);
             }
             Assert.IsTrue(world.AssemblyLineBoard.Claim(zslot));
+            Assert.AreEqual("freight-card", StepId(world));
+
+            // The Workbench offers only owned cards from its roster: Freight Launch must be both,
+            // or the Zeppelin can never be programmed by hand (it once was neither).
+            Assert.IsFalse(world.Workbench.VaultAppendages.Any(a => a.name == "FreightLaunch"), "precondition: not owned yet");
+            for (int frame = 0; frame < 3; frame++)
+            {
+                world.Advance(1f / 30f); // the line rebalances on its tick
+            }
+            int launchSlot = Enumerable.Range(0, zline.SlotCount).FirstOrDefault(i => zline.GetCard(i)?.appendage?.name == "FreightLaunch", -1);
+            Assert.GreaterOrEqual(launchSlot, 0, "the guide keeps Freight Launch on show");
+            Assert.IsTrue(world.AssemblyLineBoard.Claim(launchSlot), world.AssemblyLineBoard.Status);
+            Assert.IsTrue(world.Workbench.VaultAppendages.Any(a => a.name == "FreightLaunch"), "claimed, the vault offers it");
             Assert.AreEqual("zeppelin", StepId(world));
 
             Give(world, ItemType.Mainspring, 6);

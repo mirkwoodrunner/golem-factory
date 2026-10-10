@@ -295,6 +295,7 @@ namespace GolemFactory.Tutorial
             ["mainspring"] = () => MakeGood("AssembleMainspringWinding", ItemType.Mainspring, 3),
             ["aether-cell"] = () => MakeGood("AssembleAetherContainment", ItemType.AetherCell, 2),
             ["zeppelin-card"] = () => Claim("ZeppelinFreightLoader"),
+            ["freight-card"] = () => Claim("FreightLaunch"),
             ["zeppelin"] = () => BuildGolem("ZeppelinFreightLoader"),
             ["mast"] = () => PlaceGranted("FreightMastPrefab", MastSpot, Facing.North),
             ["zeppelin-pipe"] = () => PlaceGranted("SteamPipePrefab", ZeppelinPipeSpot, Facing.North),

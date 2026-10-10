@@ -1234,6 +1234,16 @@ namespace GolemFactory.Tutorial
                 w => null,
                 card: "ZeppelinFreightLoader"),
 
+            // The Zeppelin's own verb is a card like any other, and the Workbench only offers
+            // cards you own: without this claim chapter 9 could not be programmed (from review).
+            new TutorialStep(
+                "freight-card", "Claim Freight Launch",
+                "A Zeppelin flies what it holds with Freight Launch, and a golem can only use cards you own. "
+                + "Press Tab, open the Assembly Line and claim it: it's free.",
+                w => HasClaimed("FreightLaunch"),
+                w => null,
+                card: "FreightLaunch"),
+
             new TutorialStep(
                 "zeppelin", "Build the Zeppelin",
                 "At the construction station, build a Zeppelin Freight Loader: 6 Mainspring, 8 Lens, 3 Aether "

@@ -618,7 +618,11 @@ namespace GolemFactory.AssemblyLine
             bool cleared = false;
             for (int i = 0; i < SlotCount; i++)
             {
-                if (_slots[i] != null && !_slots[i].isUnique && QueueHoldsUnownedOneOff())
+                // Never the card the guide is asking for: a wanted cycling verb (Freight Launch)
+                // was put on show by ShowWanted and cleared again by this loop in the same call,
+                // so it never stayed on the line (from review).
+                if (_slots[i] != null && !_slots[i].isUnique && !(Wanted?.Invoke(_slots[i]) ?? false)
+                    && QueueHoldsUnownedOneOff())
                 {
                     _slots[i] = null;
                     _secondsOnLine[i] = 0f;
