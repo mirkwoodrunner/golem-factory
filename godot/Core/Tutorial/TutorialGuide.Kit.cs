@@ -175,9 +175,18 @@ namespace GolemFactory.Tutorial
                     node.Deliver(40); // the truckload, without the wait
                 }
             },
-            ["program-coker"] = () => Program(Pressers.FirstOrDefault(g => !IsIronPresser(g)),
-                "ExtractScrap", "AssembleCoking", "PushOutput"),
-            ["work-coker"] = () => Pressers.FirstOrDefault(IsCoker)?.SetPlacement(CokerSpot, Facing.North),
+            ["program-coker"] = () => Program(NewestPresser, "ExtractScrap", "AssembleCoking", "PushOutput"),
+            ["work-coker"] = () =>
+            {
+                Pressers.FirstOrDefault(IsCoker)?.SetPlacement(CokerSpot, Facing.North);
+                // What the step tells a player on dry boilers: load Coke into the new one.
+                PlaceableBoiler boiler2 = BoilerBuildings.FirstOrDefault(b => b.Cell == Boiler2Spot)?.GetPart<PlaceableBoiler>();
+                if (boiler2 != null && Boilers.All(b => b.Boiler == null || b.Boiler.CokeStock == 0))
+                {
+                    Grant(ItemType.Coke, 5);
+                    _world.Interactor.TryRefuelBoiler(boiler2);
+                }
+            },
 
             ["patent"] = () =>
             {
@@ -222,7 +231,7 @@ namespace GolemFactory.Tutorial
             ["work-smelter"] = () => Haulers.FirstOrDefault(IsSmelter)?.SetPlacement(SmelterSpot, Facing.North),
             ["slag-heap"] = () => PlaceGranted("SlagHeapPrefab", SlagHeapSpot, Facing.North),
             ["carrier"] = () => BuildGolem("BrassPresser"),
-            ["program-carrier"] = () => ProgramSlots(Pressers.FirstOrDefault(g => !IsIronPresser(g) && !IsCoker(g)),
+            ["program-carrier"] = () => ProgramSlots(NewestPresser,
                 ("HaulScrap", ItemType.Slag, 4), ("HaulScrap", ItemType.Coke, 1), ("PushOutput", null, 1)),
             ["copper"] = () =>
             {
