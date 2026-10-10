@@ -136,6 +136,10 @@ gets a `Done` check that reads the world, never a call from the code that does t
 step that happens inside a full screen must also be placed clear of that screen's controls
 (see `TutorialPanel.Dock`).
 
+**A save records the guide's step by its `Id`** (`ProgressEntry.tutorialStepId`), not its
+index: inserting steps shifts every index after them, and a finished guide used to come back
+mid-chapter. So a step's `Id` is its saved name. Don't rename one without mapping the old id.
+
 **A new guide step needs a kit action** (`TutorialGuide.Kit.cs`, `Performs`): what the
 playtest kit does to complete it, using the player's own verbs. `PlaytestKitTests` fails for
 a step without one.
