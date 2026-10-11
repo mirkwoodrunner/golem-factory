@@ -604,7 +604,7 @@ namespace GolemFactory.UI
             {
                 return WorkbenchDiagnostics.DisplayName(core.name, core.triggerType + "Core");
             }
-            return appendage != null ? WorkbenchDiagnostics.DisplayName(appendage.name, appendage.actionType.ToString()) : string.Empty;
+            return appendage != null ? WorkbenchDiagnostics.DisplayName(appendage.Label, appendage.actionType.ToString()) : string.Empty;
         }
 
         public static string CardSubtitle(LogicCoreDefinition core, AppendageActionDefinition appendage)

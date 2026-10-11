@@ -262,7 +262,9 @@ converter is in git history at `unity-final`.
   - A key the JSON omits keeps the C# field's initializer.
 - **Renaming a definition breaks saves that name it.** A save stores cards, chassis and
   buildings by name; a card the catalog can't resolve is dropped on load, with its slot's
-  settings. Map an old name if a rename matters.
+  settings. **To change what the player reads, set a card's `displayName`** (the Workbench and
+  the Assembly Line show `AppendageActionDefinition.Label`) and leave its name alone, as
+  `ExtractScrap` does: it reads "Extract", since it takes whatever the stall behind holds.
 - Tests read the real data through `Core.Tests/AuthoredData`, which loads fresh per call
   so no test can leak a mutation.
 

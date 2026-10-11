@@ -24,13 +24,11 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 
 ## 2. Decisions waiting on the playtest
 
-- **Round 3 of the marked-tile plan**: plan the later chapters' tiles around where the player
-  actually built, instead of fixed offsets from the stalls. Large (most of chapters 3-9). Only
-  worth it if the playtest says the marks get in the way. Rounds 1 and 2 are built: pipe steps
-  accept any working route, and the guide says what is in the way of a marked tile.
-- **Rename "Extract Scrap"**: it takes whatever the stall behind holds (Coal, in chapter 3).
-  The JSON is hand-edited now, so this is a data edit plus every guide step and test that names
-  the card. **Saves store cards by name**: map the old name, or old saves lose the card.
+- **Round 3 of the marked-tile plan** is built and waiting in PR #54: the later chapters' tiles
+  follow where the player actually built, instead of fixed offsets from the stalls. Following
+  the marks plays the same either way, so merge it if the playtest says the marks get in the
+  way. Rounds 1 and 2 are merged: pipe steps accept any working route, and the guide says what
+  is in the way of a marked tile.
 - **Whether the Overclocker has an identity** beyond more slots: one exclusive card (`Repeat`)
   and the same dials.
 
@@ -44,7 +42,6 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 - **After a load mid-stage, the tower's starved alarm can show briefly** until the first
   delivery lands, because supply meters aren't saved. Without that, a line that broke since the
   save would never raise the alarm.
-- **`godot/art/clock_tower.png`** is unused since the staged art. Delete it.
 
 ## 4. Polish, none of it blocking
 

@@ -25,9 +25,10 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 holds its last state, and `docs/history/` holds the Unity-era docs. The game is `godot/`, and the
 root `CLAUDE.md` is its guide. What's left is in `docs/open-items.md`:
 1. Fix what the playtest report finds.
-2. Decide round 3 of the marked-tile plan from the playtest's answer on marked tiles.
-3. The data clean-ups the cutover unblocked (the JSON is hand-edited now): rename "Extract
-   Scrap", delete the unused `godot/art/clock_tower.png`.
+2. Decide round 3 of the marked-tile plan (#54) from the playtest's answer on marked tiles.
+
+The cutover also took two clean-ups: "Extract Scrap" reads "Extract" now (a display name, so
+saves are untouched), and the unused single-cell `godot/art/clock_tower.png` is gone.
 
 Standing rules: tests and scenarios never write the player's real `save.json`.
 

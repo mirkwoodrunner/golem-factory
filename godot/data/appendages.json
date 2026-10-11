@@ -190,6 +190,7 @@
     "outputItemType": ""
   },
   "ExtractScrap": {
+    "displayName": "Extract",
     "actionType": 1,
     "durationTicks": 1,
     "sourceId": "ScrapNode",
