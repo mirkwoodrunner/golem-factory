@@ -133,14 +133,11 @@ namespace GolemFactory.Nodes
             _pipe = building.GetPart<PlaceableSteamPipe>();
             _tower = building.IsFixture ? building.GetPart<PlaceableClockTower>() : null;
             Name = $"{building.name}_{building.Cell.x}_{building.Cell.y}";
-            Position = GridConversions.CellToWorld(building.Cell);
-            if (_tower != null)
-            {
-                // The tower's FEET are its footprint's south edge, a cell and a half below its
-                // centre cell, and a standing sprite's feet go on its node's origin (y-sort
-                // compares origins): so the node moves there, not the picture.
-                Position += new Vector2(0f, TownSquare.TowerSize * GridConversions.CellPixels / 2f);
-            }
+            // The tower's FEET are its footprint's south edge, and a standing sprite's feet go on
+            // its node's origin (y-sort compares origins): so the node moves there, not the picture.
+            Position = _tower != null
+                ? GridConversions.FootprintFeet(building.Cell, TownSquare.TowerSize)
+                : GridConversions.CellToWorld(building.Cell);
         }
 
         public override void _Ready()

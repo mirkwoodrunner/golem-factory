@@ -38,7 +38,7 @@ passed. Revision 3 is a tightening pass fixing two must-fix defects and a set of
   Bays** (golem cap).
 - `docs/digital-design.md` — the five-chassis roster and its order is the spine of §6. One
   deliberate deviation is flagged there.
-- `docs/unity-implementation-plan.md` — §11 lists everything this needs that doesn't exist.
+- `docs/history/unity-implementation-plan.md` — §11 lists everything this needs that doesn't exist.
 
 ---
 

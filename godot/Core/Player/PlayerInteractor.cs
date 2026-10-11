@@ -488,6 +488,13 @@ namespace GolemFactory.Player
                 return false;
             }
 
+            // A golem in your hands is the one R means, ahead of a bench or a nearer golem: you
+            // are turning it to see where it will face before you set it down.
+            if (CarriedGolem != null)
+            {
+                return RotateCarriedGolem();
+            }
+
             HandCrankBench bench = SelectNearestBench(_interactRange);
             if (bench != null)
             {
@@ -532,6 +539,41 @@ namespace GolemFactory.Player
             return true;
         }
 
+        /// <summary>
+        /// The tile [G] would set the carried golem down on -- the one under the player's feet --
+        /// or null when not carrying. The landing preview draws this, and the drop uses it, so
+        /// the outline can never promise a tile the golem does not land on. (The carried sprite
+        /// rides half a tile above the player, so it is NOT a guide to where it lands.)
+        /// </summary>
+        public Vector2Int? CarryDropCell => CarriedGolem != null ? PlayerCell : (Vector2Int?)null;
+
+        /// <summary>The tile under the player's feet, by the same converter everything else uses.</summary>
+        public Vector2Int PlayerCell => _converter.WorldToCell(Position);
+
+        /// <summary>Whether [G] would refuse to set the carried golem down where it stands.</summary>
+        public bool CarryDropBlocked => CarryDropCell is Vector2Int cell && IsDropBlocked(cell);
+
+        // GridMap is the simulation truth for occupancy. Dropping a golem inside a depot would
+        // give it that depot's tile as its own, so its source/target would read the depot's
+        // neighbours instead of the ones the player was aiming at.
+        private bool IsDropBlocked(Vector2Int cell) =>
+            (_gridMap != null && _gridMap.IsOccupied(cell)) || OtherGolemOn(cell) != null;
+
+        // Golems are NOT GridMap occupants (root CLAUDE.md), so "is a golem standing here" is a
+        // scan. Two golems on one tile share a source and a target, and the landing preview
+        // showed that tile as fine (from review).
+        private GolemEntity OtherGolemOn(Vector2Int cell)
+        {
+            foreach (GolemEntity golem in _golemSource?.Invoke() ?? _golems)
+            {
+                if (golem != null && golem != CarriedGolem && !golem.IsRemoved && !golem.IsHeld && golem.Cell == cell)
+                {
+                    return golem;
+                }
+            }
+            return null;
+        }
+
         public bool TryDropCarriedGolem()
         {
             GolemEntity golem = CarriedGolem;
@@ -540,12 +582,15 @@ namespace GolemFactory.Player
                 return false;
             }
 
-            Vector2Int cell = _converter.WorldToCell(Position);
-
-            // GridMap is the simulation truth for occupancy. Dropping a golem inside a depot
-            // would give it that depot's tile as its own, so its source/target would read the
-            // depot's neighbours instead of the ones the player was aiming at.
-            if (_gridMap != null && _gridMap.IsOccupied(cell))
+            Vector2Int cell = CarryDropCell.Value;
+            GolemEntity standing = OtherGolemOn(cell);
+            if (standing != null)
+            {
+                LastStatusMessage = $"{standing.GolemId} is already standing on this tile.";
+                Popup(Position, "Tile occupied", InteractionPopupKind.Refused);
+                return false;
+            }
+            if (IsDropBlocked(cell))
             {
                 LastStatusMessage = "Something is already built on this tile.";
                 Popup(Position, "Tile occupied", InteractionPopupKind.Refused);
@@ -570,6 +615,22 @@ namespace GolemFactory.Player
             return index >= 0 && index < _golems.Length ? _golems[index] : null;
         }
 
+        /// <summary>Turns the golem in the player's hands one step clockwise, before it is set down.</summary>
+        public bool RotateCarriedGolem()
+        {
+            GolemEntity golem = CarriedGolem;
+            if (golem == null)
+            {
+                return false;
+            }
+
+            Facing rotated = FacingUtility.RotateClockwise(golem.Facing);
+            golem.SetFacing(rotated);
+            LastStatusMessage = $"{golem.GolemId} will face {FacingVisuals.Describe(rotated)}.";
+            Popup(PositionOf(golem), "Facing " + FacingVisuals.Describe(rotated), InteractionPopupKind.Gain);
+            return true;
+        }
+
         /// <summary>
         /// Turns the nearest in-range golem one step clockwise. This is the move that makes
         /// facing a puzzle rather than a fact about where you happened to build.
@@ -588,7 +649,7 @@ namespace GolemFactory.Player
             }
 
             Facing rotated = FacingUtility.RotateClockwise(golem.Facing);
-            golem.SetPlacement(golem.Cell, rotated);
+            golem.SetFacing(rotated);
             LastStatusMessage = $"{golem.GolemId} now faces {FacingVisuals.Describe(rotated)}.";
             Popup(PositionOf(golem), "Facing " + FacingVisuals.Describe(rotated), InteractionPopupKind.Gain);
             return true;

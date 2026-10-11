@@ -12,7 +12,7 @@ pipeline rather than the importer, because an importer that trimmed would be sil
 disagreeing with the file on disk about where the sprite ends.
 
 NOT generate_placeholder_art.py's job, despite that being where these sprites' PLACEHOLDERS
-came from: the chassis art in Assets/_Project/Art/ was hand-replaced afterwards, which is why
+came from: the chassis art in godot/art/ was hand-replaced afterwards, which is why
 that script only regenerates it under --legacy and warns that doing so clobbers the real art.
 So the trim has to operate on the shipped pixels.
 

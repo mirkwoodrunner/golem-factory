@@ -2,6 +2,7 @@ using Godot;
 using GolemFactory.Data;
 using GolemFactory.Events;
 using GolemFactory.Golems;
+using GolemFactory.Player;
 using GolemFactory.PunchCards;
 using GolemFactory.World;
 
@@ -88,6 +89,7 @@ namespace GolemFactory.Nodes
             EventBus.GolemStalled -= OnGolemStalled;
             _sourceTile?.QueueFree();
             _targetTile?.QueueFree();
+            _dropTile?.QueueFree();
             if (_ownsWiring)
             {
                 _world.Clock.Unregister(Entity);
@@ -132,6 +134,8 @@ namespace GolemFactory.Nodes
         private Sprite2D _arrow;
         private Sprite2D _sourceTile;
         private Sprite2D _targetTile;
+        private Sprite2D _dropTile;
+        private Sprite2D _dropArrow;
         private CanvasLayer _badgeLayer;
         private PanelContainer _badge;
         private Label _badgeLabel;
@@ -164,6 +168,15 @@ namespace GolemFactory.Nodes
 
         public bool TilesVisible => _sourceTile != null && _sourceTile.Visible;
 
+        /// <summary>Whether the landing outline is up (while carried), and where -- for a scenario.</summary>
+        public bool DropPreviewVisible => _dropTile != null && _dropTile.Visible;
+        public Compat.Vector2Int DropPreviewCell => GridConversions.WorldToCell(_dropTile.GlobalPosition);
+        public Color DropPreviewTint => _dropTile.Modulate;
+
+        /// <summary>The source and target tiles, as drawn -- for a scenario.</summary>
+        public Compat.Vector2Int SourceTileCell => GridConversions.WorldToCell(_sourceTile.GlobalPosition);
+        public Compat.Vector2Int TargetTileCell => GridConversions.WorldToCell(_targetTile.GlobalPosition);
+
         private void BuildVisuals()
         {
             // The contact shadow under the feet, on the floor with the belts.
@@ -183,6 +196,12 @@ namespace GolemFactory.Nodes
             // their cells while the golem bobs and is carried.
             _sourceTile = MakeTile(SourceTint);
             _targetTile = MakeTile(TargetTint);
+
+            // The landing outline while carried: the build ghost's tile and colours (red where
+            // [G] would refuse), with the facing arrow on it as the build cursor draws one.
+            _dropTile = MakeTile(Colors.White);
+            _dropArrow = new Sprite2D { Texture = GD.Load<Texture2D>("res://art/facing_arrow.png") };
+            _dropTile.AddChild(_dropArrow);
 
             _badgeLayer = new CanvasLayer { Layer = 4 };
             AddChild(_badgeLayer);
@@ -256,13 +275,29 @@ namespace GolemFactory.Nodes
             _arrow.Rotation = GridConversions.FacingToRotation(Entity.Facing);
             _arrow.Position = step * 0.42f + new Vector2(0f, -0.15f * GridConversions.CellPixels);
 
-            bool tiles = ShowTiles && !carried;
+            // Carried, the golem is drawn in the player's hands, half a tile above the tile it
+            // will land on -- so the floor shows that tile instead, and what the golem would
+            // take from and push to from there, before [G] commits to it.
+            Compat.Vector2Int? landing = carried ? hands.CarryDropCell : null;
+            _dropTile.Visible = landing != null;
+            if (landing is Compat.Vector2Int drop)
+            {
+                _dropTile.GlobalPosition = GridConversions.CellToWorld(drop);
+                Compat.Color tint = BuildGhostVisuals.Evaluate(
+                    BuildGhostVisuals.Classify(hands.CarryDropBlocked, affordable: true), _time);
+                _dropTile.Modulate = new Color(tint.r, tint.g, tint.b, tint.a);
+                _dropArrow.Rotation = GridConversions.FacingToRotation(Entity.Facing);
+                _dropArrow.Position = step * 0.28f;
+            }
+
+            bool tiles = (ShowTiles && !carried) || landing != null;
             _sourceTile.Visible = tiles;
             _targetTile.Visible = tiles;
             if (tiles)
             {
-                _sourceTile.GlobalPosition = GridConversions.CellToWorld(Entity.SourceCell);
-                _targetTile.GlobalPosition = GridConversions.CellToWorld(Entity.TargetCell);
+                Compat.Vector2Int at = landing ?? Entity.Cell;
+                _sourceTile.GlobalPosition = GridConversions.CellToWorld(FacingUtility.SourceCell(at, Entity.Facing));
+                _targetTile.GlobalPosition = GridConversions.CellToWorld(FacingUtility.TargetCell(at, Entity.Facing));
             }
         }
 

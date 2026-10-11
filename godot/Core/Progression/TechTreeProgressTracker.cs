@@ -200,7 +200,10 @@ namespace GolemFactory.Progression
             {
                 Ledger.RecordBuilding(TechTreeCatalog.BuildingDepot);
             }
-            if (Exists<PlaceableClockTower>())
+            // The town square's fixture stands from the first frame, so standing is not building
+            // it: it counts once a delivery has started stage 1. (It counted at t=0, lighting the
+            // endgame keystone on a fresh game -- from review.) A placed tower counts as placed.
+            if (Exists<PlaceableClockTower>(b => !b.IsFixture || b.GetPart<PlaceableClockTower>().Site?.HasStarted == true))
             {
                 Ledger.RecordBuilding(TechTreeCatalog.BuildingClockTower);
             }
@@ -242,7 +245,7 @@ namespace GolemFactory.Progression
             Ledger.RecordCompletedTowerStages(completed);
         }
 
-        private bool Exists<T>() where T : class
+        private bool Exists<T>(Func<PlaceableBuilding, bool> counts = null) where T : class
         {
             if (_buildings == null)
             {
@@ -251,7 +254,8 @@ namespace GolemFactory.Progression
 
             foreach (PlaceableBuilding building in _buildings())
             {
-                if (building != null && !building.IsRemoved && building.GetPart<T>() != null)
+                if (building != null && !building.IsRemoved && building.GetPart<T>() != null
+                    && (counts == null || counts(building)))
                 {
                     return true;
                 }

@@ -48,7 +48,7 @@ namespace GolemFactory.Data
 
     /// <summary>
     /// Loads the authored definitions -- what Unity kept as ScriptableObject .asset files --
-    /// from the JSON <c>Tools/Data/convert_unity_assets.py</c> writes.
+    /// from <c>godot/data/*.json</c>, hand-edited since the G10 cutover.
     ///
     /// <para>
     /// <b>Strict by design.</b> A JSON key with no matching field, a reference to a name that

@@ -100,6 +100,63 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(appendage, restored.Appendages[0]);
         }
 
+        // A card renamed or removed between builds is skipped on load. Its slot's good and batch
+        // size must go with it: compacting only the cards slid every later slot onto the one
+        // before's settings, so a Haul set to Coke came back hauling nothing in particular.
+        private static (AppendageActionDefinition gone, AppendageActionDefinition haul, AppendageActionDefinition push) ThreeCards()
+        {
+            var gone = new AppendageActionDefinition { name = "AssembleRenamed" };
+            var haul = new AppendageActionDefinition { name = "TestHaul", actionType = AppendageActionType.Haul };
+            var push = new AppendageActionDefinition { name = "TestPush" };
+            return (gone, haul, push);
+        }
+
+        [Test]
+        public void AnUnresolvedCard_TakesItsSlotsSettingsWithIt_InAPatent()
+        {
+            var (gone, haul, push) = ThreeCards();
+            var chassis = new ChassisDefinition { name = "TestChassis", maxAppendageSlots = 4 };
+            var core = new LogicCoreDefinition { name = "TestCore" };
+            var sourcePatents = new PatentRegistry();
+            sourcePatents.TryPatent(new Blueprint("BP-001", "LocalPlayer", chassis, core,
+                new List<AppendageActionDefinition> { gone, haul, push },
+                new List<string> { "", ItemType.Coke, "" }, new List<int> { 1, 3, 1 }));
+            SaveData data = SaveLoadService.CaptureState(new StorageBufferRegistry(), sourcePatents, new List<GolemEntity>());
+
+            var destPatents = new PatentRegistry();
+            SaveLoadService.RestoreState(data, new StorageBufferRegistry(), destPatents, new List<GolemEntity>(),
+                new DefinitionCatalog(new[] { chassis }, new[] { core }, new[] { haul, push })); // no AssembleRenamed
+
+            Assert.IsTrue(destPatents.TryUseBlueprint("BP-001", "LocalPlayer", out Blueprint restored));
+            Assert.AreEqual(haul, restored.Appendages[0]);
+            Assert.AreEqual(ItemType.Coke, restored.ItemTypes[0], "the Haul keeps its good");
+            Assert.AreEqual(3, restored.Quantities[0], "and its batch size");
+        }
+
+        [Test]
+        public void AnUnresolvedCard_TakesItsSlotsSettingsWithIt_OnAGolem()
+        {
+            var (gone, haul, push) = ThreeCards();
+            var chassis = new ChassisDefinition { name = "TestChassis", maxAppendageSlots = 4 };
+            GolemEntity source = MakeGolem("Golem1");
+            source.Program.TryAssignChassis(chassis);
+            source.Program.TryAddAppendage(gone);
+            source.Program.TryAddAppendage(haul);
+            source.Program.TryAddAppendage(push);
+            source.Program.SetItemTypeAt(1, ItemType.Coke);
+            source.Program.SetQuantityAt(1, 3);
+            SaveData data = SaveLoadService.CaptureState(new StorageBufferRegistry(), new PatentRegistry(), new List<GolemEntity> { source });
+
+            GolemEntity dest = MakeGolem("Golem1");
+            SaveLoadService.RestoreState(data, new StorageBufferRegistry(), new PatentRegistry(), new List<GolemEntity> { dest },
+                new DefinitionCatalog(new[] { chassis }, new LogicCoreDefinition[0], new[] { haul, push }));
+
+            Assert.AreEqual(2, dest.Program.appendages.Count);
+            Assert.AreEqual(haul, dest.Program.appendages[0]);
+            Assert.AreEqual(ItemType.Coke, dest.Program.GetItemTypeAt(0), "the Haul keeps its good");
+            Assert.AreEqual(3, dest.Program.GetQuantityAt(0), "and its batch size");
+        }
+
         [Test]
         public void CaptureThenRestore_GolemProgram_RoundTrips()
         {

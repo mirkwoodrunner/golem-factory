@@ -15,13 +15,11 @@ namespace GolemFactory.Tests.EditMode
     /// the Lens ratio and the boiler burn as the first two things to try). A bad authoring run
     /// -- a typo, a half-finished edit, an asset someone hand-edited in the Inspector -- must
     /// fail the suite rather than fail the player mid-game, so everything here loads the
-    /// .asset files the game actually ships.
+    /// godot/data JSON the game actually ships.
     /// </para>
     /// </summary>
     public class RecipeCatalogTests
     {
-        private const string RecipeRoot = "Assets/_Project/ScriptableObjects/Recipes";
-        private const string ChassisRoot = "Assets/_Project/ScriptableObjects/Chassis";
 
         private static List<RecipeDefinition> LoadRecipes()
         {

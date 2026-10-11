@@ -27,8 +27,6 @@ namespace GolemFactory.Tests.EditMode
     /// </summary>
     public class ChassisCostAcyclicityTests
     {
-        private const string RecipeRoot = "Assets/_Project/ScriptableObjects/Recipes";
-        private const string ChassisRoot = "Assets/_Project/ScriptableObjects/Chassis";
 
         // §5.1 Tier 0: what a node yields and the player's own Interact harvests.
         private static readonly string[] RawGoods =

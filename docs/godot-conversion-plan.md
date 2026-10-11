@@ -17,40 +17,20 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 | G7: The Workbench | **done**: PR #39 |
 | G8: Management HUD and remaining screens | **done**: PR #40 |
 | G9: Save and load end to end | **done**: PR #41 (all of #30–#42 landed on `main` through #43, 2026-10-08) |
-| G10: Parity playtest and cutover | **in progress**: playtest fixes #42, #44, #45 merged; #46 (playtest mode) and #47 (Clock Tower) open; then your playtest, then the cutover PR |
+| G10: Parity playtest and cutover | **done**: playtest fixes #42-#52, then the cutover PR #53 (tag `unity-final`) |
 
 ## Next session: start here
 
-State as of 2026-10-09:
+**The conversion is finished.** The cutover PR removed the Unity project; the tag `unity-final`
+holds its last state, and `docs/history/` holds the Unity-era docs. The game is `godot/`, and the
+root `CLAUDE.md` is its guide. What's left is in `docs/open-items.md`:
+1. Fix what the playtest report finds.
+2. Decide round 3 of the marked-tile plan (#54) from the playtest's answer on marked tiles.
 
-1. **Two PRs await your merge, in order:** #46 (`conversion/g10-playtest-mode`: playtest
-   mode, guide chapters 4–9, the Haul good picker, claims that are never random) and then
-   #47 (`conversion/g10-clock-tower`, based on #46: the town square, the roped-off tower site,
-   staged art, guide chapter 10). If #46 is squash-merged, rebase #47 onto `main` before
-   merging it. Never merge them on your own.
-2. **Your playtest.** You last played to just before Coke automation (chapter 3) and reported
-   that claims looked random; #46 fixes that (see "Claims, from playtest" below), but you
-   haven't confirmed it in play yet. Play from a fresh game with `"playtest": true` in
-   `godot/data/sandbox.json`; the guide asks the questions, F9 skips a chapter, and the report
-   is `%APPDATA%\Godot\app_userdata\Golem Factory\playtest-report.md`. How-to:
-   `testscript/phase-1-playtest.md`.
-3. **Fix what the report finds.** Already noticed and left for the playtest to judge:
-   - golems that are only *waiting* for input wear the red stall badge (maybe too loud);
-   - one stall badge shows a raw belt id, `Belt(0,-12)#3`;
-   - the old single-cell `godot/art/clock_tower.png` is unused since the staged art (delete
-     at cutover);
-   - the "Extract Scrap" card takes whatever the stall behind holds (Coal, in chapter 3), so
-     rename it once the card data is hand-edited after cutover.
-4. **Then the cutover PR** (the G10 list below): tag `unity-final`, delete `Assets/`,
-   `Packages/`, `ProjectSettings/` and the Unity `.gitignore` rules, retire the Unity Editor
-   tooling and `Tools/Data/convert_unity_assets.py`'s source-of-truth role (the JSON becomes
-   hand-edited), move `docs/unity-implementation-plan.md` to `docs/history/`, rewrite the root
-   `CLAUDE.md` from `godot/CLAUDE.md`, and update `docs/open-items.md` (still Unity-era).
+The cutover also took two clean-ups: "Extract Scrap" reads "Extract" now (a display name, so
+saves are untouched), and the unused single-cell `godot/art/clock_tower.png` is gone.
 
-Standing rules: leave the modified `Assets/TextMesh Pro/.../LiberationSans SDF - Fallback.asset`
-uncommitted; nothing under `Assets/` changes before the cutover; tests and scenarios never write
-the player's real `save.json`. Last full run: **1629/1629** Core tests, all eleven scenarios
-pass, `verify_art.py` clean.
+Standing rules: tests and scenarios never write the player's real `save.json`.
 
 ## Context
 
@@ -93,7 +73,7 @@ way. The outcome is a Godot build that passes the existing playtest script
    Their rules move into engine-free Core services. Their tests, most of the PlayMode suite,
    then become `dotnet test` unit tests, and the Godot Nodes stay thin. The same pattern is
    already in place: `GridConversions`, `WorldNode` and Nodes that only own, convert and draw.
-2. **Every Unity test is accounted for.** `docs/godot-test-ledger.md` lists all 1,473 Unity
+2. **Every Unity test is accounted for.** `docs/history/godot-test-ledger.md` lists all 1,473 Unity
    tests as *ported*, *replaced by* (a named Core test or scenario), or *retired* (with a
    reason, such as testing a Unity-only API). The spike's assert-count check stays the
    standard: a ported test keeps its asserts.
@@ -156,7 +136,7 @@ from JSON.
     programs the regression suite pins, and pointing it at the data would make those
     programs change whenever the data changes.
 - The slice loads its golems' chassis, core and cards from the JSON.
-- The test ledger (`Tools/Godot/test_ledger.py` → `docs/godot-test-ledger.md`) started here.
+- The test ledger (`Tools/Godot/test_ledger.py` → `docs/history/godot-test-ledger.md`) started here.
 
 ### G2: Extract the gameplay services into Core (the big refactor)
 New engine-free services, each fed the registries directly the way `GolemEntity` now is:
@@ -677,12 +657,12 @@ buildings. Includes the "no refund on load" duplicator regression.
 - Run `testscript/phase-1-playtest.md` against the Godot build. You play it too, since
   automation can't judge feel.
 - Fix what the playtest finds.
-- Then, in one cutover PR:
+- Then, in one cutover PR (**done**, #53):
   - Tag `unity-final`.
   - Delete `Assets/`, `Packages/`, `ProjectSettings/` and the Unity-specific `.gitignore`
     rules.
   - Retire the Unity Editor tooling.
-  - Move `docs/unity-implementation-plan.md` to `docs/history/`.
+  - Move `docs/history/unity-implementation-plan.md` to `docs/history/`.
   - Rewrite the root `CLAUDE.md` from `godot/CLAUDE.md`.
   - Update `docs/open-items.md`.
 

@@ -16,8 +16,6 @@ namespace GolemFactory.Tests.EditMode
     // tautology -- the same discipline RecipeCatalogTests uses.
     public class TechTreeCatalogTests
     {
-        private const string RecipeRoot = "Assets/_Project/ScriptableObjects/Recipes";
-        private const string ChassisRoot = "Assets/_Project/ScriptableObjects/Chassis";
 
         [Test]
         public void EveryPhaseHasNodes()
@@ -168,7 +166,7 @@ namespace GolemFactory.Tests.EditMode
             // only recipe that makes Slag, which makes it the sharper detector -- so resolving
             // by output found nothing for it and the readout silently fell back to the
             // catalog's hand-written line.
-            List<RecipeDefinition> recipes = LoadAll<RecipeDefinition>(RecipeRoot);
+            List<RecipeDefinition> recipes = AuthoredData.All<RecipeDefinition>();
 
             foreach (TechTreeNode node in TechTreeCatalog.Nodes)
             {
@@ -199,7 +197,7 @@ namespace GolemFactory.Tests.EditMode
         public void EveryRecipeNodeNamesARealRecipeOutput()
         {
             var outputs = new HashSet<string>();
-            foreach (RecipeDefinition recipe in LoadAll<RecipeDefinition>(RecipeRoot))
+            foreach (RecipeDefinition recipe in AuthoredData.All<RecipeDefinition>())
             {
                 outputs.Add(recipe.outputItemType);
                 if (!string.IsNullOrEmpty(recipe.byproductItemType))
@@ -240,7 +238,7 @@ namespace GolemFactory.Tests.EditMode
             }
 
             Assert.AreEqual(
-                LoadAll<RecipeDefinition>(RecipeRoot).Count, recipeNodes,
+                AuthoredData.All<RecipeDefinition>().Count, recipeNodes,
                 "Every authored RecipeDefinition should have exactly one node on the track.");
         }
 
@@ -248,7 +246,7 @@ namespace GolemFactory.Tests.EditMode
         public void EveryChassisNodeNamesARealChassisAsset()
         {
             var chassisNames = new HashSet<string>();
-            foreach (ChassisDefinition chassis in LoadAll<ChassisDefinition>(ChassisRoot))
+            foreach (ChassisDefinition chassis in AuthoredData.All<ChassisDefinition>())
             {
                 chassisNames.Add(chassis.name);
             }
@@ -337,9 +335,5 @@ namespace GolemFactory.Tests.EditMode
             return count;
         }
 
-        private static List<T> LoadAll<T>(string folder) 
-        {
-            return AuthoredData.All<T>();
-        }
     }
 }

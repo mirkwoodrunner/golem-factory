@@ -1,8 +1,8 @@
 """Where the art generators write: the Godot project's art folder.
 
 Milestone G3 of docs/godot-conversion-plan.md moved the generators' output from Unity's
-Assets/_Project/Art/ to godot/art/. The Unity project is frozen until cutover, so its copy
-of the art no longer changes; godot/art/ is the live one.
+Assets/_Project/Art/ to godot/art/, and the G10 cutover removed the Unity project (tag
+unity-final). godot/art/ is the only copy.
 
     python Tools/Art/generate_building_art.py                       # writes godot/art/...
     python Tools/Art/generate_building_art.py --out-root <dir>      # writes <dir>/... instead

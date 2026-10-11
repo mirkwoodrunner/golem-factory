@@ -15,7 +15,7 @@ namespace GolemFactory.Tests.EditMode
         }
 
         // Threshold/Signal trigger evaluation moves into a standalone GolemTriggerSystem
-        // at M7 (see docs/unity-implementation-plan.md); add real coverage there instead
+        // at M7 (see docs/history/unity-implementation-plan.md); add real coverage there instead
         // of testing GolemEntity's inline stub.
     }
 }

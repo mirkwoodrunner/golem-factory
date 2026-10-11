@@ -19,7 +19,6 @@ namespace GolemFactory.Tests.EditMode
     /// </summary>
     public class ClockTowerStageCatalogTests
     {
-        private const string StageRoot = "Assets/_Project/ScriptableObjects/ClockTower";
 
         /// <summary>§7's stage table, verbatim, hand-transcribed.</summary>
         private static readonly (int Number, string Name, int NominalSeconds,

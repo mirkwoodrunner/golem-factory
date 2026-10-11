@@ -267,13 +267,31 @@ namespace GolemFactory.Golems
             facing = placedFacing;
             // The steam grid is keyed by cell, so moving a golem has to move its registration or
             // it keeps drawing power from wherever it used to stand. RegisterConsumer is
-            // idempotent and re-sorts only when the cell actually changed.
-            RegisterSteamConsumer();
+            // idempotent and re-sorts only when the cell actually changed. NOT while held: R
+            // turns a golem in the player's hands, and registering it then put a carried golem
+            // back on a boiler's books (SetHeld's reason, undone). SetHeld(false) registers it
+            // on the tile it is set down on.
+            if (!IsHeld)
+            {
+                RegisterSteamConsumer();
+            }
 
             // A node claim is dropped rather than moved: the golem may now face a different
             // node, or none at all, and holding a slot at the seam it used to work would starve
             // whichever golem the cap was refusing. It re-files on its next Extract, at its new
             // cell, against whatever is actually behind it now.
+            ReleaseNodeClaim();
+        }
+
+        /// <summary>
+        /// Turns the golem where it stands -- R, on the floor or in the player's hands. Steam is
+        /// keyed by cell, so a turn leaves the golem's steam registration alone (and a carried
+        /// golem stays off the books); the node claim is dropped, as on a move, because the
+        /// golem may now face a different seam.
+        /// </summary>
+        public void SetFacing(Facing placedFacing)
+        {
+            facing = placedFacing;
             ReleaseNodeClaim();
         }
 
