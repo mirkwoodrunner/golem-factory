@@ -158,6 +158,8 @@ ported, held for a named milestone, or retired with a reason.
 
 | File | Tests |
 |---|---|
+| `Core.Tests/Buildings/ConstructFromBlueprintTests.cs` | 10 |
+| `Core.Tests/ClockTower/ClockTowerArtTests.cs` | 7 |
 | `Core.Tests/Data/DefinitionLoaderTests.cs` | 16 |
 | `Core.Tests/Data/PlaceableCatalogTests.cs` | 19 |
 | `Core.Tests/Golems/HaulItemTypeTests.cs` | 4 |
@@ -165,13 +167,13 @@ ported, held for a named milestone, or retired with a reason.
 | `Core.Tests/Player/DemolitionContentsRefundTests.cs` | 3 |
 | `Core.Tests/Steam/SteamShortageTests.cs` | 6 |
 | `Core.Tests/Steam/WorkingGolemBurnTests.cs` | 2 |
-| `Core.Tests/Tutorial/PlaytestKitTests.cs` | 3 |
-| `Core.Tests/Tutorial/PlaytestSessionTests.cs` | 5 |
-| `Core.Tests/Tutorial/TutorialGuideTests.cs` | 8 |
+| `Core.Tests/Tutorial/PlaytestKitTests.cs` | 4 |
+| `Core.Tests/Tutorial/PlaytestSessionTests.cs` | 9 |
+| `Core.Tests/Tutorial/TutorialGuideTests.cs` | 44 |
 | `Core.Tests/UI/BuildMenuLabelsTests.cs` | 8 |
 | `Core.Tests/World/BeltCargoPathTests.cs` | 5 |
 | `Core.Tests/World/BeltSplitterPlacementTests.cs` | 4 |
 | `Core.Tests/World/SandboxInteractionTests.cs` | 11 |
-| `Core.Tests/World/SandboxLayoutTests.cs` | 29 |
+| `Core.Tests/World/SandboxLayoutTests.cs` | 34 |
 | `Core.Tests/World/SandboxSetupTests.cs` | 6 |
-| `Core.Tests/World/SandboxWorldTests.cs` | 15 |
+| `Core.Tests/World/SandboxWorldTests.cs` | 17 |

@@ -152,11 +152,18 @@ chassis that wasn't standing when the step began), and the save keeps the roles
 (`tutorialRoles`). "The third Scavenger" broke on any spare or any golem the wrecking bar took.
 The guide is restored on load **after** the golems, since a step notes who was standing.
 
-**Marked tiles: what the guide checks.** Pipe steps are done by where the steam reaches, not
-which tiles hold pipe (any route counts). Buildings later steps are laid out around stay on
-their marked tiles (`TutorialStep.ExactTile`), and `TutorialGuide.Notice` says why a step is
-waiting: the right building built elsewhere, something else on a marked tile, a building on a
-golem's tile, a belt pointing the wrong way. A step's `Builds` names what its marks are for.
+**Marked tiles follow what the player builds** (`TutorialGuide.Layout.cs`). Every guide golem
+stands on a free tile between its source (behind) and its target (in front), two apart in a
+straight line, so each chapter's layout hangs off the building that commits it: the first
+depot, the coal line's boiler, the smelter's pair of depots, the Slag Heap, the first belt.
+Until that building exists the default layout stands, so following the marks plays exactly as
+before; a blocked default moves to a free line. Each chapter plans around the tiles earlier
+chapters use. Positions, facings and pipe routes (hand-drawn for the default layout, shortest
+path otherwise) are computed once per change to the built world. **Marks are read live**:
+`TutorialStep.Spot`/`Spots`/`SpotFacing` are functions, so never cache them. Pipe steps are
+done by where the steam reaches. `TutorialGuide.Notice` says why a step waits: a building
+that doesn't line up, a marked tile nothing could be planned around, a golem tile steam
+doesn't reach yet, a belt pointing the wrong way. A step's `Builds` names what its marks are for.
 
 **A new guide step needs a kit action** (`TutorialGuide.Kit.cs`, `Performs`): what the
 playtest kit does to complete it, using the player's own verbs. `PlaytestKitTests` fails for
@@ -189,6 +196,14 @@ set by the ScenarioRunner arrived too late, and a kit run overwrote a player's s
 point a test at the real paths. **A save calls `TutorialGuide.Settle`, never `Update`**:
 `Update` also runs the playtest kit, which then performed its Load step from inside the save. Anything that POLLS the keyboard
 must also check `TextEntry.IsTyping`, or typing into a field walks the player.
+
+**A patent is used at the construction station**, not loaded into a bare golem.
+`GolemConstructionStation.TryConstructFromBlueprint` builds the patent's chassis at the bare
+cost with its program engaged, before the Workbench or `GolemSpawned` see the golem; the
+panel's "From a patent" rows call it and close without opening the Workbench. Management's
+Load still exists for reprogramming, but Tab does nothing while the Workbench is open, so it
+was never a route from the Workbench. ENGAGE and the station write a program through one
+function, `GolemProgramWriter.TryWrite`; keep it that way so the two can't drift.
 
 **Full screens report to `SandboxWorld.Screens`** (`ScreenCoordinator`). Implement
 `IClosableScreen`, `Register` in `_Ready`, and call `Screens.Opening(this)` in `Open`; every
