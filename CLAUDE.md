@@ -604,3 +604,18 @@ future second owner would need a rewrite instead of a parameter.
   reported success and the HUD still drew over the Workbench modal). `SceneProbe.Verify` is the
   read-back pass. If you make source changes that require scene/prefab/asset wiring to take effect,
   say so explicitly rather than assuming the change is live.
+
+## AI image generation (optional, personal MCP)
+
+If an image-generation MCP server is configured in the user's global Claude config, use it for
+**throwaway placeholders only** (UI mockups, icon ideas, concept sketches), never for shipped art.
+
+- Save results to `./public/images/` with a descriptive kebab-case name (`brass-gear-icon.png`).
+  Create the folder if it is missing. Do not write into `godot/art/` or `Assets/_Project/Art/`:
+  `Tools/Art/` generators own those, and `verify_art.py` expects them to reproduce exactly.
+- Prefer a tool that returns a URL, then download it with `curl -o`. Base64 tool results cannot be
+  saved to disk without extra steps.
+- Match the game's look in the prompt: cozy top-down pixel art, brass and mahogany palette. Ask for
+  a square size (64, 128 or 256 px) so a mockup lines up with the PPU 64 grid.
+- Say which file you wrote and the prompt used. Do not wire a generated image into a scene or
+  prefab unless asked.
