@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using GolemFactory.PunchCards;
+using GolemFactory.UI;
 
 namespace GolemFactory.Blueprints
 {
@@ -34,6 +35,26 @@ namespace GolemFactory.Blueprints
             Chassis = chassis;
             LogicCore = logicCore;
             Appendages = appendages;
+        }
+
+        /// <summary>
+        /// The good step <paramref name="index"/> works: its saved one, or for a patent from
+        /// before goods were saved, the card's own.
+        /// </summary>
+        public string ItemTypeAt(int index)
+        {
+            AppendageActionDefinition card = Appendages[index];
+            return card == null ? ""
+                : ItemTypes != null && index < ItemTypes.Count ? ItemTypes[index] : card.inputItemType ?? "";
+        }
+
+        /// <summary>Step <paramref name="index"/>'s batch size, clamped; the card's own for an older patent.</summary>
+        public int QuantityAt(int index)
+        {
+            AppendageActionDefinition card = Appendages[index];
+            return card == null ? WorkbenchQuantityPolicy.MinQuantity
+                : Quantities != null && index < Quantities.Count ? WorkbenchQuantityPolicy.Clamp(Quantities[index])
+                : WorkbenchQuantityPolicy.Clamp(card.haulQuantity);
         }
     }
 }

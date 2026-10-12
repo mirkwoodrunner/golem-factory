@@ -1143,17 +1143,25 @@ namespace GolemFactory.Tutorial
                 w => FirstGolem,
                 workbench: true),
 
+            // A patent is used at the construction station, which builds its chassis with the
+            // program already engaged. It used to be loaded from Management's Patents tab into
+            // a bare golem's Workbench, and Tab does nothing while the Workbench is open, so the
+            // step's own instructions could not be followed.
             new TutorialStep(
-                "scav2", "Build a second Scavenger",
-                "At the construction station, build another Clockwork Scavenger (12 Scrap).",
+                "scav2", "Build one from the patent",
+                "Press E at the construction station. Under From a patent, click your patent: it builds a "
+                + "Clockwork Scavenger (12 Scrap) with the program already engaged. No cards to drag.",
                 w => SecondScavenger != null,
                 w => ScrapFirst(12, Station),
                 w => Count(ItemType.Scrap, 12)),
 
+            // Passed at once when the Scavenger was built from the patent; it only shows for
+            // a golem built bare.
             new TutorialStep(
-                "stamp", "Stamp the patent onto it",
-                "With the new golem in the Workbench, press Tab, open Patents and click Load on your patent, "
-                + "then pull ENGAGE. The same program, without dragging a card.",
+                "stamp", "Program the new Scavenger",
+                "This Scavenger arrived bare. In the Workbench, give it your first golem's program: Always On, "
+                + "Extract Scrap and Push Output, then pull ENGAGE. Closed it? Press E at the golem. Next time, "
+                + "build from the patent and it arrives programmed.",
                 w => SecondScavenger != null && IsProgrammed(SecondScavenger),
                 w => SecondScavenger != null ? SecondScavenger.Cell : (Vector2Int?)null,
                 workbench: true),

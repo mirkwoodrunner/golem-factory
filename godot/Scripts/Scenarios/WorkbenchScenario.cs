@@ -33,6 +33,8 @@ namespace GolemFactory.Nodes.Scenarios
     ///   <item>CLOSE hides the screen (Open_ActivatesCanvasRoot_Close_Deactivates); [E] at the
     ///   golem opens it again, re-read from the committed program, with no orphans.</item>
     ///   <item>With no target the lever goes dead (EngageButton_GoesNonInteractable...).</item>
+    ///   <item>The construction panel lists BP-001 under "From a patent"; clicking it builds a
+    ///   Scavenger already running the patent's program, and no Workbench opens.</item>
     /// </list>
     /// </summary>
     public sealed class WorkbenchScenario : IScenario
@@ -71,6 +73,62 @@ namespace GolemFactory.Nodes.Scenarios
             PlanEngageAndPatent();
             PlanCloseAndReopen();
             PlanHaulPicker();
+            PlanBuildFromPatent();
+        }
+
+        /// <summary>
+        /// A patent is used where golems are made: the construction panel's patent row builds
+        /// the chassis with the program engaged. Management's Load could not be reached from
+        /// the Workbench, which is where the guide sent the player.
+        /// </summary>
+        private void PlanBuildFromPatent()
+        {
+            ChassisDefinition scavenger = _world.Definitions.Chassis["ClockworkScavenger"];
+            Do("close the Workbench", () => { Tap(Key.Escape); return null; });
+            Do("open the station with a Scavenger's cost in stock", () =>
+            {
+                foreach (RecipeIngredient c in scavenger.cost)
+                {
+                    _world.Buffers.Deposit(_world.StockpileBufferId, c.itemType, c.quantity);
+                }
+                _panel.Open(_world.StarterStation);
+                return null;
+            });
+            Do("click BP-001's row", () =>
+            {
+                (Blueprints.Blueprint blueprint, Button row) = _panel.PatentRows.FirstOrDefault(r => r.blueprint.BlueprintId == "BP-001");
+                if (row == null)
+                {
+                    return $"the panel lists {_panel.PatentRows.Count} patents, none BP-001";
+                }
+                if (row.Disabled)
+                {
+                    return "BP-001's row is greyed with its cost in stock";
+                }
+                Click(row);
+                return null;
+            });
+            Do("a programmed Scavenger, and no Workbench", () =>
+            {
+                GolemEntity built = _panel.LastBuilt;
+                if (built == null || built == _golem)
+                {
+                    return "nothing was built: " + _panel.Status;
+                }
+                GolemProgram p = built.Program;
+                if (p.chassis != scavenger || p.logicCore?.name != "AlwaysOnCore"
+                    || string.Join(",", p.appendages.Select(a => a.name)) != "ExtractScrap,PushOutput"
+                    || p.GetQuantityAt(0) != 2)
+                {
+                    return $"program chassis={p.chassis?.name} core={p.logicCore?.name} steps={string.Join(",", p.appendages.Select(a => a.name))} batch={p.GetQuantityAt(0)}";
+                }
+                if (_panel.IsOpen || _screen.IsOpen)
+                {
+                    return $"panel open={_panel.IsOpen}, workbench open={_screen.IsOpen}";
+                }
+                _log.Add("BP-001 from the construction panel: a Scavenger running its program, no Workbench");
+                return null;
+            });
         }
 
         /// <summary>

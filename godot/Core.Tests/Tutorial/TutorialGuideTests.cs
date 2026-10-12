@@ -215,16 +215,9 @@ namespace GolemFactory.Tests.Tutorial
                 "BP-001", "LocalPlayer", golem.Program.chassis, golem.Program.logicCore, golem.Program.appendages.ToList())));
             Assert.AreEqual("scav2", StepId(world));
 
-            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["ClockworkScavenger"], out GolemEntity scav2));
-            Assert.AreEqual("stamp", StepId(world));
-
-            // Stamping is the Patents tab's Load: the blueprint's program onto the new golem.
-            var blueprint = world.Patents.Blueprints.Values.Single();
-            scav2.Program.logicCore = blueprint.LogicCore;
-            foreach (var card in blueprint.Appendages)
-            {
-                scav2.Program.TryAddAppendage(card);
-            }
+            // Built from the patent at the station, it arrives programmed: "stamp" (the bare
+            // golem's fallback) passes in the same breath.
+            Assert.IsTrue(world.StarterStation.TryConstructFromBlueprint(world.Patents.Blueprints["BP-001"], out GolemEntity scav2));
             Assert.AreEqual("depot3", StepId(world));
 
             Place(world, "DepotPrefab", world.Tutorial.Depot3Spot.x, world.Tutorial.Depot3Spot.y);

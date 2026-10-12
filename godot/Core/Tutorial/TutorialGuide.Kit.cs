@@ -198,7 +198,19 @@ namespace GolemFactory.Tutorial
                         first.Program.chassis, first.Program.logicCore, first.Program.appendages.ToList()));
                 }
             },
-            ["scav2"] = () => BuildGolem("ClockworkScavenger"),
+            // The player's verb: a golem built from the patent, which also passes "stamp".
+            ["scav2"] = () =>
+            {
+                Blueprints.Blueprint patent = _world.Patents.Blueprints.Values
+                    .FirstOrDefault(b => b.Chassis?.name == "ClockworkScavenger");
+                if (patent == null)
+                {
+                    BuildGolem("ClockworkScavenger");
+                    return;
+                }
+                GrantCost(patent.Chassis.cost);
+                _world.StarterStation?.TryConstructFromBlueprint(patent, out _);
+            },
             ["stamp"] = () => Program(SecondScavenger, "ExtractScrap", "PushOutput"),
             ["depot3"] = () => PlaceGranted("DepotPrefab", Depot3Spot, Facing.North),
             ["turn"] = () => SecondScavenger?.SetPlacement(Scav2Spot, Scav2Facing),

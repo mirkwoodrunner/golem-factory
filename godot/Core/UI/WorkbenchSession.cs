@@ -436,32 +436,13 @@ namespace GolemFactory.UI
                 return false;
             }
 
-            GolemProgram program = TargetGolem.Program;
-            while (program.appendages.Count > 0)
-            {
-                program.RemoveAppendageAt(0);
-            }
-            if (_draftChassis != null && !program.TryAssignChassis(_draftChassis))
+            if (!GolemProgramWriter.TryWrite(TargetGolem.Program, _draftChassis, _draftLogicCore,
+                    _draftAppendages, _draftItemTypes, _draftQuantities))
             {
                 SetStatus("Cannot engage: chassis rejected the current appendage count.", WorkbenchStatusReason.Info);
                 LeverRefused?.Invoke();
                 return false;
             }
-
-            int committed = 0;
-            for (int i = 0; i < _draftAppendages.Length; i++)
-            {
-                if (_draftAppendages[i] != null && program.TryAddAppendage(_draftAppendages[i]))
-                {
-                    program.SetQuantityAt(committed, _draftQuantities[i]);
-                    program.SetItemTypeAt(committed, _draftItemTypes[i]);
-                    committed++;
-                }
-            }
-            program.logicCore = _draftLogicCore;
-            program.CurrentStepIndex = 0;
-            program.StepProgressTicks = 0;
-            program.State = GolemState.Idle;
 
             SetStatus("Gears engaged. New configuration is live.", WorkbenchStatusReason.Info);
             LeverPulled?.Invoke();
@@ -503,14 +484,11 @@ namespace GolemFactory.UI
             _draftLogicCore = blueprint.LogicCore;
             for (int i = 0; i < _draftAppendages.Length; i++)
             {
-                AppendageActionDefinition card = i < blueprint.Appendages.Count ? blueprint.Appendages[i] : null;
-                _draftAppendages[i] = card;
+                bool inPatent = i < blueprint.Appendages.Count;
+                _draftAppendages[i] = inPatent ? blueprint.Appendages[i] : null;
                 // A patent keeps each slot's good and batch (G10); one from before falls back to the card's.
-                _draftItemTypes[i] = card == null ? ""
-                    : blueprint.ItemTypes != null && i < blueprint.ItemTypes.Count ? blueprint.ItemTypes[i] : card.inputItemType ?? "";
-                _draftQuantities[i] = card == null ? WorkbenchQuantityPolicy.MinQuantity
-                    : blueprint.Quantities != null && i < blueprint.Quantities.Count ? WorkbenchQuantityPolicy.Clamp(blueprint.Quantities[i])
-                    : WorkbenchQuantityPolicy.Clamp(card.haulQuantity);
+                _draftItemTypes[i] = inPatent ? blueprint.ItemTypeAt(i) : "";
+                _draftQuantities[i] = inPatent ? blueprint.QuantityAt(i) : WorkbenchQuantityPolicy.MinQuantity;
             }
             DraftOverflowCount = Math.Max(0, blueprint.Appendages.Count - _draftAppendages.Length);
             SetStatus($"Loaded {blueprint.BlueprintId} into the draft.", WorkbenchStatusReason.Info);

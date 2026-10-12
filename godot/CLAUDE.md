@@ -197,6 +197,14 @@ point a test at the real paths. **A save calls `TutorialGuide.Settle`, never `Up
 `Update` also runs the playtest kit, which then performed its Load step from inside the save. Anything that POLLS the keyboard
 must also check `TextEntry.IsTyping`, or typing into a field walks the player.
 
+**A patent is used at the construction station**, not loaded into a bare golem.
+`GolemConstructionStation.TryConstructFromBlueprint` builds the patent's chassis at the bare
+cost with its program engaged, before the Workbench or `GolemSpawned` see the golem; the
+panel's "From a patent" rows call it and close without opening the Workbench. Management's
+Load still exists for reprogramming, but Tab does nothing while the Workbench is open, so it
+was never a route from the Workbench. ENGAGE and the station write a program through one
+function, `GolemProgramWriter.TryWrite`; keep it that way so the two can't drift.
+
 **Full screens report to `SandboxWorld.Screens`** (`ScreenCoordinator`). Implement
 `IClosableScreen`, `Register` in `_Ready`, and call `Screens.Opening(this)` in `Open`; every
 other screen closes. Don't hand-close siblings. That's the bug class the coordinator replaced.
