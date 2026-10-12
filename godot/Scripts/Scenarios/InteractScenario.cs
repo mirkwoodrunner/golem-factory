@@ -258,17 +258,64 @@ namespace GolemFactory.Nodes.Scenarios
             Do("press G", () => { Tap(Key.G); return null; });
             Do("the golem is carried", () =>
                 _world.Interactor.CarriedGolem == _construction.LastBuilt ? null : "G did not pick it up: " + _world.Interactor.LastStatusMessage);
+            // The landing preview: the floor outlines the tile [G] will set it down on (the
+            // carried sprite rides half a tile above it), with what it takes from and pushes to.
+            Do("the landing tile is outlined, with its routing tiles", () =>
+            {
+                GolemNode node = CarriedNode();
+                Compat.Vector2Int? drop = _world.Interactor.CarryDropCell;
+                if (node == null || drop == null)
+                {
+                    return $"no node ({node != null}) or no landing tile ({drop})";
+                }
+                if (!node.DropPreviewVisible || node.DropPreviewCell != drop.Value)
+                {
+                    return $"outline {node.DropPreviewVisible} at {node.DropPreviewCell}, landing tile {drop}";
+                }
+                Facing facing = node.Entity.Facing;
+                if (node.TargetTileCell != FacingUtility.TargetCell(drop.Value, facing)
+                    || node.SourceTileCell != FacingUtility.SourceCell(drop.Value, facing))
+                {
+                    return $"routing tiles {node.SourceTileCell} -> {node.TargetTileCell} do not surround {drop} facing {facing}";
+                }
+                _previewedDrop = drop.Value;
+                _facingBeforeR = facing;
+                return null;
+            });
+            Do("press R", () => { Tap(Key.R); return null; });
+            Do("R turned the golem in hand, and the preview with it", () =>
+            {
+                GolemNode node = CarriedNode();
+                Facing expected = FacingUtility.RotateClockwise(_facingBeforeR);
+                if (node == null || node.Entity.Facing != expected)
+                {
+                    return $"facing {node?.Entity.Facing}, expected {expected}: {_world.Interactor.LastStatusMessage}";
+                }
+                return node.TargetTileCell == FacingUtility.TargetCell(_previewedDrop, expected)
+                    ? null : $"the target tile stayed at {node.TargetTileCell}";
+            });
             Do("press G again", () => { Tap(Key.G); return null; });
-            Do("the golem is set down", () =>
+            Do("the golem is set down where the outline was", () =>
             {
                 if (_world.Interactor.CarriedGolem != null)
                 {
                     return "still carried: " + _world.Interactor.LastStatusMessage;
                 }
-                _log.Add("G carried the golem and set it down");
+                if (_construction.LastBuilt.Cell != _previewedDrop)
+                {
+                    return $"landed on {_construction.LastBuilt.Cell}, outlined {_previewedDrop}";
+                }
+                _log.Add($"G carried the golem, the outline marked {_previewedDrop}, R turned it, and it landed there");
                 return null;
             });
         }
+
+        private Compat.Vector2Int _previewedDrop;
+        private Facing _facingBeforeR;
+
+        private GolemNode CarriedNode() =>
+            _player.GetTree().GetNodesInGroup(GolemNodeGroup.Name).OfType<GolemNode>()
+                .FirstOrDefault(n => n.Entity == _world.Interactor.CarriedGolem);
 
         private void Do(string name, Func<string> step) => _steps.Enqueue((name, step));
 
