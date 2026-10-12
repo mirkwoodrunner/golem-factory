@@ -216,9 +216,7 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 Give(ItemType.Scrap, 200);
                 Give(ItemType.IronPlate, 20);
-                _world.Build.SetActivePrefab(_world.Placeables.Single(p => p.Key == "BoilerPrefab").Prefab);
-                _world.Build.PlaceOrRemove(_world.Tutorial.BoilerSpot); // the marked tile
-                _world.Build.CancelPlacement();
+                PlaceAt("BoilerPrefab", _world.Tutorial.BoilerSpot); // the marked tile
                 PlaceableBoilerAt(_world.Tutorial.BoilerSpot);
                 return _world.StarterStation.TryConstructGolem(_world.Definitions.Chassis["ClockworkScavenger"], out _)
                     ? null : "the station built nothing";
@@ -257,9 +255,7 @@ namespace GolemFactory.Nodes.Scenarios
                 golem.Program.logicCore = _world.Definitions.LogicCores["AlwaysOnCore"];
                 golem.Program.TryAddAppendage(_world.Definitions.Appendages["ExtractScrap"]);
                 golem.Program.TryAddAppendage(_world.Definitions.Appendages["PushOutput"]);
-                _world.Build.SetActivePrefab(_world.Placeables.Single(p => p.Key == "DepotPrefab").Prefab);
-                _world.Build.PlaceOrRemove(_world.Tutorial.DepotSpot);
-                _world.Build.CancelPlacement();
+                PlaceAt("DepotPrefab", _world.Tutorial.DepotSpot);
                 return null;
             });
             Do("the golem's tile is marked, facing the depot", () =>
@@ -347,13 +343,26 @@ namespace GolemFactory.Nodes.Scenarios
             Do("its first Iron Plate opens chapter 3", () => _panel.TitleText == "Claim Coking" ? null : Wait);
             Do("claim Coking, build a second Presser and the coal line's boiler", () =>
             {
+                // No fallback slot: a missing Coking card must fail HERE, naming itself, rather than
+                // buy whatever sits in slot 0 and fail a step later as "on 'Claim Coking'".
                 int slot = Enumerable.Range(0, _world.AssemblyLine.SlotCount)
-                    .FirstOrDefault(i => _world.AssemblyLine.GetCard(i)?.appendage?.name == "AssembleCoking");
-                _world.AssemblyLineBoard.Claim(slot);
+                    .Where(i => _world.AssemblyLine.GetCard(i)?.appendage?.name == "AssembleCoking")
+                    .DefaultIfEmpty(-1).First();
+                if (slot < 0)
+                {
+                    return "Coking is not on show";
+                }
+                if (!_world.AssemblyLineBoard.Claim(slot))
+                {
+                    return "the Coking claim was refused: " + _world.AssemblyLineBoard.Status;
+                }
                 Give(ItemType.Scrap, 200);
                 Give(ItemType.IronPlate, 60);
                 Give(ItemType.Gear, 20);
-                _world.StarterStation.TryConstructGolem(_world.Definitions.Chassis["BrassPresser"], out _);
+                if (!_world.StarterStation.TryConstructGolem(_world.Definitions.Chassis["BrassPresser"], out _))
+                {
+                    return "the station built no second Presser";
+                }
                 PlaceAt("BoilerPrefab", _world.Tutorial.Boiler2Spot);
                 return null;
             });

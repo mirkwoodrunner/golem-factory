@@ -45,6 +45,12 @@ namespace GolemFactory.Save
         public float clockSpeed = 1f;
         public bool clockPaused;
         public int tutorialStep;
+
+        /// <summary>
+        /// The guide's step by id, which survives steps being inserted; <see cref="tutorialStep"/>
+        /// stays for saves written before it.
+        /// </summary>
+        public string tutorialStepId;
         public bool tutorialDismissed;
 
         /// <summary>

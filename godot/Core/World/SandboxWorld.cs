@@ -423,6 +423,7 @@ namespace GolemFactory.World
                 clockSpeed = Clock.Speed,
                 clockPaused = Clock.State == ClockState.Paused,
                 tutorialStep = Tutorial?.Index ?? 0,
+                tutorialStepId = Tutorial?.CurrentStepId,
                 tutorialDismissed = Tutorial?.Dismissed ?? false,
                 clockTowerStageIndex = ClockTower.Site.StageIndex,
                 clockTowerProgressUnits = ClockTower.Site.ProgressUnits,
@@ -479,7 +480,7 @@ namespace GolemFactory.World
                     progress.clockTowerStageIndex, progress.clockTowerProgressUnits, progress.clockTowerComplete);
             }
 
-            Tutorial?.Restore(progress.tutorialStep, progress.tutorialDismissed);
+            Tutorial?.Restore(progress.tutorialStepId, progress.tutorialStep, progress.tutorialDismissed);
 
             Clock.Speed = progress.clockSpeed > 0f ? progress.clockSpeed : 1f;
             if (progress.clockPaused)

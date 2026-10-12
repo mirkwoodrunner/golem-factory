@@ -627,6 +627,142 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual(world.Tutorial.GolemSpot, world.Tutorial.Current.Spot);
         }
 
+        private static void Program(SandboxWorld world, GolemEntity golem, params string[] cards)
+        {
+            golem.Program.logicCore = world.Definitions.LogicCores["AlwaysOnCore"];
+            foreach (string card in cards)
+            {
+                Assert.IsTrue(golem.Program.TryAddAppendage(world.Definitions.Appendages[card]), card);
+            }
+        }
+
+        private static void GoTo(SandboxWorld world, string stepId)
+        {
+            world.Tutorial.Restore(stepId, 0, false);
+            Assert.AreEqual(stepId, world.Tutorial.Current?.Id, "precondition: on " + stepId);
+        }
+
+        [Test]
+        public void ASavedStep_IsRestoredByItsId_NotItsIndex()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "golem-factory-guide-" + System.Guid.NewGuid() + ".json");
+            try
+            {
+                // A finished guide, saved with the index a SHORTER guide had for its end: every
+                // chapter added since has inserted steps, and the bare index used to bring the
+                // finished guide back mid-chapter.
+                SandboxWorld world = Compose();
+                world.Tutorial.Finish();
+                world.SaveTo(path);
+                File.WriteAllText(path, System.Text.RegularExpressions.Regex.Replace(
+                    File.ReadAllText(path), "\"tutorialStep\"\\s*:\\s*\\d+", "\"tutorialStep\": 18"));
+
+                SandboxWorld fresh = Compose();
+                fresh.LoadFrom(path);
+                Assert.IsTrue(fresh.Tutorial.IsFinished, $"still finished, not on '{fresh.Tutorial.Current?.Id}'");
+
+                // A step in the middle comes back by id the same way.
+                world.Tutorial.Restore("coal-order", 0, false);
+                world.SaveTo(path);
+                File.WriteAllText(path, System.Text.RegularExpressions.Regex.Replace(
+                    File.ReadAllText(path), "\"tutorialStep\"\\s*:\\s*\\d+", "\"tutorialStep\": 3"));
+                fresh = Compose();
+                fresh.LoadFrom(path);
+                Assert.AreEqual("coal-order", fresh.Tutorial.Current?.Id);
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Test]
+        public void ASaveWithNoStepId_FallsBackToItsIndex()
+        {
+            SandboxWorld world = Compose();
+            world.Tutorial.Restore(null, 2, false);
+            Assert.AreEqual(2, world.Tutorial.Index, "a save from before ids were saved");
+            world.Tutorial.Restore("a-step-this-build-dropped", 3, false);
+            Assert.AreEqual(3, world.Tutorial.Index, "an id this build does not have");
+        }
+
+        [Test]
+        public void ClaimCoking_PointsAtTheCoalStall_WhileShortOfItsCoal()
+        {
+            SandboxWorld world = Compose();
+            GoTo(world, "coking-card");
+            SandboxSetup.NodeEntry coal = world.Setup.nodes.Single(n => n.id == "CoalNode");
+
+            Assert.AreEqual(new Vector2Int(coal.x, coal.y), world.Tutorial.TargetCell, "chapter 1 cranked every Coal into Coke");
+            Assert.AreEqual("Coal  0 / 4", world.Tutorial.Progress, "the card's claimCost");
+            StringAssert.Contains("Coal", world.Tutorial.Current.Body);
+
+            Give(world, ItemType.Coal, 4);
+            Assert.IsNull(world.Tutorial.TargetCell, "enough Coal: the claim is in Management");
+        }
+
+        [Test]
+        public void ProgramTheCoker_PointsAtTheNewPresser_EvenIfTheFirstWasProgrammedDifferently()
+        {
+            SandboxWorld world = Compose();
+            DefinitionSet defs = world.Definitions;
+            Give(world, ItemType.Scrap, 400);
+            Give(world, ItemType.IronPlate, 100);
+            Give(world, ItemType.Gear, 40);
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["BrassPresser"], out GolemEntity first));
+            Program(world, first, "HaulScrap", "AssembleGearCutting", "PushOutput"); // not the guide's iron program
+            first.SetPlacement(world.Tutorial.PresserSpot, Facing.North);
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["BrassPresser"], out GolemEntity second));
+            Assert.AreNotEqual(first.Cell, second.Cell, "precondition: two tiles to tell apart");
+
+            GoTo(world, "program-coker");
+            Assert.AreEqual(second.Cell, world.Tutorial.TargetCell, "the Presser just built, not the working one");
+        }
+
+        [Test]
+        public void FeedTheBoiler_OnDryBoilers_PointsAtTheNewBoiler_AndRecoversOnceFuelled()
+        {
+            SandboxWorld world = Compose();
+            DefinitionSet defs = world.Definitions;
+            TutorialGuide guide = world.Tutorial;
+            Give(world, ItemType.Scrap, 400);
+            Give(world, ItemType.IronPlate, 100);
+            Give(world, ItemType.Gear, 20);
+            Place(world, "BoilerPrefab", guide.BoilerSpot.x, guide.BoilerSpot.y);
+            PlaceableBoiler boiler2 = Place(world, "BoilerPrefab", guide.Boiler2Spot.x, guide.Boiler2Spot.y).GetPart<PlaceableBoiler>();
+            foreach (Vector2Int pipe in guide.Pipe2Spots)
+            {
+                Place(world, "SteamPipePrefab", pipe.x, pipe.y);
+            }
+            Assert.IsTrue(world.Nodes.TryGetNode("CoalNode", out ResourceNode coalStall));
+            coalStall.Deliver(40);
+
+            // Chapter 1's few Coke long burned: both boilers dry, and the coker can never make
+            // the first Coke that would fuel them.
+            Assert.AreEqual(0, world.Steam.TotalCokeStock, "precondition: dry");
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["BrassPresser"], out GolemEntity coker));
+            Program(world, coker, "ExtractScrap", "AssembleCoking", "PushOutput");
+            coker.SetPlacement(guide.CokerSpot, Facing.North);
+            GoTo(world, "work-coker");
+
+            world.Clock.Play();
+            for (int frame = 0; frame < 300; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("work-coker", StepId(world), "no steam, no cycle");
+            Assert.AreEqual(guide.Boiler2Spot, guide.TargetCell, "the arrow goes to the boiler in front of the coker");
+            StringAssert.StartsWith("Boilers dry", guide.Progress);
+
+            Give(world, ItemType.Coke, 2);
+            Assert.IsTrue(world.Interactor.TryRefuelBoiler(boiler2));
+            for (int frame = 0; frame < 1200 && StepId(world) == "work-coker"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("patent", StepId(world), $"fuelled, the coker runs ({coker.Program.State}, {coker.StallReason})");
+        }
+
         [Test]
         public void SkipAndReopen_AndTheStepIsSaved()
         {

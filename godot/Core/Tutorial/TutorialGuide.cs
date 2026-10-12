@@ -186,11 +186,29 @@ namespace GolemFactory.Tutorial
         /// <summary>The last step's Finish button.</summary>
         public void Finish() => Enter(_steps.Count);
 
-        /// <summary>A load: the saved step and whether the guide was put away.</summary>
-        public void Restore(int index, bool dismissed)
+        /// <summary>What a save records once the guide is finished: no step has this id.</summary>
+        public const string FinishedStepId = "finished";
+
+        /// <summary>The current step's id, or <see cref="FinishedStepId"/>: what a save records.</summary>
+        public string CurrentStepId => Current?.Id ?? FinishedStepId;
+
+        /// <summary>
+        /// A load: the saved step and whether the guide was put away. The step is found by its
+        /// <paramref name="stepId"/>, because every chapter added since the guide shipped has
+        /// inserted steps, and a bare index then names a different step (a finished guide came
+        /// back on chapter 3). <paramref name="index"/> is only the fallback for a save written
+        /// before ids were saved, or one naming a step this build no longer has.
+        /// </summary>
+        public void Restore(string stepId, int index, bool dismissed)
         {
             Dismissed = dismissed;
-            Enter(Math.Max(0, Math.Min(index, _steps.Count)));
+            if (stepId == FinishedStepId)
+            {
+                Enter(_steps.Count);
+                return;
+            }
+            int byId = string.IsNullOrEmpty(stepId) ? -1 : _steps.FindIndex(s => s.Id == stepId);
+            Enter(byId >= 0 ? byId : Math.Max(0, Math.Min(index, _steps.Count)));
         }
 
         private void Enter(int index)
@@ -311,11 +329,21 @@ namespace GolemFactory.Tutorial
         private IEnumerable<GolemEntity> Pressers =>
             LiveGolems.Where(g => g.Program?.chassis != null && g.Program.chassis.name == "BrassPresser");
 
-        private bool IsIronPresser(GolemEntity golem) =>
+        /// <summary>Whether a golem has a logic core and every one of these cards, in any slot.</summary>
+        private static bool HasCards(GolemEntity golem, params string[] cards) =>
             golem.Program?.logicCore != null
-            && golem.Program.appendages.Any(a => a != null && a.name == "HaulScrap")
-            && golem.Program.appendages.Any(a => a != null && a.name == "AssembleScrapReclamation")
-            && golem.Program.appendages.Any(a => a != null && a.name == "PushOutput");
+            && cards.All(card => golem.Program.appendages.Any(a => a != null && a.name == card));
+
+        private bool IsIronPresser(GolemEntity golem) =>
+            HasCards(golem, "HaulScrap", "AssembleScrapReclamation", "PushOutput");
+
+        /// <summary>
+        /// The Presser built last: the one a "program the new Presser" step means. Picking by
+        /// program instead ("not the iron Presser") pointed at the WORKING Presser whenever the
+        /// player had programmed it any differently from the guide, e.g. cutting Gears instead.
+        /// Golems are listed in the order they were built.
+        /// </summary>
+        private GolemEntity NewestPresser => Pressers.LastOrDefault();
 
         /// <summary>
         /// What a step calls a card by: its appendage's name, or for a chassis card the chassis's.
@@ -356,25 +384,56 @@ namespace GolemFactory.Tutorial
         /// From beside the first boiler east along its row to the coking Presser's west side,
         /// then up one to sit beside the second boiler.
         /// </summary>
-        public Vector2Int[] Pipe2Spots
+        public Vector2Int[] Pipe2Spots => _pipe2Spots ??= ComputePipe2Spots();
+
+        // The layout is fixed once the world is set up, and Done, Target and Progress all read
+        // these every frame: compute them once rather than rebuilding the run on each read.
+        private Vector2Int[] _pipe2Spots;
+        private Vector2Int[] _pipe4Spots;
+
+        private Vector2Int[] ComputePipe2Spots()
         {
-            get
+            var spots = new List<Vector2Int>();
+            for (int x = BoilerSpot.x + 1; x < CokerSpot.x; x++)
             {
-                var spots = new List<Vector2Int>();
-                for (int x = BoilerSpot.x + 1; x < CokerSpot.x; x++)
-                {
-                    spots.Add(new Vector2Int(x, BoilerSpot.y));
-                }
-                spots.Add(new Vector2Int(CokerSpot.x - 1, Boiler2Spot.y));
-                return spots.ToArray();
+                spots.Add(new Vector2Int(x, BoilerSpot.y));
             }
+            spots.Add(new Vector2Int(CokerSpot.x - 1, Boiler2Spot.y));
+            return spots.ToArray();
         }
 
-        private bool IsCoker(GolemEntity golem) =>
-            golem.Program?.logicCore != null
-            && golem.Program.appendages.Any(a => a != null && a.name == "ExtractScrap")
-            && golem.Program.appendages.Any(a => a != null && a.name == "AssembleCoking")
-            && golem.Program.appendages.Any(a => a != null && a.name == "PushOutput");
+        private bool IsCoker(GolemEntity golem) => HasCards(golem, "ExtractScrap", "AssembleCoking", "PushOutput");
+
+        /// <summary>
+        /// What claiming a card costs in one good right now: its slot's current price if the line
+        /// shows it (prices decay), else the card's full claimCost.
+        /// </summary>
+        private int ClaimCost(string card, string item)
+        {
+            AssemblyLineState line = _world.AssemblyLine;
+            for (int i = 0; line != null && i < line.SlotCount; i++)
+            {
+                if (CardKey(line.GetCard(i)) == card)
+                {
+                    return line.GetCurrentCostBundle(i).Where(c => c.itemType == item).Sum(c => c.quantity);
+                }
+            }
+            string deck = _world.Setup?.assemblyLine?.deck;
+            DraftableCardDefinition def = deck != null && _world.Definitions.Decks.TryGetValue(deck, out DraftableCardCatalog catalog)
+                ? catalog.Cards.FirstOrDefault(c => CardKey(c) == card)
+                : null;
+            return def?.claimCost?.Where(c => c.itemType == item).Sum(c => c.quantity) ?? 0;
+        }
+
+        private int CokingClaimCoal => ClaimCost("AssembleCoking", ItemType.Coal);
+
+        /// <summary>Whether a coker stands where steam reaches it, but every boiler that does is out of Coke.</summary>
+        private bool CokerOutOfCoke => Pressers.Any(g => IsCoker(g)
+            && _world.Steam.Diagnose(g.GolemId, _world.Clock.CurrentTick) == Steam.SteamShortage.BoilerOutOfCoke);
+
+        /// <summary>The coal line's boiler if it stands on its tile, else the first boiler.</summary>
+        private Vector2Int? Boiler2OrFirst =>
+            BoilerBuildings.OrderBy(b => b.Cell == Boiler2Spot ? 0 : 1).Select(b => (Vector2Int?)b.Cell).FirstOrDefault();
 
         private bool CoalStallStocked =>
             _world.Nodes.TryGetNode("CoalNode", out var node) && node.RemainingQuantity > 0;
@@ -443,14 +502,11 @@ namespace GolemFactory.Tutorial
                 && golem.Program.GetItemTypeAt(i) == itemType);
 
         private bool IsSmelter(GolemEntity golem) =>
-            golem.Program?.logicCore != null
-            && golem.Program.appendages.Any(a => a?.name == "AssembleIronSmelting")
-            && golem.Program.appendages.Any(a => a?.name == "PushOutput")
+            HasCards(golem, "AssembleIronSmelting", "PushOutput")
             && HaulsOf(golem, ItemType.Scrap) > 0 && HaulsOf(golem, ItemType.Coke) > 0;
 
         private bool IsCarrier(GolemEntity golem) =>
-            golem.Program?.logicCore != null
-            && golem.Program.appendages.Any(a => a?.name == "PushOutput")
+            HasCards(golem, "PushOutput")
             && HaulsOf(golem, ItemType.Slag) > 0 && HaulsOf(golem, ItemType.Coke) > 0;
 
         // Chapter 6 moves goods with a belt and sorts them with a label, at the Copper stall: an
@@ -486,28 +542,27 @@ namespace GolemFactory.Tutorial
         /// <summary>
         /// Up the copper line's west side, then west and down to the top of chapter 5's pipes.
         /// </summary>
-        public Vector2Int[] Pipe4Spots
+        public Vector2Int[] Pipe4Spots => _pipe4Spots ??= ComputePipe4Spots();
+
+        private Vector2Int[] ComputePipe4Spots()
         {
-            get
+            var spots = new List<Vector2Int>();
+            int west = CopperCell.x - 1;
+            for (int y = ExtractorSpot.y; y <= UnloaderSpot.y + 1; y++)
             {
-                var spots = new List<Vector2Int>();
-                int west = CopperCell.x - 1;
-                for (int y = ExtractorSpot.y; y <= UnloaderSpot.y + 1; y++)
-                {
-                    spots.Add(new Vector2Int(west, y));
-                }
-                Vector2Int top = Pipe3Spots[Pipe3Spots.Length - 1];
-                int row = UnloaderSpot.y + 1;
-                for (int x = west - 1; x >= top.x; x--)
-                {
-                    spots.Add(new Vector2Int(x, row));
-                }
-                for (int y = row - 1; y > top.y; y--)
-                {
-                    spots.Add(new Vector2Int(top.x, y));
-                }
-                return spots.ToArray();
+                spots.Add(new Vector2Int(west, y));
             }
+            Vector2Int top = Pipe3Spots[Pipe3Spots.Length - 1];
+            int row = UnloaderSpot.y + 1;
+            for (int x = west - 1; x >= top.x; x--)
+            {
+                spots.Add(new Vector2Int(x, row));
+            }
+            for (int y = row - 1; y > top.y; y--)
+            {
+                spots.Add(new Vector2Int(top.x, y));
+            }
+            return spots.ToArray();
         }
 
         private GolemEntity CopperExtractor => Scavengers.Skip(2).FirstOrDefault();
@@ -580,10 +635,7 @@ namespace GolemFactory.Tutorial
 
         private IEnumerable<GolemEntity> LiveGolems => _world.Golems.Where(g => g != null && !g.IsRemoved);
 
-        private bool IsProgrammed(GolemEntity golem) =>
-            golem.Program?.logicCore != null
-            && golem.Program.appendages.Any(a => a != null && a.name == "ExtractScrap")
-            && golem.Program.appendages.Any(a => a != null && a.name == "PushOutput");
+        private bool IsProgrammed(GolemEntity golem) => HasCards(golem, "ExtractScrap", "PushOutput");
 
         private Vector2Int? FirstGolem => LiveGolems.Select(g => (Vector2Int?)g.Cell).FirstOrDefault();
 
@@ -749,9 +801,12 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "coking-card", "Claim Coking",
                 "Your boiler burns the Coke you crank by hand, and it will run dry. Time to make Coke "
-                + "automatically. Press Tab, open the Assembly Line and claim Assemble Coking.",
+                + "automatically. Press Tab, open the Assembly Line and claim Assemble Coking. Its price is Coal: "
+                + "short? Take some at the Coal stall with E (order a truckload if it is empty).",
                 w => HasClaimed("AssembleCoking"),
-                w => null,
+                // Chapter 1 cranks every Coal into Coke, so the stockpile is usually out.
+                w => Stock(ItemType.Coal) < CokingClaimCoal ? Stall("CoalNode") : null,
+                w => Count(ItemType.Coal, CokingClaimCoal),
                 card: "AssembleCoking"),
 
             new TutorialStep(
@@ -795,16 +850,21 @@ namespace GolemFactory.Tutorial
                 "In the Workbench: Always On, then Extract Scrap, Assemble Coking and Push Output. Despite its "
                 + "name, Extract takes whatever the stall behind the golem holds: here, Coal.",
                 w => Pressers.Any(IsCoker),
-                w => Pressers.Where(g => !IsIronPresser(g)).Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
+                w => NewestPresser?.Cell,
                 workbench: true),
 
             new TutorialStep(
                 "work-coker", "Feed the boiler",
                 "Move the coking Presser onto the marked tile between the Coal stall and the new boiler, "
-                + "facing the boiler (up). It extracts Coal, cokes it, and pushes the Coke into the firebox.",
+                + "facing the boiler (up). It extracts Coal, cokes it, and pushes the Coke into the firebox. "
+                + "It needs steam to make the first Coke: if your boilers have run dry, load Coke into the new one (E).",
                 w => Pressers.Any(g => IsCoker(g) && _completedSinceEntry.Contains(g.GolemId)),
-                w => Pressers.Any(g => IsCoker(g) && g.Cell == CokerSpot) ? CokerSpot
+                // A coker on dry boilers can never make the Coke that would fuel them, so point at
+                // the new boiler (right in front of it) until one has Coke again.
+                w => CokerOutOfCoke ? Boiler2OrFirst
+                    : Pressers.Any(g => IsCoker(g) && g.Cell == CokerSpot) ? CokerSpot
                     : Pressers.Where(IsCoker).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? CokerSpot,
+                w => CokerOutOfCoke ? "Boilers dry: load Coke  " + Count(ItemType.Coke, 1) : "",
                 spot: CokerSpot,
                 spotFacing: Facing.North),
 
@@ -960,7 +1020,7 @@ namespace GolemFactory.Tutorial
                 "Program it: Always On, Haul set to Slag with the dial at 4, Haul set to Coke at 1, then Push "
                 + "Output. Four Slag and the one Coke that burns them, every trip.",
                 w => Pressers.Any(IsCarrier),
-                w => Pressers.Where(g => !IsIronPresser(g) && !IsCoker(g)).Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
+                w => NewestPresser?.Cell,
                 workbench: true),
 
             new TutorialStep(
