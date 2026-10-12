@@ -17,40 +17,64 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 | G7: The Workbench | **done**: PR #39 |
 | G8: Management HUD and remaining screens | **done**: PR #40 |
 | G9: Save and load end to end | **done**: PR #41 (all of #30–#42 landed on `main` through #43, 2026-10-08) |
-| G10: Parity playtest and cutover | **in progress**: playtest fixes #42, #44, #45 merged; #46 (playtest mode) and #47 (Clock Tower) open; then your playtest, then the cutover PR |
+| G10: Parity playtest and cutover | **in progress**: #42, #44-#48 merged; #49-#52 open (pre-playtest fixes); then your playtest, then the cutover PR |
 
 ## Next session: start here
 
-State as of 2026-10-09:
+State as of 2026-10-10. Nothing below has been run in Godot: the session that built it had no
+Godot binary. Core tests pass (**1674/1674** on `g10/pre-playtest`); **the eleven scenarios have
+not been run since #48**, and the new panels have not been seen.
 
-1. **Two PRs await your merge, in order:** #46 (`conversion/g10-playtest-mode`: playtest
-   mode, guide chapters 4–9, the Haul good picker, claims that are never random) and then
-   #47 (`conversion/g10-clock-tower`, based on #46: the town square, the roped-off tower site,
-   staged art, guide chapter 10). If #46 is squash-merged, rebase #47 onto `main` before
-   merging it. Never merge them on your own.
-2. **Your playtest.** You last played to just before Coke automation (chapter 3) and reported
-   that claims looked random; #46 fixes that (see "Claims, from playtest" below), but you
-   haven't confirmed it in play yet. Play from a fresh game with `"playtest": true` in
-   `godot/data/sandbox.json`; the guide asks the questions, F9 skips a chapter, and the report
-   is `%APPDATA%\Godot\app_userdata\Golem Factory\playtest-report.md`. How-to:
-   `testscript/phase-1-playtest.md`.
-3. **Fix what the report finds.** Already noticed and left for the playtest to judge:
-   - golems that are only *waiting* for input wear the red stall badge (maybe too loud);
-   - one stall badge shows a raw belt id, `Belt(0,-12)#3`;
-   - the old single-cell `godot/art/clock_tower.png` is unused since the staged art (delete
-     at cutover);
-   - the "Extract Scrap" card takes whatever the stall behind holds (Coal, in chapter 3), so
-     rename it once the card data is hand-edited after cutover.
-4. **Then the cutover PR** (the G10 list below): tag `unity-final`, delete `Assets/`,
-   `Packages/`, `ProjectSettings/` and the Unity `.gitignore` rules, retire the Unity Editor
-   tooling and `Tools/Data/convert_unity_assets.py`'s source-of-truth role (the JSON becomes
-   hand-edited), move `docs/unity-implementation-plan.md` to `docs/history/`, rewrite the root
-   `CLAUDE.md` from `godot/CLAUDE.md`, and update `docs/open-items.md` (still Unity-era).
+1. **Run the scenarios on `g10/pre-playtest` before merging anything.** All eleven
+   (`--scenario <name>`, list in `godot/CLAUDE.md`). `interact`, `tutorial` and `playtest-kit`
+   exercise most of what changed. If one fails, the failure names its step.
+2. **Look at three new things in the game view**, which no test can judge:
+   - the landing outline while carrying a golem ([G]): readable on the floor art? red where a
+     drop is refused?
+   - the guide's note plate (hangs under the guide when something is in the way of a marked
+     tile): does it fit, and does it sit clear of the HUD?
+   - chapter 1's "Put it to work" text is a little longer: does it still fit the guide plate?
+3. **Merge.** Four PRs are open, all targeting `main`:
+   - **#52** (`g10/pre-playtest`) contains the other three plus the fixes below. Merging it
+     with a merge commit (the repo's usual) lands everything, and GitHub then shows #49-#51 as
+     merged too. Don't squash it: the three would stay open with their commits already in.
+   - Or merge in order **#49 -> #50 -> #51 -> #52** to review them one at a time; each later
+     diff shrinks as the earlier ones land.
+4. **Your playtest**, from a fresh game, per `testscript/phase-1-playtest.md`. Two new
+   questions ask about the carry outline and the marked tiles. Reports from earlier sittings are
+   now kept, not overwritten, so playing over several sessions is fine.
+5. **Then the cutover PR**, unchanged (the G10 list below).
+
+**What #49-#52 changed**, for the playtest to confirm:
+- #49: the guide's step is saved by id; "Claim Coking" says it costs Coal; "Feed the boiler"
+  no longer deadlocks on dry boilers; arrows point at the newest Presser.
+- #50: pipe steps finish when steam reaches the golems' tiles, by any route.
+- #51: a carried golem shows where it will land; R turns the golem in your hands.
+- #52, from reviewing #46/#47 and the batch:
+  - **Chapter 9 could only be finished with F9**: Freight Launch was missing from the Workbench
+    roster, no step asked for it, and the Assembly Line couldn't keep it on show. Fixed.
+  - Goal steps name a chassis with room (Casing needs an Aether-Hauler, Frame Section an
+    Overclocker); chapter 10 says the square needs steam (a golem there stalled forever).
+  - Guide golems are remembered by role, saved, so a spare or a dismantled golem no longer
+    derails chapters 4-6, and a load on "And back to work" can finish it.
+  - Playtest: earlier reports kept; each question asked when it applies (nine waited for the
+    very end); F9's Save/Load use `kit-save.json`, never your save.
+  - Clock Tower: the starved alarm waits for a stage's first delivery; rates restart on load; a
+    roped-off site ages its windows; the Ledger node lights when the tower is fed.
+  - Locked cards name what they wait for; a card renamed between builds no longer shifts
+    later slots' goods; stall badges say "the belt behind me" instead of `Belt(0,-12)#3`;
+    golems can't be stacked on one tile.
+  - Round 2 of the marked-tile plan: the guide says what is in the way of a marked tile.
+
+**Still left for the playtest to judge** (unchanged): whether golems only *waiting* for input
+should wear the red badge; renaming "Extract Scrap" after cutover; deleting the unused
+`godot/art/clock_tower.png` at cutover. Also not fixed, as not worth it before a fresh-game
+playtest: a save from before #49 or #47 can resume the guide a few steps off, and a tower
+placed by hand in a pre-#47 save is not rebuilt.
 
 Standing rules: leave the modified `Assets/TextMesh Pro/.../LiberationSans SDF - Fallback.asset`
 uncommitted; nothing under `Assets/` changes before the cutover; tests and scenarios never write
-the player's real `save.json`. Last full run: **1629/1629** Core tests, all eleven scenarios
-pass, `verify_art.py` clean.
+the player's real `save.json`.
 
 ## Context
 

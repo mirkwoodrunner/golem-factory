@@ -114,5 +114,60 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual(1, playtest.Answers.Count);
             Assert.AreEqual("skipped", playtest.Answers[0].Choice);
         }
+
+        [Test]
+        public void OnlyTheTowerAndTheGuideItself_WaitForTheLastStep()
+        {
+            // A chapter's question is asked as the next chapter opens. Nine once waited for
+            // "done", after the Clock Tower's Foundation, so a playtest that stopped sooner never
+            // asked them at all.
+            CollectionAssert.AreEquivalent(
+                new[] { "tower", "guide" },
+                PlaytestSession.Questions.Where(q => q.AfterStepId == "done").Select(q => q.Id));
+        }
+
+        [Test]
+        public void EachChaptersQuestion_IsAskedBeforeTheChapterAfterNextBegins()
+        {
+            SandboxWorld world = Compose();
+            TutorialGuide guide = world.Tutorial;
+            int StepIndex(string id) => guide.Steps.ToList().FindIndex(s => s.Id == id);
+            var askedAt = PlaytestSession.Questions.ToDictionary(q => q.Id, q => guide.ChapterOf(StepIndex(q.AfterStepId)));
+
+            // Where each experience happens, and so the latest chapter its question may wait for.
+            Assert.LessOrEqual(askedAt["badge"], 5, "the stall on purpose is chapter 4");
+            Assert.LessOrEqual(askedAt["slag"], 6, "Slag is chapter 5");
+            Assert.LessOrEqual(askedAt["drag"], 6, "dragging is chapter 6");
+            Assert.LessOrEqual(askedAt["save-load"], 8, "save and load are chapter 7");
+            Assert.LessOrEqual(askedAt["goals"], 9, "the goal steps are chapter 8");
+            Assert.LessOrEqual(askedAt["zeppelin"], 10, "the Zeppelin is chapter 9");
+            Assert.LessOrEqual(askedAt["carry"], 2, "the first golem is carried in chapter 1");
+        }
+
+        [Test]
+        public void APreviousReport_IsKeptUnderADatedName_NeverOverwritten()
+        {
+            string report = System.IO.Path.Combine("user", "playtest-report.md");
+            var when = new System.DateTime(2026, 10, 12, 19, 30, 5);
+
+            Assert.AreEqual(System.IO.Path.Combine("user", "playtest-report-20261012-1930.md"),
+                PlaytestReportArchive.NameFor(report, when, _ => false));
+
+            var taken = new System.Collections.Generic.HashSet<string>
+            {
+                System.IO.Path.Combine("user", "playtest-report-20261012-1930.md"),
+            };
+            Assert.AreEqual(System.IO.Path.Combine("user", "playtest-report-20261012-1930-2.md"),
+                PlaytestReportArchive.NameFor(report, when, taken.Contains), "two sessions ending in one minute");
+        }
+
+        [Test]
+        public void TheKitSavesBesideThePlayersSave_NeverOverIt()
+        {
+            string slot = System.IO.Path.Combine("appdata", "Golem Factory", "save.json");
+            Assert.AreEqual(System.IO.Path.Combine("appdata", "Golem Factory", "kit-save.json"),
+                TutorialGuide.KitSavePathBeside(slot));
+            Assert.IsNull(TutorialGuide.KitSavePathBeside(null));
+        }
     }
 }

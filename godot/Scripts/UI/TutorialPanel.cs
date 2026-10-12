@@ -30,6 +30,8 @@ namespace GolemFactory.Nodes
         private Label _title;
         private Label _body;
         private Label _progress;
+        private Panel _noticePlate;
+        private Label _notice;
         private Button _skip;
         private Button _finish;
         private TextureRect _arrow;
@@ -48,6 +50,11 @@ namespace GolemFactory.Nodes
         public Control Plate => _plate;
         public string TitleText => _title?.Text ?? "";
         public string ProgressText => _progress?.Text ?? "";
+
+        /// <summary>The note under the guide (what is in the way of a marked tile), as drawn.</summary>
+        public bool NoticeVisible => _noticePlate != null && _noticePlate.IsVisibleInTree();
+        public string NoticeText => _notice?.Text ?? "";
+        public Control NoticePlate => _noticePlate;
         public Button SkipButton => _skip;
         public Button FinishButton => _finish;
         public TextureRect Arrow => _arrow;
@@ -130,6 +137,22 @@ namespace GolemFactory.Nodes
             footer.AddChild(_finish);
             footer.AddChild(_skip);
             column.AddChild(footer);
+
+            // The note: its own small plate hanging under the guide's, so a sentence about what
+            // is in the way never squeezes the step text in a fixed-height plate. It grows to
+            // its lines. Only build and golem-tile steps raise one, and none of those is shown
+            // over the Workbench, so it never hangs over the lever.
+            _noticePlate = Ugui.Image("GuideNotice", Ugui.NineSlice("res://art/UI/Steampunk/steampunk_panel_iron_bolt.png", 12, 10, 12, 10), new Color(0.30f, 0.10f, 0.07f, 0.95f));
+            _noticePlate.MouseFilter = Control.MouseFilterEnum.Ignore;
+            _noticePlate.Visible = false;
+            _plate.AddChild(_noticePlate);
+            _notice = Ugui.Text("Notice", "", 13, Ink);
+            _notice.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            _notice.ClipText = false; // a clipping label asks for no height (see PlaytestNode)
+            _notice.TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming;
+            _notice.CustomMinimumSize = new Vector2(PlateWidth - 28f, 0f);
+            _notice.Position = new Vector2(14f, 8f);
+            _noticePlate.AddChild(_notice);
 
             Dock(false);
         }
@@ -229,10 +252,29 @@ namespace GolemFactory.Nodes
                 _skip.Visible = !last;
             }
             _progress.Text = guide.Progress;
+            ShowNotice(guide.Notice);
 
             PointArrow(guide, screenOpen);
             HighlightRow(guide, screenOpen);
             MarkSpot(guide, screenOpen);
+        }
+
+        private void ShowNotice(string notice)
+        {
+            bool show = !string.IsNullOrEmpty(notice);
+            _noticePlate.Visible = show;
+            if (!show)
+            {
+                return;
+            }
+            if (_notice.Text != notice)
+            {
+                _notice.Text = notice;
+            }
+            _notice.Size = new Vector2(PlateWidth - 28f, 0f);
+            float height = _notice.GetCombinedMinimumSize().Y + 16f;
+            _noticePlate.Position = new Vector2(0f, PlateHeight + 4f);
+            _noticePlate.Size = new Vector2(PlateWidth, height);
         }
 
         private void PointArrow(TutorialGuide guide, bool screenOpen)

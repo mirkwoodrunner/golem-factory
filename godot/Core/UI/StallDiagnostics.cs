@@ -12,6 +12,21 @@ namespace GolemFactory.UI
     // forever, so the only thing the player can act on is the resource that is blocking it.
     public static class StallDiagnostics
     {
+        // A belt the player laid is named for its cell plus a tie-breaking counter
+        // ("Belt(0,-12)#3", BeltNetwork) -- a key, not a name, and the badge used to show it
+        // verbatim. A golem only ever pulls from the belt behind it and pushes onto the one in
+        // front, so the badge says that, and the strip says where.
+        private static readonly System.Text.RegularExpressions.Regex PlacedBeltId =
+            new System.Text.RegularExpressions.Regex(@"^Belt(\(-?\d+,-?\d+\))#\d+$");
+
+        /// <summary>The cell a player-laid belt's id names, as "(x,y)", or null for any other id.</summary>
+        public static string PlacedBeltCell(string resourceId)
+        {
+            System.Text.RegularExpressions.Match match =
+                string.IsNullOrEmpty(resourceId) ? null : PlacedBeltId.Match(resourceId);
+            return match != null && match.Success ? match.Groups[1].Value : null;
+        }
+
         // Short form for the world-space badge floating over a golem -- no golem id, since the
         // badge is already attached to the golem it describes.
         //
@@ -40,9 +55,9 @@ namespace GolemFactory.UI
                 case StallReason.NodeEmpty:
                     return target + " depleted";
                 case StallReason.BeltFull:
-                    return target + " full";
+                    return PlacedBeltCell(resourceId) != null ? "the belt in front of me is full" : target + " full";
                 case StallReason.BeltEmpty:
-                    return "waiting on " + target;
+                    return PlacedBeltCell(resourceId) != null ? "waiting on the belt behind me" : "waiting on " + target;
                 case StallReason.BufferEmpty:
                     return "no input in " + target;
                 // Spatial stalls name the *tile*, not a resource id, because the id is not the
@@ -125,7 +140,9 @@ namespace GolemFactory.UI
                         return who + " stalled: its boiler already powers 8 golems - build another";
                 }
             }
-            string target = string.IsNullOrEmpty(resourceId) ? "its source" : resourceId;
+            string beltCell = PlacedBeltCell(resourceId);
+            string target = string.IsNullOrEmpty(resourceId) ? "its source"
+                : beltCell != null ? "the belt at " + beltCell : resourceId;
             switch (reason)
             {
                 case StallReason.NodeEmpty:

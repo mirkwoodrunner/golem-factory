@@ -18,6 +18,14 @@ namespace GolemFactory.Nodes
     {
         public const int CellPixels = 64;
 
+        /// <summary>
+        /// Where a square footprint's FEET go, given its centre cell: its south edge, half the
+        /// footprint below the centre (Godot's +y is down). A standing sprite's feet go on its
+        /// node's origin, because y-sort compares origins.
+        /// </summary>
+        public static Vector2 FootprintFeet(CoreVector2Int centre, int size) =>
+            CellToWorld(centre) + new Vector2(0f, size * CellPixels / 2f);
+
         /// <summary>Centre of <paramref name="cell"/> in Godot world pixels.</summary>
         public static Vector2 CellToWorld(CoreVector2Int cell) =>
             new Vector2(cell.x * CellPixels, -cell.y * CellPixels);

@@ -206,16 +206,26 @@ namespace GolemFactory.ClockTower
 
         /// <summary>
         /// Whether building has begun: anything delivered, or any stage or progress made (a
-        /// load). Before that the tower is not "starved", only waiting.
+        /// load). The Ledger's Clock Tower node asks this of the town square's fixture, which
+        /// stands from the start and so is "built" only once it has been fed.
         /// </summary>
         public bool HasStarted => _started || _stageIndex > 0 || _progressUnits > 0L || _complete;
 
         private bool _started;
 
+        // Whether anything has been delivered in the running stage: the starved alarm is armed
+        // by the stage's first delivery. Tower-wide "has started" raised it the moment a new
+        // stage began, and on every load mid-stage, before anyone could feed it (from review).
+        // Once armed, a line never delivered at all IS starved -- §8's stage-2 introduction, where
+        // Frame Sections flow and Great Cog has no line yet. Cleared at each stage, on Reset, and
+        // so on a load.
+        private bool _fedThisStage;
+
         /// <summary>Back to the start of stage 1, with every window and meter emptied.</summary>
         public void Reset()
         {
             _started = false;
+            _fedThisStage = false;
             _stageIndex = 0;
             _progressUnits = 0L;
             _complete = false;
@@ -263,13 +273,13 @@ namespace GolemFactory.ClockTower
             _stageIndex = stageIndex < 0 ? 0 : (stageIndex > _stages.Count ? _stages.Count : stageIndex);
             _progressUnits = progressUnits < 0L ? 0L : progressUnits;
             _complete = complete || _stageIndex >= _stages.Count;
+            // A stage saved part-built had been fed, so its alarm is armed: a load into a factory
+            // whose line has since broken must still say so. (Unarmed, it never would, since no
+            // delivery ever comes. The cost: right after a load, a working line's alarm can show
+            // until its first delivery lands, because the meters are not saved.)
+            _fedThisStage = _progressUnits > 0L;
         }
 
-        /// <summary>
-        /// Whether the tower would accept <paramref name="itemType"/> right now -- i.e. whether
-        /// the running stage demands it. What <see cref="ClockTowerInputEndpoint"/>'s typed
-        /// <c>CanGive</c> answers.
-        /// </summary>
         /// <summary>
         /// Whether the site is open to deliveries (G10). Null means always: a site nobody gates
         /// works as it always did. The Sandbox ropes its tower off until the factory has built a
@@ -282,6 +292,11 @@ namespace GolemFactory.ClockTower
         /// <summary>What the rope's sign says while the site is closed.</summary>
         public string ClosedReason { get; set; } = "roped off";
 
+        /// <summary>
+        /// Whether the tower would accept <paramref name="itemType"/> right now -- i.e. whether
+        /// the running stage demands it. What <see cref="ClockTowerInputEndpoint"/>'s typed
+        /// <c>CanGive</c> answers.
+        /// </summary>
         public bool Demands(string itemType)
         {
             if (string.IsNullOrEmpty(itemType))
@@ -364,6 +379,7 @@ namespace GolemFactory.ClockTower
             WindowFor(_delivered, itemType).Record(tick, quantity);
             MeterFor(itemType).Credit(quantity);
             _started = true;
+            _fedThisStage = true;
             return quantity;
         }
 
@@ -408,6 +424,14 @@ namespace GolemFactory.ClockTower
                 return;
             }
 
+            // Aged out every tick, open or not: a roped-off site still records fresh production,
+            // and untrimmed, those lists grew for the whole game before the Zeppelin and then
+            // reported hours of output as one minute's rate (from review).
+            for (int i = 0; i < _allWindows.Count; i++)
+            {
+                _allWindows[i].Trim(tick);
+            }
+
             // A roped-off site (G10) accrues nothing, exactly as one with no stage.
             ClockTowerStageDefinition stage = IsOpen ? ActiveStage : null;
             if (stage == null)
@@ -417,11 +441,6 @@ namespace GolemFactory.ClockTower
                 _starvedItemType = null;
                 _starvedDeficitPerMinute = 0;
                 return;
-            }
-
-            for (int i = 0; i < _allWindows.Count; i++)
-            {
-                _allWindows[i].Trim(tick);
             }
 
             Evaluate(stage);
@@ -484,11 +503,11 @@ namespace GolemFactory.ClockTower
                     _limitingItemType = demand.itemType;
                 }
 
-                // Not before the tower has STARTED (G10, seen in a playtest-kit frame): the moment
-                // the rope came down the HUD raised "starved of FrameSection - progress frozen"
-                // over a site nobody had had a chance to feed, which read as something broken.
-                // Progress still freezes; only the alarm waits for the first delivery.
-                if (starved && _starvedItemType == null && HasStarted)
+                // Not before this STAGE has had a delivery (G10, seen in a playtest-kit frame): the
+                // moment the rope came down the HUD raised "starved of FrameSection - progress
+                // frozen" over a site nobody had had a chance to feed, which read as something
+                // broken. Progress still freezes; only the alarm waits.
+                if (starved && _starvedItemType == null && _fedThisStage)
                 {
                     _starvedItemType = demand.itemType;
 
@@ -513,6 +532,7 @@ namespace GolemFactory.ClockTower
         {
             _progressUnits = 0L;
             _stageIndex++;
+            _fedThisStage = false;
 
             bool isFinal = _stageIndex >= _stages.Count;
             if (isFinal)

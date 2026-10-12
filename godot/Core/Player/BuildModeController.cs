@@ -484,7 +484,7 @@ namespace GolemFactory.Player
             return false;
         }
 
-        /// <summary>Whether the wrecking bar has something to take back at this cell.</summary>
+        /// <summary>What a refusal calls a fixture: its own display name, else the building's.</summary>
         private static string FixtureName(PlaceableBuilding building) =>
             building.GetPart<PlaceableClockTower>()?.DisplayName ?? building.name;
 
@@ -514,6 +514,7 @@ namespace GolemFactory.Player
             }
         }
 
+        /// <summary>Whether the wrecking bar has something to take back at this cell.</summary>
         public bool HasRemovableThing(Vector2Int cell) =>
             HasRemovableBuilding(cell) || (_golemDismantler != null && TryFindGolemAt(cell, out _));
 

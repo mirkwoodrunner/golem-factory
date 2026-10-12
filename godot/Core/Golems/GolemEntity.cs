@@ -283,6 +283,18 @@ namespace GolemFactory.Golems
             ReleaseNodeClaim();
         }
 
+        /// <summary>
+        /// Turns the golem where it stands -- R, on the floor or in the player's hands. Steam is
+        /// keyed by cell, so a turn leaves the golem's steam registration alone (and a carried
+        /// golem stays off the books); the node claim is dropped, as on a move, because the
+        /// golem may now face a different seam.
+        /// </summary>
+        public void SetFacing(Facing placedFacing)
+        {
+            facing = placedFacing;
+            ReleaseNodeClaim();
+        }
+
         // Re-registration is funnelled through here (ConfigureSteam, SetPlacement, SetHeld,
         // OnEnable) so "which cell is this golem drawing steam on" has exactly one writer.
         private void RegisterSteamConsumer()

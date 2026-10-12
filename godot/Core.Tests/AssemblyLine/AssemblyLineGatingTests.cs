@@ -315,6 +315,21 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void ACardLockedOnlyByItsPrice_NamesTheGoodsItWaitsFor()
+        {
+            // No prerequisite at all, but a price in Brass the factory has never made: locked
+            // by the price gate, and the panel read "needs " with nothing after it.
+            DraftableCardDefinition casing = MakeCard("Casing", Cost((ItemType.IronPlate, 8), (ItemType.Brass, 2)));
+
+            var line = new AssemblyLineState(1);
+            line.ConfigureUnlockContext(item => item == ItemType.IronPlate);
+            line.SeedCandidates(new[] { casing });
+
+            Assert.IsFalse(line.IsUnlocked(casing), "precondition: locked by its price");
+            Assert.AreEqual(ItemType.Brass, line.DescribeMissingPrerequisites(casing));
+        }
+
+        [Test]
         public void WithNoUnlockContextWired_ItemPrerequisitesPass()
         {
             // Every pre-§8 caller: an unanswerable prerequisite must not lock a card out of a

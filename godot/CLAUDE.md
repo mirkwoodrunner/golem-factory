@@ -146,6 +146,18 @@ step that happens inside a full screen must also be placed clear of that screen'
 index: inserting steps shifts every index after them, and a finished guide used to come back
 mid-chapter. So a step's `Id` is its saved name. Don't rename one without mapping the old id.
 
+**A guide golem is named by its role, never by build order.** A step that builds a golem the
+next steps talk about assigns it a role (`TutorialGuide.RoleOpenings`: a golem of the right
+chassis that wasn't standing when the step began), and the save keeps the roles
+(`tutorialRoles`). "The third Scavenger" broke on any spare or any golem the wrecking bar took.
+The guide is restored on load **after** the golems, since a step notes who was standing.
+
+**Marked tiles: what the guide checks.** Pipe steps are done by where the steam reaches, not
+which tiles hold pipe (any route counts). Buildings later steps are laid out around stay on
+their marked tiles (`TutorialStep.ExactTile`), and `TutorialGuide.Notice` says why a step is
+waiting: the right building built elsewhere, something else on a marked tile, a building on a
+golem's tile, a belt pointing the wrong way. A step's `Builds` names what its marks are for.
+
 **A new guide step needs a kit action** (`TutorialGuide.Kit.cs`, `Performs`): what the
 playtest kit does to complete it, using the player's own verbs. `PlaytestKitTests` fails for
 a step without one.
@@ -165,7 +177,12 @@ versus `AllPlaceables`), and the wrecking bar refuses it. A fixture is never in
 `ProgressEntry` instead. It is roped off until the ledger has seen a Zeppelin
 (`ClockTowerSite.OpenWhen`), and only freshly assembled goods count toward a stage.
 
-**Playtest mode writes `user://playtest-report.md`.** Scenario runs write
+**Playtest mode writes `user://playtest-report.md`**, and keeps the previous session's as
+`playtest-report-<date>-<time>.md` before a new one starts (`PlaytestReportArchive`): every
+launch used to overwrite it. A question is asked as the chapter after its experience opens
+(`PlaytestQuestion.AfterStepId`); only the tower's and the guide's own wait for `done`. The
+kit's chapter 7 Save and Load use `kit-save.json` beside the player's save, never the save
+itself. Scenario runs write
 `user://scenario-playtest-report.md` instead, and save to `user://scenario-save.json`
 (`PlaytestNode.UnderScenario`, which reads `--scenario` off the command line itself: a flag
 set by the ScenarioRunner arrived too late, and a kit run overwrote a player's save). Never

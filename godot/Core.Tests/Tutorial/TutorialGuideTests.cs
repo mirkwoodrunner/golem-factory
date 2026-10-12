@@ -453,6 +453,19 @@ namespace GolemFactory.Tests.Tutorial
                 Give(world, cost.itemType, cost.quantity);
             }
             Assert.IsTrue(world.AssemblyLineBoard.Claim(zslot));
+            Assert.AreEqual("freight-card", StepId(world));
+
+            // The Workbench offers only owned cards from its roster: Freight Launch must be both,
+            // or the Zeppelin can never be programmed by hand (it once was neither).
+            Assert.IsFalse(world.Workbench.VaultAppendages.Any(a => a.name == "FreightLaunch"), "precondition: not owned yet");
+            for (int frame = 0; frame < 3; frame++)
+            {
+                world.Advance(1f / 30f); // the line rebalances on its tick
+            }
+            int launchSlot = Enumerable.Range(0, zline.SlotCount).FirstOrDefault(i => zline.GetCard(i)?.appendage?.name == "FreightLaunch", -1);
+            Assert.GreaterOrEqual(launchSlot, 0, "the guide keeps Freight Launch on show");
+            Assert.IsTrue(world.AssemblyLineBoard.Claim(launchSlot), world.AssemblyLineBoard.Status);
+            Assert.IsTrue(world.Workbench.VaultAppendages.Any(a => a.name == "FreightLaunch"), "claimed, the vault offers it");
             Assert.AreEqual("zeppelin", StepId(world));
 
             Give(world, ItemType.Mainspring, 6);
@@ -914,6 +927,230 @@ namespace GolemFactory.Tests.Tutorial
             heap.AddCoke(1);
             Assert.IsTrue(heap.TryVoid(), "precondition: it burns");
             Assert.AreNotEqual("work-carrier", StepId(world));
+        }
+
+        [Test]
+        public void FeedTheTower_TheWayTheStepSays_ADepotAGolemAndABoilerInTheSquare()
+        {
+            SandboxWorld world = Plenty();
+            DefinitionSet defs = world.Definitions;
+            world.TechTree.Ledger.RecordChassis(SandboxWorld.ZeppelinChassis); // the rope is down
+            Assert.IsTrue(world.ClockTower.Site.IsOpen, "precondition: open");
+
+            // West of the footprint's bottom-left cell: depot, golem facing the tower, boiler below.
+            Vector2Int tower = TownSquare.TowerOrigin;
+            Vector2Int golemCell = tower + new Vector2Int(-1, 0);
+            Place(world, "DepotPrefab", golemCell.x - 1, golemCell.y);
+            PlaceableBoiler boiler = Place(world, "BoilerPrefab", golemCell.x, golemCell.y - 1).GetPart<PlaceableBoiler>();
+            Give(world, ItemType.Coke, 10);
+            Assert.IsTrue(world.Interactor.TryRefuelBoiler(boiler));
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["ClockworkScavenger"], out GolemEntity feeder));
+            Program(world, feeder, "HaulScrap", "PushOutput");
+            feeder.Program.SetItemTypeAt(0, ItemType.FrameSection);
+            feeder.SetPlacement(golemCell, Facing.East);
+            Give(world, ItemType.FrameSection, 20);
+
+            GoTo(world, "tower-feed");
+            world.Clock.Play();
+            for (int frame = 0; frame < 900 && StepId(world) == "tower-feed"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreNotEqual("tower-feed", StepId(world),
+                $"the tower took a delivery ({feeder.Program.State}, {feeder.StallReason} {feeder.StallResourceId})");
+        }
+
+        // --- The golem a step means is the one it built, not the Nth by build order -----------
+
+        private static GolemEntity Scavenger(SandboxWorld world, params string[] cards)
+        {
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(world.Definitions.Chassis["ClockworkScavenger"], out GolemEntity golem));
+            if (cards.Length > 0)
+            {
+                Program(world, golem, cards);
+            }
+            return golem;
+        }
+
+        [Test]
+        public void ASpareScavenger_DoesNotStandInForTheExtractorOrTheUnloader()
+        {
+            SandboxWorld world = Plenty();
+            world.AssemblyBay.RestoreTier(2); // room for six
+            Scavenger(world, "ExtractScrap", "PushOutput"); // chapter 1's
+            Scavenger(world, "ExtractScrap", "PushOutput"); // chapter 4's
+            Scavenger(world, "ExtractScrap", "PushOutput"); // a spare, built along the way
+
+            // Build order would call the spare "the third Scavenger" and finish this step at once.
+            GoTo(world, "scav3");
+            Assert.AreEqual("scav3", StepId(world), "the spare is not the extractor");
+
+            GolemEntity extractor = Scavenger(world, "ExtractScrap", "PushOutput");
+            Assert.AreNotEqual("scav3", StepId(world), "the one built for the step is");
+
+            // And "An unloader" waits on the golem built for IT -- the old Skip(3) found the
+            // extractor, which has no Haul, and never finished.
+            GoTo(world, "unloader");
+            GolemEntity unloader = Scavenger(world, "HaulScrap", "PushOutput");
+            unloader.Program.SetItemTypeAt(0, ItemType.CopperOre);
+            Assert.AreNotEqual("unloader", StepId(world));
+            StringAssert.Contains("extractor=" + extractor.GolemId, string.Join(",", world.Tutorial.RoleEntries));
+            StringAssert.Contains("unloader=" + unloader.GolemId, string.Join(",", world.Tutorial.RoleEntries));
+        }
+
+        [Test]
+        public void ADismantledEarlierGolem_DoesNotTakeTheGolemBuiltForThisStep()
+        {
+            SandboxWorld world = Plenty();
+            Scavenger(world, "ExtractScrap", "PushOutput"); // chapter 1's
+            GolemEntity chapter4 = Scavenger(world, "ExtractScrap", "PushOutput");
+            GoTo(world, "scav3");
+            StringAssert.Contains("scav2=" + chapter4.GolemId, string.Join(",", world.Tutorial.RoleEntries));
+
+            // The wrecking bar takes chapter 4's golem; then the player builds the extractor.
+            Assert.IsTrue(world.StarterStation.TryDismantleGolem(chapter4, out _, out string refusal), refusal);
+            GolemEntity extractor = Scavenger(world, "ExtractScrap", "PushOutput");
+
+            Assert.AreNotEqual("scav3", StepId(world), "the new golem is the extractor, not chapter 4's replacement");
+            StringAssert.Contains("extractor=" + extractor.GolemId, string.Join(",", world.Tutorial.RoleEntries));
+        }
+
+        [Test]
+        public void ALoadOnAndBackToWork_StillFinishesIt()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "golem-factory-guide-" + System.Guid.NewGuid() + ".json");
+            try
+            {
+                SandboxWorld world = Plenty();
+                Scavenger(world, "ExtractScrap", "PushOutput");
+                GoTo(world, "scav2");
+                GolemEntity scav2 = Scavenger(world, "ExtractScrap", "PushOutput");
+                GoTo(world, "unstall");
+                world.SaveTo(path);
+
+                SandboxWorld fresh = Compose();
+                fresh.LoadFrom(path);
+                Assert.AreEqual("unstall", fresh.Tutorial.Current?.Id);
+                Assert.IsTrue(fresh.Golems.Any(g => g.GolemId == scav2.GolemId), "precondition: it came back");
+
+                // Its next finished cycle ends the step, as it does without the load. The stalled
+                // golem's id used to live only in the last session, so this never happened.
+                EventBus.Publish(new GolemCompletedEvent(scav2.GolemId));
+                Assert.AreEqual("r4-card", StepId(fresh));
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        [Test]
+        public void TheLedgersClockTower_LightsWhenTheTowerIsFed_NotBecauseItStands()
+        {
+            SandboxWorld world = Compose();
+            for (int frame = 0; frame < 60; frame++)
+            {
+                world.Advance(1f / 30f); // the tracker polls
+            }
+            Assert.IsFalse(world.TechTree.Ledger.HasBuilding(GolemFactory.Progression.TechTreeCatalog.BuildingClockTower),
+                "the town square's fixture stands from the first frame; that is not building it");
+
+            world.ClockTower.Site.RecordDelivery(ItemType.FrameSection, 1, world.Clock.CurrentTick);
+            for (int frame = 0; frame < 60; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.IsTrue(world.TechTree.Ledger.HasBuilding(GolemFactory.Progression.TechTreeCatalog.BuildingClockTower));
+        }
+
+        [Test]
+        public void ALoad_StartsTheTowersRatesAfresh()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "golem-factory-tower-" + System.Guid.NewGuid() + ".json");
+            try
+            {
+                SandboxWorld world = Compose();
+                world.SaveTo(path);
+                world.ClockTower.Site.RecordDelivery(ItemType.FrameSection, 6, world.Clock.CurrentTick);
+                Assert.Greater(world.ClockTower.Site.DeliveryRatePerMinute(ItemType.FrameSection), 0, "precondition: fed");
+
+                world.LoadFrom(path);
+                Assert.AreEqual(0, world.ClockTower.Site.DeliveryRatePerMinute(ItemType.FrameSection),
+                    "deliveries from the abandoned session do not carry into the loaded one");
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        // --- Round 2: the guide says what is in the way of a marked tile ------------------------
+
+        [Test]
+        public void ADepotBuiltOffTheMarkedTile_EarnsANote_AndTheStepStillWaits()
+        {
+            SandboxWorld world = Plenty();
+            Place(world, "DepotPrefab", 8, 8); // built before the step: not the step's business
+            GoTo(world, "depot");
+            Assert.AreEqual("", world.Tutorial.Notice, "a depot from before the step is not a stray");
+
+            Vector2Int off = world.Tutorial.DepotSpot + new Vector2Int(1, 0);
+            Place(world, "DepotPrefab", off.x, off.y);
+            Assert.AreEqual("depot", StepId(world));
+            StringAssert.Contains("Depot is off the marked tile", world.Tutorial.Notice);
+
+            Place(world, "DepotPrefab", world.Tutorial.DepotSpot.x, world.Tutorial.DepotSpot.y);
+            Assert.AreEqual("work", StepId(world));
+        }
+
+        [Test]
+        public void SomethingElseOnAMarkedBuildTile_IsNamed()
+        {
+            SandboxWorld world = Plenty();
+            Vector2Int spot = world.Tutorial.Boiler2Spot;
+            Place(world, "SteamPipePrefab", spot.x, spot.y); // a free-routed pipe, paving the tile
+            GoTo(world, "boiler2");
+
+            StringAssert.StartsWith("A Steam Pipe is on a marked tile", world.Tutorial.Notice);
+            StringAssert.Contains("Click it to take it up", world.Tutorial.Notice);
+        }
+
+        [Test]
+        public void ABuildingOnTheGolemsTile_IsNamed_BecauseAGolemCannotStandThere()
+        {
+            SandboxWorld world = Plenty();
+            Vector2Int spot = world.Tutorial.CokerSpot;
+            Place(world, "SteamPipePrefab", spot.x, spot.y);
+            GoTo(world, "work-coker");
+
+            StringAssert.StartsWith("A Steam Pipe is on the golem's tile", world.Tutorial.Notice);
+        }
+
+        [Test]
+        public void ABeltOnTheRunPointingTheWrongWay_IsNamed()
+        {
+            SandboxWorld world = Plenty();
+            GoTo(world, "belts");
+            Vector2Int first = world.Tutorial.BeltSpots[0];
+            world.Build.SetActivePrefab(world.Placeables.Single(p => p.Key == "BeltPrefab").Prefab);
+            world.Build.RotatePlacement(); // east
+            world.Build.PlaceOrRemove(first);
+            world.Build.CancelPlacement();
+
+            StringAssert.StartsWith("A belt on the run points right", world.Tutorial.Notice);
+        }
+
+        [Test]
+        public void ACleanStep_HasNoNote_AndAPipeOffTheMarksIsNoStray()
+        {
+            SandboxWorld world = Plenty();
+            Place(world, "BoilerPrefab", world.Tutorial.Boiler2Spot.x, world.Tutorial.Boiler2Spot.y);
+            GoTo(world, "pipes3");
+            Assert.AreEqual("", world.Tutorial.Notice);
+
+            Pipe(world, world.Tutorial.SmelterSpot + new Vector2Int(-2, 1)); // a route of its own (round 1)
+            Assert.AreEqual("", world.Tutorial.Notice, "pipes take any route that works");
         }
 
         [Test]

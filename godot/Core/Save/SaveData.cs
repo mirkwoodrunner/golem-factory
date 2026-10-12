@@ -51,6 +51,12 @@ namespace GolemFactory.Save
         /// stays for saves written before it.
         /// </summary>
         public string tutorialStepId;
+
+        /// <summary>
+        /// Which golem each guide role names ("scav2=PlayerGolem-004"), so a load keeps talking
+        /// about the golem the player built for it rather than guessing by build order.
+        /// </summary>
+        public List<string> tutorialRoles = new List<string>();
         public bool tutorialDismissed;
 
         /// <summary>
