@@ -619,3 +619,9 @@ If an image-generation MCP server is configured in the user's global Claude conf
   a square size (64, 128 or 256 px) so a mockup lines up with the PPU 64 grid.
 - Say which file you wrote and the prompt used. Do not wire a generated image into a scene or
   prefab unless asked.
+- **One exception, at the user's call: the Clock Tower.** Its six sprites in `godot/art/`
+  (`clock_tower_site`, `clock_tower_stage0`–`4`) are a 192×640 ComfyUI redraw, composited by
+  hand, and they replaced `generate_clock_tower_art.py`'s 192×448 pictures. That generator now
+  refuses to write into `godot/art/`, `verify_art.py` lists the six as hand-replaced, and
+  `ClockTowerArt.CanvasHeight` is 640. Any change to the tower's art has to keep all three
+  in step.

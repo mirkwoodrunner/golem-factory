@@ -36,7 +36,12 @@ GENERATORS = [
 # Sprites whose committed version was drawn by hand over the generated placeholder, so the
 # generator's output is expected to differ. Filled from this script's first run against the
 # art Unity shipped; a file that drifts and is NOT listed here fails the check.
-KNOWN_HAND_REPLACED = set()
+KNOWN_HAND_REPLACED = {
+    # The Clock Tower's 192x640 redraw (ComfyUI, composited by hand) replaced
+    # generate_clock_tower_art.py's 192x448 pictures; see that script's docstring.
+    "clock_tower_site.png", "clock_tower_stage0.png", "clock_tower_stage1.png",
+    "clock_tower_stage2.png", "clock_tower_stage3.png", "clock_tower_stage4.png",
+}
 
 
 def same_pixels(a: str, b: str) -> bool:

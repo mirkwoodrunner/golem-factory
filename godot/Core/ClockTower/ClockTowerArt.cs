@@ -2,9 +2,10 @@ namespace GolemFactory.ClockTower
 {
     /// <summary>
     /// Which picture the Clock Tower wears (G10): the roped-off site, then one picture per stage
-    /// the player has completed, up to the finished tower. Drawn by
-    /// <c>Tools/Art/generate_clock_tower_art.py</c>, whose pictures all share one 192x448 canvas
-    /// so they swap in place as the tower grows.
+    /// the player has completed, up to the finished tower. All six pictures share one 192x640
+    /// canvas so they swap in place as the tower grows. They are an AI redraw (ComfyUI) that
+    /// replaced <c>Tools/Art/generate_clock_tower_art.py</c>'s 192x448 originals, which is why
+    /// that generator now refuses to write into <c>godot/art/</c>.
     /// </summary>
     public static class ClockTowerArt
     {
@@ -13,9 +14,9 @@ namespace GolemFactory.ClockTower
         /// <summary>The pictures run stage0 (open, nothing built) to stage4 (finished).</summary>
         public const int FinalPicture = 4;
 
-        /// <summary>The canvas: three cells wide, seven tall, bottom row on the footprint's south edge.</summary>
+        /// <summary>The canvas: three cells wide, ten tall, bottom row on the footprint's south edge.</summary>
         public const int CanvasWidth = 192;
-        public const int CanvasHeight = 448;
+        public const int CanvasHeight = 640;
 
         public static string SpriteFor(ClockTowerSite site)
         {
