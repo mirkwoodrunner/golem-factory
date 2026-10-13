@@ -41,6 +41,10 @@ KNOWN_HAND_REPLACED = {
     # generate_clock_tower_art.py's 192x448 pictures; see that script's docstring.
     "clock_tower_site.png", "clock_tower_stage0.png", "clock_tower_stage1.png",
     "clock_tower_stage2.png", "clock_tower_stage3.png", "clock_tower_stage4.png",
+    # The five market carts: a ComfyUI redraw softened to the props' look, which replaced
+    # generate_topdown_environment.py's stalls; that script skips them (HAND_REPLACED).
+    "stall_scrap.png", "stall_coal.png", "stall_copper_ore.png", "stall_zinc_ore.png",
+    "stall_aether.png",
 }
 
 

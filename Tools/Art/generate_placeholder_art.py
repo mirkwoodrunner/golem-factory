@@ -933,6 +933,10 @@ ORE_ROCK_DARK = (68, 58, 50, 255)
 ZINC = (176, 190, 200, 255)
 ZINC_LIGHT = (226, 236, 244, 255)
 ZINC_DARK = (108, 124, 136, 255)
+# The copper ore cart's malachite (generate_topdown_environment.make_stall_ore).
+MALACHITE = (96, 158, 104, 255)
+MALACHITE_DARK = (62, 112, 74, 255)
+MALACHITE_LIGHT = (150, 200, 150, 255)
 
 
 # --------------------------------------------------------------------------------------------
@@ -1001,17 +1005,21 @@ def make_coal_item() -> Image.Image:
 
 
 def make_copper_ore_item() -> Image.Image:
-    """Copper Ore -- a fat unbroken boulder with bright veins running through it. Rock with metal
-    IN it, against the ingot's metal already poured."""
+    """Copper Ore -- a fat unbroken boulder banded with green malachite. Copper ore is GREEN in the
+    ground, and the market cart sells it green; the first version veined it in the ingot's orange,
+    so the good a golem carried away from the green cart looked like something else entirely.
+    Green also keeps it apart from the orange ingot it smelts into."""
     img = _icon()
     d = ImageDraw.Draw(img)
     d.polygon([(6, 8), (21, 5), (28, 15), (24, 27), (8, 27), (2, 16)], fill=ORE_ROCK, outline=OUTLINE)
     d.polygon([(7, 19), (25, 18), (24, 27), (8, 27)], fill=ORE_ROCK_DARK)
-    d.line([(7, 14), (15, 10)], fill=COPPER)
-    d.line([(15, 10), (25, 16)], fill=COPPER)
-    d.line([(9, 23), (18, 21)], fill=COPPER)
-    d.line([(18, 21), (23, 23)], fill=COPPER)
-    d.point([(13, 16), (20, 13), (21, 24)], fill=COPPER_LIGHT)
+    # Malachite bands: broad patches, not hairline veins, so the green survives at cargo size.
+    d.polygon([(5, 14), (14, 9), (17, 12), (8, 17)], fill=MALACHITE)
+    d.polygon([(15, 9), (21, 7), (26, 14), (20, 15)], fill=MALACHITE_DARK)
+    d.polygon([(9, 22), (18, 20), (21, 23), (11, 25)], fill=MALACHITE_DARK)
+    d.line([(6, 14), (14, 10)], fill=MALACHITE_LIGHT)
+    d.line([(16, 9), (21, 8)], fill=MALACHITE_LIGHT)
+    d.point([(12, 13), (22, 11), (16, 22)], fill=MALACHITE_LIGHT)
     return img
 
 

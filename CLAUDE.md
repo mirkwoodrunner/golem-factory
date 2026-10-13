@@ -625,3 +625,12 @@ If an image-generation MCP server is configured in the user's global Claude conf
   refuses to write into `godot/art/`, `verify_art.py` lists the six as hand-replaced, and
   `ClockTowerArt.CanvasHeight` is 640. Any change to the tower's art has to keep all three
   in step.
+- **And a second: the five market carts** (`stall_scrap`, `_coal`, `_copper_ore`,
+  `_zinc_ore`, `_aether`). They were redrawn in ComfyUI from hand-drawn drafts, then softened
+  to match the props: the near-black ink became warm brown outlines, and the wood was shifted
+  toward the props' red-brown. They keep the generator's 96×120 canvas and its pivot. Their
+  wheels stand on row 117, so `SpritePivots` is unchanged. `generate_topdown_environment.py`
+  skips those five names when writing to `godot/art/` (`HAND_REPLACED`), and `verify_art.py`
+  lists them as hand-replaced. **Copper ore is green**, as malachite, on the cart and on the
+  `item_copper_ore` good alike. The good is still generated (`generate_placeholder_art.py`),
+  so a change to one has to be matched in the other.
