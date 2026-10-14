@@ -49,8 +49,7 @@ namespace GolemFactory.Steam
         // facing the wrong way stalls cleanly, exactly as ClockTowerInputEndpoint refuses.
         //
         // This also closes the obvious exploit in the other direction: if fuel could be taken
-        // back out, a boiler would be an uncapped Coke warehouse that the §1.2 per-item-type
-        // buffer cap does not apply to.
+        // back out, a boiler would be a Coke warehouse outside the §1.2 per-item-type buffer cap.
 
         public bool TryTake(out ItemStack item)
         {
@@ -69,20 +68,19 @@ namespace GolemFactory.Steam
         // --- Give -------------------------------------------------------------------------
 
         /// <summary>
-        /// "Could this endpoint accept ANYTHING at all?" -- true for any live boiler.
+        /// "Could this endpoint accept ANYTHING at all?" -- true for a live boiler with room.
         ///
         /// <para>
-        /// §3.1 gives a Boiler no capacity, so it can never be full; see the note on
-        /// <see cref="SteamBoiler.PeakCokeStock"/> for why a <c>CokeCapacity</c> was rejected
-        /// rather than merely unimplemented. This is the untyped question
-        /// <c>GolemEntity.BeginPush</c> uses for its early-out, and answering it per type here
-        /// would abandon the whole push at the first non-Coke good in the hold.
+        /// A full boiler answers false, so a golem pushing into it stalls "Boiler full" and keeps
+        /// its Coke -- see <see cref="SteamBoiler.CokeCapacity"/>. This is the untyped question
+        /// <c>GolemEntity.BeginPush</c> uses for its early-out; answering it per type here would
+        /// abandon the whole push at the first non-Coke good in the hold.
         /// </para>
         /// </summary>
-        public bool CanGive() => _boiler != null;
+        public bool CanGive() => _boiler != null && !_boiler.IsFull;
 
         /// <summary>
-        /// The typed question: a boiler burns Coke and nothing else.
+        /// The typed question: a boiler burns Coke and nothing else, and only while it has room.
         ///
         /// <para>
         /// A golem pushing a mixed hold therefore delivers its Coke and KEEPS the rest for the
@@ -91,7 +89,7 @@ namespace GolemFactory.Steam
         /// it is exactly the per-type skip §1.2 put into <c>BeginPush</c>.
         /// </para>
         /// </summary>
-        public bool CanGive(string itemType) => _boiler != null && itemType == ItemType.Coke;
+        public bool CanGive(string itemType) => CanGive() && itemType == ItemType.Coke;
 
         /// <summary>Burns-to-be: one unit of Coke onto the stock. Anything else is refused.</summary>
         public bool TryGive(ItemStack item)

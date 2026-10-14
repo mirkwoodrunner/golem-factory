@@ -37,15 +37,21 @@ namespace GolemFactory.Steam
         /// How much a hand-load actually moves: the batch, or everything the player has if that
         /// is less. Returns 0 for an empty stockpile, which the caller reports as a refusal
         /// rather than performing a transfer of nothing.
+        /// <para>
+        /// <paramref name="room"/> is the boiler's <see cref="SteamBoiler.CokeRoom"/>: a load never
+        /// takes more from the stockpile than the boiler will hold, so a top-up of a nearly full
+        /// boiler costs only what fits.
+        /// </para>
         /// </summary>
-        public static int AmountToLoad(int stockpileCoke, int batch = HandLoadBatch)
+        public static int AmountToLoad(int stockpileCoke, int batch = HandLoadBatch, int room = SteamBoiler.CokeCapacity)
         {
-            if (stockpileCoke <= 0 || batch <= 0)
+            if (stockpileCoke <= 0 || batch <= 0 || room <= 0)
             {
                 return 0;
             }
 
-            return stockpileCoke < batch ? stockpileCoke : batch;
+            int amount = stockpileCoke < batch ? stockpileCoke : batch;
+            return amount < room ? amount : room;
         }
     }
 }

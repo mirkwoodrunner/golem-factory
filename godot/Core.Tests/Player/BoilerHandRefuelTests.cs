@@ -149,5 +149,38 @@ namespace GolemFactory.Tests.PlayMode
             Assert.AreEqual(InteractionAffordance.Ready, player.CurrentAffordance,
                 "with Coke in hand the same boiler must read as actionable");
         }
+
+        [Test]
+        public void TryRefuelBoiler_NearlyFull_TakesOnlyWhatFits()
+        {
+            (PlayerInteractor player, PlaceableBoiler boiler,
+             StorageBufferRegistry stockpile, SteamNetwork _) = Build();
+            boiler.Boiler.SetCoke(SteamBoiler.CokeCapacity - 5);
+            stockpile.Deposit("FactoryStockpile", ItemType.Coke, 50);
+            player.Attach();
+
+            Assert.IsTrue(player.TryRefuelBoiler(boiler));
+            Assert.AreEqual(SteamBoiler.CokeCapacity, boiler.Boiler.CokeStock);
+            Assert.AreEqual(45, stockpile.GetQuantity("FactoryStockpile", ItemType.Coke),
+                "the stockpile pays only for the Coke that went in");
+        }
+
+        [Test]
+        public void TryRefuelBoiler_Full_RefusesAndTakesNothing()
+        {
+            (PlayerInteractor player, PlaceableBoiler boiler,
+             StorageBufferRegistry stockpile, SteamNetwork _) = Build();
+            boiler.Boiler.SetCoke(SteamBoiler.CokeCapacity);
+            stockpile.Deposit("FactoryStockpile", ItemType.Coke, 50);
+            player.Position = Vector3.zero;
+            player.RefreshInteractables();
+            player.Attach();
+
+            player.RefreshAffordance();
+            Assert.AreEqual(InteractionAffordance.Unavailable, player.CurrentAffordance);
+            Assert.IsFalse(player.TryRefuelBoiler(boiler));
+            StringAssert.Contains("full", player.LastStatusMessage);
+            Assert.AreEqual(50, stockpile.GetQuantity("FactoryStockpile", ItemType.Coke));
+        }
     }
 }
