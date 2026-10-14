@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Generates placeholder art for the graphics demo (see docs/unity-implementation-plan.md,
+"""Generates placeholder art for the graphics demo (see docs/history/unity-implementation-plan.md,
 "Graphics demo implementation notes"). Not final art -- simple, intentional stand-ins in the
 warm wood-and-brass palette from docs/digital-design.md, meant to be swapped for bespoke
-pixel art later without touching any code. Re-run to regenerate; output goes to
-Assets/_Project/Art/.
+pixel art later without touching any code. Re-run to regenerate; output goes to godot/art/
+(Tools/Art/art_paths.py).
 """
 
 import os

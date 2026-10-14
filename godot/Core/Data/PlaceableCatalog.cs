@@ -26,8 +26,8 @@ namespace GolemFactory.Data
     }
 
     /// <summary>
-    /// Loads <c>data/placeables.json</c> -- the ten prefabs Unity's Sandbox build menu offered,
-    /// converted by <c>Tools/Data/convert_unity_assets.py</c> -- into <see cref="PlaceableBuilding"/>
+    /// Loads <c>data/placeables.json</c> -- the prefabs Unity's Sandbox build menu offered, first
+    /// converted from Unity and hand-edited since the G10 cutover -- into <see cref="PlaceableBuilding"/>
     /// prefabs with their parts (milestone G5).
     ///
     /// <para>

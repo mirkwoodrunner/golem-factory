@@ -40,6 +40,15 @@ namespace GolemFactory.PunchCards
         // the save file and the Ledger all key on. Plain data now, so it is a field.
         public string name;
 
+        // What the player reads on the card, when that differs from the name. The name is the
+        // card's id -- saves, the deck, patents and the guide all key on it -- so a card whose
+        // name says too much ("ExtractScrap", which extracts whatever the stall behind holds)
+        // is relabelled here rather than renamed, and no save loses the card.
+        public string displayName = "";
+
+        /// <summary>The card's player-facing name, before humanizing: its display name, else its name.</summary>
+        public string Label => string.IsNullOrEmpty(displayName) ? name : displayName;
+
         public AppendageActionType actionType;
 
         // Authored duration. Only Refine uses it -- Haul, ExtractFromNode and Push derive theirs

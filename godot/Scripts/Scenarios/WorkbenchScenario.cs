@@ -13,7 +13,7 @@ namespace GolemFactory.Nodes.Scenarios
     /// <summary>
     /// G7's exit check: program a golem end to end through the Workbench, with real mouse and
     /// key input -- and the nine WorkbenchControllerTests that were about UGUI plumbing, asked of
-    /// the Godot screen instead (docs/godot-test-ledger.md).
+    /// the Godot screen instead (docs/history/godot-test-ledger.md).
     ///
     /// <list type="number">
     ///   <item>A Scavenger is built at the station; the Workbench opens on it (Unity's order) and

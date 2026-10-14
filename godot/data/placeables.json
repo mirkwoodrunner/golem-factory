@@ -337,7 +337,7 @@
   },
   {
     "name": "ClockTowerPrefab",
-    "sprite": "clock_tower.png",
+    "sprite": "clock_tower_site.png",
     "parts": {
       "YSortSpriteRenderer": {},
       "PlaceableBuilding": {

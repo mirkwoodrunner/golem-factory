@@ -1,8 +1,3 @@
-# The root .gitignore drops every *.csproj and *.sln because Unity regenerates
-# its own. These are hand-written and are the build, so they are committed.
-!*.csproj
-!*.sln
-
 # Godot
 .godot/
 *.translation

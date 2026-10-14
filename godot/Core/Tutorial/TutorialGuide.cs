@@ -955,7 +955,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "program", "Program it",
-                "In the Workbench, drag the Always On core into TRIGGER, Extract Scrap into STEP 1 and "
+                "In the Workbench, drag the Always On core into TRIGGER, Extract into STEP 1 and "
                 + "Push Output into STEP 2, then pull ENGAGE. Closed it? Press E at the golem.",
                 w => LiveGolems.Any(IsProgrammed),
                 w => FirstGolem,
@@ -1110,8 +1110,8 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "program-coker", "Program the coking Presser",
-                "In the Workbench: Always On, then Extract Scrap, Assemble Coking and Push Output. Despite its "
-                + "name, Extract takes whatever the stall behind the golem holds: here, Coal.",
+                "In the Workbench: Always On, then Extract, Assemble Coking and Push Output. Extract "
+                + "takes whatever the stall behind the golem holds: here, Coal.",
                 w => Pressers.Any(IsCoker),
                 w => NewestPresser?.Cell,
                 workbench: true),
