@@ -36,7 +36,16 @@ GENERATORS = [
 # Sprites whose committed version was drawn by hand over the generated placeholder, so the
 # generator's output is expected to differ. Filled from this script's first run against the
 # art Unity shipped; a file that drifts and is NOT listed here fails the check.
-KNOWN_HAND_REPLACED = set()
+KNOWN_HAND_REPLACED = {
+    # The Clock Tower's 192x640 redraw (ComfyUI, composited by hand) replaced
+    # generate_clock_tower_art.py's 192x448 pictures; see that script's docstring.
+    "clock_tower_site.png", "clock_tower_stage0.png", "clock_tower_stage1.png",
+    "clock_tower_stage2.png", "clock_tower_stage3.png", "clock_tower_stage4.png",
+    # The five market carts: a ComfyUI redraw softened to the props' look, which replaced
+    # generate_topdown_environment.py's stalls; that script skips them (HAND_REPLACED).
+    "stall_scrap.png", "stall_coal.png", "stall_copper_ore.png", "stall_zinc_ore.png",
+    "stall_aether.png",
+}
 
 
 def same_pixels(a: str, b: str) -> bool:

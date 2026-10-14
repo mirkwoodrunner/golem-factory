@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Godot;
+using GolemFactory.Blueprints;
 using GolemFactory.Buildings;
 using GolemFactory.Golems;
 using GolemFactory.PunchCards;
@@ -23,6 +25,14 @@ namespace GolemFactory.Nodes
     /// <para>
     /// After a build the panel closes and the Workbench opens on the new golem, as Unity's did.
     /// </para>
+    ///
+    /// <para>
+    /// Below the chassis, "From a patent": one row per patent the player has filed. A patent
+    /// row builds that patent's chassis at the same cost and engages its program, so the
+    /// panel closes onto a golem that is ready to place -- no Workbench. Patents used to be
+    /// reachable only from Management, which cannot open over this panel or the Workbench, so
+    /// using one meant building a bare golem, closing the Workbench, and loading it from Tab.
+    /// </para>
     /// </summary>
     public partial class ConstructionPanelNode : CanvasLayer, IConstructionScreen, IClosableScreen
     {
@@ -43,7 +53,10 @@ namespace GolemFactory.Nodes
         private const float PortraitSize = 40f;
         private const float CostWidth = 176f;
 
+        private const float PatentListMaxRows = 3f;
+
         private readonly List<(ChassisDefinition chassis, Button row)> _rows = new List<(ChassisDefinition, Button)>();
+        private readonly List<(Blueprint blueprint, Button row)> _patentRows = new List<(Blueprint, Button)>();
         private GolemConstructionStation _station;
         private string _statusMessage = "";
         private string _renderedSignature;
@@ -56,6 +69,7 @@ namespace GolemFactory.Nodes
 
         public bool IsOpen { get; private set; }
         public IReadOnlyList<(ChassisDefinition chassis, Button row)> Rows => _rows;
+        public IReadOnlyList<(Blueprint blueprint, Button row)> PatentRows => _patentRows;
         public string Status => _statusLabel.Text;
 
         /// <summary>The golem the last successful build made, for a scenario.</summary>
@@ -143,6 +157,38 @@ namespace GolemFactory.Nodes
             return true;
         }
 
+        /// <summary>
+        /// Builds <paramref name="blueprint"/>'s chassis at the open station with its program
+        /// engaged. What a patent row's click does. The panel closes onto the finished golem;
+        /// the Workbench stays shut, since there is nothing left to program.
+        /// </summary>
+        public bool TryConstructFromPatent(Blueprint blueprint)
+        {
+            if (_station == null || blueprint == null)
+            {
+                _statusMessage = "No construction station selected.";
+                return false;
+            }
+
+            if (!_station.TryConstructFromBlueprint(blueprint, out GolemEntity golem))
+            {
+                if (!string.IsNullOrEmpty(_station.LastRefusalReason))
+                {
+                    _statusMessage = _station.LastRefusalReason;
+                    return false;
+                }
+                string shortfall = ConstructionCostPolicy.FormatShortfall(_station.StockOf, blueprint.Chassis.cost);
+                _statusMessage = string.IsNullOrEmpty(shortfall)
+                    ? "Could not build " + blueprint.BlueprintId + "."
+                    : shortfall + " to build " + blueprint.BlueprintId + ".";
+                return false;
+            }
+
+            LastBuilt = golem;
+            Close();
+            return true;
+        }
+
         private void Refresh()
         {
             _statusLabel.Text = _statusMessage ?? "";
@@ -170,6 +216,7 @@ namespace GolemFactory.Nodes
                 child.QueueFree();
             }
             _rows.Clear();
+            _patentRows.Clear();
 
             ChassisDefinition[] roster = _station.ChassisRoster;
             if (roster == null || roster.Length == 0)
@@ -183,6 +230,31 @@ namespace GolemFactory.Nodes
                 {
                     _rowContainer.AddChild(MakeRow(chassis));
                 }
+            }
+
+            List<Blueprint> patents = PatentBrowser.Rows(WorldNode.Find(this).Sandbox.Patents);
+            if (patents.Count == 0)
+            {
+                return;
+            }
+            Label heading = MakeLabel("From a patent", TitleColor, 16);
+            heading.AddThemeFontOverride("font", _bold);
+            _rowContainer.AddChild(heading);
+            _rowContainer.AddChild(MakeLabel("Built with its program already engaged. Same cost as the chassis.", SubtitleColor, 12));
+            // A long patent library scrolls rather than pushing Close off the bottom of the screen.
+            var scroll = new ScrollContainer
+            {
+                Name = "Patents",
+                HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+                CustomMinimumSize = new Vector2(0f, Math.Min(patents.Count, PatentListMaxRows) * (RowHeight + 4f) - 4f),
+            };
+            var list = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            list.AddThemeConstantOverride("separation", 4);
+            scroll.AddChild(list);
+            _rowContainer.AddChild(scroll);
+            foreach (Blueprint blueprint in patents)
+            {
+                list.AddChild(MakePatentRow(blueprint));
             }
         }
 
@@ -198,15 +270,50 @@ namespace GolemFactory.Nodes
                     b.Append('|').Append(c.itemType).Append(':').Append(_station.StockOf(c.itemType));
                 }
             }
+            // Patents are only ever added, and a patent's chassis cost is one of the costs read
+            // above, so the count is all a new patent row needs.
+            b.Append("|P").Append(WorldNode.Find(this).Sandbox.Patents?.Blueprints.Count ?? 0);
             return b.ToString();
         }
 
         private Button MakeRow(ChassisDefinition chassis)
         {
             bool affordable = ConstructionCostPolicy.CanAfford(_station.StockOf, chassis.cost);
+            string detail = affordable
+                ? "Tier " + chassis.tier + "   -   " + chassis.maxAppendageSlots + " appendage slots"
+                : ConstructionCostPolicy.FormatShortfall(_station.StockOf, chassis.cost);
+            ChassisDefinition captured = chassis;
+            Button row = MakeRow("Chassis_" + chassis.name, chassis, chassis.name, detail, affordable,
+                () => TryConstruct(captured));
+            _rows.Add((chassis, row));
+            return row;
+        }
+
+        private Button MakePatentRow(Blueprint blueprint)
+        {
+            // A patent this station can never build (no chassis, not on its roster) is greyed,
+            // saying why, the same as one the stockpile cannot pay for.
+            string refusal = _station.BlueprintRefusal(blueprint);
+            bool affordable = refusal.Length == 0 && ConstructionCostPolicy.CanAfford(_station.StockOf, blueprint.Chassis.cost);
+            string title = blueprint.BlueprintId
+                + (blueprint.Chassis != null ? "  \u00b7  " + WorkbenchDiagnostics.Humanize(blueprint.Chassis.name) : "");
+            string detail = refusal.Length > 0 ? refusal
+                : affordable ? PatentBrowser.Summary(blueprint)
+                : ConstructionCostPolicy.FormatShortfall(_station.StockOf, blueprint.Chassis.cost);
+            Blueprint captured = blueprint;
+            // Node names cannot hold every character an id might (godot/CLAUDE.md), so a row
+            // is found through PatentRows, never by this name.
+            Button row = MakeRow("Patent", blueprint.Chassis, title, detail, affordable,
+                () => TryConstructFromPatent(captured));
+            _patentRows.Add((blueprint, row));
+            return row;
+        }
+
+        private Button MakeRow(string nodeName, ChassisDefinition chassis, string title, string detail, bool affordable, Action pressed)
+        {
             var row = new Button
             {
-                Name = "Chassis_" + chassis.name,
+                Name = nodeName,
                 CustomMinimumSize = new Vector2(0f, RowHeight),
                 Disabled = !affordable,
                 FocusMode = Control.FocusModeEnum.None,
@@ -219,8 +326,7 @@ namespace GolemFactory.Nodes
             }
             row.AddThemeStyleboxOverride("hover", hover);
             row.AddThemeStyleboxOverride("pressed", hover);
-            ChassisDefinition captured = chassis;
-            row.Pressed += () => TryConstruct(captured);
+            row.Pressed += pressed;
 
             var line = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
             line.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
@@ -239,7 +345,7 @@ namespace GolemFactory.Nodes
                 Modulate = affordable ? Colors.White : new Color(0.45f, 0.47f, 0.50f, 0.85f),
             };
             // The converter wrote Unity's sprite reference as the PNG's file name.
-            string sprite = chassis.chassisSprite ?? "";
+            string sprite = chassis?.chassisSprite ?? "";
             string path = "res://art/" + (sprite.EndsWith(".png") ? sprite : sprite + ".png");
             if (sprite.Length > 0 && ResourceLoader.Exists(path))
             {
@@ -255,15 +361,13 @@ namespace GolemFactory.Nodes
             };
             text.AddThemeConstantOverride("separation", 1);
             line.AddChild(text);
-            Label name = MakeLabel(chassis.name, affordable ? NameAffordableColor : NameUnaffordableColor, 16);
+            Label name = MakeLabel(title, affordable ? NameAffordableColor : NameUnaffordableColor, 16);
             name.AddThemeFontOverride("font", _bold);
             text.AddChild(name);
-            string detail = affordable
-                ? "Tier " + chassis.tier + "   -   " + chassis.maxAppendageSlots + " appendage slots"
-                : ConstructionCostPolicy.FormatShortfall(_station.StockOf, chassis.cost);
             text.AddChild(MakeLabel(detail, affordable ? SubtitleColor : CostUnaffordableColor, 12));
 
-            Label cost = MakeLabel(ConstructionCostPolicy.FormatCost(chassis.cost), affordable ? CostAffordableColor : CostUnaffordableColor, 14);
+            string costText = chassis == null ? "" : ConstructionCostPolicy.FormatCost(chassis.cost);
+            Label cost = MakeLabel(costText, affordable ? CostAffordableColor : CostUnaffordableColor, 14);
             cost.CustomMinimumSize = new Vector2(CostWidth, 0f);
             cost.HorizontalAlignment = HorizontalAlignment.Right;
             cost.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
@@ -272,8 +376,6 @@ namespace GolemFactory.Nodes
                 cost.AddThemeFontOverride("font", _bold);
             }
             line.AddChild(cost);
-
-            _rows.Add((chassis, row));
             return row;
         }
 

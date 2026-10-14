@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using GolemFactory.Blueprints;
+using GolemFactory.Economy;
+using GolemFactory.PunchCards;
 
 namespace GolemFactory.UI
 {
@@ -65,6 +67,40 @@ namespace GolemFactory.UI
         /// <summary>The blueprints to list, in id order (BP-001, BP-002, ...).</summary>
         public static List<Blueprint> Rows(PatentRegistry registry) =>
             registry == null ? new List<Blueprint>() : registry.Blueprints.Values.OrderBy(b => b.BlueprintId).ToList();
+
+        /// <summary>
+        /// A patent's program on one line, for the construction station's patent rows:
+        /// "Always On Core · Haul Scrap · Push Output". A step whose good the player changed
+        /// from the card's own names it, since "Haul Scrap" that hauls Coke would read wrong.
+        /// </summary>
+        public static string Summary(Blueprint blueprint)
+        {
+            if (blueprint == null)
+            {
+                return "";
+            }
+            var parts = new List<string>();
+            if (blueprint.LogicCore != null)
+            {
+                parts.Add(WorkbenchDiagnostics.Humanize(blueprint.LogicCore.name));
+            }
+            for (int i = 0; i < blueprint.Appendages.Count; i++)
+            {
+                AppendageActionDefinition card = blueprint.Appendages[i];
+                if (card == null)
+                {
+                    continue;
+                }
+                string step = WorkbenchDiagnostics.Humanize(card.name);
+                string good = blueprint.ItemTypeAt(i);
+                if (!string.IsNullOrEmpty(good) && good != card.inputItemType)
+                {
+                    step += " (" + ItemTiers.DisplayName(good) + ")";
+                }
+                parts.Add(step);
+            }
+            return parts.Count == 0 ? "No program" : string.Join(" · ", parts);
+        }
 
         /// <summary>The line drawn when there is nothing to list, or null when there is.</summary>
         public static string EmptyMessage(PatentRegistry registry) =>

@@ -56,5 +56,12 @@ namespace GolemFactory.Tests.EditMode
                 "but it must be worth walking over for -- a press that buys under a minute is busywork");
         }
 
+
+        [Test]
+        public void AmountToLoad_NeverMoreThanTheBoilerHasRoomFor()
+        {
+            Assert.AreEqual(3, BoilerRefuelPolicy.AmountToLoad(500, room: 3));
+            Assert.AreEqual(0, BoilerRefuelPolicy.AmountToLoad(500, room: 0));
+        }
     }
 }

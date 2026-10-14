@@ -19,14 +19,21 @@ CONVENTIONS, and the one that differs from generate_building_art.py:
     per-picture trim would make the whole building jump between stages.
   * Deterministic: no randomness, so a re-run writes byte-identical files (verify_art.py).
 
-    python Tools/Art/generate_clock_tower_art.py
+    python Tools/Art/generate_clock_tower_art.py --out-root <dir>
+
+SUPERSEDED IN godot/art/. The committed tower is a taller 192x640 redraw made with ComfyUI
+(SDXL + pixel-art-xl) and composited by hand: the build stages are the finished tower cut at
+rising heights under drawn scaffolding. This script still runs, for reference and so
+verify_art.py can list the six pictures as hand-replaced, but it refuses to write them into
+the real art folder: doing so would put the old 448-tall tower back on a 640 canvas
+(ClockTowerArt.CanvasHeight) and quietly undo the redraw.
 """
 
 import math
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from art_paths import art_dir  # noqa: E402
+from art_paths import art_dir, DEFAULT_ROOT  # noqa: E402
 
 from PIL import Image, ImageDraw
 
@@ -414,6 +421,11 @@ def make_stage4() -> Image.Image:
 def save(image: Image.Image, name: str) -> None:
     """Written whole, never trimmed -- see the canvas note above."""
     assert image.size == (WIDTH, HEIGHT), name
+    if os.path.normcase(os.path.abspath(OUT_DIR)) == os.path.normcase(os.path.abspath(DEFAULT_ROOT)):
+        raise RuntimeError(
+            f"{name} in godot/art/ is the 192x640 redraw, not this generator's picture.\n"
+            f"Writing it would restore the old tower and break ClockTowerArt.CanvasHeight.\n"
+            f"Pass --out-root <dir> to render the originals somewhere else.")
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, name)
     image.save(path)

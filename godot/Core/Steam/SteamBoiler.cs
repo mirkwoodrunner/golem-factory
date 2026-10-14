@@ -22,21 +22,42 @@ namespace GolemFactory.Steam
         public string BoilerId { get; }
         public Vector2Int Cell { get; }
 
+        /// <summary>
+        /// The most Coke a boiler takes (G10, at the user's call from playtest). Without it a
+        /// coking Presser pushing into its boiler never meets a full destination, so it burned
+        /// every lump of Coal the factory had into a firebox that would take it all. Full, the
+        /// boiler refuses, the Presser stalls "Boiler full" like any golem at a full crate, and
+        /// the Coal stays put. 240 is the Phase-1 boiler's starting stock, so a fresh boiler
+        /// starts full rather than over the line.
+        ///
+        /// <para>
+        /// §10's soft-lock audit, run when this was added: a full boiler is by definition
+        /// fuelled, so the golems it powers -- the coker included -- keep running, the burn
+        /// makes room, and the stalled pusher resumes. A full boiler powering nothing (every
+        /// golem it reaches is claimed by an earlier boiler on the same network) burns nothing
+        /// until that boiler runs dry and it takes the golems over, which is the reserve doing
+        /// its job, not a lock.
+        /// </para>
+        /// </summary>
+        public const int CokeCapacity = 240;
+
         /// <summary>Coke on hand. Never negative -- see <see cref="Accrue"/>.</summary>
         public int CokeStock { get; private set; }
 
+        /// <summary>How much more Coke this boiler will take. Zero when full.</summary>
+        public int CokeRoom => CokeStock >= CokeCapacity ? 0 : CokeCapacity - CokeStock;
+
+        public bool IsFull => CokeRoom == 0;
+
         /// <summary>
         /// The most Coke this boiler has ever held. Exists ONLY for the §8 fuel gauge's "alert
-        /// at 25 %": §3.1 gives a boiler no capacity, so there is no authored 100 % to take a
-        /// quarter of. The high-water mark is the one reference derivable from the boiler's own
+        /// at 25 %". The high-water mark is the one reference derivable from the boiler's own
         /// history rather than invented -- for §9's Phase-1 boiler (starts at 240) it puts the
         /// alert at 60, which is what the design's worked example implies. Refuelling above the
         /// old mark raises it, so the gauge always measures against the fullest this boiler has
-        /// genuinely been.
-        ///
-        /// Deliberately NOT a CokeCapacity field: a capacity would also imply "this boiler is
-        /// full, your Coke has nowhere to go", a refusal rule §3.1 never sanctions and which
-        /// §10's soft-lock audit has therefore never been run against.
+        /// genuinely been. It predates <see cref="CokeCapacity"/> and is kept rather than
+        /// swapped for it: a boiler the player only ever half-fills should still warn at a
+        /// quarter of what it actually held.
         /// </summary>
         public int PeakCokeStock { get; private set; }
 
@@ -53,12 +74,20 @@ namespace GolemFactory.Steam
         /// <summary>Of those, how many were working -- and so burning Coke -- at the last tick.</summary>
         public int WorkingGolemCount { get; internal set; }
 
-        /// <summary>Refuel. The only way Coke ever goes up.</summary>
-        public void AddCoke(int quantity)
+        /// <summary>
+        /// Refuel, up to <see cref="CokeCapacity"/>. The only way Coke ever goes up. Returns how
+        /// much went in; callers ask <see cref="CokeRoom"/> first, so none is ever lost.
+        /// </summary>
+        public int AddCoke(int quantity)
         {
+            if (quantity > CokeRoom)
+            {
+                quantity = CokeRoom;
+            }
+
             if (quantity <= 0)
             {
-                return;
+                return 0;
             }
 
             CokeStock += quantity;
@@ -66,11 +95,15 @@ namespace GolemFactory.Steam
             {
                 PeakCokeStock = CokeStock;
             }
+
+            return quantity;
         }
 
         /// <summary>
         /// Test/bootstrap hook for draining a boiler to an exact figure without simulating the
-        /// ticks that would get it there.
+        /// ticks that would get it there. Also the load path, so it does NOT clamp to
+        /// <see cref="CokeCapacity"/>: a save from before the cap can hold more, and voiding Coke
+        /// the player made is worse than a boiler that refuses more until it burns down.
         /// </summary>
         public void SetCoke(int quantity)
         {

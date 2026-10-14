@@ -18,7 +18,7 @@ import math
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from art_paths import art_dir  # noqa: E402
+from art_paths import art_dir, DEFAULT_ROOT  # noqa: E402
 import random
 
 from PIL import Image, ImageDraw
@@ -136,7 +136,18 @@ def rng_board_tone(board, seed):
     return _BOARD_TONES[key]
 
 
+# The five market carts in godot/art/ are a ComfyUI redraw, softened by hand to sit in the
+# street, and they replaced this script's pictures. Writing these there would quietly put the
+# old carts back, so they are skipped; --out-root <dir> still renders the originals.
+HAND_REPLACED = {"stall_scrap.png", "stall_coal.png", "stall_copper_ore.png",
+                 "stall_zinc_ore.png", "stall_aether.png"}
+
+
 def _save(img, name):
+    in_godot_art = os.path.normcase(os.path.abspath(OUT_DIR)) == os.path.normcase(os.path.abspath(DEFAULT_ROOT))
+    if name in HAND_REPLACED and in_godot_art:
+        print("skipped %s: godot/art/ holds the hand-replaced redraw" % name)
+        return
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, name)
     img.save(path)

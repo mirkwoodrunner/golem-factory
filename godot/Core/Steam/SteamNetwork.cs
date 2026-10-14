@@ -177,6 +177,9 @@ namespace GolemFactory.Steam
 
         public bool HasPipe(Vector2Int cell) => _pipes.Contains(cell);
 
+        /// <summary>Every pipe cell, connected or not. For the guide's pipe-route suggestions.</summary>
+        public IEnumerable<Vector2Int> PipeCells => _pipes;
+
         /// <summary>
         /// Whether a boiler stands on <paramref name="cell"/>. Linear over the boilers, which is
         /// affordable because a factory has a handful of them and this is asked on placement, not

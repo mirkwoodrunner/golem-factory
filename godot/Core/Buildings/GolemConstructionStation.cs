@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using GolemFactory.Belts;
+using GolemFactory.Blueprints;
 using GolemFactory.Compat;
 using GolemFactory.Economy;
 using GolemFactory.Events;
@@ -281,7 +283,53 @@ namespace GolemFactory.Buildings
         // appendages yet -- the player fits those via the Workbench, matching "feed resources
         // to build golem parts"), registers it with the clock so it sits Idle until
         // programmed, and retargets the Workbench onto it immediately.
-        public bool TryConstructGolem(ChassisDefinition chassis, out GolemEntity golem)
+        public bool TryConstructGolem(ChassisDefinition chassis, out GolemEntity golem) =>
+            TryConstruct(chassis, null, out golem);
+
+        /// <summary>
+        /// Builds a golem of a patent's chassis with the patent's program already engaged:
+        /// the construction station's "From a patent" rows. Costs exactly what the bare chassis
+        /// does -- patenting is free (root CLAUDE.md), so stamping one is too.
+        ///
+        /// <para>
+        /// Everything that can refuse is checked BEFORE anything is charged, the same rule
+        /// TryConstructGolem keeps for the bay cap: a patent this station cannot build, or one
+        /// its chassis cannot hold, leaves the stockpile untouched and says why.
+        /// </para>
+        /// </summary>
+        public bool TryConstructFromBlueprint(Blueprint blueprint, out GolemEntity golem)
+        {
+            golem = null;
+            LastRefusalReason = BlueprintRefusal(blueprint);
+            return LastRefusalReason.Length == 0 && TryConstruct(blueprint.Chassis, blueprint, out golem);
+        }
+
+        /// <summary>
+        /// Why this station cannot build <paramref name="blueprint"/> whatever the stockpile
+        /// holds, or empty when it can. The panel greys a patent row by the same answer.
+        /// </summary>
+        public string BlueprintRefusal(Blueprint blueprint)
+        {
+            if (blueprint == null)
+            {
+                return "No patent selected.";
+            }
+            if (blueprint.Chassis == null)
+            {
+                return $"{blueprint.BlueprintId} names no chassis to build.";
+            }
+            if (chassisRoster == null || !chassisRoster.Contains(blueprint.Chassis))
+            {
+                return $"This station cannot build a {WorkbenchDiagnostics.Humanize(blueprint.Chassis.name)}.";
+            }
+            if (blueprint.Appendages.Count > blueprint.Chassis.maxAppendageSlots)
+            {
+                return $"{blueprint.BlueprintId} has more steps than a {WorkbenchDiagnostics.Humanize(blueprint.Chassis.name)} holds.";
+            }
+            return "";
+        }
+
+        private bool TryConstruct(ChassisDefinition chassis, Blueprint stamp, out GolemEntity golem)
         {
             golem = null;
             LastRefusalReason = "";
@@ -318,6 +366,16 @@ namespace GolemFactory.Buildings
             if (assemblyBay != null)
             {
                 assemblyBay.TryAssignGolem(golem);
+            }
+
+            // Written before the Workbench and the host hear of the golem, so both meet it
+            // already programmed. Cannot refuse: BlueprintRefusal checked the slot count.
+            if (stamp != null)
+            {
+                var cards = stamp.Appendages;
+                GolemProgramWriter.TryWrite(golem.Program, chassis, stamp.LogicCore, cards,
+                    Enumerable.Range(0, cards.Count).Select(stamp.ItemTypeAt).ToList(),
+                    Enumerable.Range(0, cards.Count).Select(stamp.QuantityAt).ToList());
             }
 
             workbench?.RetargetGolem(golem);

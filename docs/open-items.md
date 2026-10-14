@@ -24,11 +24,14 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 
 ## 2. Decisions waiting on the playtest
 
-- **Round 3 of the marked-tile plan** is built and waiting in PR #54: the later chapters' tiles
-  follow where the player actually built, instead of fixed offsets from the stalls. Following
-  the marks plays the same either way, so merge it if the playtest says the marks get in the
-  way. Rounds 1 and 2 are merged: pipe steps accept any working route, and the guide says what
-  is in the way of a marked tile.
+- **Round 3 of the marked-tile plan** is merged (#54): the later chapters' tiles follow where
+  the player actually built, instead of fixed offsets from the stalls. Following the marks plays
+  the same either way. Rounds 1 and 2 are merged too: pipe steps accept any working route, and
+  the guide says what is in the way of a marked tile.
+- **Crates** (`docs/crates-design.md`): every depot is a window on one unlimited stockpile, so a
+  golem anywhere reaches every good and nothing downstream ever fills. The design makes crates
+  local and gives the player a pack. Its §5 questions need answers before it is built. The
+  boiler half was fixed on its own: a boiler holds at most 240 Coke (`SteamBoiler.CokeCapacity`).
 - **Whether the Overclocker has an identity** beyond more slots: one exclusive card (`Repeat`)
   and the same dials.
 

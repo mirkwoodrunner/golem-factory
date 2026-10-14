@@ -35,6 +35,45 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void AFullBoiler_RefusesCoke_SoThePusherStallsAndKeepsIt()
+        {
+            // From playtest: with no cap, a coking Presser turned every lump of Coal into Coke
+            // for a boiler that would take it all.
+            SteamBoiler boiler = NewBoiler(SteamBoiler.CokeCapacity - 1);
+            var endpoint = new BoilerFuelEndpoint(boiler);
+
+            Assert.IsTrue(endpoint.TryGive(Stack(ItemType.Coke)), "the last unit of room");
+            Assert.IsTrue(boiler.IsFull);
+            Assert.IsFalse(endpoint.CanGive(), "untyped: the push's early-out, so the golem stalls");
+            Assert.IsFalse(endpoint.CanGive(ItemType.Coke));
+            Assert.IsFalse(endpoint.TryGive(Stack(ItemType.Coke)));
+            Assert.AreEqual(SteamBoiler.CokeCapacity, boiler.CokeStock);
+        }
+
+        [Test]
+        public void AddCoke_StopsAtCapacity_AndSaysHowMuchWentIn()
+        {
+            SteamBoiler boiler = NewBoiler(SteamBoiler.CokeCapacity - 5);
+
+            Assert.AreEqual(5, boiler.AddCoke(20));
+            Assert.AreEqual(SteamBoiler.CokeCapacity, boiler.CokeStock);
+            Assert.AreEqual(0, boiler.AddCoke(1));
+        }
+
+        [Test]
+        public void SetCoke_KeepsStockAboveCapacity_ForAnOlderSave()
+        {
+            // A save from before the cap may hold more; the boiler keeps it and refuses more
+            // until it burns down, rather than voiding Coke the player made.
+            SteamBoiler boiler = NewBoiler();
+            boiler.SetCoke(SteamBoiler.CokeCapacity + 60);
+
+            Assert.AreEqual(SteamBoiler.CokeCapacity + 60, boiler.CokeStock);
+            Assert.IsTrue(boiler.IsFull);
+            Assert.IsFalse(new BoilerFuelEndpoint(boiler).CanGive());
+        }
+
+        [Test]
         public void TryGive_AnythingElse_IsRefusedAndChangesNothing()
         {
             SteamBoiler boiler = NewBoiler(10);
