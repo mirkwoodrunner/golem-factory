@@ -1168,7 +1168,8 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "depot3", "A depot beside the stall",
-                "Build a Depot on the marked tile, two tiles out from another side of the Scrap stall.",
+                "Build a Depot on the marked tile, two tiles out from another side of the Scrap stall. Leave the "
+                + "tile between them empty: the new Scavenger will stand there.",
                 w => Built.Any(b => b.Cell == Depot3Spot && b.GetPart<PlaceableDepot>() != null),
                 w => ScrapFirst(15, Depot3Spot),
                 w => Count(ItemType.Scrap, 15),
@@ -1178,9 +1179,9 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "turn", "Turn it with R",
-                "Move the new Scavenger onto the marked tile beside the Scrap stall (G). This one faces another way "
-                + "from your first golem, at its depot: stand next to it and press R to turn it. It needs the stall "
-                + "behind it.",
+                "Carry the new Scavenger (G) to the marked tile in the gap between the Scrap stall and the new "
+                + "depot: stall behind it, depot in front. It faces another way from your first golem, so stand "
+                + "next to it and press R until it faces the depot.",
                 w => SecondScavenger != null && _completedSinceEntry.Contains(SecondScavenger.GolemId),
                 w => SecondScavenger != null && SecondScavenger.Cell != Scav2Spot ? SecondScavenger.Cell : Scav2Spot,
                 spot: () => Scav2Spot,
