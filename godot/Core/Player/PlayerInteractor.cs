@@ -880,9 +880,9 @@ namespace GolemFactory.Player
             }
         }
 
-        // A boiler with no Coke to give it reads Unavailable rather than Ready, for the same
-        // reason a depleted node does: "[E] Fuel Boiler" on a player holding nothing promises an
-        // action that will refuse.
+        // A boiler with no Coke to give it, or no room for any (SteamBoiler.CokeCapacity), reads
+        // Unavailable rather than Ready, for the same reason a depleted node does: "[E] Fuel
+        // Boiler" there promises an action that will refuse.
         private bool IsUnavailable(InteractionPick pick, object target)
         {
             switch (pick.Kind)
@@ -900,7 +900,7 @@ namespace GolemFactory.Player
                     return marker.IsDepleted;
                 }
                 case InteractionKind.Refuel:
-                    return BoilerRefuelPolicy.AmountToLoad(StockpileCoke) <= 0;
+                    return BoilerRefuelPolicy.AmountToLoad(StockpileCoke, room: RoomIn(target)) <= 0;
                 default:
                     return false;
             }
@@ -930,6 +930,8 @@ namespace GolemFactory.Player
             detail = ConstructionCostPolicy.FormatCost(offer.Price);
             return "Order a truckload of";
         }
+
+        private static int RoomIn(object boiler) => (boiler as PlaceableBoiler)?.Boiler?.CokeRoom ?? 0;
 
         private int StockpileCoke =>
             _stockpile == null ? 0 : _stockpile.GetQuantity(_stockpileBufferId, ItemType.Coke);
@@ -1089,7 +1091,14 @@ namespace GolemFactory.Player
             }
 
             Vector3 at = BoilerPosition(boiler);
-            int amount = BoilerRefuelPolicy.AmountToLoad(StockpileCoke);
+            if (boiler.Boiler.IsFull)
+            {
+                LastStatusMessage = $"The boiler is full ({SteamBoiler.CokeCapacity} Coke).";
+                Popup(at, "Full", InteractionPopupKind.Refused);
+                return false;
+            }
+
+            int amount = BoilerRefuelPolicy.AmountToLoad(StockpileCoke, room: boiler.Boiler.CokeRoom);
             if (amount <= 0)
             {
                 LastStatusMessage = "No Coke in the stockpile.";

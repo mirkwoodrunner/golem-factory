@@ -285,6 +285,15 @@ implies. A `CokeCapacity` field was rejected because it would also imply "this b
 your Coke has nowhere to go", a refusal rule §3.1 never sanctions and §10's audit has never been
 run against. Worth revisiting if §1.5 gives boilers a real fill limit.
 
+**Revisited in the Godot port (G10 playtest): boilers now hold at most 240 Coke**
+(`SteamBoiler.CokeCapacity`). Uncapped, a coking Presser pushing into its boiler never met a full
+destination and turned every lump of Coal in the factory into Coke. Full, the boiler refuses and
+the Presser stalls "Boiler full" like any golem at a full crate. The audit: a full boiler is by
+definition fuelled, so its golems (the coker included) keep running and burning, which makes room.
+A hand-load takes only what fits. A load keeps Coke above the cap rather than voiding it. The gauge
+still measures against `PeakCokeStock`. The deeper cause, that every depot is a window on one
+unlimited stockpile so nothing else ever fills, is a separate and open design question.
+
 ~~**Still needs an Editor pass**~~ — **done**, see §3. Both prefabs exist and are in the build
 menu, `SteamNetworkHolder` is on `ManagerHolders.prefab` and registered with the clock, and
 `SteamFuelGaugeView` has a HUD slot. §3 also records the refuelling gap found on the way through:
