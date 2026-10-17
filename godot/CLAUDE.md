@@ -60,6 +60,11 @@ ones. Current scenarios:
 - `golems` (Sandbox): every chassis built, and every `AppendageActionType` run on real steam:
   extract, haul, push, load, assemble plus repeat, refine, and freight. A golem out of steam
   must stall and wear its badge.
+- `golem-motion` (Sandbox): every chassis at its signature verb on steam, side by side on the
+  street and zoomed in, with stocks fed and drained so none stops. Each body must make its
+  work motion (`Core/Golems/GolemWorkMotion`): the Presser stamps, the Overclocker stamps and
+  glows, the Scavenger tugs at the Scrap stall, the Hauler heaves and lunges, the Zeppelin
+  crouches and hops. It is also the fixture for capturing the motions with `--write-movie`.
 - `workbench` (Sandbox): program a golem end to end through the Workbench with real mouse
   drags. Also covers socket highlights, the dial, failed drags leaving no orphans, Engage,
   Patent, and close/reopen.

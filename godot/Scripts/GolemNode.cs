@@ -152,6 +152,14 @@ namespace GolemFactory.Nodes
         /// <summary>The golem's mood as drawn (tint, bob, badge).</summary>
         public GolemMood DrawnMood => _mood;
 
+        /// <summary>The body's scale as drawn: the work motion's squash and stretch.</summary>
+        public Vector2 DrawnScale => _body.Scale;
+
+        /// <summary>The body's lean, offset from its cell and tint as drawn -- for a scenario.</summary>
+        public float DrawnSkew => _body.Skew;
+        public Vector2 DrawnOffset => _body.Position;
+        public Color DrawnModulate => _body.Modulate;
+
         /// <summary>Whether the mood badge is up, and what it says -- for a scenario.</summary>
         public bool BadgeVisible => _badge != null && _badge.Visible;
         public string BadgeText => _badgeLabel?.Text ?? "";
@@ -315,12 +323,106 @@ namespace GolemFactory.Nodes
             {
                 _shakeLeft -= delta;
                 float shake = GolemAnimationUtility.ComputeShakeOffset(_time, _shakeLeft, ShakeDuration, ShakeAmplitude, ShakeFrequency);
+                _body.Scale = Vector2.One;
+                _body.Skew = 0f;
                 _body.Position = new Vector2(shake * GridConversions.CellPixels, 0f);
                 return;
             }
+            bool working = TryWorkPose(out GolemWorkMotion.Pose pose);
+            AnimatePuffs(delta, working && pose.Impact);
+            if (working)
+            {
+                // A step with a work motion replaces the bob: the stroke is the "working" signal.
+                // Forward and Tilt are along the facing; a lean only reads side-on, so a golem
+                // facing north or south shifts without leaning.
+                Vector2 forward = GridConversions.FacingStep(Entity.Facing);
+                _body.Scale = new Vector2(pose.ScaleX, pose.ScaleY);
+                _body.Skew = pose.Tilt * Mathf.Sign(forward.X);
+                _body.Position = forward * pose.Forward + new Vector2(0f, -pose.Lift * GridConversions.CellPixels);
+                if (pose.Glow > 0f)
+                {
+                    _body.Modulate = _body.Modulate.Lerp(_body.Modulate * GlowTint, pose.Glow);
+                }
+                return;
+            }
+
+            _body.Scale = Vector2.One;
+            _body.Skew = 0f;
             GolemAnimationUtility.BobParameters bob = GolemAnimationUtility.BobFor(Entity.Mood, BobAmplitude, BobFrequency);
             float lift = GolemAnimationUtility.ComputeIdleBobOffset(_time, bob.Amplitude, bob.Frequency);
             _body.Position = new Vector2(0f, -lift * GridConversions.CellPixels);
+        }
+
+        // What the Overclocker's glow multiplies its tint toward: a forge-orange over-brightening.
+        private static readonly Color GlowTint = new Color(1.6f, 1.15f, 0.7f, 1f);
+
+        // Two steam puffs, one each side of the feet, reused for every stamp.
+        private const string PuffSprite = "res://art/fx_steam_puff.png";
+        private readonly Sprite2D[] _puffs = new Sprite2D[2];
+        private float _puffAge = GolemWorkMotion.PuffSeconds;
+        private bool _wasImpact;
+
+        /// <summary>
+        /// Starts the puffs on the frame a stamp lands, and moves them for their short life.
+        /// They are the golem's children so they stand on its cell, and draw over its feet.
+        /// </summary>
+        private void AnimatePuffs(float delta, bool impact)
+        {
+            if (impact && !_wasImpact)
+            {
+                _puffAge = 0f;
+            }
+            _wasImpact = impact;
+            _puffAge += delta;
+
+            // No puff art yet (it is to come from ComfyUI): the stamp still squashes, without puffs.
+            if (!ResourceLoader.Exists(PuffSprite))
+            {
+                return;
+            }
+
+            var puff = GolemWorkMotion.Puff(_puffAge);
+            for (int i = 0; i < _puffs.Length; i++)
+            {
+                if (_puffs[i] == null)
+                {
+                    if (puff.alpha <= 0f)
+                    {
+                        continue;
+                    }
+                    _puffs[i] = new Sprite2D { Texture = GD.Load<Texture2D>(PuffSprite), ShowBehindParent = false, ZIndex = 0 };
+                    AddChild(_puffs[i]);
+                }
+
+                float side = i == 0 ? -1f : 1f;
+                _puffs[i].Visible = puff.alpha > 0f;
+                _puffs[i].Position = new Vector2(side * puff.drift, -puff.rise - 0.05f) * GridConversions.CellPixels;
+                _puffs[i].Scale = new Vector2(puff.scale * side, puff.scale);
+                _puffs[i].Modulate = new Color(1f, 1f, 1f, puff.alpha);
+            }
+        }
+
+        /// <summary>
+        /// The pose for the step the golem is running, if it has one. Progress includes the
+        /// clock's tick fraction, so the stroke moves smoothly between ten-a-second ticks.
+        /// </summary>
+        private bool TryWorkPose(out GolemWorkMotion.Pose pose)
+        {
+            pose = GolemWorkMotion.Pose.Rest;
+            GolemProgram program = Entity.Program;
+            AppendageActionDefinition step = program.CurrentStep;
+            if (program.State != GolemState.Running || step == null || program.StepProgressTicks <= 0 ||
+                !GolemWorkMotion.Animates(program.chassis?.name, step.actionType))
+            {
+                return false;
+            }
+
+            float fraction = _world?.Clock != null && _world.Clock.State == Simulation.ClockState.Running
+                ? _world.Clock.TickFraction
+                : 0f;
+            pose = GolemWorkMotion.Evaluate(GolemWorkMotion.MotionFor(program.chassis?.name, step.actionType),
+                program.StepProgressTicks + fraction, Entity.StepDurationTicks);
+            return true;
         }
 
         /// <summary>

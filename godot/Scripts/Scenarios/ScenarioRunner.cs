@@ -61,6 +61,7 @@ namespace GolemFactory.Nodes.Scenarios
                 ["build"] = () => new BuildScenario(),
                 ["interact"] = () => new InteractScenario(),
                 ["golems"] = () => new GolemsScenario(),
+                ["golem-motion"] = () => new GolemMotionScenario(),
                 ["workbench"] = () => new WorkbenchScenario(),
                 ["management"] = () => new ManagementScenario(),
                 ["save"] = () => new SaveScenario(),

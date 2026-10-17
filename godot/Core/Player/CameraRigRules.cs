@@ -22,12 +22,14 @@ namespace GolemFactory.Player
         public const float DefaultOrthographicSize = 10f;
 
         /// <summary>
-        /// One frame of following: Vector3.Lerp(camera, target, speed * dt), exactly as Unity did
-        /// -- so a slow frame closes more of the gap, and the lerp clamps at the target.
+        /// One frame of following, exponential ease: the camera closes 1 - e^(-speed * dt) of the
+        /// gap. Unity's Lerp(camera, target, speed * dt) matched it at 60 FPS but lurched after a
+        /// hitch, since a long frame closed a linear share of the gap; this is frame-rate
+        /// independent and never overshoots.
         /// </summary>
         public static Vector2 Follow(Vector2 camera, Vector2 target, float deltaTime, float speed = FollowLerpSpeed)
         {
-            float t = Mathf.Clamp01(speed * deltaTime);
+            float t = 1f - (float)System.Math.Exp(-speed * deltaTime);
             return new Vector2(camera.x + (target.x - camera.x) * t, camera.y + (target.y - camera.y) * t);
         }
 

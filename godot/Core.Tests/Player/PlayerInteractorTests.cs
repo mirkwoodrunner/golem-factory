@@ -111,6 +111,50 @@ namespace GolemFactory.Tests.PlayMode
         }
 
         [Test]
+        public void HoldHarvest_WaitsForTheDelayThenRepeats()
+        {
+            (PlayerInteractor interactor, StorageBufferRegistry stockpile) = Build();
+            MakeMarker(new Vector3(0.5f, 0f, 0f), "ScrapNode");
+            interactor.Attach();
+            interactor.RefreshInteractables();
+            interactor.Interact(); // the press itself: one Scrap
+            int scrap() => stockpile.GetOrCreate("FactoryStockpile").GetQuantity(ItemType.Scrap);
+
+            Assert.AreEqual(0, interactor.HoldHarvest(0.1f, true, false));
+            Assert.AreEqual(0, interactor.HoldHarvest(0.2f, true, false), "0.3 s: still inside the delay");
+            Assert.AreEqual(1, interactor.HoldHarvest(0.1f, true, false), "0.4 s: the first repeat");
+            Assert.AreEqual(2, scrap());
+            Assert.AreEqual(1, interactor.HoldHarvest(0.15f, true, false), "one more per interval");
+            Assert.AreEqual(3, scrap());
+        }
+
+        [Test]
+        public void HoldHarvest_ReleasingResetsTheDelay()
+        {
+            (PlayerInteractor interactor, StorageBufferRegistry stockpile) = Build();
+            MakeMarker(new Vector3(0.5f, 0f, 0f), "ScrapNode");
+            interactor.Attach();
+            interactor.RefreshInteractables();
+
+            interactor.HoldHarvest(0.3f, true, false);
+            interactor.HoldHarvest(0.1f, false, false);
+            Assert.AreEqual(0, interactor.HoldHarvest(0.1f, true, false), "a fresh hold starts from zero");
+            Assert.AreEqual(0, stockpile.GetOrCreate("FactoryStockpile").GetQuantity(ItemType.Scrap));
+        }
+
+        [Test]
+        public void HoldHarvest_OutOfRangeNeverHarvests()
+        {
+            (PlayerInteractor interactor, StorageBufferRegistry stockpile) = Build();
+            MakeMarker(new Vector3(5f, 0f, 0f), "ScrapNode");
+            interactor.Attach();
+            interactor.RefreshInteractables();
+
+            Assert.AreEqual(0, interactor.HoldHarvest(2f, true, false));
+            Assert.AreEqual(0, stockpile.GetOrCreate("FactoryStockpile").GetQuantity(ItemType.Scrap));
+        }
+
+        [Test]
         public void Interact_NodeOutOfRange_FailsWithoutDepositing()
         {
             (PlayerInteractor interactor, StorageBufferRegistry stockpile) = Build();
