@@ -81,10 +81,10 @@ namespace GolemFactory.Tests.Data
         }
 
         [Test]
-        public void JsonIsUpToDateWithTheUnityAssets_SeeConverterCheck()
+        public void EveryFileTheLoaderReads_Exists()
         {
-            // The converter's --check mode (Tools/Data/convert_unity_assets.py) compares against
-            // Assets/ directly; this only pins that every file the loader reads exists.
+            // The JSON has been hand-edited since the G10 cutover; the converter that once
+            // generated it from Unity's assets is in git history at the unity-final tag.
             foreach (KeyValuePair<string, Type> file in DefinitionLoader.Files)
             {
                 FileAssert.Exists(Path.Combine(AuthoredData.DataDirectory, file.Key));

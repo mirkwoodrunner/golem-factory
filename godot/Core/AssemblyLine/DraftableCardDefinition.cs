@@ -88,7 +88,7 @@ namespace GolemFactory.AssemblyLine
                 {
                     return logicCore.name;
                 }
-                return appendage != null ? appendage.name : "(empty)";
+                return appendage != null ? appendage.Label : "(empty)";
             }
         }
     }

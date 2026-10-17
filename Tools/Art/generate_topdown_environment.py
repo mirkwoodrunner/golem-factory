@@ -10,7 +10,7 @@ Target: cozy, detailed, Stardew-Valley-adjacent -- warm varnished wood read at a
 enough per-plank variation that a floor of these does not visibly tile, but never so busy that
 it fights the golem sprites standing on it. The floor is background.
 
-Output: Assets/_Project/Art/, overwriting the diamond tiles of the same name.
+Output: godot/art/ (Tools/Art/art_paths.py), overwriting the diamond tiles of the same name.
 """
 
 import colorsys

@@ -4,7 +4,7 @@ namespace GolemFactory.World
 {
     // World<->cell math, decoupled from Unity's Tilemap component so it stays EditMode-testable
     // without a scene. Must match the cell size configured on the scene's Grid/Tilemap (see the
-    // M1 manual setup steps in docs/unity-implementation-plan.md).
+    // M1 manual setup steps in docs/history/unity-implementation-plan.md).
     //
     // TOP-DOWN (RECTANGULAR). This is the whole projection: the two Fraction methods below are
     // the only place the game decides how a cell maps to a screen position, which is why moving
