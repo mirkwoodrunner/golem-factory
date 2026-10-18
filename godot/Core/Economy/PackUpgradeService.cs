@@ -75,11 +75,10 @@ namespace GolemFactory.Economy
                 LastStatusMessage = UI.ConstructionCostPolicy.FormatShortfall(Wallet.Quantity, cost) + " to carry " + NextCapacity + " of each good.";
                 return false;
             }
-            int cap = _rungs[Tier].capacityPerType;
             Tier++;
             if (CapacityPerType != StorageBuffer.Unlimited)
             {
-                _buffers.SetCapacity(_packId, Math.Max(CapacityPerType, cap));
+                _buffers.SetCapacity(_packId, Math.Max(CapacityPerType, CapAt(Tier)));
             }
             return true;
         }
@@ -88,11 +87,14 @@ namespace GolemFactory.Economy
         public void Restore(int tier)
         {
             Tier = Math.Max(0, Math.Min(tier, _rungs.Count));
-            if (Pack != null && CapacityPerType != StorageBuffer.Unlimited)
+            if (CapacityPerType != StorageBuffer.Unlimited)
             {
-                _buffers.SetCapacity(_packId, Tier == 0 ? _baseCapacity : _rungs[Tier - 1].capacityPerType);
+                _buffers.SetCapacity(_packId, CapAt(Tier));
             }
         }
+
+        // The cap with this many rungs bought.
+        private int CapAt(int tier) => tier == 0 ? _baseCapacity : _rungs[tier - 1].capacityPerType;
 
         private StorageBuffer Pack => _buffers == null || string.IsNullOrEmpty(_packId) ? null : _buffers.GetOrCreate(_packId);
 

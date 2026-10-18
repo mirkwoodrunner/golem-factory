@@ -420,9 +420,6 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(0, world.Wallet.RoomFor(ItemType.Scrap), "still above: still closed");
         }
 
-        // "Every price fits a full pack" (crates-design §6.1) is superseded by
-        // PriceReachTests: every price fits the pack reachable when it opens.
-
         // --- Step 2: the mast's crate, and the Ledger's rate ---------------------------------------
 
         [Test]

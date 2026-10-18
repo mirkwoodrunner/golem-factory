@@ -172,7 +172,6 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(100, Pack(world, ItemType.Scrap), "a 100 pack");
             Assert.IsFalse(world.FloorExpansion.CanAfford(), "120 Scrap is more than it holds");
 
-            GiveRung1(world);
             Assert.IsTrue(world.PackUpgrade.TryUpgrade(), world.PackUpgrade.LastStatusMessage);
             Give(world, ItemType.Scrap, 500);
             GiveRung1(world);

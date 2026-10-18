@@ -147,16 +147,8 @@ namespace GolemFactory.UI
                 }
                 else
                 {
-                    string locked = Requires(_floor.NextCost());
-                    rows.Add(new AssemblyLineRow
-                    {
-                        Kind = AssemblyLineRowKind.Floor,
-                        Text = label + "  ·  +" + _floor.RowsPerPurchase + " rows north",
-                        Bright = true,
-                        CostText = locked ?? ConstructionCostPolicy.FormatCost(_floor.NextCost()),
-                        Affordable = locked == null && _floor.CanAfford(),
-                        ButtonLabel = "Extend",
-                    });
+                    rows.Add(PricedRow(AssemblyLineRowKind.Floor, label + "  ·  +" + _floor.RowsPerPurchase + " rows north",
+                        _floor.NextCost(), _floor.CanAfford(), "Extend"));
                 }
             }
 
@@ -169,16 +161,8 @@ namespace GolemFactory.UI
                 }
                 else
                 {
-                    string locked = Requires(_pack.NextCost());
-                    rows.Add(new AssemblyLineRow
-                    {
-                        Kind = AssemblyLineRowKind.Pack,
-                        Text = label + "  ·  +" + (_pack.NextCapacity - _pack.CapacityPerType),
-                        Bright = true,
-                        CostText = locked ?? ConstructionCostPolicy.FormatCost(_pack.NextCost()),
-                        Affordable = locked == null && _pack.CanAfford(),
-                        ButtonLabel = "Upgrade",
-                    });
+                    rows.Add(PricedRow(AssemblyLineRowKind.Pack, label + "  ·  +" + (_pack.NextCapacity - _pack.CapacityPerType),
+                        _pack.NextCost(), _pack.CanAfford(), "Upgrade"));
                 }
             }
 
@@ -295,36 +279,31 @@ namespace GolemFactory.UI
             return upgraded;
         }
 
-        /// <summary>"Requires: Brass" for a price naming goods the factory has never made; null when it hasn't any.</summary>
-        private string Requires(IReadOnlyList<RecipeIngredient> price)
+        /// <summary>
+        /// The Floor and Pack rows: a price, or "Requires: Brass", greyed, when it names goods the
+        /// factory has never made.
+        /// </summary>
+        private AssemblyLineRow PricedRow(AssemblyLineRowKind kind, string text, IReadOnlyList<RecipeIngredient> price, bool canAfford, string button)
         {
             List<string> unseen = _seen == null || price == null
                 ? new List<string>()
                 : price.Where(p => p.quantity > 0 && !_seen(p.itemType)).Select(p => ConstructionCostPolicy.DisplayName(p.itemType)).ToList();
-            return unseen.Count == 0 ? null : "Requires: " + string.Join(", ", unseen);
+            bool locked = unseen.Count > 0;
+            return new AssemblyLineRow
+            {
+                Kind = kind,
+                Text = text,
+                Bright = true,
+                CostText = locked ? "Requires: " + string.Join(", ", unseen) : ConstructionCostPolicy.FormatCost(price),
+                Affordable = !locked && canAfford,
+                ButtonLabel = button,
+            };
         }
 
         // The pack plus the Post: what the bay's charge (PlayerWallet.TryCharge) can spend.
         private int StockpileOf(string itemType) => _buffers == null ? 0 : new PlayerWallet(_buffers, _stockpile, _post).Quantity(itemType);
 
-        private bool CanAfford(IReadOnlyList<RecipeIngredient> price)
-        {
-            if (price == null || price.Count == 0)
-            {
-                return true;
-            }
-            if (_buffers == null)
-            {
-                return false;
-            }
-            foreach (RecipeIngredient p in price)
-            {
-                if (new PlayerWallet(_buffers, _wallet, _post).Quantity(p.itemType) < p.quantity)
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
+        private bool CanAfford(IReadOnlyList<RecipeIngredient> price) =>
+            ConstructionCostPolicy.CanAfford(item => _buffers == null ? 0 : new PlayerWallet(_buffers, _wallet, _post).Quantity(item), price);
     }
 }
