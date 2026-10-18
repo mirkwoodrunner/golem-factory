@@ -892,6 +892,16 @@ namespace GolemFactory.Tutorial
 
         private bool HasMast => Built.Any(b => b.GetPart<PlaceableFreightMast>() != null);
 
+        /// <summary>
+        /// Two free tiles for the kit's Post crates (chapter 8 marks nothing, so the player's go
+        /// anywhere): the first pair the layout's free-line search finds off every chapter's tiles.
+        /// </summary>
+        public Vector2Int[] PostSpots => Plan.Post;
+
+        private static bool IsPostCrate(PlaceableBuilding b) => b.GetPart<PlaceableDepot>()?.BufferId == SandboxWorld.PostBufferId;
+
+        private int PostCrates => Built.Count(IsPostCrate);
+
         /// <summary>Whether the player is standing in the town square (G10).</summary>
         private bool PlayerInSquare
         {
@@ -1510,6 +1520,18 @@ namespace GolemFactory.Tutorial
                 + "fill an Aether-Hauler's four slots; a Brass Presser has only three.",
                 ItemType.Casing, "AssembleCasingPress", "4 Iron Plate + 1 Brass → 1 Casing"),
 
+            // crates-design §10: the late-game store, the walking between lines taken off the
+            // player. No marks: like the rest of chapter 8, where is the player's call.
+            new TutorialStep(
+                "post", "A Pneumatic Post",
+                "Brass and Casing buy a Pneumatic Post crate (10 Brass + 5 Casing). Every Post crate opens onto "
+                + "one shared store, 200 of each good: a golem pushing into one fills what every other gives, and "
+                + "your building spends from it once your pack runs short. Build two, wherever a line could use them.",
+                w => PostCrates >= 2,
+                w => null,
+                w => "Post crates  " + System.Math.Min(PostCrates, 2) + "/2",
+                menuKey: "PneumaticPostPrefab"),
+
             Goal("glass", "Glass from Slag",
                 "Your smelters' Slag is not only waste. Claim Glassmaking, and send some Slag to a golem "
                 + "running it instead of the heap.",
@@ -1627,7 +1649,7 @@ namespace GolemFactory.Tutorial
                 "tower-feed", "Feed the tower",
                 "Build a depot in the square and stand a golem between it and the tower: Haul set to Frame "
                 + "Section, then Push; it pushes in from any side. The depot starts empty: fill its crate by belt or "
-                + "by hand. The golem needs steam out here too: a boiler beside it, fuelled, or a pipe run from the workshop.",
+                + "by hand, or make it a Post crate, which opens onto your Post store. The golem needs steam out here too: a boiler beside it, fuelled, or a pipe run from the workshop.",
                 w => TowerSite.DeliveryRatePerMinute(ItemType.FrameSection) > 0,
                 w => TownSquare.TowerCentre),
 

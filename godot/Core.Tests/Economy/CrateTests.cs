@@ -35,6 +35,10 @@ namespace GolemFactory.Tests.EditMode
         private static void Give(SandboxWorld world, string item, int quantity) =>
             world.Buffers.Deposit(world.StockpileBufferId, item, quantity);
 
+        // The Post store at its cap of one good, so a refund has only the pack to land in.
+        private static void FillPost(SandboxWorld world, string item) =>
+            world.Buffers.Deposit(SandboxWorld.PostBufferId, item, 200);
+
         private static PlaceableBuilding Place(SandboxWorld world, string key, Vector2Int cell)
         {
             world.Build.SetActivePrefab(world.Placeables.Single(p => p.Key == key).Prefab);
@@ -249,6 +253,7 @@ namespace GolemFactory.Tests.EditMode
             ICrate crate = depot.GetPart<ICrate>();
             crate.Buffer.Deposit(ItemType.Scrap, 20);
             Give(world, ItemType.Scrap, 100);
+            FillPost(world, ItemType.Scrap);
 
             world.Build.EnterDemolishMode();
             world.Build.PlaceOrRemove(cell);
@@ -287,6 +292,7 @@ namespace GolemFactory.Tests.EditMode
             Give(world, ItemType.Scrap, 12);
             Assert.IsTrue(world.StarterStation.TryConstructGolem(scavenger, out GolemEntity golem));
             Give(world, ItemType.Scrap, 100);
+            FillPost(world, ItemType.Scrap);
 
             Assert.IsFalse(world.StarterStation.TryDismantleGolem(golem, out _, out string reason));
             Assert.AreEqual("Not dismantled: pack full of Scrap.", reason);
@@ -330,11 +336,12 @@ namespace GolemFactory.Tests.EditMode
             SandboxWorld world = Compose();
             world.Wallet.Pack.RestoreQuantity(ItemType.Scrap, 140);
 
-            Assert.AreEqual(0, world.Wallet.RoomFor(ItemType.Scrap));
+            Assert.AreEqual(0, world.Buffers.RoomFor(world.StockpileBufferId, ItemType.Scrap));
+            Assert.AreEqual(200, world.Wallet.RoomFor(ItemType.Scrap), "a refund's room is the Post's alone");
             Assert.AreEqual(0, world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 1));
             Assert.IsTrue(world.Wallet.TryCharge(new[] { new RecipeIngredient(ItemType.Scrap, 30) }));
             Assert.AreEqual(110, Pack(world, ItemType.Scrap));
-            Assert.AreEqual(0, world.Wallet.RoomFor(ItemType.Scrap), "still above: still closed");
+            Assert.AreEqual(0, world.Buffers.RoomFor(world.StockpileBufferId, ItemType.Scrap), "still above: still closed");
         }
 
         // --- Every price fits in a full pack (crates-design §6.1) ---------------------------------

@@ -119,10 +119,17 @@ namespace GolemFactory.World
         public string StockpileBufferId => _stockpileBufferId;
 
         /// <summary>
-        /// The player's wallet (docs/crates-design.md §4.4): the pack, which keeps the stockpile's
-        /// id because saves name it. Every cost is charged through it; golems never reach it.
+        /// The Pneumatic Post's shared store (docs/crates-design.md §10): every Post crate
+        /// publishes this one buffer. A registry buffer like any other, saved by its id.
         /// </summary>
-        public PlayerWallet Wallet => _wallet ??= new PlayerWallet(Buffers, _stockpileBufferId);
+        public const string PostBufferId = "PneumaticPost";
+
+        /// <summary>
+        /// The player's wallet (docs/crates-design.md §4.4): the pack, which keeps the stockpile's
+        /// id because saves name it, then the Post store. Every cost is charged through it;
+        /// golems never reach the pack.
+        /// </summary>
+        public PlayerWallet Wallet => _wallet ??= new PlayerWallet(Buffers, _stockpileBufferId, PostBufferId);
 
         private PlayerWallet _wallet;
 
@@ -189,7 +196,7 @@ namespace GolemFactory.World
             // to follow Play/Pause and the speed multiplier.
             Clock.Register(new TickAdapter(Steam.Tick));
 
-            FloorExpansion.Configure(Bounds, Buffers, _stockpileBufferId);
+            FloorExpansion.Configure(Bounds, Buffers, _stockpileBufferId, PostBufferId);
             if (setup.floorExpansion != null)
             {
                 FloorExpansion.ConfigureCost(
@@ -209,7 +216,7 @@ namespace GolemFactory.World
             {
                 var bench = new PlaceableBuilding { name = "StarterHandCrankBench", Cell = SandboxSetup.CellOf(setup.starterBench) };
                 StarterBench = bench.AddPart(new HandCrankBench());
-                StarterBench.Configure(Buffers, _stockpileBufferId, Definitions.Recipes.Values.OrderBy(r => r.name));
+                StarterBench.Configure(Buffers, _stockpileBufferId, Definitions.Recipes.Values.OrderBy(r => r.name), PostBufferId);
                 Clock.Register(StarterBench);
                 _authoredBuildings.Add(bench);
             }
@@ -307,7 +314,7 @@ namespace GolemFactory.World
             // once offered stays offered.
             Workbench.HaulableGood = item => TechTree.Ledger.HasItem(item);
 
-            AssemblyLineBoard = new AssemblyLineBoard(AssemblyLine, Buffers, _stockpileBufferId, setup.claimUserId);
+            AssemblyLineBoard = new AssemblyLineBoard(AssemblyLine, Buffers, _stockpileBufferId, setup.claimUserId, PostBufferId);
             AssemblyLineBoard.ConfigureBays(AssemblyBay, _stockpileBufferId);
             AssemblyLineBoard.ConfigureFloorExpansion(FloorExpansion);
         }
@@ -333,6 +340,7 @@ namespace GolemFactory.World
         private void WireInteractor()
         {
             Interactor.Configure(InteractRange, Buffers, _stockpileBufferId, null, null);
+            Interactor.ConfigurePost(PostBufferId);
             Interactor.ConfigureAffordance(null, "E");
             Interactor.ConfigureWorld(() => Markers, InteractableBuildings, () => _golems);
             Interactor.ConfigureMarket(Market, () => Clock.CurrentTick, Buffers, _stockpileBufferId);
@@ -568,7 +576,7 @@ namespace GolemFactory.World
         /// <see cref="CrateTransfer"/>, and the labels a crate is offered (every good the ledger has seen).
         /// </summary>
         public CrateScreenReadout Inventory =>
-            _inventory ??= new CrateScreenReadout(Buffers, _stockpileBufferId, () => TechTree.Ledger.Items);
+            _inventory ??= new CrateScreenReadout(Buffers, _stockpileBufferId, () => TechTree.Ledger.Items, PostBufferId);
 
         private CrateScreenReadout _inventory;
 
@@ -626,7 +634,7 @@ namespace GolemFactory.World
         private void WireBuildMode()
         {
             Build.Configure(Grid, null);
-            Build.ConfigureEconomy(Buffers, _stockpileBufferId, Placeables.Select(p => p.Prefab).ToArray());
+            Build.ConfigureEconomy(Buffers, _stockpileBufferId, Placeables.Select(p => p.Prefab).ToArray(), PostBufferId);
             Build.ConfigureBelts(Belts, Endpoints, Conveyor);
             // "I can walk there" and "I can build there" are one boundary (§3.3): the same live
             // bounds object the player's clamp reads, so new floor is buildable the moment it is
@@ -689,7 +697,7 @@ namespace GolemFactory.World
 
             // The Workbench session is the target a new golem is handed to, as Unity's station
             // retargeted the WorkbenchController on spawn.
-            station.ConfigureSceneServices(Conveyor, Nodes, Buffers, Clock, Workbench, _stockpileBufferId);
+            station.ConfigureSceneServices(Conveyor, Nodes, Buffers, Clock, Workbench, _stockpileBufferId, PostBufferId);
             station.ConfigureSpatial(Endpoints, Grid);
 
             // THE ONE LINE THE SWITCH GATES: handing a station the steam network is what makes

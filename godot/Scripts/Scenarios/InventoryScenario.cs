@@ -25,7 +25,9 @@ namespace GolemFactory.Nodes.Scenarios
     ///   and its tile; Scrap is then refused on the way in and still comes out.</item>
     ///   <item>Take all is E's collect.</item>
     ///   <item>A pack above its cap shows it, gives, and takes nothing back until under it.</item>
-    ///   <item>A Freight Mast's label button is disabled.</item>
+    ///   <item>A Freight Mast's label button is disabled. At a Post crate the left panel is the
+    ///   Pneumatic Post, a click moves into the store every Post crate shares, and the Pack
+    ///   screen then lists the store under the pack.</item>
     ///   <item>On a guide step done in the crate screen, the guide's plate clears both panels.</item>
     ///   <item>The wrecking bar refuses a crate whose Scrap won't fit, then refunds it exactly.</item>
     /// </list>
@@ -55,6 +57,8 @@ namespace GolemFactory.Nodes.Scenarios
 
         private static readonly CoreVector2Int DepotCell = new CoreVector2Int(-4, 6);
         private static readonly CoreVector2Int MastCell = new CoreVector2Int(-6, 6);
+        private static readonly CoreVector2Int PostCell = new CoreVector2Int(2, 6);
+        private static readonly CoreVector2Int OtherPostCell = new CoreVector2Int(6, 6);
         private ICrate _depot;
         private Dictionary<string, int> _totals;
 
@@ -87,6 +91,7 @@ namespace GolemFactory.Nodes.Scenarios
             PlanAboveTheCap();
             PlanGuideDock();
             PlanMast();
+            PlanPost();
             PlanDemolition();
         }
 
@@ -518,12 +523,96 @@ namespace GolemFactory.Nodes.Scenarios
                     return $"label button '{_crate.LabelButtonText}', disabled={_crate.LabelButton.Disabled}";
                 }
                 Shot("crate screen at a mast");
-                // The Post (crates-design §10) is not built yet: no Post crate to stand at.
-                _log.Add("mast: titled and unlabellable; the Post waits for §10");
+                _log.Add("mast: titled and unlabellable");
                 return null;
             });
             Do("press E", () => { Tap(Key.E); return null; });
             Do("E closed it", () => _crate.IsOpen ? "E left it open" : null);
+        }
+
+        private void PlanPost()
+        {
+            ICrate other = null;
+            Do("two Pneumatic Post crates, 30 Coke in the pack", () =>
+            {
+                foreach (CoreVector2Int cell in new[] { PostCell, OtherPostCell })
+                {
+                    Give(ItemType.Brass, 10);
+                    Give(ItemType.Casing, 5);
+                    _world.Build.SetActivePrefab(_world.Placeables.Single(p => p.Key == "PneumaticPostPrefab").Prefab);
+                    _world.Build.PlaceOrRemove(cell);
+                    _world.Build.CancelPlacement();
+                    if (_world.Build.Buildings.SingleOrDefault(b => b.Cell == cell && !b.IsRemoved)?.GetPart<ICrate>() == null)
+                    {
+                        return $"no Post crate placed at {cell}: " + _world.Build.LastStatusMessage;
+                    }
+                }
+                other = _world.Build.Buildings.Single(b => b.Cell == OtherPostCell && !b.IsRemoved).GetPart<ICrate>();
+                _world.Buffers.Deposit(SandboxWorld.PostBufferId, ItemType.Scrap, 40);
+                SetPack(ItemType.Coke, 30);
+                Stand(PostCell.x, PostCell.y + 1f);
+                return null;
+            });
+            Do("press I at the first", () => { Tap(Key.I); return null; });
+            Do("the left panel is the Pneumatic Post", () =>
+            {
+                if (!_crate.IsOpen || _crate.CrateTitle != "Pneumatic Post")
+                {
+                    return $"open={_crate.IsOpen}, titled '{_crate.CrateTitle}'";
+                }
+                return _crate.CrateRows.ContainsKey(ItemType.Scrap) ? null : "the store's Scrap has no row";
+            });
+            Do("click Coke in the pack", () => Click(_crate.PackRows, ItemType.Coke));
+            Do("all 30 moved into the shared store", () =>
+            {
+                int post = _world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Coke);
+                if (post != 30 || Pack(ItemType.Coke) != 0)
+                {
+                    return $"Post {post}, pack {Pack(ItemType.Coke)} ({_crate.Status})";
+                }
+                if (other.Buffer.GetQuantity(ItemType.Coke) != 30)
+                {
+                    return $"the other Post crate holds {other.Buffer.GetQuantity(ItemType.Coke)} Coke";
+                }
+                Shot("crate screen at a Post crate");
+                return null;
+            });
+            Do("press Escape", () => { Tap(Key.Escape); return null; });
+            Do("walk away from every crate", () =>
+            {
+                if (_crate.IsOpen)
+                {
+                    return "Escape left it open";
+                }
+                Stand(-9f, 9f);
+                return null;
+            });
+            Do("press I", () => { Tap(Key.I); return null; });
+            Do("the Pack screen lists the store under the pack, read-only", () =>
+            {
+                if (!_pack.IsOpen)
+                {
+                    return "the Pack screen did not open";
+                }
+                if (!_pack.PostRows.ContainsKey(ItemType.Coke) || !_pack.PostRows.ContainsKey(ItemType.Scrap))
+                {
+                    return $"Post rows: {string.Join(", ", _pack.PostRows.Keys)}";
+                }
+                if (_pack.PostRows[ItemType.Coke].MouseFilter != Control.MouseFilterEnum.Ignore)
+                {
+                    return "a Post row takes clicks";
+                }
+                string text = (_pack.PostRows[ItemType.Coke].FindChild("Quantity", true, false) as Label)?.Text;
+                if (text != "30/200")
+                {
+                    return $"the store's Coke reads '{text}'";
+                }
+                Shot("pack screen with the Post");
+                _log.Add("post: titled Pneumatic Post, 30 Coke into the store seen at the other crate, listed under the pack");
+                return null;
+            });
+            Do("press I again", () => { Tap(Key.I); return null; });
+            Do("closed", () => _pack.IsOpen ? "I left the Pack screen open" : null);
         }
 
         // --- 9. Demolition ----------------------------------------------------------------------
@@ -534,6 +623,9 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 _depot.Buffer.Deposit(ItemType.Scrap, 10);
                 SetPack(ItemType.Scrap, 100);
+                // A refund lands in the Post after the pack (crates-design §10): full too, so
+                // nothing has room for the Scrap.
+                _world.Buffers.GetOrCreate(SandboxWorld.PostBufferId).RestoreQuantity(ItemType.Scrap, 200);
                 Stand(DepotCell.x, DepotCell.y + 2f);
                 return null;
             });

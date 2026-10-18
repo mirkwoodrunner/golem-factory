@@ -458,6 +458,20 @@ namespace GolemFactory.Tests.Tutorial
             foreach ((string step, string card, string good) in goals)
             {
                 world.Advance(1f / 30f);
+                if (step == "glass")
+                {
+                    // crates-design §10: two Post crates, anywhere. Placed on the kit's tiles here,
+                    // which the layout keeps clear of every chapter's own.
+                    Assert.AreEqual("post", StepId(world), "the Post follows the Casing it costs");
+                    Assert.AreEqual(2, world.Tutorial.PostSpots.Length);
+                    foreach (Vector2Int cell in world.Tutorial.PostSpots)
+                    {
+                        Give(world, ItemType.Brass, 10);
+                        Give(world, ItemType.Casing, 5);
+                        Place(world, "PneumaticPostPrefab", cell.x, cell.y);
+                        world.Advance(1f / 30f);
+                    }
+                }
                 Assert.AreEqual(step, StepId(world));
                 var line = world.AssemblyLine;
                 int slot = Enumerable.Range(0, line.SlotCount).FirstOrDefault(i => line.GetCard(i)?.appendage?.name == card, -1);

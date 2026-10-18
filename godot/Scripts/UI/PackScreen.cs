@@ -23,6 +23,7 @@ namespace GolemFactory.Nodes
         // --- For scenarios ------------------------------------------------------------------
         public Control Panel => _panel.Root;
         public System.Collections.Generic.IReadOnlyDictionary<string, Button> Rows => _panel.Rows;
+        public System.Collections.Generic.IReadOnlyDictionary<string, Button> PostRows => _panel.PostRows;
 
         public override void _EnterTree() => AddToGroup(ModalScreens.GroupName);
 
@@ -70,7 +71,7 @@ namespace GolemFactory.Nodes
 
         private void Refresh()
         {
-            _panel.Render(_world.Inventory.PackRows(null));
+            _panel.Render(_world.Inventory.PackRows(null), _world.Inventory.PostRows());
             _summary.Text = _world.Inventory.PackSummary;
         }
 

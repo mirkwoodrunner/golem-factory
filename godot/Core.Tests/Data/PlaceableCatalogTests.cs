@@ -23,10 +23,10 @@ namespace GolemFactory.Tests.Data
         public void TheBuildMenuOffersUnitysTenPlaceables_InItsOrder_PlusTheSplitter()
         {
             // Unity's ten, in Sandbox.unity's order, with the belt splitter (G10, no Unity
-            // prefab) right after the belt.
+            // prefab) right after the belt, and the Pneumatic Post (crates-design §10) last.
             CollectionAssert.AreEqual(
                 new[] { "Depot", "GolemConstructionStation", "Belt", "BeltSplitter", "Boiler", "SteamPipe", "ClockTower",
-                        "HandCrankBench", "FreightMast", "SlagHeap", "ScrapRecycler" },
+                        "HandCrankBench", "FreightMast", "SlagHeap", "ScrapRecycler", "PneumaticPost" },
                 LoadReal().Select(e => e.DisplayName));
         }
 
@@ -42,6 +42,7 @@ namespace GolemFactory.Tests.Data
         [TestCase("FreightMastPrefab", "Brass:20 Casing:10")]
         [TestCase("SlagHeapPrefab", "Scrap:20 IronPlate:10")]
         [TestCase("ScrapRecyclerPrefab", "Scrap:20 IronPlate:10")]
+        [TestCase("PneumaticPostPrefab", "Brass:10 Casing:5")] // crates-design §10's placeholder
         public void CostsMatchTheUnityPrefabs(string key, string cost)
         {
             PlaceableEntry entry = LoadReal().Single(e => e.Key == key);

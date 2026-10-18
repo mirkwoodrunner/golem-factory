@@ -1,6 +1,6 @@
 # Crates: local storage, and the pack
 
-**Status: design, approved, building (Phase 1 of `docs/roadmap.md`).** §5's questions were
+**Status: built, pending review (Phase 1 of `docs/roadmap.md`).** §5's questions were
 answered on 2026-10-18; the rest of the document was then checked against the code and turned
 into a buildable spec. Like `cozy-automation-design.md`, it is written before the code and should
 be kept as written afterwards, with corrections recorded rather than hidden (§6 lists the ones
@@ -378,7 +378,7 @@ Where the code differs from the table above, and why.
 
 1. **`post` is not built.** The Pneumatic Post is the next pass (§10), so its step, its kit action
    and its playtest question (`glass`, "did the Post take a chore off you") wait for it. The table
-   keeps the row.
+   keeps the row. **Built with §10** (§10.1).
 2. **`collect` counts the first depot's crate**: the one on `DepotSpot`, else the first depot
    standing. Its progress line reads "Scrap in the crate  12", not a count toward a goal: E takes
    whatever is there. `mast-collect` reads the same way for Copper Ore, and is done by any mast's
@@ -392,6 +392,7 @@ Where the code differs from the table above, and why.
    crates, so the text says the factory has made them and asks the player to collect what the card
    costs into the pack.
 6. **`tower-feed` names no Post crate**: "fill its crate by belt or by hand", until §10 ships.
+   **Since §10:** "... or make it a Post crate, which opens onto your Post store."
 7. **Other player-facing "stockpile"s went too**: the construction panel's stock line ("Pack:"), a
    boiler hand-load with no Coke ("No Coke in your pack."), and the Depot's build-menu description
    ("A crate of 50 of each good ...").
@@ -410,7 +411,7 @@ Where the code differs from the table above, and why.
 4. The two inventory screens (`docs/inventory-screens-design.md`) and the `inventory` scenario.
 5. Guide rewrite (§8) and a playtest (`testscript/phase-1-playtest.md`). **Built** but for `post`
    (§8.1); the playtest is the user's.
-6. Pneumatic Post (§10), as its own pass.
+6. Pneumatic Post (§10), as its own pass. **Built** (§10.1).
 
 Steps 1–3 are one PR's worth: the game is playable, if harder, after them.
 
@@ -445,3 +446,33 @@ The late-game store from §5 Q5: Satisfactory's Dimensional Depot, in brass tube
 - **Guide:** step `post` (§8). **Playtest:** the questions in the playtest script.
 - **The screens:** at a Post crate the crate screen's left panel is the Post store, titled
   "Pneumatic Post". The Pack screen shows the store under the pack, read-only (inventory spec §4).
+
+### 10.1 Corrections from building it (step 6, 2026-10-18)
+
+Where the code differs from §10 and §8's `post` row, and why.
+
+1. **The Post's id reaches each wallet as an optional trailing parameter** (`postBufferId`) on
+   the eight parts §6.1.2 names, and `PlayerInteractor.ConfigurePost`, since `Configure` is called
+   twice. Left out, a part spends from the pack alone, which is how every older test still reads.
+   The two readers that read the pack's buffer directly now ask the wallet: the Assembly Line tab's
+   affordability (claims and the bay row) and the bench's `CanAffordSelected`.
+2. **The Ledger node ships unplanned**, with a "NO LONGER PLANNED" comment, since it lands with
+   the pass. `SweepBuildings` records it for a depot whose `BufferId` is the Post's.
+3. **The kit's tiles are `TutorialGuide.PostSpots`**: the first two side-by-side usable tiles
+   scanning the floor from the north wall, west to east, off every chapter's tiles and pipe
+   routes, off their neighbours, and off the starter bench and station (not grid occupants). Not
+   marked: `post` has no target and no marks, as the table says.
+4. **`post`'s progress line reads "Post crates  1/2".** Its text names the price and the 200 cap.
+5. **The `glass` question's id is `post`**, asked as `glass` opens (`PlaytestQuestion.AfterStepId`),
+   the step after `post`, as the playtest script's table says.
+6. **The prompt at a Post crate names it "Pneumatic Post"**, where a depot's says "Crate".
+7. **Refusal tests fill the Post too.** A refund falls through to the Post after the pack, so
+   "the wrecking bar refuses a full pack" now needs both full: `CrateTests`' demolition and
+   dismantling tests and the `inventory` scenario's check 9 fill the Post's Scrap first.
+8. **Floor Expansion's clamp stays at the pack's cap**, not pack plus Post: §6.1's rule is that a
+   price fits a full pack, and that still holds.
+9. **The sprite is generated**: `make_pneumatic_post` in `Tools/Art/generate_building_art.py`
+   writes `pneumatic_post.png`, a depot-family crate with a brass tube and a capsule window.
+10. **Open: §4.7 is not built.** The Inventory tab still sorts every buffer by id, so the Post
+    shows as "PneumaticPost" between the crates and the pack. It reads correctly and was never
+    part of a step's tests; the display headers and cell order wait for a polish pass.

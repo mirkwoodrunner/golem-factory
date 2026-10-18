@@ -47,9 +47,9 @@ namespace GolemFactory.Tests.World
         {
             SandboxWorld world = Compose();
             Assert.AreEqual(world.Placeables.Count, world.Build.AvailablePrefabs.Count);
-            // Unity's ten plus the belt splitter, less the Clock Tower: it stands on its own site in
-            // the town square now (G10), never placed from the menu.
-            Assert.AreEqual(10, world.Build.AvailablePrefabs.Count);
+            // Unity's ten plus the belt splitter and the Pneumatic Post, less the Clock Tower: it
+            // stands on its own site in the town square now (G10), never placed from the menu.
+            Assert.AreEqual(11, world.Build.AvailablePrefabs.Count);
             Assert.IsFalse(world.Placeables.Any(p => p.Key == SandboxWorld.ClockTowerKey));
         }
 

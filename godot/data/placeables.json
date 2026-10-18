@@ -461,5 +461,29 @@
         "startingCoke": 0
       }
     }
+  },
+  {
+    "name": "PneumaticPostPrefab",
+    "sprite": "pneumatic_post.png",
+    "parts": {
+      "PlaceableBuilding": {
+        "cost": [
+          {
+            "itemType": "Brass",
+            "quantity": 10
+          },
+          {
+            "itemType": "Casing",
+            "quantity": 5
+          }
+        ],
+        "dragPlaceable": 0
+      },
+      "YSortSpriteRenderer": {},
+      "PlaceableDepot": {
+        "bufferId": "PneumaticPost",
+        "filterItemType": ""
+      }
+    }
   }
 ]

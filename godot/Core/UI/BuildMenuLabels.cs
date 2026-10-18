@@ -39,6 +39,7 @@ namespace GolemFactory.UI
             ["FreightMastPrefab"] = "A landing mast for Zeppelin freight between distant sites.",
             ["SlagHeapPrefab"] = "Burns Coke to get rid of Slag.",
             ["ScrapRecyclerPrefab"] = "Burns Coke to turn junk, Slag included, back into Scrap.",
+            ["PneumaticPostPrefab"] = "A Post crate: every one opens onto one shared store, 200 of each good. Your building spends from it once your pack runs short.",
         };
 
         /// <summary>The row's name: "Golem Station", "Belt Splitter", "Steam Pipe".</summary>

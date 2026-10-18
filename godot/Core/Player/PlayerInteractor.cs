@@ -216,6 +216,14 @@ namespace GolemFactory.Player
         }
 
         /// <summary>
+        /// The Pneumatic Post's store (crates-design §10): what the wallet spends after the pack,
+        /// for building, ordering and loading by hand. Null (unwired) is the pack alone.
+        /// </summary>
+        public void ConfigurePost(string postBufferId) => _postBufferId = postBufferId;
+
+        private string _postBufferId;
+
+        /// <summary>
         /// Wires the affordance separately from Configure, so a scene that wants no prompt
         /// simply never calls it.
         /// </summary>
@@ -451,7 +459,7 @@ namespace GolemFactory.Player
             }
 
             MarketOrderResult result = _market.TryOrder(
-                marker.NodeId, _marketWallet, _marketWalletBufferId, _currentTick());
+                marker.NodeId, _marketWallet, _marketWalletBufferId, _currentTick(), _postBufferId);
 
             switch (result)
             {
@@ -478,7 +486,7 @@ namespace GolemFactory.Player
         }
 
         private int MarketStockOf(string itemType) =>
-            _marketWallet == null ? 0 : _marketWallet.GetQuantity(_marketWalletBufferId, itemType);
+            _marketWallet == null ? 0 : new PlayerWallet(_marketWallet, _marketWalletBufferId, _postBufferId).Quantity(itemType);
 
         /// <summary>
         /// Whether this stall would take an order right now: a market is wired, it trades this
@@ -964,7 +972,7 @@ namespace GolemFactory.Player
 
         private StorageBuffer Pack => _stockpile?.GetOrCreate(_stockpileBufferId);
 
-        private PlayerWallet Wallet => _stockpile == null ? null : new PlayerWallet(_stockpile, _stockpileBufferId);
+        private PlayerWallet Wallet => _stockpile == null ? null : new PlayerWallet(_stockpile, _stockpileBufferId, _postBufferId);
 
         /// <summary>
         /// An EMPTY market stall's caption (G10, at the user's call). [E] there orders a
@@ -1025,7 +1033,7 @@ namespace GolemFactory.Player
                 case InteractionKind.Sort:
                 {
                     var crate = (ICrate)target;
-                    targetName = crate is PlaceableFreightMast ? "Freight Mast" : "Crate";
+                    targetName = crate is PlaceableFreightMast ? "Freight Mast" : crate.OwnsBuffer ? "Crate" : "Pneumatic Post";
                     detail = DescribeContents(crate.Buffer);
                     break;
                 }

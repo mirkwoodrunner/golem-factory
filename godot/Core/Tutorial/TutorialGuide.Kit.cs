@@ -313,6 +313,13 @@ namespace GolemFactory.Tutorial
             ["glass"] = () => MakeGood("AssembleGlassmaking", ItemType.Glass, 10),
             ["lens"] = () => MakeGood("AssembleLensGrinding", ItemType.Lens, 10),
             ["mainspring"] = () => MakeGood("AssembleMainspringWinding", ItemType.Mainspring, 3),
+            ["post"] = () =>
+            {
+                foreach (Vector2Int cell in PostSpots)
+                {
+                    PlaceGranted("PneumaticPostPrefab", cell, Facing.North);
+                }
+            },
             ["aether-cell"] = () => MakeGood("AssembleAetherContainment", ItemType.AetherCell, 2),
             ["zeppelin-card"] = () => Claim("ZeppelinFreightLoader"),
             ["freight-card"] = () => Claim("FreightLaunch"),

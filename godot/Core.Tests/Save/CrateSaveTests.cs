@@ -103,6 +103,9 @@ namespace GolemFactory.Tests.EditMode
             BufferEntry pack = data.buffers.Single(b => b.bufferId == world.StockpileBufferId);
             pack.itemTypes.Add(ItemType.Brass);
             pack.quantities.Add(140);
+            BufferEntry post = data.buffers.Single(b => b.bufferId == SandboxWorld.PostBufferId);
+            post.itemTypes.Add(ItemType.Brass);
+            post.quantities.Add(250);
             BuildingEntry depot = data.buildings.Single(b => b.cellX == 6 && b.cellY == 6);
             depot.crateItemTypes.Add(ItemType.Coal);
             depot.crateQuantities.Add(75);
@@ -111,6 +114,7 @@ namespace GolemFactory.Tests.EditMode
             world.LoadFrom(_path);
             Assert.AreEqual(140, Pack(world, ItemType.Brass), "the pack, above its 100");
             Assert.AreEqual(75, CrateAt(world, cell).Buffer.GetQuantity(ItemType.Coal), "the crate, above its 50");
+            Assert.AreEqual(250, world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Brass), "the Post, above its 200");
             Assert.AreEqual(0, world.Wallet.RoomFor(ItemType.Brass));
         }
 

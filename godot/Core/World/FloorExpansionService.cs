@@ -22,6 +22,7 @@ namespace GolemFactory.World
         private FloorBounds bounds;
         private StorageBufferRegistry bufferRegistry;
         private string stockpileBufferId = "FactoryStockpile";
+        private string postBufferId;
         private int scrapPerRow = 40;
         private int ironPlatePerRow = 20;
         private int rowsPerPurchase = 2;
@@ -60,10 +61,12 @@ namespace GolemFactory.World
 
         public int RowsPerPurchase => rowsPerPurchase < 1 ? 1 : rowsPerPurchase;
 
-        public void Configure(FloorBounds floorBounds, StorageBufferRegistry buffers, string bufferId)
+        /// <param name="postId">The Pneumatic Post's store, spent after the pack (crates-design §10); null for none.</param>
+        public void Configure(FloorBounds floorBounds, StorageBufferRegistry buffers, string bufferId, string postId = null)
         {
             bounds = floorBounds;
             bufferRegistry = buffers;
+            postBufferId = postId;
             if (!string.IsNullOrEmpty(bufferId))
             {
                 stockpileBufferId = bufferId;
@@ -107,7 +110,7 @@ namespace GolemFactory.World
             return cap == StorageBuffer.Unlimited ? quantity : Math.Min(quantity, cap);
         }
 
-        private PlayerWallet Wallet => bufferRegistry == null ? null : new PlayerWallet(bufferRegistry, stockpileBufferId);
+        private PlayerWallet Wallet => bufferRegistry == null ? null : new PlayerWallet(bufferRegistry, stockpileBufferId, postBufferId);
 
         private int StockOf(string itemType) => Wallet?.Quantity(itemType) ?? 0;
 

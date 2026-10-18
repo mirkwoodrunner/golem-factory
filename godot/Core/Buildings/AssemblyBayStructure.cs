@@ -134,9 +134,9 @@ namespace GolemFactory.Buildings
         // Charges the upgrade bundle atomically (PlayerWallet.TryCharge) -- the same guarantee
         // chassis construction and building placement get, and for the same reason: a partial
         // charge on a two-good cost takes the Scrap and hands back nothing.
-        public bool TryUpgrade(StorageBufferRegistry buffers, string resourceBufferId)
+        public bool TryUpgrade(StorageBufferRegistry buffers, string resourceBufferId, string postBufferId = null)
         {
-            if (buffers == null || !new PlayerWallet(buffers, resourceBufferId).TryCharge(upgradeCost))
+            if (buffers == null || !new PlayerWallet(buffers, resourceBufferId, postBufferId).TryCharge(upgradeCost))
             {
                 return false;
             }

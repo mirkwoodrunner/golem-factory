@@ -22,6 +22,7 @@ namespace GolemFactory.Nodes
         private const float DimAlpha = 0.55f;
 
         private readonly Dictionary<string, Button> _rows = new Dictionary<string, Button>();
+        private readonly Dictionary<string, Button> _postRows = new Dictionary<string, Button>();
         private readonly Action<string, bool> _click;
         private string _signature;
 
@@ -34,6 +35,9 @@ namespace GolemFactory.Nodes
 
         /// <summary>The row drawn for each good, by item type.</summary>
         public IReadOnlyDictionary<string, Button> Rows => _rows;
+
+        /// <summary>The Post store's rows under the pack's (inventory spec §4.5), by item type.</summary>
+        public IReadOnlyDictionary<string, Button> PostRows => _postRows;
 
         /// <param name="listTop">The list's top inset: 96 under a crate's label button, 64 in a pack panel.</param>
         /// <param name="click">A row's click: the good, and whether Shift was down. Null for a panel only shown.</param>
@@ -73,16 +77,21 @@ namespace GolemFactory.Nodes
         /// <summary>Forces the next <see cref="Render"/> to rebuild.</summary>
         public void Invalidate() => _signature = null;
 
-        /// <summary>Redraws the list, only when what it shows has changed (golems keep filling a crate).</summary>
-        public void Render(List<CrateScreenRow> rows)
+        /// <summary>
+        /// Redraws the list, only when what it shows has changed (golems keep filling a crate).
+        /// <paramref name="post"/>, when it has rows, follows under a "Pneumatic Post" header,
+        /// read-only (inventory spec §4.5).
+        /// </summary>
+        public void Render(List<CrateScreenRow> rows, List<CrateScreenRow> post = null)
         {
-            string signature = Signature(rows);
+            string signature = Signature(rows) + "#" + (post == null ? "" : Signature(post));
             if (signature == _signature)
             {
                 return;
             }
             _signature = signature;
             _rows.Clear();
+            _postRows.Clear();
             foreach (Node child in Content.GetChildren())
             {
                 Content.RemoveChild(child);
@@ -90,7 +99,15 @@ namespace GolemFactory.Nodes
             }
             foreach (CrateScreenRow row in rows)
             {
-                Content.AddChild(row.IsMessage ? MessageRow(row.Name) : ItemRow(row));
+                Content.AddChild(row.IsMessage ? MessageRow(row.Name) : ItemRow(row, _rows, _click));
+            }
+            if (post != null && post.Count > 0)
+            {
+                Content.AddChild(HeaderRow(CrateScreenReadout.PostTitle));
+                foreach (CrateScreenRow row in post)
+                {
+                    Content.AddChild(row.IsMessage ? MessageRow(row.Name) : ItemRow(row, _postRows, null));
+                }
             }
         }
 
@@ -105,14 +122,14 @@ namespace GolemFactory.Nodes
             return b.ToString();
         }
 
-        private Control ItemRow(CrateScreenRow row)
+        private static Control ItemRow(CrateScreenRow row, Dictionary<string, Button> lookup, Action<string, bool> click)
         {
             var button = new Button { Name = "Row", CustomMinimumSize = new Vector2(0f, 30f), FocusMode = Control.FocusModeEnum.None };
             button.AddThemeStyleboxOverride("normal", new StyleBoxFlat { BgColor = ManagementScreen.RowTint });
-            button.AddThemeStyleboxOverride("hover", new StyleBoxFlat { BgColor = _click != null ? RowHover : ManagementScreen.RowTint });
-            button.AddThemeStyleboxOverride("pressed", new StyleBoxFlat { BgColor = _click != null ? RowPressed : ManagementScreen.RowTint });
+            button.AddThemeStyleboxOverride("hover", new StyleBoxFlat { BgColor = click != null ? RowHover : ManagementScreen.RowTint });
+            button.AddThemeStyleboxOverride("pressed", new StyleBoxFlat { BgColor = click != null ? RowPressed : ManagementScreen.RowTint });
             button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
-            if (_click == null)
+            if (click == null)
             {
                 button.MouseFilter = Control.MouseFilterEnum.Ignore;
             }
@@ -123,7 +140,7 @@ namespace GolemFactory.Nodes
                 {
                     if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } press)
                     {
-                        _click(good, press.ShiftPressed);
+                        click(good, press.ShiftPressed);
                     }
                 };
             }
@@ -158,8 +175,17 @@ namespace GolemFactory.Nodes
                 name.Modulate = new Color(1f, 1f, 1f, DimAlpha);
                 button.TooltipText = row.Reason ?? "";
             }
-            _rows[row.ItemType] = button;
+            lookup[row.ItemType] = button;
             return button;
+        }
+
+        // Management's header plate: 24 px, its tint, 14 bold.
+        private static Control HeaderRow(string text)
+        {
+            var plate = new Panel { Name = "Header", CustomMinimumSize = new Vector2(0f, 24f), MouseFilter = Control.MouseFilterEnum.Ignore };
+            plate.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = ManagementScreen.HeaderPlateTint });
+            ManagementScreen.RowLine(plate).AddChild(ManagementScreen.Flex(Ugui.Text("Name", text, 14, ManagementScreen.HeaderInk, bold: true)));
+            return plate;
         }
 
         private static Control MessageRow(string text)

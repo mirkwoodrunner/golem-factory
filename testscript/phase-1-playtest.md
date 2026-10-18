@@ -170,7 +170,7 @@ just after you have lived through what it asks about. New in Phase 1 are marked.
 | `copper` | Did a golem stop because its crate was full or empty? Did its badge say why? (Never saw it · Yes, clearly · Yes, but I was confused) | yes |
 | `unloader` | You labelled a depot on the crate screen. Did the picker work? (Good · Fiddly · Couldn't find it) | reworded (was the E-cycle) |
 | `expand` | Has where you put things started to matter: walks between crates, or a line that needed a belt? (It matters · A little · Not yet) | yes |
-| `glass` | The Pneumatic Post: did it take a chore off you, or add one? (Took one off · No difference · Added one) | yes, once the Post is built |
+| `glass` | The Pneumatic Post: did it take a chore off you, or add one? (Took one off · No difference · Added one) | yes |
 | `tower-visit` | The Copper landed in the mast's crate. Did you find it? (Straight away · Eventually · No) | yes |
 
 The existing questions stay where they are.

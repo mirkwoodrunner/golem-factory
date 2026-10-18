@@ -190,11 +190,14 @@ namespace GolemFactory.Player
 
         // Wires the economy separately from Configure so a scene that never calls this keeps
         // placement free.
-        public void ConfigureEconomy(StorageBufferRegistry stockpile, string stockpileBufferId, PlaceableBuilding[] availablePrefabs)
+        // postBufferId: the Pneumatic Post's store, spent and refunded after the pack
+        // (crates-design §10); null for none.
+        public void ConfigureEconomy(StorageBufferRegistry stockpile, string stockpileBufferId, PlaceableBuilding[] availablePrefabs,
+            string postBufferId = null)
         {
             _stockpile = stockpile;
             _stockpileBufferId = stockpileBufferId;
-            _wallet = stockpile == null ? null : new PlayerWallet(stockpile, stockpileBufferId);
+            _wallet = stockpile == null ? null : new PlayerWallet(stockpile, stockpileBufferId, postBufferId);
             _availablePrefabs = availablePrefabs;
         }
 

@@ -97,6 +97,9 @@ namespace GolemFactory.World
 
         /// <summary>The pack (the stockpile id): what the player carries, this many of each good.</summary>
         public int packCapacityPerType = 100;
+
+        /// <summary>The Pneumatic Post's shared store (crates-design §10): this many of each good. A placeholder.</summary>
+        public int postCapacityPerType = 200;
         public int startingNorthExtent = FloorLayout.DefaultNorthExtent;
 
         /// <summary>
@@ -157,8 +160,10 @@ namespace GolemFactory.World
         }
 
         /// <summary>
-        /// Crates are the default, capped per type; the pack is the override, capped at its own
-        /// number (docs/crates-design.md §4.3). It was unlimited while every depot opened onto it.
+        /// Crates are the default, capped per type; the pack and the Post store are overrides,
+        /// capped at their own numbers (docs/crates-design.md §4.3). The pack was unlimited while
+        /// every depot opened onto it. The Post store exists from the start, empty, so the wallet
+        /// never has to ask whether it does (§10).
         /// </summary>
         public void ApplyBufferPolicy(StorageBufferRegistry buffers)
         {
@@ -167,6 +172,7 @@ namespace GolemFactory.World
             {
                 buffers.SetCapacity(stockpileBufferId, packCapacityPerType);
             }
+            buffers.SetCapacity(SandboxWorld.PostBufferId, postCapacityPerType);
         }
 
         /// <summary>The truckload market with every stall's offer -- ManagerHolders' TruckloadMarketHolder.</summary>

@@ -41,6 +41,9 @@ namespace GolemFactory.Buildings
         private IWorkbenchTarget workbench;
         private string stockpileBufferId = "FactoryStockpile";
 
+        // The Pneumatic Post's store, spent and refunded after the pack (crates-design §10).
+        private string postBufferId;
+
         // Facing-based spatial routing. Optional in exactly the same way GolemEntity's own
         // spatial registry is: leave these unassigned and constructed golems route purely by
         // the ids on their appendage cards, as before.
@@ -174,7 +177,7 @@ namespace GolemFactory.Buildings
         public void ConfigureSceneServices(
             ConveyorSystem conveyorSystem, ResourceNodeRegistry nodes,
             StorageBufferRegistry buffers, SimulationClock simulationClock,
-            IWorkbenchTarget workbenchTarget, string bufferId)
+            IWorkbenchTarget workbenchTarget, string bufferId, string postId = null)
         {
             conveyor = conveyorSystem;
             nodeRegistry = nodes;
@@ -184,6 +187,10 @@ namespace GolemFactory.Buildings
             if (!string.IsNullOrEmpty(bufferId))
             {
                 stockpileBufferId = bufferId;
+            }
+            if (!string.IsNullOrEmpty(postId))
+            {
+                postBufferId = postId;
             }
         }
 
@@ -260,7 +267,7 @@ namespace GolemFactory.Buildings
 
         // What the station charges and refunds through (docs/crates-design.md §4.4). Stateless
         // over the registry, so building one per call is the same wallet every time.
-        private PlayerWallet Wallet => bufferRegistry == null ? null : new PlayerWallet(bufferRegistry, stockpileBufferId);
+        private PlayerWallet Wallet => bufferRegistry == null ? null : new PlayerWallet(bufferRegistry, stockpileBufferId, postBufferId);
 
         /// <summary>
         /// Whether <see cref="TryConstructGolem"/> would currently succeed on cost grounds.

@@ -123,7 +123,9 @@ ones. Current scenarios:
   away from a crate and the crate's screen at one; I, E and Escape close them. Clicks put and
   take all that fits, Shift moves one, and crate + pack per good never changes. The label
   picker relabels the depot, a label refuses goods on the way in only, and a pack above its
-  cap gives but takes nothing back. A mast's label is disabled, the guide's plate clears both
+  cap gives but takes nothing back. A mast's label is disabled; at a Post crate the left panel
+  is the Pneumatic Post, a click fills the store every Post crate shares, and the Pack screen
+  lists it under the pack. The guide's plate clears both
   panels, and the wrecking bar refuses a crate whose goods won't fit, then refunds it exactly.
   Logs the frames worth a look for `--write-movie`.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
@@ -443,7 +445,7 @@ advancement. Simulation is plain, data-oriented C#: no ECS, no per-item nodes.
 - **Bare-string ids** identify belts, buffers and nodes across systems; `ItemType` holds the
   item-type constants. **Registries return `false` for a `null` id** rather than throwing.
 
-### Crates and the pack (Phase 1: steps 1-4 built; guide rewrite and Post to come)
+### Crates and the pack (Phase 1: built, pending review)
 
 The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
 
@@ -452,10 +454,15 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   **Golems never reach the pack** (`FactoryStockpile`, id kept because saves name it; 100 of
   each). A depot with an explicit `bufferId` publishes that buffer and doesn't own it: a Post
   crate, and how a test keeps the old behaviour.
-- **Every cost goes through `PlayerWallet.TryCharge`** (pack first, then the Post once it
-  exists); refunds through `Refund`, after `FirstMisfit` says they fit. Never charge a buffer id
-  directly, and never charge a crate. Harvesting and collecting fill the pack only, and check its
-  room before taking.
+- **Every cost goes through `PlayerWallet.TryCharge`** (pack first, then the Post store);
+  refunds through `Refund` (same order), after `FirstMisfit` says they fit. Never charge a buffer
+  id directly, and never charge a crate. Harvesting and collecting fill the pack only, and check
+  its room before taking. A part that builds its own wallet takes the Post's id too (an optional
+  `postBufferId`), or it spends from the pack alone.
+- **The Pneumatic Post** is one registry buffer, `SandboxWorld.PostBufferId` ("PneumaticPost"),
+  200 of each good, there from the start. A Post crate (`PneumaticPostPrefab`) is a depot whose
+  `bufferId` is that id, so every Post crate opens onto it and golems reach it like any crate.
+  Demolishing one refunds its cost, never the store. It saves in `SaveData.buffers` by its id.
 - **Hands move goods through `CrateTransfer`** in Core: withdraw what the other side has room
   for, then deposit it. A label is honoured on the way in, not on the way out. Tap-E at a crate
   is `PlayerInteractor.TryCollect` (`InteractionKind.Sort`, "Collect from").

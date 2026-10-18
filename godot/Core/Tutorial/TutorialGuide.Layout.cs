@@ -45,6 +45,7 @@ namespace GolemFactory.Tutorial
             public Vector2Int[] Belts;
             public Facing CopperFacing;
             public Vector2Int[] Pipe1, Pipe2, Pipe3, Pipe4, ZeppelinPipe;
+            public Vector2Int[] Post;
             public bool Golem1Steamable;
         }
 
@@ -304,7 +305,37 @@ namespace GolemFactory.Tutorial
 
             p.ZeppelinPipe = HandRoute(defaultCh6, new[] { p.Zeppelin + new Vector2Int(-1, 0) }, p.Zeppelin)
                 ?? RouteTo(AllNetworks(), new[] { p.Zeppelin }, reserved);
+
+            // Chapter 8's Post crates, last: unmarked, so only the kit reads them. Off every
+            // tile above and every pipe, and not beside any of them, so they never close a line.
+            reserved.UnionWith(p.Pipe1.Concat(p.Pipe2).Concat(p.Pipe3).Concat(p.Pipe4).Concat(p.ZeppelinPipe));
+            // The starter bench and station are not grid occupants, so they are named here.
+            reserved.UnionWith(_world.AuthoredBuildings.Select(b => b.Cell));
+            p.Post = PostPair(reserved);
             return p;
+        }
+
+        /// <summary>
+        /// Two side-by-side usable tiles, neither on nor beside a <paramref name="reserved"/> one:
+        /// the first pair found scanning the floor west to east, from the north wall down.
+        /// </summary>
+        private Vector2Int[] PostPair(HashSet<Vector2Int> reserved)
+        {
+            bool Clear(Vector2Int c) => Usable(c) && !reserved.Contains(c) && !Neighbours(c).Any(reserved.Contains);
+            int half = _world.Bounds?.HalfExtent ?? 0;
+            int north = _world.Bounds?.NorthExtent ?? 0;
+            for (int y = north; y >= -half; y--)
+            {
+                for (int x = -half; x < half; x++)
+                {
+                    var c = new Vector2Int(x, y);
+                    if (Clear(c) && Clear(c + Vector2Int.right))
+                    {
+                        return new[] { c, c + Vector2Int.right };
+                    }
+                }
+            }
+            return new Vector2Int[0];
         }
 
         /// <summary>

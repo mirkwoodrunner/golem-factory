@@ -345,7 +345,7 @@ namespace GolemFactory.AssemblyLine
             }
         }
 
-        public bool TryClaimSlot(int slotIndex, string userId, StorageBufferRegistry buffers, string bufferId)
+        public bool TryClaimSlot(int slotIndex, string userId, StorageBufferRegistry buffers, string bufferId, string postBufferId = null)
         {
             DraftableCardDefinition card = _slots[slotIndex];
             if (card == null || buffers == null)
@@ -378,7 +378,7 @@ namespace GolemFactory.AssemblyLine
             IReadOnlyList<RecipeIngredient> price = card.HasBundleCost
                 ? GetCurrentCostBundle(slotIndex)
                 : new[] { new RecipeIngredient(ItemType.Scrap, GetCurrentCost(slotIndex)) };
-            if (!new PlayerWallet(buffers, bufferId).TryCharge(price))
+            if (!new PlayerWallet(buffers, bufferId, postBufferId).TryCharge(price))
             {
                 return false;
             }

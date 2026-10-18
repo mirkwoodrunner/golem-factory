@@ -57,6 +57,7 @@ namespace GolemFactory.Progression
         public const string BuildingFreightMast = "FreightMast";
         public const string BuildingFloorExpansion = "FloorExpansion";
         public const string BuildingScrapRecycler = "ScrapRecycler";
+        public const string BuildingPneumaticPost = "PneumaticPost";
 
         private static readonly TechTreePhase[] PhaseTable =
         {
@@ -236,6 +237,14 @@ namespace GolemFactory.Progression
                 TechTreeNodeKind.Technique, 3, 13,
                 TechTreeUnlockSignal.None, null,
                 new[] { "chassis.hauler" }),
+            // NO LONGER PLANNED -- crates-design §10's Pneumatic Post is built: a depot whose
+            // crate is one store every Post crate shares, which the player's spending reaches
+            // after the pack. Gated by its price in Brass and Casing, as the Freight Mast is.
+            new TechTreeNode(
+                "bldg.pneumaticpost", "Pneumatic Post", "Brass + Casing · every Post crate shares one store",
+                TechTreeNodeKind.Building, 3, 14,
+                TechTreeUnlockSignal.Building, BuildingPneumaticPost,
+                new[] { "r7.brassalloying", "r9.casingpress" }),
 
             // ---- V · The Great Works --------------------------------------------------------
             new TechTreeNode(

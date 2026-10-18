@@ -472,6 +472,61 @@ def make_scrap_recycler() -> Image.Image:
     return image
 
 
+def make_pneumatic_post() -> Image.Image:
+    """A Post crate: the depot's crate, iron-bound, with a brass tube rising out of its lid.
+
+    The tube is the point. Every Post crate opens onto one shared store, so its silhouette must
+    say "connected elsewhere" next to a row of ordinary depots: a pipe that leaves the crate and
+    goes up, out of the picture, with a glass capsule window halfway.
+    """
+    width, height = 64, 92
+    image = Image.new("RGBA", (width, height), TRANSPARENT)
+    draw = ImageDraw.Draw(image)
+
+    _contact_shadow(draw, (1, 88, 62, 91))
+
+    # Pallet, as the depot's, so the two read as one family.
+    _panel(draw, (2, 80, 61, 89), WOOD_DARK, WOOD, (44, 26, 30, 255), 0.10, 5, image)
+    for x in range(8, 58, 12):
+        draw.rectangle([x, 83, x + 4, 87], fill=(40, 24, 28, 255))
+
+    # The crate: wood, banded in iron rather than brass, so it is not mistaken for a depot.
+    _panel(draw, (4, 46, 59, 80), WOOD, WOOD_LIGHT, WOOD_DARK, 0.14, 13, image)
+    for y in (54, 62, 70):
+        draw.line([(5, y), (58, y)], fill=_shade(WOOD, -0.28))
+        draw.line([(5, y + 1), (58, y + 1)], fill=_shade(WOOD, 0.12))
+    for (x0, x1) in ((4, 9), (54, 59)):
+        _panel(draw, (x0, 46, x1, 80), IRON_DARK, IRON, (34, 30, 44, 255))
+    _rivets(draw, (6, 57), (50, 66, 76), IRON_LIGHT)
+
+    # The lid's brass collar, where the tube meets the crate.
+    _panel(draw, (18, 40, 45, 48), BRASS, BRASS_LIGHT, BRASS_DARK, 0.08, 37, image)
+    _rivets(draw, (21, 42), (43,))
+
+    # The tube: straight up from the collar, lit on its left edge.
+    _panel(draw, (25, 4, 38, 41), BRASS, BRASS_LIGHT, BRASS_DARK, 0.06, 43, image)
+    draw.line([(27, 5), (27, 40)], fill=_shade(BRASS_LIGHT, 0.25))
+    for y in (10, 34):
+        draw.line([(25, y), (38, y)], fill=BRASS_DARK)
+        draw.line([(25, y + 1), (38, y + 1)], fill=_shade(BRASS_LIGHT, 0.1))
+
+    # A glass window in the tube, with a capsule passing: the store is somewhere else.
+    _panel(draw, (27, 15, 36, 30), (60, 92, 96, 255), (120, 170, 168, 255), (36, 56, 60, 255))
+    draw.rectangle([29, 18, 34, 25], fill=BRASS_DARK, outline=OUTLINE)
+    draw.line([(30, 19), (30, 24)], fill=BRASS_LIGHT)
+    draw.point([(28, 16)], fill=(226, 255, 250, 255))
+
+    # The cap: a wider brass ring, the mouth the capsules leave by.
+    _panel(draw, (22, 0, 41, 5), BRASS, BRASS_LIGHT, BRASS_DARK)
+
+    # Teal lamp on the collar, the colour every golem's eye uses: this crate is live.
+    draw.ellipse([46, 38, 54, 46], fill=OUTLINE)
+    draw.ellipse([47, 39, 53, 45], fill=GLOW)
+    draw.point([(49, 41)], fill=(226, 255, 250, 255))
+
+    return image
+
+
 def main() -> None:
     save(make_scrap_recycler(), "scrap_recycler.png")
     save(make_slag_heap(), "slag_heap.png")
@@ -486,6 +541,7 @@ def main() -> None:
     save_tile(make_steam_pipe_piece("nes"), "steam_pipe_tee.png")
     save_tile(make_steam_pipe_piece("nesw"), "steam_pipe_cross.png")
     save(make_depot(), "depot.png")
+    save(make_pneumatic_post(), "pneumatic_post.png")
     save(make_construction_station(), "golem_construction_station.png")
 
 

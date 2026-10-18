@@ -149,7 +149,7 @@ namespace GolemFactory.Economy
         /// took the first good and refused would be theft at the stall.
         /// </summary>
         public MarketOrderResult TryOrder(
-            string nodeId, StorageBufferRegistry buffers, string bufferId, long currentTick)
+            string nodeId, StorageBufferRegistry buffers, string bufferId, long currentTick, string postBufferId = null)
         {
             MarketOffer offer;
             if (!TryGetOffer(nodeId, out offer))
@@ -172,7 +172,7 @@ namespace GolemFactory.Economy
 
             if (!offer.IsFree)
             {
-                if (buffers == null || !new PlayerWallet(buffers, bufferId).TryCharge(offer.Price))
+                if (buffers == null || !new PlayerWallet(buffers, bufferId, postBufferId).TryCharge(offer.Price))
                 {
                     return MarketOrderResult.CannotAfford;
                 }

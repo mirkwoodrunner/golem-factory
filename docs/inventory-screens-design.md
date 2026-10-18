@@ -220,7 +220,8 @@ control clicked a frame after the screen opened). It checks:
 7. **Above the cap.** A pack restored at 140 Scrap shows "140/100", gives Scrap to the crate, and
    refuses to take any back until it is under 100.
 8. **Mast and Post.** At a Freight Mast the label button is disabled; at a Post crate the left
-   panel is titled "Pneumatic Post" and moves into the shared store (once §10 is built).
+   panel is titled "Pneumatic Post" and moves into the shared store; the Pack screen then lists the
+   store under the pack.
 9. **Demolition.** With the pack full of Scrap, X on a crate holding Scrap is refused with "pack
    full of Scrap" and the crate stands; after emptying the pack, the same click refunds cost and
    contents exactly.
@@ -254,7 +255,10 @@ Where the code differs from the spec above, and why.
 3. **`copper-depot` sets `crate: true`**, and its text says "press I and choose Copper Ore for its
    label", since E collects. `smelt-feed` and `carrier-feed` came with the guide rewrite (step 5)
    and set it too; check 10 now runs on `smelt-feed`, as §6 says.
-4. **The Post waits for crates-design §10.** §4.5's Post rows and check 8's Post half are not built;
+4. **The Post waits for crates-design §10.** **Since built:** `CrateScreenReadout.PostRows()` gives
+   §4.5's rows, which `InventoryPanel.Render` draws under a header and keeps in their own lookup
+   (`PackScreen.PostRows`), since a good can be in both; check 8's Post half runs two Post crates.
+   As first written: §4.5's Post rows and check 8's Post half are not built;
    `CrateScreenReadout.Title`/`CapLine` already name a crate that doesn't own its buffer "Pneumatic
    Post" (tested).
 5. **Take all uses `steampunk_button_blank.png`**, tinted as specified. 9-sliced, the accept

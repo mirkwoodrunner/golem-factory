@@ -5,6 +5,7 @@
   "stockpileBufferId": "FactoryStockpile",
   "crateCapacityPerType": 50,
   "packCapacityPerType": 100,
+  "postCapacityPerType": 200,
   "startingNorthExtent": 12,
   "beltCellsPerSecond": 1.0,
   "tutorial": true,

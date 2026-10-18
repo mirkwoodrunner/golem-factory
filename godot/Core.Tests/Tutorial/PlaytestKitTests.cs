@@ -117,6 +117,8 @@ namespace GolemFactory.Tests.Tutorial
 
             RunKit(world);
             Assert.AreEqual("zeppelin-card", world.Tutorial.Current.Id, "chapter 8 done: every good the Zeppelin costs");
+            Assert.AreEqual(2, world.Build.Buildings.Count(b => !b.IsRemoved && b.GetPart<GolemFactory.Buildings.PlaceableDepot>()?.BufferId == SandboxWorld.PostBufferId),
+                "and two Post crates, placed as the player would");
 
             RunKit(world);
             Assert.AreEqual("tower-visit", world.Tutorial.Current.Id, "chapter 9 done: the Zeppelin flies Copper home");

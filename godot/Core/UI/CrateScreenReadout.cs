@@ -61,14 +61,17 @@ namespace GolemFactory.UI
 
         private readonly StorageBufferRegistry _buffers;
         private readonly string _packId;
+        private readonly string _postId;
         private readonly Func<IEnumerable<string>> _knownGoods;
 
         /// <param name="knownGoods">Every good the factory has made: the ledger, which only grows.</param>
-        public CrateScreenReadout(StorageBufferRegistry buffers, string packId, Func<IEnumerable<string>> knownGoods)
+        /// <param name="postId">The Pneumatic Post's store, shown under the pack (inventory spec §4.5); null for none.</param>
+        public CrateScreenReadout(StorageBufferRegistry buffers, string packId, Func<IEnumerable<string>> knownGoods, string postId = null)
         {
             _buffers = buffers;
             _packId = packId;
             _knownGoods = knownGoods;
+            _postId = postId;
         }
 
         public StorageBuffer Pack => _buffers.GetOrCreate(_packId);
@@ -82,6 +85,19 @@ namespace GolemFactory.UI
         /// <summary>The pack's goods: into <paramref name="crate"/> when one is open, else only shown.</summary>
         public List<CrateScreenRow> PackRows(ICrate crate) =>
             Rows(Pack, crate == null ? null : good => CrateTransfer.PlanPut(Pack, crate, good, int.MaxValue), PackEmpty);
+
+        /// <summary>
+        /// The Post store's goods, read-only, for the Pack screen under the pack's own rows
+        /// (inventory spec §4.5). Empty, with no message row, while the store holds nothing: the
+        /// panel then shows no Post header at all.
+        /// </summary>
+        public List<CrateScreenRow> PostRows()
+        {
+            StorageBuffer post = _postId != null && _buffers.TryGetBuffer(_postId, out StorageBuffer b) ? b : null;
+            return post == null || !post.Quantities.Any(q => q.Value > 0)
+                ? new List<CrateScreenRow>()
+                : Rows(post, null, PostTitle);
+        }
 
         /// <summary>
         /// One row per good <paramref name="side"/> holds, in tier order. <paramref name="plan"/>

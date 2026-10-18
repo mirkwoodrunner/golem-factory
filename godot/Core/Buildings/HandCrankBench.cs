@@ -22,6 +22,7 @@ namespace GolemFactory.Buildings
     {
         private StorageBufferRegistry stockpile;
         private string stockpileBufferId = "FactoryStockpile";
+        private string postBufferId;
         private List<RecipeDefinition> candidateRecipes = new List<RecipeDefinition>();
 
         private readonly List<RecipeDefinition> _crankable = new List<RecipeDefinition>();
@@ -48,9 +49,11 @@ namespace GolemFactory.Buildings
         /// <summary>What the last craft made, which the dial may since have been turned away from.</summary>
         public RecipeDefinition LastCompletedRecipe { get; private set; }
 
-        public void Configure(StorageBufferRegistry buffers, string bufferId, IEnumerable<RecipeDefinition> recipes)
+        /// <param name="postId">The Pneumatic Post's store, spent after the pack (crates-design §10); null for none.</param>
+        public void Configure(StorageBufferRegistry buffers, string bufferId, IEnumerable<RecipeDefinition> recipes, string postId = null)
         {
             stockpile = buffers;
+            postBufferId = postId;
             if (!string.IsNullOrEmpty(bufferId))
             {
                 stockpileBufferId = bufferId;
@@ -78,6 +81,7 @@ namespace GolemFactory.Buildings
             {
                 stockpile = stockpile,
                 stockpileBufferId = stockpileBufferId,
+                postBufferId = postBufferId,
                 candidateRecipes = new List<RecipeDefinition>(candidateRecipes),
             };
             clone.RebuildCrankableList();
@@ -156,7 +160,7 @@ namespace GolemFactory.Buildings
                 return false;
             }
 
-            if (!new PlayerWallet(stockpile, stockpileBufferId).TryCharge(recipe.inputs))
+            if (!Wallet.TryCharge(recipe.inputs))
             {
                 return false;
             }
@@ -172,18 +176,21 @@ namespace GolemFactory.Buildings
             return true;
         }
 
+        // The pack, then the Post: inputs are a cost (crates-design §4.4). The output still lands
+        // in the pack, which is what the player carries away from the bench.
+        private PlayerWallet Wallet => new PlayerWallet(stockpile, stockpileBufferId, postBufferId);
+
         public bool CanAffordSelected()
         {
             RecipeDefinition recipe = SelectedRecipe;
-            if (recipe == null || stockpile == null ||
-                !stockpile.TryGetBuffer(stockpileBufferId, out StorageBuffer buffer))
+            if (recipe == null || stockpile == null || !stockpile.TryGetBuffer(stockpileBufferId, out _))
             {
                 return false;
             }
 
             for (int i = 0; i < recipe.inputs.Count; i++)
             {
-                if (buffer.GetQuantity(recipe.inputs[i].itemType) < recipe.inputs[i].quantity)
+                if (Wallet.Quantity(recipe.inputs[i].itemType) < recipe.inputs[i].quantity)
                 {
                     return false;
                 }

@@ -63,16 +63,20 @@ namespace GolemFactory.UI
         private readonly StorageBufferRegistry _buffers;
         private readonly string _wallet;
         private readonly string _userId;
+        private readonly string _post;
         private AssemblyBayStructure _bay;
         private string _stockpile;
         private FloorExpansionService _floor;
 
-        public AssemblyLineBoard(AssemblyLineState line, StorageBufferRegistry buffers, string walletBufferId, string userId = PlaceableBuilding.LocalPlayerOwnerId)
+        /// <param name="postBufferId">The Pneumatic Post's store, spent after the pack (crates-design §10); null for none.</param>
+        public AssemblyLineBoard(AssemblyLineState line, StorageBufferRegistry buffers, string walletBufferId,
+            string userId = PlaceableBuilding.LocalPlayerOwnerId, string postBufferId = null)
         {
             _line = line;
             _buffers = buffers;
             _wallet = walletBufferId;
             _userId = userId;
+            _post = postBufferId;
         }
 
         public void ConfigureBays(AssemblyBayStructure bay, string stockpileBufferId)
@@ -201,7 +205,7 @@ namespace GolemFactory.UI
             }
             string name = WorkbenchDiagnostics.Humanize(card.DisplayName);
             IReadOnlyList<RecipeIngredient> price = _line.GetCurrentCostBundle(slotIndex);
-            if (_line.TryClaimSlot(slotIndex, _userId, _buffers, _wallet))
+            if (_line.TryClaimSlot(slotIndex, _userId, _buffers, _wallet, _post))
             {
                 Status = $"Claimed {name}.";
                 return true;
@@ -223,7 +227,7 @@ namespace GolemFactory.UI
                 return false;
             }
             IReadOnlyList<RecipeIngredient> cost = _bay.UpgradeCost;
-            bool upgraded = _buffers != null && _bay.TryUpgrade(_buffers, _stockpile);
+            bool upgraded = _buffers != null && _bay.TryUpgrade(_buffers, _stockpile, _post);
             Status = AssemblyBayRowPolicy.DescribeResult(upgraded, StockpileOf, cost, AssemblyBayStructure.SlotsPerUpgrade);
             return upgraded;
         }
@@ -240,7 +244,8 @@ namespace GolemFactory.UI
             return expanded;
         }
 
-        private int StockpileOf(string itemType) => _buffers?.GetQuantity(_stockpile, itemType) ?? 0;
+        // The pack plus the Post: what the bay's charge (PlayerWallet.TryCharge) can spend.
+        private int StockpileOf(string itemType) => _buffers == null ? 0 : new PlayerWallet(_buffers, _stockpile, _post).Quantity(itemType);
 
         private bool CanAfford(IReadOnlyList<RecipeIngredient> price)
         {
@@ -254,7 +259,7 @@ namespace GolemFactory.UI
             }
             foreach (RecipeIngredient p in price)
             {
-                if (_buffers.GetQuantity(_wallet, p.itemType) < p.quantity)
+                if (new PlayerWallet(_buffers, _wallet, _post).Quantity(p.itemType) < p.quantity)
                 {
                     return false;
                 }
