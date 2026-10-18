@@ -30,10 +30,11 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   the guide says what is in the way of a marked tile.
 - **Crates** (`docs/crates-design.md`): every depot is a window on one unlimited stockpile, so a
   golem anywhere reaches every good and nothing downstream ever fills. The design makes crates
-  local and gives the player a pack. Its §5 questions need answers before it is built. The
+  local and gives the player a pack. Its §5 questions are answered (2026-10-18), so it is ready
+  to build, starting with its §9 steps 1–3. The
   boiler half was fixed on its own: a boiler holds at most 240 Coke (`SteamBoiler.CokeCapacity`).
 - **Whether the Overclocker has an identity** beyond more slots: one exclusive card (`Repeat`)
-  and the same dials.
+  and the same dials. Decided after a full playthrough (`docs/roadmap.md`, decision 7).
 
 ## 3. Known gaps
 
@@ -52,7 +53,8 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   card faces most of all.
 - **The depot label cycle** grows with the factory; twenty goods is twenty presses of `E`. A
   picker panel is the answer if it bites.
-- **`Straining`**, the only predictive mood (9 of 12 units held): useful warning, or noise?
+- **`Straining`**, the only predictive mood (9 of 12 units held): kept, but moves to hover only
+  (`docs/roadmap.md`, decision 6).
 
 ## 5. Deliberate cuts
 

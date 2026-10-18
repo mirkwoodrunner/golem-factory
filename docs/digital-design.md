@@ -17,6 +17,9 @@
 - **Gameplay loop**: the deep logistical engineering of Factorio/Satisfactory —
   physical resource lines, machine building, automation via the golem/punch-card
   system — not the abstracted or turn-based feel of the board game.
+- **Superseded (2026-10-18): the game is top-down, and that is final** (`docs/roadmap.md`,
+  decision 2). The isometric call below, and its follow-up at the end of this doc, were an older
+  version. The rest of the aesthetic (cozy, warm wood and brass) stands.
 - **Aesthetic**: cozy, detailed **isometric pixel art**, closer to Stardew Valley than
   to Factorio's utilitarian top-down look, set inside a warm wood-and-brass
   steampunk artificer's workshop. This **supersedes** the "2D top-down, Factorio-style

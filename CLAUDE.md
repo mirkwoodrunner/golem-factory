@@ -24,6 +24,9 @@ Read the docs before making design calls, not just the code:
   Its §0 lists eight invariants a pass touching golems, endpoints or text must not break.
 - `docs/godot-conversion-plan.md` -- the port's milestone log, and **"Next session: start
   here"**, the current state and what's next. Read it before planning any work.
+- `docs/roadmap.md` -- the plan after the port, phase by phase, and the decisions taken for it
+  (scope, top-down art, placeholder audio, contracts).
+- `docs/crates-design.md` -- local crates and a capped pack; the next thing to build.
 - `docs/open-items.md` -- the backlog: open decisions, known gaps, deliberate scope cuts.
 - `docs/godot-spike.md` -- what the port measured before it began.
 - `docs/history/` -- the Unity era: `unity-implementation-plan.md` (milestones M0-M9 and every
