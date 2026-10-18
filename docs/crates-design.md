@@ -272,7 +272,45 @@ The invariants that were here are now §0. Checking the design against the code 
 7. **A new full screen does not hide the world prompt for free.** `PlayerInteractor.RefreshAffordance`
    asks `HudScreenPolicy` about three named screens (Workbench, Management, construction), not the
    `ScreenCoordinator`. It should ask `SandboxWorld.Screens.AnyOpen`; the root `CLAUDE.md` says a new
-   screen gets this for free, and today it doesn't.
+   screen gets this for free, and today it doesn't. **Still open after steps 1-3**: no new screen
+   exists yet, so it is step 4's to fix.
+
+### 6.1 Corrections from building steps 1-3 (2026-10-18)
+
+Where the code differs from the spec above, and why.
+
+1. **§6.1 is done as written**: `FloorExpansionService.NextCost` clamps each good at the pack's
+   cap, and `CrateTests.EveryPriceInTheGame_IsPayableFromAFullPack` covers placeables, chassis,
+   every deck card's opening price, truckloads, the bay upgrade and every Floor Expansion step.
+2. **The wallet is not passed to every call site.** The parts §4.4's table names keep their
+   `(registry, bufferId)` wiring and charge through a `PlayerWallet` built over it (the wallet is
+   stateless over the registry, so it is the same wallet as `SandboxWorld.Wallet`). Every charge
+   still goes through `PlayerWallet.TryCharge`, and every refund through `Refund`. Step 6 passes
+   the Post id where those wallets are built: `BuildModeController.ConfigureEconomy`,
+   `GolemConstructionStation.Wallet`, `HandCrankBench`, `FloorExpansionService.Wallet`,
+   `AssemblyBayStructure.TryUpgrade`, `AssemblyLineState.TryClaimSlot`, `TruckloadMarket.TryOrder`
+   and `PlayerInteractor.Wallet`. Two readers still read the pack's buffer directly, which is the
+   same number until the Post exists: the Assembly Line tab's affordability and the bench's.
+3. **`postCapacityPerType` is not in `SandboxSetup` yet.** With no Post buffer there is nothing
+   for it to cap; step 6 adds it with the store.
+4. **The crate prompt has no "[I] open" yet.** `I` is unbound until step 4, so the detail reads
+   "holds 12 Scrap, 3 Coke" or "empty". An empty crate's prompt is `Unavailable` too, since E
+   there does nothing; the target name is "Crate", or "Freight Mast" at a mast.
+5. **`DepotFilterOptions.Next` is gone with `CycleFilter`;** `BuildCycle` stays for the picker.
+   Until step 4 the only way to label a crate is `ICrate.SetFilter` (what the kit calls).
+6. **`TechTreeReadout`'s constructor takes a rate series id**, which the Sandbox passes as
+   `ProductionTally.SeriesId`. `ProductionTally` hears every `ItemAssembledEvent` on the static
+   bus, as the tower and the tech tree already do.
+7. **The kit feeds crates** (§8's guide rewrite is step 5): `program-smelter` and `work-carrier`
+   grant their goods into the pack and `CrateTransfer.Put` them into the `SmeltInSpot` and
+   `SmeltOutSpot` crates, so the `playtest-kit` scenario still fast-forwards every chapter. The
+   guide's text still says "every depot opens onto the same stockpile" in places; step 5 rewrites it.
+8. **Fixtures that build a whole chapter at once uncap the pack** (`TutorialGuideTests.Plenty`,
+   the `build` scenario), as a test keeps any old behaviour by opting in. Every other test and
+   scenario pays from a capped pack.
+9. **`StallTracker` ignores a golem with no id.** Not a crates rule: a live world's tracker hears
+   every golem on the static bus, and an unconfigured test golem's stall threw a null-key
+   exception once a crate test left a world composed before it.
 
 ## 7. Saves, and migrating one
 

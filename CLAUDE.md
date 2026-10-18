@@ -434,24 +434,31 @@ advancement. Simulation is plain, data-oriented C#: no ECS, no per-item nodes.
 - **Bare-string ids** identify belts, buffers and nodes across systems; `ItemType` holds the
   item-type constants. **Registries return `false` for a `null` id** rather than throwing.
 
-### Crates and the pack (Phase 1: designed, NOT YET BUILT)
+### Crates and the pack (Phase 1: steps 1-3 built; screens, guide rewrite and Post to come)
 
-The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set. Until the code
-lands, every depot still opens onto the one stockpile; describe the built behaviour here when it
-does.
+The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
 
-- **A depot publishes its own crate** (`Crate(x,y)`), a Freight Mast its own (`Mast(x,y)`), 50 of
-  each good. **Golems never reach the pack** (`FactoryStockpile`, id kept because saves name it;
-  100 of each). A depot with an explicit `bufferId` publishes that buffer: that is a Post crate,
-  and how a test keeps the old behaviour.
-- **Every cost goes through one wallet**, `PlayerWallet.TryCharge`: the pack first, then the
-  Post store. Never charge a buffer id directly, and never charge a crate.
-- **Hands and screens move goods through `CrateTransfer`** in Core: withdraw what the other side
-  has room for, then deposit it. A label is honoured on the way in, not on the way out.
+- **A depot publishes its own crate** (`Crate(x,y)`), a Freight Mast its own (`Mast(x,y)`, where
+  a Zeppelin lands), 50 of each good. Both are `ICrate`; ask that, never the concrete part.
+  **Golems never reach the pack** (`FactoryStockpile`, id kept because saves name it; 100 of
+  each). A depot with an explicit `bufferId` publishes that buffer and doesn't own it: a Post
+  crate, and how a test keeps the old behaviour.
+- **Every cost goes through `PlayerWallet.TryCharge`** (pack first, then the Post once it
+  exists); refunds through `Refund`, after `FirstMisfit` says they fit. Never charge a buffer id
+  directly, and never charge a crate. Harvesting and collecting fill the pack only, and check its
+  room before taking.
+- **Hands move goods through `CrateTransfer`** in Core: withdraw what the other side has room
+  for, then deposit it. A label is honoured on the way in, not on the way out. Tap-E at a crate
+  is `PlayerInteractor.TryCollect` (`InteractionKind.Sort`, "Collect from").
+- **Demolishing a crate refunds its contents** with its cost, or refuses with "pack full of ___";
+  its buffer is then removed (`StorageBufferRegistry.Remove`), on a load's sweep too.
 - **A load never clamps.** Restores use `StorageBuffer.RestoreQuantity`, never `Deposit`. Crate
-  contents save on their `BuildingEntry`, not in `SaveData.buffers`.
-- **`I` is the inventory key**: the crate's screen at a crate, the pack's elsewhere. Tap-E at a
-  crate collects. Nothing new is bound to holding E.
+  contents save on their `BuildingEntry`, not in `SaveData.buffers`. `SaveData.version` is 1;
+  a version-0 save keeps its stockpile as the pack (above the cap if need be), starts every crate
+  empty, and says so once.
+- **The Ledger's live rate is fresh production** (`ProductionTally`, series `"Produced"`), not a
+  buffer's level.
+- **`I` will be the inventory key** (step 4, not yet bound). Nothing new is bound to holding E.
 
 ### Seams worth keeping
 
