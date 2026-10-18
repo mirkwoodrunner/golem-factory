@@ -372,6 +372,32 @@ in `testscript/phase-1-playtest.md`.
 Between §9's step 1 and step 4 the guide is out of date: chapter 5 asks for a hand-feed the screens
 don't exist for yet. The kit still gets past it, since it calls `CrateTransfer` directly.
 
+### 8.1 Corrections from building it (step 5, 2026-10-18)
+
+Where the code differs from the table above, and why.
+
+1. **`post` is not built.** The Pneumatic Post is the next pass (§10), so its step, its kit action
+   and its playtest question (`glass`, "did the Post take a chore off you") wait for it. The table
+   keeps the row.
+2. **`collect` counts the first depot's crate**: the one on `DepotSpot`, else the first depot
+   standing. Its progress line reads "Scrap in the crate  12", not a count toward a goal: E takes
+   whatever is there. `mast-collect` reads the same way for Copper Ore, and is done by any mast's
+   crate.
+3. **The kit's collect waits for goods.** `TryCollect` on an empty crate is refused, and a flight can
+   still be in the air when `launch` completes, so the kit's `collect` and `mast-collect` retry each
+   frame until something is taken (the kit's two-minute give-up still applies).
+4. **`work-carrier`'s kit keeps feeding Slag 8 and Coke 4** after `carrier-feed`'s 10 Coke, as the
+   table says, so the heap's first burn never waits on the smelter.
+5. **`zeppelin-card` doesn't say "in your pack now".** The goods a real factory made sit in its
+   crates, so the text says the factory has made them and asks the player to collect what the card
+   costs into the pack.
+6. **`tower-feed` names no Post crate**: "fill its crate by belt or by hand", until §10 ships.
+7. **Other player-facing "stockpile"s went too**: the construction panel's stock line ("Pack:"), a
+   boiler hand-load with no Coke ("No Coke in your pack."), and the Depot's build-menu description
+   ("A crate of 50 of each good ...").
+8. **The `tutorial` scenario collects with a real E** at the first depot, and skips the Workbench
+   question queued over it so the step's plate is on show.
+
 ## 9. Order of work
 
 1. Crate buffers on depots and masts (`ICrate`), the capacity policy, the collect verb, the
@@ -382,7 +408,8 @@ don't exist for yet. The kit still gets past it, since it calls `CrateTransfer` 
 2. Mast deliveries land in the mast's crate; Ledger rates from `ProductionTally`.
 3. Save version 1 and migration, `RestoreQuantity`, including a pack above its cap.
 4. The two inventory screens (`docs/inventory-screens-design.md`) and the `inventory` scenario.
-5. Guide rewrite (§8) and a playtest (`testscript/phase-1-playtest.md`).
+5. Guide rewrite (§8) and a playtest (`testscript/phase-1-playtest.md`). **Built** but for `post`
+   (§8.1); the playtest is the user's.
 6. Pneumatic Post (§10), as its own pass.
 
 Steps 1–3 are one PR's worth: the game is playable, if harder, after them.

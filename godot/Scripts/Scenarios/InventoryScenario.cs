@@ -460,14 +460,14 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void PlanGuideDock()
         {
-            Do("the guide on copper-depot, a step done in the crate screen", () =>
+            Do("the guide on smelt-feed, a step done in the crate screen", () =>
             {
-                _world.Tutorial.Restore("copper-depot", 0, false);
+                _world.Tutorial.Restore("smelt-feed", 0, false);
                 return null;
             });
             Do("the guide's plate clears both panels", () =>
             {
-                if (_world.Tutorial.CurrentStepId != "copper-depot" || !_world.Tutorial.Current.Crate)
+                if (_world.Tutorial.CurrentStepId != "smelt-feed" || !_world.Tutorial.Current.Crate)
                 {
                     return $"on '{_world.Tutorial.CurrentStepId}'";
                 }
@@ -481,7 +481,7 @@ namespace GolemFactory.Nodes.Scenarios
                     return $"plate {plate} overlaps a panel ({_crate.CratePanel.GetGlobalRect()}, {_crate.PackPanel.GetGlobalRect()})";
                 }
                 Shot("crate screen with the guide");
-                _log.Add($"guide: on copper-depot its plate {plate.Position}+{plate.Size} clears both panels");
+                _log.Add($"guide: on smelt-feed its plate {plate.Position}+{plate.Size} clears both panels");
                 return null;
             });
             Do("press Escape", () => { Tap(Key.Escape); return null; });

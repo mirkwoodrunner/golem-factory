@@ -115,7 +115,14 @@ namespace GolemFactory.Tests.Tutorial
             {
                 world.Advance(1f / 30f);
             }
-            Assert.AreEqual("gears", StepId(world), "a finished cycle ends chapter 1");
+            Assert.AreEqual("collect", StepId(world), "a finished cycle: the crate has Scrap in it");
+            Assert.AreEqual(world.Tutorial.DepotSpot, world.Tutorial.TargetCell, "the arrow points at the crate");
+
+            // E at the crate: what fits goes into the pack.
+            ICrate firstCrate = CrateAt(world, world.Tutorial.DepotSpot);
+            Assert.Greater(firstCrate.Buffer.GetQuantity(ItemType.Scrap), 0, "precondition: the golem pushed into the crate");
+            Assert.IsTrue(world.Interactor.TryCollect(firstCrate), world.Interactor.LastStatusMessage);
+            Assert.AreEqual("gears", StepId(world), "collecting ends chapter 1");
 
             // --- Chapter 2: the Brass Presser ---------------------------------------------------
             Give(world, ItemType.Gear, 10);
@@ -291,13 +298,17 @@ namespace GolemFactory.Tests.Tutorial
             smelter.Program.SetItemTypeAt(1, ItemType.Coke);
             Assert.IsTrue(smelter.Program.TryAddAppendage(defs.Appendages["AssembleIronSmelting"]));
             Assert.IsTrue(smelter.Program.TryAddAppendage(defs.Appendages["PushOutput"]));
-            Assert.AreEqual("work-smelter", StepId(world));
+            Assert.AreEqual("smelt-feed", StepId(world));
+            Assert.IsTrue(world.Tutorial.Current.Crate, "done on the crate screen");
+            Assert.AreEqual(world.Tutorial.SmeltInSpot, world.Tutorial.TargetCell);
 
             // Its Scrap and Coke by hand, into the crate behind it: a golem reaches only its crates.
             Give(world, ItemType.Scrap, 100);
             Give(world, ItemType.Coke, 100);
             Assert.AreEqual(40, CrateTransfer.Put(world.Wallet.Pack, CrateAt(world, world.Tutorial.SmeltInSpot), ItemType.Scrap, 40).Moved);
+            Assert.AreEqual("smelt-feed", StepId(world), "Scrap alone is not enough");
             Assert.AreEqual(20, CrateTransfer.Put(world.Wallet.Pack, CrateAt(world, world.Tutorial.SmeltInSpot), ItemType.Coke, 20).Moved);
+            Assert.AreEqual("work-smelter", StepId(world));
             smelter.SetPlacement(world.Tutorial.SmelterSpot, Facing.North);
             for (int frame = 0; frame < 900 && StepId(world) == "work-smelter"; frame++)
             {
@@ -322,12 +333,14 @@ namespace GolemFactory.Tests.Tutorial
             carrier.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
             carrier.Program.SetItemTypeAt(1, ItemType.Coke);
             carrier.Program.TryAddAppendage(defs.Appendages["PushOutput"]);
-            Assert.AreEqual("work-carrier", StepId(world));
+            Assert.AreEqual("carrier-feed", StepId(world));
+            Assert.IsTrue(world.Tutorial.Current.Crate, "done on the crate screen");
 
             Give(world, ItemType.Slag, 8);
             Give(world, ItemType.Coke, 4);
-            CrateTransfer.Put(world.Wallet.Pack, CrateAt(world, world.Tutorial.SmeltOutSpot), ItemType.Slag, 8);
             CrateTransfer.Put(world.Wallet.Pack, CrateAt(world, world.Tutorial.SmeltOutSpot), ItemType.Coke, 4);
+            Assert.AreEqual("work-carrier", StepId(world), "Coke in the output crate");
+            CrateTransfer.Put(world.Wallet.Pack, CrateAt(world, world.Tutorial.SmeltOutSpot), ItemType.Slag, 8);
             carrier.SetPlacement(world.Tutorial.CarrierSpot, Facing.North);
             for (int frame = 0; frame < 1200 && StepId(world) == "work-carrier"; frame++)
             {
@@ -514,9 +527,17 @@ namespace GolemFactory.Tests.Tutorial
             {
                 world.Advance(1f / 30f);
             }
-            Assert.AreEqual("tower-visit", StepId(world), $"the Zeppelin flies ({zeppelin.StallReason} {zeppelin.StallResourceId})");
+            Assert.AreEqual("mast-collect", StepId(world), $"the Zeppelin flies ({zeppelin.StallReason} {zeppelin.StallResourceId})");
+            Assert.AreEqual(world.Tutorial.MastSpot, world.Tutorial.TargetCell, "the arrow points at the mast");
+            for (int frame = 0; frame < 300 && mast.Buffer.GetQuantity(ItemType.CopperOre) == 0; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
             Assert.Greater(mast.Buffer.GetQuantity(ItemType.CopperOre), 0,
                 "the ore it flew landed in the mast's own crate");
+            Assert.AreEqual("mast-collect", StepId(world), "landing is not collecting");
+            Assert.IsTrue(world.Interactor.TryCollect(mast), world.Interactor.LastStatusMessage);
+            Assert.AreEqual("tower-visit", StepId(world), "collected from the mast");
 
             // --- Chapter 10: the Clock Tower -------------------------------------------------------
             Assert.IsTrue(world.ClockTower.Site.IsOpen, "the Zeppelin took the rope down");
@@ -1445,6 +1466,108 @@ namespace GolemFactory.Tests.Tutorial
                 fresh.Tutorial.Reopen();
                 Assert.IsTrue(fresh.Tutorial.IsShowing);
                 Assert.AreEqual("coal", fresh.Tutorial.Current.Id);
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
+        // --- Crates (crates-design §8): steps done by what was taken out or put in ---------------
+
+        [Test]
+        public void CollectFromTheCrate_IsDoneByTakingFromIt_NotByTheGolemFillingIt()
+        {
+            SandboxWorld world = Plenty();
+            Place(world, "DepotPrefab", world.Tutorial.DepotSpot.x, world.Tutorial.DepotSpot.y);
+            GoTo(world, "collect");
+            Assert.AreEqual(world.Tutorial.DepotSpot, world.Tutorial.TargetCell);
+
+            ICrate crate = CrateAt(world, world.Tutorial.DepotSpot);
+            crate.Buffer.Deposit(ItemType.Scrap, 12); // what the golem pushed
+            Assert.AreEqual("collect", StepId(world), "a full crate is not a collected one");
+            Assert.AreEqual("Scrap in the crate  12", world.Tutorial.Progress);
+
+            Assert.IsTrue(world.Interactor.TryCollect(crate));
+            Assert.AreNotEqual("collect", StepId(world), "E at the crate");
+        }
+
+        [Test]
+        public void FeedTheSmelter_WantsTwoScrapAndACokeInTheCrateBehindIt()
+        {
+            SandboxWorld world = Plenty();
+            Give(world, ItemType.Coke, 10);
+            Place(world, "DepotPrefab", world.Tutorial.SmeltInSpot.x, world.Tutorial.SmeltInSpot.y);
+            Place(world, "DepotPrefab", world.Tutorial.SmeltOutSpot.x, world.Tutorial.SmeltOutSpot.y);
+            GoTo(world, "smelt-feed");
+            Assert.IsTrue(world.Tutorial.Current.Crate, "the guide stays on show over the crate screen");
+            Assert.AreEqual(world.Tutorial.SmeltInSpot, world.Tutorial.TargetCell);
+
+            ICrate input = CrateAt(world, world.Tutorial.SmeltInSpot);
+            CrateTransfer.Put(world.Wallet.Pack, CrateAt(world, world.Tutorial.SmeltOutSpot), ItemType.Scrap, 5);
+            CrateTransfer.Put(world.Wallet.Pack, input, ItemType.Scrap, 1);
+            CrateTransfer.Put(world.Wallet.Pack, input, ItemType.Coke, 1);
+            Assert.AreEqual("smelt-feed", StepId(world), "one Scrap, and the other crate's don't count");
+            Assert.AreEqual("Scrap  1 / 2  ·  Coke  1 / 1", world.Tutorial.Progress);
+
+            CrateTransfer.Put(world.Wallet.Pack, input, ItemType.Scrap, 1);
+            Assert.AreEqual("work-smelter", StepId(world));
+        }
+
+        [Test]
+        public void CokeForTheCarrier_IsDoneByCokeInTheSmeltersOutputCrate()
+        {
+            SandboxWorld world = Plenty();
+            Give(world, ItemType.Coke, 10);
+            Give(world, ItemType.Slag, 10);
+            Place(world, "DepotPrefab", world.Tutorial.SmeltInSpot.x, world.Tutorial.SmeltInSpot.y);
+            Place(world, "DepotPrefab", world.Tutorial.SmeltOutSpot.x, world.Tutorial.SmeltOutSpot.y);
+            GoTo(world, "carrier-feed");
+            Assert.IsTrue(world.Tutorial.Current.Crate);
+
+            ICrate output = CrateAt(world, world.Tutorial.SmeltOutSpot);
+            CrateTransfer.Put(world.Wallet.Pack, output, ItemType.Slag, 8);
+            CrateTransfer.Put(world.Wallet.Pack, CrateAt(world, world.Tutorial.SmeltInSpot), ItemType.Coke, 5);
+            Assert.AreEqual("carrier-feed", StepId(world), "Slag alone, and Coke in the wrong crate");
+
+            CrateTransfer.Put(world.Wallet.Pack, output, ItemType.Coke, 1);
+            Assert.AreEqual("work-carrier", StepId(world));
+        }
+
+        [Test]
+        public void UnloadTheMast_IsDoneByTakingCopperOutOfItsCrate()
+        {
+            SandboxWorld world = Plenty();
+            Give(world, ItemType.Brass, 20);
+            Give(world, ItemType.Casing, 10);
+            Place(world, "FreightMastPrefab", world.Tutorial.MastSpot.x, world.Tutorial.MastSpot.y);
+            GoTo(world, "mast-collect");
+            Assert.AreEqual(world.Tutorial.MastSpot, world.Tutorial.TargetCell);
+
+            ICrate mast = CrateAt(world, world.Tutorial.MastSpot);
+            mast.Buffer.Deposit(ItemType.CopperOre, 6); // a flight landed
+            Assert.AreEqual("mast-collect", StepId(world), "landing is not unloading");
+
+            Assert.IsTrue(world.Interactor.TryCollect(mast));
+            Assert.AreEqual("tower-visit", StepId(world));
+        }
+
+        [Test]
+        public void TheCrateSteps_AreSavedAndLoadedByTheirIds()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "golem-factory-guide-" + System.Guid.NewGuid() + ".json");
+            try
+            {
+                foreach (string id in new[] { "collect", "smelt-feed", "carrier-feed", "mast-collect" })
+                {
+                    SandboxWorld world = Compose();
+                    GoTo(world, id);
+                    world.SaveTo(path);
+
+                    SandboxWorld fresh = Compose();
+                    fresh.LoadFrom(path);
+                    Assert.AreEqual(id, fresh.Tutorial.Current?.Id);
+                }
             }
             finally
             {

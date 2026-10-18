@@ -142,6 +142,7 @@ namespace GolemFactory.Tutorial
                 "ExtractScrap", "PushOutput"),
             ["depot"] = () => PlaceGranted("DepotPrefab", DepotSpot, Facing.North),
             ["work"] = () => LiveGolems.FirstOrDefault(IsProgrammed)?.SetPlacement(GolemSpot, GolemFacing),
+            ["collect"] = () => Collect(FirstDepot),
 
             ["gears"] = () => Grant(ItemType.Gear, 10),
             ["claim"] = () => Claim("AssembleScrapReclamation"),
@@ -238,8 +239,11 @@ namespace GolemFactory.Tutorial
                 ProgramSlots(Haulers.FirstOrDefault(),
                     ("HaulScrap", ItemType.Scrap, 2), ("HaulScrap", ItemType.Coke, 1),
                     ("AssembleIronSmelting", null, 1), ("PushOutput", null, 1));
-                // The smelter's goods, so its first cycle never waits on the market: into the
-                // pack, then by hand into the crate behind it, which is all a golem reaches.
+            },
+            // The smelter's goods, so its first cycle never waits on the market: into the pack,
+            // then by hand into the crate behind it, which is all a golem reaches.
+            ["smelt-feed"] = () =>
+            {
                 Feed(SmeltInSpot, ItemType.Scrap, 40);
                 Feed(SmeltInSpot, ItemType.Coke, 20);
             },
@@ -248,6 +252,7 @@ namespace GolemFactory.Tutorial
             ["carrier"] = () => BuildGolem("BrassPresser"),
             ["program-carrier"] = () => ProgramSlots(NewestPresser,
                 ("HaulScrap", ItemType.Slag, 4), ("HaulScrap", ItemType.Coke, 1), ("PushOutput", null, 1)),
+            ["carrier-feed"] = () => Feed(SmeltOutSpot, ItemType.Coke, 10),
             ["copper"] = () =>
             {
                 if (_world.Nodes.TryGetNode("CopperOreNode", out ResourceNode node))
@@ -322,6 +327,7 @@ namespace GolemFactory.Tutorial
             },
             ["program-zeppelin"] = () => ProgramSlots(Zeppelin, ("HaulScrap", ItemType.CopperOre, 1), ("FreightLaunch", null, 1)),
             ["launch"] = () => Zeppelin?.SetPlacement(ZeppelinSpot, CopperFacing),
+            ["mast-collect"] = () => Collect(MastBuilding),
             ["tower-visit"] = () =>
                 _world.Interactor.Teleport(new Compat.Vector3(TownSquare.TowerCentre.x, TownSquare.TowerCentre.y - 3, 0f)),
             ["frame-section"] = () => MakeGood("AssembleFrameSection", ItemType.FrameSection, 12),
@@ -373,6 +379,19 @@ namespace GolemFactory.Tutorial
             Grant(item, quantity);
             ICrate crate = Built.FirstOrDefault(b => b.Cell == cell)?.GetPart<ICrate>();
             CrateTransfer.Put(_world.Wallet.Pack, crate, item, quantity);
+        }
+
+        /// <summary>
+        /// E at <paramref name="building"/>'s crate. Until something has landed in it (a flight
+        /// still in the air) the kit tries again next frame rather than waiting on an empty crate.
+        /// </summary>
+        private void Collect(PlaceableBuilding building)
+        {
+            ICrate crate = building?.GetPart<ICrate>();
+            if (crate?.Buffer == null || crate.Buffer.Quantities.Count == 0 || !_world.Interactor.TryCollect(crate))
+            {
+                _kitPerformedIndex = -1;
+            }
         }
 
         private void GrantCost(IEnumerable<PunchCards.RecipeIngredient> cost)
@@ -450,8 +469,7 @@ namespace GolemFactory.Tutorial
             }
         }
 
-        /// <summary>Claims the card with this appendage: from its slot if offered, else granted.</summary>
-        /// <summary>A goal step: the card claimed, then the good in the stockpile.</summary>
+        /// <summary>A goal step: the card claimed, then the good in the pack.</summary>
         private void MakeGood(string card, string good, int quantity)
         {
             if (!HasClaimed(card))
@@ -461,6 +479,7 @@ namespace GolemFactory.Tutorial
             Grant(good, quantity);
         }
 
+        /// <summary>Claims the card with this appendage: from its slot if offered, else granted.</summary>
         private void Claim(string appendageName)
         {
             AssemblyLineState line = _world.AssemblyLine;

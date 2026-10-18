@@ -200,8 +200,8 @@ namespace GolemFactory.Nodes
 
             bool hasStock = _station.TryGetStockpile(out int scrap, out int brass);
             _stockLabel.Text = hasStock
-                ? "Stockpile:  " + scrap + " Scrap    " + brass + " Brass"
-                : "Stockpile:  empty -- harvest a resource node to start one.";
+                ? "Pack:  " + scrap + " Scrap    " + brass + " Brass"
+                : "Pack:  empty -- harvest a resource node to start one.";
             _stockLabel.AddThemeColorOverride("font_color", hasStock ? StockColor : SubtitleColor);
 
             string signature = Signature();

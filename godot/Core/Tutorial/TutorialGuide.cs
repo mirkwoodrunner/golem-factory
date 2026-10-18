@@ -143,7 +143,7 @@ namespace GolemFactory.Tutorial
     ///
     /// <para>
     /// <b>Every step is DETECTED, never ticked off by hand.</b> A step is done when the world shows
-    /// it (the stockpile holds the Coal, a boiler has Coke in it, a golem has finished a cycle),
+    /// it (the pack holds the Coal, a boiler has Coke in it, a golem has finished a cycle),
     /// so a player who does things early or in another order is carried straight past what they
     /// already did, and the guide can never claim something the factory does not show. Advancing
     /// is one-way: spending the Coal on Coke does not send the guide back a step.
@@ -566,8 +566,8 @@ namespace GolemFactory.Tutorial
         public Vector2Int BoilerSpot => StallCell + new Vector2Int(1, 1);
 
         // Chapter 2 extends the same column north: the Presser stands on the far side of the first
-        // depot, hauling the Scrap the Scavenger delivers (every depot is a door into the one
-        // stockpile), and pushes Iron Plate into a second depot in front of it. It is two tiles
+        // depot, hauling the Scrap the Scavenger delivers into that depot's crate (a golem reaches
+        // only the crates beside it), and pushes Iron Plate into a second depot in front of it. It is two tiles
         // from the boiler, so it needs the game's first steam pipe -- the lesson of Phase 2.
         //
         //     depot 2      <- the Presser pushes Iron Plate into it
@@ -756,7 +756,7 @@ namespace GolemFactory.Tutorial
 
         public Facing SmelterFacing => Plan.SmelterFacing;
 
-        /// <summary>Behind the smelter: its Scrap and Coke, from the stockpile.</summary>
+        /// <summary>Behind the smelter: its Scrap and Coke, put into the crate by hand (smelt-feed).</summary>
         public Vector2Int SmeltInSpot => Plan.SmeltIn;
 
         /// <summary>In front of the smelter, behind the carrier: Iron Plate and Slag land here.</summary>
@@ -834,6 +834,25 @@ namespace GolemFactory.Tutorial
         private PlaceableDepot DepotAt(Vector2Int cell) =>
             Built.FirstOrDefault(b => b.Cell == cell)?.GetPart<PlaceableDepot>();
 
+        private ICrate CrateOn(Vector2Int cell) => Built.FirstOrDefault(b => b.Cell == cell)?.GetPart<ICrate>();
+
+        private int InCrate(Vector2Int cell, string item) => CrateOn(cell)?.Buffer?.GetQuantity(item) ?? 0;
+
+        private string CrateCount(Vector2Int cell, string item, int goal) =>
+            $"{ItemTiers.DisplayName(item)}  {Math.Min(InCrate(cell, item), goal)} / {goal}";
+
+        /// <summary>"Scrap in the crate  12": what a collect step would take.</summary>
+        private string InTheCrate(Vector2Int cell, string item) => $"{ItemTiers.DisplayName(item)} in the crate  {InCrate(cell, item)}";
+
+        /// <summary>The first golem's depot: the one on its marked tile, else the first standing.</summary>
+        private PlaceableBuilding FirstDepot => Built.Where(IsDepot).OrderBy(b => b.Cell == DepotSpot ? 0 : 1).FirstOrDefault();
+
+        private PlaceableBuilding MastBuilding => Built.FirstOrDefault(b => b.GetPart<PlaceableFreightMast>() != null);
+
+        /// <summary>Whether anything was ever taken out of <paramref name="building"/>'s crate: E, a click or a golem's haul.</summary>
+        private static bool Withdrawn(PlaceableBuilding building, string item) =>
+            building?.GetPart<ICrate>()?.Buffer?.TotalWithdrawn(item) > 0;
+
         /// <summary>
         /// Chapter 8's shape: claim a recipe card, then make the good. No marked tiles -- by now the
         /// player has built every kind of line the recipe needs, and choosing where is the game.
@@ -850,8 +869,8 @@ namespace GolemFactory.Tutorial
                 workbench: true);
 
         // Chapter 9 flies the Copper home. The Zeppelin stands on the labelled Copper depot's far
-        // side with the depot behind it, hauls ore out and launches it to a Freight Mast, which lands it in the
-        // stockpile. One more pipe, on the copper run's top, gives it steam.
+        // side with the depot behind it, hauls ore out and launches it to a Freight Mast, which lands it in its
+        // own crate (mast-collect). One more pipe, on the copper run's top, gives it steam.
         //
         //     pipe  Zeppelin (faces up, depot behind)              Freight Mast
         //     pipe  labelled Copper depot
@@ -970,8 +989,8 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "depot", "Build a Depot",
-                "A golem delivers into whatever is in front of it. Build a Depot (15 Scrap) on the marked tile, "
-                + "two tiles out from the Scrap stall: the golem will stand between them. Another side of the stall "
+                "A golem delivers into whatever is in front of it. A Depot is a crate: it holds 50 of each good, and only "
+                + "golems beside it reach it. Build one (15 Scrap) on the marked tile, two tiles out from the Scrap stall: the golem will stand between them. Another side of the stall "
                 + "works too, and the marks follow it. Misplaced? Demolish refunds in full.",
                 w => Built.Any(b => b.Cell == DepotSpot && b.GetPart<PlaceableDepot>() != null),
                 w => ScrapFirst(15, DepotSpot),
@@ -990,6 +1009,17 @@ namespace GolemFactory.Tutorial
                     : LiveGolems.Where(IsProgrammed).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? GolemSpot,
                 spot: () => GolemSpot,
                 spotFacing: () => GolemFacing),
+
+            // crates-design §8: the verb the whole game runs on, taught where it is simplest. Any
+            // withdrawal counts (E, the crate screen), and nothing else in chapter 1 takes from it.
+            new TutorialStep(
+                "collect", "Collect from the crate",
+                "Your golem fills the depot's crate, not your pack: golems reach only the crates beside them, and "
+                + "you build from what you carry. Stand at the depot and press E to collect. You take what fits "
+                + "(your pack holds 100 of each good); the rest stays in the crate.",
+                w => Withdrawn(FirstDepot, ItemType.Scrap),
+                w => FirstDepot?.Cell ?? DepotSpot,
+                w => FirstDepot == null ? "" : InTheCrate(FirstDepot.Cell, ItemType.Scrap)),
 
             // --- Chapter 2: the first machine that CRAFTS --------------------------------------
             // progression-design §9 Phase 1's goal and Phase 2's lesson: a Scavenger gathers but
@@ -1015,7 +1045,8 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "presser", "Build a Brass Presser",
                 "At the construction station, press E and choose the Brass Presser "
-                + "(60 Scrap + 20 Iron Plate + 10 Gear). Your Scavenger's depot fills with Scrap while you work.",
+                + "(60 Scrap + 20 Iron Plate + 10 Gear). Short of Scrap? Your Scavenger's crate fills while you work: "
+                + "collect from it with E.",
                 w => Pressers.Any(),
                 w => ScrapFirst(60, Station),
                 w => Counts((ItemType.Scrap, 60), (ItemType.IronPlate, 20), (ItemType.Gear, 10))),
@@ -1033,8 +1064,8 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "depot2", "A depot for its output",
-                "Build a second Depot on the marked tile. The Presser will take Scrap from the first depot "
-                + "behind it and push Iron Plate into this one. Every depot opens onto the same stockpile.",
+                "Build a second Depot on the marked tile. The Presser reaches only the crates beside it: it will take "
+                + "Scrap from the first depot's crate behind it and push Iron Plate into this one.",
                 w => Built.Any(b => b.Cell == PresserDepotSpot && b.GetPart<PlaceableDepot>() != null),
                 w => ScrapFirst(15, PresserDepotSpot),
                 w => Count(ItemType.Scrap, 15),
@@ -1078,7 +1109,8 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "presser2", "A second Presser",
                 "Build another Brass Presser at the station (60 Scrap + 20 Iron Plate + 10 Gear). Your first "
-                + "Presser is making the Iron Plate; cut the Gears at the bench (R8) as before.",
+                + "Presser is making the Iron Plate: collect it from its crate with E. The crate holds 50, and when "
+                + "it is full the Presser stops and says so. Cut the Gears at the bench (R8) as before.",
                 w => Pressers.Count() >= 2,
                 w => ScrapFirst(60, Station),
                 w => Counts((ItemType.Scrap, 60), (ItemType.IronPlate, 20), (ItemType.Gear, 10))),
@@ -1237,7 +1269,8 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "smelt-depots", "Depots for the smelter",
                 "Build two Depots on the marked tiles, two apart with a free tile between: one behind the smelter "
-                + "for its Scrap and Coke, one in front for its Iron Plate. A pair of your own works too.",
+                + "for its Scrap and Coke, which you fill by hand, one in front for its Iron Plate. A pair of your "
+                + "own works too.",
                 w => new[] { SmeltInSpot, SmeltOutSpot }.All(c => Built.Any(b => b.Cell == c && b.GetPart<PlaceableDepot>() != null)),
                 w => new[] { SmeltInSpot, SmeltOutSpot }.Where(c => !Built.Any(b => b.Cell == c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
                 w => Count(ItemType.Scrap, 30),
@@ -1264,10 +1297,22 @@ namespace GolemFactory.Tutorial
                 w => Haulers.Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
                 workbench: true),
 
+            // Nothing brings Scrap or Coke to this crate yet, so the player does: the crate screen.
+            new TutorialStep(
+                "smelt-feed", "Feed the smelter",
+                "No golem brings Scrap or Coke to the smelter's crate yet, so you do. Stand at the depot behind the "
+                + "smelter's tile, press I, and click Scrap, then Coke, in your pack: a click moves all that fits, "
+                + "Shift-click moves one. Each cycle takes 2 Scrap and 1 Coke.",
+                w => (InCrate(SmeltInSpot, ItemType.Scrap) >= 2 && InCrate(SmeltInSpot, ItemType.Coke) >= 1)
+                    || Haulers.Any(g => IsSmelter(g) && _completedSinceEntry.Contains(g.GolemId)),
+                w => SmeltInSpot,
+                w => CrateCount(SmeltInSpot, ItemType.Scrap, 2) + "  \u00b7  " + CrateCount(SmeltInSpot, ItemType.Coke, 1),
+                crate: true),
+
             new TutorialStep(
                 "work-smelter", "Smelt",
                 "Put the Aether-Hauler on the marked tile between the two depots, facing the second. Watch what it "
-                + "pushes: Iron Plate, and Slag with it.",
+                + "pushes: Iron Plate, and Slag with it. Its crate holds 50 of each, and a full Slag slot stops it.",
                 w => Haulers.Any(g => IsSmelter(g) && _completedSinceEntry.Contains(g.GolemId)),
                 w => Haulers.Any(g => g.Cell == SmelterSpot) ? SmelterSpot
                     : Haulers.Where(IsSmelter).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? SmelterSpot,
@@ -1301,6 +1346,16 @@ namespace GolemFactory.Tutorial
                 workbench: true),
 
             new TutorialStep(
+                "carrier-feed", "Coke for the carrier",
+                "The carrier hauls from the smelter's output crate, and the smelter pushes Slag there but no Coke. "
+                + "Stand at that depot, press I, and click Coke in your pack.",
+                w => InCrate(SmeltOutSpot, ItemType.Coke) >= 1
+                    || Pressers.Any(g => IsCarrier(g) && _completedSinceEntry.Contains(g.GolemId)),
+                w => SmeltOutSpot,
+                w => CrateCount(SmeltOutSpot, ItemType.Coke, 1),
+                crate: true),
+
+            new TutorialStep(
                 "work-carrier", "Clear the Slag",
                 "Put the carrier on the marked tile between depot and heap, facing the heap. When the heap starts "
                 + "burning Slag, the iron line is safe.",
@@ -1318,7 +1373,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "copper", "Buy Copper Ore",
                 "Press E at the empty Copper stall to order a truckload (20 Scrap). When it arrives, take one "
-                + "by hand with E: a depot can only be labelled with a good you have.",
+                + "by hand with E: a crate's label can only name a good your factory has handled.",
                 w => Stock(ItemType.CopperOre) >= 1,
                 w => Stall("CopperOreNode"),
                 w => Count(ItemType.CopperOre, 1)),
@@ -1421,7 +1476,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "save", "Save",
                 "Press Tab, open Save/Load and click Save. Everything you built goes into the save: golems "
-                + "and their programs, buildings, the stockpile, your cards and this guide's place.",
+                + "and their programs, buildings, your pack and every crate, your cards and this guide's place.",
                 w => _world.SavesMade > 0,
                 w => null),
 
@@ -1437,7 +1492,8 @@ namespace GolemFactory.Tutorial
 
             Goal("copper-ingot", "Smelt Copper",
                 "From here the guide names a good and its card, and you choose where to build. Claim Copper "
-                + "Smelting and set an Aether-Hauler on it: Haul Copper Ore and Coke, Assemble, Push.",
+                + "Smelting and set an Aether-Hauler on it: Haul Copper Ore and Coke, Assemble, Push. Each line's "
+                + "crates are its own: feed them by hand, by golem or by belt.",
                 ItemType.CopperIngot, "AssembleCopperSmelting", "2 Copper Ore + 1 Coke → 1 Copper Ingot"),
 
             Goal("zinc-ingot", "Smelt Zinc",
@@ -1478,8 +1534,8 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "zeppelin-card", "Claim the Zeppelin",
-                "Everything it costs is in your stockpile now. Press Tab, open the Assembly Line and claim "
-                + "the Zeppelin Freight Loader.",
+                "Your factory has made everything it costs: collect what the card asks for into your pack. Press "
+                + "Tab, open the Assembly Line and claim the Zeppelin Freight Loader.",
                 w => HasClaimed("ZeppelinFreightLoader"),
                 w => null,
                 card: "ZeppelinFreightLoader"),
@@ -1504,7 +1560,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "mast", "Raise a Freight Mast",
-                "A Zeppelin flies to a Freight Mast, and the mast lands what it brings in the stockpile. "
+                "A Zeppelin flies to a Freight Mast, and the mast lands what it brings in its own crate. "
                 + "Build one on the marked tile (20 Brass + 10 Casing); anywhere would do.",
                 w => HasMast,
                 w => HasMast ? (Vector2Int?)null : MastSpot,
@@ -1540,6 +1596,15 @@ namespace GolemFactory.Tutorial
                 spot: () => ZeppelinSpot,
                 spotFacing: () => CopperFacing),
 
+            // Any withdrawal: E, the crate screen, or a golem the player stood beside the mast.
+            new TutorialStep(
+                "mast-collect", "Unload the mast",
+                "The Copper lands in the mast's own crate, 50 of each good, not in your pack. Press E at the mast "
+                + "to collect it, or stand a golem beside it to carry it on.",
+                w => Built.Any(b => b.GetPart<PlaceableFreightMast>() != null && Withdrawn(b, ItemType.CopperOre)),
+                w => MastBuilding?.Cell,
+                w => MastBuilding == null ? "" : InTheCrate(MastBuilding.Cell, ItemType.CopperOre)),
+
             // --- Chapter 10: the Clock Tower ------------------------------------------------------------
             // The endgame (G10, the user's call): the tower in the town square, roped off until a
             // Zeppelin flew, now open. It is built in stages, each demanding a steady RATE of a
@@ -1560,16 +1625,16 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "tower-feed", "Feed the tower",
-                "Every depot opens onto the stockpile, so build one in the square and stand a golem between it "
-                + "and the tower: Haul set to Frame Section, then Push. It pushes in from any side. It needs "
-                + "steam out here too: a boiler beside it, fuelled, or a pipe run from the workshop.",
+                "Build a depot in the square and stand a golem between it and the tower: Haul set to Frame "
+                + "Section, then Push; it pushes in from any side. The depot starts empty: fill its crate by belt or "
+                + "by hand. The golem needs steam out here too: a boiler beside it, fuelled, or a pipe run from the workshop.",
                 w => TowerSite.DeliveryRatePerMinute(ItemType.FrameSection) > 0,
                 w => TownSquare.TowerCentre),
 
             new TutorialStep(
                 "stage1", "Lay the Foundation",
                 "The tower builds at the rate you feed it, and it only counts Frame Sections your line is making "
-                + "now: a stockpile emptied into it builds nothing. Short of 6 a minute it still builds, just "
+                + "now: a pile emptied into it builds nothing. Short of 6 a minute it still builds, just "
                 + "slower. Keep the line running until the Foundation is laid.",
                 w => TowerSite.StageIndex >= 1 || TowerSite.IsComplete,
                 w => TownSquare.TowerCentre,

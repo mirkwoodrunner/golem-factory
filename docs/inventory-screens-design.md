@@ -251,9 +251,9 @@ Where the code differs from the spec above, and why.
    and the scenario would catch a refused deposit.
 2. **A move cut short says why.** "Moved 2 Coke into the crate · Crate full of Coke" (check 4 reads
    the second half); a whole move reads "Moved 30 Coke into the crate" or "... to your pack".
-3. **`smelt-feed` and `carrier-feed` don't exist yet** (the guide rewrite is step 5). `copper-depot`
-   sets `crate: true`, and its text now says "press I and choose Copper Ore for its label", since E
-   collects. Check 10 runs on `copper-depot`; step 5 sets the flag on the other two.
+3. **`copper-depot` sets `crate: true`**, and its text says "press I and choose Copper Ore for its
+   label", since E collects. `smelt-feed` and `carrier-feed` came with the guide rewrite (step 5)
+   and set it too; check 10 now runs on `smelt-feed`, as §6 says.
 4. **The Post waits for crates-design §10.** §4.5's Post rows and check 8's Post half are not built;
    `CrateScreenReadout.Title`/`CapLine` already name a crate that doesn't own its buffer "Pneumatic
    Post" (tested).

@@ -90,7 +90,7 @@ namespace GolemFactory.Tests.PlayMode
 
             Assert.IsFalse(player.TryRefuelBoiler(boiler));
             Assert.AreEqual(0, boiler.Boiler.CokeStock);
-            Assert.AreEqual("No Coke in the stockpile.", player.LastStatusMessage);
+            Assert.AreEqual("No Coke in your pack.", player.LastStatusMessage);
         }
 
         [Test]

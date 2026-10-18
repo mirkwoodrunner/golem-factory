@@ -1228,7 +1228,7 @@ namespace GolemFactory.Player
             int amount = BoilerRefuelPolicy.AmountToLoad(StockpileCoke, room: boiler.Boiler.CokeRoom);
             if (amount <= 0)
             {
-                LastStatusMessage = "No Coke in the stockpile.";
+                LastStatusMessage = "No Coke in your pack.";
                 Popup(at, "No Coke", InteractionPopupKind.Refused);
                 return false;
             }
@@ -1237,7 +1237,7 @@ namespace GolemFactory.Player
             // failed -- and the withdrawal is the operation that can fail.
             if (!Wallet.TryCharge(new[] { new RecipeIngredient(ItemType.Coke, amount) }))
             {
-                LastStatusMessage = "No Coke in the stockpile.";
+                LastStatusMessage = "No Coke in your pack.";
                 Popup(at, "No Coke", InteractionPopupKind.Refused);
                 return false;
             }

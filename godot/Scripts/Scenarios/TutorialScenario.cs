@@ -286,7 +286,46 @@ namespace GolemFactory.Nodes.Scenarios
                 _world.Golems.First(g => !g.IsRemoved).SetPlacement(_world.Tutorial.GolemSpot, World.Facing.North);
                 return null;
             });
-            Do("its first cycle opens chapter 2", () => _panel.TitleText == "Cut Gears" ? null : Wait);
+            // Its Scrap lands in the depot's crate, not the pack: chapter 1 ends on collecting it.
+            Do("its first cycle asks for a collect", () => _panel.TitleText == "Collect from the crate" ? null : Wait);
+            // The Workbench question waits in the plate's place; skip it so the step shows.
+            Do("skip the question over the collect step", () =>
+            {
+                if (_world.Tutorial.Playtest.Current == null)
+                {
+                    return null;
+                }
+                if (playtest.Card.Visible && ++_skipClickedAt % 10 == 0)
+                {
+                    Click(playtest.SkipButton);
+                }
+                return Wait;
+            });
+            Do("stand at the depot and press E", () =>
+            {
+                CoreVector2Int depot = _world.Tutorial.DepotSpot;
+                _world.Interactor.Teleport(new Compat.Vector3(depot.x, depot.y + 1f, 0f));
+                return null;
+            });
+            Do("tap E", () =>
+            {
+                if (!_panel.Plate.Visible || _panel.OffScreen)
+                {
+                    return Wait; // the player's teleport lands, and the plate comes back, a frame later
+                }
+                _log.Add($"frame {Engine.GetFramesDrawn()}: the collect step at the depot");
+                Tap(Key.E);
+                return null;
+            });
+            Do("collecting opens chapter 2", () =>
+            {
+                if (_panel.TitleText != "Cut Gears")
+                {
+                    return Wait;
+                }
+                _log.Add($"E at the depot collected ('{_world.Interactor.LastStatusMessage}'), and chapter 2 opened");
+                return null;
+            });
             Do("cut the Gears, claim Scrap Reclamation, build the Presser", () =>
             {
                 Give(ItemType.Gear, 30);
