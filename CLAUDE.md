@@ -120,11 +120,11 @@ ones. Current scenarios:
 - `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
   into the stockpile, over 600 ticks. `--spike-check` is an alias.
 - `inventory` (Sandbox): the Pack and Crate screens with real keys and clicks. I opens the pack
-  away from a crate and the crate's screen at one; I, E and Escape close them. Clicks put and
-  take all that fits, Shift moves one, and crate + pack per good never changes. The label
+  away from a crate and the crate's screen at one; I, E and Escape close them. A click moves
+  one, Shift-click all that fits, and crate + pack per good never changes. The label
   picker relabels the depot, a label refuses goods on the way in only, and a pack above its
   cap gives but takes nothing back. A mast's label is disabled; at a Post crate the left panel
-  is the Pneumatic Post, a click fills the store every Post crate shares, and the Pack screen
+  is the Pneumatic Post, a Shift-click fills the store every Post crate shares, and the Pack screen
   lists it under the pack. The guide's plate clears both
   panels, and the wrecking bar refuses a crate whose goods won't fit in the pack (the Post's
   room doesn't count), then refunds it exactly.
@@ -479,8 +479,8 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   buffer's level.
 - **`I` is the inventory key** (`PlayerNode.Inventory`, `PlayerInteractor.OpenInventory`): the
   Crate screen at a crate in reach, else the Pack screen. Nothing is bound to holding E.
-- **The screens' rules are `SandboxWorld.Inventory`** (`CrateScreenReadout`): rows, clicks (all
-  that fits, Shift one), status lines, and the label picker's options, every good the ledger has
+- **The screens' rules are `SandboxWorld.Inventory`** (`CrateScreenReadout`): rows, clicks (one;
+  Shift, all that fits, as automation games do), status lines, and the label picker's options, every good the ledger has
   seen. Moves go through `CrateTransfer`; `PlanTake`/`PlanPut` are the dry runs a row's refusal
   reads. `CrateScreen` and `PackScreen` only draw, through one `InventoryPanel` builder, and keep
   their rows by good. A step done in the Crate screen sets `TutorialStep.Crate`.

@@ -63,10 +63,12 @@ The action is registered in code with the others (`PlayerNode.RegisterInputActio
 
 ### 2.1 Transfer rules
 
-- **Amount:** a click moves **all that fits**; **Shift**-click moves **one**. `AmountFor(shift)`
-  returns `1` or `int.MaxValue`. All-that-fits is the cozy default: the common act is "fill this
-  crate" or "empty it", and a click never loses anything. One-at-a-time is for the careful case
-  (two Coke for a carrier).
+- **Amount:** a click moves **one**; **Shift**-click moves **all that fits**. `AmountFor(shift)`
+  returns `int.MaxValue` or `1`. **Decided (user, 2026-10-18)**, flipping the first build's
+  mapping: it is the convention automation-game inventories share (Factorio's and
+  Satisfactory's Shift-click moves the whole stack), so a player's hands already know it. A plain
+  click is the careful act (two Scrap and a Coke for a smelter) and Shift the bulk one ("fill this
+  crate", "empty it"); neither ever loses anything. Take all and E still move everything that fits.
 - **`Take(crate, pack, good, want)`**: moves `min(want, crate holds, pack.RoomFor(good))` from the
   crate to the pack. Labels don't apply (invariant 3). Refusals: "Pack full of Scrap", or "None
   left" when the crate has none.
@@ -127,7 +129,7 @@ sprites are `ManagementScreen`'s, so the screens read as the same family: `Heade
 | `Backdrop` | `Fill` | `Ugui.Rect`, `(0.055, 0.045, 0.038, 0.80)`: the world stays faintly visible |
 | Crate screen: `CratePanel` | `0, 0.5, 0, 0.5,  140, 0,  380, 520,  0, 0.5` | x 140–520, y 100–620 from the top |
 | Crate screen: `PackPanel` | `0, 0.5, 0, 0.5,  536, 0,  380, 520,  0, 0.5` | x 536–916; 16 px gap |
-| Crate screen: `Hint` | `0, 0.5, 0, 0.5,  528, -272,  776, 18,  0.5, 1` | `Ugui.Text` 12, `DimInk`, centred: "Click a good to move what fits · Shift-click moves one" |
+| Crate screen: `Hint` | `0, 0.5, 0, 0.5,  528, -272,  776, 18,  0.5, 1` | `Ugui.Text` 12, `DimInk`, centred: "Click moves one · Shift-click moves what fits" |
 | Pack screen: `PackPanel` | `0.5, 0.5, 0.5, 0.5,  0, 0,  380, 520,  0.5, 0.5` | x 450–830 |
 | Pack screen: `Hint` | `0.5, 0.5, 0.5, 0.5,  0, -272,  380, 18,  0.5, 1` | "Stand at a crate and press I to fill it from here." |
 
@@ -208,16 +210,16 @@ control clicked a frame after the screen opened). It checks:
    and is `Unavailable`; a harvest at the Scrap stall is refused and the stall keeps its unit.
 3. **Crate screen.** `I` at the depot opens it with both panels; the Workbench and Management are
    closed (`OpenCount` 1); the world prompt is hidden.
-4. **Put and take.** With 30 Coke in the pack and none in the crate, clicking Coke moves all 30;
-   with 30 more in the pack and the crate at 48, a click moves 2 and the status says "Crate full
-   of Coke"; Shift-click moves exactly one; clicking
+4. **Put and take.** With 30 Coke in the pack and none in the crate, Shift-clicking Coke moves all
+   30; with 30 more in the pack and the crate at 48, a Shift-click moves 2 and the status says
+   "Crate full of Coke"; a plain click on Coke in the crate moves exactly one; Shift-clicking
    Scrap in the crate takes it back. After every click, crate + pack per good is unchanged.
 5. **Label.** The picker lists "Any" first and only goods the ledger has seen; picking Copper Ore
    relabels the depot (`FilterItemType`), and the tile's endpoint is now a `FilteredBufferEndpoint`.
    Then a Scrap click in the pack is refused "This crate is for Copper Ore" with nothing moved,
    while the Scrap already inside can still be taken out.
 6. **Take all** empties what fits, as `E` does.
-7. **Above the cap.** A pack restored at 140 Scrap shows "140/100", gives Scrap to the crate, and
+7. **Above the cap.** A pack restored at 140 Scrap shows "140/100", gives one Scrap to the crate on a click, and
    refuses to take any back until it is under 100.
 8. **Mast and Post.** At a Freight Mast the label button is disabled; at a Post crate the left
    panel is titled "Pneumatic Post" and moves into the shared store; the Pack screen then lists the
@@ -279,4 +281,7 @@ Where the code differs from the spec above, and why.
     prompt ends "· [I] open".
 11. **Check 2's depot is placed through `BuildModeController`**, as the `interact` scenario's is;
     the `build` scenario covers the menu.
+12. **Click and Shift-click swapped** (user, 2026-10-18; §2.1): a click moves one, Shift-click all
+    that fits, as in Factorio and Satisfactory. The hint, the guide's `smelt-feed` text, the
+    `inventory` scenario's checks 4, 7 and 8 and the playtest script changed with it.
 

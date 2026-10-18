@@ -162,8 +162,8 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(total, Pack(world, ItemType.Scrap) + crate.Buffer.GetQuantity(ItemType.Scrap));
 
             Give(world, ItemType.CopperOre, 60);
-            TransferResult put = CrateTransfer.Put(world.Wallet.Pack, crate, ItemType.CopperOre, CrateTransfer.AmountFor(shift: false));
-            Assert.AreEqual(50, put.Moved, "all that fits: the crate's 50");
+            TransferResult put = CrateTransfer.Put(world.Wallet.Pack, crate, ItemType.CopperOre, CrateTransfer.AmountFor(shift: true));
+            Assert.AreEqual(50, put.Moved, "Shift: all that fits, the crate's 50");
             Assert.AreEqual(10, Pack(world, ItemType.CopperOre));
             Assert.AreEqual("Crate full of Copper Ore", CrateTransfer.Put(world.Wallet.Pack, crate, ItemType.CopperOre, 1).Refusal);
         }

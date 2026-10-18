@@ -33,7 +33,7 @@ the same folder before starting a new one. Send all of them.
 |---|---|
 | **WASD** | Move |
 | **E** | Interact: **tap** to harvest a stall, order a truckload from an empty one, fuel a boiler, collect from a crate (a depot or a Freight Mast: you take what fits, the rest stays), or program a golem. **Hold** at a stall to keep harvesting, or at the Hand-Crank Bench to crank. |
-| **I** | Your pack. Standing at a crate, the crate's screen instead: crate and pack side by side. Click a good to move what fits, Shift-click to move one. The crate's label is set here. **I**, **E** or **Escape** closes it. |
+| **I** | Your pack. Standing at a crate, the crate's screen instead: crate and pack side by side. Click a good to move one, Shift-click to move what fits. The crate's label is set here. **I**, **E** or **Escape** closes it. |
 | **R** | Turn the build ghost while holding a placeable, or the golem you are carrying. Otherwise, cycle the bench's recipe, or turn the golem you are standing by. |
 | **G** | Pick up the golem you stand by; press again to set it down. While you carry it, an outline on the floor shows the tile it will land on (red where it can't), with the tiles it will take from and push to. |
 | **1–9, 0, -, =** | Pick a build-menu tile. **X** is Demolish. Hover a tile for its cost. |
@@ -82,14 +82,15 @@ moments to watch.
 - **Crates filling and emptying.** A crate stops at 50. A golem pushing into a full crate stops
   with "Crate(x,y) full"; one hauling from an empty crate stops with "no input". Watch the
   Presser's output crate in chapter 2 and the smelter's in chapter 5.
-- **Feeding a converter by hand (chapter 5).** Press **I** at the smelter's input depot and click
-  Scrap, then Coke, in your pack. Shift-click moves one. Is the screen obvious?
+- **Feeding a converter by hand (chapter 5).** Press **I** at the smelter's input depot and
+  Shift-click Scrap, then Coke, in your pack to move all that fits. A plain click moves one. Is the
+  screen obvious, and did Shift-click do what your hands expected?
 - **The label picker (chapter 6).** On the crate screen, click the label and pick Copper Ore. A
   labelled crate refuses other goods from your pack, and still lets you take out what was already
   in it.
 - **Demolishing a full crate (X).** Its cost and its contents come back into your pack. With your
-  pack too full, the wrecking bar refuses and says "pack full of ___": nothing is torn down. Try
-  both.
+  pack too full, the wrecking bar refuses and says "pack full of ___", even with room in the Post:
+  nothing is torn down. Try both.
 - **The mast's crate (chapter 9).** The Zeppelin's freight lands in the mast's own crate, not your
   pack. Collect it with E, or stand a golem beside the mast.
 - **The Pneumatic Post (chapter 8).** Every Post crate opens onto one shared store. A golem pushing

@@ -19,14 +19,14 @@ namespace GolemFactory.Nodes.Scenarios
     ///   <item>I away from a crate opens the Pack screen over a hidden HUD; I, E and Escape close it.</item>
     ///   <item>E at a crate collects what fits; a full pack greys the crate and the Scrap stall.</item>
     ///   <item>I at the crate opens the Crate screen alone, with both panels, the prompt hidden.</item>
-    ///   <item>Clicks put and take all that fits, Shift moves one, a short move says why; crate +
+    ///   <item>A click moves one, Shift-click all that fits, a short move says why; crate +
     ///   pack per good never changes.</item>
     ///   <item>The label picker offers "Any" and the ledger's goods; Copper Ore relabels the depot
     ///   and its tile; Scrap is then refused on the way in and still comes out.</item>
     ///   <item>Take all is E's collect.</item>
     ///   <item>A pack above its cap shows it, gives, and takes nothing back until under it.</item>
     ///   <item>A Freight Mast's label button is disabled. At a Post crate the left panel is the
-    ///   Pneumatic Post, a click moves into the store every Post crate shares, and the Pack
+    ///   Pneumatic Post, a Shift-click moves into the store every Post crate shares, and the Pack
     ///   screen then lists the store under the pack.</item>
     ///   <item>On a guide step done in the crate screen, the guide's plate clears both panels.</item>
     ///   <item>The wrecking bar refuses a crate whose Scrap won't fit in the pack, whatever room
@@ -310,7 +310,7 @@ namespace GolemFactory.Nodes.Scenarios
                 Snapshot();
                 return null;
             });
-            Do("click Coke in the pack", () => Click(_crate.PackRows, ItemType.Coke));
+            Do("Shift-click Coke in the pack", () => Click(_crate.PackRows, ItemType.Coke, shift: true));
             Do("all 30 went in", () => Moved(ItemType.Coke, crate: 30, pack: 0));
             Do("30 more in the pack, the crate at 48", () =>
             {
@@ -319,14 +319,14 @@ namespace GolemFactory.Nodes.Scenarios
                 Snapshot();
                 return null;
             });
-            Do("click Coke in the pack", () => Click(_crate.PackRows, ItemType.Coke));
+            Do("Shift-click Coke in the pack", () => Click(_crate.PackRows, ItemType.Coke, shift: true));
             string full = null;
             Do("2 went in, and the status says the crate is full", () =>
             {
                 full = _crate.Status;
                 return Moved(ItemType.Coke, crate: 50, pack: 28) ?? (full.Contains("Crate full of Coke") ? null : $"status '{full}'");
             });
-            Do("Shift-click Coke in the crate", () => Click(_crate.CrateRows, ItemType.Coke, shift: true));
+            Do("click Coke in the crate", () => Click(_crate.CrateRows, ItemType.Coke));
             Do("exactly one came out", () =>
             {
                 string failure = Moved(ItemType.Coke, crate: 49, pack: 29);
@@ -336,9 +336,9 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 return failure;
             });
-            Do("click Scrap in the crate", () => Click(_crate.CrateRows, ItemType.Scrap));
+            Do("Shift-click Scrap in the crate", () => Click(_crate.CrateRows, ItemType.Scrap, shift: true));
             Do("it came back to the pack", () => Moved(ItemType.Scrap, crate: 0, pack: 65));
-            Do("put and take", () => { _log.Add($"put 30, then 2 ('{full}'), Shift took 1, Scrap came back; totals held"); return null; });
+            Do("put and take", () => { _log.Add($"put 30, then 2 ('{full}'), a click took 1, Scrap came back; totals held"); return null; });
         }
 
         // --- 5. Label ---------------------------------------------------------------------------
@@ -391,7 +391,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("click Scrap in the pack", () => { Snapshot(); return Click(_crate.PackRows, ItemType.Scrap); });
             Do("refused for the label, nothing moved", () =>
                 Moved(ItemType.Scrap, crate: 5, pack: 65) ?? (_crate.Status == "This crate is for Copper Ore" ? null : $"status '{_crate.Status}'"));
-            Do("click Scrap in the crate", () => Click(_crate.CrateRows, ItemType.Scrap));
+            Do("Shift-click Scrap in the crate", () => Click(_crate.CrateRows, ItemType.Scrap, shift: true));
             Do("the Scrap inside still comes out", () =>
             {
                 string failure = Moved(ItemType.Scrap, crate: 0, pack: 70);
@@ -435,10 +435,10 @@ namespace GolemFactory.Nodes.Scenarios
                 Snapshot();
                 return null;
             });
-            Do("its row reads 140/100; Shift-click it", () =>
+            Do("its row reads 140/100; click it", () =>
             {
                 string text = (_crate.PackRows.TryGetValue(ItemType.Scrap, out Button row) ? row.FindChild("Quantity", true, false) as Label : null)?.Text;
-                return text != "140/100" ? $"row reads '{text}'" : Click(_crate.PackRows, ItemType.Scrap, shift: true);
+                return text != "140/100" ? $"row reads '{text}'" : Click(_crate.PackRows, ItemType.Scrap);
             });
             Do("one went into the crate", () => Moved(ItemType.Scrap, crate: 1, pack: 139));
             Do("click Scrap in the crate", () => Click(_crate.CrateRows, ItemType.Scrap));
@@ -450,7 +450,7 @@ namespace GolemFactory.Nodes.Scenarios
                 Snapshot();
                 return null;
             });
-            Do("click Scrap in the crate", () => Click(_crate.CrateRows, ItemType.Scrap));
+            Do("Shift-click Scrap in the crate", () => Click(_crate.CrateRows, ItemType.Scrap, shift: true));
             Do("now it comes back", () =>
             {
                 string failure = Moved(ItemType.Scrap, crate: 0, pack: 100);
@@ -563,7 +563,7 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 return _crate.CrateRows.ContainsKey(ItemType.Scrap) ? null : "the store's Scrap has no row";
             });
-            Do("click Coke in the pack", () => Click(_crate.PackRows, ItemType.Coke));
+            Do("Shift-click Coke in the pack", () => Click(_crate.PackRows, ItemType.Coke, shift: true));
             Do("all 30 moved into the shared store", () =>
             {
                 int post = _world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Coke);

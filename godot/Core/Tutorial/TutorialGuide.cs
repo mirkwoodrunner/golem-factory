@@ -1311,8 +1311,8 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "smelt-feed", "Feed the smelter",
                 "No golem brings Scrap or Coke to the smelter's crate yet, so you do. Stand at the depot behind the "
-                + "smelter's tile, press I, and click Scrap, then Coke, in your pack: a click moves all that fits, "
-                + "Shift-click moves one. Each cycle takes 2 Scrap and 1 Coke.",
+                + "smelter's tile, press I, and Shift-click Scrap, then Coke, in your pack: Shift-click moves all "
+                + "that fits, a click moves one. Each cycle takes 2 Scrap and 1 Coke.",
                 w => (InCrate(SmeltInSpot, ItemType.Scrap) >= 2 && InCrate(SmeltInSpot, ItemType.Coke) >= 1)
                     || Haulers.Any(g => IsSmelter(g) && _completedSinceEntry.Contains(g.GolemId)),
                 w => SmeltInSpot,
@@ -1358,7 +1358,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "carrier-feed", "Coke for the carrier",
                 "The carrier hauls from the smelter's output crate, and the smelter pushes Slag there but no Coke. "
-                + "Stand at that depot, press I, and click Coke in your pack.",
+                + "Stand at that depot, press I, and Shift-click Coke in your pack to move all that fits.",
                 w => InCrate(SmeltOutSpot, ItemType.Coke) >= 1
                     || Pressers.Any(g => IsCarrier(g) && _completedSinceEntry.Contains(g.GolemId)),
                 w => SmeltOutSpot,

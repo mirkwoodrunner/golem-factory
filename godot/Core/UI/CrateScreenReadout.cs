@@ -187,14 +187,14 @@ namespace GolemFactory.UI
 
         // --- Clicks ----------------------------------------------------------------------------
 
-        /// <summary>A crate row's click: all that fits into the pack, or one with Shift. Returns the status line.</summary>
+        /// <summary>A crate row's click: one into the pack, or all that fits with Shift. Returns the status line.</summary>
         public string Take(ICrate crate, string itemType, bool shift)
         {
             TransferResult moved = CrateTransfer.Take(crate, Pack, itemType, CrateTransfer.AmountFor(shift));
             return Said(moved, "to your pack", CrateTransfer.PlanTake(crate, Pack, itemType, 1));
         }
 
-        /// <summary>A pack row's click: all that fits into the crate, or one with Shift. Returns the status line.</summary>
+        /// <summary>A pack row's click: one into the crate, or all that fits with Shift. Returns the status line.</summary>
         public string Put(ICrate crate, string itemType, bool shift)
         {
             TransferResult moved = CrateTransfer.Put(Pack, crate, itemType, CrateTransfer.AmountFor(shift));

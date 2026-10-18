@@ -59,29 +59,29 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void Put_MovesAllThatFits_ShiftMovesOne_AndAShortMoveSaysWhy()
+        public void Put_ShiftMovesAllThatFits_AClickMovesOne_AndAShortMoveSaysWhy()
         {
             SandboxWorld world = Compose();
             ICrate crate = PlaceDepot(world, new Vector2Int(4, 4));
             Give(world, ItemType.Coke, 30);
 
-            Assert.AreEqual("Moved 30 Coke into the crate", world.Inventory.Put(crate, ItemType.Coke, shift: false));
+            Assert.AreEqual("Moved 30 Coke into the crate", world.Inventory.Put(crate, ItemType.Coke, shift: true));
             Assert.AreEqual(30, crate.Buffer.GetQuantity(ItemType.Coke));
             Assert.AreEqual(0, Pack(world, ItemType.Coke));
 
             Give(world, ItemType.Coke, 30);
             crate.Buffer.Deposit(ItemType.Coke, 18);
             int total = Total(world, crate, ItemType.Coke);
-            Assert.AreEqual("Moved 2 Coke into the crate · Crate full of Coke", world.Inventory.Put(crate, ItemType.Coke, shift: false));
+            Assert.AreEqual("Moved 2 Coke into the crate · Crate full of Coke", world.Inventory.Put(crate, ItemType.Coke, shift: true));
             Assert.AreEqual(50, crate.Buffer.GetQuantity(ItemType.Coke));
             Assert.AreEqual(total, Total(world, crate, ItemType.Coke), "nothing lost, nothing made");
 
             CrateScreenRow coke = world.Inventory.PackRows(crate).Single(r => r.ItemType == ItemType.Coke);
             Assert.IsFalse(coke.CanMove);
             Assert.AreEqual("Crate full of Coke", coke.Reason);
-            Assert.AreEqual("Crate full of Coke", world.Inventory.Put(crate, ItemType.Coke, shift: false));
+            Assert.AreEqual("Crate full of Coke", world.Inventory.Put(crate, ItemType.Coke, shift: true));
 
-            Assert.AreEqual("Moved 1 Coke to your pack", world.Inventory.Take(crate, ItemType.Coke, shift: true));
+            Assert.AreEqual("Moved 1 Coke to your pack", world.Inventory.Take(crate, ItemType.Coke, shift: false));
             Assert.AreEqual(49, crate.Buffer.GetQuantity(ItemType.Coke));
             Assert.AreEqual(total, Total(world, crate, ItemType.Coke));
         }
@@ -115,7 +115,7 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(total, Total(world, crate, ItemType.Scrap));
             Assert.AreEqual(5, crate.Buffer.GetQuantity(ItemType.Scrap), "goods already inside stay");
 
-            Assert.AreEqual("Moved 5 Scrap to your pack", world.Inventory.Take(crate, ItemType.Scrap, shift: false));
+            Assert.AreEqual("Moved 5 Scrap to your pack", world.Inventory.Take(crate, ItemType.Scrap, shift: true));
             Assert.AreEqual(total, Total(world, crate, ItemType.Scrap));
 
             world.Inventory.SetLabel(crate, null);
@@ -133,8 +133,8 @@ namespace GolemFactory.Tests.EditMode
             CrateScreenRow scrap = world.Inventory.PackRows(crate).Single(r => r.ItemType == ItemType.Scrap);
             Assert.AreEqual("140/100", scrap.QuantityText);
             Assert.IsTrue(scrap.Bar.IsFull);
-            Assert.AreEqual("Moved 1 Scrap into the crate", world.Inventory.Put(crate, ItemType.Scrap, shift: true));
-            Assert.AreEqual("Pack full of Scrap", world.Inventory.Take(crate, ItemType.Scrap, shift: true));
+            Assert.AreEqual("Moved 1 Scrap into the crate", world.Inventory.Put(crate, ItemType.Scrap, shift: false));
+            Assert.AreEqual("Pack full of Scrap", world.Inventory.Take(crate, ItemType.Scrap, shift: false));
             Assert.AreEqual("Pack full of Scrap", world.Inventory.CrateRows(crate).Single().Reason);
             Assert.AreEqual(139, Pack(world, ItemType.Scrap));
             Assert.AreEqual(1, crate.Buffer.GetQuantity(ItemType.Scrap));

@@ -8,14 +8,14 @@ namespace GolemFactory.Nodes
 {
     /// <summary>
     /// The Crate screen ([I] at a crate, docs/inventory-screens-design.md): the crate and the pack
-    /// side by side, a click moving a good across (all that fits; Shift, one), Take all, and the
+    /// side by side, a click moving a good across (one; Shift, all that fits), Take all, and the
     /// crate's label picker. Left of centre, so the guide's plate stays readable over it. Every
     /// rule is Core's <see cref="CrateScreenReadout"/>; this node draws and forwards clicks.
     /// </summary>
     public partial class CrateScreen : CanvasLayer, ICrateScreen, IClosableScreen
     {
         private const string Steampunk = ManagementScreen.Ui + "Steampunk/";
-        public const string Hint = "Click a good to move what fits · Shift-click moves one";
+        public const string Hint = "Click moves one · Shift-click moves what fits";
 
         private SandboxWorld _world;
         private Control _root;

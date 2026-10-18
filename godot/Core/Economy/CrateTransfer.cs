@@ -29,8 +29,11 @@ namespace GolemFactory.Economy
     /// </summary>
     public static class CrateTransfer
     {
-        /// <summary>A click moves all that fits; a Shift-click moves one.</summary>
-        public static int AmountFor(bool shift) => shift ? 1 : int.MaxValue;
+        /// <summary>
+        /// A click moves one; a Shift-click moves all that fits, as automation games' inventories
+        /// do (user, 2026-10-18; inventory spec §2.1).
+        /// </summary>
+        public static int AmountFor(bool shift) => shift ? int.MaxValue : 1;
 
         /// <summary>The refusal when the giving side holds none of the good.</summary>
         public const string NoneLeft = "None left";
