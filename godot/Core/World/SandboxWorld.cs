@@ -646,6 +646,7 @@ namespace GolemFactory.World
             Build.ConfigureStationWiring(this);
             Build.ConfigureGolemRoster(() => _golems);
             Build.BuildingPlaced += OnBuildingPlaced;
+            Build.BuildingRemoved += OnBuildingRemoved;
         }
 
         /// <summary>A roster field: chassis names, comma-separated, or "all".</summary>
@@ -722,6 +723,26 @@ namespace GolemFactory.World
             if (station != null)
             {
                 AddStation(station);
+            }
+
+            // A bench from the build menu is a clone of the catalog's prefab, which has no
+            // registry: wired here to the wallet and the clock, as the starter bench is in
+            // Compose, or it never crafts (found in the Phase 1 critique; older than crates).
+            HandCrankBench bench = building.GetPart<HandCrankBench>();
+            if (bench != null)
+            {
+                bench.ConfigureStockpile(Buffers, _stockpileBufferId, PostBufferId);
+                Clock.Register(bench);
+            }
+        }
+
+        private void OnBuildingRemoved(PlaceableBuilding building)
+        {
+            HandCrankBench bench = building.GetPart<HandCrankBench>();
+            if (bench != null)
+            {
+                bench.IsCranking = false;
+                Clock.Unregister(bench);
             }
         }
 

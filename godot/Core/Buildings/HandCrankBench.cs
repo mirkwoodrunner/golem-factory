@@ -64,9 +64,14 @@ namespace GolemFactory.Buildings
             RebuildCrankableList();
         }
 
-        public void ConfigureStockpile(StorageBufferRegistry buffers, string bufferId)
+        /// <summary>
+        /// The pack (and the Post) a bench placed from the build menu crafts from: the catalog's
+        /// prefab is built before any registry exists, so the world wires each placed one.
+        /// </summary>
+        public void ConfigureStockpile(StorageBufferRegistry buffers, string bufferId, string postId = null)
         {
             stockpile = buffers;
+            postBufferId = postId;
             if (!string.IsNullOrEmpty(bufferId))
             {
                 stockpileBufferId = bufferId;

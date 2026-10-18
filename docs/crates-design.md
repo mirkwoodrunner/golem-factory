@@ -1,6 +1,6 @@
 # Crates: local storage, and the pack
 
-**Status: built, pending review (Phase 1 of `docs/roadmap.md`).** §5's questions were
+**Status: built and reviewed (Phase 1 of `docs/roadmap.md`; the critique's corrections are §11).** §5's questions were
 answered on 2026-10-18; the rest of the document was then checked against the code and turned
 into a buildable spec. Like `cozy-automation-design.md`, it is written before the code and should
 be kept as written afterwards, with corrections recorded rather than hidden (§6 lists the ones
@@ -476,3 +476,58 @@ Where the code differs from §10 and §8's `post` row, and why.
 10. **Open: §4.7 is not built.** The Inventory tab still sorts every buffer by id, so the Post
     shows as "PneumaticPost" between the crates and the pack. It reads correctly and was never
     part of a step's tests; the display headers and cell order wait for a polish pass.
+
+## 11. Corrections from the Phase 1 critique (2026-10-18)
+
+The implementation (`2e9b174..ecf2592`) was read against §0, §5 and the root `CLAUDE.md`'s
+rules. Two defects were fixed, each with a test written failing first:
+
+1. **A refund naming a good twice could lose goods.** `PlayerWallet.FirstMisfit` asked about each
+   line on its own, so two lines of Scrap that fit apart but not together passed the check, and
+   `Refund` deposited the first line and clamped the second. `TryCharge` already summed a good
+   named twice. Both now sum per good. No caller in the game passed such a bundle, since
+   `RefundFor` and `GolemDismantleRules.ComposeRefund` merge their lines, but `Refund` promised
+   "all or nothing" to any caller. Test: `CrateTests.ARefundNamingAGoodTwice_IsCheckedWhole_AndLosesNothing`.
+2. **A Hand-Crank Bench placed from the build menu never crafted.** It is a clone of the
+   catalog's prefab, which is built with no registry, and nothing put it on the clock. Only the
+   starter bench, wired in `SandboxWorld.Compose`, worked. This bug predates crates (G5 deferred
+   "cranking a placed bench" to G6, and nothing wired it), so it is not a Phase 1 regression.
+   `SandboxWorld.OnBuildingPlaced` now gives a placed bench the pack and the Post and registers it
+   with the clock, and `OnBuildingRemoved` takes it off. A load's rebuild goes through the same
+   two events. Test: `CrateTests.APlacedHandCrankBench_CranksFromThePack_LikeTheStarterOne`.
+
+Checked and kept, with the reasons:
+
+- **The kit grants goods** (`smelt-feed`'s 40 Scrap and 20 Coke, then `Put`). Every chapter's kit
+  does this: `scrap`, `coal`, `iron`, `gears`, and `GrantCost` before every `PlaceGranted` and
+  `BuildGolem`. Before §8, `program-smelter` granted the same 40 and 20. The "player's own verbs"
+  rule is about the act that completes a step (`CrateTransfer.Put` is the crate screen's click),
+  not about where the kit's goods come from. `Grant` clamps at the pack's cap, so `Feed` can draw
+  on goods the player already holds. That matters only in a kit run.
+- **Floor Expansion's clamp at the pack's cap** keeps §6.1's rule that every price fits in a
+  full pack (§10.1.8).
+- **A refund overflows into the Post** before the wrecking bar refuses. §0.8 and §4.4 say so.
+- **A full mast crate stalls the Zeppelin; it does not lose the cargo.** A launch pushes at the
+  start of its step through `PushStockInto`, so a full crate refuses (`BeltFull`) and the goods
+  stay in the golem's stock.
+- **The Ledger's rates count no extraction and no bench craft.** A Ledger rate belongs to a
+  recipe node, and extraction has none, so an extraction-only line has no rate that could read
+  zero. A bench craft is the player's hands, not the factory's production, which matches the
+  Clock Tower's rule for fresh goods.
+- **A depot with an explicit `bufferId`** (a Post crate, or a test's `FactoryStockpile`) does not
+  own its buffer. Demolishing it refunds its cost only, and neither `RefundFor` nor
+  `StorageBufferRegistry.Remove` touches the shared buffer.
+- **The `I` key** is read in `_UnhandledInput`, which a focused text field never reaches, so it
+  needs no `TextEntry.IsTyping` check. The E-after-close guard (inventory spec §8.9) holds, and
+  the save still calls `TutorialGuide.Settle`. No enum changed, and no step `Id` was renamed or
+  removed.
+
+Open, for the user:
+
+- **Demolition is a way into the Post.** Collecting fills only the pack, but a crate's contents
+  that don't fit in the pack are refunded into the Post (§0.8). A player can demolish a full
+  crate far away and pick the goods up at any Post crate. That is a remote move, and §7 of the
+  inventory spec leaves remote moves to the Post. The design allows it as written.
+- **A building skipped on load loses what it holds.** This is an older rule (a boiler's Coke goes
+  the same way), but before crates a depot held nothing of its own. A save names its depots by
+  prefab key and cell, so a renamed prefab or a blocked cell now drops a crate's goods.

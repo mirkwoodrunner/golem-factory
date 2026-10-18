@@ -108,14 +108,39 @@ namespace GolemFactory.Economy
             {
                 return null;
             }
-            foreach (RecipeIngredient entry in bundle)
+            // Summed per good, as TryCharge sums a price: two lines of Scrap that each fit but
+            // together don't must be refused, or Refund deposits one and clamps the other.
+            foreach (KeyValuePair<string, int> pair in Totals(bundle))
             {
-                if (entry.quantity > 0 && RoomFor(entry.itemType) < entry.quantity)
+                if (RoomFor(pair.Key) < pair.Value)
                 {
-                    return entry.itemType;
+                    return pair.Key;
                 }
             }
             return null;
+        }
+
+        // Each good's total across the bundle, in first-named order; non-positive lines dropped.
+        private static List<KeyValuePair<string, int>> Totals(IReadOnlyList<RecipeIngredient> bundle)
+        {
+            var totals = new List<KeyValuePair<string, int>>();
+            foreach (RecipeIngredient entry in bundle)
+            {
+                if (entry.quantity <= 0 || string.IsNullOrEmpty(entry.itemType))
+                {
+                    continue;
+                }
+                int at = totals.FindIndex(t => t.Key == entry.itemType);
+                if (at < 0)
+                {
+                    totals.Add(new KeyValuePair<string, int>(entry.itemType, entry.quantity));
+                }
+                else
+                {
+                    totals[at] = new KeyValuePair<string, int>(entry.itemType, totals[at].Value + entry.quantity);
+                }
+            }
+            return totals;
         }
 
         /// <summary>
@@ -134,16 +159,12 @@ namespace GolemFactory.Economy
                 return false;
             }
 
-            foreach (RecipeIngredient entry in bundle)
+            foreach (KeyValuePair<string, int> pair in Totals(bundle))
             {
-                if (entry.quantity <= 0 || string.IsNullOrEmpty(entry.itemType))
+                int intoPack = _buffers.Deposit(PackId, pair.Key, pair.Value);
+                if (intoPack < pair.Value && _postId != null)
                 {
-                    continue;
-                }
-                int intoPack = _buffers.Deposit(PackId, entry.itemType, entry.quantity);
-                if (intoPack < entry.quantity && _postId != null)
-                {
-                    _buffers.Deposit(_postId, entry.itemType, entry.quantity - intoPack);
+                    _buffers.Deposit(_postId, pair.Key, pair.Value - intoPack);
                 }
             }
             return true;

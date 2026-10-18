@@ -311,6 +311,71 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void ARefundNamingAGoodTwice_IsCheckedWhole_AndLosesNothing()
+        {
+            // Phase 1 critique: FirstMisfit asked each line alone, so two lines of Scrap that
+            // fit apart but not together passed, and Refund's "all or nothing" deposited the
+            // first and clamped the second -- goods gone. TryCharge already sums a good named twice.
+            var buffers = new StorageBufferRegistry();
+            buffers.SetCapacity("Pack", 100);
+            var wallet = new PlayerWallet(buffers, "Pack");
+            buffers.Deposit("Pack", ItemType.Scrap, 90);
+            var twice = new[] { new RecipeIngredient(ItemType.Scrap, 6), new RecipeIngredient(ItemType.Scrap, 6) };
+
+            Assert.AreEqual(ItemType.Scrap, wallet.FirstMisfit(twice), "12 Scrap into room for 10");
+            Assert.IsFalse(wallet.Refund(twice));
+            Assert.AreEqual(90, buffers.GetQuantity("Pack", ItemType.Scrap), "a refund that won't fit deposits nothing");
+
+            var fits = new[] { new RecipeIngredient(ItemType.Scrap, 4), new RecipeIngredient(ItemType.Scrap, 6) };
+            Assert.IsNull(wallet.FirstMisfit(fits));
+            Assert.IsTrue(wallet.Refund(fits));
+            Assert.AreEqual(100, buffers.GetQuantity("Pack", ItemType.Scrap));
+        }
+
+        [Test]
+        public void APlacedHandCrankBench_CranksFromThePack_LikeTheStarterOne()
+        {
+            // Phase 1 critique: a bench placed from the build menu was a clone of the catalog's
+            // prefab, which had no registry and was never on the clock, so it could not craft.
+            // Older than crates; found checking the wallet's call sites.
+            SandboxWorld world = Compose();
+            var cell = new Vector2Int(6, 6);
+            HandCrankBench bench = Place(world, "HandCrankBenchPrefab", cell).GetPart<HandCrankBench>();
+            RecipeDefinition recipe = bench.SelectedRecipe;
+            Assert.IsNotNull(recipe);
+            foreach (RecipeIngredient input in recipe.inputs)
+            {
+                Give(world, input.itemType, input.quantity);
+            }
+            Assert.IsTrue(bench.CanAffordSelected(), "it reads the pack");
+
+            world.Clock.Play();
+            bench.IsCranking = true;
+            for (int i = 0; i < bench.RequiredTicks + 2; i++)
+            {
+                world.Clock.Advance(1f / world.Clock.TicksPerSecond);
+            }
+            Assert.AreEqual(1, bench.CompletedCrafts, "the clock ticks it");
+            Assert.GreaterOrEqual(Pack(world, recipe.outputItemType), recipe.outputQuantity);
+
+            // Demolished, it leaves the clock: no ghost bench crafting from the pack.
+            world.Build.EnterDemolishMode();
+            world.Build.PlaceOrRemove(cell);
+            world.Build.CancelPlacement();
+            foreach (RecipeIngredient input in recipe.inputs)
+            {
+                Give(world, input.itemType, input.quantity);
+            }
+            int before = Pack(world, recipe.outputItemType);
+            for (int i = 0; i < bench.RequiredTicks + 2; i++)
+            {
+                world.Clock.Advance(1f / world.Clock.TicksPerSecond);
+            }
+            Assert.AreEqual(1, bench.CompletedCrafts, "a demolished bench crafts nothing");
+            Assert.AreEqual(before, Pack(world, recipe.outputItemType));
+        }
+
+        [Test]
         public void APackAboveItsCap_CanBeSpent_ButNotAddedTo()
         {
             SandboxWorld world = Compose();
