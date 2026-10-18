@@ -11,6 +11,18 @@ namespace GolemFactory.Save
     [Serializable]
     public sealed class SaveData
     {
+        /// <summary>The format this build writes: 1 since crates (docs/crates-design.md §7).</summary>
+        public const int CurrentVersion = 1;
+
+        /// <summary>
+        /// The format a save was written in. Absent reads 0 -- the initializer must stay 0 for
+        /// that -- which is a save from before crates: one stockpile, depots that held nothing.
+        /// </summary>
+        public int version;
+
+        // The pack (and, once it exists, the Post store) by id. A crate that owns its buffer is
+        // NOT here: buffers restore before buildings, and the load's sweep of the old buildings
+        // removes their crates, so its contents ride on its BuildingEntry instead.
         public List<BufferEntry> buffers = new List<BufferEntry>();
         public List<BlueprintEntry> blueprints = new List<BlueprintEntry>();
         public List<GolemEntry> golems = new List<GolemEntry>();
@@ -107,6 +119,13 @@ namespace GolemFactory.Save
         /// </para>
         /// </summary>
         public string depotFilterItemType;
+
+        /// <summary>
+        /// A crate's own goods (a depot's or a mast's), parallel lists as <see cref="BufferEntry"/>
+        /// keeps. Empty in a save from before crates, whose depots held nothing of their own.
+        /// </summary>
+        public List<string> crateItemTypes = new List<string>();
+        public List<int> crateQuantities = new List<int>();
 
         /// <summary>
         /// A Scrap Recycler's fuel, its uncollected Scrap, and its banked remainder

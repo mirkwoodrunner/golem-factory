@@ -19,12 +19,12 @@ namespace GolemFactory.Nodes.Scenarios
     ///
     /// <list type="number">
     ///   <item>Build a small factory: two depots and a belt run, and a Scavenger programmed to
-    ///   extract, standing at the Scrap stall.</item>
+    ///   extract, standing at the Scrap stall. One depot's crate holds goods of its own.</item>
     ///   <item>Save. Then wreck it: demolish everything (refunded), dismantle the golem (refunded),
     ///   spend some Scrap.</item>
     ///   <item>Load: the buildings stand again with their views drawn, the golem is rebuilt --
-    ///   same id, program and place -- with its node hosted, and the stockpile is what was saved
-    ///   (no refund on load: that is the save/load duplicator).</item>
+    ///   same id, program and place -- with its node hosted, and the stockpile and the crate are
+    ///   what was saved (no refund on load: that is the save/load duplicator).</item>
     ///   <item>Save and load twice more: nothing changes.</item>
     /// </list>
     /// </summary>
@@ -48,6 +48,7 @@ namespace GolemFactory.Nodes.Scenarios
             public Dictionary<string, int> Stock;
             public List<string> Buildings;
             public List<string> Golems;
+            public List<string> Crates;
 
             public string Diff(Snapshot other)
             {
@@ -66,6 +67,10 @@ namespace GolemFactory.Nodes.Scenarios
                 if (!Golems.SequenceEqual(other.Golems))
                 {
                     problems.Add($"golems [{string.Join(",", Golems)}] -> [{string.Join(",", other.Golems)}]");
+                }
+                if (!Crates.SequenceEqual(other.Crates))
+                {
+                    problems.Add($"crates [{string.Join(",", Crates)}] -> [{string.Join(",", other.Crates)}]");
                 }
                 return problems.Count == 0 ? null : string.Join("; ", problems);
             }
@@ -194,6 +199,12 @@ namespace GolemFactory.Nodes.Scenarios
             Place("DepotPrefab", 8, 4, Facing.North);
             Place("BeltPrefab", 7, 2, Facing.East);
 
+            // A crate's goods save on its building (docs/crates-design.md §7): a wreck refunds
+            // them into the pack, and a load must put them back in the crate, not the pack.
+            ICrate crate = _world.Build.Buildings.Single(b => b.Cell == new CoreVector2Int(6, 4)).GetPart<ICrate>();
+            crate.Buffer.Deposit(ItemType.Coke, 17);
+            crate.Buffer.Deposit(ItemType.Gear, 4);
+
             ChassisDefinition scavenger = defs.Chassis["ClockworkScavenger"];
             if (!_world.StarterStation.TryConstructGolem(scavenger, out GolemEntity golem))
             {
@@ -255,18 +266,23 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 return $"{_layer.PlayerViewCount} building views for 3 buildings";
             }
-            _log.Add($"load after wrecking: 3 buildings drawn again, {_golemId} rebuilt with [{program}] at {golem.Cell} and hosted, stockpile exactly as saved");
+            _log.Add($"load after wrecking: 3 buildings drawn again, {_golemId} rebuilt with [{program}] at {golem.Cell} and hosted, stockpile and crate [{string.Join(",", _saved.Crates)}] exactly as saved");
             return null;
         }
 
         private Snapshot Take() => new Snapshot
         {
-            Stock = new[] { ItemType.Scrap, ItemType.Brass, ItemType.IronPlate }
+            Stock = new[] { ItemType.Scrap, ItemType.Brass, ItemType.IronPlate, ItemType.Coke, ItemType.Gear }
                 .ToDictionary(t => t, t => _world.Buffers.GetQuantity(_world.StockpileBufferId, t)),
             Buildings = _world.Build.Buildings.Where(b => !b.IsRemoved)
                 .Select(b => $"{b.PrefabKey}@{b.Cell.x},{b.Cell.y}:{b.Facing}").OrderBy(x => x).ToList(),
             Golems = _world.Golems.Where(g => !g.IsRemoved)
                 .Select(g => $"{g.GolemId}@{g.Cell.x},{g.Cell.y}:{g.Facing}:{string.Join("+", g.Program.appendages.Select(a => a.name))}")
+                .OrderBy(x => x).ToList(),
+            Crates = _world.Build.Buildings.Where(b => !b.IsRemoved)
+                .Select(b => (b.Cell, crate: b.GetPart<ICrate>()))
+                .Where(c => c.crate?.Buffer != null)
+                .SelectMany(c => c.crate.Buffer.Quantities.Where(q => q.Value > 0).Select(q => $"{c.Cell.x},{c.Cell.y}:{q.Key}={q.Value}"))
                 .OrderBy(x => x).ToList(),
         };
 

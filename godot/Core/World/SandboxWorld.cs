@@ -424,8 +424,21 @@ namespace GolemFactory.World
             string buildings = report.BuildingsSkipped > 0
                 ? $"{report.BuildingsRebuilt} buildings, {report.BuildingsSkipped} skipped"
                 : $"{report.BuildingsRebuilt} buildings";
-            return golems + "; " + buildings + ".";
+            string status = golems + "; " + buildings + ".";
+
+            // A save from before crates (crates-design §7): its stockpile is the pack now, kept
+            // whole even above the cap, and its depots come back as empty crates. Said once, here
+            // and at the player, so the empty crates read as a change rather than a loss.
+            if (data.version < 1)
+            {
+                Interactor.Announce(CratesMigrationNotice);
+                status += " " + CratesMigrationNotice;
+            }
+            return status;
         }
+
+        public const string CratesMigrationNotice =
+            "Crates are local now. Your depots start empty; everything you had is in your pack.";
 
         private DraftableCardCatalog _deck;
         private string _claimUserId;
