@@ -123,10 +123,12 @@ namespace GolemFactory.Nodes
                 bool screenOpen = ModalScreens.AnyOpen(GetTree()) || TextEntry.IsTyping(GetViewport());
                 _interactor.SetInteractHeld(!screenOpen && Input.IsActionPressed(Interact));
                 _interactor.Poll();
-                if (!screenOpen && Input.IsActionJustPressed(Interact))
+                bool pressed = !screenOpen && Input.IsActionJustPressed(Interact);
+                if (pressed)
                 {
                     _interactor.Interact();
                 }
+                _interactor.HoldHarvest((float)delta, !screenOpen && Input.IsActionPressed(Interact), pressed);
                 return;
             }
 

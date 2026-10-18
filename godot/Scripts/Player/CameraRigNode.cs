@@ -73,6 +73,13 @@ namespace GolemFactory.Nodes
             }
         }
 
+        /// <summary>Zooms straight to <paramref name="size"/> (clamped), as a scenario capture wants.</summary>
+        public void SetOrthographicSize(float size)
+        {
+            OrthographicSize = System.Math.Clamp(size, CameraRigRules.MinOrthographicSize, CameraRigRules.MaxOrthographicSize);
+            ApplyZoom();
+        }
+
         private void ApplyZoom()
         {
             float halfHeightPx = GetViewportRect().Size.Y / 2f;

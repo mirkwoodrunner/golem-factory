@@ -1123,6 +1123,63 @@ namespace GolemFactory.Player
             return true;
         }
 
+        /// <summary>Seconds [E] must stay down on a stall before harvesting starts to repeat.</summary>
+        public const float HarvestRepeatDelay = 0.35f;
+
+        /// <summary>Seconds between repeated harvests once the hold has begun repeating.</summary>
+        public const float HarvestRepeatInterval = 0.15f;
+
+        private float _harvestHoldSeconds;
+
+        /// <summary>
+        /// Holding [E] on a stocked stall keeps harvesting, so the opening minutes are not sixty
+        /// taps. Called once per frame; the first press is still <see cref="Interact"/>'s. It only
+        /// ever harvests: an empty stall (an order) or any other target never repeats, so holding
+        /// the key cannot buy a second truckload or reopen a panel. Returns harvests made.
+        /// </summary>
+        public int HoldHarvest(float deltaTime, bool held, bool justPressed)
+        {
+            if (!held || justPressed)
+            {
+                _harvestHoldSeconds = 0f;
+                return 0;
+            }
+
+            InteractionPick pick = SelectNearestPick();
+            var marker = pick.Kind == InteractionKind.Harvest && pick.IsInRange(_interactRange)
+                ? ResolveTarget(pick, out _) as ResourceNodeMarker
+                : null;
+            if (marker == null || marker.IsDepleted)
+            {
+                _harvestHoldSeconds = 0f;
+                return 0;
+            }
+
+            float before = _harvestHoldSeconds;
+            _harvestHoldSeconds += deltaTime;
+            if (_harvestHoldSeconds < HarvestRepeatDelay)
+            {
+                return 0;
+            }
+
+            int made = 0;
+            float next = before < HarvestRepeatDelay
+                ? HarvestRepeatDelay
+                : before + HarvestRepeatInterval;
+            while (next <= _harvestHoldSeconds)
+            {
+                if (!TryHarvest(marker))
+                {
+                    break;
+                }
+
+                made++;
+                next += HarvestRepeatInterval;
+            }
+
+            return made;
+        }
+
         public bool TryHarvest(ResourceNodeMarker marker)
         {
             if (marker == null)

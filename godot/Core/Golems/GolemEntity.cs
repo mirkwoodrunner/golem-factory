@@ -192,6 +192,12 @@ namespace GolemFactory.Golems
         // set this to step.durationTicks.
         private int _stepDuration = 1;
 
+        /// <summary>
+        /// The running step's length in ticks, as Begin derived it. Read by presentation, so a
+        /// work motion can finish exactly when the step does (<see cref="GolemWorkMotion"/>).
+        /// </summary>
+        public int StepDurationTicks => _stepDuration;
+
         // Programmatic setup used by tests (and available for runtime bootstrapping), mirroring
         // BuildModeController.Configure -- avoids requiring Inspector-assigned references.
         public void Configure(string id, ConveyorSystem holder)
