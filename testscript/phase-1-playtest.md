@@ -32,7 +32,8 @@ the same folder before starting a new one. Send all of them.
 | Key | Does |
 |---|---|
 | **WASD** | Move |
-| **E** | Interact: **tap** to harvest a stall, order a truckload from an empty one, fuel a boiler, label a depot, or program a golem. **Hold** at the Hand-Crank Bench to crank. |
+| **E** | Interact: **tap** to harvest a stall, order a truckload from an empty one, fuel a boiler, collect from a crate (a depot or a Freight Mast: you take what fits, the rest stays), or program a golem. **Hold** at a stall to keep harvesting, or at the Hand-Crank Bench to crank. |
+| **I** | Your pack. Standing at a crate, the crate's screen instead: crate and pack side by side. Click a good to move what fits, Shift-click to move one. The crate's label is set here. **I**, **E** or **Escape** closes it. |
 | **R** | Turn the build ghost while holding a placeable, or the golem you are carrying. Otherwise, cycle the bench's recipe, or turn the golem you are standing by. |
 | **G** | Pick up the golem you stand by; press again to set it down. While you carry it, an outline on the floor shows the tile it will land on (red where it can't), with the tiles it will take from and push to. |
 | **1–9, 0, -, =** | Pick a build-menu tile. **X** is Demolish. Hover a tile for its cost. |
@@ -54,16 +55,53 @@ Chapter 7's Save and Load, done by F9, use their own file (`kit-save.json`), nev
 
 | Ch. | Guide chapter | Old script part |
 |---|---|---|
-| 1 | Scrap, Coal, Coke and Iron by hand; a boiler; your first golem | A, B, E |
-| 2 | Gears; claim a recipe; a Brass Presser making Iron Plate | C |
+| 1 | Scrap, Coal, Coke and Iron by hand; a boiler; your first golem; **collecting from its crate** | A, B, E |
+| 2 | Gears; claim a recipe; a Brass Presser making Iron Plate from the first crate | C |
 | 3 | Coking automated, and two boilers joined | D, E |
 | 4 | Patents; turning a golem with R; a stall on purpose | C |
-| 5 | The Aether-Hauler, Iron Smelting, and its Slag | F |
-| 6 | Belts and a labelled depot at the Copper stall | F, I2 |
+| 5 | The Aether-Hauler, Iron Smelting, and its Slag; **feeding the smelter's crate by hand** | F |
+| 6 | Belts and a labelled depot at the Copper stall (label set on the crate screen) | F, I2 |
 | 7 | Floor Expansion, the bay upgrade, the Ledger, save and load | F, G, H, I4 |
-| 8 | Goal steps: every good the Zeppelin costs | F, G |
-| 9 | The Zeppelin, its Freight Launch card, and a Freight Mast | G |
+| 8 | Goal steps: every good the Zeppelin costs; **the Pneumatic Post** | F, G |
+| 9 | The Zeppelin, its Freight Launch card, a Freight Mast, and **unloading the mast's crate** | G |
 | 10 | The Clock Tower in the town square: Frame Sections, and its Foundation | (new) |
+
+---
+
+## Crates and the pack: what this playtest is for
+
+Phase 1 (`docs/crates-design.md`) made every depot a **crate** of its own, holding 50 of each good,
+and gave you a **pack** that carries 100 of each. Golems reach only the crates beside them; your
+building, claiming and ordering spend from the pack. The guide walks you through it; these are the
+moments to watch.
+
+- **Collecting (E at a crate).** You take what fits, and the rest stays. Try it with a nearly full
+  pack: the crate should keep what didn't fit, and nothing should vanish.
+- **A full pack.** At 100 of a good, a stall's prompt goes grey and says "pack full". Did you
+  understand what to do?
+- **Crates filling and emptying.** A crate stops at 50. A golem pushing into a full crate stops
+  with "Crate(x,y) full"; one hauling from an empty crate stops with "no input". Watch the
+  Presser's output crate in chapter 2 and the smelter's in chapter 5.
+- **Feeding a converter by hand (chapter 5).** Press **I** at the smelter's input depot and click
+  Scrap, then Coke, in your pack. Shift-click moves one. Is the screen obvious?
+- **The label picker (chapter 6).** On the crate screen, click the label and pick Copper Ore. A
+  labelled crate refuses other goods from your pack, and still lets you take out what was already
+  in it.
+- **Demolishing a full crate (X).** Its cost and its contents come back into your pack. With your
+  pack too full, the wrecking bar refuses and says "pack full of ___": nothing is torn down. Try
+  both.
+- **The mast's crate (chapter 9).** The Zeppelin's freight lands in the mast's own crate, not your
+  pack. Collect it with E, or stand a golem beside the mast.
+- **The Pneumatic Post (chapter 8).** Every Post crate opens onto one shared store. A golem pushing
+  into one Post crate fills every other, and your building spends from the Post once your pack
+  runs short. Does it take a chore off you?
+- **An old save.** Load a save from before crates: everything you had is in your pack (even above
+  100), every crate starts empty, and the load says so once.
+
+**Done when** (Phase 1, `docs/roadmap.md`): **a badly laid-out factory runs visibly worse than a
+good one, and belts get built because a line needs them.** Please judge both in your notes. Did
+you ever move a building to shorten a walk? Did a line stall because its crate was far from where
+its goods were made? Did you build a belt the guide hadn't asked for?
 
 ---
 
@@ -84,8 +122,8 @@ The guide never sends you to these. Each one is a judgement call that only a per
 - **The Clock Tower** waits in the town square south of the street, roped off until you build a
   Zeppelin, and its picture grows with every stage you complete. Is it a goal worth the whole
   factory? Each stage wants a steady **rate** of freshly made goods, not a pile of them.
-- **Demolish (X)** refunds the full cost, plus what the building held. That is settled, not a
-  tuning question. Did moving things around ever feel punishing anyway?
+- **Demolish (X)** refunds the full cost, plus what the building held, a crate's goods included.
+  That is settled, not a tuning question. Did moving things around ever feel punishing anyway?
 
 ---
 
@@ -114,3 +152,25 @@ which way in a note, or add it under the matching question in the report.
 | Floor expansion | +2 rows, rising cost, capped at +12 |
 | Freight launch | a flat 24 ticks, however far |
 | A golem's "hold nearly full" warning | 9 of 12 units |
+| A crate (depot or mast) | 50 of each good |
+| Your pack | 100 of each good |
+| The Pneumatic Post's shared store | 200 of each good |
+| A Post crate | 10 Brass + 5 Casing |
+
+## The questions
+
+The guide asks these as **PLAYTEST · your call** cards (`PlaytestSession`), each at the step named,
+just after you have lived through what it asks about. New in Phase 1 are marked.
+
+| Asked at step | Question | New |
+|---|---|---|
+| `gears` | Collecting from the crate with E: did taking what fits feel easy, or like a chore? (Easy · Fine · A chore) | yes |
+| `coking-card` | Did you fill your pack to 100 of something? Did "pack full" tell you what to do? (Never filled it · Filled it and knew · Filled it and was stuck) | yes |
+| `slag-heap` | You fed the smelter's crate by hand on the crate screen. Was it clear? (Clear · Fiddly · I couldn't find it) | yes |
+| `copper` | Did a golem stop because its crate was full or empty? Did its badge say why? (Never saw it · Yes, clearly · Yes, but I was confused) | yes |
+| `unloader` | You labelled a depot on the crate screen. Did the picker work? (Good · Fiddly · Couldn't find it) | reworded (was the E-cycle) |
+| `expand` | Has where you put things started to matter: walks between crates, or a line that needed a belt? (It matters · A little · Not yet) | yes |
+| `glass` | The Pneumatic Post: did it take a chore off you, or add one? (Took one off · No difference · Added one) | yes |
+| `tower-visit` | The Copper landed in the mast's crate. Did you find it? (Straight away · Eventually · No) | yes |
+
+The existing questions stay where they are.

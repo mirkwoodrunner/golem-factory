@@ -22,11 +22,13 @@ Read the docs before making design calls, not just the code:
   Tower endgame.
 - `docs/cozy-automation-design.md` -- smart depots, golem moods, loop labels, the Scrap Recycler.
   Its §0 lists eight invariants a pass touching golems, endpoints or text must not break.
-- `docs/godot-conversion-plan.md` -- the port's milestone log, and **"Next session: start
-  here"**, the current state and what's next. Read it before planning any work.
-- `docs/roadmap.md` -- the plan after the port, phase by phase, and the decisions taken for it
-  (scope, top-down art, placeholder audio, contracts).
-- `docs/crates-design.md` -- local crates and a capped pack; the next thing to build.
+- `docs/godot-conversion-plan.md` -- the port's milestone log (G0-G10). Finished.
+- `docs/roadmap.md` -- **"Next session: start here"**, the current state and what's next. Read
+  it before planning any work. Then the plan after the port, phase by phase, and the decisions
+  taken for it (scope, top-down art, placeholder audio, contracts).
+- `docs/crates-design.md` -- local crates, a capped pack, the wallet and the Pneumatic Post;
+  Phase 1, being built. Its §0 lists the invariants.
+- `docs/inventory-screens-design.md` -- the Pack and Crate screens and the label picker; Phase 1.
 - `docs/open-items.md` -- the backlog: open decisions, known gaps, deliberate scope cuts.
 - `docs/godot-spike.md` -- what the port measured before it began.
 - `docs/history/` -- the Unity era: `unity-implementation-plan.md` (milestones M0-M9 and every
@@ -431,6 +433,25 @@ advancement. Simulation is plain, data-oriented C#: no ECS, no per-item nodes.
   good can't be added without a tier.
 - **Bare-string ids** identify belts, buffers and nodes across systems; `ItemType` holds the
   item-type constants. **Registries return `false` for a `null` id** rather than throwing.
+
+### Crates and the pack (Phase 1: designed, NOT YET BUILT)
+
+The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set. Until the code
+lands, every depot still opens onto the one stockpile; describe the built behaviour here when it
+does.
+
+- **A depot publishes its own crate** (`Crate(x,y)`), a Freight Mast its own (`Mast(x,y)`), 50 of
+  each good. **Golems never reach the pack** (`FactoryStockpile`, id kept because saves name it;
+  100 of each). A depot with an explicit `bufferId` publishes that buffer: that is a Post crate,
+  and how a test keeps the old behaviour.
+- **Every cost goes through one wallet**, `PlayerWallet.TryCharge`: the pack first, then the
+  Post store. Never charge a buffer id directly, and never charge a crate.
+- **Hands and screens move goods through `CrateTransfer`** in Core: withdraw what the other side
+  has room for, then deposit it. A label is honoured on the way in, not on the way out.
+- **A load never clamps.** Restores use `StorageBuffer.RestoreQuantity`, never `Deposit`. Crate
+  contents save on their `BuildingEntry`, not in `SaveData.buffers`.
+- **`I` is the inventory key**: the crate's screen at a crate, the pack's elsewhere. Tap-E at a
+  crate collects. Nothing new is bound to holding E.
 
 ### Seams worth keeping
 

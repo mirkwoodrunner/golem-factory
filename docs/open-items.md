@@ -1,7 +1,7 @@
 # Golem Factory: open items
 
 The backlog for the Godot game. The current state and what's next are in
-`docs/godot-conversion-plan.md`, under "Next session: start here". The Unity-era backlog, with
+`docs/roadmap.md`, under "Next session: start here". The Unity-era backlog, with
 the reasoning behind every item it closed, is `docs/history/open-items-unity.md`.
 
 Everything the progression design specifies is built (`docs/progression-design.md`), and no node
@@ -30,8 +30,8 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   the guide says what is in the way of a marked tile.
 - **Crates** (`docs/crates-design.md`): every depot is a window on one unlimited stockpile, so a
   golem anywhere reaches every good and nothing downstream ever fills. The design makes crates
-  local and gives the player a pack. Its §5 questions are answered (2026-10-18), so it is ready
-  to build, starting with its §9 steps 1–3. The
+  local and gives the player a pack. Its §5 questions are answered (2026-10-18) and it is being
+  built (Phase 1), with `docs/inventory-screens-design.md` for its screens. The
   boiler half was fixed on its own: a boiler holds at most 240 Coke (`SteamBoiler.CokeCapacity`).
 - **Whether the Overclocker has an identity** beyond more slots: one exclusive card (`Repeat`)
   and the same dials. Decided after a full playthrough (`docs/roadmap.md`, decision 7).
@@ -51,8 +51,9 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 
 - **The art is placeholder** throughout, and the Workbench's lever housing, display face and
   card faces most of all.
-- **The depot label cycle** grows with the factory; twenty goods is twenty presses of `E`. A
-  picker panel is the answer if it bites.
+- **The depot label cycle** grows with the factory; twenty goods is twenty presses of `E`.
+  Answered in Phase 1 by the crate screen's label picker (`docs/inventory-screens-design.md`
+  §4.4); open until that is built.
 - **`Straining`**, the only predictive mood (9 of 12 units held): kept, but moves to hover only
   (`docs/roadmap.md`, decision 6).
 

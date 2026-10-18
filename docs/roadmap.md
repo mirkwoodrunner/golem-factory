@@ -4,6 +4,29 @@ Written 2026-10-18, after the Godot conversion finished. It plans the work that 
 prototype to a finished game, in order, and records the decisions taken for it. The backlog of
 smaller items stays in `docs/open-items.md`.
 
+## Next session: start here
+
+**Phase 1 (crates) is in progress, on branch `phase1/crates`.** The Godot conversion is finished
+(`docs/godot-conversion-plan.md` is its log; the tag `unity-final` holds the Unity project). The
+design is done and approved; no code is written yet. Read, in order:
+
+1. `docs/crates-design.md`: §0's invariants, then §4 (system by system), §7 (saves) and §9 (the
+   order of work). §6 lists what the design got wrong about the code.
+2. `docs/inventory-screens-design.md`: the Pack and Crate screens, with their layout numbers.
+3. `testscript/phase-1-playtest.md`: what the playtest after Phase 1 looks at.
+
+Then build `crates-design.md` §9 **steps 1–3 as one PR**: crate buffers and `ICrate`, the
+capacity policy, `PlayerWallet`, the collect verb and the harvest room check, demolition with
+contents, mast crates, `ProductionTally`, save version 1 and `RestoreQuantity`. Tests first, as
+§9 lists them.
+
+**One decision is open before step 1 lands:** the Floor Expansion's escalating price passes the
+pack's cap from its second purchase (`crates-design.md` §6.1). The spec's stopgap is to clamp it
+at the cap; the lead decides whether that stands until Phase 3's tuning.
+
+Standing rules: tests and scenarios never write the player's real `save.json`; a renamed step `Id`
+or definition name breaks saves.
+
 ## Decisions (2026-10-18)
 
 | # | Question | Decision |
@@ -39,6 +62,14 @@ Build `docs/crates-design.md` in its §9 order. Steps 1–3 are one PR: local cr
 pack, the collect verb, deliveries into their own crates, Ledger rates from golem output, and
 save migration. Then the two inventory screens, the guide rewrite, and the Pneumatic Post.
 
+The specs:
+
+- `docs/crates-design.md`: crates, the pack, the wallet, saves, the guide's chapter changes (§8)
+  and the Pneumatic Post (§10).
+- `docs/inventory-screens-design.md`: the Pack and Crate screens, the label picker, and the
+  `inventory` scenario.
+- `testscript/phase-1-playtest.md`: the playtest that judges it.
+
 **Done when:** a badly laid-out factory runs visibly worse than a good one, and belts are built
 because a line needs them.
 
@@ -51,7 +82,8 @@ the stall badge read "vaguely".
 - Waiting golems go grey; red means stuck, and hovering a stuck golem names the tile and the good
   (decision 5). `Straining` moves to hover (decision 6).
 - Source and target arrows always show on a hovered golem, so facing reads without R.
-- The depot label picker from `open-items.md`, folded into the crate screen.
+- The depot label picker from `open-items.md`: moved into Phase 1, on the crate screen
+  (`docs/inventory-screens-design.md` §4.4).
 
 **Done when:** a new player finishes chapters 1–4 without the playtest kit in under 15 minutes,
 the manual-era budget.
