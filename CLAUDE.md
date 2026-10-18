@@ -29,6 +29,9 @@ Read the docs before making design calls, not just the code:
 - `docs/crates-design.md` -- local crates, a capped pack, the wallet and the Pneumatic Post;
   Phase 1, being built. Its §0 lists the invariants.
 - `docs/inventory-screens-design.md` -- the Pack and Crate screens and the label picker; Phase 1.
+- `docs/pack-upgrades-design.md` -- pack upgrades (100 to 250) and Floor Expansion priced up the
+  tiers, a Phase 1 follow-up, not built. Its §0 lists the invariants, including "every price fits
+  the reachable pack".
 - `docs/open-items.md` -- the backlog: open decisions, known gaps, deliberate scope cuts.
 - `docs/godot-spike.md` -- what the port measured before it began.
 - `docs/history/` -- the Unity era: `unity-implementation-plan.md` (milestones M0-M9 and every

@@ -18,7 +18,9 @@ before any code: **Onboarding & Feedback Design** (the Workbench's next-drag hin
 waiting mood and red for stuck, hover names for a stuck golem's tile and good, source and target
 arrows on hover) and **Guide Chapter Texts & Playtest Kit Actions** (each chapter's step texts
 against the crate-era game, with the kit action every new step needs). Neither exists in `docs/`
-yet. Merge `phase1/crates` first.
+yet. Merge `phase1/crates` first. Phase 1's follow-up, **pack upgrades**
+(`docs/pack-upgrades-design.md`, Phase 1 below), is specified but not built, and waits on the
+user's answers to its §7.
 
 Standing rules: tests and scenarios never write the player's real `save.json`; a renamed step `Id`
 or definition name breaks saves.
@@ -86,6 +88,18 @@ line needs it. A player who ferries by hand once a minute recovers most of the o
 converter's scale the cost of a bad layout is the walking, which is the design's intent
 (`crates-design.md` §5 Q2). Whether that reads as "visibly worse" in play is the playtest's to say.
 
+### Phase 1 follow-up: pack upgrades
+
+Spec: `docs/pack-upgrades-design.md`, not built. Its §7 questions need the user's answers first.
+The user's calls (2026-10-18): Floor Expansion keeps ramping its cost, with the clamp at the
+pack's cap removed, and its later purchases cost more advanced goods. Pack upgrades raise the
+pack's cap during play (100, 150, 200, 250) through a Pack row on the Assembly Line tab.
+
+**The two are coupled, so they ship in one change.** Removing the clamp without upgrades makes
+every Floor Expansion purchase from the second on unpayable from a 100 pack. Upgrades without the
+new curve have nothing to pay for. The test that "every price fits a full 100 pack" becomes
+"every price fits the pack reachable when it opens" (the spec's §1).
+
 ## Phase 2: Onboarding and readability
 
 The playtest timings point here: the first program took 8 minutes, turning with R took 4½, and
@@ -106,7 +120,8 @@ the manual-era budget.
 - Play chapters 1–10 to the Clock Tower without the kit.
 - Tune in this order: the boiler fuel ratio (`progression-design.md` §12 says first), market
   prices and truckload size, then the other invented numbers, in a spreadsheet beside the play.
-  Try Lens at 3 Glass (decision 8). No price may pass the pack's 100-per-good cap.
+  Try Lens at 3 Glass (decision 8). No price may pass the pack cap reachable when it opens
+  (`pack-upgrades-design.md` §1).
 - Profile the endgame at about 96 golems and 500 belt items. If it doesn't hold, cut stage 4's
   Conduit demand, as the design says.
 - Decide the Overclocker (decision 7).

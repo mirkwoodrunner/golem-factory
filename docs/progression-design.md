@@ -983,3 +983,14 @@ infinite, free, steady. The old boulder behaviour is therefore **a state the gam
 not a version of the game that was deleted, which is what keeps every pre-existing test, `Main.unity`,
 and any save made before the change valid.
 
+
+### 13.3 Pack upgrades, and Floor Expansion priced up the tiers (amends §3.3, §8)
+
+Taken by the user on 2026-10-18, after crates gave the player a pack capped at 100 of each good.
+**Floor Expansion keeps ramping its cost**, and its later purchases are priced in more advanced
+goods (Gear, Copper Ingot, Brass, Casing, Glass, Lens, Mainspring, Aether Cell) rather than in
+more Scrap and Iron Plate. **Pack upgrades** raise the pack's cap (100, 150, 200, 250) so those
+purchases can be paid. Every price must fit the cap that is reachable by the time the price
+opens. The spec, the invariants and the cost tables are in `docs/pack-upgrades-design.md`. §3.3's
+"60 Scrap + 30 Iron Plate per 6 × 6 block" no longer describes the game: each purchase adds 2
+rows, and there are six.

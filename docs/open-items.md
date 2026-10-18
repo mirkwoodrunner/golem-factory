@@ -34,9 +34,11 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   playtest of `testscript/phase-1-playtest.md` has not been run**; it judges whether a bad
   layout reads as visibly worse in play, not only in the numbers.
 - **Floor Expansion's price curve** (`crates-design.md` §6.1, §10.1.8): the escalating price is
-  clamped at the pack's 100-per-good cap, so every purchase from the third on costs the same
-  (100 Scrap + 100 Iron Plate).
-  Phase 3's tuning decides the real curve (a second good per step, or a flatter one).
+  still clamped at the pack's 100-per-good cap in code, so every purchase from the second on
+  costs 100 Scrap, plus Iron Plate rising to 100 at the third. **Decided (user, 2026-10-18):**
+  the clamp goes, the cost keeps ramping into more advanced goods, and pack upgrades (100 to 250)
+  pay for it. Specified in `docs/pack-upgrades-design.md`, not built; its §7 questions are open.
+  Phase 3's tuning sets the final numbers.
 - **Whether the Overclocker has an identity** beyond more slots: one exclusive card (`Repeat`)
   and the same dials. Decided after a full playthrough (`docs/roadmap.md`, decision 7).
 
