@@ -6,20 +6,19 @@ smaller items stays in `docs/open-items.md`.
 
 ## Next session: start here
 
-**Phase 1 (crates) is code complete, pending review, on branch `phase1/crates`.** All six steps
-of `docs/crates-design.md` §9 are built: crates and the pack, mast crates, save version 1, the
-Pack and Crate screens, the guide rewrite, and the Pneumatic Post (§10). Every Core test and every
-scenario passes. Where the code differs from the specs is recorded in place: `crates-design.md`
-§6.1, §8.1 and §10.1, and `inventory-screens-design.md` §8.
+**Phase 1 (crates) is done in code, on branch `phase1/crates`**: built, reviewed, critiqued
+(`crates-design.md` §11) and tested. All six steps of `docs/crates-design.md` §9 are in, every
+Core test and every scenario passes (each scenario run twice from a clean build, no flakes), and
+its "Done when" is pinned by `Core.Tests/Economy/LayoutMattersTests` (Phase 1 below). What it
+left unfinished is in `docs/open-items.md`, including two open questions for the user and the
+human playtest of `testscript/phase-1-playtest.md`, which has not been run.
 
-Next:
-
-1. **Review the branch** and merge it. The lead's open call from §6.1 still stands: Floor
-   Expansion's escalating price is clamped at the pack's cap until Phase 3's tuning.
-2. **The playtest** (`testscript/phase-1-playtest.md`) is the user's to run. Its "done when"
-   (a badly laid-out factory runs visibly worse than a good one) decides whether Phase 1 is done.
-3. Known gaps, small: the Inventory tab still sorts buffers by id rather than §4.7's "Pack, Pneumatic
-   Post, crates in cell order" (`crates-design.md` §10.1).
+Next: **Phase 2, onboarding and readability.** Start from its two documents, to be written
+before any code: **Onboarding & Feedback Design** (the Workbench's next-drag hint, the grey
+waiting mood and red for stuck, hover names for a stuck golem's tile and good, source and target
+arrows on hover) and **Guide Chapter Texts & Playtest Kit Actions** (each chapter's step texts
+against the crate-era game, with the kit action every new step needs). Neither exists in `docs/`
+yet. Merge `phase1/crates` first.
 
 Standing rules: tests and scenarios never write the player's real `save.json`; a renamed step `Id`
 or definition name breaks saves.
@@ -69,6 +68,23 @@ The specs:
 
 **Done when:** a badly laid-out factory runs visibly worse than a good one, and belts are built
 because a line needs them.
+
+**Status: done in code (2026-10-18), the playtest still to run.** `LayoutMattersTests` composes
+the real Sandbox with the same Scavenger feeder and Scrap Reclamation Presser, on steam, for five
+minutes of game time:
+
+| Layout | Iron Plate made |
+|---|---|
+| Feeder, crate, converter in a straight line | 103 |
+| The same golems, the crates six tiles apart, nothing joining them | 0 (converter: "no input in Crate(x,y)"; feeder: "Crate(x,y) full") |
+| The same, the player carrying the Scrap across once a minute | 82 |
+| The same two stations joined by a five-belt run and an unloader | 101 |
+| The straight line, its output crate never emptied | 50, then "Crate(x,y) full" |
+
+A far producer feeds nothing unless something carries its goods, so a belt is built because the
+line needs it. A player who ferries by hand once a minute recovers most of the output: at one
+converter's scale the cost of a bad layout is the walking, which is the design's intent
+(`crates-design.md` §5 Q2). Whether that reads as "visibly worse" in play is the playtest's to say.
 
 ## Phase 2: Onboarding and readability
 

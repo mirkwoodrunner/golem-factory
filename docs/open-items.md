@@ -28,11 +28,23 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   the player actually built, instead of fixed offsets from the stalls. Following the marks plays
   the same either way. Rounds 1 and 2 are merged too: pipe steps accept any working route, and
   the guide says what is in the way of a marked tile.
-- **Crates** (`docs/crates-design.md`): every depot is a window on one unlimited stockpile, so a
-  golem anywhere reaches every good and nothing downstream ever fills. The design makes crates
-  local and gives the player a pack. Its §5 questions are answered (2026-10-18) and it is being
-  built (Phase 1), with `docs/inventory-screens-design.md` for its screens. The
-  boiler half was fixed on its own: a boiler holds at most 240 Coke (`SteamBoiler.CokeCapacity`).
+- **Crates** (`docs/crates-design.md`) are built (Phase 1): each depot is a crate of its own,
+  the player carries a capped pack, and the Pneumatic Post is the shared store. Its "Done when"
+  is pinned in Core (`LayoutMattersTests`; numbers in `docs/roadmap.md`, Phase 1). **The human
+  playtest of `testscript/phase-1-playtest.md` has not been run**; it judges whether a bad
+  layout reads as visibly worse in play, not only in the numbers.
+- **Two crate questions, open for the user** (`crates-design.md` §11):
+  - **Demolition is a way into the Post.** Demolishing a crate when the pack is full refunds its
+    contents into the Post store, so a player can empty a far crate without walking its goods
+    anywhere: effectively a remote move, which the inventory spec otherwise leaves to the Post.
+    Keep it, or refuse the demolition when the contents don't fit in the pack alone?
+  - **A building that can't be rebuilt on load loses what it holds.** A save names a depot by
+    prefab key and cell, so a renamed prefab or a blocked cell drops the crate's goods (a
+    boiler's Coke already went the same way). Send what it held to the pack instead?
+- **Floor Expansion's price curve** (`crates-design.md` §6.1, §10.1.8): the escalating price is
+  clamped at the pack's 100-per-good cap, so every purchase from the third on costs the same
+  (100 Scrap + 100 Iron Plate).
+  Phase 3's tuning decides the real curve (a second good per step, or a flatter one).
 - **Whether the Overclocker has an identity** beyond more slots: one exclusive card (`Repeat`)
   and the same dials. Decided after a full playthrough (`docs/roadmap.md`, decision 7).
 
@@ -51,16 +63,19 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 
 - **The art is placeholder** throughout, and the Workbench's lever housing, display face and
   card faces most of all.
-- **The depot label cycle** grows with the factory; twenty goods is twenty presses of `E`.
-  Answered in Phase 1 by the crate screen's label picker (`docs/inventory-screens-design.md`
-  §4.4); open until that is built.
+- **The Inventory tab's order** (`crates-design.md` §4.7, §10.1.10): it still sorts every buffer
+  by id, so the Post shows as "PneumaticPost" between the crates and the pack. The spec asks for
+  the pack first, then the Post, then crates in cell order, with headers "Pack", "Pneumatic
+  Post", "Crate (3,-2)".
+- **The side-by-side screens** (the Crate screen beside the Pack): the transfer hint is drawn
+  below the panels instead of inside them, and each panel carries its own Close button, so the
+  pair shows two.
 - **`Straining`**, the only predictive mood (9 of 12 units held): kept, but moves to hover only
   (`docs/roadmap.md`, decision 6).
 
 ## 5. Deliberate cuts
 
-- No player collision; the player walks through buildings and golems.
-- A belt hands off only to another belt: getting goods into a depot needs a golem.
+- No player collision; the player walks through buildings and golems.- A belt hands off only to another belt: getting goods into a depot needs a golem.
 - `Refine` stays id-routed rather than spatial, so an untyped take can't grab the wrong input.
 - **Demolition refunds in full, and patents are free.** Settled design calls, not cuts; see
   `CLAUDE.md`.
