@@ -119,6 +119,13 @@ ones. Current scenarios:
   `user://scenario-save.json`.
 - `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
   into the stockpile, over 600 ticks. `--spike-check` is an alias.
+- `inventory` (Sandbox): the Pack and Crate screens with real keys and clicks. I opens the pack
+  away from a crate and the crate's screen at one; I, E and Escape close them. Clicks put and
+  take all that fits, Shift moves one, and crate + pack per good never changes. The label
+  picker relabels the depot, a label refuses goods on the way in only, and a pack above its
+  cap gives but takes nothing back. A mast's label is disabled, the guide's plate clears both
+  panels, and the wrecking bar refuses a crate whose goods won't fit, then refunds it exactly.
+  Logs the frames worth a look for `--write-movie`.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
 
 To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scenarios`.
@@ -198,9 +205,11 @@ answer. The carried sprite rides half a tile above the player and is not a guide
 carrying, `R` turns the carried golem, never a nearer one or a bench.
 
 **The player's hands are Core's `PlayerInteractor`** (`SandboxWorld.Interactor`). `PlayerNode`
-only feeds it the position and the keys. A full screen joins the `ModalScreens` group and
-implements `IScreen`; while one is open the player stays still and the world prompt hides. A
-new screen gets that for free.
+only feeds it the position and the keys. A full screen joins the `ModalScreens` group, implements
+`IClosableScreen` and registers with `SandboxWorld.Screens`; while one is open the player stays
+still, the HUD hides, and the world prompt hides (the interactor asks `Screens.AnyOpen`). A new
+screen gets that for free. A screen closes on E in its own `_UnhandledInput`, so `PlayerNode`
+ignores E for the frame after a screen was open; otherwise the closing press reached the world.
 
 **The guide (`Core/Tutorial/TutorialGuide`) detects its steps from world state.** A new step
 gets a `Done` check that reads the world, never a call from the code that does the thing. A
@@ -434,7 +443,7 @@ advancement. Simulation is plain, data-oriented C#: no ECS, no per-item nodes.
 - **Bare-string ids** identify belts, buffers and nodes across systems; `ItemType` holds the
   item-type constants. **Registries return `false` for a `null` id** rather than throwing.
 
-### Crates and the pack (Phase 1: steps 1-3 built; screens, guide rewrite and Post to come)
+### Crates and the pack (Phase 1: steps 1-4 built; guide rewrite and Post to come)
 
 The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
 
@@ -458,7 +467,13 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   empty, and says so once.
 - **The Ledger's live rate is fresh production** (`ProductionTally`, series `"Produced"`), not a
   buffer's level.
-- **`I` will be the inventory key** (step 4, not yet bound). Nothing new is bound to holding E.
+- **`I` is the inventory key** (`PlayerNode.Inventory`, `PlayerInteractor.OpenInventory`): the
+  Crate screen at a crate in reach, else the Pack screen. Nothing is bound to holding E.
+- **The screens' rules are `SandboxWorld.Inventory`** (`CrateScreenReadout`): rows, clicks (all
+  that fits, Shift one), status lines, and the label picker's options, every good the ledger has
+  seen. Moves go through `CrateTransfer`; `PlanTake`/`PlanPut` are the dry runs a row's refusal
+  reads. `CrateScreen` and `PackScreen` only draw, through one `InventoryPanel` builder, and keep
+  their rows by good. A step done in the Crate screen sets `TutorialStep.Crate`.
 
 ### Seams worth keeping
 

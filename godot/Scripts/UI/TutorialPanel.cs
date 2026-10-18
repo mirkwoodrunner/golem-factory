@@ -40,6 +40,7 @@ namespace GolemFactory.Nodes
         private TextureRect _spotFacing;
         private BuildMenuNode _menu;
         private WorkbenchScreen _workbench;
+        private CrateScreen _crateScreen;
         private int _renderedVersion = -1;
         private bool _docked;
         private float _time;
@@ -214,13 +215,17 @@ namespace GolemFactory.Nodes
             bool screenOpen = ModalScreens.AnyOpen(GetTree());
             _workbench ??= GetTree().Root.FindChild("Workbench", true, false) as WorkbenchScreen;
             bool inWorkbench = screenOpen && _workbench != null && _workbench.IsOpen && guide?.Current?.Workbench == true;
+            // The Crate screen leaves the usual dock clear (inventory-screens-design §4.1), so a
+            // step done in it keeps the plate where it always is.
+            _crateScreen ??= GetTree().Root.FindChild("CrateScreen", true, false) as CrateScreen;
+            bool inCrate = screenOpen && _crateScreen != null && _crateScreen.IsOpen && guide?.Current?.Crate == true;
 
             // Over a full screen the guide shows only for the step that happens there; every other
             // step is about the world behind the screen, and the screens have no room to spare.
             // A playtest question takes the plate's place while it waits (PlaytestNode); the arrow,
             // markers and outline stay, so the step is still pointed at.
             bool asking = guide?.Playtest?.Current != null && !screenOpen;
-            bool showing = guide != null && guide.IsShowing && (!screenOpen || inWorkbench);
+            bool showing = guide != null && guide.IsShowing && (!screenOpen || inWorkbench || inCrate);
             _plate.Visible = showing && !asking;
             if (!showing)
             {

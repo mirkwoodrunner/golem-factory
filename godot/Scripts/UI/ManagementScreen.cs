@@ -21,27 +21,27 @@ namespace GolemFactory.Nodes
     {
         public const string ToggleAction = "toggle_menu";
 
-        private static readonly Color SelectedTab = new Color(0.86f, 0.66f, 0.34f, 1f);
+        internal static readonly Color SelectedTab = new Color(0.86f, 0.66f, 0.34f, 1f);
         private static readonly Color UnselectedTab = new Color(0.34f, 0.30f, 0.26f, 1f);
-        private static readonly Color SelectedTabLabel = new Color(0.10f, 0.08f, 0.06f, 1f);
+        internal static readonly Color SelectedTabLabel = new Color(0.10f, 0.08f, 0.06f, 1f);
         private static readonly Color UnselectedTabLabel = new Color(0.82f, 0.78f, 0.71f, 1f);
 
         // InventoryPanel's palette.
-        private static readonly Color HeaderInk = new Color(0.85f, 0.66f, 0.32f, 1f);
-        private static readonly Color ItemNameInk = new Color(0.88f, 0.84f, 0.76f, 1f);
-        private static readonly Color QuantityInk = new Color(1f, 0.97f, 0.90f, 1f);
-        private static readonly Color DimInk = new Color(0.55f, 0.52f, 0.47f, 1f);
+        internal static readonly Color HeaderInk = new Color(0.85f, 0.66f, 0.32f, 1f);
+        internal static readonly Color ItemNameInk = new Color(0.88f, 0.84f, 0.76f, 1f);
+        internal static readonly Color QuantityInk = new Color(1f, 0.97f, 0.90f, 1f);
+        internal static readonly Color DimInk = new Color(0.55f, 0.52f, 0.47f, 1f);
         private static readonly Color RisingInk = new Color(1f, 0.76f, 0.30f, 1f);
         private static readonly Color FallingInk = new Color(0.45f, 0.80f, 0.82f, 1f);
-        private static readonly Color RowTint = new Color(1f, 1f, 1f, 0.035f);
-        private static readonly Color HeaderPlateTint = new Color(0.75f, 0.55f, 0.26f, 0.22f);
-        private static readonly Color BarTrack = new Color(1f, 1f, 1f, 0.09f);
+        internal static readonly Color RowTint = new Color(1f, 1f, 1f, 0.035f);
+        internal static readonly Color HeaderPlateTint = new Color(0.75f, 0.55f, 0.26f, 0.22f);
+        internal static readonly Color BarTrack = new Color(1f, 1f, 1f, 0.09f);
         private static readonly Color BarFill = new Color(0.85f, 0.66f, 0.32f, 0.55f);
-        private static readonly Color CapacityFill = new Color(0.80f, 0.72f, 0.42f, 0.70f);
-        private static readonly Color NearFullFill = new Color(1f, 0.70f, 0.28f, 0.80f);
-        private static readonly Color FullFill = new Color(1f, 0.42f, 0.30f, 0.85f);
+        internal static readonly Color CapacityFill = new Color(0.80f, 0.72f, 0.42f, 0.70f);
+        internal static readonly Color NearFullFill = new Color(1f, 0.70f, 0.28f, 0.80f);
+        internal static readonly Color FullFill = new Color(1f, 0.42f, 0.30f, 0.85f);
 
-        private const string Ui = "res://art/UI/";
+        internal const string Ui = "res://art/UI/";
 
         private WorldNode _world;
         private readonly ManagementTabs _tabs = new ManagementTabs();
@@ -288,7 +288,7 @@ namespace GolemFactory.Nodes
             }
         }
 
-        private static Control Bar(StockBar bar)
+        internal static Control Bar(StockBar bar)
         {
             var track = new Control { Name = "Bar", CustomMinimumSize = new Vector2(56f, 8f), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter, MouseFilter = Control.MouseFilterEnum.Ignore };
             track.AddChild(Ugui.Fill(Ugui.Rect("Track", BarTrack)));
@@ -455,7 +455,7 @@ namespace GolemFactory.Nodes
             return plate;
         }
 
-        private static HBoxContainer RowLine(Panel plate)
+        internal static HBoxContainer RowLine(Control plate)
         {
             var line = Ugui.Fill(new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Pass });
             line.OffsetLeft = 6f;
@@ -465,21 +465,21 @@ namespace GolemFactory.Nodes
             return line;
         }
 
-        private static Control Flex(Control control)
+        internal static Control Flex(Control control)
         {
             control.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             control.SizeFlagsVertical = Control.SizeFlags.Fill;
             return control;
         }
 
-        private static Control Fixed(Control control, float width)
+        internal static Control Fixed(Control control, float width)
         {
             control.CustomMinimumSize = new Vector2(width, 0f);
             control.SizeFlagsVertical = Control.SizeFlags.Fill;
             return control;
         }
 
-        private static Button PlateButton(string name, string sprite, Color tint, string label, int size, Color ink, bool bold)
+        internal static Button PlateButton(string name, string sprite, Color tint, string label, int size, Color ink, bool bold)
         {
             var button = new Button { Name = name, SelfModulate = tint, FocusMode = Control.FocusModeEnum.None };
             StyleBoxTexture box = Ugui.NineSlice(sprite, 8);

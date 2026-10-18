@@ -21,6 +21,7 @@ namespace GolemFactory.Nodes
         public const string MoveDown = "move_down";
         public const string Interact = "interact";
         public const string Carry = "golem_carry";
+        public const string Inventory = "inventory";
 
         /// <summary>Cells per second, Unity's PlayerController default.</summary>
         [Export] public float MoveSpeed { get; set; } = 4f;
@@ -56,6 +57,11 @@ namespace GolemFactory.Nodes
         private Sprite2D _sprite;
         private PlayerWalker _walker;
         private PlayerInteractor _interactor;
+
+        // Whether a screen was up at the end of last frame. E closes a screen in its own
+        // _UnhandledInput, before this node's _Process runs that frame; without this the same
+        // press then reached the world too, and closing a crate screen collected the crate.
+        private bool _screenWasOpen;
 
         /// <summary>The interactable [E] would use right now, or null.</summary>
         public IInteractable Focus { get; private set; }
@@ -120,7 +126,9 @@ namespace GolemFactory.Nodes
                 // whether [E] is held (the crank), then re-pick and refresh the prompt.
                 _interactor.Position = _walker.Position;
                 // Typing a note counts too: "e" in a sentence must not crank a bench.
-                bool screenOpen = ModalScreens.AnyOpen(GetTree()) || TextEntry.IsTyping(GetViewport());
+                bool openNow = ModalScreens.AnyOpen(GetTree());
+                bool screenOpen = openNow || _screenWasOpen || TextEntry.IsTyping(GetViewport());
+                _screenWasOpen = openNow;
                 _interactor.SetInteractHeld(!screenOpen && Input.IsActionPressed(Interact));
                 _interactor.Poll();
                 bool pressed = !screenOpen && Input.IsActionJustPressed(Interact);
@@ -154,6 +162,11 @@ namespace GolemFactory.Nodes
                 GetViewport().SetInputAsHandled();
             }
             else if (e.IsActionPressed(Carry) && _interactor.ToggleCarryGolem())
+            {
+                GetViewport().SetInputAsHandled();
+            }
+            // I: the crate's screen at a crate, the pack's anywhere else. An open screen closes itself.
+            else if (e.IsActionPressed(Inventory) && _interactor.OpenInventory())
             {
                 GetViewport().SetInputAsHandled();
             }
@@ -192,6 +205,7 @@ namespace GolemFactory.Nodes
             Bind(MoveDown, Key.S, Key.Down);
             Bind(Interact, Key.E);
             Bind(Carry, Key.G);
+            Bind(Inventory, Key.I);
         }
 
         private static void Bind(string action, params Key[] keys)

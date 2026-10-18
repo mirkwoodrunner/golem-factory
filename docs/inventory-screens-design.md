@@ -1,6 +1,6 @@
 # Inventory screens: the pack, and a crate
 
-**Status: design, approved, building** (Phase 1, step 4 of `docs/crates-design.md` §9). Written
+**Status: built** (Phase 1, step 4 of `docs/crates-design.md` §9). Written
 before the code, kept as written afterwards, with corrections recorded.
 
 Two screens, kept separate (`crates-design.md` §5 Q4): the **Pack screen**, anywhere, and the
@@ -237,3 +237,41 @@ a UI change is verified by looking at it (root `CLAUDE.md`).
 - **Moving between two crates.** Goods go through the pack: collect from one, put into the other.
   A crate-to-crate move would be a remote store, which is the Post's job.
 - **Sorting or searching.** Every good in the game fits one scrolling list; tier order is the sort.
+
+## 8. Corrections from building it (2026-10-18)
+
+Where the code differs from the spec above, and why.
+
+1. **The readout is an instance, and it owns the clicks.** `SandboxWorld.Inventory` is a
+   `CrateScreenReadout` over the pack and the ledger: `CrateRows`/`PackRows`, `Take`/`Put`/`TakeAll`
+   (each returns the status line), `LabelOptions` and `SetLabel`. `Rows(side, plan, emptyMessage)`
+   takes a `Func<string, TransferResult>` rather than a `movable` count, so a row's `Reason` is the
+   real refusal: `CrateTransfer.PlanTake`/`PlanPut` are the dry runs `Take`/`Put` now execute. No
+   separate test asserts the deposit's return; the conservation asserts in `CrateScreenReadoutTests`
+   and the scenario would catch a refused deposit.
+2. **A move cut short says why.** "Moved 2 Coke into the crate · Crate full of Coke" (check 4 reads
+   the second half); a whole move reads "Moved 30 Coke into the crate" or "... to your pack".
+3. **`smelt-feed` and `carrier-feed` don't exist yet** (the guide rewrite is step 5). `copper-depot`
+   sets `crate: true`, and its text now says "press I and choose Copper Ore for its label", since E
+   collects. Check 10 runs on `copper-depot`; step 5 sets the flag on the other two.
+4. **The Post waits for crates-design §10.** §4.5's Post rows and check 8's Post half are not built;
+   `CrateScreenReadout.Title`/`CapLine` already name a crate that doesn't own its buffer "Pneumatic
+   Post" (tested).
+5. **Take all uses `steampunk_button_blank.png`**, tinted as specified. 9-sliced, the accept
+   sprite's tick stretched into a stroke through the words (seen in the frames).
+6. **The picker's grid sits in an 8 px left, 4 px top margin**, so the 348 px grid is centred in its
+   364 px rect and level with the rows.
+7. **The Pack screen's rows are only shown**: no hover tint and no click, since nothing moves from
+   there.
+8. **Shift is read from the click itself** (`InputEventMouseButton.ShiftPressed`, through the row's
+   `GuiInput`), so a scenario's Shift-click is a real one.
+9. **E that closes a screen stops there.** A screen closes on E in its `_UnhandledInput`, before
+   `PlayerNode._Process` polls E that frame; the player node now ignores E for the frame after a
+   screen was open, or closing the crate screen collected the crate (the construction panel had the
+   same hole).
+10. **The prompt hides for any registered screen** (crates-design §6.7): `PlayerInteractor` asks
+    `SandboxWorld.Screens.AnyOpen` as well as the three named screens. At a crate in reach the
+    prompt ends "· [I] open".
+11. **Check 2's depot is placed through `BuildModeController`**, as the `interact` scenario's is;
+    the `build` scenario covers the menu.
+
