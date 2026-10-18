@@ -37,7 +37,7 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   still clamped at the pack's 100-per-good cap in code, so every purchase from the second on
   costs 100 Scrap, plus Iron Plate rising to 100 at the third. **Decided (user, 2026-10-18):**
   the clamp goes, the cost keeps ramping into more advanced goods, and pack upgrades (100 to 250)
-  pay for it. Specified in `docs/pack-upgrades-design.md`, not built; its §7 questions are open.
+  pay for it. Built to `docs/pack-upgrades-design.md`, its §7 questions decided as recommended.
   Phase 3's tuning sets the final numbers.
 - **Whether the Overclocker has an identity** beyond more slots: one exclusive card (`Repeat`)
   and the same dials. Decided after a full playthrough (`docs/roadmap.md`, decision 7).

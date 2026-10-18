@@ -30,7 +30,7 @@ Read the docs before making design calls, not just the code:
   Phase 1, being built. Its §0 lists the invariants.
 - `docs/inventory-screens-design.md` -- the Pack and Crate screens and the label picker; Phase 1.
 - `docs/pack-upgrades-design.md` -- pack upgrades (100 to 250) and Floor Expansion priced up the
-  tiers, a Phase 1 follow-up, not built. Its §0 lists the invariants, including "every price fits
+  tiers, a Phase 1 follow-up, built. Its §0 lists the invariants, including "every price fits
   the reachable pack".
 - `docs/open-items.md` -- the backlog: open decisions, known gaps, deliberate scope cuts.
 - `docs/godot-spike.md` -- what the port measured before it began.
@@ -104,12 +104,14 @@ ones. Current scenarios:
   Patent, and close/reopen.
 - `management` (Sandbox): the HUD (alerts strip, pause and play), and Tab opening Management
   with the HUD and build menu hidden. Covers the Inventory icons, the tab exclusivity, an
-  Assembly Line claim reaching the Workbench, Extend planking and walling new rows, Patents
+  Assembly Line claim reaching the Workbench, the Pack row's Upgrade (the Pack screen's cap line
+  reads 150), two Extends planking and walling new rows (the second at 120 Scrap), Patents
   Load, the Ledger's plaques and recipe pane, and one screen at a time.
 - `save` (Sandbox): through the SaveLoad tab, build, save, wreck everything, and load. The
   buildings, golems (with program and place) and stockpile must come back exactly, and two
   more rounds must change nothing. Then it extends the room after a save and loads, and the
-  rows and back wall must go back. Writes `user://scenario-save.json`, never the player's save.
+  rows and back wall must go back, and a pack upgraded after a save loads back at the saved rung.
+  Writes `user://scenario-save.json`, never the player's save.
 - `tutorial` (Sandbox): the step-by-step guide's panel.
   - It opens on step 1, with the arrow pinned to the screen edge toward the Scrap stall and
     clear of the HUD bars.
@@ -478,6 +480,13 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   contents save on their `BuildingEntry`, not in `SaveData.buffers`. `SaveData.version` is 1;
   a version-0 save keeps its stockpile as the pack (above the cap if need be), starts every crate
   empty, and says so once.
+- **The pack's cap grows only by upgrade** (`SandboxWorld.PackUpgrade`, `sandbox.json`'s
+  `packUpgrades`, the Assembly Line tab's Pack row): never lowered in play, restored by rung on a
+  load (`packUpgradeTier`) without clamping. Crates stay at 50 and the Post at 200. **Every price
+  fits the pack reachable when it opens** on the guide's path, pack only
+  (`PriceReachTests`): a new price or rung must pass it. Floor Expansion charges
+  `floorExpansion.purchases`, one bundle per purchase, unclamped. A next price naming a good the
+  Ledger hasn't seen reads `Requires: <good>`, greyed.
 - **The Ledger's live rate is fresh production** (`ProductionTally`, series `"Produced"`), not a
   buffer's level.
 - **`I` is the inventory key** (`PlayerNode.Inventory`, `PlayerInteractor.OpenInventory`): the

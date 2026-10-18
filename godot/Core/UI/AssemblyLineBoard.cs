@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using GolemFactory.AssemblyLine;
 using GolemFactory.Buildings;
 using GolemFactory.Economy;
@@ -19,6 +21,7 @@ namespace GolemFactory.UI
         WaitingHeader,
         Waiting,
         More,
+        Pack,
     }
 
     /// <summary>One row of the Assembly Line tab, decided; the screen only lays it out.</summary>
@@ -32,7 +35,10 @@ namespace GolemFactory.UI
 
         public bool Affordable;
 
-        /// <summary>"Claim", "Upgrade" or "Extend" for rows with a button; null otherwise.</summary>
+        /// <summary>
+        /// "Claim", "Upgrade" or "Extend" for rows with a button; null otherwise. Two rows say
+        /// "Upgrade" (bays, pack), so a click dispatches on <see cref="Kind"/>.
+        /// </summary>
         public string ButtonLabel;
 
         /// <summary>Whether the row reads as active (bright) rather than dim.</summary>
@@ -67,6 +73,8 @@ namespace GolemFactory.UI
         private AssemblyBayStructure _bay;
         private string _stockpile;
         private FloorExpansionService _floor;
+        private PackUpgradeService _pack;
+        private Func<string, bool> _seen;
 
         /// <param name="postBufferId">The Pneumatic Post's store, spent after the pack (crates-design §10); null for none.</param>
         public AssemblyLineBoard(AssemblyLineState line, StorageBufferRegistry buffers, string walletBufferId,
@@ -86,6 +94,14 @@ namespace GolemFactory.UI
         }
 
         public void ConfigureFloorExpansion(FloorExpansionService floor) => _floor = floor;
+
+        public void ConfigurePackUpgrade(PackUpgradeService pack) => _pack = pack;
+
+        /// <summary>
+        /// Whether the factory has made a good (the Ledger). An Extend or Pack price naming one it
+        /// hasn't reads "Requires: Brass", greyed (docs/pack-upgrades-design.md §0.11). Unset, all are seen.
+        /// </summary>
+        public void ConfigureSeen(Func<string, bool> seen) => _seen = seen;
 
         /// <summary>The status line under the rows: what the last action did, or why it could not.</summary>
         public string Status { get; private set; } = "";
@@ -131,14 +147,37 @@ namespace GolemFactory.UI
                 }
                 else
                 {
+                    string locked = Requires(_floor.NextCost());
                     rows.Add(new AssemblyLineRow
                     {
                         Kind = AssemblyLineRowKind.Floor,
                         Text = label + "  ·  +" + _floor.RowsPerPurchase + " rows north",
                         Bright = true,
-                        CostText = ConstructionCostPolicy.FormatCost(_floor.NextCost()),
-                        Affordable = _floor.CanAfford(),
+                        CostText = locked ?? ConstructionCostPolicy.FormatCost(_floor.NextCost()),
+                        Affordable = locked == null && _floor.CanAfford(),
                         ButtonLabel = "Extend",
+                    });
+                }
+            }
+
+            if (_pack != null && _pack.CapacityPerType > 0)
+            {
+                string label = "Pack  ·  carries " + _pack.CapacityPerType + " of each good";
+                if (_pack.IsMaxed)
+                {
+                    rows.Add(new AssemblyLineRow { Kind = AssemblyLineRowKind.Pack, Text = label });
+                }
+                else
+                {
+                    string locked = Requires(_pack.NextCost());
+                    rows.Add(new AssemblyLineRow
+                    {
+                        Kind = AssemblyLineRowKind.Pack,
+                        Text = label + "  ·  +" + (_pack.NextCapacity - _pack.CapacityPerType),
+                        Bright = true,
+                        CostText = locked ?? ConstructionCostPolicy.FormatCost(_pack.NextCost()),
+                        Affordable = locked == null && _pack.CanAfford(),
+                        ButtonLabel = "Upgrade",
                     });
                 }
             }
@@ -242,6 +281,27 @@ namespace GolemFactory.UI
             bool expanded = _floor.TryPurchaseExpansion();
             Status = expanded ? "" : _floor.LastStatusMessage;
             return expanded;
+        }
+
+        public bool UpgradePack()
+        {
+            if (_pack == null)
+            {
+                Status = "No pack upgrades in this scene.";
+                return false;
+            }
+            bool upgraded = _pack.TryUpgrade();
+            Status = upgraded ? "" : _pack.LastStatusMessage;
+            return upgraded;
+        }
+
+        /// <summary>"Requires: Brass" for a price naming goods the factory has never made; null when it hasn't any.</summary>
+        private string Requires(IReadOnlyList<RecipeIngredient> price)
+        {
+            List<string> unseen = _seen == null || price == null
+                ? new List<string>()
+                : price.Where(p => p.quantity > 0 && !_seen(p.itemType)).Select(p => ConstructionCostPolicy.DisplayName(p.itemType)).ToList();
+            return unseen.Count == 0 ? null : "Requires: " + string.Join(", ", unseen);
         }
 
         // The pack plus the Post: what the bay's charge (PlayerWallet.TryCharge) can spend.

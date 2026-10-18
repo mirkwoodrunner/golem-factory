@@ -19,8 +19,8 @@ waiting mood and red for stuck, hover names for a stuck golem's tile and good, s
 arrows on hover) and **Guide Chapter Texts & Playtest Kit Actions** (each chapter's step texts
 against the crate-era game, with the kit action every new step needs). Neither exists in `docs/`
 yet. Merge `phase1/crates` first. Phase 1's follow-up, **pack upgrades**
-(`docs/pack-upgrades-design.md`, Phase 1 below), is specified but not built, and waits on the
-user's answers to its §7.
+(`docs/pack-upgrades-design.md`, Phase 1 below), is built on the same branch (the user approved
+its recommendations on 2026-10-18).
 
 Standing rules: tests and scenarios never write the player's real `save.json`; a renamed step `Id`
 or definition name breaks saves.
@@ -90,7 +90,8 @@ converter's scale the cost of a bad layout is the walking, which is the design's
 
 ### Phase 1 follow-up: pack upgrades
 
-Spec: `docs/pack-upgrades-design.md`, not built. Its §7 questions need the user's answers first.
+Spec: `docs/pack-upgrades-design.md`. Built (2026-10-18): the user approved every recommendation,
+and the doc's §8 records the corrections.
 The user's calls (2026-10-18): Floor Expansion keeps ramping its cost, with the clamp at the
 pack's cap removed, and its later purchases cost more advanced goods. Pack upgrades raise the
 pack's cap during play (100, 150, 200, 250) through a Pack row on the Assembly Line tab.

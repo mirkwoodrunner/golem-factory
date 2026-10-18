@@ -1476,6 +1476,15 @@ namespace GolemFactory.Tutorial
                 w => ScrapFirst(40, null),
                 w => $"Golems  {LiveGolems.Count()} / {_world.AssemblyBay.MaxGolemSlots}"),
 
+            // docs/pack-upgrades-design.md §6: the next extension asks more than a 100 pack holds.
+            new TutorialStep(
+                "pack", "A bigger pack",
+                "Your pack carries 100 of each good. On the same tab, click Upgrade on the pack (60 Iron Plate "
+                + "+ 30 Gear): 150 of each. The next extension needs it.",
+                w => _world.PackUpgrade.Tier >= 1,
+                w => null,
+                w => Counts((ItemType.IronPlate, 60), (ItemType.Gear, 30))),
+
             new TutorialStep(
                 "ledger", "Read the Ledger",
                 "The Ledger maps everything you can build and how far you have come. Press Tab, open the "

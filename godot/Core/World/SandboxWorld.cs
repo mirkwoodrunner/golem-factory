@@ -65,6 +65,9 @@ namespace GolemFactory.World
         public BuildModeController Build { get; } = new BuildModeController();
         public FloorExpansionService FloorExpansion { get; } = new FloorExpansionService();
 
+        /// <summary>The pack's cap ladder (docs/pack-upgrades-design.md): the Assembly Line tab's Pack row.</summary>
+        public PackUpgradeService PackUpgrade { get; } = new PackUpgradeService();
+
         public FloorBounds Bounds { get; private set; } = new FloorBounds();
         public DefinitionSet Definitions { get; private set; }
         public SandboxSetup Setup { get; private set; }
@@ -199,9 +202,9 @@ namespace GolemFactory.World
             FloorExpansion.Configure(Bounds, Buffers, _stockpileBufferId, PostBufferId);
             if (setup.floorExpansion != null)
             {
-                FloorExpansion.ConfigureCost(
-                    setup.floorExpansion.scrapPerRow, setup.floorExpansion.ironPlatePerRow, setup.floorExpansion.rowsPerPurchase);
+                FloorExpansion.ConfigureCost(setup.floorExpansion.purchases, setup.floorExpansion.rowsPerPurchase);
             }
+            PackUpgrade.Configure(Buffers, _stockpileBufferId, PostBufferId, setup.packCapacityPerType, setup.packUpgrades);
 
             // Ticked whether or not a tower is built: an unbuilt tower accrues nothing.
             // EMPTY, as ManagerHolders.prefab's site holder was (stages: []): the site stays
@@ -317,6 +320,8 @@ namespace GolemFactory.World
             AssemblyLineBoard = new AssemblyLineBoard(AssemblyLine, Buffers, _stockpileBufferId, setup.claimUserId, PostBufferId);
             AssemblyLineBoard.ConfigureBays(AssemblyBay, _stockpileBufferId);
             AssemblyLineBoard.ConfigureFloorExpansion(FloorExpansion);
+            AssemblyLineBoard.ConfigurePackUpgrade(PackUpgrade);
+            AssemblyLineBoard.ConfigureSeen(item => TechTree.Ledger.HasItem(item));
         }
 
         private void WireWorkbench(SandboxSetup.WorkbenchRoster roster)
@@ -459,6 +464,7 @@ namespace GolemFactory.World
                 ledgerTowerStages = TechTree.Ledger.CompletedTowerStages,
                 floorNorthExtent = Bounds.NorthExtent,
                 assemblyBayTier = AssemblyBay.Tier,
+                packUpgradeTier = PackUpgrade.Tier,
                 clockSpeed = Clock.Speed,
                 clockPaused = Clock.State == ClockState.Paused,
                 tutorialStep = Tutorial?.Index ?? 0,
@@ -515,6 +521,7 @@ namespace GolemFactory.World
 
             AssemblyBay.RestoreTier(progress.assemblyBayTier);
             FloorExpansion.Restore(progress.floorNorthExtent);
+            PackUpgrade.Restore(progress.packUpgradeTier);
 
             // The tower on its site (G10), a fixture the building list never holds.
             if (ClockTowerBuilding != null)

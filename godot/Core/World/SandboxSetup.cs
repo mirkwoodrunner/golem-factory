@@ -46,12 +46,14 @@ namespace GolemFactory.World
             public string roster;
         }
 
-        /// <summary>The Floor Expansion purchase, as Sandbox.unity's FloorExpansionService authored it.</summary>
+        /// <summary>
+        /// The Floor Expansion purchase: rows per purchase, and one price per purchase, priced up
+        /// the tiers (docs/pack-upgrades-design.md §4).
+        /// </summary>
         public sealed class Expansion
         {
-            public int scrapPerRow;
-            public int ironPlatePerRow;
             public int rowsPerPurchase;
+            public List<List<RecipeIngredient>> purchases = new List<List<RecipeIngredient>>();
         }
 
         /// <summary>
@@ -97,6 +99,9 @@ namespace GolemFactory.World
 
         /// <summary>The pack (the stockpile id): what the player carries, this many of each good.</summary>
         public int packCapacityPerType = 100;
+
+        /// <summary>The pack's cap ladder above <see cref="packCapacityPerType"/> (docs/pack-upgrades-design.md §3).</summary>
+        public List<PackUpgradeRung> packUpgrades = new List<PackUpgradeRung>();
 
         /// <summary>The Pneumatic Post's shared store (crates-design §10): this many of each good. A placeholder.</summary>
         public int postCapacityPerType = 200;

@@ -129,6 +129,13 @@ namespace GolemFactory.Tutorial
             new PlaytestQuestion("layout", "expand",
                 "Has where you put things started to matter: walks between crates, or a line that needed a belt?",
                 "It matters", "A little", "Not yet"),
+            // docs/pack-upgrades-design.md §6.
+            new PlaytestQuestion("pack-upgrade", "ledger",
+                "The pack upgrade: did you need the room, and was it easy to find?",
+                "Needed it", "Nice to have", "Didn't notice it"),
+            new PlaytestQuestion("dear-room", "frame-section",
+                "Later extensions cost Brass, Casing, Glass and Mainsprings. Was spending them on room worth it?",
+                "Worth it", "Too dear", "Never got that far"),
             new PlaytestQuestion("post", "glass",
                 "The Pneumatic Post: did it take a chore off you, or add one?",
                 "Took one off", "No difference", "Added one"),

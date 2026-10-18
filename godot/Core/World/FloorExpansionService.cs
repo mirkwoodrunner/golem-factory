@@ -7,7 +7,8 @@ namespace GolemFactory.World
 {
     /// <summary>
     /// Floor Expansion (docs/progression-design.md §3.3, §11 item 15): buying more workshop,
-    /// northward only, at an escalating price.
+    /// northward only, at an escalating price: six authored bundles, priced up the tiers
+    /// (docs/pack-upgrades-design.md §4).
     ///
     /// <para>
     /// PORTED FROM Unity's MonoBehaviour of the same name (G2d) -- the rules: the price grows
@@ -23,8 +24,7 @@ namespace GolemFactory.World
         private StorageBufferRegistry bufferRegistry;
         private string stockpileBufferId = "FactoryStockpile";
         private string postBufferId;
-        private int scrapPerRow = 40;
-        private int ironPlatePerRow = 20;
+        private IReadOnlyList<IReadOnlyList<RecipeIngredient>> purchases = new IReadOnlyList<RecipeIngredient>[0];
         private int rowsPerPurchase = 2;
 
         /// <summary>Raised after a purchase grows the room: the first and last new row, inclusive.</summary>
@@ -73,42 +73,24 @@ namespace GolemFactory.World
             }
         }
 
-        /// <summary>Tuning setter (Unity's Inspector fields).</summary>
-        public void ConfigureCost(int scrap, int ironPlate, int rows)
+        /// <summary>The price list (sandbox.json): one bundle per purchase, in order.</summary>
+        public void ConfigureCost(IReadOnlyList<IReadOnlyList<RecipeIngredient>> bundles, int rows)
         {
-            scrapPerRow = scrap;
-            ironPlatePerRow = ironPlate;
+            purchases = bundles ?? new IReadOnlyList<RecipeIngredient>[0];
             rowsPerPurchase = rows;
         }
 
-        /// <summary>
-        /// What the next purchase costs. Escalates one step per purchase already made, so the
-        /// first extension is cheap and the room cannot be grown to its limit for pocket change.
-        ///
-        /// <para>
-        /// <b>Clamped at the pack's cap</b> (docs/crates-design.md §6.1, a stopgap): the second
-        /// purchase onwards asked for more of one good than a 100 pack can hold, so it could never
-        /// be paid. Until the tuning pass reshapes the curve, no step asks for more than a full pack.
-        /// </para>
-        /// </summary>
-        public IReadOnlyList<RecipeIngredient> NextCost()
-        {
-            int rowsGrown = bounds == null ? 0 : bounds.NorthExtent - FloorLayout.DefaultNorthExtent;
-            int step = 1 + rowsGrown / RowsPerPurchase;
-            return new[]
-            {
-                new RecipeIngredient(ItemType.Scrap, AtMostAPack(scrapPerRow * RowsPerPurchase * step)),
-                new RecipeIngredient(ItemType.IronPlate, AtMostAPack(ironPlatePerRow * RowsPerPurchase * step)),
-            };
-        }
+        /// <summary>Purchases made so far: rows grown past the authored room, a purchase's worth at a time.</summary>
+        public int PurchasesMade =>
+            bounds == null ? 0 : Math.Max(0, bounds.NorthExtent - FloorLayout.DefaultNorthExtent) / RowsPerPurchase;
 
-        private int AtMostAPack(int quantity)
-        {
-            int cap = bufferRegistry == null || string.IsNullOrEmpty(stockpileBufferId)
-                ? StorageBuffer.Unlimited
-                : bufferRegistry.GetOrCreate(stockpileBufferId).CapacityPerType;
-            return cap == StorageBuffer.Unlimited ? quantity : Math.Min(quantity, cap);
-        }
+        /// <summary>
+        /// What the next purchase costs: the bundle at <see cref="PurchasesMade"/>, unclamped. The
+        /// pack's cap grows by upgrade to meet it (docs/pack-upgrades-design.md, which superseded
+        /// crates-design §6.1's clamp at a full pack). Past the list, the last bundle.
+        /// </summary>
+        public IReadOnlyList<RecipeIngredient> NextCost() =>
+            purchases.Count == 0 ? new RecipeIngredient[0] : purchases[Math.Min(PurchasesMade, purchases.Count - 1)];
 
         private PlayerWallet Wallet => bufferRegistry == null ? null : new PlayerWallet(bufferRegistry, stockpileBufferId, postBufferId);
 

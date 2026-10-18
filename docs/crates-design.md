@@ -288,6 +288,10 @@ Where the code differs from the spec above, and why.
 1. **§6.1 is done as written**: `FloorExpansionService.NextCost` clamps each good at the pack's
    cap, and `CrateTests.EveryPriceInTheGame_IsPayableFromAFullPack` covers placeables, chassis,
    every deck card's opening price, truckloads, the bay upgrade and every Floor Expansion step.
+   **Superseded (2026-10-18) by `docs/pack-upgrades-design.md`:** the clamp
+   (`FloorExpansionService.AtMostAPack`) is removed. Floor Expansion charges six authored bundles,
+   priced up the tiers, and pack upgrades raise the cap to meet them. The full-pack test became
+   `PriceReachTests.EveryPriceInTheGame_FitsThePackReachableWhenItOpens`.
 2. **The wallet is not passed to every call site.** The parts §4.4's table names keep their
    `(registry, bufferId)` wiring and charge through a `PlayerWallet` built over it (the wallet is
    stateless over the registry, so it is the same wallet as `SandboxWorld.Wallet`). Every charge
@@ -521,7 +525,8 @@ Checked and kept, with the reasons:
   not about where the kit's goods come from. `Grant` clamps at the pack's cap, so `Feed` can draw
   on goods the player already holds. That matters only in a kit run.
 - **Floor Expansion's clamp at the pack's cap** keeps §6.1's rule that every price fits in a
-  full pack (§10.1.8).
+  full pack (§10.1.8). *Superseded by `docs/pack-upgrades-design.md`: the clamp is gone, and each
+  price fits the pack reachable when it opens.*
 - **A full mast crate stalls the Zeppelin; it does not lose the cargo.** A launch pushes at the
   start of its step through `PushStockInto`, so a full crate refuses (`BeltFull`) and the goods
   stay in the golem's stock.

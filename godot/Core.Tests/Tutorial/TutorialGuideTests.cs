@@ -422,6 +422,10 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual("bays", StepId(world));
             Restock(world);
             Assert.IsTrue(world.AssemblyLineBoard.UpgradeBays(), world.AssemblyLineBoard.Status);
+            Assert.AreEqual("pack", StepId(world));
+            Give(world, ItemType.IronPlate, 60);
+            Give(world, ItemType.Gear, 30);
+            Assert.IsTrue(world.AssemblyLineBoard.UpgradePack(), world.AssemblyLineBoard.Status);
             Assert.AreEqual("ledger", StepId(world));
             world.LedgerReadout.Select("r1.coking");
             Assert.AreEqual("save", StepId(world));

@@ -54,6 +54,9 @@ namespace GolemFactory.Save
         public int ledgerTowerStages;
         public int floorNorthExtent;
         public int assemblyBayTier = 1;
+
+        /// <summary>Pack upgrades bought (docs/pack-upgrades-design.md): absent in an older save, so 0, the base cap.</summary>
+        public int packUpgradeTier;
         public float clockSpeed = 1f;
         public bool clockPaused;
         public int tutorialStep;

@@ -302,6 +302,11 @@ namespace GolemFactory.Tutorial
                 GrantCost(_world.AssemblyBay.UpgradeCost);
                 _world.AssemblyLineBoard.UpgradeBays();
             },
+            ["pack"] = () =>
+            {
+                GrantCost(_world.PackUpgrade.NextCost());
+                _world.AssemblyLineBoard.UpgradePack();
+            },
             ["ledger"] = () => _world.LedgerReadout.Select("r2.reclamation"),
             ["save"] = () => _world.SaveTo(KitSavePath),
             ["load"] = () => _world.LoadFrom(KitSavePath),

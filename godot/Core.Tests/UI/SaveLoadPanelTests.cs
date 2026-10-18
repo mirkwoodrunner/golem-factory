@@ -184,6 +184,7 @@ namespace GolemFactory.Tests.UI
             Assert.IsTrue(world.AssemblyLineBoard.ExtendFloor(), world.AssemblyLineBoard.Status);
             Fund(world);
             Assert.IsTrue(world.AssemblyLineBoard.UpgradeBays(), world.AssemblyLineBoard.Status);
+            Assert.IsTrue(world.AssemblyLineBoard.UpgradePack(), world.AssemblyLineBoard.Status);
             world.TechTree.Ledger.RecordItem(ItemType.Coke);
             world.Clock.Speed = 2f;
             world.Clock.Pause();
@@ -196,6 +197,7 @@ namespace GolemFactory.Tests.UI
             Assert.IsTrue(world.AssemblyLineBoard.ExtendFloor());
             Fund(world);
             Assert.IsTrue(world.AssemblyLineBoard.UpgradeBays());
+            Assert.IsTrue(world.AssemblyLineBoard.UpgradePack(), world.AssemblyLineBoard.Status);
             world.Clock.Speed = 4f;
             world.Clock.Play();
             Assert.AreNotEqual(claims, Claims(world), "precondition: progress moved on");
@@ -215,6 +217,8 @@ namespace GolemFactory.Tests.UI
             Assert.AreEqual(north, world.Bounds.NorthExtent);
             Assert.AreEqual(tier, world.AssemblyBay.Tier);
             Assert.AreEqual(slots, world.AssemblyBay.MaxGolemSlots);
+            Assert.AreEqual(1, world.PackUpgrade.Tier, "the pack's rung, as saved");
+            Assert.AreEqual(150, world.Wallet.Pack.CapacityPerType);
             Assert.IsTrue(world.TechTree.Ledger.HasItem(ItemType.Coke));
             Assert.AreEqual(2f, world.Clock.Speed);
             Assert.AreEqual(ClockState.Paused, world.Clock.State);

@@ -1,8 +1,9 @@
 # Pack upgrades, and Floor Expansion priced up the tiers
 
-**Status: design, not built (2026-10-18). A Phase 1 follow-up in `docs/roadmap.md`.** Written
-before the code, like `crates-design.md`, and kept as written afterwards, with corrections
-recorded rather than hidden.
+**Status: approved by the user on 2026-10-18 with every recommendation as written, and built
+the same day. A Phase 1 follow-up in `docs/roadmap.md`.** Written before the code, like
+`crates-design.md`, and kept as written afterwards, with corrections recorded rather than hidden
+(§8).
 
 The user's calls (2026-10-18):
 
@@ -189,7 +190,9 @@ other step.
 | `ledger` (after `pack`) | The pack upgrade: did you need the room, and was it easy to find? (Needed it · Nice to have · Didn't notice it) |
 | `frame-section` | Later extensions cost Brass, Casing, Glass and Mainsprings. Was spending them on room worth it? (Worth it · Too dear · Never got that far) |
 
-## 7. Open questions, for the user
+## 7. Open questions: decided (user, 2026-10-18)
+
+Each was decided as recommended.
 
 1. **Should a price assume the Post?** Recommendation: no. The Post is optional, and a price
    that needs pack plus Post is unpayable for a player who skipped it.
@@ -205,3 +208,34 @@ other step.
 6. **The numbers.** §3 and §4 are a first cut for Phase 3's spreadsheet. The invariant (§1) is
    what's settled. Recommendation: tune the quantities freely, and keep the shape: bulk in cheap
    goods, a few advanced goods, and caps in steps of 50.
+
+## 8. Corrections from building it (2026-10-18)
+
+Where the code differs from the spec above, and why.
+
+1. **The row's separators are the tab's**: `Pack  ·  carries 100 of each good  ·  +50`, two
+   spaces either side of the dot, as the bay and Extend rows write theirs.
+2. **A locked price names every good not yet made**, joined by commas. In a fresh game the first
+   rung reads `Requires: Iron Plate, Gear`, since neither has been made.
+3. **The cap line was drawn once.** `CrateScreenReadout.PackCapLine` reads the live cap, but the
+   Pack and Crate screens set it only when they were built, so an upgrade didn't show until a
+   restart. Both screens now set it on every refresh.
+4. **The `management` scenario upgrades first, then extends twice** (purchases 1 and 2), in place
+   of its single Extend. It opens the Pack screen with `PackScreen.Open()`, as it opens the
+   Workbench, rather than by `[I]`, which depends on where the player stands. `save` also checks
+   the rung, as §5 says.
+5. **The questions' ids are `pack-upgrade` and `dear-room`.** The doc named only their steps.
+6. **Seen(s) is read with a poll.** The Ledger polls buffers once a second, so the test calls
+   `TechTreeProgressTracker.Poll` every frame. The kit performs the next step in the same
+   `Update` that finishes one, so a step the world finished mid-frame is credited with the
+   Ledger from before that frame. The measured "Opens at" column matches §3 and §4 exactly.
+7. **`FloorExpansionService` has no built-in prices.** Unconfigured, an extension is free.
+   `FloorExpansionTests` configure it from `sandbox.json`. `PurchasesMade` is new: rows grown
+   past the authored room, a purchase's worth at a time.
+8. **An expansion that adds no rows can't happen.** `TryPurchaseExpansion` refuses at the limit
+   before it charges, and `FloorBounds.Expand` adds at least one row whenever it can expand. The
+   `Uncharge` branch stays, unreachable, and the test pins the refusal instead: a purchase at the
+   limit takes nothing.
+9. **`Restore` leaves an uncapped pack uncapped**, as `TryUpgrade` does (§0.2), so a test
+   fixture's unlimited pack survives a load.
+10. **Tech tree**: the new node `pack.upgrades` makes the Ledger 47 nodes.

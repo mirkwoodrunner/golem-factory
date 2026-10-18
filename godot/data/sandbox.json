@@ -5,6 +5,11 @@
   "stockpileBufferId": "FactoryStockpile",
   "crateCapacityPerType": 50,
   "packCapacityPerType": 100,
+  "packUpgrades": [
+    { "capacityPerType": 150, "cost": [{ "itemType": "IronPlate", "quantity": 60 }, { "itemType": "Gear", "quantity": 30 }] },
+    { "capacityPerType": 200, "cost": [{ "itemType": "IronPlate", "quantity": 40 }, { "itemType": "Brass", "quantity": 20 }] },
+    { "capacityPerType": 250, "cost": [{ "itemType": "IronPlate", "quantity": 60 }, { "itemType": "Casing", "quantity": 10 }, { "itemType": "Mainspring", "quantity": 4 }] }
+  ],
   "postCapacityPerType": 200,
   "startingNorthExtent": 12,
   "beltCellsPerSecond": 1.0,
@@ -45,7 +50,17 @@
       "AssembleWireDrawing"
     ]
   },
-  "floorExpansion": { "scrapPerRow": 40, "ironPlatePerRow": 20, "rowsPerPurchase": 2 },
+  "floorExpansion": {
+    "rowsPerPurchase": 2,
+    "purchases": [
+      [{ "itemType": "Scrap", "quantity": 80 }, { "itemType": "IronPlate", "quantity": 40 }],
+      [{ "itemType": "Scrap", "quantity": 120 }, { "itemType": "IronPlate", "quantity": 60 }, { "itemType": "Gear", "quantity": 30 }],
+      [{ "itemType": "IronPlate", "quantity": 150 }, { "itemType": "Gear", "quantity": 40 }, { "itemType": "CopperIngot", "quantity": 50 }],
+      [{ "itemType": "IronPlate", "quantity": 200 }, { "itemType": "Brass", "quantity": 20 }, { "itemType": "Casing", "quantity": 10 }],
+      [{ "itemType": "Glass", "quantity": 200 }, { "itemType": "Lens", "quantity": 20 }, { "itemType": "Casing", "quantity": 15 }],
+      [{ "itemType": "IronPlate", "quantity": 250 }, { "itemType": "Mainspring", "quantity": 6 }, { "itemType": "AetherCell", "quantity": 4 }, { "itemType": "Casing", "quantity": 15 }]
+    ]
+  },
   "nodes": [
     { "id": "ScrapNodeWest", "itemType": "Scrap", "sprite": "stall_scrap", "x": -16, "y": -16 },
     { "id": "CoalNodeWest", "itemType": "Coal", "sprite": "stall_coal", "x": -12, "y": -16 },

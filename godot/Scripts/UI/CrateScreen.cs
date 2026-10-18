@@ -125,6 +125,7 @@ namespace GolemFactory.Nodes
             _labelText.AddThemeColorOverride("font_color", Crate.CanLabel ? ManagementScreen.SelectedTabLabel : ManagementScreen.DimInk);
             _cratePanel.Render(readout.CrateRows(Crate));
             _packPanel.Render(readout.PackRows(Crate));
+            _packPanel.Cap.Text = readout.PackCapLine; // live: a pack upgrade raises it
             _summary.Text = readout.PackSummary;
         }
 
@@ -237,7 +238,6 @@ namespace GolemFactory.Nodes
             _packPanel = new InventoryPanel("PackPanel", 64f, Close, PutClicked);
             _root.AddChild(Ugui.Place(_packPanel.Root, 0f, 0.5f, 0f, 0.5f, 536f, 0f, 380f, 520f, 0f, 0.5f));
             _packPanel.Title.Text = CrateScreenReadout.PackTitle;
-            _packPanel.Cap.Text = _world.Inventory.PackCapLine;
             _summary = Ugui.Place(Ugui.Text("Summary", "", 12, ManagementScreen.DimInk), 0f, 0f, 1f, 0f, 0f, 12f, -24f, 30f, 0.5f, 0f);
             _packPanel.Root.AddChild(_summary);
 

@@ -131,6 +131,13 @@ namespace GolemFactory.Progression
                 TechTreeNodeKind.Building, 1, 7,
                 TechTreeUnlockSignal.Building, BuildingDepot,
                 new[] { "chassis.scavenger" }),
+            // docs/pack-upgrades-design.md: the Assembly Line tab's Pack row, the first rung
+            // priced in Gears.
+            new TechTreeNode(
+                "pack.upgrades", "A Bigger Pack", "Carries 100 · up to 250 in three upgrades",
+                TechTreeNodeKind.Technique, 1, 8,
+                TechTreeUnlockSignal.None, null,
+                new[] { "r8.gearcutting" }),
 
             // ---- III · Steam & Scale --------------------------------------------------------
             // The only phase whose keystone is not a chassis. §9's phase 3 has no new frame in it
@@ -150,7 +157,7 @@ namespace GolemFactory.Progression
             // back wall moves north at runtime, painting new plank rows and re-placing the
             // wall run, priced per row and capped -- land is finite and expensive.
             new TechTreeNode(
-                "bldg.floorexpansion", "Floor Expansion", "60 Scrap + 30 Iron Plate per 6×6 block",
+                "bldg.floorexpansion", "Floor Expansion", "+2 rows · six purchases, priced up the tiers",
                 TechTreeNodeKind.Building, 2, 2,
                 TechTreeUnlockSignal.Building, BuildingFloorExpansion,
                 new[] { "r2.reclamation" }),

@@ -23,6 +23,7 @@ namespace GolemFactory.Nodes
         // --- For scenarios ------------------------------------------------------------------
         public System.Collections.Generic.IReadOnlyDictionary<string, Button> Rows => _panel.Rows;
         public System.Collections.Generic.IReadOnlyDictionary<string, Button> PostRows => _panel.PostRows;
+        public string CapText => _panel.Cap.Text;
 
         public override void _EnterTree() => AddToGroup(ModalScreens.GroupName);
 
@@ -71,6 +72,7 @@ namespace GolemFactory.Nodes
         private void Refresh()
         {
             _panel.Render(_world.Inventory.PackRows(null), _world.Inventory.PostRows());
+            _panel.Cap.Text = _world.Inventory.PackCapLine; // live: a pack upgrade raises it
             _summary.Text = _world.Inventory.PackSummary;
         }
 
@@ -83,7 +85,6 @@ namespace GolemFactory.Nodes
             _panel = new InventoryPanel("PackPanel", 64f, Close, null);
             _root.AddChild(Ugui.Place(_panel.Root, 0.5f, 0.5f, 0.5f, 0.5f, 0f, 0f, 380f, 520f, 0.5f, 0.5f));
             _panel.Title.Text = CrateScreenReadout.PackTitle;
-            _panel.Cap.Text = _world.Inventory.PackCapLine;
             _summary = Ugui.Place(Ugui.Text("Summary", "", 12, ManagementScreen.DimInk), 0f, 0f, 1f, 0f, 0f, 12f, -24f, 30f, 0.5f, 0f);
             _panel.Root.AddChild(_summary);
 

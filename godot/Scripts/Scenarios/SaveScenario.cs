@@ -26,6 +26,8 @@ namespace GolemFactory.Nodes.Scenarios
     ///   same id, program and place -- with its node hosted, and the stockpile and the crate are
     ///   what was saved (no refund on load: that is the save/load duplicator).</item>
     ///   <item>Save and load twice more: nothing changes.</item>
+    ///   <item>Extend after a save and load: the rows go back. Upgrade the pack, save, upgrade
+    ///   again and load: the pack is back at the saved rung, its goods as saved.</item>
     /// </list>
     /// </summary>
     public sealed class SaveScenario : IScenario
@@ -158,6 +160,41 @@ namespace GolemFactory.Nodes.Scenarios
                     return $"back wall at y={backWall?.Position.Y}, north of row {north + 1} (y={limitY})";
                 }
                 _log.Add($"floor extended after the save came back to row {north}: planks and back wall restored");
+                return _saved.Diff(Take());
+            });
+            // The pack's rung is saved too (docs/pack-upgrades-design.md §5): save at tier 1,
+            // upgrade again, load, and the pack is back at 150 with nothing clamped.
+            Do("upgrade the pack and save", () =>
+            {
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.IronPlate, 100);
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Gear, 30);
+                if (!_world.AssemblyLineBoard.UpgradePack())
+                {
+                    return "Upgrade refused: " + _world.AssemblyLineBoard.Status;
+                }
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Scrap, 500);
+                Click(_screen.SaveButton);
+                _saved = Take();
+                return null;
+            });
+            Do("upgrade again after the save", () =>
+            {
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.IronPlate, 100);
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Brass, 20);
+                if (!_world.AssemblyLineBoard.UpgradePack())
+                {
+                    return "Upgrade refused: " + _world.AssemblyLineBoard.Status;
+                }
+                return _world.PackUpgrade.Tier == 2 && _world.Wallet.Pack.CapacityPerType == 200 ? null : $"tier {_world.PackUpgrade.Tier}";
+            });
+            Do("load the tier-1 save", () => { Click(_screen.LoadButton); return null; });
+            Do("the pack is back at tier 1, nothing clamped", () =>
+            {
+                if (_world.PackUpgrade.Tier != 1 || _world.Wallet.Pack.CapacityPerType != 150)
+                {
+                    return $"tier {_world.PackUpgrade.Tier}, cap {_world.Wallet.Pack.CapacityPerType}";
+                }
+                _log.Add("pack saved at tier 1, upgraded to 200, loaded back to 150 with the pack as saved");
                 return _saved.Diff(Take());
             });
             Do("close", () => { _screen.Close(); return null; });

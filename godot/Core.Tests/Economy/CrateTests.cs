@@ -420,51 +420,8 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(0, world.Wallet.RoomFor(ItemType.Scrap), "still above: still closed");
         }
 
-        // --- Every price fits in a full pack (crates-design §6.1) ---------------------------------
-
-        [Test]
-        public void EveryPriceInTheGame_IsPayableFromAFullPack()
-        {
-            SandboxWorld world = Compose();
-            int cap = world.Wallet.Pack.CapacityPerType;
-            Assert.AreEqual(100, cap);
-            var prices = new List<(string what, IReadOnlyList<RecipeIngredient> price)>();
-
-            prices.AddRange(world.Placeables.Select(p => ("placeable " + p.Key, (IReadOnlyList<RecipeIngredient>)p.Prefab.Cost)));
-            prices.AddRange(world.Definitions.Chassis.Values.Select(c => ("chassis " + c.name, (IReadOnlyList<RecipeIngredient>)c.cost)));
-            foreach (DraftableCardCatalog deck in world.Definitions.Decks.Values)
-            {
-                foreach (DraftableCardDefinition card in deck.Cards.Concat(deck.OpeningHand).Where(c => c != null))
-                {
-                    IReadOnlyList<RecipeIngredient> opening = card.HasBundleCost
-                        ? card.claimCost
-                        : new[] { new RecipeIngredient(ItemType.Scrap, card.baseCost) };
-                    prices.Add(("card " + card.name, opening));
-                }
-            }
-            foreach (string stall in world.Market.StallIds)
-            {
-                world.Market.TryGetOffer(stall, out MarketOffer offer);
-                prices.Add(("truckload " + stall, offer.Price));
-            }
-            prices.Add(("assembly bays", world.AssemblyBay.UpgradeCost));
-
-            int steps = 0;
-            while (world.Bounds.CanExpand)
-            {
-                prices.Add(("floor expansion " + (++steps), world.FloorExpansion.NextCost()));
-                world.Bounds.Expand(world.FloorExpansion.RowsPerPurchase);
-            }
-            Assert.GreaterOrEqual(steps, 6, "the six purchases of §6.1");
-
-            foreach ((string what, IReadOnlyList<RecipeIngredient> price) in prices)
-            {
-                foreach (RecipeIngredient good in price ?? new RecipeIngredient[0])
-                {
-                    Assert.LessOrEqual(good.quantity, cap, $"{what} asks for {good.quantity} {good.itemType}, more than a full pack");
-                }
-            }
-        }
+        // "Every price fits a full pack" (crates-design §6.1) is superseded by
+        // PriceReachTests: every price fits the pack reachable when it opens.
 
         // --- Step 2: the mast's crate, and the Ledger's rate ---------------------------------------
 

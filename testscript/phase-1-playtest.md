@@ -150,11 +150,11 @@ which way in a note, or add it under the matching question in the report.
 | Slag Heap | 1 Coke per 4 Slag |
 | Assembly Line card price | 4× the recipe's own inputs, decaying while it waits |
 | Golem bays | 10, then +6 per upgrade |
-| Floor expansion | +2 rows, rising cost, capped at +12 |
+| Floor expansion | +2 rows, six purchases, from Scrap and Plate up to Casing and Mainspring |
 | Freight launch | a flat 24 ticks, however far |
 | A golem's "hold nearly full" warning | 9 of 12 units |
 | A crate (depot or mast) | 50 of each good |
-| Your pack | 100 of each good |
+| Your pack | 100, then 150, 200, 250 by upgrade |
 | The Pneumatic Post's shared store | 200 of each good |
 | A Post crate | 10 Brass + 5 Casing |
 
@@ -171,7 +171,9 @@ just after you have lived through what it asks about. New in Phase 1 are marked.
 | `copper` | Did a golem stop because its crate was full or empty? Did its badge say why? (Never saw it · Yes, clearly · Yes, but I was confused) | yes |
 | `unloader` | You labelled a depot on the crate screen. Did the picker work? (Good · Fiddly · Couldn't find it) | reworded (was the E-cycle) |
 | `expand` | Has where you put things started to matter: walks between crates, or a line that needed a belt? (It matters · A little · Not yet) | yes |
+| `ledger` | The pack upgrade: did you need the room, and was it easy to find? (Needed it · Nice to have · Didn't notice it) | yes |
 | `glass` | The Pneumatic Post: did it take a chore off you, or add one? (Took one off · No difference · Added one) | yes |
 | `tower-visit` | The Copper landed in the mast's crate. Did you find it? (Straight away · Eventually · No) | yes |
+| `frame-section` | Later extensions cost Brass, Casing, Glass and Mainsprings. Was spending them on room worth it? (Worth it · Too dear · Never got that far) | yes |
 
 The existing questions stay where they are.
