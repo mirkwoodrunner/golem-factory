@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using GolemFactory.Belts;
 using GolemFactory.Buildings;
 using GolemFactory.Compat;
@@ -44,7 +45,7 @@ namespace GolemFactory.Player
 
     /// <summary>
     /// Finds the nearest interactable -- a node to harvest, a station to build at, a golem to
-    /// program, a boiler to fuel, a depot to relabel -- and acts on it with [E]. Also owns [G]
+    /// program, a boiler to fuel, a crate to collect from -- and acts on it with [E]. Also owns [G]
     /// (carry a golem), the context-shared [R], and the Hand-Crank Bench's held [E].
     ///
     /// <para>
@@ -125,7 +126,7 @@ namespace GolemFactory.Player
         private GolemConstructionStation[] _stations = new GolemConstructionStation[0];
         private GolemEntity[] _golems = new GolemEntity[0];
         private PlaceableBoiler[] _boilers = new PlaceableBoiler[0];
-        private PlaceableDepot[] _depots = new PlaceableDepot[0];
+        private ICrate[] _depots = new ICrate[0];
         private HandCrankBench[] _benches = new HandCrankBench[0];
         private Vector2Int[] _boilerCells = new Vector2Int[0];
         private Vector2Int[] _depotCells = new Vector2Int[0];
@@ -303,7 +304,7 @@ namespace GolemFactory.Player
             var stations = new List<GolemConstructionStation>();
             var boilers = new List<PlaceableBoiler>();
             var boilerCells = new List<Vector2Int>();
-            var depots = new List<PlaceableDepot>();
+            var depots = new List<ICrate>();
             var depotCells = new List<Vector2Int>();
             var benches = new List<HandCrankBench>();
             var benchCells = new List<Vector2Int>();
@@ -327,7 +328,8 @@ namespace GolemFactory.Player
                     boilerCells.Add(building.Cell);
                 }
 
-                PlaceableDepot depot = building.GetPart<PlaceableDepot>();
+                // Depots and masts alike: every crate is collected the same way (crates-design §4.2).
+                ICrate depot = building.GetPart<ICrate>();
                 if (depot != null)
                 {
                     depots.Add(depot);
@@ -819,12 +821,17 @@ namespace GolemFactory.Player
 
             // A depleted node is in range but cannot be harvested. Saying "[E] Harvest Aether -
             // depleted" told the player two contradictory things at once.
-            if (CurrentAffordance == InteractionAffordance.Ready && IsUnavailable(pick, target))
+            bool packFull = false;
+            if (CurrentAffordance == InteractionAffordance.Ready && IsUnavailable(pick, target, out packFull))
             {
                 CurrentAffordance = InteractionAffordance.Unavailable;
             }
 
             DescribeTarget(pick, target, CarriedGolem != null, out string targetName, out string detail);
+            if (packFull)
+            {
+                detail = "pack full";
+            }
             string verb = DescribeMarketStall(pick, target, ref detail);
 
             // [G] AND [R] ACT ON THE NEAREST GOLEM, NOT ON THE WINNER OF THE [E] PICK, and the two
@@ -883,8 +890,12 @@ namespace GolemFactory.Player
         // A boiler with no Coke to give it, or no room for any (SteamBoiler.CokeCapacity), reads
         // Unavailable rather than Ready, for the same reason a depleted node does: "[E] Fuel
         // Boiler" there promises an action that will refuse.
-        private bool IsUnavailable(InteractionPick pick, object target)
+        //
+        // A full pack greys the prompt too (crates-design §4.2), with "pack full" for its detail:
+        // at a stocked stall whose good it has no room for, and at a crate none of whose goods fit.
+        private bool IsUnavailable(InteractionPick pick, object target, out bool packFull)
         {
+            packFull = false;
             switch (pick.Kind)
             {
                 case InteractionKind.Harvest:
@@ -897,14 +908,39 @@ namespace GolemFactory.Player
                         return false;
                     }
 
+                    if (!marker.IsDepleted && PackRoomFor(marker.ItemType) <= 0)
+                    {
+                        packFull = true;
+                        return true;
+                    }
+
                     return marker.IsDepleted;
                 }
                 case InteractionKind.Refuel:
                     return BoilerRefuelPolicy.AmountToLoad(StockpileCoke, room: RoomIn(target)) <= 0;
+                case InteractionKind.Sort:
+                {
+                    StorageBuffer held = ((ICrate)target).Buffer;
+                    if (held == null || !held.Quantities.Any(q => q.Value > 0))
+                    {
+                        return true;
+                    }
+                    packFull = !held.Quantities.Any(q => q.Value > 0 && PackRoomFor(q.Key) > 0);
+                    return packFull;
+                }
                 default:
                     return false;
             }
         }
+
+        // The pack's room alone: harvesting and collecting are what the player carries, never
+        // the Post (crates-design §4.4). Unwired, there is no limit to say no with.
+        private int PackRoomFor(string itemType) =>
+            _stockpile == null ? int.MaxValue : _stockpile.RoomFor(_stockpileBufferId, itemType);
+
+        private StorageBuffer Pack => _stockpile?.GetOrCreate(_stockpileBufferId);
+
+        private PlayerWallet Wallet => _stockpile == null ? null : new PlayerWallet(_stockpile, _stockpileBufferId);
 
         /// <summary>
         /// An EMPTY market stall's caption (G10, at the user's call). [E] there orders a
@@ -933,8 +969,7 @@ namespace GolemFactory.Player
 
         private static int RoomIn(object boiler) => (boiler as PlaceableBoiler)?.Boiler?.CokeRoom ?? 0;
 
-        private int StockpileCoke =>
-            _stockpile == null ? 0 : _stockpile.GetQuantity(_stockpileBufferId, ItemType.Coke);
+        private int StockpileCoke => Wallet?.Quantity(ItemType.Coke) ?? 0;
 
         private static void DescribeTarget(
             InteractionPick pick, object target, bool isCarrying, out string targetName, out string detail)
@@ -965,10 +1000,9 @@ namespace GolemFactory.Player
                 }
                 case InteractionKind.Sort:
                 {
-                    var depot = (PlaceableDepot)target;
-                    // The CURRENT label, not the next one: with a cycle that grows as the factory
-                    // does, "what is it now" is the harder question.
-                    detail = "holds " + depot.FilterLabel + " · [E] relabel";
+                    var crate = (ICrate)target;
+                    targetName = crate is PlaceableFreightMast ? "Freight Mast" : "Crate";
+                    detail = DescribeContents(crate.Buffer);
                     break;
                 }
                 case InteractionKind.Program:
@@ -984,6 +1018,20 @@ namespace GolemFactory.Player
                     break;
                 }
             }
+        }
+
+        /// <summary>"holds 12 Scrap, 3 Coke", in tier order, or "empty".</summary>
+        public static string DescribeContents(StorageBuffer crate)
+        {
+            List<string> goods = crate == null
+                ? new List<string>()
+                : crate.Quantities.Where(q => q.Value > 0).Select(q => q.Key).ToList();
+            if (goods.Count == 0)
+            {
+                return "empty";
+            }
+            BufferTrendUtility.SortItemTypes(goods);
+            return "holds " + string.Join(", ", goods.Select(g => crate.GetQuantity(g) + " " + ItemTiers.DisplayName(g)));
         }
 
         // --- [E] -----------------------------------------------------------------------------------
@@ -1022,7 +1070,7 @@ namespace GolemFactory.Player
                 case InteractionKind.Refuel:
                     return TryRefuelBoiler(target as PlaceableBoiler);
                 case InteractionKind.Sort:
-                    return TryRelabelDepot(target as PlaceableDepot);
+                    return TryCollect(target as ICrate);
                 default:
                     LastStatusMessage = "Nothing in range to interact with.";
                     return false;
@@ -1030,25 +1078,41 @@ namespace GolemFactory.Player
         }
 
         /// <summary>
-        /// Chalks the next label onto a depot (docs/cozy-automation-design.md §1): the crate
-        /// cycles through "any goods" and every item type the stockpile has handled, and the
-        /// tile it publishes is re-registered on the spot.
+        /// E at a crate (docs/crates-design.md §4.2): everything it holds that fits goes into the
+        /// pack, and the rest stays in the crate, as a golem's partial haul does. Labels don't
+        /// apply on the way out, so a relabelled crate never strands its goods.
         /// </summary>
-        public bool TryRelabelDepot(PlaceableDepot depot)
+        public bool TryCollect(ICrate crate)
         {
-            if (depot == null)
+            if (crate == null || crate.Buffer == null)
             {
-                LastStatusMessage = "No depot in range to label.";
+                LastStatusMessage = "No crate in range.";
                 return false;
             }
 
-            depot.CycleFilter();
-            LastStatusMessage = "Depot now holds " + depot.FilterLabel + ".";
-            Popup(DepotPosition(depot), depot.FilterLabel, InteractionPopupKind.Gain);
+            Vector3 at = DepotPosition(crate);
+            List<TransferResult> results = CrateTransfer.Collect(crate, Pack);
+            List<TransferResult> moved = results.Where(r => r.Moved > 0).ToList();
+            if (moved.Count == 0)
+            {
+                string refusal = results.Count == 0 ? "Empty" : results[0].Refusal;
+                LastStatusMessage = results.Count == 0 ? "This crate is empty." : refusal + ".";
+                Popup(at, refusal, InteractionPopupKind.Refused);
+                return false;
+            }
+
+            LastStatusMessage = "Collected " + string.Join(", ", moved.Select(r => r.Moved + " " + ItemTiers.DisplayName(r.ItemType))) + ".";
+            Popup(at, string.Join("  ", moved.Select(r => YieldPopupText.Gain(r.ItemType, r.Moved))), InteractionPopupKind.Gain);
             return true;
         }
 
-        private Vector3 DepotPosition(PlaceableDepot depot)
+        /// <summary>
+        /// A line said to the player, rising from where they stand: what the game did that they
+        /// did not ask for (a migrated save's notice, crates-design §7).
+        /// </summary>
+        public void Announce(string text) => Popup(Position, text, InteractionPopupKind.Gain);
+
+        private Vector3 DepotPosition(ICrate depot)
         {
             for (int i = 0; i < _depots.Length; i++)
             {
@@ -1108,7 +1172,7 @@ namespace GolemFactory.Player
 
             // Withdraw first, then add. The reverse order would mint Coke if the withdrawal
             // failed -- and the withdrawal is the operation that can fail.
-            if (!_stockpile.TryWithdraw(_stockpileBufferId, ItemType.Coke, amount))
+            if (!Wallet.TryCharge(new[] { new RecipeIngredient(ItemType.Coke, amount) }))
             {
                 LastStatusMessage = "No Coke in the stockpile.";
                 Popup(at, "No Coke", InteractionPopupKind.Refused);
@@ -1185,6 +1249,15 @@ namespace GolemFactory.Player
             if (marker == null)
             {
                 LastStatusMessage = "Nothing left to harvest here.";
+                return false;
+            }
+
+            // Room BEFORE the take (crates-design §6.5): taking from the stall and then finding
+            // the pack full would destroy the unit. A depleted stall is told apart below.
+            if (!marker.IsDepleted && PackRoomFor(marker.ItemType) <= 0)
+            {
+                LastStatusMessage = $"Your pack is full of {ItemTiers.DisplayName(marker.ItemType)}.";
+                Popup(marker.Position, "Pack full", InteractionPopupKind.Refused);
                 return false;
             }
 

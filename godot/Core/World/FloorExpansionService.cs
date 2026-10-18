@@ -81,6 +81,12 @@ namespace GolemFactory.World
         /// <summary>
         /// What the next purchase costs. Escalates one step per purchase already made, so the
         /// first extension is cheap and the room cannot be grown to its limit for pocket change.
+        ///
+        /// <para>
+        /// <b>Clamped at the pack's cap</b> (docs/crates-design.md §6.1, a stopgap): the second
+        /// purchase onwards asked for more of one good than a 100 pack can hold, so it could never
+        /// be paid. Until the tuning pass reshapes the curve, no step asks for more than a full pack.
+        /// </para>
         /// </summary>
         public IReadOnlyList<RecipeIngredient> NextCost()
         {
@@ -88,13 +94,22 @@ namespace GolemFactory.World
             int step = 1 + rowsGrown / RowsPerPurchase;
             return new[]
             {
-                new RecipeIngredient(ItemType.Scrap, scrapPerRow * RowsPerPurchase * step),
-                new RecipeIngredient(ItemType.IronPlate, ironPlatePerRow * RowsPerPurchase * step),
+                new RecipeIngredient(ItemType.Scrap, AtMostAPack(scrapPerRow * RowsPerPurchase * step)),
+                new RecipeIngredient(ItemType.IronPlate, AtMostAPack(ironPlatePerRow * RowsPerPurchase * step)),
             };
         }
 
-        private int StockOf(string itemType) =>
-            bufferRegistry == null ? 0 : bufferRegistry.GetQuantity(stockpileBufferId, itemType);
+        private int AtMostAPack(int quantity)
+        {
+            int cap = bufferRegistry == null || string.IsNullOrEmpty(stockpileBufferId)
+                ? StorageBuffer.Unlimited
+                : bufferRegistry.GetOrCreate(stockpileBufferId).CapacityPerType;
+            return cap == StorageBuffer.Unlimited ? quantity : Math.Min(quantity, cap);
+        }
+
+        private PlayerWallet Wallet => bufferRegistry == null ? null : new PlayerWallet(bufferRegistry, stockpileBufferId);
+
+        private int StockOf(string itemType) => Wallet?.Quantity(itemType) ?? 0;
 
         public bool CanAfford() => UI.ConstructionCostPolicy.CanAfford(StockOf, NextCost());
 
@@ -114,7 +129,7 @@ namespace GolemFactory.World
             }
 
             IReadOnlyList<RecipeIngredient> cost = NextCost();
-            if (bufferRegistry != null && !bufferRegistry.TryWithdrawBundle(stockpileBufferId, cost))
+            if (Wallet != null && !Wallet.TryCharge(cost))
             {
                 LastStatusMessage = UI.ConstructionCostPolicy.FormatShortfall(StockOf, cost);
                 return false;
@@ -125,13 +140,7 @@ namespace GolemFactory.World
             if (added <= 0)
             {
                 // Charged for nothing: hand it all back.
-                if (bufferRegistry != null)
-                {
-                    for (int i = 0; i < cost.Count; i++)
-                    {
-                        bufferRegistry.Deposit(stockpileBufferId, cost[i].itemType, cost[i].quantity);
-                    }
-                }
+                Wallet?.Refund(cost);
                 return false;
             }
 

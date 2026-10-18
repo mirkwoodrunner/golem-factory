@@ -238,9 +238,10 @@ namespace GolemFactory.Tutorial
                 ProgramSlots(Haulers.FirstOrDefault(),
                     ("HaulScrap", ItemType.Scrap, 2), ("HaulScrap", ItemType.Coke, 1),
                     ("AssembleIronSmelting", null, 1), ("PushOutput", null, 1));
-                // The smelter's goods, so its first cycle never waits on the market.
-                Grant(ItemType.Scrap, 40);
-                Grant(ItemType.Coke, 20);
+                // The smelter's goods, so its first cycle never waits on the market: into the
+                // pack, then by hand into the crate behind it, which is all a golem reaches.
+                Feed(SmeltInSpot, ItemType.Scrap, 40);
+                Feed(SmeltInSpot, ItemType.Coke, 20);
             },
             ["work-smelter"] = () => Haulers.FirstOrDefault(IsSmelter)?.SetPlacement(SmelterSpot, SmelterFacing),
             ["slag-heap"] = () => PlaceGranted("SlagHeapPrefab", SlagHeapSpot, Facing.North),
@@ -338,8 +339,10 @@ namespace GolemFactory.Tutorial
             ["work-carrier"] = () =>
             {
                 Pressers.FirstOrDefault(IsCarrier)?.SetPlacement(CarrierSpot, CarrierFacing);
-                Grant(ItemType.Slag, 8); // enough for the heap's first burn, even before the smelter's lands
-                Grant(ItemType.Coke, 4);
+                // Enough for the heap's first burn, even before the smelter's lands, in the crate
+                // the carrier hauls from.
+                Feed(SmeltOutSpot, ItemType.Slag, 8);
+                Feed(SmeltOutSpot, ItemType.Coke, 4);
             },
         };
 
@@ -360,6 +363,17 @@ namespace GolemFactory.Tutorial
         private string _kitScratchSave;
 
         private void Grant(string item, int quantity) => _world.Buffers.Deposit(_world.StockpileBufferId, item, quantity);
+
+        /// <summary>
+        /// Grants goods and puts them into the crate on <paramref name="cell"/>, as a player's
+        /// click on the crate screen would (crates-design §8): a golem reaches only its crates.
+        /// </summary>
+        private void Feed(Vector2Int cell, string item, int quantity)
+        {
+            Grant(item, quantity);
+            ICrate crate = Built.FirstOrDefault(b => b.Cell == cell)?.GetPart<ICrate>();
+            CrateTransfer.Put(_world.Wallet.Pack, crate, item, quantity);
+        }
 
         private void GrantCost(IEnumerable<PunchCards.RecipeIngredient> cost)
         {

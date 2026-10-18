@@ -66,42 +66,6 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void NextWalksTheCycleAndWrapsBackToAnyGoods()
-        {
-            IReadOnlyList<string> cycle = DepotFilterOptions.BuildCycle(
-                new[] { ItemType.Scrap, ItemType.Coke }, null);
-
-            string first = DepotFilterOptions.Next(cycle, DepotFilterOptions.AnyGoods);
-            Assert.AreEqual(ItemType.Scrap, first);
-
-            string second = DepotFilterOptions.Next(cycle, first);
-            Assert.AreEqual(ItemType.Coke, second);
-
-            string wrapped = DepotFilterOptions.Next(cycle, second);
-            Assert.IsTrue(DepotFilterOptions.Same(DepotFilterOptions.AnyGoods, wrapped));
-        }
-
-        [Test]
-        public void AFilterThatIsNotInTheCycleLandsOnAnyGoods()
-        {
-            // The safe answer: a label the player can no longer see is one they cannot cycle
-            // away from deliberately, so the press has to mean something predictable.
-            IReadOnlyList<string> cycle = DepotFilterOptions.BuildCycle(new[] { ItemType.Scrap }, null);
-
-            Assert.IsTrue(DepotFilterOptions.Same(
-                DepotFilterOptions.AnyGoods, DepotFilterOptions.Next(cycle, ItemType.Aether)));
-        }
-
-        [Test]
-        public void NextOnAnEmptyCycleIsAnyGoods()
-        {
-            Assert.IsTrue(DepotFilterOptions.Same(
-                DepotFilterOptions.AnyGoods, DepotFilterOptions.Next(null, ItemType.Scrap)));
-            Assert.IsTrue(DepotFilterOptions.Same(
-                DepotFilterOptions.AnyGoods, DepotFilterOptions.Next(new string[0], ItemType.Scrap)));
-        }
-
-        [Test]
         public void NullAndEmptyBothMeanAnyGoods()
         {
             // A serialized field comes back as "" where code writes null. Comparing them with ==

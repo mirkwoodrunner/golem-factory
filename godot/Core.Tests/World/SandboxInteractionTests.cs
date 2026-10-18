@@ -143,7 +143,7 @@ namespace GolemFactory.Tests.World
         }
 
         [Test]
-        public void APlacedDepotBecomesInteractable_AndERelabelsIt()
+        public void APlacedDepotBecomesInteractable_AndECollectsFromItsCrate()
         {
             SandboxWorld world = Compose();
             var depot = world.Placeables.Single(p => p.Key == "DepotPrefab");
@@ -156,9 +156,13 @@ namespace GolemFactory.Tests.World
             StandAt(world, cell);
             Assert.AreEqual(InteractionKind.Sort, world.Interactor.CurrentPick.Kind, "the world told the interactor about the new building");
             PlaceableDepot part = world.Build.Buildings.Single().GetPart<PlaceableDepot>();
-            string before = part.FilterLabel;
-            Assert.IsTrue(world.Interactor.Interact());
-            Assert.AreNotEqual(before, part.FilterLabel);
+            Assert.AreEqual(InteractionAffordance.Unavailable, world.Interactor.CurrentAffordance, "an empty crate has nothing to collect");
+            part.Buffer.Deposit(ItemType.Coke, 7);
+            world.Interactor.Poll();
+            StringAssert.Contains("[E]  Collect from Crate  -  holds 7 Coke", world.Interactor.CurrentPrompt);
+            Assert.IsTrue(world.Interactor.Interact(), world.Interactor.LastStatusMessage);
+            Assert.AreEqual(0, part.Buffer.GetQuantity(ItemType.Coke));
+            Assert.AreEqual(7, world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.Coke));
         }
 
         [Test]

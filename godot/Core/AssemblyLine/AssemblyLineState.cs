@@ -371,26 +371,16 @@ namespace GolemFactory.AssemblyLine
             // Atomic with a full refund on shortfall, exactly as a chassis, a building and a
             // bay upgrade are: a bundle-priced card that took the Scrap and refused on the Iron
             // Plate would be theft at the panel.
-            if (card.HasBundleCost)
+            //
+            // A ZERO COST MUST TRIVIALLY SUCCEED, even against a buffer that has never held
+            // Scrap -- the free movement verbs were once unclaimable for want of it.
+            // PlayerWallet.TryCharge treats a non-positive quantity as free.
+            IReadOnlyList<RecipeIngredient> price = card.HasBundleCost
+                ? GetCurrentCostBundle(slotIndex)
+                : new[] { new RecipeIngredient(ItemType.Scrap, GetCurrentCost(slotIndex)) };
+            if (!new PlayerWallet(buffers, bufferId).TryCharge(price))
             {
-                if (!buffers.TryWithdrawBundle(bufferId, GetCurrentCostBundle(slotIndex)))
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                // A ZERO COST MUST TRIVIALLY SUCCEED, even against a buffer that has never held
-                // Scrap. StorageBuffer.TryWithdraw looks the item type up before it looks at the
-                // amount and fails on a miss, so a literal TryWithdraw(id, Scrap, 0) refuses a
-                // genuinely free card -- which is precisely what made the free movement verbs
-                // unclaimable. TryWithdrawScrapAndBrass and TryWithdrawBundle both already guard
-                // this; this was the one payment path that did not.
-                int cost = GetCurrentCost(slotIndex);
-                if (cost > 0 && !buffers.TryWithdraw(bufferId, ItemType.Scrap, cost))
-                {
-                    return false;
-                }
+                return false;
             }
 
             if (!_claimedByUser.TryGetValue(userId, out List<DraftableCardDefinition> claimed))

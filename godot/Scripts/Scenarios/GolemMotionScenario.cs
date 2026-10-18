@@ -80,23 +80,9 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void Setup(ConstructionPanelNode panel)
         {
-            DefinitionSet defs = _world.Definitions;
-            foreach (ChassisDefinition chassis in defs.Chassis.Values)
-            {
-                foreach (RecipeIngredient c in chassis.cost)
-                {
-                    Deposit(c.itemType, c.quantity);
-                }
-            }
-            foreach (PlaceableEntry entry in _world.Placeables)
-            {
-                foreach (RecipeIngredient c in entry.Prefab.Cost)
-                {
-                    Deposit(c.itemType, c.quantity * 16);
-                }
-            }
+            // The pack holds 100 of each good, so each building and chassis is paid for as it is
+            // bought (Pay).
             Deposit(ItemType.Coke, 100);
-            Deposit(ItemType.Scrap, 200);
 
             PlaceableBoiler boiler = Place("BoilerPrefab", -7, -15).GetPart<PlaceableBoiler>();
             for (int x = -6; x <= 4; x++)
@@ -107,8 +93,8 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 throw new InvalidOperationException("refuel: " + _world.Interactor.LastStatusMessage);
             }
-            Place("DepotPrefab", -1, -14);
-            Place("DepotPrefab", 1, -14);
+            _haulFrom = Place("DepotPrefab", -1, -14).GetPart<ICrate>();
+            _haulTo = Place("DepotPrefab", 1, -14).GetPart<ICrate>();
             Place("FreightMastPrefab", 6, -14);
 
             Build(panel, "BrassPresser", -5, -14, ("AssembleCoking", 0));
@@ -122,6 +108,7 @@ namespace GolemFactory.Nodes.Scenarios
         private void Build(ConstructionPanelNode panel, string chassis, int x, int y, params (string card, int quantity)[] steps)
         {
             DefinitionSet defs = _world.Definitions;
+            Pay(defs.Chassis[chassis].cost);
             panel.Open(_world.StarterStation);
             GolemEntity golem = panel.TryConstruct(defs.Chassis[chassis])
                 ? panel.LastBuilt
@@ -176,10 +163,19 @@ namespace GolemFactory.Nodes.Scenarios
             return Verdict();
         }
 
+        // The Aether-Hauler's crates: a golem reaches only the crates beside it.
+        private ICrate _haulFrom, _haulTo;
+
         // Keep every golem busy: the stampers never run out of Coal or fill with Coke, the
-        // Scavenger's stall never empties, and its haul and the Zeppelin's cargo are cleared.
+        // Scavenger's stall never empties, the Hauler's crate behind stays stocked and the one in
+        // front emptied, and the Scavenger's haul and the Zeppelin's cargo are cleared.
         private void Feed()
         {
+            _haulFrom?.Buffer?.Deposit(ItemType.Scrap, _haulFrom.Buffer.RoomFor(ItemType.Scrap));
+            if (_haulTo?.Buffer != null && _haulTo.Buffer.GetQuantity(ItemType.Scrap) > 0)
+            {
+                _haulTo.Buffer.TryWithdraw(ItemType.Scrap, _haulTo.Buffer.GetQuantity(ItemType.Scrap));
+            }
             if (_world.Nodes.TryGetNode("ScrapNode", out ResourceNode scrap) && scrap.RemainingQuantity < 20)
             {
                 scrap.Deliver(20);
@@ -240,7 +236,9 @@ namespace GolemFactory.Nodes.Scenarios
         private PlaceableBuilding Place(string key, int x, int y)
         {
             var cell = new CoreVector2Int(x, y);
-            _world.Build.SetActivePrefab(_world.Placeables.Single(p => p.Key == key).Prefab);
+            PlaceableBuilding prefab = _world.Placeables.Single(p => p.Key == key).Prefab;
+            Pay(prefab.Cost);
+            _world.Build.SetActivePrefab(prefab);
             _world.Build.PlaceOrRemove(cell);
             _world.Build.CancelPlacement();
             return _world.Build.Buildings.SingleOrDefault(b => b.Cell == cell && !b.IsRemoved)
@@ -248,5 +246,13 @@ namespace GolemFactory.Nodes.Scenarios
         }
 
         private void Deposit(string itemType, int quantity) => _world.Buffers.Deposit(_world.StockpileBufferId, itemType, quantity);
+
+        private void Pay(IEnumerable<RecipeIngredient> cost)
+        {
+            foreach (RecipeIngredient c in cost)
+            {
+                Deposit(c.itemType, c.quantity);
+            }
+        }
     }
 }

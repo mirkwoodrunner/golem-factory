@@ -118,6 +118,14 @@ namespace GolemFactory.World
 
         public string StockpileBufferId => _stockpileBufferId;
 
+        /// <summary>
+        /// The player's wallet (docs/crates-design.md §4.4): the pack, which keeps the stockpile's
+        /// id because saves name it. Every cost is charged through it; golems never reach it.
+        /// </summary>
+        public PlayerWallet Wallet => _wallet ??= new PlayerWallet(Buffers, _stockpileBufferId);
+
+        private PlayerWallet _wallet;
+
         /// <summary>Every live golem, whichever station built it.</summary>
         public IReadOnlyList<GolemEntity> Golems => _golems;
 
@@ -268,6 +276,7 @@ namespace GolemFactory.World
             TechTree.ConfigureWorld(() => _golems, InteractableBuildings);
             TechTree.ConfigureFloorBounds(Bounds);
             TechTree.Attach();
+            Production.Attach();
 
             if (setup == null || string.IsNullOrEmpty(setup.deck) || !Definitions.Decks.TryGetValue(setup.deck, out DraftableCardCatalog deck))
             {
@@ -349,7 +358,7 @@ namespace GolemFactory.World
         /// recipe was opened). The Godot Ledger tab draws this one.
         /// </summary>
         public TechTreeReadout LedgerReadout =>
-            _ledgerReadout ??= new TechTreeReadout(Definitions.Recipes.Values.ToList(), Throughput, _stockpileBufferId, Clock.TicksPerSecond);
+            _ledgerReadout ??= new TechTreeReadout(Definitions.Recipes.Values.ToList(), Throughput, ProductionTally.SeriesId, Clock.TicksPerSecond);
 
         private TechTreeReadout _ledgerReadout;
 
@@ -714,6 +723,7 @@ namespace GolemFactory.World
             {
                 _nextThroughputSample = _realSeconds + BufferRateTracker.DefaultSampleIntervalSeconds;
                 Throughput.Sample(_realSeconds, Buffers);
+                Production.Sample(_realSeconds, Throughput);
             }
             Alerts?.Update(seconds);
             AssemblyLine?.Tick(seconds);
@@ -726,6 +736,12 @@ namespace GolemFactory.World
 
         /// <summary>The Inventory tab's rate history (Unity's BufferThroughputMonitor), sampled in real time.</summary>
         public BufferRateTracker Throughput { get; } = new BufferRateTracker();
+
+        /// <summary>
+        /// Every good golems have assembled, sampled into <see cref="Throughput"/> beside the
+        /// buffers: the Ledger's live rate (docs/crates-design.md §4.5).
+        /// </summary>
+        public ProductionTally Production { get; } = new ProductionTally();
 
         /// <summary>The HUD's alerts strip. Null on the bare (slice) world.</summary>
         public AlertsStrip Alerts { get; private set; }

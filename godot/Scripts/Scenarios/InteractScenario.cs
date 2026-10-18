@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using GolemFactory.Buildings;
 using GolemFactory.Economy;
 using GolemFactory.PunchCards;
 using GolemFactory.World;
@@ -55,6 +56,7 @@ namespace GolemFactory.Nodes.Scenarios
             PlanStalls();
             PlanBench();
             PlanStation();
+            PlanCrate();
             Do("walk away from everything", () => { Stand(-9f, 9f); return null; });
             Do("no prompt out of reach", () => _prompt.Caption == "" ? null : $"still advertising '{_prompt.Caption}'");
         }
@@ -306,6 +308,73 @@ namespace GolemFactory.Nodes.Scenarios
                     return $"landed on {_construction.LastBuilt.Cell}, outlined {_previewedDrop}";
                 }
                 _log.Add($"G carried the golem, the outline marked {_previewedDrop}, R turned it, and it landed there");
+                return null;
+            });
+        }
+
+        /// <summary>
+        /// A depot is a crate (docs/crates-design.md §4.2): tap E collects what fits into the
+        /// 100 pack and leaves the rest; with the pack full the prompt greys to "pack full", and
+        /// a harvest at the Scrap stall is refused with the stall keeping its unit.
+        /// </summary>
+        private void PlanCrate()
+        {
+            var cell = new Compat.Vector2Int(-4, 6);
+            SandboxSetup.NodeEntry scrap = _world.Setup.nodes.Single(n => n.id == "ScrapNode");
+            ICrate crate = null;
+            int Pack() => _world.Buffers.GetQuantity(_world.StockpileBufferId, ItemType.Scrap);
+
+            Do("a depot with 20 Scrap in its crate, the pack at 95", () =>
+            {
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Scrap, 15);
+                _world.Build.SetActivePrefab(_world.Placeables.Single(p => p.Key == "DepotPrefab").Prefab);
+                _world.Build.PlaceOrRemove(cell);
+                _world.Build.CancelPlacement();
+                crate = _world.Build.Buildings.SingleOrDefault(b => b.Cell == cell && !b.IsRemoved)?.GetPart<ICrate>();
+                if (crate == null)
+                {
+                    return "no depot placed: " + _world.Build.LastStatusMessage;
+                }
+                crate.Buffer.Deposit(ItemType.Scrap, 20);
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Scrap, 95 - Pack());
+                Stand(cell.x, cell.y + 1f);
+                return null;
+            });
+            string offered = null;
+            Do("the crate offers its goods", () =>
+            {
+                offered = _prompt.Caption;
+                return offered == "[E]  Collect from Crate  -  holds 20 Scrap" ? null : $"caption '{offered}'";
+            });
+            Do("press E", () => { Tap(Key.E); return null; });
+            Do("what fits went into the pack, the rest stayed", () =>
+            {
+                if (Pack() != 100 || crate.Buffer.GetQuantity(ItemType.Scrap) != 15)
+                {
+                    return $"pack {Pack()}, crate {crate.Buffer.GetQuantity(ItemType.Scrap)}; expected 100 and 15";
+                }
+                return null;
+            });
+            Do("the prompt greys: pack full", () =>
+                _prompt.Caption == "Crate  -  pack full" ? null : $"caption '{_prompt.Caption}'");
+            int stallBefore = 0;
+            Do("walk to the Scrap stall with a full pack", () =>
+            {
+                stallBefore = _world.Nodes.TryGetNode("ScrapNode", out ResourceNode node) ? node.RemainingQuantity : -1;
+                Stand(scrap.x, scrap.y + 1f);
+                return null;
+            });
+            Do("the stall greys too", () =>
+                _prompt.Caption == "Scrap  -  pack full" ? null : $"caption '{_prompt.Caption}'");
+            Do("press E", () => { Tap(Key.E); return null; });
+            Do("nothing harvested, nothing lost", () =>
+            {
+                int now = _world.Nodes.TryGetNode("ScrapNode", out ResourceNode node) ? node.RemainingQuantity : -1;
+                if (now != stallBefore || Pack() != 100)
+                {
+                    return $"stall {stallBefore} -> {now}, pack {Pack()}";
+                }
+                _log.Add($"crate: '{offered}', E collected to 100 and left 15, then 'Crate  -  pack full'; the stall refused at the cap");
                 return null;
             });
         }

@@ -62,6 +62,9 @@ namespace GolemFactory.Nodes.Scenarios
             }
 
             // Fund every placeable twice over, and remember the books: the run must end here.
+            // A fixture's pack, uncapped: this run is about the menu, the cursor and the refund's
+            // arithmetic, and every building at once costs more Scrap than a 100 pack holds.
+            _world.Buffers.SetCapacity(_world.StockpileBufferId, StorageBuffer.Unlimited);
             foreach (PlaceableEntry entry in _world.Placeables)
             {
                 foreach (RecipeIngredient c in entry.Prefab.Cost)

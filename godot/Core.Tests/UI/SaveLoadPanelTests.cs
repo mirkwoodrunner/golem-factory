@@ -148,7 +148,7 @@ namespace GolemFactory.Tests.UI
         {
             foreach (string item in new[] { ItemType.Scrap, ItemType.Brass, ItemType.IronPlate, ItemType.Gear, ItemType.Coke })
             {
-                world.Buffers.Deposit(world.StockpileBufferId, item, 5000);
+                world.Buffers.Deposit(world.StockpileBufferId, item, 5000); // a full pack of each
             }
         }
 
@@ -182,6 +182,7 @@ namespace GolemFactory.Tests.UI
             Fund(world);
             ClaimFirstAffordable(world);
             Assert.IsTrue(world.AssemblyLineBoard.ExtendFloor(), world.AssemblyLineBoard.Status);
+            Fund(world);
             Assert.IsTrue(world.AssemblyLineBoard.UpgradeBays(), world.AssemblyLineBoard.Status);
             world.TechTree.Ledger.RecordItem(ItemType.Coke);
             world.Clock.Speed = 2f;
@@ -190,8 +191,10 @@ namespace GolemFactory.Tests.UI
             int north = world.Bounds.NorthExtent, tier = world.AssemblyBay.Tier, slots = world.AssemblyBay.MaxGolemSlots;
             world.SaveTo(_path);
 
+            Fund(world);
             ClaimFirstAffordable(world);
             Assert.IsTrue(world.AssemblyLineBoard.ExtendFloor());
+            Fund(world);
             Assert.IsTrue(world.AssemblyLineBoard.UpgradeBays());
             world.Clock.Speed = 4f;
             world.Clock.Play();

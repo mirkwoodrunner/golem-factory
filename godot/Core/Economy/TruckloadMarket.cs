@@ -144,7 +144,7 @@ namespace GolemFactory.Economy
 
         /// <summary>
         /// Buys one truckload. Charges atomically through
-        /// <see cref="StorageBufferRegistry.TryWithdrawBundle"/> -- the same full-refund
+        /// <see cref="PlayerWallet.TryCharge"/> -- the same all-or-nothing
         /// guarantee a chassis and a building placement get, because a two-good price that
         /// took the first good and refused would be theft at the stall.
         /// </summary>
@@ -172,7 +172,7 @@ namespace GolemFactory.Economy
 
             if (!offer.IsFree)
             {
-                if (buffers == null || !buffers.TryWithdrawBundle(bufferId, offer.Price))
+                if (buffers == null || !new PlayerWallet(buffers, bufferId).TryCharge(offer.Price))
                 {
                     return MarketOrderResult.CannotAfford;
                 }

@@ -156,7 +156,7 @@ namespace GolemFactory.Buildings
                 return false;
             }
 
-            if (!stockpile.TryWithdrawBundle(stockpileBufferId, recipe.inputs))
+            if (!new PlayerWallet(stockpile, stockpileBufferId).TryCharge(recipe.inputs))
             {
                 return false;
             }

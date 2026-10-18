@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using GolemFactory.Compat;
 using GolemFactory.Economy;
 using GolemFactory.World;
@@ -6,19 +5,26 @@ using GolemFactory.World;
 namespace GolemFactory.Buildings
 {
     /// <summary>
-    /// A depot: publishes a <see cref="StorageBuffer"/> on its cell so a routed chain has
-    /// somewhere to end. Ported from Unity's sibling component (G2b).
+    /// A depot: a crate on its cell, so a routed chain has somewhere to end. Ported from Unity's
+    /// sibling component (G2b).
+    ///
+    /// <para>
+    /// <b>A depot holds its own goods</b> (docs/crates-design.md §4.1). With no authored
+    /// <c>bufferId</c> it publishes its own crate, <c>Crate(x,y)</c>, which golems on its
+    /// neighbouring tiles reach and nothing else does. An explicit id publishes that shared buffer
+    /// instead: a Post crate (§10), or a test keeping the old one-stockpile behaviour.
+    /// </para>
     ///
     /// <para>
     /// <b>A labelled depot publishes a different endpoint.</b> With an empty filter it publishes
     /// the plain <see cref="StorageBufferEndpoint"/>; with one set, a
-    /// <see cref="FilteredBufferEndpoint"/> that accepts and dispenses only that good. Changing
-    /// the label re-publishes on the same cell.
+    /// <see cref="FilteredBufferEndpoint"/> over the same crate that accepts and dispenses only
+    /// that good. Changing the label re-publishes on the same cell.
     /// </para>
     /// </summary>
-    public sealed class PlaceableDepot : IBuildingPart
+    public sealed class PlaceableDepot : IBuildingPart, ICrate
     {
-        private string bufferId = "FactoryStockpile";
+        private string bufferId = "";
 
         // Empty means this depot accepts and dispenses anything. Set to an ItemType id to make
         // it a sorter: it takes only that good, and hands out only that good.
@@ -29,7 +35,21 @@ namespace GolemFactory.Buildings
         private Vector2Int _registeredCell;
         private bool _isRegistered;
 
+        /// <summary>The authored id: empty for a depot with its own crate.</summary>
         public string BufferId => bufferId;
+
+        /// <summary>The id of the crate a cell's own: <c>Crate(3,-2)</c>, the shape <c>Mast(x,y)</c> has.</summary>
+        public static string CrateIdFor(Vector2Int cell) => "Crate(" + cell.x + "," + cell.y + ")";
+
+        public bool OwnsBuffer => string.IsNullOrEmpty(bufferId);
+
+        public string CrateId => !_isRegistered ? null : OwnsBuffer ? CrateIdFor(_registeredCell) : bufferId;
+
+        // Read, never created: a demolished depot's crate is removed from the registry, and a
+        // reader must not bring it back. Placement creates it (PublishEndpoint).
+        public StorageBuffer Buffer => _buffers != null && _buffers.TryGetBuffer(CrateId, out StorageBuffer b) ? b : null;
+
+        public bool CanLabel => true;
 
         public string FilterItemType => string.IsNullOrEmpty(filterItemType) ? null : filterItemType;
 
@@ -38,7 +58,7 @@ namespace GolemFactory.Buildings
         /// <summary>Authoring setter (Unity set these in the Inspector).</summary>
         public void Configure(string buffer, string filter = "")
         {
-            bufferId = buffer;
+            bufferId = buffer ?? "";
             filterItemType = filter ?? "";
         }
 
@@ -46,13 +66,13 @@ namespace GolemFactory.Buildings
             new PlaceableDepot { bufferId = bufferId, filterItemType = filterItemType };
 
         /// <summary>
-        /// Registers this depot's buffer on <paramref name="cell"/>. Called by build mode when
+        /// Registers this depot's crate on <paramref name="cell"/>. Called by build mode when
         /// the depot is placed.
         /// </summary>
         public bool RegisterAsSpatialEndpoint(
             SpatialEndpointRegistry endpoints, StorageBufferRegistry buffers, Vector2Int cell)
         {
-            if (endpoints == null || buffers == null || string.IsNullOrEmpty(bufferId))
+            if (endpoints == null || buffers == null)
             {
                 return false;
             }
@@ -72,30 +92,6 @@ namespace GolemFactory.Buildings
             PublishEndpoint();
         }
 
-        /// <summary>Advances the label to the next option in the cycle and returns it.</summary>
-        public string CycleFilter()
-        {
-            string next = DepotFilterOptions.Next(BuildFilterCycle(), FilterItemType);
-            SetFilter(next);
-            return FilterItemType;
-        }
-
-        public IReadOnlyList<string> BuildFilterCycle()
-        {
-            StorageBuffer buffer = ResolveBuffer();
-            return DepotFilterOptions.BuildCycle(
-                buffer != null ? buffer.Quantities.Keys : null, FilterItemType);
-        }
-
-        private StorageBuffer ResolveBuffer()
-        {
-            if (_buffers == null || string.IsNullOrEmpty(bufferId))
-            {
-                return null;
-            }
-            return _buffers.GetOrCreate(bufferId);
-        }
-
         private void PublishEndpoint()
         {
             if (!_isRegistered || _endpoints == null)
@@ -103,12 +99,7 @@ namespace GolemFactory.Buildings
                 return;
             }
 
-            StorageBuffer buffer = ResolveBuffer();
-            if (buffer == null)
-            {
-                return;
-            }
-
+            StorageBuffer buffer = _buffers.GetOrCreate(CrateId);
             string filter = FilterItemType;
             IItemEndpoint endpoint = filter == null
                 ? (IItemEndpoint)new StorageBufferEndpoint(buffer)

@@ -167,6 +167,29 @@ namespace GolemFactory.Economy
         }
 
         /// <summary>
+        /// A load's setter, and nothing else's: the quantity a save recorded, above the cap if
+        /// that is what it recorded (docs/crates-design.md §0.2, "a load never clamps"). Not a
+        /// deposit -- the flow totals are untouched, since nothing flowed.
+        /// <see cref="Deposit"/> stays the only way goods arrive in play.
+        /// </summary>
+        public void RestoreQuantity(string itemType, int quantity)
+        {
+            if (itemType == null)
+            {
+                return;
+            }
+
+            if (quantity > 0)
+            {
+                _quantities[itemType] = quantity;
+            }
+            else
+            {
+                _quantities.Remove(itemType);
+            }
+        }
+
+        /// <summary>
         /// Units of <paramref name="itemType"/> ever accepted by this buffer. Monotone, so a
         /// sampler can difference two readings into a gross INFLOW rate.
         /// </summary>

@@ -88,7 +88,15 @@ namespace GolemFactory.World
         public bool creativeMode;
         public bool requireSteamPower;
         public string stockpileBufferId = "FactoryStockpile";
-        public int productionBufferCapacityPerType = 100;
+
+        /// <summary>
+        /// A crate holds this many of each good (docs/crates-design.md §0.3). In the Sandbox every
+        /// buffer without an override is a crate, so it is the registry's default.
+        /// </summary>
+        public int crateCapacityPerType = 50;
+
+        /// <summary>The pack (the stockpile id): what the player carries, this many of each good.</summary>
+        public int packCapacityPerType = 100;
         public int startingNorthExtent = FloorLayout.DefaultNorthExtent;
 
         /// <summary>
@@ -149,15 +157,15 @@ namespace GolemFactory.World
         }
 
         /// <summary>
-        /// Production buffers are capped per type; the factory stockpile is not
-        /// (SandboxBootstrap.ApplyBufferCapacityPolicy, unchanged).
+        /// Crates are the default, capped per type; the pack is the override, capped at its own
+        /// number (docs/crates-design.md §4.3). It was unlimited while every depot opened onto it.
         /// </summary>
         public void ApplyBufferPolicy(StorageBufferRegistry buffers)
         {
-            buffers.DefaultCapacityPerType = productionBufferCapacityPerType;
+            buffers.DefaultCapacityPerType = crateCapacityPerType;
             if (!string.IsNullOrEmpty(stockpileBufferId))
             {
-                buffers.SetCapacity(stockpileBufferId, StorageBuffer.Unlimited);
+                buffers.SetCapacity(stockpileBufferId, packCapacityPerType);
             }
         }
 

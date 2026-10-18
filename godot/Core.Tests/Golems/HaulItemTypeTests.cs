@@ -54,13 +54,19 @@ namespace GolemFactory.Tests.Golems
             {
                 world.Buffers.Deposit(world.StockpileBufferId, c.itemType, c.quantity);
             }
-            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 200);
+            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 100);
             world.Buffers.Deposit(world.StockpileBufferId, ItemType.Coke, 100);
             world.Buffers.Deposit(world.StockpileBufferId, ItemType.IronPlate, 40);
             Place(world, "BoilerPrefab", new Vector2Int(5, 5));
             world.Interactor.TryRefuelBoiler(world.Build.Buildings.Single(b => b.Cell == new Vector2Int(5, 5)).GetPart<PlaceableBoiler>());
             Place(world, "DepotPrefab", new Vector2Int(4, 4)); // behind
             Place(world, "DepotPrefab", new Vector2Int(4, 6)); // in front
+
+            // A golem reaches only the crates beside it, so its inputs go in by hand.
+            ICrate input = CrateAt(world, new Vector2Int(4, 4));
+            ICrate output = CrateAt(world, new Vector2Int(4, 6));
+            CrateTransfer.Put(world.Wallet.Pack, input, ItemType.Scrap, 50);
+            CrateTransfer.Put(world.Wallet.Pack, input, ItemType.Coke, 50);
 
             Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["AetherHauler"], out GolemEntity smelter));
             smelter.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
@@ -72,17 +78,15 @@ namespace GolemFactory.Tests.Golems
             Assert.IsTrue(smelter.Program.TryAddAppendage(defs.Appendages["PushOutput"]));
             smelter.SetPlacement(new Vector2Int(4, 5), Facing.North);
 
-            int ironBefore = world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.IronPlate);
-            int slagBefore = world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.Slag);
             world.Clock.Play();
             for (int frame = 0; frame < 600; frame++)
             {
                 world.Advance(1f / 30f);
             }
 
-            Assert.Greater(world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.IronPlate), ironBefore,
-                $"Iron Plate smelted ({smelter.Program.State} {smelter.StallReason} {smelter.StallResourceId})");
-            Assert.Greater(world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.Slag), slagBefore, "with its Slag");
+            Assert.Greater(output.Buffer.GetQuantity(ItemType.IronPlate), 0,
+                $"Iron Plate smelted into the crate in front ({smelter.Program.State} {smelter.StallReason} {smelter.StallResourceId})");
+            Assert.Greater(output.Buffer.GetQuantity(ItemType.Slag), 0, "with its Slag");
         }
 
         [Test]
@@ -149,6 +153,9 @@ namespace GolemFactory.Tests.Golems
                 File.Delete(path);
             }
         }
+
+        private static ICrate CrateAt(SandboxWorld world, Vector2Int cell) =>
+            world.Build.Buildings.Single(b => b.Cell == cell).GetPart<ICrate>();
 
         private static void Place(SandboxWorld world, string key, Vector2Int cell)
         {

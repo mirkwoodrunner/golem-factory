@@ -112,24 +112,8 @@ namespace GolemFactory.Nodes.Scenarios
         {
             DefinitionSet defs = _world.Definitions;
 
-            // Goods for every building and every chassis, plus Coke for the boilers and the
-            // ScrapBuffer the Refine card reads.
-            foreach (PlaceableEntry entry in _world.Placeables)
-            {
-                foreach (RecipeIngredient c in entry.Prefab.Cost)
-                {
-                    Deposit(c.itemType, c.quantity * 8);
-                }
-            }
-            foreach (ChassisDefinition chassis in defs.Chassis.Values)
-            {
-                foreach (RecipeIngredient c in chassis.cost)
-                {
-                    Deposit(c.itemType, c.quantity * 3);
-                }
-            }
-            Deposit(ItemType.Scrap, 200);
-            Deposit(ItemType.Coke, 600);
+            // The pack holds 100 of each good (docs/crates-design.md), so each building and chassis
+            // is paid for as it is bought (Pay), plus the ScrapBuffer the Refine card reads.
             _world.Buffers.Deposit("ScrapBuffer", ItemType.Scrap, 20);
 
             // Steam: a boiler with a pipe main along y=0 for row y=1, and one boiler beside each
@@ -146,6 +130,7 @@ namespace GolemFactory.Nodes.Scenarios
             PlaceableBoiler b3 = Place<PlaceableBoiler>("BoilerPrefab", -5, -15);
             foreach (PlaceableBoiler boiler in new[] { b1, b2, b3 })
             {
+                Deposit(ItemType.Coke, 100);
                 if (!_world.Interactor.TryRefuelBoiler(boiler))
                 {
                     throw new InvalidOperationException("refuel: " + _world.Interactor.LastStatusMessage);
@@ -153,19 +138,22 @@ namespace GolemFactory.Nodes.Scenarios
             }
 
             // The machines' neighbours.
-            Place<PlaceableDepot>("DepotPrefab", -9, 1);
+            // A golem reaches only the crates beside it, so G1's and G6's Scrap goes into theirs
+            // by hand, as the player would put it there.
+            Feed(Place<PlaceableDepot>("DepotPrefab", -9, 1), ItemType.Scrap, 50);
             for (int x = -7; x <= -5; x++)
             {
                 PlaceAt("BeltPrefab", x, 1, Facing.East);
             }
             Place<PlaceableDepot>("DepotPrefab", -3, 1);
-            Place<PlaceableDepot>("DepotPrefab", 4, 1);
+            Feed(Place<PlaceableDepot>("DepotPrefab", 4, 1), ItemType.Scrap, 50);
             Place<PlaceableFreightMast>("FreightMastPrefab", 7, 1);
             Place<PlaceableDepot>("DepotPrefab", -8, -14);
-            Place<PlaceableDepot>("DepotPrefab", -4, -14);
+            _cokeCrate = Place<PlaceableDepot>("DepotPrefab", -4, -14);
 
             // The Coal stall starts empty in normal mode: order a truckload, as the player would.
             ResourceNodeMarker coal = _world.Markers.Single(m => m.NodeId == "CoalNode");
+            Deposit(ItemType.Scrap, 100);
             if (!_world.Interactor.TryOrderTruckload(coal))
             {
                 throw new InvalidOperationException("truckload: " + _world.Interactor.LastStatusMessage);
@@ -173,8 +161,11 @@ namespace GolemFactory.Nodes.Scenarios
 
             // Build every chassis at the starter station, through the panel's own build.
             _panel.Open(_world.StarterStation);
-            GolemEntity Build(string chassis) =>
-                _panel.TryConstruct(defs.Chassis[chassis]) ? _panel.LastBuilt : throw new InvalidOperationException($"build {chassis}: {_panel.Status}");
+            GolemEntity Build(string chassis)
+            {
+                Pay(defs.Chassis[chassis].cost);
+                return _panel.TryConstruct(defs.Chassis[chassis]) ? _panel.LastBuilt : throw new InvalidOperationException($"build {chassis}: {_panel.Status}");
+            }
             GolemEntity g1 = Build("ClockworkScavenger");
             _panel.Open(_world.StarterStation);
             GolemEntity g2 = Build("BrassPresser");
@@ -202,8 +193,13 @@ namespace GolemFactory.Nodes.Scenarios
             (_world.WorkbenchScreen as WorkbenchScreen)?.Close();
 
             _scrapStallBefore = _world.Nodes.TryGetNode("ScrapNode", out ResourceNode node) ? node.RemainingQuantity : 0;
-            _cokeBefore = Stock(ItemType.Coke);
+            _cokeBefore = CokeMade;
         }
+
+        // G4 pushes its Coke into the crate in front of it, D5.
+        private PlaceableDepot _cokeCrate;
+
+        private int CokeMade => _cokeCrate?.Buffer?.GetQuantity(ItemType.Coke) ?? 0;
 
         private void Program(GolemEntity golem, string label, int x, int y, Facing facing, params (string card, int quantity)[] steps)
         {
@@ -230,7 +226,9 @@ namespace GolemFactory.Nodes.Scenarios
         private PlaceableBuilding PlaceAt(string key, int x, int y, Facing facing)
         {
             var cell = new CoreVector2Int(x, y);
-            _world.Build.SetActivePrefab(_world.Placeables.Single(p => p.Key == key).Prefab);
+            PlaceableBuilding prefab = _world.Placeables.Single(p => p.Key == key).Prefab;
+            Pay(prefab.Cost);
+            _world.Build.SetActivePrefab(prefab);
             while (_world.Build.PlacementFacing != facing)
             {
                 _world.Build.RotatePlacement();
@@ -243,7 +241,19 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void Deposit(string itemType, int quantity) => _world.Buffers.Deposit(_world.StockpileBufferId, itemType, quantity);
 
-        private int Stock(string itemType) => _world.Buffers.GetQuantity(_world.StockpileBufferId, itemType);
+        private void Pay(IEnumerable<RecipeIngredient> cost)
+        {
+            foreach (RecipeIngredient c in cost)
+            {
+                Deposit(c.itemType, c.quantity);
+            }
+        }
+
+        private void Feed(ICrate crate, string itemType, int quantity)
+        {
+            Deposit(itemType, quantity);
+            CrateTransfer.Put(_world.Wallet.Pack, crate, itemType, quantity);
+        }
 
         private void OnCompleted(GolemCompletedEvent e)
         {
@@ -274,9 +284,9 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 problems.Add($"G3 took nothing from the Scrap stall ({_scrapStallBefore} -> {stallNow})");
             }
-            if (Stock(ItemType.Coke) < _cokeBefore + 3)
+            if (CokeMade < _cokeBefore + 3)
             {
-                problems.Add($"G4 made no Coke ({_cokeBefore} -> {Stock(ItemType.Coke)})");
+                problems.Add($"G4 made no Coke ({_cokeBefore} -> {CokeMade})");
             }
             if (_world.Buffers.GetQuantity("IronPlateBuffer", ItemType.IronPlate) < 1)
             {
@@ -316,7 +326,7 @@ namespace GolemFactory.Nodes.Scenarios
             string counts = string.Join(" ", new[] { "G1", "G2", "G3", "G4", "G5", "G6" }.Select(l => $"{l}={Cycles(l)}"));
             return new ScenarioResult(true,
                 $"5 chassis built, 8 action types run on steam: cycles {counts}; Scrap stall {_scrapStallBefore}->{stallNow}; " +
-                $"Coke +{Stock(ItemType.Coke) - _cokeBefore}; Iron Plate {_world.Buffers.GetQuantity("IronPlateBuffer", ItemType.IronPlate)}; " +
+                $"Coke +{CokeMade - _cokeBefore}; Iron Plate {_world.Buffers.GetQuantity("IronPlateBuffer", ItemType.IronPlate)}; " +
                 $"G7 stalled NoSteam, badge '{g7View.BadgeText.Replace('\n', ' ')}'");
         }
     }

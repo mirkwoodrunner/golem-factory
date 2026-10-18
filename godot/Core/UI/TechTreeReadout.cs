@@ -22,14 +22,18 @@ namespace GolemFactory.UI
     {
         private readonly IReadOnlyList<RecipeDefinition> _recipes;
         private readonly BufferRateTracker _throughput;
-        private readonly string _stockpile;
+        private readonly string _rateSeries;
         private readonly float _ticksPerSecond;
 
-        public TechTreeReadout(IReadOnlyList<RecipeDefinition> recipes, BufferRateTracker throughput, string stockpileBufferId, float ticksPerSecond)
+        /// <param name="rateSeriesId">
+        /// The rate tracker's series the live rate reads: the Sandbox's is
+        /// <see cref="ProductionTally.SeriesId"/>, fresh production (docs/crates-design.md §4.5).
+        /// </param>
+        public TechTreeReadout(IReadOnlyList<RecipeDefinition> recipes, BufferRateTracker throughput, string rateSeriesId, float ticksPerSecond)
         {
             _recipes = recipes ?? new List<RecipeDefinition>();
             _throughput = throughput;
-            _stockpile = stockpileBufferId;
+            _rateSeries = rateSeriesId;
             _ticksPerSecond = ticksPerSecond;
         }
 
@@ -69,7 +73,7 @@ namespace GolemFactory.UI
                     return node.Detail;
                 }
                 float live = 0f;
-                bool measured = _throughput != null && _throughput.TryGetRatePerMinute(_stockpile, recipe.outputItemType, out live);
+                bool measured = _throughput != null && _throughput.TryGetRatePerMinute(_rateSeries, recipe.outputItemType, out live);
                 return RecipeLedger.Describe(recipe, _ticksPerSecond, measured, live);
             }
         }

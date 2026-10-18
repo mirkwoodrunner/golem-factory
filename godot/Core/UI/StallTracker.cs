@@ -115,9 +115,22 @@ namespace GolemFactory.UI
             return found;
         }
 
-        private void OnGolemStalled(GolemStalledEvent e) =>
-            _stalled[e.GolemId] = new StallSnapshot(e.GolemId, e.Reason, e.ResourceId, e.Shortfall);
+        // A golem with no id (an unconfigured one, as unit tests build) is ignored rather than
+        // thrown on: the bus is static, so a live world's tracker hears every golem in the process.
+        private void OnGolemStalled(GolemStalledEvent e)
+        {
+            if (e.GolemId != null)
+            {
+                _stalled[e.GolemId] = new StallSnapshot(e.GolemId, e.Reason, e.ResourceId, e.Shortfall);
+            }
+        }
 
-        private void OnGolemResumed(GolemResumedEvent e) => _stalled.Remove(e.GolemId);
+        private void OnGolemResumed(GolemResumedEvent e)
+        {
+            if (e.GolemId != null)
+            {
+                _stalled.Remove(e.GolemId);
+            }
+        }
     }
 }

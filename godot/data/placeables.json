@@ -14,7 +14,7 @@
       },
       "YSortSpriteRenderer": {},
       "PlaceableDepot": {
-        "bufferId": "FactoryStockpile",
+        "bufferId": "",
         "filterItemType": ""
       }
     }
@@ -409,7 +409,7 @@
         "dragPlaceable": 0
       },
       "PlaceableFreightMast": {
-        "bufferId": "FactoryStockpile",
+        "bufferId": "",
         "mastId": ""
       }
     }

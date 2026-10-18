@@ -58,15 +58,16 @@ namespace GolemFactory.Tests.World
         }
 
         [Test]
-        public void TheStockpileIsUnlimitedAndProductionBuffersAreCapped()
+        public void ThePackHoldsAHundredAndEveryOtherBufferIsAFiftyCrate()
         {
+            // docs/crates-design.md §0.3 and §4.3: the crate is the default, the pack the override.
             SandboxSetup setup = LoadReal();
             var buffers = new StorageBufferRegistry();
             setup.ApplyBufferPolicy(buffers);
 
-            Assert.AreEqual(100, buffers.DefaultCapacityPerType);
-            Assert.AreEqual(StorageBuffer.Unlimited, buffers.GetOrCreate(setup.stockpileBufferId).CapacityPerType);
-            Assert.AreEqual(100, buffers.GetOrCreate("SomeProductionBuffer").CapacityPerType);
+            Assert.AreEqual(50, buffers.DefaultCapacityPerType);
+            Assert.AreEqual(100, buffers.GetOrCreate(setup.stockpileBufferId).CapacityPerType);
+            Assert.AreEqual(50, buffers.GetOrCreate("Crate(3,-2)").CapacityPerType);
         }
 
         [Test]

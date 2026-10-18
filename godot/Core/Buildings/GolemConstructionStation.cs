@@ -256,8 +256,11 @@ namespace GolemFactory.Buildings
         /// makes an unwired station read as "you have none of anything", the same answer the
         /// withdrawal would give.
         /// </summary>
-        public int StockOf(string itemType) =>
-            bufferRegistry == null ? 0 : bufferRegistry.GetQuantity(stockpileBufferId, itemType);
+        public int StockOf(string itemType) => Wallet?.Quantity(itemType) ?? 0;
+
+        // What the station charges and refunds through (docs/crates-design.md §4.4). Stateless
+        // over the registry, so building one per call is the same wallet every time.
+        private PlayerWallet Wallet => bufferRegistry == null ? null : new PlayerWallet(bufferRegistry, stockpileBufferId);
 
         /// <summary>
         /// Whether <see cref="TryConstructGolem"/> would currently succeed on cost grounds.
@@ -352,7 +355,7 @@ namespace GolemFactory.Buildings
 
             // Atomic with a full refund on shortfall -- a chassis is the most expensive thing
             // the player buys and a partial charge would take four goods and hand back nothing.
-            if (!bufferRegistry.TryWithdrawBundle(stockpileBufferId, chassis.cost))
+            if (!Wallet.TryCharge(chassis.cost))
             {
                 return false;
             }
@@ -553,11 +556,10 @@ namespace GolemFactory.Buildings
                 StockAsBundle(golem.Inventory != null ? golem.Inventory.Input : null),
                 StockAsBundle(golem.Inventory != null ? golem.Inventory.Output : null));
 
-            if (!PayoutWouldFit(payout))
+            string misfit = Wallet?.FirstMisfit(payout);
+            if (misfit != null)
             {
-                refusalReason =
-                    $"Not dismantled: the stockpile has no room for {golem.GolemId}'s refund. " +
-                    "Make space first.";
+                refusalReason = $"Not dismantled: pack full of {ItemTiers.DisplayName(misfit)}.";
                 return false;
             }
 
@@ -581,13 +583,7 @@ namespace GolemFactory.Buildings
 
             // Paid after the teardown, matching the order a demolition uses, and safe because
             // the bundle was composed from the golem's own stock before anything was touched.
-            if (bufferRegistry != null)
-            {
-                for (int i = 0; i < payout.Count; i++)
-                {
-                    bufferRegistry.Deposit(stockpileBufferId, payout[i].itemType, payout[i].quantity);
-                }
-            }
+            Wallet?.Refund(payout);
 
             // Same reason SpawnGolem publishes it: the interactor caches its interactables, so
             // without this the player keeps being offered a golem that is gone.
@@ -616,27 +612,6 @@ namespace GolemFactory.Buildings
             }
 
             return bundle;
-        }
-
-        // Answers true when there is nothing to pay or nowhere to pay it, so the check never
-        // blocks a removal it has no stake in. It exists for capped buffers, exactly like the
-        // build mode's RefundWouldFit.
-        private bool PayoutWouldFit(IReadOnlyList<RecipeIngredient> payout)
-        {
-            if (bufferRegistry == null || payout == null || payout.Count == 0)
-            {
-                return true;
-            }
-
-            for (int i = 0; i < payout.Count; i++)
-            {
-                if (bufferRegistry.RoomFor(stockpileBufferId, payout[i].itemType) < payout[i].quantity)
-                {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
         // "PlayerGolem-007" -> reserve 7, so the next build is 008. Anything that does not match

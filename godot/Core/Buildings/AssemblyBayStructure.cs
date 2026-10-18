@@ -120,10 +120,6 @@ namespace GolemFactory.Buildings
 
         public bool ReleaseGolem(GolemEntity golem) => _assignedGolems.Remove(golem);
 
-        // Withdraws the upgrade bundle atomically, with a full refund on shortfall
-        // (StorageBufferRegistry.TryWithdrawBundle) -- the same guarantee chassis construction
-        // and building placement get, and for the same reason: a partial charge on a two-good
-        // cost takes the Scrap and hands back nothing.
         /// <summary>A load: the saved tier and its slots, uncharged. Tier 1 is the unupgraded bay.</summary>
         public void RestoreTier(int savedTier)
         {
@@ -135,9 +131,12 @@ namespace GolemFactory.Buildings
             tier = savedTier;
         }
 
+        // Charges the upgrade bundle atomically (PlayerWallet.TryCharge) -- the same guarantee
+        // chassis construction and building placement get, and for the same reason: a partial
+        // charge on a two-good cost takes the Scrap and hands back nothing.
         public bool TryUpgrade(StorageBufferRegistry buffers, string resourceBufferId)
         {
-            if (buffers == null || !buffers.TryWithdrawBundle(resourceBufferId, upgradeCost))
+            if (buffers == null || !new PlayerWallet(buffers, resourceBufferId).TryCharge(upgradeCost))
             {
                 return false;
             }
