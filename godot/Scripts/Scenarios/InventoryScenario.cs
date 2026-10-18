@@ -29,7 +29,8 @@ namespace GolemFactory.Nodes.Scenarios
     ///   Pneumatic Post, a click moves into the store every Post crate shares, and the Pack
     ///   screen then lists the store under the pack.</item>
     ///   <item>On a guide step done in the crate screen, the guide's plate clears both panels.</item>
-    ///   <item>The wrecking bar refuses a crate whose Scrap won't fit, then refunds it exactly.</item>
+    ///   <item>The wrecking bar refuses a crate whose Scrap won't fit in the pack, whatever room
+    ///   the Post has, then refunds it exactly.</item>
     /// </list>
     ///
     /// Writes nothing to disk. The frames worth a look are logged ("frame N: ...") for a
@@ -623,9 +624,8 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 _depot.Buffer.Deposit(ItemType.Scrap, 10);
                 SetPack(ItemType.Scrap, 100);
-                // A refund lands in the Post after the pack (crates-design §10): full too, so
-                // nothing has room for the Scrap.
-                _world.Buffers.GetOrCreate(SandboxWorld.PostBufferId).RestoreQuantity(ItemType.Scrap, 200);
+                // The Post has room for it, and that changes nothing: a refund is the pack's
+                // alone (crates-design §0.8).
                 Stand(DepotCell.x, DepotCell.y + 2f);
                 return null;
             });
@@ -636,6 +636,10 @@ namespace GolemFactory.Nodes.Scenarios
                 if (_world.Build.Buildings.All(b => b.Cell != DepotCell || b.IsRemoved))
                 {
                     return "the crate was demolished into a full pack";
+                }
+                if (_world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Scrap) != 40)
+                {
+                    return $"the Post's Scrap moved to {_world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Scrap)}";
                 }
                 return _world.Build.LastStatusMessage.Contains("pack full of Scrap") ? null : $"status '{_world.Build.LastStatusMessage}'";
             });

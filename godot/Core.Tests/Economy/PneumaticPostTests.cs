@@ -19,7 +19,7 @@ namespace GolemFactory.Tests.EditMode
     /// <summary>
     /// The Pneumatic Post (docs/crates-design.md §10), through the real Sandbox: every Post crate
     /// opens onto one shared store, capped at 200 of each good; golems reach it like any crate;
-    /// the player's spending takes the pack first, then the Post, and refunds land the same way;
+    /// the player's spending takes the pack first, then the Post, and refunds land in the pack only;
     /// collecting goes to the pack only; demolishing a Post crate refunds its cost, never the
     /// store; and the store saves by its id.
     /// </summary>
@@ -107,8 +107,10 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void Refunds_FillThePackFirst_ThenThePost()
+        public void Refunds_GoIntoThePackOnly_NeverThePost()
         {
+            // crates-design §11 (user, 2026-10-18): a refund is the pack's alone, as before the
+            // Post, so the wrecking bar is no remote move into the store.
             SandboxWorld world = Compose();
             var cell = new Vector2Int(5, 5);
             PlacePost(world, cell);
@@ -116,11 +118,18 @@ namespace GolemFactory.Tests.EditMode
 
             world.Build.EnterDemolishMode();
             world.Build.PlaceOrRemove(cell);
+            Assert.AreEqual("Not demolished: pack full of Brass.", world.Build.LastStatusMessage,
+                "an empty Post does not take the overflow");
+            Assert.IsTrue(world.Build.Buildings.Any(b => !b.IsRemoved && b.Cell == cell), "the Post crate stands");
+            Assert.AreEqual(0, Post(world, ItemType.Brass));
+
+            Assert.IsTrue(world.Wallet.TryCharge(new[] { new RecipeIngredient(ItemType.Brass, 6) }));
+            world.Build.PlaceOrRemove(cell);
             world.Build.CancelPlacement();
 
-            Assert.IsFalse(world.Build.Buildings.Any(b => !b.IsRemoved && b.Cell == cell), "demolished");
+            Assert.IsFalse(world.Build.Buildings.Any(b => !b.IsRemoved && b.Cell == cell), "room made: demolished");
             Assert.AreEqual(100, Pack(world, ItemType.Brass), "the pack to its cap");
-            Assert.AreEqual(6, Post(world, ItemType.Brass), "the rest into the Post");
+            Assert.AreEqual(0, Post(world, ItemType.Brass), "nothing into the Post");
             Assert.AreEqual(5, Pack(world, ItemType.Casing));
         }
 

@@ -223,7 +223,8 @@ control clicked a frame after the screen opened). It checks:
    panel is titled "Pneumatic Post" and moves into the shared store; the Pack screen then lists the
    store under the pack.
 9. **Demolition.** With the pack full of Scrap, X on a crate holding Scrap is refused with "pack
-   full of Scrap" and the crate stands; after emptying the pack, the same click refunds cost and
+   full of Scrap" and the crate stands, though the Post has room: a refund goes into the pack
+   only (`crates-design.md` §0.8). After emptying the pack, the same click refunds cost and
    contents exactly.
 10. **The guide's dock.** On `smelt-feed`, with the crate screen open, the guide's plate rect does
     not overlap either panel's rect.

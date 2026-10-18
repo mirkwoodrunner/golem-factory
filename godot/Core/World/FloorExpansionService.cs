@@ -142,8 +142,9 @@ namespace GolemFactory.World
             int added = bounds.Expand(RowsPerPurchase);
             if (added <= 0)
             {
-                // Charged for nothing: hand it all back.
-                Wallet?.Refund(cost);
+                // Charged for nothing: hand it all back where it came from. Not Refund, which is
+                // pack-only: the part the Post paid might not fit back in the pack.
+                Wallet?.Uncharge(cost);
                 return false;
             }
 

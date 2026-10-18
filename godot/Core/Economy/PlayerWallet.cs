@@ -36,16 +36,11 @@ namespace GolemFactory.Economy
         public int Quantity(string itemType) =>
             _buffers == null ? 0 : _buffers.GetQuantity(PackId, itemType) + (_postId == null ? 0 : _buffers.GetQuantity(_postId, itemType));
 
-        /// <summary>Room for a refund: the pack's, then the Post's. Saturates rather than overflowing.</summary>
-        public int RoomFor(string itemType)
-        {
-            if (_buffers == null)
-            {
-                return 0;
-            }
-            long room = (long)_buffers.RoomFor(PackId, itemType) + (_postId == null ? 0 : _buffers.RoomFor(_postId, itemType));
-            return room > int.MaxValue ? int.MaxValue : (int)room;
-        }
+        /// <summary>
+        /// Room for a refund: the pack's alone (crates-design §0.8). A refund never lands in the
+        /// Post, so the wrecking bar can't move goods to it from across the map.
+        /// </summary>
+        public int RoomFor(string itemType) => _buffers == null ? 0 : _buffers.RoomFor(PackId, itemType);
 
         /// <summary>
         /// Charges a price atomically: every good is affordable or nothing is taken. Each good
@@ -144,9 +139,9 @@ namespace GolemFactory.Economy
         }
 
         /// <summary>
-        /// Hands goods back -- a demolition, a dismantled golem, a cancelled purchase -- into the
-        /// pack, then the Post. All or nothing: false, with nothing deposited, when any good won't
-        /// fit, so a caller that skipped <see cref="FirstMisfit"/> still loses nothing.
+        /// Hands goods back -- a demolition, a dismantled golem -- into the pack only, never the
+        /// Post (crates-design §0.8). All or nothing: false, with nothing deposited, when any good
+        /// won't fit, so a caller that skipped <see cref="FirstMisfit"/> still loses nothing.
         /// </summary>
         public bool Refund(IReadOnlyList<RecipeIngredient> bundle)
         {
@@ -161,13 +156,31 @@ namespace GolemFactory.Economy
 
             foreach (KeyValuePair<string, int> pair in Totals(bundle))
             {
+                _buffers.Deposit(PackId, pair.Key, pair.Value);
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Undoes a <see cref="TryCharge"/> that bought nothing: the pack, then the Post. Not a
+        /// refund: part of the charge may have come from the Post, and the pack alone might not
+        /// have room to take it back (crates-design §11). Clamps at each cap, which a charge just
+        /// taken never reaches.
+        /// </summary>
+        public void Uncharge(IReadOnlyList<RecipeIngredient> bundle)
+        {
+            if (bundle == null || _buffers == null)
+            {
+                return;
+            }
+            foreach (KeyValuePair<string, int> pair in Totals(bundle))
+            {
                 int intoPack = _buffers.Deposit(PackId, pair.Key, pair.Value);
                 if (intoPack < pair.Value && _postId != null)
                 {
                     _buffers.Deposit(_postId, pair.Key, pair.Value - intoPack);
                 }
             }
-            return true;
         }
     }
 }

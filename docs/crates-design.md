@@ -34,8 +34,10 @@ test in `Core.Tests` when it is built.
    a wrong label `FilterMismatch`; each already names the crate by its endpoint's `DisplayName`.
    `StallReason`, `AppendageActionType` and `InteractionKind` stay append-only.
 8. **Demolition is still a full refund** (root `CLAUDE.md`): the cost and the crate's contents
-   come back into the pack (and, once it exists, the Post store after it). If they won't fit, the
-   wrecking bar refuses with "pack full of ___" and nothing is torn down. A load's sweep (`refund: false`) refunds nothing, or save/load duplicates.
+   come back into the pack, **never the Post store** (§11, the user's call). If they won't fit in
+   the pack, the wrecking bar refuses with "pack full of ___" and nothing is torn down, however
+   much room the Post has. A dismantled golem's refund follows the same rule. A load's sweep
+   (`refund: false`) refunds nothing, or save/load duplicates.
 9. **Rules live in Core, on `SandboxWorld`.** Collect, transfer, label, wallet and migration are
    plain classes a test can drive without a scene. Nodes only draw and forward clicks.
 10. **The id-routed fork is untouched.** Golems with no spatial endpoint holder route by bare
@@ -159,9 +161,13 @@ default is the crate policy; the registry's comment on re-capping existing buffe
 - `Quantity(good)`: pack plus Post. The build menu's affordability and every shortfall message read it.
 - `TryCharge(bundle)`: atomic, like `TryWithdrawBundle`. Each good is taken from the pack first,
   then the rest from the Post. All or nothing.
-- `RoomFor(good)` and `Refund(bundle)`: pack first, then Post. Demolition, golem dismantling and
-  a cancelled charge use these. **Harvesting and collecting go into the pack only**: they are
-  what the player carries.
+- `RoomFor(good)`, `FirstMisfit(bundle)` and `Refund(bundle)`: **the pack only**, never the Post
+  (§0.8). Demolition and golem dismantling use these, so a refund the pack can't hold is refused
+  as it was before the Post existed. **Harvesting and collecting go into the pack only** too:
+  they are what the player carries.
+- `Uncharge(bundle)`: the pack, then the Post. Only for a charge that bought nothing (Floor
+  Expansion's "added no rows"): part of it may have come from the Post, and the pack alone might
+  not have room to take it back.
 
 Every call site in the table above takes the wallet instead of a `(registry, bufferId)` pair.
 Built in step 1 with no Post, so step 6 only plugs the Post in.
@@ -428,8 +434,8 @@ The late-game store from §5 Q5: Satisfactory's Dimensional Depot, in brass tube
 - **The store lives on `SandboxWorld`** as an ordinary registry buffer, `PostBufferId =
   "PneumaticPost"`, capped by `postCapacityPerType` (200) in `ApplyBufferPolicy`. It exists from
   the start, empty, so the wallet never has to ask whether it does.
-- **Spending is pack first, then Post** (`PlayerWallet`, §4.4). Refunds land the same way.
-  Collecting at a Post crate (E) takes into the pack, like any crate.
+- **Spending is pack first, then Post** (`PlayerWallet`, §4.4). Refunds land in the pack only
+  (§0.8). Collecting at a Post crate (E) takes into the pack, like any crate.
 - **Demolishing a Post crate refunds its cost only** (`OwnsBuffer` is false): the goods are the
   store's, not the crate's, and stay.
 - **Unlock: its price.** It is in the build menu from the start, priced in Brass and Casing, so the
@@ -466,9 +472,11 @@ Where the code differs from §10 and §8's `post` row, and why.
 5. **The `glass` question's id is `post`**, asked as `glass` opens (`PlaytestQuestion.AfterStepId`),
    the step after `post`, as the playtest script's table says.
 6. **The prompt at a Post crate names it "Pneumatic Post"**, where a depot's says "Crate".
-7. **Refusal tests fill the Post too.** A refund falls through to the Post after the pack, so
-   "the wrecking bar refuses a full pack" now needs both full: `CrateTests`' demolition and
-   dismantling tests and the `inventory` scenario's check 9 fill the Post's Scrap first.
+7. **Refusal tests filled the Post too.** As first built, a refund fell through to the Post after
+   the pack, so "the wrecking bar refuses a full pack" needed both full. **Undone (§11):** a refund
+   is the pack's alone, so those tests and the `inventory` scenario's check 9 fill only the pack,
+   and `CrateTests.DemolishingACrate_IntoAFullPack_WithThePostEmpty_IsRefused_AndNothingMoves`
+   pins that an empty Post changes nothing.
 8. **Floor Expansion's clamp stays at the pack's cap**, not pack plus Post: §6.1's rule is that a
    price fits a full pack, and that still holds.
 9. **The sprite is generated**: `make_pneumatic_post` in `Tools/Art/generate_building_art.py`
@@ -506,7 +514,6 @@ Checked and kept, with the reasons:
   on goods the player already holds. That matters only in a kit run.
 - **Floor Expansion's clamp at the pack's cap** keeps §6.1's rule that every price fits in a
   full pack (§10.1.8).
-- **A refund overflows into the Post** before the wrecking bar refuses. §0.8 and §4.4 say so.
 - **A full mast crate stalls the Zeppelin; it does not lose the cargo.** A launch pushes at the
   start of its step through `PushStockInto`, so a full crate refuses (`BeltFull`) and the goods
   stay in the golem's stock.
@@ -522,12 +529,20 @@ Checked and kept, with the reasons:
   the save still calls `TutorialGuide.Settle`. No enum changed, and no step `Id` was renamed or
   removed.
 
+Decided:
+
+- **Demolition was a way into the Post.** As built, a crate's contents that didn't fit in the pack
+  were refunded into the Post, so a player could demolish a full crate far away and pick the goods
+  up at any Post crate: a remote move, which the inventory spec's §7 leaves to the Post. Should a
+  refund reach the Post at all? **Decided (user, 2026-10-18): no, same logic as without the
+  Post.** A demolition's refund (cost and contents) and a dismantled golem's go into the pack
+  only; if they don't fit, the wrecking bar refuses with "pack full of ___" (§0.8, §4.4).
+  `Refund`, `FirstMisfit` and `RoomFor` are pack-only. The one call that is not a demolition,
+  Floor Expansion handing back a charge that added no rows, uses `Uncharge` (pack, then Post),
+  since part of that charge may have come from the Post and pack-only could lose it.
+
 Open, for the user:
 
-- **Demolition is a way into the Post.** Collecting fills only the pack, but a crate's contents
-  that don't fit in the pack are refunded into the Post (§0.8). A player can demolish a full
-  crate far away and pick the goods up at any Post crate. That is a remote move, and §7 of the
-  inventory spec leaves remote moves to the Post. The design allows it as written.
 - **A building skipped on load loses what it holds.** This is an older rule (a boiler's Coke goes
   the same way), but before crates a depot held nothing of its own. A save names its depots by
   prefab key and cell, so a renamed prefab or a blocked cell now drops a crate's goods.

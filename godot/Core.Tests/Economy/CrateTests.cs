@@ -23,10 +23,6 @@ namespace GolemFactory.Tests.EditMode
     /// </summary>
     public class CrateTests
     {
-        // The Post store at its cap of one good, so a refund has only the pack to land in.
-        private static void FillPost(SandboxWorld world, string item) =>
-            world.Buffers.Deposit(SandboxWorld.PostBufferId, item, 200);
-
         private static void StandAt(SandboxWorld world, Vector2Int cell)
         {
             world.Interactor.Position = new Vector3(cell.x, cell.y + 1f, 0f);
@@ -233,7 +229,6 @@ namespace GolemFactory.Tests.EditMode
             ICrate crate = depot.GetPart<ICrate>();
             crate.Buffer.Deposit(ItemType.Scrap, 20);
             Give(world, ItemType.Scrap, 100);
-            FillPost(world, ItemType.Scrap);
 
             world.Build.EnterDemolishMode();
             world.Build.PlaceOrRemove(cell);
@@ -272,17 +267,45 @@ namespace GolemFactory.Tests.EditMode
             Give(world, ItemType.Scrap, 12);
             Assert.IsTrue(world.StarterStation.TryConstructGolem(scavenger, out GolemEntity golem));
             Give(world, ItemType.Scrap, 100);
-            FillPost(world, ItemType.Scrap);
 
             Assert.IsFalse(world.StarterStation.TryDismantleGolem(golem, out _, out string reason));
             Assert.AreEqual("Not dismantled: pack full of Scrap.", reason);
             Assert.IsFalse(golem.IsRemoved);
+            Assert.AreEqual(0, world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Scrap), "never into the Post");
+        }
+
+        [Test]
+        public void DemolishingACrate_IntoAFullPack_WithThePostEmpty_IsRefused_AndNothingMoves()
+        {
+            // crates-design §11 (user, 2026-10-18): a refund never goes into the Post. An empty
+            // Post with room for everything changes nothing about the wrecking bar's answer.
+            SandboxWorld world = Compose();
+            Give(world, ItemType.Scrap, 15);
+            var cell = new Vector2Int(6, 6);
+            PlaceableBuilding depot = Place(world, "DepotPrefab", cell);
+            ICrate crate = depot.GetPart<ICrate>();
+            crate.Buffer.Deposit(ItemType.Scrap, 20);
+            crate.Buffer.Deposit(ItemType.Coke, 5);
+            Give(world, ItemType.Scrap, 100);
+            Assert.AreEqual(0, world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Scrap), "the Post is empty");
+
+            world.Build.EnterDemolishMode();
+            world.Build.PlaceOrRemove(cell);
+
+            Assert.IsFalse(depot.IsRemoved, "the crate stands");
+            Assert.AreEqual("Not demolished: pack full of Scrap.", world.Build.LastStatusMessage);
+            Assert.AreEqual(20, crate.Buffer.GetQuantity(ItemType.Scrap));
+            Assert.AreEqual(5, crate.Buffer.GetQuantity(ItemType.Coke));
+            Assert.AreEqual(100, Pack(world, ItemType.Scrap));
+            Assert.AreEqual(0, Pack(world, ItemType.Coke));
+            Assert.AreEqual(0, world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Scrap), "nothing into the Post");
+            Assert.AreEqual(0, world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Coke));
         }
 
         // --- The wallet ----------------------------------------------------------------------------
 
         [Test]
-        public void TheWallet_ChargesAtomically_PackFirstThenPost_AndRefundsTheSameWay()
+        public void TheWallet_ChargesAtomically_PackFirstThenPost_AndRefundsIntoThePackOnly()
         {
             var buffers = new StorageBufferRegistry();
             buffers.SetCapacity("Pack", 100);
@@ -302,12 +325,21 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(40, buffers.GetQuantity("Post", ItemType.Scrap), "then the Post");
             Assert.IsTrue(wallet.TryCharge(null), "free is free");
 
-            Assert.IsTrue(wallet.Refund(new[] { new RecipeIngredient(ItemType.Scrap, 130) }));
-            Assert.AreEqual(100, buffers.GetQuantity("Pack", ItemType.Scrap), "the pack first");
-            Assert.AreEqual(70, buffers.GetQuantity("Post", ItemType.Scrap), "the rest to the Post");
-            Assert.AreEqual(ItemType.Scrap, wallet.FirstMisfit(new[] { new RecipeIngredient(ItemType.Scrap, 131) }));
-            Assert.IsFalse(wallet.Refund(new[] { new RecipeIngredient(ItemType.Scrap, 131) }));
-            Assert.AreEqual(100, buffers.GetQuantity("Pack", ItemType.Scrap), "a refund that won't fit deposits nothing");
+            Assert.AreEqual(100, wallet.RoomFor(ItemType.Scrap), "a refund's room is the pack's alone");
+            Assert.AreEqual(ItemType.Scrap, wallet.FirstMisfit(new[] { new RecipeIngredient(ItemType.Scrap, 101) }),
+                "the Post's room doesn't count");
+            Assert.IsFalse(wallet.Refund(new[] { new RecipeIngredient(ItemType.Scrap, 101) }));
+            Assert.AreEqual(0, buffers.GetQuantity("Pack", ItemType.Scrap), "a refund that won't fit deposits nothing");
+            Assert.AreEqual(40, buffers.GetQuantity("Post", ItemType.Scrap));
+            Assert.IsTrue(wallet.Refund(new[] { new RecipeIngredient(ItemType.Scrap, 100) }));
+            Assert.AreEqual(100, buffers.GetQuantity("Pack", ItemType.Scrap));
+            Assert.AreEqual(40, buffers.GetQuantity("Post", ItemType.Scrap), "never into the Post");
+
+            // A charge that bought nothing goes back where it came from, the Post included.
+            Assert.IsTrue(wallet.TryCharge(new[] { new RecipeIngredient(ItemType.Scrap, 120) }));
+            wallet.Uncharge(new[] { new RecipeIngredient(ItemType.Scrap, 120) });
+            Assert.AreEqual(100, buffers.GetQuantity("Pack", ItemType.Scrap));
+            Assert.AreEqual(40, buffers.GetQuantity("Post", ItemType.Scrap), "nothing lost");
         }
 
         [Test]
@@ -381,12 +413,11 @@ namespace GolemFactory.Tests.EditMode
             SandboxWorld world = Compose();
             world.Wallet.Pack.RestoreQuantity(ItemType.Scrap, 140);
 
-            Assert.AreEqual(0, world.Buffers.RoomFor(world.StockpileBufferId, ItemType.Scrap));
-            Assert.AreEqual(200, world.Wallet.RoomFor(ItemType.Scrap), "a refund's room is the Post's alone");
+            Assert.AreEqual(0, world.Wallet.RoomFor(ItemType.Scrap));
             Assert.AreEqual(0, world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 1));
             Assert.IsTrue(world.Wallet.TryCharge(new[] { new RecipeIngredient(ItemType.Scrap, 30) }));
             Assert.AreEqual(110, Pack(world, ItemType.Scrap));
-            Assert.AreEqual(0, world.Buffers.RoomFor(world.StockpileBufferId, ItemType.Scrap), "still above: still closed");
+            Assert.AreEqual(0, world.Wallet.RoomFor(ItemType.Scrap), "still above: still closed");
         }
 
         // --- Every price fits in a full pack (crates-design §6.1) ---------------------------------

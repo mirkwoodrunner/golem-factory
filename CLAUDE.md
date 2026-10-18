@@ -126,7 +126,8 @@ ones. Current scenarios:
   cap gives but takes nothing back. A mast's label is disabled; at a Post crate the left panel
   is the Pneumatic Post, a click fills the store every Post crate shares, and the Pack screen
   lists it under the pack. The guide's plate clears both
-  panels, and the wrecking bar refuses a crate whose goods won't fit, then refunds it exactly.
+  panels, and the wrecking bar refuses a crate whose goods won't fit in the pack (the Post's
+  room doesn't count), then refunds it exactly.
   Logs the frames worth a look for `--write-movie`.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
 
@@ -455,7 +456,9 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   each). A depot with an explicit `bufferId` publishes that buffer and doesn't own it: a Post
   crate, and how a test keeps the old behaviour.
 - **Every cost goes through `PlayerWallet.TryCharge`** (pack first, then the Post store);
-  refunds through `Refund` (same order), after `FirstMisfit` says they fit. Never charge a buffer
+  refunds through `Refund`, **into the pack only, never the Post**, after `FirstMisfit` says they
+  fit (a demolition or a dismantle the pack can't hold is refused, Post or no Post). Only a
+  charge that bought nothing goes back through `Uncharge` (pack, then Post). Never charge a buffer
   id directly, and never charge a crate. Harvesting and collecting fill the pack only, and check
   its room before taking. A part that builds its own wallet takes the Post's id too (an optional
   `postBufferId`), or it spends from the pack alone.
