@@ -344,7 +344,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("the crate offers its goods", () =>
             {
                 offered = _prompt.Caption;
-                return offered == "[E]  Collect from Crate  -  holds 20 Scrap" ? null : $"caption '{offered}'";
+                return offered == "[E]  Collect from Crate  -  holds 20 Scrap · [I] open" ? null : $"caption '{offered}'";
             });
             Do("press E", () => { Tap(Key.E); return null; });
             Do("what fits went into the pack, the rest stayed", () =>
@@ -356,7 +356,7 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
             Do("the prompt greys: pack full", () =>
-                _prompt.Caption == "Crate  -  pack full" ? null : $"caption '{_prompt.Caption}'");
+                _prompt.Caption == "Crate  -  pack full · [I] open" ? null : $"caption '{_prompt.Caption}'");
             int stallBefore = 0;
             Do("walk to the Scrap stall with a full pack", () =>
             {

@@ -89,6 +89,12 @@ namespace GolemFactory.Tutorial
         public bool Workbench { get; }
 
         /// <summary>
+        /// Whether the step is done inside the Crate screen, so the guide stays on show over it in
+        /// its usual dock, which that screen leaves clear (docs/inventory-screens-design.md §5).
+        /// </summary>
+        public bool Crate { get; }
+
+        /// <summary>
         /// The kind of building the step's marked tiles are for, or null (a golem's tile, a goal).
         /// The guide uses it to tell "something else is on the marked tile" from "the right thing".
         /// </summary>
@@ -109,8 +115,9 @@ namespace GolemFactory.Tutorial
             string id, string title, string body, Func<SandboxWorld, bool> done,
             Func<SandboxWorld, Vector2Int?> target, Func<SandboxWorld, string> progress = null, string menuKey = null,
             Func<Vector2Int?> spot = null, Func<Facing?> spotFacing = null, Func<Vector2Int[]> moreSpots = null, string card = null,
-            bool workbench = false, Func<PlaceableBuilding, bool> builds = null, bool exactTile = false)
+            bool workbench = false, Func<PlaceableBuilding, bool> builds = null, bool exactTile = false, bool crate = false)
         {
+            Crate = crate;
             Builds = builds;
             ExactTile = exactTile;
             Card = card;
@@ -1357,13 +1364,13 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "copper-depot", "A labelled depot",
                 "A belt only hands goods to another belt, so the ore stops at the end. Build a Depot on the "
-                + "marked tile past it, then stand by it and press E until its label reads Copper Ore.",
+                + "marked tile past it, then stand by it, press I and choose Copper Ore for its label.",
                 w => DepotAt(CopperDepotSpot)?.FilterItemType == ItemType.CopperOre,
                 w => DepotAt(CopperDepotSpot) == null ? ScrapFirst(15, CopperDepotSpot) : CopperDepotSpot,
                 w => DepotAt(CopperDepotSpot) == null ? Count(ItemType.Scrap, 15) : "Label: " + DepotAt(CopperDepotSpot).FilterLabel,
                 menuKey: "DepotPrefab",
                 spot: () => CopperDepotSpot,
-                builds: IsDepot, exactTile: true),
+                builds: IsDepot, exactTile: true, crate: true),
 
             new TutorialStep(
                 "unloader", "An unloader",

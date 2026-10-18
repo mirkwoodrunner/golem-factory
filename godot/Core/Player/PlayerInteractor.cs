@@ -91,7 +91,13 @@ namespace GolemFactory.Player
         private IConstructionScreen _constructionScreen;
         private IWorkbenchScreen _workbench;
         private IScreen _managementScreen;
+        private ScreenCoordinator _screens;
+        private IPackScreen _packScreen;
+        private ICrateScreen _crateScreen;
         private string _interactKeyLabel = "E";
+
+        /// <summary>The key that opens the inventory, as a prompt names it.</summary>
+        public const string InventoryKeyLabel = "I";
 
         // Rotating an already-placed golem. "Golems cannot pivot" is a rule about *runtime
         // execution* -- nothing in a program may turn the golem mid-cycle -- not about the
@@ -217,6 +223,19 @@ namespace GolemFactory.Player
         {
             _managementScreen = managementScreen;
             _interactKeyLabel = interactKeyLabel;
+        }
+
+        /// <summary>
+        /// The full screens' coordinator: while any screen it knows is open, the world prompt
+        /// hides, so a new screen gets that by registering (crates-design §6.7).
+        /// </summary>
+        public void ConfigureScreenCoordinator(ScreenCoordinator screens) => _screens = screens;
+
+        /// <summary>The screens [I] opens: the crate's at a crate, else the pack's. Null for one not built.</summary>
+        public void ConfigureInventory(IPackScreen packScreen, ICrateScreen crateScreen)
+        {
+            _packScreen = packScreen ?? _packScreen;
+            _crateScreen = crateScreen ?? _crateScreen;
         }
 
         /// <summary>What exists to interact with. Unity found all of this with FindObjectsByType.</summary>
@@ -799,7 +818,7 @@ namespace GolemFactory.Player
             // A full screen owns the player's attention and dims the world behind it; a
             // world-space prompt drawn under that dim is exactly the kind of leftover HUD the
             // presentation pass removed.
-            if (!HudScreenPolicy.ShouldShowWorldHud(
+            if (_screens?.AnyOpen == true || !HudScreenPolicy.ShouldShowWorldHud(
                     _workbench != null && _workbench.IsOpen,
                     _managementScreen != null && _managementScreen.IsOpen,
                     _constructionScreen != null && _constructionScreen.IsOpen))
@@ -831,6 +850,11 @@ namespace GolemFactory.Player
             if (packFull)
             {
                 detail = "pack full";
+            }
+            // [I] opens a crate whatever E would do there: put into an empty one, label a full one.
+            if (pick.Kind == InteractionKind.Sort && CurrentAffordance != InteractionAffordance.OutOfRange)
+            {
+                detail = InteractionTargeting.AppendDetail(detail, "[" + InventoryKeyLabel + "] open");
             }
             string verb = DescribeMarketStall(pick, target, ref detail);
 
@@ -1104,6 +1128,45 @@ namespace GolemFactory.Player
             LastStatusMessage = "Collected " + string.Join(", ", moved.Select(r => r.Moved + " " + ItemTiers.DisplayName(r.ItemType))) + ".";
             Popup(at, string.Join("  ", moved.Select(r => YieldPopupText.Gain(r.ItemType, r.Moved))), InteractionPopupKind.Gain);
             return true;
+        }
+
+        /// <summary>
+        /// [I] (docs/inventory-screens-design.md §1): the nearest crate within arm's reach opens
+        /// the Crate screen on it; anywhere else, the Pack screen.
+        /// </summary>
+        public bool OpenInventory()
+        {
+            ICrate crate = SelectNearestCrate(_interactRange);
+            if (crate != null && _crateScreen != null)
+            {
+                _crateScreen.Open(crate);
+                return true;
+            }
+            if (_packScreen != null)
+            {
+                _packScreen.Open();
+                return true;
+            }
+            LastStatusMessage = "No inventory screen available.";
+            return false;
+        }
+
+        /// <summary>The nearest crate (depot or mast) within <paramref name="range"/>, or null.</summary>
+        public ICrate SelectNearestCrate(float range)
+        {
+            FillPositions();
+            ICrate nearest = null;
+            float bestSqr = range * range;
+            for (int i = 0; i < _depots.Length; i++)
+            {
+                float sqr = (_depotPositions[i] - Position).sqrMagnitude;
+                if (_depots[i] != null && sqr <= bestSqr)
+                {
+                    bestSqr = sqr;
+                    nearest = _depots[i];
+                }
+            }
+            return nearest;
         }
 
         /// <summary>

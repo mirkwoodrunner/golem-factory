@@ -338,6 +338,7 @@ namespace GolemFactory.World
             Interactor.ConfigureMarket(Market, () => Clock.CurrentTick, Buffers, _stockpileBufferId);
             Interactor.ConfigureBuildMode(Build);
             Interactor.ConfigureGolemPlacement(Grid, new Vector2(1f, 1f));
+            Interactor.ConfigureScreenCoordinator(Screens);
             Interactor.Attach();
         }
 
@@ -554,6 +555,22 @@ namespace GolemFactory.World
             Interactor.Configure(InteractRange, Buffers, _stockpileBufferId, ConstructionScreen, WorkbenchScreen);
             Interactor.ConfigureAffordance(ManagementScreen, "E");
         }
+
+        /// <summary>
+        /// Hands [I] the Pack and Crate screens (docs/inventory-screens-design.md §2), as
+        /// <see cref="ConfigureScreens"/> does the others. Null keeps one already handed over.
+        /// </summary>
+        public void ConfigureInventoryScreens(IPackScreen pack, ICrateScreen crate) =>
+            Interactor.ConfigureInventory(pack, crate);
+
+        /// <summary>
+        /// What the Pack and Crate screens show and what their clicks do: rows, transfers through
+        /// <see cref="CrateTransfer"/>, and the labels a crate is offered (every good the ledger has seen).
+        /// </summary>
+        public CrateScreenReadout Inventory =>
+            _inventory ??= new CrateScreenReadout(Buffers, _stockpileBufferId, () => TechTree.Ledger.Items);
+
+        private CrateScreenReadout _inventory;
 
         /// <summary>
         /// The screens handed over so far. Each screen registers itself (passing null for the

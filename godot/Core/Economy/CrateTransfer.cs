@@ -32,34 +32,45 @@ namespace GolemFactory.Economy
         /// <summary>A click moves all that fits; a Shift-click moves one.</summary>
         public static int AmountFor(bool shift) => shift ? 1 : int.MaxValue;
 
+        /// <summary>The refusal when the giving side holds none of the good.</summary>
+        public const string NoneLeft = "None left";
+
         /// <summary>Up to <paramref name="want"/> of a good from the crate into the pack. Labels don't apply.</summary>
-        public static TransferResult Take(ICrate crate, StorageBuffer pack, string itemType, int want)
-        {
-            StorageBuffer from = crate?.Buffer;
-            if (from == null || pack == null || from.GetQuantity(itemType) <= 0)
-            {
-                return new TransferResult(itemType, 0, "None left");
-            }
-            return Move(from, pack, itemType, want, "Pack full of " + ItemTiers.DisplayName(itemType));
-        }
+        public static TransferResult Take(ICrate crate, StorageBuffer pack, string itemType, int want) =>
+            Apply(crate?.Buffer, pack, PlanTake(crate, pack, itemType, want));
 
         /// <summary>
         /// Up to <paramref name="want"/> of a good from the pack into the crate, refused when the
         /// crate is labelled for another good.
         /// </summary>
-        public static TransferResult Put(StorageBuffer pack, ICrate crate, string itemType, int want)
+        public static TransferResult Put(StorageBuffer pack, ICrate crate, string itemType, int want) =>
+            Apply(pack, crate?.Buffer, PlanPut(pack, crate, itemType, want));
+
+        /// <summary>What <see cref="Take"/> would move, or why it would refuse, moving nothing.</summary>
+        public static TransferResult PlanTake(ICrate crate, StorageBuffer pack, string itemType, int want)
+        {
+            StorageBuffer from = crate?.Buffer;
+            if (from == null || pack == null || from.GetQuantity(itemType) <= 0)
+            {
+                return new TransferResult(itemType, 0, NoneLeft);
+            }
+            return Plan(from, pack, itemType, want, "Pack full of " + ItemTiers.DisplayName(itemType));
+        }
+
+        /// <summary>What <see cref="Put"/> would move, or why it would refuse, moving nothing.</summary>
+        public static TransferResult PlanPut(StorageBuffer pack, ICrate crate, string itemType, int want)
         {
             StorageBuffer to = crate?.Buffer;
             if (to == null || pack == null || pack.GetQuantity(itemType) <= 0)
             {
-                return new TransferResult(itemType, 0, "None left");
+                return new TransferResult(itemType, 0, NoneLeft);
             }
             string label = crate.FilterItemType;
-            if (label != null && label != itemType)
+            if (!string.IsNullOrEmpty(label) && label != itemType)
             {
                 return new TransferResult(itemType, 0, "This crate is for " + ItemTiers.DisplayName(label));
             }
-            return Move(pack, to, itemType, want, "Crate full of " + ItemTiers.DisplayName(itemType));
+            return Plan(pack, to, itemType, want, "Crate full of " + ItemTiers.DisplayName(itemType));
         }
 
         /// <summary>
@@ -83,16 +94,22 @@ namespace GolemFactory.Economy
             return results;
         }
 
-        private static TransferResult Move(StorageBuffer from, StorageBuffer to, string itemType, int want, string fullRefusal)
+        private static TransferResult Plan(StorageBuffer from, StorageBuffer to, string itemType, int want, string fullRefusal)
         {
             int moved = System.Math.Min(want, System.Math.Min(from.GetQuantity(itemType), to.RoomFor(itemType)));
-            if (moved <= 0)
+            return new TransferResult(itemType, moved > 0 ? moved : 0, fullRefusal);
+        }
+
+        // Withdraw, then deposit: the plan was bounded by the receiver's room, so the deposit
+        // takes all of it.
+        private static TransferResult Apply(StorageBuffer from, StorageBuffer to, TransferResult plan)
+        {
+            if (plan.Moved > 0)
             {
-                return new TransferResult(itemType, 0, fullRefusal);
+                from.TryWithdraw(plan.ItemType, plan.Moved);
+                to.Deposit(plan.ItemType, plan.Moved);
             }
-            from.TryWithdraw(itemType, moved);
-            to.Deposit(itemType, moved);
-            return new TransferResult(itemType, moved, null);
+            return plan;
         }
     }
 }
