@@ -334,6 +334,14 @@ stay there by id. A label already saves as `depotFilterItemType`.
 3. Each building is rebuilt, which creates its empty crate; `RestoreBuildingState` then fills it
    through `RestoreQuantity`, after `SetFilter`.
 
+**A building the load can't rebuild** (its prefab key no longer exists, or its cell is taken) is
+skipped, as before, but what it held goes into the pack (§11): a crate's goods, a boiler's Coke,
+and a Scrap Recycler's Coke and Scrap. It is handled like the pack limit: added through
+`RestoreQuantity`, never `Deposit`, so it stays even above the 100 cap, can be spent, and nothing
+more of that good can be added until the pack is under the cap. It never goes into the Post, and
+the building's cost is not refunded, since a load never refunds. The next save no longer lists the
+building, so loading again returns the same pack and duplicates nothing.
+
 **Version 0.** One stockpile and depots that hold nothing of their own. The stockpile becomes the
 pack, contents intact even above the 100 cap; every crate starts empty; labels are kept. Nothing
 is lost and nothing is duplicated; the player's golems simply find their crates empty until the
@@ -540,9 +548,11 @@ Decided:
   `Refund`, `FirstMisfit` and `RoomFor` are pack-only. The one call that is not a demolition,
   Floor Expansion handing back a charge that added no rows, uses `Uncharge` (pack, then Post),
   since part of that charge may have come from the Post and pack-only could lose it.
-
-Open, for the user:
-
-- **A building skipped on load loses what it holds.** This is an older rule (a boiler's Coke goes
+- **A building skipped on load lost what it held.** This was an older rule (a boiler's Coke went
   the same way), but before crates a depot held nothing of its own. A save names its depots by
-  prefab key and cell, so a renamed prefab or a blocked cell now drops a crate's goods.
+  prefab key and cell, so a renamed prefab or a blocked cell dropped a crate's goods. **Decided
+  (user, 2026-10-18): "not an issue we need to be concerned with; if it is, handle it like the
+  pack limit."** What a skipped building held goes into the pack without a clamp, even above the
+  cap, never into the Post, and with no refund of its cost (§7). Tests:
+  `CrateSaveTests.ADepotWithAnUnknownPrefab_PutsItsGoodsInThePack_AboveTheCap` and
+  `CrateSaveTests.ADepotOnATakenCell_PutsItsGoodsInThePack`.

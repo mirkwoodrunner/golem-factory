@@ -33,10 +33,6 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   is pinned in Core (`LayoutMattersTests`; numbers in `docs/roadmap.md`, Phase 1). **The human
   playtest of `testscript/phase-1-playtest.md` has not been run**; it judges whether a bad
   layout reads as visibly worse in play, not only in the numbers.
-- **A crate question, open for the user** (`crates-design.md` §11): **a building that can't be
-  rebuilt on load loses what it holds.** A save names a depot by prefab key and cell, so a
-  renamed prefab or a blocked cell drops the crate's goods (a boiler's Coke already went the
-  same way). Send what it held to the pack instead?
 - **Floor Expansion's price curve** (`crates-design.md` §6.1, §10.1.8): the escalating price is
   clamped at the pack's 100-per-good cap, so every purchase from the third on costs the same
   (100 Scrap + 100 Iron Plate).

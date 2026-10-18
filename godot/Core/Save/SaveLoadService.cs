@@ -245,7 +245,8 @@ namespace GolemFactory.Save
         public static RestoreReport RestoreState(
             SaveData data, StorageBufferRegistry buffers,
             PatentRegistry patents, IEnumerable<GolemEntity> golems, DefinitionCatalog catalog,
-            IGolemRespawner respawner = null, IBuildingRebuilder buildingRebuilder = null)
+            IGolemRespawner respawner = null, IBuildingRebuilder buildingRebuilder = null,
+            string packId = null)
         {
             // Clear first so a load *replaces* buffer state instead of merging into whatever's
             // currently there.
@@ -298,7 +299,8 @@ namespace GolemFactory.Save
             // golem-respawn pass and this one.
             int buildingsRebuilt = 0;
             int buildingsSkipped = 0;
-            RestoreBuildings(data, buildingRebuilder, ref buildingsRebuilt, ref buildingsSkipped);
+            StorageBuffer pack = packId != null ? buffers.GetOrCreate(packId) : null;
+            RestoreBuildings(data, buildingRebuilder, pack, ref buildingsRebuilt, ref buildingsSkipped);
 
             Dictionary<string, GolemEntity> golemsById = new Dictionary<string, GolemEntity>();
             foreach (GolemEntity golem in golems)
@@ -416,7 +418,7 @@ namespace GolemFactory.Save
         // load must REPLACE the built world, not merge into it. Loading twice would otherwise
         // stack two factories, and the second copy would fail cell by cell against the first.
         private static void RestoreBuildings(
-            SaveData data, IBuildingRebuilder rebuilder, ref int rebuilt, ref int skipped)
+            SaveData data, IBuildingRebuilder rebuilder, StorageBuffer pack, ref int rebuilt, ref int skipped)
         {
             if (rebuilder == null)
             {
@@ -440,12 +442,46 @@ namespace GolemFactory.Save
                         (GolemFactory.World.Facing)entry.facing,
                         out GolemFactory.Buildings.PlaceableBuilding building) || building == null)
                 {
+                    ReturnHeldGoodsToPack(entry, pack);
                     skipped++;
                     continue;
                 }
 
                 RestoreBuildingState(entry, building);
                 rebuilt++;
+            }
+        }
+
+        // A building the load cannot rebuild (its prefab is gone, or its cell is taken) hands what
+        // it held to the pack, handled like the pack limit (crates-design §7, §11): added without
+        // a clamp, so it stays above the cap, spendable and closed to more. Never the Post, and
+        // never the building's cost: a load does not refund. The next save no longer lists the
+        // building, so a second load cannot hand the same goods over twice.
+        private static void ReturnHeldGoodsToPack(BuildingEntry entry, StorageBuffer pack)
+        {
+            if (pack == null)
+            {
+                return;
+            }
+
+            if (entry.crateItemTypes != null && entry.crateQuantities != null)
+            {
+                for (int i = 0; i < entry.crateItemTypes.Count && i < entry.crateQuantities.Count; i++)
+                {
+                    AddUnclamped(pack, entry.crateItemTypes[i], entry.crateQuantities[i]);
+                }
+            }
+
+            AddUnclamped(pack, ItemType.Coke, entry.cokeStock);
+            AddUnclamped(pack, ItemType.Coke, entry.recyclerCokeStock);
+            AddUnclamped(pack, ItemType.Scrap, entry.recyclerScrapStock);
+        }
+
+        private static void AddUnclamped(StorageBuffer pack, string itemType, int quantity)
+        {
+            if (itemType != null && quantity > 0)
+            {
+                pack.RestoreQuantity(itemType, pack.GetQuantity(itemType) + quantity);
             }
         }
 

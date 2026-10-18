@@ -416,7 +416,7 @@ namespace GolemFactory.World
             IGolemRespawner respawner = _stationTemplate != null ? new StationGolemRespawner(_stationTemplate) : null;
             SaveLoadService.RestoreReport report = SaveLoadService.RestoreState(
                 data, Buffers, Patents, LiveGolems(), Definitions.ToCatalog(), respawner,
-                new BuildModeBuildingRebuilder(Build));
+                new BuildModeBuildingRebuilder(Build), Wallet.PackId);
             Interactor.RefreshInteractables();
 
             // The guide last, once its golems are back: entering a step notes which golems were

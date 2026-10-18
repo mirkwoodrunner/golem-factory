@@ -99,6 +99,65 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(0, world.Wallet.RoomFor(ItemType.Brass));
         }
 
+        // A building the load cannot rebuild hands its goods to the pack like the pack limit
+        // (crates-design §7, §11): no clamp, never the Post, no refund, nothing twice.
+        [Test]
+        public void ADepotWithAnUnknownPrefab_PutsItsGoodsInThePack_AboveTheCap()
+        {
+            SandboxWorld world = Compose();
+            ICrate crate = PlaceDepot(world, new Vector2Int(6, 6));
+            crate.Buffer.Deposit(ItemType.Scrap, 30);
+            crate.Buffer.Deposit(ItemType.Gear, 4);
+            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 90);
+            world.SaveTo(_path);
+
+            SaveData data = SaveFileIO.ReadFromFile(_path);
+            data.buildings.Single(b => b.cellX == 6 && b.cellY == 6).prefabKey = "NoSuchPrefab";
+            SaveFileIO.WriteToFile(data, _path);
+            int scrapBefore = Pack(world, ItemType.Scrap); // includes anything Compose seeded
+
+            for (int round = 0; round < 3; round++)
+            {
+                world.LoadFrom(_path);
+                Assert.IsFalse(world.Build.Buildings.Any(b => !b.IsRemoved && b.Cell == new Vector2Int(6, 6)), "skipped");
+                Assert.AreEqual(scrapBefore + 30, Pack(world, ItemType.Scrap), "round " + round + ": above the cap, unclamped");
+                Assert.AreEqual(4, Pack(world, ItemType.Gear));
+                Assert.AreEqual(0, world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Scrap), "never the Post");
+                world.SaveTo(_path); // the next save no longer names the depot: nothing twice
+            }
+
+            Assert.Greater(Pack(world, ItemType.Scrap), 100);
+            Assert.AreEqual(0, world.Wallet.RoomFor(ItemType.Scrap), "closed to more until under the cap");
+            Assert.IsTrue(world.Wallet.TryCharge(new[] { new PunchCards.RecipeIngredient(ItemType.Scrap, 30) }), "and spendable");
+        }
+
+        [Test]
+        public void ADepotOnATakenCell_PutsItsGoodsInThePack()
+        {
+            SandboxWorld world = Compose();
+            ICrate crate = PlaceDepot(world, new Vector2Int(6, 6));
+            crate.Buffer.Deposit(ItemType.Coal, 12);
+            world.SaveTo(_path);
+
+            // A second depot entry on the same cell: the first rebuilds, the second finds it taken.
+            SaveData data = SaveFileIO.ReadFromFile(_path);
+            BuildingEntry first = data.buildings.Single(b => b.cellX == 6 && b.cellY == 6);
+            data.buildings.Add(new BuildingEntry
+            {
+                prefabKey = first.prefabKey, cellX = 6, cellY = 6, facing = first.facing,
+                crateItemTypes = { ItemType.Brass }, crateQuantities = { 7 },
+            });
+            SaveFileIO.WriteToFile(data, _path);
+            int brassBefore = Pack(world, ItemType.Brass);
+
+            string status = world.LoadFrom(_path);
+
+            StringAssert.Contains("1 skipped", status);
+            Assert.AreEqual(12, CrateAt(world, new Vector2Int(6, 6)).Buffer.GetQuantity(ItemType.Coal), "the first rebuilt");
+            Assert.AreEqual(brassBefore + 7, Pack(world, ItemType.Brass), "the skipped one's goods in the pack");
+            Assert.AreEqual(0, world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Brass));
+        }
+
         [Test]
         public void ASaveFromBeforeCrates_KeepsTheStockpileAsThePack_AndItsDepotsStartEmpty()
         {
