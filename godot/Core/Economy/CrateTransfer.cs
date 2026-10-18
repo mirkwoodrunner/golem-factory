@@ -85,14 +85,16 @@ namespace GolemFactory.Economy
             {
                 return results;
             }
-            List<string> goods = from.Quantities.Where(q => q.Value > 0).Select(q => q.Key).ToList();
-            BufferTrendUtility.SortItemTypes(goods);
-            foreach (string good in goods)
+            foreach (string good in from.HeldGoods())
             {
                 results.Add(Take(crate, pack, good, int.MaxValue));
             }
             return results;
         }
+
+        /// <summary>"12 Scrap, 3 Coke": the goods that moved, for a status line.</summary>
+        public static string Describe(IEnumerable<TransferResult> results) =>
+            string.Join(", ", results.Where(r => r.Moved > 0).Select(r => r.Moved + " " + ItemTiers.DisplayName(r.ItemType)));
 
         private static TransferResult Plan(StorageBuffer from, StorageBuffer to, string itemType, int want, string fullRefusal)
         {

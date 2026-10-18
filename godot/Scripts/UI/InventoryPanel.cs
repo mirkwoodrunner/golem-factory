@@ -24,14 +24,13 @@ namespace GolemFactory.Nodes
         private readonly Dictionary<string, Button> _rows = new Dictionary<string, Button>();
         private readonly Dictionary<string, Button> _postRows = new Dictionary<string, Button>();
         private readonly Action<string, bool> _click;
+        private readonly VBoxContainer _content;
         private string _signature;
 
         public Control Root { get; }
         public Label Title { get; }
         public Label Cap { get; }
-        public Button CloseButton { get; }
         public ScrollContainer Scroll { get; }
-        public VBoxContainer Content { get; }
 
         /// <summary>The row drawn for each good, by item type.</summary>
         public IReadOnlyDictionary<string, Button> Rows => _rows;
@@ -50,10 +49,10 @@ namespace GolemFactory.Nodes
             Title = Ugui.Place(Ugui.Text("Title", "", 17, ManagementScreen.HeaderInk, bold: true), 0f, 1f, 1f, 1f, -32f, -10f, -88f, 26f, 0.5f, 1f);
             Root.AddChild(Title);
 
-            CloseButton = Ugui.Place(ManagementScreen.PlateButton("CloseButton", Steampunk + "steampunk_button_exit.png", new Color(0.35f, 0.10f, 0.10f), "Close", 12, Colors.White, bold: false),
+            Button closeButton = Ugui.Place(ManagementScreen.PlateButton("CloseButton", Steampunk + "steampunk_button_exit.png", new Color(0.35f, 0.10f, 0.10f), "Close", 12, Colors.White, bold: false),
                 1f, 1f, 1f, 1f, -10f, -8f, 60f, 24f, 1f, 1f);
-            CloseButton.Pressed += close;
-            Root.AddChild(CloseButton);
+            closeButton.Pressed += close;
+            Root.AddChild(closeButton);
 
             Cap = Ugui.Place(Ugui.Text("Cap", "", 12, ManagementScreen.DimInk), 0f, 1f, 1f, 1f, 0f, -38f, -24f, 18f, 0.5f, 1f);
             Root.AddChild(Cap);
@@ -69,9 +68,9 @@ namespace GolemFactory.Nodes
                 margin.AddThemeConstantOverride(side, 4);
             }
             Scroll.AddChild(margin);
-            Content = new VBoxContainer { Name = "Content", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-            Content.AddThemeConstantOverride("separation", 2);
-            margin.AddChild(Content);
+            _content = new VBoxContainer { Name = "Content", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            _content.AddThemeConstantOverride("separation", 2);
+            margin.AddChild(_content);
         }
 
         /// <summary>Forces the next <see cref="Render"/> to rebuild.</summary>
@@ -92,21 +91,21 @@ namespace GolemFactory.Nodes
             _signature = signature;
             _rows.Clear();
             _postRows.Clear();
-            foreach (Node child in Content.GetChildren())
+            foreach (Node child in _content.GetChildren())
             {
-                Content.RemoveChild(child);
+                _content.RemoveChild(child);
                 child.QueueFree();
             }
             foreach (CrateScreenRow row in rows)
             {
-                Content.AddChild(row.IsMessage ? MessageRow(row.Name) : ItemRow(row, _rows, _click));
+                _content.AddChild(row.IsMessage ? MessageRow(row.Name) : ItemRow(row, _rows, _click));
             }
             if (post != null && post.Count > 0)
             {
-                Content.AddChild(HeaderRow(CrateScreenReadout.PostTitle));
+                _content.AddChild(HeaderRow(CrateScreenReadout.PostTitle));
                 foreach (CrateScreenRow row in post)
                 {
-                    Content.AddChild(row.IsMessage ? MessageRow(row.Name) : ItemRow(row, _postRows, null));
+                    _content.AddChild(row.IsMessage ? MessageRow(row.Name) : ItemRow(row, _postRows, null));
                 }
             }
         }
@@ -156,11 +155,7 @@ namespace GolemFactory.Nodes
                 SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
                 MouseFilter = Control.MouseFilterEnum.Ignore,
             };
-            string path = ItemIcons.PathFor(row.ItemType);
-            if (ResourceLoader.Exists(path))
-            {
-                icon.Texture = GD.Load<Texture2D>(path);
-            }
+            icon.Texture = ItemIcons.Load(row.ItemType);
             line.AddChild(icon);
             Control name = ManagementScreen.Flex(Ugui.Text("Name", row.Name, 13, ManagementScreen.ItemNameInk));
             line.AddChild(name);

@@ -952,12 +952,12 @@ namespace GolemFactory.Player
                     return BoilerRefuelPolicy.AmountToLoad(StockpileCoke, room: RoomIn(target)) <= 0;
                 case InteractionKind.Sort:
                 {
-                    StorageBuffer held = ((ICrate)target).Buffer;
-                    if (held == null || !held.Quantities.Any(q => q.Value > 0))
+                    List<string> held = ((ICrate)target).Buffer?.HeldGoods();
+                    if (held == null || held.Count == 0)
                     {
                         return true;
                     }
-                    packFull = !held.Quantities.Any(q => q.Value > 0 && PackRoomFor(q.Key) > 0);
+                    packFull = !held.Any(good => PackRoomFor(good) > 0);
                     return packFull;
                 }
                 default:
@@ -1053,16 +1053,13 @@ namespace GolemFactory.Player
         }
 
         /// <summary>"holds 12 Scrap, 3 Coke", in tier order, or "empty".</summary>
-        public static string DescribeContents(StorageBuffer crate)
+        private static string DescribeContents(StorageBuffer crate)
         {
-            List<string> goods = crate == null
-                ? new List<string>()
-                : crate.Quantities.Where(q => q.Value > 0).Select(q => q.Key).ToList();
-            if (goods.Count == 0)
+            List<string> goods = crate?.HeldGoods();
+            if (goods == null || goods.Count == 0)
             {
                 return "empty";
             }
-            BufferTrendUtility.SortItemTypes(goods);
             return "holds " + string.Join(", ", goods.Select(g => crate.GetQuantity(g) + " " + ItemTiers.DisplayName(g)));
         }
 
@@ -1133,7 +1130,7 @@ namespace GolemFactory.Player
                 return false;
             }
 
-            LastStatusMessage = "Collected " + string.Join(", ", moved.Select(r => r.Moved + " " + ItemTiers.DisplayName(r.ItemType))) + ".";
+            LastStatusMessage = "Collected " + CrateTransfer.Describe(moved) + ".";
             Popup(at, string.Join("  ", moved.Select(r => YieldPopupText.Gain(r.ItemType, r.Moved))), InteractionPopupKind.Gain);
             return true;
         }
@@ -1160,7 +1157,7 @@ namespace GolemFactory.Player
         }
 
         /// <summary>The nearest crate (depot or mast) within <paramref name="range"/>, or null.</summary>
-        public ICrate SelectNearestCrate(float range)
+        private ICrate SelectNearestCrate(float range)
         {
             FillPositions();
             ICrate nearest = null;

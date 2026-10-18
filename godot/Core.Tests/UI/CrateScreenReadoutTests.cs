@@ -1,14 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using GolemFactory.Buildings;
-using GolemFactory.Data;
 using GolemFactory.Economy;
 using GolemFactory.Player;
-using GolemFactory.Tests.Data;
-using GolemFactory.Tests.World;
 using GolemFactory.UI;
 using GolemFactory.World;
 using NUnit.Framework;
+using static GolemFactory.Tests.EditMode.CrateWorld;
 using Vector2Int = GolemFactory.Compat.Vector2Int;
 using Vector3 = GolemFactory.Compat.Vector3;
 
@@ -20,26 +18,6 @@ namespace GolemFactory.Tests.EditMode
     /// </summary>
     public class CrateScreenReadoutTests
     {
-        private static SandboxWorld Compose()
-        {
-            DefinitionSet definitions = AuthoredData.Load();
-            return SandboxWorld.Compose(definitions, SandboxSetupTests.LoadReal(), PlaceableCatalogTests.LoadReal(definitions));
-        }
-
-        private static int Pack(SandboxWorld world, string item) => world.Buffers.GetQuantity(world.StockpileBufferId, item);
-
-        private static void Give(SandboxWorld world, string item, int quantity) =>
-            world.Buffers.Deposit(world.StockpileBufferId, item, quantity);
-
-        private static ICrate PlaceDepot(SandboxWorld world, Vector2Int cell)
-        {
-            Give(world, ItemType.Scrap, 15);
-            world.Build.SetActivePrefab(world.Placeables.Single(p => p.Key == "DepotPrefab").Prefab);
-            world.Build.PlaceOrRemove(cell);
-            world.Build.CancelPlacement();
-            return world.Build.Buildings.Single(b => !b.IsRemoved && b.Cell == cell).GetPart<ICrate>();
-        }
-
         private static int Total(SandboxWorld world, ICrate crate, string item) =>
             Pack(world, item) + crate.Buffer.GetQuantity(item);
 

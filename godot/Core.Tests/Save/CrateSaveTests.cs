@@ -1,13 +1,11 @@
 using System.IO;
 using System.Linq;
 using GolemFactory.Buildings;
-using GolemFactory.Data;
 using GolemFactory.Economy;
 using GolemFactory.Save;
-using GolemFactory.Tests.Data;
-using GolemFactory.Tests.World;
 using GolemFactory.World;
 using NUnit.Framework;
+using static GolemFactory.Tests.EditMode.CrateWorld;
 using Vector2Int = GolemFactory.Compat.Vector2Int;
 
 namespace GolemFactory.Tests.EditMode
@@ -33,25 +31,8 @@ namespace GolemFactory.Tests.EditMode
             }
         }
 
-        private static SandboxWorld Compose()
-        {
-            DefinitionSet definitions = AuthoredData.Load();
-            return SandboxWorld.Compose(definitions, SandboxSetupTests.LoadReal(), PlaceableCatalogTests.LoadReal(definitions));
-        }
-
-        private static ICrate PlaceDepot(SandboxWorld world, Vector2Int cell)
-        {
-            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 15);
-            world.Build.SetActivePrefab(world.Placeables.Single(p => p.Key == "DepotPrefab").Prefab);
-            world.Build.PlaceOrRemove(cell);
-            world.Build.CancelPlacement();
-            return CrateAt(world, cell);
-        }
-
         private static ICrate CrateAt(SandboxWorld world, Vector2Int cell) =>
             world.Build.Buildings.Single(b => !b.IsRemoved && b.Cell == cell).GetPart<ICrate>();
-
-        private static int Pack(SandboxWorld world, string item) => world.Buffers.GetQuantity(world.StockpileBufferId, item);
 
         [Test]
         public void ASave_CarriesEachCratesGoodsOnItsBuilding_AndALoadRestoresThemExactly()

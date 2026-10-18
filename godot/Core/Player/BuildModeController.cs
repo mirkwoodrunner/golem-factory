@@ -1143,9 +1143,7 @@ namespace GolemFactory.Player
             ICrate crate = building.GetPart<ICrate>();
             if (crate != null && crate.OwnsBuffer && crate.Buffer != null)
             {
-                List<string> goods = new List<string>(crate.Buffer.Quantities.Keys);
-                BufferTrendUtility.SortItemTypes(goods);
-                foreach (string good in goods)
+                foreach (string good in crate.Buffer.HeldGoods())
                 {
                     Add(refund, good, crate.Buffer.GetQuantity(good));
                 }

@@ -7,11 +7,10 @@ using GolemFactory.Golems;
 using GolemFactory.Player;
 using GolemFactory.Progression;
 using GolemFactory.PunchCards;
-using GolemFactory.Tests.Data;
-using GolemFactory.Tests.World;
 using GolemFactory.UI;
 using GolemFactory.World;
 using NUnit.Framework;
+using static GolemFactory.Tests.EditMode.CrateWorld;
 using Vector2Int = GolemFactory.Compat.Vector2Int;
 using Vector3 = GolemFactory.Compat.Vector3;
 
@@ -26,26 +25,7 @@ namespace GolemFactory.Tests.EditMode
     /// </summary>
     public class PneumaticPostTests
     {
-        private static SandboxWorld Compose()
-        {
-            DefinitionSet definitions = AuthoredData.Load();
-            return SandboxWorld.Compose(definitions, SandboxSetupTests.LoadReal(), PlaceableCatalogTests.LoadReal(definitions));
-        }
-
-        private static int Pack(SandboxWorld world, string item) => world.Buffers.GetQuantity(world.StockpileBufferId, item);
-
         private static int Post(SandboxWorld world, string item) => world.Buffers.GetQuantity(SandboxWorld.PostBufferId, item);
-
-        private static void Give(SandboxWorld world, string item, int quantity) =>
-            world.Buffers.Deposit(world.StockpileBufferId, item, quantity);
-
-        private static PlaceableBuilding Place(SandboxWorld world, string key, Vector2Int cell)
-        {
-            world.Build.SetActivePrefab(world.Placeables.Single(p => p.Key == key).Prefab);
-            world.Build.PlaceOrRemove(cell);
-            world.Build.CancelPlacement();
-            return world.Build.Buildings.Single(b => !b.IsRemoved && b.Cell == cell);
-        }
 
         // Paid for from the pack, as the player would.
         private static ICrate PlacePost(SandboxWorld world, Vector2Int cell)

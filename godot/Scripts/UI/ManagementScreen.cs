@@ -262,11 +262,7 @@ namespace GolemFactory.Nodes
                     };
                     // The slot is drawn whether or not a sprite resolves, so every row's text
                     // starts at the same x.
-                    string path = ItemIcons.PathFor(row.ItemType);
-                    if (ResourceLoader.Exists(path))
-                    {
-                        icon.Texture = GD.Load<Texture2D>(path);
-                    }
+                    icon.Texture = ItemIcons.Load(row.ItemType);
                     line.AddChild(icon);
                     line.AddChild(Flex(Ugui.Text("Name", row.Text, 13, ItemNameInk)));
                     line.AddChild(Bar(row.Bar));
@@ -521,6 +517,13 @@ namespace GolemFactory.Nodes
                 b.Append(char.ToLowerInvariant(c));
             }
             return b.Append(".png").ToString();
+        }
+
+        /// <summary>The good's icon, or null where it has none.</summary>
+        public static Texture2D Load(string itemType)
+        {
+            string path = PathFor(itemType);
+            return ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
         }
     }
 }

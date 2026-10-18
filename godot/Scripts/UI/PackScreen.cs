@@ -21,7 +21,6 @@ namespace GolemFactory.Nodes
         public bool IsOpen { get; private set; }
 
         // --- For scenarios ------------------------------------------------------------------
-        public Control Panel => _panel.Root;
         public System.Collections.Generic.IReadOnlyDictionary<string, Button> Rows => _panel.Rows;
         public System.Collections.Generic.IReadOnlyDictionary<string, Button> PostRows => _panel.PostRows;
 

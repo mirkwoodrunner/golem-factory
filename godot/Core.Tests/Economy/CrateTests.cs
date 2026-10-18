@@ -8,10 +8,9 @@ using GolemFactory.Events;
 using GolemFactory.Golems;
 using GolemFactory.Player;
 using GolemFactory.PunchCards;
-using GolemFactory.Tests.Data;
-using GolemFactory.Tests.World;
 using GolemFactory.World;
 using NUnit.Framework;
+using static GolemFactory.Tests.EditMode.CrateWorld;
 using Vector2Int = GolemFactory.Compat.Vector2Int;
 using Vector3 = GolemFactory.Compat.Vector3;
 
@@ -24,28 +23,9 @@ namespace GolemFactory.Tests.EditMode
     /// </summary>
     public class CrateTests
     {
-        private static SandboxWorld Compose()
-        {
-            DefinitionSet definitions = AuthoredData.Load();
-            return SandboxWorld.Compose(definitions, SandboxSetupTests.LoadReal(), PlaceableCatalogTests.LoadReal(definitions));
-        }
-
-        private static int Pack(SandboxWorld world, string item) => world.Buffers.GetQuantity(world.StockpileBufferId, item);
-
-        private static void Give(SandboxWorld world, string item, int quantity) =>
-            world.Buffers.Deposit(world.StockpileBufferId, item, quantity);
-
         // The Post store at its cap of one good, so a refund has only the pack to land in.
         private static void FillPost(SandboxWorld world, string item) =>
             world.Buffers.Deposit(SandboxWorld.PostBufferId, item, 200);
-
-        private static PlaceableBuilding Place(SandboxWorld world, string key, Vector2Int cell)
-        {
-            world.Build.SetActivePrefab(world.Placeables.Single(p => p.Key == key).Prefab);
-            world.Build.PlaceOrRemove(cell);
-            world.Build.CancelPlacement();
-            return world.Build.Buildings.Single(b => !b.IsRemoved && b.Cell == cell);
-        }
 
         private static void StandAt(SandboxWorld world, Vector2Int cell)
         {

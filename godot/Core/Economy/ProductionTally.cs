@@ -22,23 +22,12 @@ namespace GolemFactory.Economy
         private readonly Dictionary<string, int> _produced = new Dictionary<string, int>();
         private bool _attached;
 
-        public IReadOnlyDictionary<string, int> Produced => _produced;
-
         public void Attach()
         {
             if (!_attached)
             {
                 EventBus.ItemAssembled += OnItemAssembled;
                 _attached = true;
-            }
-        }
-
-        public void Detach()
-        {
-            if (_attached)
-            {
-                EventBus.ItemAssembled -= OnItemAssembled;
-                _attached = false;
             }
         }
 

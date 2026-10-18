@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace GolemFactory.Economy
 {
@@ -214,5 +215,13 @@ namespace GolemFactory.Economy
         }
 
         public int GetQuantity(string itemType) => _quantities.TryGetValue(itemType, out int quantity) ? quantity : 0;
+
+        /// <summary>Every good held, above zero, in tier order: what a crate shows, collects and refunds.</summary>
+        public List<string> HeldGoods()
+        {
+            List<string> goods = _quantities.Where(q => q.Value > 0).Select(q => q.Key).ToList();
+            BufferTrendUtility.SortItemTypes(goods);
+            return goods;
+        }
     }
 }

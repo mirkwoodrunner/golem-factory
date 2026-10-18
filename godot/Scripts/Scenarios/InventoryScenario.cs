@@ -147,7 +147,7 @@ namespace GolemFactory.Nodes.Scenarios
             });
             Do("one row per good, each with an icon slot and x/100", () =>
             {
-                List<string> held = _world.Wallet.Pack.Quantities.Where(q => q.Value > 0).Select(q => q.Key).ToList();
+                List<string> held = _world.Wallet.Pack.HeldGoods();
                 if (_pack.Rows.Count != held.Count || held.Any(g => !_pack.Rows.ContainsKey(g)))
                 {
                     return $"{_pack.Rows.Count} rows for {held.Count} goods";

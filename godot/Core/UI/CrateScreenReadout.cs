@@ -94,7 +94,7 @@ namespace GolemFactory.UI
         public List<CrateScreenRow> PostRows()
         {
             StorageBuffer post = _postId != null && _buffers.TryGetBuffer(_postId, out StorageBuffer b) ? b : null;
-            return post == null || !post.Quantities.Any(q => q.Value > 0)
+            return post == null || post.HeldGoods().Count == 0
                 ? new List<CrateScreenRow>()
                 : Rows(post, null, PostTitle);
         }
@@ -103,19 +103,16 @@ namespace GolemFactory.UI
         /// One row per good <paramref name="side"/> holds, in tier order. <paramref name="plan"/>
         /// says what a click would move; null for a side that is only shown.
         /// </summary>
-        public static List<CrateScreenRow> Rows(StorageBuffer side, Func<string, TransferResult> plan, string emptyMessage)
+        private static List<CrateScreenRow> Rows(StorageBuffer side, Func<string, TransferResult> plan, string emptyMessage)
         {
             var rows = new List<CrateScreenRow>();
-            List<string> goods = side == null
-                ? new List<string>()
-                : side.Quantities.Where(q => q.Value > 0).Select(q => q.Key).ToList();
-            if (goods.Count == 0)
+            List<string> goods = side?.HeldGoods();
+            if (goods == null || goods.Count == 0)
             {
                 rows.Add(CrateScreenRow.Message(emptyMessage));
                 return rows;
             }
 
-            BufferTrendUtility.SortItemTypes(goods);
             int cap = side.CapacityPerType;
             int largest = goods.Max(side.GetQuantity);
             foreach (string good in goods)
@@ -168,7 +165,7 @@ namespace GolemFactory.UI
         {
             get
             {
-                int goods = Pack.Quantities.Count(q => q.Value > 0);
+                int goods = Pack.HeldGoods().Count;
                 string count = goods == 1 ? "1 good" : goods + " goods";
                 return Pack.CapacityPerType > 0 ? count + " · " + Pack.CapacityPerType + " of each" : count;
             }
@@ -208,15 +205,13 @@ namespace GolemFactory.UI
         public string TakeAll(ICrate crate)
         {
             List<TransferResult> results = CrateTransfer.Collect(crate, Pack);
-            List<TransferResult> moved = results.Where(r => r.Moved > 0).ToList();
-            if (moved.Count == 0)
+            if (!results.Any(r => r.Moved > 0))
             {
                 return results.Count == 0 ? "Nothing to take" : results[0].Refusal;
             }
-            string line = "Moved " + string.Join(", ", moved.Select(r => r.Moved + " " + ItemTiers.DisplayName(r.ItemType))) + " to your pack";
-            string left = crate.Buffer.Quantities.Any(q => q.Value > 0)
-                ? CrateTransfer.PlanTake(crate, Pack, crate.Buffer.Quantities.First(q => q.Value > 0).Key, 1).Refusal
-                : null;
+            string line = "Moved " + CrateTransfer.Describe(results) + " to your pack";
+            string first = crate.Buffer.Quantities.FirstOrDefault(q => q.Value > 0).Key;
+            string left = first == null ? null : CrateTransfer.PlanTake(crate, Pack, first, 1).Refusal;
             return left != null && left != CrateTransfer.NoneLeft ? line + " · " + left : line;
         }
 

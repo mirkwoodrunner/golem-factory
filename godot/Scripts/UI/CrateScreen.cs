@@ -178,11 +178,7 @@ namespace GolemFactory.Nodes
                         StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                         MouseFilter = Control.MouseFilterEnum.Ignore,
                     }, 0.5f, 0.5f, 0.5f, 0.5f, 0f, 0f, 28f, 28f);
-                    string path = ItemIcons.PathFor(good);
-                    if (ResourceLoader.Exists(path))
-                    {
-                        icon.Texture = GD.Load<Texture2D>(path);
-                    }
+                    icon.Texture = ItemIcons.Load(good);
                     option.AddChild(icon);
                 }
                 string captured = good;
