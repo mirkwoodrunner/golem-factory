@@ -1,6 +1,6 @@
 # Guide chapters: texts, checks and kit actions
 
-**Status: approved 2026-10-19, with every recommendation in §7. Not built yet.** Phase 2 of
+**Status: approved 2026-10-19, with every recommendation in §7. Built 2026-10-19 (§8 records the corrections).** Phase 2 of
 `docs/roadmap.md`. It rewrites chapters 1–4 of the guide (`Core/Tutorial/TutorialGuide.cs`) around
 what `docs/onboarding-feedback-design.md` builds (the Workbench hint, grey and red, hover), and
 lists every step of chapters 1–10 against the crate-era game. Like the other specs, it is kept as
@@ -263,3 +263,18 @@ the point of the step).
 3. **`turn` teaches R while carrying, not R beside a set-down golem.** Both still work.
    **Recommendation:** teach carrying first, since it is unambiguous; `stall` and `unstall` then
    use R beside the golem, where it is the only one close.
+
+## 8. Corrections, as built (2026-10-19)
+
+Chapters 1–4's texts are as §2 writes them, every one within 240 characters
+(`TutorialGuideTests`). No step was added, retired or renamed; chapters 5–10's texts are kept.
+
+1. **`program-carrier`'s target** is the newest Presser that is neither the iron Presser nor a
+   coker, not just the newest Presser: `PlanFor` looks ahead from `r4-card`, where the newest
+   Presser is the coker.
+2. **The unloader's and the Zeppelin's `Matches` need a logic core**, as every other plan's do.
+3. **`stall` reads red in every wrong facing only after a fix**: facing the Scrap stall read grey,
+   because the first Scavenger extracts from it and the probe counted that as draining it. A
+   stall is never drained now (`onboarding-feedback-design.md` §15).
+4. **The kit's program steps all call `PerformPlan`**, which writes through
+   `GolemProgramWriter`; the kit's behaviour is otherwise unchanged.

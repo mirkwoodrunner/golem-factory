@@ -1,8 +1,8 @@
 # Golem Factory — Phase 2 playtest: the first fifteen minutes
 
-**Not runnable yet.** This judges Phase 2 (`docs/roadmap.md`): the Workbench hint, grey and red,
-and hover (`docs/onboarding-feedback-design.md`), and the rewritten chapters 1–4
-(`docs/guide-chapters-design.md`). Run it once those are built.
+**Runnable** (built 2026-10-19). This judges Phase 2 (`docs/roadmap.md`): the Workbench hint,
+grey and red, and hover (`docs/onboarding-feedback-design.md`), and the rewritten chapters 1–4
+(`docs/guide-chapters-design.md`).
 
 **Why a separate script.** `testscript/phase-1-playtest.md` judges crates and the pack over the
 whole game, and lets the player skip chapters with F9. This one times a **new player** through

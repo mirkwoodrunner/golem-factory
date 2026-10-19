@@ -56,6 +56,13 @@ namespace GolemFactory.Nodes
         private const float VaultHeadingHeight = 26f;
         private const float LeverTravel = 74f;
 
+        // The next-drag hint (docs/onboarding-feedback-design.md §2.4): a pulsing brass frame
+        // around controls that already exist, never a card placed for the player.
+        private static readonly Color HintBrass = new Color(1f, 0.8f, 0.416f);           // #FFCC6A
+        private static readonly Color HintDragOut = new Color(0.753f, 0.376f, 0.227f);   // #C0603A
+        private const int HintBorder = 3;
+        private const float HintGrow = 4f;
+
         private const string Ui = "res://art/UI/";
 
         private WorldNode _world;
@@ -78,6 +85,11 @@ namespace GolemFactory.Nodes
         private Button _patent;
         private Label _status;
         private int _renderedVersion = -1;
+        private ScrollContainer _vaultScroll;
+        private Panel _hintCardOutline;
+        private Panel _hintTargetOutline;
+        private WorkbenchHintTarget _shownHint;
+        private float _hintClock;
 
         // Drag bookkeeping: cards are rebuilt, so a drag carries an id into this table.
         private readonly Dictionary<int, WorkbenchCardRef> _cards = new Dictionary<int, WorkbenchCardRef>();
@@ -109,6 +121,15 @@ namespace GolemFactory.Nodes
         public Control RootControl => _root;
         public bool LeverAnimating => _leverElapsed >= 0f;
         public bool LeverRefusing => _leverRefusing && _leverElapsed >= 0f;
+
+        /// <summary>What the hint outlines this frame (the session's answer, as drawn).</summary>
+        public WorkbenchHintTarget ShownHint => _shownHint;
+
+        /// <summary>The frame around the hinted vault card; hidden when there is none, or it is in hand.</summary>
+        public Control HintCardOutline => _hintCardOutline;
+
+        /// <summary>The frame around the socket, picker or dial button, or lever the hint points at.</summary>
+        public Control HintTargetOutline => _hintTargetOutline;
 
         public override void _EnterTree() => AddToGroup(ModalScreens.GroupName);
 
@@ -142,6 +163,7 @@ namespace GolemFactory.Nodes
         {
             _session.Close();
             _root.Visible = false;
+            _shownHint = WorkbenchHintTarget.None;
         }
 
         public void RetargetGolem(GolemEntity golem)
@@ -191,6 +213,7 @@ namespace GolemFactory.Nodes
             _lever.Disabled = !_session.CanEngage;
             _lever.Modulate = _session.CanEngage ? Colors.White : new Color(1f, 1f, 1f, WorkbenchInteractionColors.DisabledAlpha);
             ApplyHighlights();
+            DrawHint(dt);
             AnimateLever(dt);
             AnimateFlash(dt);
         }
@@ -219,6 +242,96 @@ namespace GolemFactory.Nodes
             }
             _dropTaken = true;
             _session.HandleDrop(card, zone);
+        }
+
+        // --- The next-drag hint ---------------------------------------------------------------
+
+        /// <summary>
+        /// Draws <see cref="WorkbenchSession.Hint"/> and decides nothing: a frame on the hinted
+        /// vault card and one on where it goes (or the picker, the dial, the lever). A drag's
+        /// socket tints still show inside it.
+        /// </summary>
+        private void DrawHint(float dt)
+        {
+            WorkbenchHintTarget hint = _session.Hint;
+            Control vaultCard = HintedVaultCard(hint);
+            if (!hint.Equals(_shownHint))
+            {
+                _shownHint = hint;
+                _hintClock = 0f;
+                // The vault scrolls the card into view once, when the hint moves to it, never
+                // while the player is scrolling.
+                if (vaultCard != null)
+                {
+                    _vaultScroll.EnsureControlVisible(vaultCard);
+                }
+            }
+            _hintClock += dt;
+            float alpha = WorkbenchHint.PulseAlpha(_hintClock);
+
+            bool inHand = vaultCard != null && _draggingId >= 0 && _cards.TryGetValue(_draggingId, out WorkbenchCardRef held)
+                && held.IsVaultOrigin && CardName(held) == hint.Card;
+            Rect2 cardRect = vaultCard != null
+                ? vaultCard.GetGlobalRect().Grow(HintGrow).Intersection(_vaultScroll.GetGlobalRect().Grow(HintGrow))
+                : default;
+            PlaceOutline(_hintCardOutline, vaultCard != null && !inHand && cardRect.Size.X > 0f && cardRect.Size.Y > 0f,
+                cardRect, HintBrass, alpha);
+
+            Control target = HintedTarget(hint);
+            PlaceOutline(_hintTargetOutline, target != null && target.IsVisibleInTree(),
+                target != null ? target.GetGlobalRect().Grow(HintGrow) : default,
+                hint.Kind == WorkbenchHintKind.DragOut ? HintDragOut : HintBrass, alpha);
+        }
+
+        private static void PlaceOutline(Panel outline, bool show, Rect2 rect, Color color, float alpha)
+        {
+            outline.Visible = show;
+            if (!show)
+            {
+                return;
+            }
+            outline.GlobalPosition = rect.Position;
+            outline.Size = rect.Size;
+            ((StyleBoxFlat)outline.GetThemeStylebox("panel")).BorderColor = new Color(color, alpha);
+        }
+
+        private static string CardName(WorkbenchCardRef card) => card.LogicCore?.name ?? card.Appendage?.name;
+
+        private Control HintedVaultCard(WorkbenchHintTarget hint) =>
+            hint.Kind != WorkbenchHintKind.VaultCard || hint.Card == null ? null
+                : _vault.GetChildren().OfType<WorkbenchCardControl>()
+                    .FirstOrDefault(c => !c.IsQueuedForDeletion() && CardName(c.CardRef) == hint.Card);
+
+        private Control HintedTarget(WorkbenchHintTarget hint)
+        {
+            WorkbenchDropRow row = hint.Zone.Kind == DropZoneKind.LogicCore ? _triggerRow
+                : hint.Zone.AppendageIndex >= 0 && hint.Zone.AppendageIndex < _stepRows.Count ? _stepRows[hint.Zone.AppendageIndex] : null;
+            switch (hint.Kind)
+            {
+                case WorkbenchHintKind.VaultCard:
+                case WorkbenchHintKind.DragOut:
+                    return row?.Socket;
+                case WorkbenchHintKind.GoodPicker:
+                    return row?.Card?.FindChild(hint.Delta < 0 ? "PreviousGood" : "NextGood", true, false) as Control ?? row?.Socket;
+                case WorkbenchHintKind.QuantityDial:
+                    return row?.Card?.FindChild(hint.Delta < 0 ? "Decrease" : "Increase", true, false) as Control ?? row?.Socket;
+                case WorkbenchHintKind.Lever:
+                    return _lever;
+                default:
+                    return null;
+            }
+        }
+
+        private static Panel HintOutline(string name)
+        {
+            var outline = new Panel { Name = name, MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
+            outline.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+            {
+                DrawCenter = false,
+                BorderWidthLeft = HintBorder, BorderWidthTop = HintBorder, BorderWidthRight = HintBorder, BorderWidthBottom = HintBorder,
+                BorderColor = HintBrass,
+            });
+            return outline;
         }
 
         private void ApplyHighlights()
@@ -418,6 +531,12 @@ namespace GolemFactory.Nodes
             BuildRack();
             BuildVault();
             BuildBottomBar();
+
+            // Last, so the frames sit over everything they outline.
+            _hintCardOutline = HintOutline("HintCardOutline");
+            _hintTargetOutline = HintOutline("HintTargetOutline");
+            _root.AddChild(_hintCardOutline);
+            _root.AddChild(_hintTargetOutline);
         }
 
         private void BuildViewport()
@@ -513,7 +632,7 @@ namespace GolemFactory.Nodes
             vault.AddChild(TitlePlate("CARD VAULT", 0.035f, 0.965f, 0.04f));
             ColorRect viewport = Ugui.Place(Ugui.Rect("VaultViewport", new Color(0.10f, 0.07f, 0.05f, 0.85f)), 0.035f, 0.02f, 0.965f, 0.902f);
             vault.AddChild(viewport);
-            var scroll = Ugui.Fill(new ScrollContainer { Name = "Scroll", HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled });
+            var scroll = _vaultScroll = Ugui.Fill(new ScrollContainer { Name = "Scroll", HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled });
             viewport.AddChild(scroll);
             var margin = new MarginContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             foreach (string side in new[] { "margin_left", "margin_right", "margin_top", "margin_bottom" })
@@ -722,6 +841,16 @@ namespace GolemFactory.Nodes
         private void Tint() => SelfModulate = Ugui.ToGodot(WorkbenchInteractionColors.Apply(
             new Compat.Color(_base.R, _base.G, _base.B, 1f),
             _hovered ? WorkbenchInteractionState.Hovered : WorkbenchInteractionState.Normal));
+
+        /// <summary>
+        /// A card in a socket passes a drop on to its socket, so a card dropped on a filled socket
+        /// replaces it, as WorkbenchSession.HandleDrop always did; the card used to swallow the drop.
+        /// </summary>
+        private WorkbenchDropRow Row => GetParent()?.GetParent() as WorkbenchDropRow;
+
+        public override bool _CanDropData(Vector2 atPosition, Variant data) => Row != null && data.VariantType == Variant.Type.Int;
+
+        public override void _DropData(Vector2 atPosition, Variant data) => Row?._DropData(atPosition, data);
 
         public override Variant _GetDragData(Vector2 atPosition)
         {

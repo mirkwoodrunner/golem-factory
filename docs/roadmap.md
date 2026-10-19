@@ -17,7 +17,8 @@ follow-up's invariant by `PriceReachTests` (Phase 1 below). **Still to run: the 
 Expansion's new prices. What's left is in `docs/open-items.md`.
 
 **Phase 2, onboarding and readability: both specs are approved (2026-10-19, every
-recommendation taken) and being built** (branch `phase2/onboarding`):
+recommendation taken) and built** (branch `phase2/onboarding`). **Still to run: the human
+playtest of `testscript/phase-2-playtest.md`**, a new player through chapters 1–4 without F9.
 
 - `docs/onboarding-feedback-design.md`: the Workbench's next-drag hint, `Waiting` (grey) against
   stuck (red) with every `StallReason` mapped, hover (arrows, and a card naming a stuck golem's

@@ -101,7 +101,10 @@ ones. Current scenarios:
   crouches and hops. It is also the fixture for capturing the motions with `--write-movie`.
 - `workbench` (Sandbox): program a golem end to end through the Workbench with real mouse
   drags. Also covers socket highlights, the dial, failed drags leaving no orphans, Engage,
-  Patent, and close/reopen.
+  Patent, and close/reopen. Its golem is the guide's first, so it checks the next-drag hint
+  first: the frames on the vault card and the socket, real drags following them (a wrong card
+  keeps the hint, and a drop on a filled socket replaces), the lever framed last, ENGAGE
+  clearing it, and no frame without a drop changing the draft.
 - `management` (Sandbox): the HUD (alerts strip, pause and play), and Tab opening Management
   with the HUD and build menu hidden. Covers the Inventory icons, the tab exclusivity, an
   Assembly Line claim reaching the Workbench, the tab's `Pack:  ·  Post:` header, the Pack row's Upgrade (the Pack screen's cap line
@@ -118,7 +121,8 @@ ones. Current scenarios:
     clear of the HUD bars.
   - Gathering advances it, and the Boiler step outlines its build-menu row.
   - F1 hides and shows it, it steps aside over Management, and Skip guide puts it away.
-  - In the Workbench on "Program it", it sits clear of the sockets, the lever and the vault.
+  - In the Workbench on "Program it", it sits clear of the sockets, the lever, the vault and
+    the hint's frames.
 - `playtest-kit` (Sandbox): F9 once per chapter from a fresh game (all ten). The kit must
   fast-forward every guide chapter, leaving the golems and buildings a player would have
   built, and the report must record it. Its Save and Load steps use
@@ -432,8 +436,14 @@ advancement. Simulation is plain, data-oriented C#: no ECS, no per-item nodes.
   `TileNames` write every line, `Scripts/Golems/GolemHoverNode` only feeds the pointer and
   draws the card. A golem's source and target tiles are drawn by one path
   (`World/GolemTileOverlay`, `GolemNode`'s tiles) for carry, focus and hover alike.
-- **NOT YET BUILT (Phase 2, §2).** A guide program step's `ProgramPlan` is both the Workbench
-  hint and the kit's action, and the hint never fills a socket.
+- **A guide program step names its program once** (`TutorialStep.Program`, a `ProgramPlan`, and
+  `ProgramTarget`, the golem it means). The Workbench hint walks the plan
+  (`UI/WorkbenchHint`, read through `WorkbenchSession.Hint` from `TutorialGuide.PlanFor`), the
+  step's Done check is `plan.Matches`, and the kit's `PerformPlan` writes it through
+  `GolemProgramWriter`. Don't hand-write a program step's cards in the kit or its check. **The
+  hint never fills a socket**: reading it changes nothing (`WorkbenchSession.Version` holds), and
+  `WorkbenchScreen` only draws frames around controls that already exist. Without a plan, only a
+  golem never programmed gets the fallback (TRIGGER, STEP 1, the lever).
 
 ### Building, demolition and the wrecking bar
 

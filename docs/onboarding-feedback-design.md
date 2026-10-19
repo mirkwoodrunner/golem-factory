@@ -1,6 +1,6 @@
 # Onboarding and feedback: the hint, grey and red, and hover
 
-**Status: approved 2026-10-19, with every recommendation in §11. §3, §4 and §13 built (§14 records the corrections); §2, the hint, is next.** Phase 2 of
+**Status: approved 2026-10-19, with every recommendation in §11. Built: §3, §4 and §13 (§14 records the corrections), then §2 and §9 (§15).** Phase 2 of
 `docs/roadmap.md`, from decisions 4, 5 and 6. Like `crates-design.md`, it is written before the
 code and kept as written afterwards, with corrections recorded rather than hidden. Its sibling,
 `docs/guide-chapters-design.md`, rewrites the guide's texts around what this one builds.
@@ -786,3 +786,41 @@ the text above:
     tile names, the pick, the overlay, the font) and `HaulCollectsTests`; the scenarios `moods`
     and `hover` share `Scripts/Scenarios/StreetFixture`. Not written yet: `TutorialGuideTests`'
     chapter 4 facings and the guide-text budgets (with the guide texts).
+
+## 15. Corrections, as built (§2 and §9; 2026-10-19)
+
+Built: §2 (`ProgramPlan`, `PlanFor`, `PerformPlan`, `WorkbenchHint`, the outlines), §9's
+questions, and `guide-chapters-design.md`'s texts. Where the build differs from the text above:
+
+1. **No `hint` scenario.** §8's checks live in the `workbench` scenario instead: its golem is
+   built while the guide is on chapter 1, so it is the guide's first Scavenger and the "Program
+   it" plan applies. It checks the frames on the vault card and the socket, real drags following
+   them, a wrong card keeping the hint, the lever framed last, ENGAGE clearing it, the vault
+   frame hiding while the card is in hand, and no frame without a drop changing the draft. §8's
+   free-play case (the fallback, and nothing on a programmed golem) is pinned in
+   `WorkbenchHintTests`, not on screen. `tutorial` checks the plate is clear of both frames.
+2. **A drop on a filled socket now replaces its card.** §2.2 assumed it did; the session always
+   did, but on screen the socketed card swallowed the drop, so a wrong card had to be dragged out
+   first. A socketed `WorkbenchCardControl` now passes a drop on to its socket row.
+3. **`WorkbenchHintKind.DragOut`** is its own kind (§2.2 step 3 used `VaultCard` with no card).
+   `VaultCard` with no card is the fallback's socket-only frame.
+4. **`Next` asks `plan.Matches` before walking**, so an order the step accepts goes straight to
+   the lever, and returns `None` as soon as the committed program matches, even while the player
+   edits the draft. The good picker's frame is always on `>` (`Delta` +1).
+5. **`IWorkbenchDraftView.OffersCard`** answers §2.6's "the card isn't owned"; `Next` also
+   returns `None` with no chassis fitted.
+6. **The frames** are two `Panel`s (a `StyleBoxFlat` border) on the screen's root, laid each frame
+   over the target's rect grown 4 px; the vault card's frame is clipped to the vault's view.
+7. **Targets:** `program-carrier`'s is the newest Presser that is neither the iron Presser nor a
+   coker (§2.1 said the newest Presser): looking ahead from `r4-card`, the newest Presser is the
+   coker. The unloader's and the Zeppelin's `Matches` now need a logic core, so the lever is
+   never framed for a program with no trigger; the programs the old checks were tested on all
+   had one.
+8. **`PerformPlan` writes through `GolemProgramWriter`**, as ENGAGE does (the program rewinds to
+   step 0); the kit's own `Program`/`ProgramSlots` are gone.
+9. **`StallFactsProbe`: a stall is never drained.** §3.2's rule counted a golem extracting from
+   the stall as draining it, so chapter 4's Scavenger turned to face the Scrap stall read grey.
+   A stall never accepts a push. Found by `TutorialGuideTests`' wrong-facings test.
+10. **The `hint` question** is queued after `workbench`, both at `depot`. The report's first
+    lines add "Chapters 1–4: mm:ss (target 15:00) · kit used: no" once `r4-card` is reached
+    (`PlaytestSession.ChaptersOneToFour`).
