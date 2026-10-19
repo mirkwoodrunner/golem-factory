@@ -80,7 +80,7 @@ namespace GolemFactory.UI
     /// <see cref="LeverRefused"/> and <see cref="ChassisRejected"/>.
     /// </para>
     /// </summary>
-    public sealed class WorkbenchSession : IWorkbenchTarget
+    public sealed class WorkbenchSession : IWorkbenchTarget, IWorkbenchDraftView
     {
         public const string NoTargetMessage = "No golem selected. Walk up to a golem and interact to program it.";
 
@@ -493,6 +493,36 @@ namespace GolemFactory.UI
             DraftOverflowCount = Math.Max(0, blueprint.Appendages.Count - _draftAppendages.Length);
             SetStatus($"Loaded {blueprint.BlueprintId} into the draft.", WorkbenchStatusReason.Info);
             Version++;
+        }
+
+        // --- The next-drag hint (docs/onboarding-feedback-design.md §2) ----------------------
+
+        /// <summary>
+        /// The plan the hint follows for a golem, or null: wired by the Sandbox to the guide's
+        /// <c>PlanFor</c>. Without one, a golem never programmed still gets the fallback.
+        /// </summary>
+        public Func<GolemEntity, ProgramPlan> HintSource { get; set; }
+
+        public bool OffersCard(string appendageName) =>
+            VaultAppendages.Any(a => a.name == appendageName);
+
+        /// <summary>
+        /// What the hint outlines now, worked out on every read from the draft and the target's
+        /// committed program. Reading it changes nothing: the player makes every drag.
+        /// </summary>
+        public WorkbenchHintTarget Hint
+        {
+            get
+            {
+                if (!IsOpen || TargetGolem == null)
+                {
+                    return WorkbenchHintTarget.None;
+                }
+                ProgramPlan plan = HintSource?.Invoke(TargetGolem);
+                return plan != null
+                    ? WorkbenchHint.Next(this, plan, plan.Matches(TargetGolem.Program))
+                    : WorkbenchHint.Fallback(this, TargetGolem.HasRunnableProgram);
+            }
         }
 
         // --- Status line -------------------------------------------------------------------

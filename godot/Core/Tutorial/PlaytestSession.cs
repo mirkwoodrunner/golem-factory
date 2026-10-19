@@ -67,6 +67,9 @@ namespace GolemFactory.Tutorial
             new PlaytestQuestion("workbench", "depot",
                 "You just programmed your first golem. Did the Workbench feel like making a decision, or like busywork?",
                 "A real decision", "Somewhere between", "Busywork"),
+            new PlaytestQuestion("hint", "depot",
+                "The glowing card and socket: did they show you what to drag?",
+                "Clear", "Took a moment", "In my way"),
             new PlaytestQuestion("manual-era", "coking-card",
                 "Your first machine is running. How did the hand-gathering and cranking before it feel?",
                 "Miserable", "Long but fine", "About right", "Too short"),
@@ -107,9 +110,19 @@ namespace GolemFactory.Tutorial
             new PlaytestQuestion("marked-tiles", "copper",
                 "Chapter 5 marked a tile for everything you built. Did the marks help, or did you want to place things your own way?",
                 "They helped", "Fine either way", "In my way (say where)"),
+            // Phase 2's hint, turning, grey and red, and hover (testscript/phase-2-playtest.md).
+            new PlaytestQuestion("turning", "r4-card",
+                "Turning golems with R: how did it go?",
+                "Easy", "Fiddly", "I turned the wrong one"),
+            new PlaytestQuestion("grey-red", "r4-card",
+                "Waiting golems go grey, stuck ones red. Could you tell which needed you?",
+                "Always", "Mostly", "No"),
+            new PlaytestQuestion("hover", "r4-card",
+                "Hovering a golem shows its arrows and, when stuck, why. Did you use it?",
+                "Often", "Once or twice", "Didn't know"),
             new PlaytestQuestion("badge", "r4-card",
-                "When the golem stalled, did its badge tell you what was wrong?",
-                "Clearly", "Vaguely", "I didn't notice it"),
+                "When the golem stopped red, did its badge and hover tell you what was wrong?",
+                "Clearly", "Vaguely", "I didn't hover it"),
             new PlaytestQuestion("coke-burn", "patent",
                 "Your coal line feeds its boiler. Is Coke upkeep a cost worth managing, or a coal simulator?",
                 "Burns too fast", "About right", "Too slow to matter"),
@@ -126,6 +139,9 @@ namespace GolemFactory.Tutorial
             new PlaytestQuestion("crate-stall", "copper",
                 "Did a golem stop because its crate was full or empty? Did its badge say why?",
                 "Never saw it", "Yes, clearly", "Yes, but I was confused"),
+            new PlaytestQuestion("straining", "expand",
+                "A busy golem's \"nearly full\" is on hover only. Did you ever miss a warning?",
+                "Never", "Once (say where)", "Often"),
             new PlaytestQuestion("layout", "expand",
                 "Has where you put things started to matter: walks between crates, or a line that needed a belt?",
                 "It matters", "A little", "Not yet"),
@@ -219,6 +235,7 @@ namespace GolemFactory.Tutorial
         public void RecordKit(string what, float atSeconds)
         {
             _kitUses.Add($"{Clock(atSeconds)}  {what}");
+            _kitTimes.Add(atSeconds);
             Version++;
         }
 
@@ -235,6 +252,12 @@ namespace GolemFactory.Tutorial
             }
             b.AppendLine($"Session length: {Clock(nowSeconds)}");
             b.AppendLine();
+            string chapters = ChaptersOneToFour();
+            if (chapters != null)
+            {
+                b.AppendLine(chapters);
+                b.AppendLine();
+            }
 
             b.AppendLine("## Your answers");
             b.AppendLine();
@@ -281,6 +304,31 @@ namespace GolemFactory.Tutorial
             }
             return b.ToString();
         }
+
+        /// <summary>The step that opens chapter 5: chapters 1-4 are timed to it.</summary>
+        public const string ChapterFiveStepId = "r4-card";
+
+        /// <summary>Phase 2's target (testscript/phase-2-playtest.md), in seconds.</summary>
+        public const float ChaptersOneToFourTargetSeconds = 15 * 60;
+
+        /// <summary>
+        /// "Chapters 1–4: 12:34 (target 15:00) · kit used: no", from the session's start to
+        /// entering chapter 5; null until the player gets there. Any kit use before then voids
+        /// the timing, and the line says so.
+        /// </summary>
+        public string ChaptersOneToFour()
+        {
+            int at = _steps.FindIndex(s => s.stepId == ChapterFiveStepId);
+            if (at < 0)
+            {
+                return null;
+            }
+            float reached = _steps[at].enteredAt;
+            bool kit = _kitTimes.Any(t => t <= reached);
+            return $"Chapters 1–4: {Clock(reached)} (target {Clock(ChaptersOneToFourTargetSeconds)}) · kit used: {(kit ? "yes" : "no")}";
+        }
+
+        private readonly List<float> _kitTimes = new List<float>();
 
         private static string Clock(float seconds)
         {

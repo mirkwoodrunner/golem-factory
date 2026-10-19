@@ -254,6 +254,8 @@ namespace GolemFactory.World
             if (setup.tutorial)
             {
                 Tutorial = new Tutorial.TutorialGuide(this);
+                // The Workbench's next-drag hint follows the guide's program plans.
+                Workbench.HintSource = Tutorial.PlanFor;
                 if (AssemblyLine != null)
                 {
                     AssemblyLine.Wanted = card => card != null && GolemFactory.Tutorial.TutorialGuide.CardKey(card) == Tutorial.WantedCardAppendage;

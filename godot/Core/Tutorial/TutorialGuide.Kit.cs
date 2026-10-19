@@ -138,8 +138,7 @@ namespace GolemFactory.Tutorial
                 }
             },
             ["golem"] = () => BuildGolem("ClockworkScavenger"),
-            ["program"] = () => Program(LiveGolems.FirstOrDefault(g => g.Program?.chassis?.name == "ClockworkScavenger"),
-                "ExtractScrap", "PushOutput"),
+            ["program"] = () => PerformPlan("program"),
             ["depot"] = () => PlaceGranted("DepotPrefab", DepotSpot, Facing.North),
             ["work"] = () => LiveGolems.FirstOrDefault(IsProgrammed)?.SetPlacement(GolemSpot, GolemFacing),
             ["collect"] = () => Collect(FirstDepot),
@@ -155,8 +154,7 @@ namespace GolemFactory.Tutorial
                 }
             },
             ["depot2"] = () => PlaceGranted("DepotPrefab", PresserDepotSpot, Facing.North),
-            ["program-presser"] = () => Program(Pressers.FirstOrDefault(),
-                "HaulScrap", "AssembleScrapReclamation", "PushOutput"),
+            ["program-presser"] = () => PerformPlan("program-presser"),
             ["work-presser"] = () => Pressers.FirstOrDefault(IsIronPresser)?.SetPlacement(PresserSpot, PresserFacing),
 
             ["coking-card"] = () => Claim("AssembleCoking"),
@@ -176,7 +174,7 @@ namespace GolemFactory.Tutorial
                     node.Deliver(40); // the truckload, without the wait
                 }
             },
-            ["program-coker"] = () => Program(NewestPresser, "ExtractScrap", "AssembleCoking", "PushOutput"),
+            ["program-coker"] = () => PerformPlan("program-coker"),
             ["work-coker"] = () =>
             {
                 Pressers.FirstOrDefault(IsCoker)?.SetPlacement(CokerSpot, CokerFacing);
@@ -212,7 +210,7 @@ namespace GolemFactory.Tutorial
                 GrantCost(patent.Chassis.cost);
                 _world.StarterStation?.TryConstructFromBlueprint(patent, out _);
             },
-            ["stamp"] = () => Program(SecondScavenger, "ExtractScrap", "PushOutput"),
+            ["stamp"] = () => PerformPlan("stamp"),
             ["depot3"] = () => PlaceGranted("DepotPrefab", Depot3Spot, Facing.North),
             ["turn"] = () => SecondScavenger?.SetPlacement(Scav2Spot, Scav2Facing),
             // A quarter turn back (three of R's): east turns north, its back to the street.
@@ -234,12 +232,7 @@ namespace GolemFactory.Tutorial
                     PlaceGranted("SteamPipePrefab", cell, Facing.North);
                 }
             },
-            ["program-smelter"] = () =>
-            {
-                ProgramSlots(Haulers.FirstOrDefault(),
-                    ("HaulScrap", ItemType.Scrap, 2), ("HaulScrap", ItemType.Coke, 1),
-                    ("AssembleIronSmelting", null, 1), ("PushOutput", null, 1));
-            },
+            ["program-smelter"] = () => PerformPlan("program-smelter"),
             // The smelter's goods, so its first cycle never waits on the market: into the pack,
             // then by hand into the crate behind it, which is all a golem reaches.
             ["smelt-feed"] = () =>
@@ -250,8 +243,7 @@ namespace GolemFactory.Tutorial
             ["work-smelter"] = () => Haulers.FirstOrDefault(IsSmelter)?.SetPlacement(SmelterSpot, SmelterFacing),
             ["slag-heap"] = () => PlaceGranted("SlagHeapPrefab", SlagHeapSpot, Facing.North),
             ["carrier"] = () => BuildGolem("BrassPresser"),
-            ["program-carrier"] = () => ProgramSlots(NewestPresser,
-                ("HaulScrap", ItemType.Slag, 4), ("HaulScrap", ItemType.Coke, 1), ("PushOutput", null, 1)),
+            ["program-carrier"] = () => PerformPlan("program-carrier"),
             ["carrier-feed"] = () => Feed(SmeltOutSpot, ItemType.Coke, 10),
             ["copper"] = () =>
             {
@@ -278,7 +270,7 @@ namespace GolemFactory.Tutorial
             ["scav3"] = () =>
             {
                 BuildGolem("ClockworkScavenger");
-                Program(CopperExtractor, "ExtractScrap", "PushOutput");
+                PerformPlan("scav3");
             },
             ["work-extractor"] = () => CopperExtractor?.SetPlacement(ExtractorSpot, CopperFacing),
             ["copper-depot"] = () =>
@@ -289,7 +281,7 @@ namespace GolemFactory.Tutorial
             ["unloader"] = () =>
             {
                 BuildGolem("ClockworkScavenger");
-                ProgramSlots(CopperUnloader, ("HaulScrap", ItemType.CopperOre, 1), ("PushOutput", null, 1));
+                PerformPlan("unloader");
             },
             ["work-unloader"] = () => CopperUnloader?.SetPlacement(UnloaderSpot, CopperFacing),
             ["expand"] = () =>
@@ -337,7 +329,7 @@ namespace GolemFactory.Tutorial
                     PlaceGranted("SteamPipePrefab", cell, Facing.North);
                 }
             },
-            ["program-zeppelin"] = () => ProgramSlots(Zeppelin, ("HaulScrap", ItemType.CopperOre, 1), ("FreightLaunch", null, 1)),
+            ["program-zeppelin"] = () => PerformPlan("program-zeppelin"),
             ["launch"] = () => Zeppelin?.SetPlacement(ZeppelinSpot, CopperFacing),
             ["mast-collect"] = () => Collect(MastBuilding),
             ["tower-visit"] = () =>
@@ -446,39 +438,22 @@ namespace GolemFactory.Tutorial
             _world.StarterStation?.TryConstructGolem(chassis, out _);
         }
 
-        private void Program(GolemEntity golem, params string[] cards)
+        /// <summary>
+        /// A program step, as the player does it: the step's own plan written onto the golem it
+        /// means, through the one writer ENGAGE uses (GolemProgramWriter). The hint shows the
+        /// same plan and the step's Done check is its Matches, so the three cannot drift.
+        /// </summary>
+        private void PerformPlan(string stepId)
         {
-            if (golem == null)
+            TutorialStep step = _steps.FirstOrDefault(s => s.Id == stepId);
+            GolemEntity golem = step?.ProgramTarget == null ? null : LiveGolems.FirstOrDefault(step.ProgramTarget);
+            var resolved = step?.Program?.Resolve(_world.Definitions.LogicCores, _world.Definitions.Appendages);
+            if (golem == null || resolved == null)
             {
                 return;
             }
-            golem.Program.logicCore = _world.Definitions.LogicCores["AlwaysOnCore"];
-            while (golem.Program.appendages.Count > 0)
-            {
-                golem.Program.RemoveAppendageAt(0);
-            }
-            foreach (string card in cards)
-            {
-                golem.Program.TryAddAppendage(_world.Definitions.Appendages[card]);
-            }
-        }
-
-        /// <summary>Programs a golem slot by slot: card, the good a Haul takes (or null), batch size.</summary>
-        private void ProgramSlots(GolemEntity golem, params (string card, string good, int quantity)[] slots)
-        {
-            if (golem == null)
-            {
-                return;
-            }
-            Program(golem, slots.Select(s => s.card).ToArray());
-            for (int i = 0; i < slots.Length && i < golem.Program.appendages.Count; i++)
-            {
-                if (slots[i].good != null)
-                {
-                    golem.Program.SetItemTypeAt(i, slots[i].good);
-                }
-                golem.Program.SetQuantityAt(i, slots[i].quantity);
-            }
+            (PunchCards.LogicCoreDefinition core, PunchCards.AppendageActionDefinition[] cards, string[] goods, int[] quantities) = resolved.Value;
+            GolemProgramWriter.TryWrite(golem.Program, null, core, cards, goods, quantities);
         }
 
         /// <summary>A goal step: the card claimed, then the good in the pack.</summary>

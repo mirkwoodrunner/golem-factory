@@ -1,5 +1,6 @@
 using System.Linq;
 using GolemFactory.Data;
+using GolemFactory.Golems;
 using GolemFactory.Tests.Data;
 using GolemFactory.Tests.World;
 using GolemFactory.Tutorial;
@@ -135,6 +136,63 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual(10, kit.Count, "the report says what was fast-forwarded");
             StringAssert.Contains("chapter 1", kit[0]);
             StringAssert.Contains("Playtest kit", world.Tutorial.Playtest.Compose("", world.Tutorial.Now));
+        }
+
+        /// <summary>
+        /// docs/onboarding-feedback-design.md §7: when a program step comes, every card its plan
+        /// names is already the player's (the hint never points at a card the vault can't offer),
+        /// the plan's golem stands, and the kit's write of the plan passes the step.
+        /// </summary>
+        [Test]
+        public void EveryProgramStep_ComesWithItsCardsOwned_AndTheKitsPlanPassesIt()
+        {
+            SandboxWorld world = Compose();
+            var seen = new System.Collections.Generic.HashSet<string>();
+            for (int chapter = 1; chapter <= 9; chapter++)
+            {
+                Assert.IsTrue(world.Tutorial.StartKit(), "the kit started");
+                for (int frame = 0; frame < 3600 && world.Tutorial.KitRunning; frame++)
+                {
+                    TutorialStep step = world.Tutorial.Current;
+                    if (step?.Program != null && seen.Add(step.Id))
+                    {
+                        foreach (string card in step.Program.Cards)
+                        {
+                            Assert.IsTrue(world.Workbench.OffersCard(card), $"{step.Id}: {card} is not the player's yet");
+                        }
+                    }
+                    world.Advance(1f / 30f);
+                }
+                Assert.IsFalse(world.Tutorial.KitRunning, $"stuck on '{world.Tutorial.Current?.Title}'");
+            }
+            CollectionAssert.IsSupersetOf(seen, new[] { "program", "program-presser", "program-coker", "program-smelter",
+                "program-carrier", "scav3", "unloader", "program-zeppelin" }, "every program step was reached (stamp passes at once from the patent)");
+        }
+
+        [Test]
+        public void PlanFor_LooksAheadInTheChapter_SoTheNewPresserIsHintedWhileBuildingIt()
+        {
+            SandboxWorld world = Compose();
+            RunKit(world); // chapter 1
+            Assert.IsTrue(world.Tutorial.StartKit());
+            GolemEntity presser = null;
+            for (int frame = 0; frame < 3600 && presser == null; frame++)
+            {
+                world.Advance(1f / 30f);
+                if (world.Tutorial.Current.Id == "presser")
+                {
+                    presser = world.Golems.FirstOrDefault(g => !g.IsRemoved && g.Program.chassis?.name == "BrassPresser");
+                }
+            }
+            Assert.IsNotNull(presser, "the kit built the Presser on its step");
+            Assert.AreEqual("presser", world.Tutorial.Current.Id, "two steps before 'Program the Presser'");
+            Assert.AreSame(TutorialGuide.IronPresserPlan, world.Tutorial.PlanFor(presser));
+
+            GolemEntity scavenger = world.Golems.First(g => g.Program.chassis?.name == "ClockworkScavenger");
+            Assert.IsNull(world.Tutorial.PlanFor(scavenger), "the first Scavenger is no step's golem in chapter 2");
+
+            world.Tutorial.Dismiss();
+            Assert.IsNull(world.Tutorial.PlanFor(presser), "a guide put away has no plans");
         }
 
         [Test]

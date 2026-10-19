@@ -75,10 +75,31 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual("workbench", playtest.Current?.Id, "asked once the first program is written");
             playtest.Answer("A real decision", "  the dial is nice  ", 120f);
 
+            Assert.AreEqual("hint", playtest.Current?.Id, "Phase 2's hint question waits behind it, at the same step");
+            playtest.Skip(121f);
             Assert.IsNull(playtest.Current);
             PlaytestAnswer answer = playtest.Answers.Single(a => a.QuestionId == "workbench");
             Assert.AreEqual("A real decision", answer.Choice);
             Assert.AreEqual("the dial is nice", answer.Note, "trimmed");
+        }
+
+        /// <summary>testscript/phase-2-playtest.md: the first fifteen minutes, timed to chapter 5.</summary>
+        [Test]
+        public void TheReport_TimesChaptersOneToFour_AndSaysWhetherTheKitWasUsed()
+        {
+            var playtest = new PlaytestSession();
+            playtest.StepEntered("scrap", "Gather Scrap", 0f);
+            Assert.IsNull(playtest.ChaptersOneToFour(), "not there yet");
+
+            playtest.StepEntered("r4-card", "Claim Iron Smelting", 754f);
+            Assert.AreEqual("Chapters 1–4: 12:34 (target 15:00) · kit used: no", playtest.ChaptersOneToFour());
+            StringAssert.Contains("Chapters 1–4: 12:34", playtest.Compose("", 800f));
+
+            var kit = new PlaytestSession();
+            kit.StepEntered("scrap", "Gather Scrap", 0f);
+            kit.RecordKit("fast-forwarded chapter 1", 30f);
+            kit.StepEntered("r4-card", "Claim Iron Smelting", 300f);
+            StringAssert.EndsWith("kit used: yes", kit.ChaptersOneToFour(), "a kit use voids the timing");
         }
 
         [Test]

@@ -1592,5 +1592,84 @@ namespace GolemFactory.Tests.Tutorial
                 File.Delete(path);
             }
         }
+
+        // --- Phase 2: the rewritten chapters (docs/guide-chapters-design.md §1, §2, §6) ---------
+
+        private static bool InFont(char c) =>
+            (c >= 0x20 && c <= 0x7E) || (c >= 0xA0 && c <= 0xFF) || c == '→' || c == '≥' || c == '█' || c == '░';
+
+        /// <summary>
+        /// A chapter 1-4 step's body fits the guide plate beside its counter and progress lines:
+        /// 240 characters, within the project font.
+        /// </summary>
+        [Test]
+        public void ChaptersOneToFour_KeepTheirTexts_Within240Characters_AndTheFont()
+        {
+            SandboxWorld world = Compose();
+            TutorialGuide guide = world.Tutorial;
+            int checkedSteps = 0;
+            for (int i = 0; i < guide.StepCount && guide.ChapterOf(i) <= 4; i++)
+            {
+                TutorialStep step = guide.Steps[i];
+                Assert.LessOrEqual(step.Body.Length, 240, $"{step.Id}: {step.Body.Length} characters");
+                foreach (char c in step.Title + step.Body)
+                {
+                    Assert.IsTrue(InFont(c), $"{step.Id}: '{c}' is outside the font");
+                }
+                checkedSteps++;
+            }
+            Assert.AreEqual(32, checkedSteps, "chapters 1-4: 11 + 7 + 7 + 7 steps");
+        }
+
+        /// <summary>
+        /// "Stall it on purpose" teaches red. Every wrong way chapter 4's Scavenger can face must
+        /// read stuck, never grey: no source behind it, a boiler that never gives, or a stall in
+        /// front that takes nothing (§2, "stall reads red in every wrong facing").
+        /// </summary>
+        [Test]
+        public void ChapterFoursScavenger_ReadsRed_InEveryWrongFacing()
+        {
+            SandboxWorld world = Compose();
+            world.Clock.Play();
+            for (int chapter = 1; chapter <= 3; chapter++)
+            {
+                RunKit(world);
+            }
+            Assert.IsTrue(world.Tutorial.StartKit());
+            for (int frame = 0; frame < 3600 && world.Tutorial.Current.Id != "stall"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("stall", world.Tutorial.Current.Id, "precondition: chapter 4 reaches its stall");
+            GolemEntity scav2 = world.Golems.Single(g => !g.IsRemoved && g.Cell == world.Tutorial.Scav2Spot);
+            Facing right = world.Tutorial.Scav2Facing;
+
+            foreach (Facing wrong in new[] { Facing.North, Facing.East, Facing.South, Facing.West }.Where(f => f != right))
+            {
+                scav2.SetPlacement(world.Tutorial.Scav2Spot, wrong);
+                for (int frame = 0; frame < 900 && scav2.Program.State != GolemState.Stalled; frame++)
+                {
+                    world.Advance(1f / 30f);
+                }
+                Assert.AreEqual(GolemState.Stalled, scav2.Program.State, $"facing {wrong}");
+                Assert.AreEqual(GolemMood.Stalled, scav2.Mood, $"facing {wrong}: stalled on {scav2.StallReason}, and only the player fixes it");
+
+                scav2.SetPlacement(world.Tutorial.Scav2Spot, right);
+                for (int frame = 0; frame < 300; frame++)
+                {
+                    world.Advance(1f / 30f);
+                }
+            }
+        }
+
+        private static void RunKit(SandboxWorld world)
+        {
+            Assert.IsTrue(world.Tutorial.StartKit(), "the kit started");
+            for (int frame = 0; frame < 3600 && world.Tutorial.KitRunning; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.IsFalse(world.Tutorial.KitRunning, $"the kit finished (stuck on '{world.Tutorial.Current?.Title}')");
+        }
     }
 }

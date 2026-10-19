@@ -265,6 +265,13 @@ namespace GolemFactory.World
             {
                 return BeltDrained(golem, belt.Segment);
             }
+            // A stall never takes a push, however busy its customers keep it: chapter 4's
+            // Scavenger turned to face the Scrap stall read grey, since the first Scavenger
+            // extracts from that stall.
+            if (target is ResourceNodeEndpoint)
+            {
+                return false;
+            }
             return TakenFrom(golem, Store(target));
         }
 
