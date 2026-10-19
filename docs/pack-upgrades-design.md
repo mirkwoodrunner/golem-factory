@@ -256,3 +256,15 @@ Where the code differs from the spec above, and why.
     "after the guide", fit the top cap, and passed `PriceReachTests`. The test now also requires
     every line of every price to name a known good (`ItemTiers.IsKnown`) with a positive
     quantity. A free card (`baseCost` 0) counts as an empty price, not a line of 0 Scrap.
+
+### Lead's call (2026-10-18)
+
+14. **A price the pack can't hold says so.** Floor Expansion #2 asks 120 Scrap; at cap 100 with
+    no Post it read `Need 20 more Scrap`, which no amount of gathering fixes. Where a line exceeds
+    the pack's cap and the wallet (pack + Post) can't cover it, the shortfall reads
+    `Upgrade your pack: this needs 120 Scrap, your pack holds 100`, followed by
+    `  ·  Need …` for any other short good. It lives in `ConstructionCostPolicy.FormatShortfall`,
+    which every priced thing calls; a caller with a wallet passes the wallet, so it reads the cap.
+15. **The Management tabs read `Assembly Line` and `Save / Load`**, not Unity's `AssemblyLine`
+    and `SaveLoad`, matching the docs. Nothing finds a tab by its label; the buttons are kept by
+    `ManagementTab`.

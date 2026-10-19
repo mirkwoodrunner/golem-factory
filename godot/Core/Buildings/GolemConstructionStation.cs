@@ -265,6 +265,9 @@ namespace GolemFactory.Buildings
         /// </summary>
         public int StockOf(string itemType) => Wallet?.Quantity(itemType) ?? 0;
 
+        /// <summary>What a chassis cost still lacks, naming a line the pack can't hold (ConstructionCostPolicy.FormatShortfall).</summary>
+        public string ShortfallFor(IReadOnlyList<RecipeIngredient> cost) => ConstructionCostPolicy.FormatShortfall(Wallet, cost);
+
         // What the station charges and refunds through (docs/crates-design.md §4.4). Stateless
         // over the registry, so building one per call is the same wallet every time.
         private PlayerWallet Wallet => bufferRegistry == null ? null : new PlayerWallet(bufferRegistry, stockpileBufferId, postBufferId);

@@ -137,7 +137,7 @@ namespace GolemFactory.Nodes
                     _statusMessage = _station.LastRefusalReason;
                     return false;
                 }
-                string shortfall = ConstructionCostPolicy.FormatShortfall(_station.StockOf, chassis.cost);
+                string shortfall = _station.ShortfallFor(chassis.cost);
                 _statusMessage = string.IsNullOrEmpty(shortfall)
                     ? "Could not build " + chassis.name + "."
                     : shortfall + " to build " + chassis.name + ".";
@@ -177,7 +177,7 @@ namespace GolemFactory.Nodes
                     _statusMessage = _station.LastRefusalReason;
                     return false;
                 }
-                string shortfall = ConstructionCostPolicy.FormatShortfall(_station.StockOf, blueprint.Chassis.cost);
+                string shortfall = _station.ShortfallFor(blueprint.Chassis.cost);
                 _statusMessage = string.IsNullOrEmpty(shortfall)
                     ? "Could not build " + blueprint.BlueprintId + "."
                     : shortfall + " to build " + blueprint.BlueprintId + ".";
@@ -281,7 +281,7 @@ namespace GolemFactory.Nodes
             bool affordable = ConstructionCostPolicy.CanAfford(_station.StockOf, chassis.cost);
             string detail = affordable
                 ? "Tier " + chassis.tier + "   -   " + chassis.maxAppendageSlots + " appendage slots"
-                : ConstructionCostPolicy.FormatShortfall(_station.StockOf, chassis.cost);
+                : _station.ShortfallFor(chassis.cost);
             ChassisDefinition captured = chassis;
             Button row = MakeRow("Chassis_" + chassis.name, chassis, chassis.name, detail, affordable,
                 () => TryConstruct(captured));
@@ -299,7 +299,7 @@ namespace GolemFactory.Nodes
                 + (blueprint.Chassis != null ? "  \u00b7  " + WorkbenchDiagnostics.Humanize(blueprint.Chassis.name) : "");
             string detail = refusal.Length > 0 ? refusal
                 : affordable ? PatentBrowser.Summary(blueprint)
-                : ConstructionCostPolicy.FormatShortfall(_station.StockOf, blueprint.Chassis.cost);
+                : _station.ShortfallFor(blueprint.Chassis.cost);
             Blueprint captured = blueprint;
             // Node names cannot hold every character an id might (godot/CLAUDE.md), so a row
             // is found through PatentRows, never by this name.

@@ -274,7 +274,8 @@ namespace GolemFactory.UI
             }
             IReadOnlyList<RecipeIngredient> cost = _bay.UpgradeCost;
             bool upgraded = _buffers != null && _bay.TryUpgrade(_buffers, _stockpile, _post);
-            Status = AssemblyBayRowPolicy.DescribeResult(upgraded, StockpileOf, cost, AssemblyBayStructure.SlotsPerUpgrade);
+            Status = AssemblyBayRowPolicy.DescribeResult(upgraded, StockpileOf, cost, AssemblyBayStructure.SlotsPerUpgrade,
+                new PlayerWallet(_buffers, _stockpile, _post).PackCapacity);
             return upgraded;
         }
 

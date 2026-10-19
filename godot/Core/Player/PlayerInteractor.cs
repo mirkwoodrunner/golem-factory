@@ -475,7 +475,7 @@ namespace GolemFactory.Player
 
                 case MarketOrderResult.CannotAfford:
                     // Names the shortfall, exactly as a refused chassis or building does.
-                    LastStatusMessage = ConstructionCostPolicy.FormatShortfall(MarketStockOf, offer.Price);
+                    LastStatusMessage = ConstructionCostPolicy.FormatShortfall(MarketWallet, offer.Price);
                     Popup(marker.Position, "Can't pay", InteractionPopupKind.Refused);
                     return false;
 
@@ -485,8 +485,8 @@ namespace GolemFactory.Player
             }
         }
 
-        private int MarketStockOf(string itemType) =>
-            _marketWallet == null ? 0 : new PlayerWallet(_marketWallet, _marketWalletBufferId, _postBufferId).Quantity(itemType);
+        private PlayerWallet MarketWallet =>
+            _marketWallet == null ? null : new PlayerWallet(_marketWallet, _marketWalletBufferId, _postBufferId);
 
         /// <summary>
         /// Whether this stall would take an order right now: a market is wired, it trades this

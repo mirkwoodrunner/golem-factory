@@ -57,7 +57,7 @@ namespace GolemFactory.UI
         /// </summary>
         public static string DescribeResult(
             bool upgraded, Func<string, int> stockOf, IReadOnlyList<RecipeIngredient> upgradeCost,
-            int newCapacity)
+            int newCapacity, int packCapacity = Economy.StorageBuffer.Unlimited)
         {
             if (upgraded)
             {
@@ -67,7 +67,7 @@ namespace GolemFactory.UI
             // Names the shortfall by good and amount, exactly as a refused chassis does. A bare
             // "cannot afford" on a two-good bundle sends the player to look at their stockpile
             // to work out which half they are missing.
-            string shortfall = ConstructionCostPolicy.FormatShortfall(stockOf, upgradeCost);
+            string shortfall = ConstructionCostPolicy.FormatShortfall(stockOf, upgradeCost, packCapacity);
             return string.IsNullOrEmpty(shortfall)
                 ? "Bay upgrade unavailable."
                 : shortfall + " to add " + newCapacity + " bay slots.";

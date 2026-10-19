@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using GolemFactory.Economy;
 using GolemFactory.PunchCards;
 
 namespace GolemFactory.UI
@@ -75,19 +76,43 @@ namespace GolemFactory.UI
         /// only its first shortfall would send the player off for Casings and back again for
         /// Gears -- and §8's legibility row asks for the specific missing amount by name.
         /// </para>
+        /// <para>
+        /// A line the pack can't hold (docs/pack-upgrades-design.md §8.14) says so instead:
+        /// "Upgrade your pack: this needs 120 Scrap, your pack holds 100". "Need 20 more Scrap"
+        /// at cap 100 sends the player to gather what the pack can't take. Only when the wallet
+        /// can't cover it, since the Post may already hold the rest.
+        /// </para>
         /// </summary>
-        public static string FormatShortfall(Func<string, int> stockOf, IReadOnlyList<RecipeIngredient> cost)
+        /// <param name="packCapacity">The pack's per-good cap, or <see cref="StorageBuffer.Unlimited"/>.</param>
+        public static string FormatShortfall(
+            Func<string, int> stockOf, IReadOnlyList<RecipeIngredient> cost, int packCapacity = StorageBuffer.Unlimited)
         {
-            string missing = Join(cost, stockOf, "", ", ");
-            return string.IsNullOrEmpty(missing) ? "" : "Need " + missing;
+            Func<RecipeIngredient, bool> tooBig = entry => packCapacity != StorageBuffer.Unlimited
+                && entry.quantity > packCapacity
+                && (stockOf != null ? stockOf(entry.itemType) : 0) < entry.quantity;
+
+            string missing = Join(cost, stockOf, "", ", ", entry => !tooBig(entry));
+            string upgrade = Join(cost, null, "", ", ", tooBig);
+            missing = string.IsNullOrEmpty(missing) ? "" : "Need " + missing;
+            if (string.IsNullOrEmpty(upgrade))
+            {
+                return missing;
+            }
+            upgrade = "Upgrade your pack: this needs " + upgrade + ", your pack holds " + packCapacity;
+            return string.IsNullOrEmpty(missing) ? upgrade : upgrade + "  ·  " + missing;
         }
+
+        /// <summary>The shortfall against a wallet: its pack plus Post, and its pack's cap. A null wallet holds nothing.</summary>
+        public static string FormatShortfall(PlayerWallet wallet, IReadOnlyList<RecipeIngredient> cost) =>
+            FormatShortfall(wallet == null ? (Func<string, int>)(_ => 0) : wallet.Quantity, cost,
+                wallet?.PackCapacity ?? StorageBuffer.Unlimited);
 
         // One formatter for both lines. With no stock reader it prints the cost as authored;
         // with one it prints only the outstanding remainder ("what you still owe"), which is
         // what makes the two strings provably consistent about quantities and ordering.
         private static string Join(
             IReadOnlyList<RecipeIngredient> cost, Func<string, int> stockOf,
-            string emptyText, string separator)
+            string emptyText, string separator, Func<RecipeIngredient, bool> include = null)
         {
             if (cost == null || cost.Count == 0)
             {
@@ -98,7 +123,7 @@ namespace GolemFactory.UI
             for (int i = 0; i < cost.Count; i++)
             {
                 RecipeIngredient entry = cost[i];
-                if (entry.quantity <= 0 || string.IsNullOrEmpty(entry.itemType))
+                if (entry.quantity <= 0 || string.IsNullOrEmpty(entry.itemType) || (include != null && !include(entry)))
                 {
                     continue;
                 }

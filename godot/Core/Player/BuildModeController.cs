@@ -1192,7 +1192,7 @@ namespace GolemFactory.Player
                                      $"(needs {UI.ConstructionCostPolicy.FormatCost(_buildingPrefab.Cost)}).";
                 // The refusal has to appear at the cursor, or a click that could not be paid for
                 // is indistinguishable from a click that did not register.
-                Popup(cell, UI.ConstructionCostPolicy.FormatShortfall(ReadStock, _buildingPrefab.Cost),
+                Popup(cell, UI.ConstructionCostPolicy.FormatShortfall(_wallet, _buildingPrefab.Cost),
                     BuildPopupKind.Refused);
                 return;
             }

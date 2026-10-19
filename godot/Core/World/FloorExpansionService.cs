@@ -116,7 +116,7 @@ namespace GolemFactory.World
             IReadOnlyList<RecipeIngredient> cost = NextCost();
             if (Wallet != null && !Wallet.TryCharge(cost))
             {
-                LastStatusMessage = UI.ConstructionCostPolicy.FormatShortfall(StockOf, cost);
+                LastStatusMessage = UI.ConstructionCostPolicy.FormatShortfall(Wallet, cost);
                 return false;
             }
 

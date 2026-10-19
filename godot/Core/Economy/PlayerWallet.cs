@@ -32,6 +32,10 @@ namespace GolemFactory.Economy
         /// <summary>The pack's buffer: what harvesting and collecting fill, the player's hands.</summary>
         public StorageBuffer Pack => _buffers?.GetOrCreate(PackId);
 
+        /// <summary>The pack's per-good cap, or <see cref="StorageBuffer.Unlimited"/>. Read without creating the buffer.</summary>
+        public int PackCapacity =>
+            _buffers != null && _buffers.TryGetBuffer(PackId, out StorageBuffer pack) ? pack.CapacityPerType : StorageBuffer.Unlimited;
+
         /// <summary>The pack plus the Post. Every affordability check and shortfall line reads this.</summary>
         public int Quantity(string itemType) =>
             _buffers == null ? 0 : _buffers.GetQuantity(PackId, itemType) + (_postId == null ? 0 : _buffers.GetQuantity(_postId, itemType));

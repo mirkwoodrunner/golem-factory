@@ -72,7 +72,7 @@ namespace GolemFactory.Economy
             IReadOnlyList<RecipeIngredient> cost = NextCost();
             if (!Wallet.TryCharge(cost))
             {
-                LastStatusMessage = UI.ConstructionCostPolicy.FormatShortfall(Wallet.Quantity, cost) + " to carry " + NextCapacity + " of each good.";
+                LastStatusMessage = UI.ConstructionCostPolicy.FormatShortfall(Wallet, cost) + " to carry " + NextCapacity + " of each good.";
                 return false;
             }
             Tier++;
