@@ -40,7 +40,8 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   tuning sets the final prices.
 - **Whether the Overclocker has an identity** beyond more slots: one exclusive card (`Repeat`)
   and the same dials. Decided after a full playthrough (`docs/roadmap.md`, decision 7).
-- **The user's call, pending: a feeder asleep on a trigger that never fires reads as feeding.**
+- **Decided, to build in Phase 3 (`onboarding-feedback-design.md` §17): a feeder asleep on a
+  trigger that never fires reads as feeding.**
   An Interval core set very long, or a Signal nobody sends, still counts as feeding the crate in
   front of it, so the golem behind reads grey (`onboarding-feedback-design.md` §16). The probe
   can't know a trigger will never fire without simulating it. **Recommended:** leave the rule,

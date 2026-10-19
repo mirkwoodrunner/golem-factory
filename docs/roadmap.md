@@ -185,6 +185,15 @@ collecting Haul.
 
 ## Phase 3: Tuning and a full playthrough
 
+The specs (written 2026-10-19, awaiting the user's approval):
+
+- `docs/tuning-data-spec.md`: every number, where it lives, the test that pins it, the proposed
+  changes (§16) and the open questions (§17).
+- `testscript/full-playthrough.md`: chapters 1–10 without the kit, timed per chapter.
+- `docs/performance-report-template.md`: the endgame load, the `perf` scenario and the budget.
+- `docs/progression-design.md` §14: the tuning decisions.
+- `docs/onboarding-feedback-design.md` §17: the waiting golem's hover card names its feeder.
+
 - Play chapters 1–10 to the Clock Tower without the kit.
 - Tune in this order: the boiler fuel ratio (`progression-design.md` §12 says first), market
   prices and truckload size, then the other invented numbers, in a spreadsheet beside the play.

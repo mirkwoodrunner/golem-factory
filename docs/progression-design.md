@@ -994,3 +994,55 @@ purchases can be paid. Every price must fit the cap that is reachable by the tim
 opens. The spec, the invariants and the cost tables are in `docs/pack-upgrades-design.md`. §3.3's
 "60 Scrap + 30 Iron Plate per 6 × 6 block" no longer describes the game: each purchase adds 2
 rows, and there are six.
+
+---
+
+## 14. Phase 3 tuning (amends §2, §3.1, §4, §5.2, §6, §7, §13.2)
+
+Proposed on 2026-10-19 in `docs/tuning-data-spec.md`, which holds every number, where it lives,
+the test that pins it, and the questions still open for the user. Recorded here so this document
+says which of its own numbers the game no longer uses. Numbers marked there as "[M]" are measured
+in the code phase and recorded in that spec's §18, not here.
+
+**Formulas as finally chosen.**
+
+| Formula | §2 / §3 said | As built and tuned |
+|---|---|---|
+| Steam burn | 1 Coke per powered golem per 10 s (6/min) | 1 per *working* golem per 20 s (**3/min**), 8 golems a boiler (G10, kept) |
+| Coker vs boiler | 35 Coke/min against 6/min golems | The guide's coker (Extract, R1, Push) makes 27.3/min, which feeds one full boiler: 8 × 3 = 24 plus its own 3. Pinned as an invariant |
+| Hand-crank speed | 25 % | 50 % (`HandCrankRules.SpeedPercent`; a craft takes 2 × the recipe) |
+| Repeat(n) | n more runs from one Haul | Unchanged, and n is capped so that n + 1 runs fit the 12 hold (`RepeatRules.MaxIterations`): 11 for R1–R3, 5 for R4–R6, R8 and R12, 3 for R7, R10, R11 and R19, 2 for R9. A Repeat that could never finish is refused at ENGAGE |
+| Claim prices | §8: "item-bundle claim costs" | A recipe card asks 4 × its recipe's inputs; a chassis card max(1, ⌊q/4⌋) of each line of its price. Pinned |
+| Market (§13.2) | priced bursts | Sized so stage 1 at full demand needs at most 8 truckload orders a minute: Σ raw demand ÷ truckload size |
+
+**Number changes.**
+
+| What | Was | Now | Why |
+|---|---|---|---|
+| R10 Lens Grinding | 2 Glass + 1 Brass | **3 Glass** + 1 Brass | Roadmap decision 8, and §12 weakness 3's "first thing to try": the Glass-or-void choice now matters in stage 4 too |
+| Stage 3 Lens demand | 24/min | **12/min** | Keeps stage 3's Slag deficit where it was at 2 Glass (38 → 44 Slag/min). §5.3(c) counted only the tower's Lenses; with the Aether Cells' the deficit at 2 Glass was 38, not 2 |
+| Brass Presser | 60 Scrap + 20 Iron Plate + 10 Gear | 60 Scrap + **10 Iron Plate + 5 Gear** | Chapter 2's game-time floor was 4:15 of its 4:30 budget, nearly all cranking. §4's 10–15-minute manual era gives way to Phase 2's 15 minutes for chapters 1–4 |
+| Truckloads | Scrap 30; Coal 40 for 10 Scrap; ores 40 for 20; Aether 20 for 40 | Scrap 100; Coal 120 for 30; ores 120 for 60; Aether 40 for 80 | At the old sizes stage 1 needed ~24 orders a minute by hand. The price per unit is unchanged |
+| Floor Expansion 5 | 200 Glass + 20 Lens + 15 Casing | **180 Glass** + 20 Lens + 15 Casing | The same Glass in all, at 3 Glass a Lens |
+| `Card_RepeatAssembly` | no prerequisite | prerequisite Mainspring | It filled Assembly Line slots from chapter 2 on, a card no early chassis can hold |
+
+**Unchanged, and now invariants:** no line of any price above 100 except Floor Expansion's; every
+price fits the pack reachable when it opens (§13.3); every good a guide step asks for is makeable
+when the step opens; chapters 1–4 under 10:00 of game-time floor and each chapter under two thirds
+of its budget; the Overclocker's cost (2 Mainspring + 20 Brass + 24 Casing + 12 Gear), slots and
+steam (no surcharge).
+
+**Findings this section's numbers don't settle**, left to the user in the spec's §17:
+
+- **The tower slows quadratically under demand** (§7). A meter drains at the demand rate, and an
+  empty meter freezes progress, so at a supply of *s* against a demand of *d* a stage takes about
+  nominal × (d/s)², not the nominal × d/s that §7's "scales with delivered rate" reads as. To be
+  measured, then decided.
+- **Stage 4's Conduit cut** (§12 weakness 1) applies only if the endgame profile
+  (`docs/performance-report-template.md`) fails after the stall probe is optimised. Stage 3
+  already demands 3 Conduits a minute, so the cut saves less than §12 assumed.
+- **The Overclocker's identity** (roadmap decision 7). Repeat buys 8–20 % over a single-shot
+  golem, since it only amortises 2-tick overheads. The full playthrough
+  (`testscript/full-playthrough.md`) asks whether anyone used it.
+- **Coal-line share.** At 3 Coke/min the stage 4 upkeep is ~288 Coke/min, not 576: the coal line
+  is closer to a third of the factory than §3.1's 41 %.

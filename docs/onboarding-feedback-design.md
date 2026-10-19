@@ -1,6 +1,6 @@
 # Onboarding and feedback: the hint, grey and red, and hover
 
-**Status: approved 2026-10-19, with every recommendation in §11. Built: §3, §4 and §13 (§14 records the corrections), then §2 and §9 (§15); critique fixes in §16.** Phase 2 of
+**Status: approved 2026-10-19, with every recommendation in §11. Built: §3, §4 and §13 (§14 records the corrections), then §2 and §9 (§15); critique fixes in §16. §17 (the feeder on the hover card) is approved for Phase 3, not yet built.** Phase 2 of
 `docs/roadmap.md`, from decisions 4, 5 and 6. Like `crates-design.md`, it is written before the
 code and kept as written afterwards, with corrections recorded rather than hidden. Its sibling,
 `docs/guide-chapters-design.md`, rewrites the guide's texts around what this one builds.
@@ -898,3 +898,146 @@ it"), so the player can follow the chain.
 
 The workbench scenario's Coke step now polls the tech-tree ledger after its deposit: the ledger
 sweeps once a second, and the picker's options depended on where in that second the steps fell.
+
+## 17. The waiting golem names its feeder (Phase 3; approved by the user)
+
+**Status: approved by the user as a Phase 2 follow-up, to be built in Phase 3; spec written
+2026-10-19.** It answers §16's open item and `docs/open-items.md` §2's "the user's call,
+pending" with the recommendation taken: the rule stays, and the hover card names the feeder.
+
+### 17.1 The case
+
+A golem waits grey behind a feeder that will never deliver: an Interval core set very long, a
+Signal nobody sends. The probe counts a feeder as delivering unless it is itself stalled on an
+empty take (§16.1), and a sleeping feeder isn't stalled, so the golem behind it is `Waiting`
+forever. The probe can't know a trigger will never fire without simulating it, and invariant 9
+keeps it from trying. So the card points the player up the chain instead: "Waiting for Scrap ·
+Scavenger #1 brings it when its trigger fires". Hovering Scavenger #1 then reads "Sleeping until
+its trigger: …" (§4.3), and the player has found the sleeper in two hovers.
+
+`Scripts/Scenarios/StreetFixture` already builds exactly this: S, a Scavenger on an Interval of
+1,000,003 ticks, feeds the crate P hauls from, and P is grey.
+
+### 17.2 Invariants
+
+All of §0 holds. In particular:
+
+1. **No verdict changes.** Grey and red are decided exactly as today (`StallTriage`, the probe's
+   `Read`). This adds a sentence, never a colour, a badge or a count. The badge stays
+   `waiting for Scrap`; the alerts strip is unchanged.
+2. **One answer.** The feeders the card names are the feeders that make the golem `Waiting`: for
+   every golem whose facts read `SourceGives && SourceFed`, the feeder list is non-empty, and for
+   every golem whose facts read not fed, it is empty. A test pins the agreement (§17.6).
+3. **No cost per frame.** The names are found only for the hovered golem, when its card is
+   composed. `StallFactsProbe.Read`, which runs for every stalled golem every frame, is unchanged.
+4. **Player names only**: `UI/GolemNames.Short`, never a `GolemId` (§16.3). Text keeps the font
+   rule.
+
+### 17.3 Where the feeders come from
+
+`World/StallFactsProbe` gains:
+
+```
+IReadOnlyList<GolemEntity> FeedersOf(GolemEntity golem, int max = 3)
+```
+
+- The **direct** feeders of the golem's source for its wanted good, found exactly as `IsFed`
+  finds them (`Feeders(golem, source, WantedGood(…))`): a golem pushing into the same store; for a
+  belt, the golems pushing onto a segment the run reaches upstream; for a mast's crate, a Zeppelin
+  bound to it; for a Post crate, a golem pushing into any Post crate. Never the golem itself;
+  never a held, removed or unprogrammed golem (`Others`).
+- **Ordered** by the number in their `GolemId` (`GolemNames.Number`) ascending; ids without a
+  number come after those, by `GolemId` ordinal. So the card reads the same every frame.
+- **Kept** only if it delivers: `Delivers(feeder, visited)` with a **fresh** visited set
+  `{ golem }` for each direct feeder, so one feeder's walk can't mark a golem another feeder
+  reaches.
+- **Stops** at `max` delivering feeders (3 is enough to tell one, two and "others" apart).
+- Empty when the source doesn't give (`Gives`), when the stalled step isn't a take, or when
+  nothing delivers.
+
+It names the **direct** feeder, not the root of a chain: P behind S2 behind S1 names S2. Hovering
+S2 then names S1. Each hover is one link, which is the chain the player follows.
+
+`StallFacts` and `StallTriage` are unchanged.
+
+### 17.4 The text
+
+`SandboxWorld.HoverCard(golem, mood, strainingHeld)` passes the feeders to
+`GolemHoverText.Compose` (a new optional parameter `IReadOnlyList<GolemEntity> feeders = null`)
+**only** when `mood` is `Waiting` and the facts read `IsTake && SourceGives && SourceFed`;
+otherwise it passes null, and every card reads as today.
+
+In `GolemHoverText.Waiting`, when `feeders` is non-empty and the stall is not `BeltFull`, the
+reason after the head names the feeders instead of the empty source. The route line below still
+names the source ("From Crate (-9,1) → to …"), so nothing is lost.
+
+| Feeders | State line |
+|---|---|
+| none (a truckload, a full target, or not fed) | as today: `Waiting for Scrap · Crate (-9,1) is empty`, `· a truckload is on its way`, `· Crate (3,6) is full` |
+| 1, on Always On | `Waiting for Scrap · Scavenger #1 brings it` |
+| 1, on any other trigger (Interval, Threshold, Signal) | `Waiting for Scrap · Scavenger #1 brings it when its trigger fires` |
+| 2 | `Waiting for Scrap · Scavenger #1 and Presser #3 bring it` |
+| 3 or more | `Waiting for Scrap · Scavenger #1 and others bring it` |
+
+- **Collecting** keeps its progress: `Waiting for Scrap · 5/10 · Scavenger #1 brings it`.
+- **No good known** keeps the head `Waiting`: `Waiting · Scavenger #1 brings it`.
+- **The trigger clause** reads the feeder's `Program.logicCore.triggerType`, not its state, so it
+  doesn't flicker as an Always On golem idles a tick between cycles (§14.4). A null core gets no
+  clause.
+- Names come from `GolemNames.Short` (chassis short name and number); goods from
+  `ItemTiers.DisplayName`; places, where the line still names one, from `TileNames`.
+
+### 17.5 Failure states
+
+| Situation | What the card says |
+|---|---|
+| The feeder is carried away | It is held, so it no longer feeds: the golem turns red at once (§3.7) and its card is a `Stuck:` card, naming no feeder |
+| The feeder is dismantled | The same: red, no feeder |
+| Two feeders, one in an empty loop | Only the delivering one is named: `Scavenger #2 brings it` |
+| A feeder pushes onto a belt five cells upstream | It is named: `Scavenger #7 brings it` |
+| A Zeppelin feeds a mast's crate | `Zeppelin #9 brings it` |
+| The facts say fed, but the feeder list is empty | A defect against invariant 2. The card falls back to today's line, and the agreement test fails |
+
+### 17.6 Tests
+
+`Core.Tests/UI/GolemHoverTextTests` and `Core.Tests/Golems/StallTriageTests`, on composed worlds
+as their existing cases are:
+
+- `FeedersOf_AgreesWithSourceFed`: over every fixture in `StallTriageTests` (the sleeper, the empty
+  loop, the chain, the belt, the labelled crate, the wrong good), `FeedersOf(g).Count > 0` exactly
+  when `Read(g)` has `SourceGives && SourceFed`.
+- `AWaitingGolem_NamesItsFeeder`: an Always On Scavenger feeding a crate a Presser hauls from; the
+  Presser's state line is `Waiting for Scrap · Scavenger #N brings it`.
+- `AWaitingGolem_NamesASleepingFeeder_WhenItsTriggerFires`: the feeder on an Interval core; the
+  line ends `brings it when its trigger fires`.
+- `TwoFeeders_AreNamedInNumberOrder` and `ThreeFeeders_ReadAsOthers`.
+- `AFeederUpABelt_IsNamed`.
+- `AChain_NamesTheNearFeeder_NotTheRoot`.
+- `ATruckloadComing_NamesNoFeeder`: the line is unchanged.
+- `ACollectingHaul_KeepsItsProgress_AndNamesItsFeeder`: `· 5/10 · Scavenger #N brings it`.
+- `TheFeederLine_KeepsTheFontRule_AndShowsNoId`: every new line passes the font's character set,
+  and `PlayerText.RawIdIn` is null.
+- Every existing `StallTriageTests` and `GolemHoverTextTests` case passes unchanged (invariant 1).
+
+### 17.7 The `hover` scenario
+
+`Scripts/Scenarios/HoverScenario`, between step 2 ("P's card is Core's") and step 3 ("wake S"),
+while S still sleeps:
+
+- `Until("P's card names S as its feeder", 1.0, …)`: the card is visible, its text contains
+  `"Waiting for Scrap"` and `GolemNames.Short(S) + " brings it when its trigger fires"`, and
+  `PlayerText.RawIdIn(text)` is null. Log the card.
+- `ScenarioCapture.Shot(Viewport, "critique-hover-feeder")`.
+
+After step 3 wakes S (Always On), S stalls red on its empty crate and P stays grey (one red at the
+root, §3.2). Add `Until("P still names S, without the trigger clause", 2.0, …)` with the pointer
+back on P: the card contains `GolemNames.Short(S) + " brings it"` and not
+`"when its trigger fires"`. Then return the pointer to S for the existing checks. The scenario's
+header comment gains a line for §17. `moods` is unchanged: badges and the strip don't change.
+
+### 17.8 Not in this change
+
+**Naming the drainer** of a full target ("Waiting · Crate (3,6) is full · Hauler #6 takes from
+it") is the same mechanism in the other direction, and a sleeping drainer has the same blind spot.
+It isn't part of the user's approval, so it is left as a question for the user. If approved, it
+reuses `TakenFrom`'s search the way §17.3 reuses `Feeders`.
