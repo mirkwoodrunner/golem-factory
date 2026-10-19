@@ -21,7 +21,7 @@
 
 ### Asymmetric Actions (Artificer vs. Golem)
 
-- **Golems:** Handle rigid, automated physical logistics like hauling scrap, refining ore, and loading shipments. They execute steps in a strict, linear order and cannot pivot if resources are unavailable.
+- **Golems:** Handle rigid, automated physical logistics like hauling scrap, refining ore, and loading shipments. They execute steps in a strict, linear order and cannot pivot if resources are unavailable. (In the digital game a Haul waits on its step, collecting until it holds its batch: `docs/onboarding-feedback-design.md` §13.)
 - **Artificers:** Handle flexible, intellectual tasks such as drafting components, filing patents, swapping golem parts, and fulfilling contracts.
 
 ## Physical Components and Layout

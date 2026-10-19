@@ -28,9 +28,10 @@ recommendation taken) and being built** (branch `phase2/onboarding`):
   the hint and the kit share.
 - `testscript/phase-2-playtest.md`: the timing protocol for chapters 1–4 and the new questions.
 
-Build in `onboarding-feedback-design.md` §10's order. Merge `phase1/crates` first. One finding
-from writing the specs still needs a call (`open-items.md` §3): a partial Haul can jam an
-Assemble for good. The empty labelled crate's stall wording is fixed in Phase 2.
+Build in `onboarding-feedback-design.md` §10's order. Merge `phase1/crates` first. The two
+findings from writing the specs are settled: a Haul now collects until it holds its batch (the
+user's call, 2026-10-19, `onboarding-feedback-design.md` §13), and the empty labelled crate's
+stall wording is fixed.
 
 Standing rules: tests and scenarios never write the player's real `save.json`; a renamed step `Id`
 or definition name breaks saves.

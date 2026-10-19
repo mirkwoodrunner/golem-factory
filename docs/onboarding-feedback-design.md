@@ -35,7 +35,11 @@ Each gets a test in `Core.Tests` when it is built.
    separator. `cozy-automation-design.md` §0.8's "no arrows" predates the font and is superseded
    by that rule.
 9. **Determinism is untouched.** None of this is simulation state. Classification and hover run
-   at frame rate on the presentation side; no tick-loop code changes.
+   at frame rate on the presentation side; no tick-loop code changes, except the collecting Haul
+   (§13), a rule change the user decided, deterministic like every other step.
+10. **A Haul collects until it holds its batch** (§13). It takes only what the golem still needs
+    to hold one batch of the good, stays on its step while short, and advances once it holds the
+    batch. A golem never takes more than a batch of a hauled good; any extra stays in the source.
 
 ## 1. The problem
 
@@ -644,10 +648,10 @@ recommendation that became the decision.
    while it waits for Coke that may never come. **Recommendation: accept for now**; it is a late,
    optional building, and the recycler's own refusal is visible.
 7. **Hover delay 0.25 s, `Waiting` dwell 2 s.** TUNING, listed in the playtest script.
-8. **Should a Haul wait for its full batch?** (§12.1, not one of the seven above.) **Pending the
-   user's decision.** The candidate under discussion: the Haul keeps collecting what is available
-   into the golem's input and stays on that step until it holds the whole batch, showing progress
-   ("5/10 Scrap"). Nothing of it is built; the Haul still takes a partial batch.
+8. **Should a Haul wait for its full batch?** (§12.1, not one of the seven above.) **Decided
+   2026-10-19 by the user: the Haul collects** into the golem until it holds its batch, showing
+   progress ("5/10 Scrap"), §13. A first draft, "wait until the source holds the whole batch",
+   was withdrawn the same day, since a belt may never hold a whole batch; it is superseded.
 
 ## 12. Found in the code while writing this
 
@@ -658,12 +662,76 @@ recommendation that became the decision.
    the program. Crates make this likely (chapter 5 feeds the smelter by hand, one click moves
    one). This spec reads it as stuck (§3.3) and names the fix; whether a Haul should wait for its
    full batch is a simulation change and **the user's call**. In `open-items.md`.
-   **Pending the user's decision** (§11 question 8): a rule was drafted on 2026-10-19 and
-   withdrawn the same day, since a belt may never hold a whole batch. Until the rule is decided,
-   Phase 2 reads the jam as stuck (§3.3), as written above.
+   **Closed: decided 2026-10-19, the collecting Haul (§13)**, which removes the jam: an Assemble
+   now only runs after its Hauls hold full batches.
 2. **An empty labelled crate reports `BeltEmpty`.** `GolemEntity.EmptyReasonFor` asks `is
    StorageBufferEndpoint`, and a labelled crate publishes a `FilteredBufferEndpoint`, so the badge
    says "waiting on Crate(3,4)" where an unlabelled one says "no input in Crate(3,4)". The triage
    and the hover treat both alike (§3.3), so Phase 2 is unaffected; the badge wording is in
    `open-items.md`. **Fixed in Phase 2:** `EmptyReasonFor` reads a labelled crate
    (`FilteredBufferEndpoint`) as `BufferEmpty`, so it says "no input in Crate(3,4)" too.
+
+## 13. The collecting Haul (decided 2026-10-19)
+
+**The user's decision:** a Haul collects goods into the golem until it holds its batch. It ends
+§12.1's jam, and it works from a belt of any length. It supersedes a first draft of the same day
+("take nothing until the source holds the whole batch"), withdrawn because a placed belt offers
+one good at a time and so could never hold a batch.
+
+### 13.1 The rule
+
+A **spatially placed** golem's `Haul` with batch *n* (`GolemProgram.appendageQuantities`,
+clamped 1..12) of good *g*, each attempt:
+
+1. *held* = how many *g* the golem's input already holds. *need* = *n* − *held*.
+2. **need ≤ 0: take nothing and advance.** The golem already holds a batch. This happens after a
+   batch was lowered at the Workbench, after a load, or when a recipe leaves a remainder: an
+   Assemble consumes only its recipe's amounts, so the rest waits for the next cycle, and the
+   next Haul tops up only what is missing. The input stock never exceeds 12 of a good.
+3. Otherwise take min(available, *need*) from the source. **The golem never takes more than it
+   needs; any extra stays on the belt or in the crate.**
+4. Holding *n* now: the step runs its duration, `max(2, n)` as before, and advances.
+5. Still short: the step **stays put**: no skip, no reorder, the rigid-stall rule. It retries
+   every tick and keeps taking as goods arrive. With part of a batch held it stalls
+   **`MissingItem`** naming *g*, with `StallShortfall` = *n* − *held*; with nothing held it
+   reports what it reports today (`BufferEmpty`, `BeltEmpty`, `NodeEmpty`, or `MissingItem` when
+   the source holds other goods).
+
+**No new `StallReason`** (invariant 5 holds). `MissingItem` already means "the good this step
+names isn't available where it needs it", and §3.3 already maps it at a Haul: grey when the source
+is fed with the good (or a truckload is on its way to the stall behind), red when nothing will
+bring it.
+
+**Which good an untyped Haul collects:** what the source offers (as today); with the source empty,
+the first good its input already holds, so a half-collected batch keeps its good.
+
+**Logistics golems** (no Assemble, input is output) follow the same rule: collect up to the batch,
+then the Push runs. A Push that left a remainder counts toward the next batch.
+
+**Two Hauls of the same good in one program** don't add: each tops the input up to its own batch
+of that good, measured over everything held. `Haul(Scrap ×2)` then `Haul(Scrap ×3)` holds 3 after
+the second, not 5. That is the simplest rule consistent with "never more than a batch"; a recipe
+that needs more of one good sets one Haul's batch to that amount.
+
+**Unchanged:** `ExtractFromNode` still takes up to its batch and keeps partial takes (a stall
+yields what it has, a truckload refills it). The id-routed Haul is still a no-op success, so
+`IdRoutedDemoRegressionTests` is untouched. `Push`, `Assemble` and `Repeat` are untouched.
+`InputFull` can no longer arise at a Haul: *held* + *need* = *n* ≤ 12.
+
+### 13.2 What the player sees
+
+- **Badge:** while a Haul is collecting (stalled `MissingItem` with part of its batch held), the
+  badge shows progress, `5/10 Scrap` (grey: `5/10 Scrap`, red: `[!] 5/10 Scrap`), in place of
+  `need 5 more Scrap`. `StallDiagnostics.HaulProgress` composes it.
+- **Hover state line:** `Waiting for Scrap · 5/10 · Crate (3,4) is empty` when fed; `Stuck:
+  Crate (3,4) is empty, needs Scrap (5/10)` when not, with §3.3's fix line.
+- **Mood:** `StallTriage` as for any `MissingItem` at a take.
+
+### 13.3 Tests
+
+`HaulCollectsTests` (Core): a crate short of the batch: the golem takes what is there and stays
+on the step; arrivals top it up to exactly the batch and it advances; extra stays in the crate;
+the old jam (a smelter hand-fed one Scrap at a time) now assembles once two are held; a one-slot
+belt feeding a batch of 5 completes; input already over the batch takes nothing and advances; two
+Hauls of the same good don't add; `ExtractFromNode` still takes a partial batch.
+`IdRoutedDemoRegressionTests` and `LayoutMattersTests` keep passing.

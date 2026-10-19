@@ -394,6 +394,10 @@ advancement. Simulation is plain, data-oriented C#: no ECS, no per-item nodes.
   stock onto the tile in front, `Assemble` converts input to output without touching a tile.
   **The pure-logistics rule:** a program with no Assemble step treats its input as its output
   (`GolemProgram.HasAssembleStep`); without it every logistics golem stalls full forever.
+- **A Haul collects until it holds its batch** (`docs/onboarding-feedback-design.md` §13). It
+  takes only batch − held of its good, stays on its step (`MissingItem`, "5/10 Scrap") while
+  short, and advances once it holds the batch; extra stays in the source. Already holding a
+  batch, it takes nothing and advances. `ExtractFromNode` still takes partial batches.
 - **Execution is strictly linear and non-adaptive.** A failed precondition doesn't skip or
   reorder; the golem stalls and retries the same step every tick, publishing
   `GolemStalledEvent`/`GolemResumedEvent`. Rigidity is structural.

@@ -50,15 +50,10 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 - **After a load mid-stage, the tower's starved alarm can show briefly** until the first
   delivery lands, because supply meters aren't saved. Without that, a line that broke since the
   save would never raise the alarm.
-- **A partial Haul can jam an Assemble for good** (found writing Phase 2's spec, read from the
-  code, not yet pinned by a test). A Haul takes what its source holds, up to its batch, and
-  carries on; if that is less than the recipe needs, the Assemble stalls on `MissingItem` and
-  nothing re-runs the Haul until ENGAGE rewinds the program. Crates make it likely: a smelter
-  hand-fed one Scrap at a time can take one, then wait forever. Phase 2 shows it red with the
-  fix (`docs/onboarding-feedback-design.md` §12.1). **The user's call, under discussion:** should
-  a Haul wait for its full batch? A first rule (wait until the source holds the batch) was
-  withdrawn on 2026-10-19, since a belt may never hold one; the candidate is a Haul that keeps
-  collecting into the golem until it holds the batch, showing "5/10 Scrap".
+- **A partial Haul could jam an Assemble for good: closed 2026-10-19.** The user decided a Haul
+  collects into the golem until it holds its batch, showing "5/10 Scrap", and never takes more
+  than a batch (`docs/onboarding-feedback-design.md` §13). An Assemble now only runs on full
+  batches.
 - **An empty labelled crate reported `BeltEmpty`: closed in Phase 2.** `GolemEntity.EmptyReasonFor`
   now reads a `FilteredBufferEndpoint` as `BufferEmpty`, so both crates say "no input in
   Crate(3,4)".
