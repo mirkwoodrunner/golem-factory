@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Godot;
 using GolemFactory.Golems;
 using GolemFactory.UI;
@@ -102,17 +101,7 @@ namespace GolemFactory.Nodes
             }
 
             GolemMood mood = (int)hoveredNode.DrawnMood < 0 ? hovered.Mood : hoveredNode.DrawnMood;
-            // Straining's dwell is timed over the HOLD, not the mood: an AlwaysOn golem is Idle
-            // for a tick at the end of every cycle, which would restart a mood stopwatch each
-            // cycle and keep "nearly full" off the card forever.
-            bool full = hovered.Inventory.FullestTypeUnits >= GolemMoodRules.StrainingUnits &&
-                        hovered.Program.State != GolemState.Stalled;
-            _strainingFor = full ? _strainingFor + (float)delta : 0f;
-            if (_strainingFor >= GolemMoodRules.AdvisoryDwellSeconds &&
-                (mood == GolemMood.Working || mood == GolemMood.Sleeping))
-            {
-                mood = GolemMood.Straining;
-            }
+            _strainingFor = GolemHoverText.NearlyFull(hovered) ? _strainingFor + (float)delta : 0f;
             string text = sandbox.HoverCard(hovered, mood, _strainingFor >= GolemMoodRules.AdvisoryDwellSeconds).Text;
             if (_cardLabel.Text != text)
             {

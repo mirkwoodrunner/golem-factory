@@ -18,37 +18,22 @@ namespace GolemFactory.UI
     {
         private readonly SpatialEndpointRegistry _endpoints;
         private readonly FreightMastRegistry _masts;
-        private readonly string _postBufferId;
 
-        public TileNames(SpatialEndpointRegistry endpoints, FreightMastRegistry masts = null,
-            string postBufferId = SandboxWorld.PostBufferId)
+        public TileNames(SpatialEndpointRegistry endpoints, FreightMastRegistry masts = null)
         {
             _endpoints = endpoints;
             _masts = masts;
-            _postBufferId = postBufferId;
         }
+
+        /// <summary>The good a labelled crate on <paramref name="cell"/> takes, or null.</summary>
+        public string Label(Vector2Int cell) => (EndpointAt(cell) as IFilteredEndpoint)?.AcceptedItemType;
+
+        public static string Cell(Vector2Int cell) => "(" + cell.x + "," + cell.y + ")";
 
         /// <summary>The name of whatever stands on <paramref name="cell"/>.</summary>
         public string Name(Vector2Int cell)
         {
-            IItemEndpoint endpoint = null;
-            _endpoints?.TryGetEndpoint(cell, out endpoint);
-            return Describe(endpoint, cell, _masts != null && _masts.Contains(cell), _postBufferId);
-        }
-
-        /// <summary>The good a labelled crate on <paramref name="cell"/> takes, or null.</summary>
-        public string Label(Vector2Int cell)
-        {
-            IItemEndpoint endpoint = null;
-            _endpoints?.TryGetEndpoint(cell, out endpoint);
-            return (endpoint as IFilteredEndpoint)?.AcceptedItemType;
-        }
-
-        public static string Cell(Vector2Int cell) => "(" + cell.x + "," + cell.y + ")";
-
-        public static string Describe(IItemEndpoint endpoint, Vector2Int cell, bool isMast = false,
-            string postBufferId = SandboxWorld.PostBufferId)
-        {
+            IItemEndpoint endpoint = EndpointAt(cell);
             switch (endpoint)
             {
                 case null:
@@ -67,17 +52,24 @@ namespace GolemFactory.UI
                     return "the Clock Tower";
             }
 
-            if (isMast)
+            if (_masts != null && _masts.Contains(cell))
             {
                 return "Freight Mast " + Cell(cell);
             }
             string bufferId = (endpoint as StorageBufferEndpoint)?.Buffer?.BufferId
                               ?? (endpoint as FilteredBufferEndpoint)?.Buffer?.BufferId;
-            if (bufferId != null && bufferId == postBufferId)
+            if (bufferId == SandboxWorld.PostBufferId)
             {
                 return "Pneumatic Post";
             }
             return bufferId != null ? "Crate " + Cell(cell) : endpoint.DisplayName;
+        }
+
+        private IItemEndpoint EndpointAt(Vector2Int cell)
+        {
+            IItemEndpoint endpoint = null;
+            _endpoints?.TryGetEndpoint(cell, out endpoint);
+            return endpoint;
         }
     }
 }

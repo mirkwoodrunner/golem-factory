@@ -104,7 +104,6 @@ namespace GolemFactory.Nodes.Scenarios
             Do("press G", () => { Tap(Key.G); return null; });
             Until("N carried, its tiles on the landing; P's tiles too", 1.0, () =>
             {
-
                 if (World.Interactor.CarriedGolem != N)
                 {
                     return "not carrying N: " + World.Interactor.LastStatusMessage;

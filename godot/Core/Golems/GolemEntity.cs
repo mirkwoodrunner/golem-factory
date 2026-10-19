@@ -782,11 +782,9 @@ namespace GolemFactory.Golems
         // what lets Push empty everything at once (mixed types and all) and what makes
         // byproducts free: a smelter emitting Iron Plate *and* Slag still costs one Push.
         // Merging would make that a property of one code path instead of a property of Push.
-        private GolemInventory.Stock PushStock =>
+        // Public for a readout: the hover's "full of Scrap".
+        public GolemInventory.Stock PushStock =>
             program.HasAssembleStep ? _inventory.Output : _inventory.Input;
-
-        /// <summary>The stock the next Push will empty, for a readout (the hover's "output 10/12 Scrap").</summary>
-        public GolemInventory.Stock PushStockView => PushStock;
 
         private IItemEndpoint ResolveSpatialSource()
         {

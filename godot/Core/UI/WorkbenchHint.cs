@@ -62,21 +62,6 @@ namespace GolemFactory.UI
             : $"{Kind} {Card ?? "-"} -> {(Zone.Kind == DropZoneKind.LogicCore ? "TRIGGER" : "STEP " + (Zone.AppendageIndex + 1))}{(Delta != 0 ? (Delta > 0 ? " +" : " -") : "")}";
     }
 
-    /// <summary>What the hint reads of the Workbench's draft. <see cref="WorkbenchSession"/> implements it.</summary>
-    public interface IWorkbenchDraftView
-    {
-        ChassisDefinition DraftChassis { get; }
-        LogicCoreDefinition DraftLogicCore { get; }
-        int SocketCount { get; }
-        int DraftOverflowCount { get; }
-        AppendageActionDefinition DraftAppendageAt(int index);
-        string DraftItemTypeAt(int index);
-        int DraftQuantityAt(int index);
-
-        /// <summary>Whether the vault offers the appendage card of this name.</summary>
-        bool OffersCard(string appendageName);
-    }
-
     /// <summary>
     /// The Workbench's next-drag hint (docs/onboarding-feedback-design.md §2.2): which card from
     /// the vault goes to which socket next, by the guide's <see cref="ProgramPlan"/>. A rule, read
@@ -105,7 +90,7 @@ namespace GolemFactory.UI
         /// card past the plan. The lever once the draft passes the step's check; nothing once the
         /// golem's committed program does (<paramref name="committedMatches"/>).
         /// </summary>
-        public static WorkbenchHintTarget Next(IWorkbenchDraftView draft, ProgramPlan plan, bool committedMatches)
+        public static WorkbenchHintTarget Next(WorkbenchSession draft, ProgramPlan plan, bool committedMatches)
         {
             if (draft == null || plan == null || committedMatches || draft.DraftOverflowCount > 0)
             {
@@ -173,7 +158,7 @@ namespace GolemFactory.UI
         /// the lever, and no vault card, since no rule knows which. A programmed golem gets nothing:
         /// reprogramming is the player's design.
         /// </summary>
-        public static WorkbenchHintTarget Fallback(IWorkbenchDraftView draft, bool targetHasRunnableProgram)
+        public static WorkbenchHintTarget Fallback(WorkbenchSession draft, bool targetHasRunnableProgram)
         {
             if (draft == null || targetHasRunnableProgram || draft.DraftOverflowCount > 0)
             {
@@ -194,7 +179,7 @@ namespace GolemFactory.UI
         }
 
         /// <summary>The draft as the lever would commit it, on a scratch program: the draft itself is never touched.</summary>
-        public static GolemProgram AsProgram(IWorkbenchDraftView draft)
+        public static GolemProgram AsProgram(WorkbenchSession draft)
         {
             var program = new GolemProgram();
             int n = draft.SocketCount;

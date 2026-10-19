@@ -201,6 +201,19 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void ABelt_IsDrainedDownstream()
+        {
+            var floor = new Floor();
+            floor.Belts.TryPlace(new Vector2Int(0, 2), Facing.North, out _);
+            floor.Belts.TryPlace(new Vector2Int(0, 3), Facing.North, out _);
+            GolemEntity pusher = floor.Golem(new Vector2Int(0, 1), HaulScrap, Push);    // pushes onto (0,2)
+            Assert.IsFalse(floor.Probe.Read(pusher).TargetDrained);
+
+            floor.Golem(new Vector2Int(0, 4), HaulScrap, Push);                          // takes from (0,3)
+            Assert.IsTrue(floor.Probe.Read(pusher).TargetDrained);
+        }
+
+        [Test]
         public void ABoiler_NeverGives_AndAlwaysDrains()
         {
             var floor = new Floor();

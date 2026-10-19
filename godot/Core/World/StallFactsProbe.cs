@@ -142,16 +142,55 @@ namespace GolemFactory.World
             return false;
         }
 
-        /// <summary>A belt is fed when its run, walked upstream, reaches a segment a golem pushes onto.</summary>
+        /// <summary>
+        /// A belt is fed when its run, walked upstream, reaches a segment a golem pushes onto.
+        /// The pushed-onto segments and the upstream links are gathered once, so the walk is
+        /// linear in belts plus golems, not their product.
+        /// </summary>
         private bool BeltFed(GolemEntity self, BeltSegment segment, string good)
         {
             if (segment == null || _belts == null)
             {
                 return false;
             }
+            var pushed = new HashSet<BeltSegment>();
+            foreach (GolemEntity other in Others(self))
+            {
+                if (EndpointAt(PushCell(other)) is BeltSegmentEndpoint onto && onto.Segment != null && MayPush(other, good))
+                {
+                    pushed.Add(onto.Segment);
+                }
+            }
+            if (pushed.Count == 0)
+            {
+                return false;
+            }
+            var upstream = new Dictionary<BeltSegment, List<BeltSegment>>();
+            foreach (PlacedBelt belt in _belts.Belts)
+            {
+                if (belt.Segment == null)
+                {
+                    continue;
+                }
+                foreach (BeltSegment next in belt.Segment.Outputs)
+                {
+                    if (!upstream.TryGetValue(next, out List<BeltSegment> feeders))
+                    {
+                        upstream[next] = feeders = new List<BeltSegment>();
+                    }
+                    feeders.Add(belt.Segment);
+                }
+            }
+            return Reaches(segment, pushed, at => upstream.TryGetValue(at, out List<BeltSegment> feeders)
+                ? feeders : (IEnumerable<BeltSegment>)Array.Empty<BeltSegment>());
+        }
+
+        /// <summary>Whether a walk from <paramref name="start"/> along <paramref name="links"/> reaches one of <paramref name="goals"/>.</summary>
+        private static bool Reaches(BeltSegment start, HashSet<BeltSegment> goals, Func<BeltSegment, IEnumerable<BeltSegment>> links)
+        {
             var visited = new HashSet<BeltSegment>();
             var frontier = new Stack<BeltSegment>();
-            frontier.Push(segment);
+            frontier.Push(start);
             while (frontier.Count > 0)
             {
                 BeltSegment at = frontier.Pop();
@@ -159,29 +198,13 @@ namespace GolemFactory.World
                 {
                     continue;
                 }
-                if (PushedOnto(self, at, good))
+                if (goals.Contains(at))
                 {
                     return true;
                 }
-                foreach (PlacedBelt upstream in _belts.Belts)
+                foreach (BeltSegment next in links(at))
                 {
-                    if (upstream.Segment != null && upstream.Segment.Outputs.Contains(at))
-                    {
-                        frontier.Push(upstream.Segment);
-                    }
-                }
-            }
-            return false;
-        }
-
-        private bool PushedOnto(GolemEntity self, BeltSegment segment, string good)
-        {
-            foreach (GolemEntity other in Others(self))
-            {
-                if (EndpointAt(PushCell(other)) is BeltSegmentEndpoint pushed && pushed.Segment == segment &&
-                    MayPush(other, good))
-                {
-                    return true;
+                    frontier.Push(next);
                 }
             }
             return false;
@@ -192,7 +215,7 @@ namespace GolemFactory.World
         /// byproducts, its typed Hauls' goods, and anything at all for an untyped Haul or an
         /// Extract, whose source isn't known well enough to rule a good out.
         /// </summary>
-        public static bool MayPush(GolemEntity golem, string good)
+        private static bool MayPush(GolemEntity golem, string good)
         {
             GolemProgram program = golem.Program;
             if (!program.appendages.Any(IsPushStep))
@@ -294,38 +317,24 @@ namespace GolemFactory.World
         /// <summary>A belt is drained when its run, walked downstream, reaches a segment a golem takes from.</summary>
         private bool BeltDrained(GolemEntity self, BeltSegment segment)
         {
-            var visited = new HashSet<BeltSegment>();
-            var frontier = new Stack<BeltSegment>();
-            if (segment != null)
+            if (segment == null)
             {
-                frontier.Push(segment);
+                return false;
             }
-            while (frontier.Count > 0)
+            var taken = new HashSet<BeltSegment>();
+            foreach (GolemEntity other in Others(self))
             {
-                BeltSegment at = frontier.Pop();
-                if (!visited.Add(at))
+                if (EndpointAt(other.SourceCell) is BeltSegmentEndpoint from && from.Segment != null &&
+                    other.Program.appendages.Any(IsTakeStep))
                 {
-                    continue;
-                }
-                foreach (GolemEntity other in Others(self))
-                {
-                    if (EndpointAt(other.SourceCell) is BeltSegmentEndpoint taken && taken.Segment == at &&
-                        other.Program.appendages.Any(IsTakeStep))
-                    {
-                        return true;
-                    }
-                }
-                foreach (BeltSegment next in at.Outputs)
-                {
-                    frontier.Push(next);
+                    taken.Add(from.Segment);
                 }
             }
-            return false;
+            return taken.Count > 0 && Reaches(segment, taken, at => at.Outputs);
         }
 
         private static bool IsTakeStep(AppendageActionDefinition card) =>
-            card != null && (card.actionType == AppendageActionType.Haul ||
-                             card.actionType == AppendageActionType.ExtractFromNode);
+            card != null && StallFacts.IsTakeAction(card.actionType);
 
         // --- Helpers -------------------------------------------------------------------------
 

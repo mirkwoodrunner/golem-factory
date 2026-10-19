@@ -185,7 +185,6 @@ namespace GolemFactory.Nodes.Scenarios
             Input.FlushBufferedEvents();
         }
 
-
         protected GolemNode NodeOf(GolemEntity golem) =>
             Tree.GetNodesInGroup(GolemNodeGroup.Name).OfType<GolemNode>().FirstOrDefault(n => n.Entity == golem);
 
@@ -196,7 +195,6 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void Setup()
         {
-            DefinitionSet defs = World.Definitions;
             PlaceableBoiler boiler = Place<PlaceableBoiler>("BoilerPrefab", 0, 0);
             for (int x = -9; x <= 8; x++)
             {

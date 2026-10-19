@@ -56,13 +56,20 @@ namespace GolemFactory.UI
         /// <param name="mood">The mood as drawn (<c>GolemMoodRules.Presented</c>).</param>
         /// <param name="facts">Its stall facts, default when it isn't stalled.</param>
         /// <param name="tiles">Names the tiles behind and in front of it.</param>
-        /// <param name="strainingHeld">Straining has been held for its dwell (§4.4).</param>
+        /// <param name="strainingHeld">
+        /// <see cref="NearlyFull"/> has held for its dwell (§4.4): a working or sleeping golem's
+        /// card then reads as straining.
+        /// </param>
         public static HoverCard Compose(GolemEntity golem, GolemMood mood, StallFacts facts, TileNames tiles,
             bool strainingHeld = false)
         {
             if (golem == null)
             {
                 return default;
+            }
+            if (strainingHeld && (mood == GolemMood.Working || mood == GolemMood.Sleeping))
+            {
+                mood = GolemMood.Straining;
             }
 
             string chassis = golem.Program.chassis != null ? ItemTiers.DisplayName(golem.Program.chassis.name) : "Golem";
@@ -90,6 +97,15 @@ namespace GolemFactory.UI
                     return new HoverCard(title, Working(golem, mood == GolemMood.Straining && strainingHeld), "", route);
             }
         }
+
+        /// <summary>
+        /// A running golem's hold is nearly full. The view times it over the HOLD, not the mood:
+        /// an AlwaysOn golem is Idle for a tick at the end of every cycle, which would restart a
+        /// mood stopwatch each cycle and keep "nearly full" off the card forever.
+        /// </summary>
+        public static bool NearlyFull(GolemEntity golem) =>
+            golem.Inventory.FullestTypeUnits >= GolemMoodRules.StrainingUnits &&
+            golem.Program.State != GolemState.Stalled;
 
         private static string Working(GolemEntity golem, bool straining)
         {
@@ -154,7 +170,7 @@ namespace GolemFactory.UI
                     return source + " is empty";
                 case StallReason.BeltFull:
                 {
-                    string full = golem.PushStockView.FullestType;
+                    string full = golem.PushStock.FullestType;
                     return string.IsNullOrEmpty(full) ? target + " is full" : target + " is full of " + Good(full);
                 }
                 case StallReason.NoSourceAtTile:
@@ -230,11 +246,7 @@ namespace GolemFactory.UI
             }
         }
 
-        private static bool IsTake(GolemEntity golem)
-        {
-            AppendageActionType? action = golem.Program.CurrentStep?.actionType;
-            return action == AppendageActionType.Haul || action == AppendageActionType.ExtractFromNode;
-        }
+        private static bool IsTake(GolemEntity golem) => StallFacts.IsTakeAction(golem.Program.CurrentStep?.actionType);
 
         private static string WantedGood(GolemEntity golem, StallFacts facts) =>
             facts.WantedGood ?? (golem.Program.State == GolemState.Stalled

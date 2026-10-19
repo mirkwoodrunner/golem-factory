@@ -48,10 +48,12 @@ namespace GolemFactory.Golems
             WantedGood = wantedGood;
         }
 
-        /// <summary>A step that takes from the tile behind.</summary>
-        public bool IsTake =>
-            StalledAction == AppendageActionType.Haul ||
-            StalledAction == AppendageActionType.ExtractFromNode;
+        /// <summary>The stalled step takes from the tile behind.</summary>
+        public bool IsTake => IsTakeAction(StalledAction);
+
+        /// <summary>A step that takes from the tile behind: Haul or Extract.</summary>
+        public static bool IsTakeAction(AppendageActionType? action) =>
+            action == AppendageActionType.Haul || action == AppendageActionType.ExtractFromNode;
     }
 
     /// <summary>

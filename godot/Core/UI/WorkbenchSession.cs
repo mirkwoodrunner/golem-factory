@@ -80,7 +80,7 @@ namespace GolemFactory.UI
     /// <see cref="LeverRefused"/> and <see cref="ChassisRejected"/>.
     /// </para>
     /// </summary>
-    public sealed class WorkbenchSession : IWorkbenchTarget, IWorkbenchDraftView
+    public sealed class WorkbenchSession : IWorkbenchTarget
     {
         public const string NoTargetMessage = "No golem selected. Walk up to a golem and interact to program it.";
 
@@ -503,6 +503,7 @@ namespace GolemFactory.UI
         /// </summary>
         public Func<GolemEntity, ProgramPlan> HintSource { get; set; }
 
+        /// <summary>Whether the vault offers the appendage card of this name.</summary>
         public bool OffersCard(string appendageName) =>
             VaultAppendages.Any(a => a.name == appendageName);
 

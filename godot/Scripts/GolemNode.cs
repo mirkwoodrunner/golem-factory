@@ -188,7 +188,6 @@ namespace GolemFactory.Nodes
         public bool TileArrowsVisible => TilesVisible && _sourceArrow.Visible && _targetArrow.Visible;
         public int TileZ => _sourceTile.ZIndex;
 
-
         /// <summary>Whether the landing outline is up (while carried), and where -- for a scenario.</summary>
         public bool DropPreviewVisible => _dropTile != null && _dropTile.Visible;
         public Compat.Vector2Int DropPreviewCell => GridConversions.WorldToCell(_dropTile.GlobalPosition);
