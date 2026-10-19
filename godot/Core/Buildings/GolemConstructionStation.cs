@@ -548,7 +548,7 @@ namespace GolemFactory.Buildings
             // alternative is teaching the carry about deletion.
             if (golem.IsHeld)
             {
-                refusalReason = $"Put {golem.GolemId} down before dismantling it.";
+                refusalReason = $"Put {UI.GolemNames.Short(golem)} down before dismantling it.";
                 return false;
             }
 

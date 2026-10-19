@@ -601,11 +601,13 @@ namespace GolemFactory.UI
                 ? $"{AssignedAppendageCount} / {_draftChassis.maxAppendageSlots} slots filled  ·  tier {_draftChassis.tier}"
                 : "Pick a chassis from the rack";
 
-        /// <summary>"TARGET  ·  PlayerGolem-003" -- named by GolemId, never by the object's name.</summary>
+        /// <summary>
+        /// "TARGET  ·  Scavenger #3": the player's name for the golem (<see cref="GolemNames"/>),
+        /// from its GolemId, never the id itself nor the object's name.
+        /// </summary>
         public string TargetHeader => TargetGolem != null ? $"TARGET  ·  {GolemDisplayName(TargetGolem)}" : "TARGET  ·  none";
 
-        public static string GolemDisplayName(GolemEntity golem) =>
-            !string.IsNullOrEmpty(golem.GolemId) ? golem.GolemId : golem.name;
+        public static string GolemDisplayName(GolemEntity golem) => GolemNames.Short(golem);
 
         public static string CardDisplayName(LogicCoreDefinition core, AppendageActionDefinition appendage)
         {
@@ -624,7 +626,10 @@ namespace GolemFactory.UI
                 {
                     case TriggerType.Interval: return $"trigger · every {core.intervalTicks} ticks";
                     case TriggerType.Threshold: return $"trigger · {core.thresholdBufferId} ≥ {core.thresholdQuantity}";
-                    case TriggerType.Signal: return $"trigger · on signal from {core.signalGolemId}";
+                    case TriggerType.Signal:
+                        return GolemNames.Number(core.signalGolemId) is int n && n >= 0
+                            ? $"trigger · on signal from golem #{n}"
+                            : $"trigger · on signal from {core.signalGolemId}";
                     default: return "trigger · always on";
                 }
             }
@@ -632,10 +637,33 @@ namespace GolemFactory.UI
             {
                 return string.Empty;
             }
-            string route = !string.IsNullOrEmpty(appendage.sourceId) && !string.IsNullOrEmpty(appendage.destinationId)
-                ? $" · {appendage.sourceId} → {appendage.destinationId}"
-                : string.Empty;
-            return $"action · {appendage.durationTicks}t{route}";
+            // Where the card acts, as a placed golem does it: the tile behind, the tile in front.
+            // The authored sourceId/destinationId ("ScrapNode → ScrapBeltA") only route the
+            // id-routed demo golems; on a card the player reads they were ids, not directions
+            // (Phase 2 critique).
+            string where = CardDirection(appendage.actionType);
+            return $"action · {appendage.durationTicks}t{(where.Length > 0 ? " · " + where : "")}";
+        }
+
+        /// <summary>Where a card acts on a placed golem, in a few words, or "".</summary>
+        public static string CardDirection(AppendageActionType action)
+        {
+            switch (action)
+            {
+                case AppendageActionType.Haul:
+                case AppendageActionType.ExtractFromNode:
+                    return "from the tile behind";
+                case AppendageActionType.Push:
+                case AppendageActionType.LoadIntoBuffer:
+                    return "onto the tile in front";
+                case AppendageActionType.FreightLaunch:
+                    return "to its Freight Mast";
+                case AppendageActionType.Assemble:
+                case AppendageActionType.Refine:
+                    return "in its hold";
+                default:
+                    return "";
+            }
         }
 
         public static string ChassisSubtitle(ChassisDefinition chassis)

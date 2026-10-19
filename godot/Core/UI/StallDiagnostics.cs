@@ -1,5 +1,6 @@
 using GolemFactory.Steam;
 using GolemFactory.Events;
+using GolemFactory.Golems;
 
 namespace GolemFactory.UI
 {
@@ -211,9 +212,74 @@ namespace GolemFactory.UI
         public static string HaulProgress(int held, int batch, string good) =>
             held + "/" + batch + " " + (string.IsNullOrEmpty(good) ? "goods" : Economy.ItemTiers.DisplayName(good));
 
+        // --- Player names (Phase 2 critique) -----------------------------------------------
+        // A stall's resource id is a key: "Crate(2,-1)", "ScrapNode", "IronPlate", "(3, -1)".
+        // The badge and the strip used to print it verbatim. These name it as the player does,
+        // through the same TileNames the hover card uses, and the golem through GolemNames, so
+        // every readout of one stall says the same words (onboarding-feedback-design §16).
+
+        /// <summary>
+        /// <paramref name="resourceId"/>, which <paramref name="golem"/>'s stall of
+        /// <paramref name="reason"/> named, as the player calls it: the tile's name ("Crate
+        /// (2,-1)", "Scrap stall"), the good's ("Iron Plate"), or the cell ("(3,-1)"). A placed
+        /// belt's id is kept, since the sentences already word it as "the belt behind me".
+        /// </summary>
+        public static string PlayerResource(GolemEntity golem, StallReason reason, string resourceId, TileNames tiles)
+        {
+            if (golem == null)
+            {
+                return resourceId;
+            }
+            switch (reason)
+            {
+                case StallReason.NodeEmpty:
+                case StallReason.BeltEmpty:
+                case StallReason.BufferEmpty:
+                case StallReason.NodeCrowded:
+                    return PlacedBeltCell(resourceId) != null || tiles == null ? resourceId : tiles.Name(golem.SourceCell);
+                case StallReason.BeltFull:
+                    return PlacedBeltCell(resourceId) != null || tiles == null ? resourceId : tiles.Name(PushCell(golem));
+                case StallReason.NoSourceAtTile:
+                    return string.IsNullOrEmpty(resourceId) ? resourceId : TileNames.Cell(golem.SourceCell);
+                case StallReason.NoTargetAtTile:
+                    // A Zeppelin with no mast names no tile: "nothing in front of me".
+                    return string.IsNullOrEmpty(resourceId) || resourceId == "no Freight Mast"
+                        ? null
+                        : TileNames.Cell(PushCell(golem));
+                case StallReason.NoSteam:
+                    return string.IsNullOrEmpty(resourceId) ? resourceId : TileNames.Cell(golem.Cell);
+                case StallReason.MissingItem:
+                case StallReason.InputFull:
+                case StallReason.OutputFull:
+                case StallReason.FilterMismatch:
+                    return string.IsNullOrEmpty(resourceId) ? resourceId : Economy.ItemTiers.DisplayName(resourceId);
+                default:
+                    return resourceId;
+            }
+        }
+
+        /// <summary>Where a golem's goods land: its bound mast for a Freight Launch, else the tile in front.</summary>
+        private static Compat.Vector2Int PushCell(GolemEntity golem) =>
+            golem.Program?.CurrentStep?.actionType == PunchCards.AppendageActionType.FreightLaunch && golem.BoundMastCell is Compat.Vector2Int mast
+                ? mast
+                : golem.TargetCell;
+
+        /// <summary>The badge's short reason for <paramref name="golem"/>'s stall, in player names.</summary>
+        public static string DescribeShort(GolemEntity golem, TileNames tiles) =>
+            DescribeShort(golem.StallReason, PlayerResource(golem, golem.StallReason, golem.StallResourceId, tiles),
+                golem.StallShortfall, golem.SteamShortage);
+
+        /// <summary>The strip's sentence for <paramref name="stall"/>, a stall of <paramref name="golem"/>, in player names.</summary>
+        public static string Describe(GolemEntity golem, StallSnapshot stall, TileNames tiles) =>
+            Describe(GolemNames.Short(golem), stall.Reason, PlayerResource(golem, stall.Reason, stall.ResourceId, tiles),
+                stall.Shortfall, stall.Steam);
+
         // What the strip shows overall. Naming the single blocking resource beats a bare count,
         // and the "+N more" suffix keeps a cascading factory from overflowing one line.
-        public static string ComposeStripText(int stalledCount, StallSnapshot primary, int waitingCount = 0)
+        // <paramref name="description"/>, when given, is the primary's sentence already in
+        // player names (AlertsStrip); without it the snapshot's ids are printed, as before.
+        public static string ComposeStripText(int stalledCount, StallSnapshot primary, int waitingCount = 0,
+            string description = null)
         {
             if (stalledCount <= 0)
             {
@@ -227,8 +293,8 @@ namespace GolemFactory.UI
             // Plain ASCII, not the U+26A0 glyph -- TMP's default SDF atlas (LiberationSans SDF)
             // has no entry for it, unlike legacy Text's dynamic OS font fallback, so it would
             // render as a missing-glyph box.
-            string text = "[!] " + Describe(
-                primary.GolemId, primary.Reason, primary.ResourceId, primary.Shortfall, primary.Steam);
+            string text = "[!] " + (description ?? Describe(
+                primary.GolemId, primary.Reason, primary.ResourceId, primary.Shortfall, primary.Steam));
             if (stalledCount > 1)
             {
                 text += "  (+" + (stalledCount - 1) + " more)";

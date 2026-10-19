@@ -146,15 +146,20 @@ ones. Current scenarios:
   are counted; a straining golem wears no badge; a golem set to haul from the full crate turns
   its feeder grey; carrying the feeder away (G) turns the waiting golem red at once; a stuck
   golem's [E] prompt names its problem; an empty Coal stall is red until a truckload is ordered.
+  Every badge, the strip and the prompt read in player names (`UI/PlayerText.RawIdIn`), and
+  no two badges overlap.
 - `hover` (Sandbox, the same street): the real pointer on a golem's cell, or the cell above its
   feet, lights its source and target tiles with arrows at z −1; its card is Core's text, a stuck
   golem's names the tile, the good and the fix, and its badge hides under the card; a straining
   golem's card says "nearly full"; nothing is hovered over the build menu or the Workbench; a
-  carried golem's tiles follow its landing while another is hovered.
+  carried golem's tiles follow its landing while another is hovered. A card names the golem
+  and no id, and a tile's arrow rides above the crate that covers it.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
 
 To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scenarios`.
 `--demo` (alias `--spike-demo`) only runs the scripted setup, for `--write-movie` captures.
+A windowed scenario run given `-- --scenario <name> --capture-dir=<dir>` saves the frames its
+steps name (`ScenarioCapture.Shot`), e.g. `moods`, `hover` and `workbench`'s `critique-*.png`.
 
 ## Art and fonts
 
@@ -422,7 +427,12 @@ advancement. Simulation is plain, data-oriented C#: no ECS, no per-item nodes.
 - Triggers: `AlwaysOn`, `Interval`, `Threshold` (edge-triggered), `Signal` (latches a fire that
   arrives mid-cycle).
 - **`AppendageActionType` and `StallReason` are append-only**: serialized by integer index.
-- **A golem is named by its `GolemId`**, never by a node or object name.
+- **A golem is named by its `GolemId`**, never by a node or object name. **The player reads
+  `UI/GolemNames`**: "Scavenger #4" (`Short`), "Clockwork Scavenger #4" (`Full`), the chassis's
+  short name and the id's number. Places and goods go through `TileNames` and
+  `ItemTiers.DisplayName`, and a stall through `StallDiagnostics.DescribeShort(golem, tiles)` /
+  `Describe(golem, stall, tiles)`. Never print an id in player text; scenarios check drawn text
+  with `UI/PlayerText.RawIdIn`.
 - **A golem's `Mood` is a read-only classification** (`GolemMoodRules.Classify`), derived from
   state, stall reason and inventory. Presentation polls it. Add feedback by widening the mood,
   not by adding a second floating badge.

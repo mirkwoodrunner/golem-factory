@@ -166,6 +166,9 @@ namespace GolemFactory.Nodes
         public bool BadgeVisible => _badge != null && _badge.Visible;
         public string BadgeText => _badgeLabel?.Text ?? "";
 
+        /// <summary>The badge's rect on screen, as drawn -- for a scenario's overlap check.</summary>
+        public Rect2 BadgeRect => new Rect2(_badge.Position, _badge.Size * _badge.Scale);
+
         /// <summary>The chassis sprite currently drawn.</summary>
         public string BodySprite => _bodySprite;
 
@@ -259,6 +262,17 @@ namespace GolemFactory.Nodes
             return arrow;
         }
 
+        /// <summary>Above every standing sprite (global z 1) over a building; the tile's own z otherwise.</summary>
+        private static void LiftArrow(Sprite2D arrow, bool covered)
+        {
+            arrow.ZAsRelative = !covered;
+            arrow.ZIndex = covered ? 1 : 0;
+        }
+
+        /// <summary>Whether a tile's arrow rides above a building -- for a scenario.</summary>
+        public bool SourceArrowLifted => !_sourceArrow.ZAsRelative && _sourceArrow.ZIndex > 0;
+        public bool TargetArrowLifted => !_targetArrow.ZAsRelative && _targetArrow.ZIndex > 0;
+
         private static readonly Color TileArrowTint = new Color(1f, 0.96f, 0.86f, 0.95f);
 
         private Sprite2D MakeTile(Color tint)
@@ -347,6 +361,11 @@ namespace GolemFactory.Nodes
                 float rotation = GridConversions.FacingToRotation(Entity.Facing);
                 _sourceArrow.Rotation = rotation;
                 _targetArrow.Rotation = rotation;
+                // A crate or stall on the tile covers it; its arrow then rides above the building
+                // (GolemTileOverlay.Covered), else it stays on the floor with its tile.
+                SpatialEndpointRegistry endpoints = WorldNode.Find(this)?.Sandbox?.Endpoints;
+                LiftArrow(_sourceArrow, GolemTileOverlay.Covered(endpoints, FacingUtility.SourceCell(tiles.Cell, Entity.Facing)));
+                LiftArrow(_targetArrow, GolemTileOverlay.Covered(endpoints, FacingUtility.TargetCell(tiles.Cell, Entity.Facing)));
             }
         }
 
@@ -529,10 +548,16 @@ namespace GolemFactory.Nodes
             }
 
             var anchor = new Compat.Vector3(Position.X / GridConversions.CellPixels, -Position.Y / GridConversions.CellPixels + BadgeLiftCells, 0f);
-            Compat.Vector3 placed = UI.WorldHudRegistry.Resolve(anchor, Entity.GolemId);
-            Vector2 screen = GetViewport().GetCanvasTransform() *
-                new Vector2(placed.x * GridConversions.CellPixels, -placed.y * GridConversions.CellPixels);
+            Transform2D canvas = GetViewport().GetCanvasTransform();
             _badge.ResetSize();
+            // Its drawn width in cells, so the layout keeps it off a neighbour's badge two cells
+            // away as well as one in its own column (WorldHudLayout.SpreadWideLabels).
+            float cellOnScreen = GridConversions.CellPixels * Mathf.Max(0.01f, canvas.X.Length());
+            float halfWidth = _badge.Size.X * _badge.Scale.X / cellOnScreen / 2f;
+            float height = _badge.Size.Y * _badge.Scale.Y / cellOnScreen;
+            Compat.Vector3 placed = UI.WorldHudRegistry.Resolve(anchor, Entity.GolemId, halfWidth, height);
+            Vector2 screen = canvas *
+                new Vector2(placed.x * GridConversions.CellPixels, -placed.y * GridConversions.CellPixels);
             _badge.Position = screen - new Vector2(_badge.Size.X * _badge.Scale.X / 2f, _badge.Size.Y * _badge.Scale.Y);
 
             // Faded while the player stands close, so the badge stops hiding the very tiles it
@@ -580,8 +605,9 @@ namespace GolemFactory.Nodes
             }
             if (GolemMoodRules.IsStopped(mood))
             {
-                text = "[!] " + (progress ?? UI.StallDiagnostics.DescribeShort(
-                    Entity.StallReason, Entity.StallResourceId, Entity.StallShortfall, Entity.SteamShortage));
+                // In player names ("Crate (2,-1) full"), through the TileNames the hover card
+                // reads: the ids ("Crate(2,-1)", "ScrapNode") used to show verbatim.
+                text = "[!] " + (progress ?? UI.StallDiagnostics.DescribeShort(Entity, WorldNode.Find(this)?.Sandbox?.TileNames));
             }
             else if (mood == GolemMood.Waiting)
             {

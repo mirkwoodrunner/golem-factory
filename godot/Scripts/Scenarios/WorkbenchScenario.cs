@@ -145,6 +145,10 @@ namespace GolemFactory.Nodes.Scenarios
             Do("the factory has made Coke, so a Haul can take it", () =>
             {
                 _world.Buffers.Deposit(_world.StockpileBufferId, Economy.ItemType.Coke, 5);
+                // The ledger sweeps the buffers once a second; poll now, or whether the picker
+                // offers Coke depends on where in that second the scenario's steps fall (it
+                // failed once a step was added before this one).
+                _world.TechTree.Poll();
                 return null;
             });
             Do("retarget onto the golem", () => { _world.Workbench.ConfigureGolem(_golem); return null; });
@@ -176,7 +180,7 @@ namespace GolemFactory.Nodes.Scenarios
                 Label value = _screen.StepRows[0].Card?.FindChild("Good", true, false)?.FindChild("Value", true, false) as Label;
                 if (good == Economy.ItemType.Scrap || value?.Text != Economy.ItemTiers.DisplayName(good))
                 {
-                    return $"draft good {good}, picker reads '{value?.Text}'";
+                    return $"draft good {good}, picker reads '{value?.Text}' (STEP 1 {Draft(0)}, options {string.Join(",", _world.Workbench.HaulOptions)})";
                 }
                 return null;
             });
@@ -251,14 +255,23 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return $"workbench open={_screen.IsOpen}, panel open={_panel.IsOpen}";
                 }
-                if (_screen.TargetGolem != _golem || !_screen.TargetText.Contains(_golem.GolemId))
+                if (_screen.TargetGolem != _golem || !_screen.TargetText.Contains(UI.GolemNames.Short(_golem)))
                 {
                     return $"target header '{_screen.TargetText}'";
+                }
+                // Phase 2 critique: the header and the cards read in player names, never ids
+                // ("TARGET · PlayerGolem-001", "ScrapNode → ScrapBeltA").
+                string raw = _screen.FindChildren("*", "Label", true, false).OfType<Label>()
+                    .Where(l => l.IsVisibleInTree()).Select(l => l.Text).FirstOrDefault(t => UI.PlayerText.RawIdIn(t) != null);
+                if (raw != null)
+                {
+                    return $"the Workbench shows an id: '{raw}' ('{UI.PlayerText.RawIdIn(raw)}')";
                 }
                 _vaultCardCount = VaultCards().Count;
                 // Gated (Sandbox.unity's gateWorkbenchRoster): 2 logic cores + the 3 opening verbs.
                 return _vaultCardCount == 5 ? null : $"vault shows {_vaultCardCount} cards, expected 2 cores + the 3-card opening hand";
             });
+            Do("capture the Workbench", () => { ScenarioCapture.Shot(_tree.Root, "critique-workbench"); return null; });
             Do("vault cards carry no dial", () =>
                 VaultCards().Any(c => c.FindChild("Quantity", true, false) != null) ? "a vault card offers a batch size" : null);
         }

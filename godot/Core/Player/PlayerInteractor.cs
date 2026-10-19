@@ -569,8 +569,8 @@ namespace GolemFactory.Player
             Vector3 at = PositionOf(golem);
             CarriedGolem = golem;
             golem.SetHeld(true);
-            LastStatusMessage = $"Carrying {golem.GolemId}. [G] to set it down.";
-            Popup(at, "Carrying " + golem.GolemId, InteractionPopupKind.Gain);
+            LastStatusMessage = $"Carrying {UI.GolemNames.Short(golem)}. [G] to set it down.";
+            Popup(at, "Carrying " + UI.GolemNames.Short(golem), InteractionPopupKind.Gain);
             return true;
         }
 
@@ -621,7 +621,7 @@ namespace GolemFactory.Player
             GolemEntity standing = OtherGolemOn(cell);
             if (standing != null)
             {
-                LastStatusMessage = $"{standing.GolemId} is already standing on this tile.";
+                LastStatusMessage = $"{UI.GolemNames.Short(standing)} is already standing on this tile.";
                 Popup(Position, "Tile occupied", InteractionPopupKind.Refused);
                 return false;
             }
@@ -636,8 +636,8 @@ namespace GolemFactory.Player
             golem.SetHeld(false);
             CarriedGolem = null;
 
-            LastStatusMessage = $"{golem.GolemId} placed at {cell}.";
-            Popup(Position, "Placed " + golem.GolemId, InteractionPopupKind.Gain);
+            LastStatusMessage = $"{UI.GolemNames.Short(golem)} placed at {UI.TileNames.Cell(cell)}.";
+            Popup(Position, "Placed " + UI.GolemNames.Short(golem), InteractionPopupKind.Gain);
             return true;
         }
 
@@ -661,7 +661,7 @@ namespace GolemFactory.Player
 
             Facing rotated = FacingUtility.RotateClockwise(golem.Facing);
             golem.SetFacing(rotated);
-            LastStatusMessage = $"{golem.GolemId} will face {FacingVisuals.Describe(rotated)}.";
+            LastStatusMessage = $"{UI.GolemNames.Short(golem)} will face {FacingVisuals.Describe(rotated)}.";
             Popup(PositionOf(golem), "Facing " + FacingVisuals.Describe(rotated), InteractionPopupKind.Gain);
             return true;
         }
@@ -685,7 +685,7 @@ namespace GolemFactory.Player
 
             Facing rotated = FacingUtility.RotateClockwise(golem.Facing);
             golem.SetFacing(rotated);
-            LastStatusMessage = $"{golem.GolemId} now faces {FacingVisuals.Describe(rotated)}.";
+            LastStatusMessage = $"{UI.GolemNames.Short(golem)} now faces {FacingVisuals.Describe(rotated)}.";
             Popup(PositionOf(golem), "Facing " + FacingVisuals.Describe(rotated), InteractionPopupKind.Gain);
             return true;
         }
@@ -883,7 +883,7 @@ namespace GolemFactory.Player
                 if (handled != null)
                 {
                     detail = InteractionTargeting.AppendDetail(
-                        detail, InteractionTargeting.GolemHandlingHint(handled.GolemId, CarriedGolem != null));
+                        detail, InteractionTargeting.GolemHandlingHint(UI.GolemNames.Short(handled), CarriedGolem != null));
                 }
             }
 
@@ -1046,7 +1046,7 @@ namespace GolemFactory.Player
                 case InteractionKind.Program:
                 {
                     var golem = (GolemEntity)target;
-                    targetName = golem.GolemId;
+                    targetName = UI.GolemNames.Short(golem);
                     // Facing is in the caption because it is routing, not decoration, and this is
                     // the only place the player is told [R] and [G] exist at all.
                     detail = InteractionTargeting.AppendDetail(
@@ -1380,7 +1380,7 @@ namespace GolemFactory.Player
 
             _workbench.Open();
             _workbench.RetargetGolem(golem);
-            LastStatusMessage = $"Programming {golem.GolemId}.";
+            LastStatusMessage = $"Programming {UI.GolemNames.Short(golem)}.";
             return true;
         }
 

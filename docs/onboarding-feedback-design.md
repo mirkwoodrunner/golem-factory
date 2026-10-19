@@ -1,6 +1,6 @@
 # Onboarding and feedback: the hint, grey and red, and hover
 
-**Status: approved 2026-10-19, with every recommendation in §11. Built: §3, §4 and §13 (§14 records the corrections), then §2 and §9 (§15).** Phase 2 of
+**Status: approved 2026-10-19, with every recommendation in §11. Built: §3, §4 and §13 (§14 records the corrections), then §2 and §9 (§15); critique fixes in §16.** Phase 2 of
 `docs/roadmap.md`, from decisions 4, 5 and 6. Like `crates-design.md`, it is written before the
 code and kept as written afterwards, with corrections recorded rather than hidden. Its sibling,
 `docs/guide-chapters-design.md`, rewrites the guide's texts around what this one builds.
@@ -827,3 +827,74 @@ questions, and `guide-chapters-design.md`'s texts. Where the build differs from 
 10. **The `hint` question** is queued after `workbench`, both at `depot`. The report's first
     lines add "Chapters 1–4: mm:ss (target 15:00) · kit used: no" once `r4-card` is reached
     (`PlaytestSession.ChaptersOneToFour`).
+
+## 16. Corrections from the Phase 2 critique (2026-10-19)
+
+A review of `phase1/crates..7c89d53` against §0, §13, the guide spec and root `CLAUDE.md`.
+Fixed, each with a regression test that failed first:
+
+1. **An empty loop read grey forever.** Golem A hauls crate X into crate Y, golem B hauls Y into
+   X, both empty: each "fed" the other, so both were `Waiting` and nothing would ever start the
+   loop (invariant 4). `StallFactsProbe` now asks whether a feeder will **deliver**: a feeder
+   stalled on an empty take (`BufferEmpty`, `BeltEmpty`, `MissingItem` at a Haul or Extract)
+   delivers only if its own feeders do, walked depth-first with a visited set; a walk that comes
+   back round to a golem already asking does not deliver. §3.2's "one red at the root, grey
+   behind it" is kept: a feeder that nothing feeds still counts, so the golems behind it stay
+   grey. Cost: the walk is bounded by the golems once each, per stalled golem per frame (§3.7).
+   `StallTriageTests.AnEmptyLoop_OfGolemsEachWaitingOnTheOther_IsRed`.
+2. **Drained ignored the good.** A golem hauling Coal from a crate full of Scrap counted as
+   draining it, so the golem pushing Scrap there read grey forever. A taker now drains only if a
+   take step could take a good in the pusher's push stock (an untyped Haul or an Extract may take
+   anything). `AGolemHaulingAnotherGood_DoesNotDrainAFullCrate`.
+3. **Player text printed ids.** The alerts strip (`[!] PlayerGolem-004 stalled: Crate(2,-1) is
+   full`), the red badges (`no input in Crate(2,-1)`, `ScrapNode depleted`, `need 2 more
+   IronPlate`), the hover title (`Clockwork Scavenger · PlayerGolem-001`), the Workbench header
+   (`TARGET · PlayerGolem-001`), its card subtitles (`ScrapNode → ScrapBeltA`: the id-routed
+   demo route, meaningless on a placed golem), the [E] prompt and the carry/turn messages.
+   - **A golem's player name is `UI/GolemNames`**: `Short` = `Scavenger #4`, `Full` =
+     `Clockwork Scavenger #4` (the hover title), from the chassis's short name (Scavenger,
+     Presser, Hauler, Overclocker, Zeppelin) and the number in its `GolemId`. The number is the
+     id's, so it is unique across chassis, survives a load and never renumbers when a golem is
+     dismantled; `GolemId` stays the identity everywhere else. An id the station didn't hand
+     out prints as itself.
+   - **A stall's resource is named through `TileNames`** by the side of the golem it is on (the
+     tile behind for an empty source, the tile in front or the bound mast for a full target),
+     goods through `ItemTiers.DisplayName`, cells as `(x,y)`:
+     `StallDiagnostics.PlayerResource`, `DescribeShort(golem, tiles)` for the badge and
+     `Describe(golem, stall, tiles)` for the strip (`AlertsStrip.Names`, wired by
+     `SandboxWorld`). Without names wired the ported id sentences are unchanged. This replaces
+     §14.10's "the strip keeps `Describe`'s ids".
+   - **Card subtitles say where a card acts**: `from the tile behind`, `onto the tile in
+     front`, `to its Freight Mast`, `in its hold`.
+   - `UI/PlayerText.RawIdIn` finds an id in drawn text (`PlayerGolem-`, `Crate(`, `…Node`,
+     `…Buffer`, `…BeltA`, camel-cased names). `moods` runs it over every badge, the strip and
+     the prompt; `hover` over the card; `workbench` over every visible label.
+4. **Neighbouring badges overlapped.** `WorldHudLayout` stacked only labels in one column (0.9
+   cells), but a red badge is several cells wide, and zoomed out taller than a row: golems two
+   cells apart in a row, as every guide line stands, wore overlapping badges. A label now gives
+   its drawn half-width and height (`WorldHudRequest`), and a second pass places such labels
+   south first, then by owner id, each climbing by its own height while it overlaps one already
+   placed: a row of red badges staggers, each still over its golem. Labels with no size are
+   laid out exactly as before. `moods` checks no two drawn badges intersect.
+5. **Tile arrows vanished under crates** (§14.13). A tile whose cell holds a building other than
+   a belt (`GolemTileOverlay.Covered`) draws its arrow at global z 1, above the standing sprites;
+   on bare floor it stays with its tile at −1.
+
+Checked and not defects: the hint never writes the draft (`Next` reads the session and builds
+`AsProgram` on a scratch `GolemProgram`; `GolemProgramWriter.TryWrite` publishes nothing). A drop
+on a filled socket replaces the card in the draft only; the vault is a catalogue, not a stock,
+so nothing is lost, and `workbench`'s no-orphans check passes. `PlanFor` only reads. Collect
+progress is derived from the saved hold and step index, so a load mid-collect resumes it
+(`HaulCollectsTests.CollectProgress_IsDerivedFromTheHold…`); a lowered batch runs on what is
+held; a labelled crate gives only its good and a Haul of another stays on its step. The 2 s
+dwell can't hide red: `Presented` returns `Stalled` at once and holds the previous mood only
+for `Waiting`. Guide step ids are unchanged since `phase1/crates`; every step has a kit action.
+
+Open, for the user: a feeder that sleeps on a trigger that never comes (an Interval core set
+very long, a Signal nobody sends) still counts as feeding, so the golem behind it reads grey.
+The probe can't know a trigger will never fire without simulating; recommended: leave it, and
+have the hover card of a waiting golem name its feeder ("Waiting for Scrap · Scavenger #1 brings
+it"), so the player can follow the chain.
+
+The workbench scenario's Coke step now polls the tech-tree ledger after its deposit: the ledger
+sweeps once a second, and the picker's options depended on where in that second the steps fell.

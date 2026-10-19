@@ -59,9 +59,21 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "S's badge shows under its card";
                 }
+                // Phase 2 critique: the title is the golem's name, and no line shows an id.
+                if (!text.StartsWith(UI.GolemNames.Full(S)) || UI.PlayerText.RawIdIn(text) != null)
+                {
+                    return $"card '{text}' shows an id ('{UI.PlayerText.RawIdIn(text)}') or no name";
+                }
+                // Its source and target are crates, which cover their tiles: the arrows ride above them.
+                if (!s.SourceArrowLifted || !s.TargetArrowLifted)
+                {
+                    return "S's tile arrows are under its crates";
+                }
                 Log.Add($"S's card '{text.Replace('\n', '|')}', badge hidden");
                 return null;
             });
+
+            Do("capture S's card", () => { ScenarioCapture.Shot(Viewport, "critique-hover-card"); return null; });
 
             // 4. A straining golem: "nearly full" on the card, no badge.
             Do("top W up and point at it", () =>

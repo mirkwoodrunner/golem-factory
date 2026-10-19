@@ -116,25 +116,20 @@ namespace GolemFactory.World
             source is StorageBufferEndpoint || source is FilteredBufferEndpoint ||
             source is BeltSegmentEndpoint || source is ResourceNodeEndpoint || source is ScrapRecyclerEndpoint;
 
+        /// <summary>
+        /// Fed: some other golem pushes the good into the source, and that feeder will deliver.
+        /// A feeder delivers unless it is itself stalled on an empty take whose every feeder
+        /// leads back round to a golem already asking: a loop of golems each waiting on the next,
+        /// with nothing in it, never starts on its own, so every golem in it is stuck, not
+        /// waiting (Phase 2 critique). A feeder stuck for any other reason -- nothing feeds it,
+        /// it faces the wrong way, no steam -- still counts: one red at the root, grey behind (§3.2).
+        /// </summary>
         private bool IsFed(GolemEntity golem, IItemEndpoint source, string good)
         {
-            if (source is BeltSegmentEndpoint belt)
+            var visited = new HashSet<GolemEntity> { golem };
+            foreach (GolemEntity feeder in Feeders(golem, source, good))
             {
-                return BeltFed(golem, belt.Segment, good);
-            }
-            return PushedInto(golem, Store(source), good);
-        }
-
-        /// <summary>Some other golem pushes <paramref name="good"/> (any, when null) into <paramref name="store"/>.</summary>
-        private bool PushedInto(GolemEntity self, object store, string good)
-        {
-            if (store == null)
-            {
-                return false;
-            }
-            foreach (GolemEntity other in Others(self))
-            {
-                if (Store(EndpointAt(PushCell(other))) == store && MayPush(other, good))
+                if (Delivers(feeder, visited))
                 {
                     return true;
                 }
@@ -142,28 +137,90 @@ namespace GolemFactory.World
             return false;
         }
 
-        /// <summary>
-        /// A belt is fed when its run, walked upstream, reaches a segment a golem pushes onto.
-        /// The pushed-onto segments and the upstream links are gathered once, so the walk is
-        /// linear in belts plus golems, not their product.
-        /// </summary>
-        private bool BeltFed(GolemEntity self, BeltSegment segment, string good)
+        private bool Delivers(GolemEntity feeder, HashSet<GolemEntity> visited)
         {
-            if (segment == null || _belts == null)
+            if (feeder.Program.State != GolemState.Stalled || !IsEmptyTake(feeder))
             {
+                return true;
+            }
+            if (!visited.Add(feeder))
+            {
+                // Round a loop, or already found not to deliver: the walk is depth-first and
+                // returns the moment any path delivers, so a golem seen twice never did.
                 return false;
             }
-            var pushed = new HashSet<BeltSegment>();
+            IItemEndpoint source = EndpointAt(feeder.SourceCell);
+            if (!Gives(source))
+            {
+                return true; // stuck at the root: it is red, and the golems behind it grey
+            }
+            bool fed = false;
+            foreach (GolemEntity next in Feeders(feeder, source, WantedGood(feeder, feeder.Program.CurrentStep, source)))
+            {
+                fed = true;
+                if (Delivers(next, visited))
+                {
+                    return true;
+                }
+            }
+            // Nothing feeds it at all: red at the root, so it counts. Fed only round a loop: no.
+            return !fed;
+        }
+
+        /// <summary>A golem stalled at a Haul or Extract on an empty (or wrong-good) source.</summary>
+        private static bool IsEmptyTake(GolemEntity golem)
+        {
+            switch (golem.StallReason)
+            {
+                case StallReason.BufferEmpty:
+                case StallReason.BeltEmpty:
+                    return true;
+                case StallReason.MissingItem:
+                    return StallFacts.IsTakeAction(golem.Program.CurrentStep?.actionType);
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>The other golems that may put <paramref name="good"/> (any, when null) on <paramref name="source"/>.</summary>
+        private IEnumerable<GolemEntity> Feeders(GolemEntity self, IItemEndpoint source, string good) =>
+            source is BeltSegmentEndpoint belt
+                ? BeltFeeders(self, belt.Segment, good)
+                : PushedInto(self, Store(source), good);
+
+        /// <summary>Other golems that push <paramref name="good"/> (any, when null) into <paramref name="store"/>.</summary>
+        private IEnumerable<GolemEntity> PushedInto(GolemEntity self, object store, string good) =>
+            store == null
+                ? Enumerable.Empty<GolemEntity>()
+                : Others(self).Where(other => Store(EndpointAt(PushCell(other))) == store && MayPush(other, good)).ToList();
+
+        /// <summary>
+        /// The golems pushing onto a segment that a belt's run, walked upstream, reaches. The
+        /// pushed-onto segments and the upstream links are gathered once, so the walk is
+        /// linear in belts plus golems, not their product.
+        /// </summary>
+        private List<GolemEntity> BeltFeeders(GolemEntity self, BeltSegment segment, string good)
+        {
+            var feeders = new List<GolemEntity>();
+            if (segment == null || _belts == null)
+            {
+                return feeders;
+            }
+            var pushers = new Dictionary<BeltSegment, List<GolemEntity>>();
             foreach (GolemEntity other in Others(self))
             {
                 if (EndpointAt(PushCell(other)) is BeltSegmentEndpoint onto && onto.Segment != null && MayPush(other, good))
                 {
-                    pushed.Add(onto.Segment);
+                    if (!pushers.TryGetValue(onto.Segment, out List<GolemEntity> onSegment))
+                    {
+                        pushers[onto.Segment] = onSegment = new List<GolemEntity>();
+                    }
+                    onSegment.Add(other);
                 }
             }
-            if (pushed.Count == 0)
+            if (pushers.Count == 0)
             {
-                return false;
+                return feeders;
             }
             var upstream = new Dictionary<BeltSegment, List<BeltSegment>>();
             foreach (PlacedBelt belt in _belts.Belts)
@@ -174,19 +231,26 @@ namespace GolemFactory.World
                 }
                 foreach (BeltSegment next in belt.Segment.Outputs)
                 {
-                    if (!upstream.TryGetValue(next, out List<BeltSegment> feeders))
+                    if (!upstream.TryGetValue(next, out List<BeltSegment> before))
                     {
-                        upstream[next] = feeders = new List<BeltSegment>();
+                        upstream[next] = before = new List<BeltSegment>();
                     }
-                    feeders.Add(belt.Segment);
+                    before.Add(belt.Segment);
                 }
             }
-            return Reaches(segment, pushed, at => upstream.TryGetValue(at, out List<BeltSegment> feeders)
-                ? feeders : (IEnumerable<BeltSegment>)Array.Empty<BeltSegment>());
+            foreach (BeltSegment reached in Walk(segment, at => upstream.TryGetValue(at, out List<BeltSegment> before)
+                ? before : (IEnumerable<BeltSegment>)Array.Empty<BeltSegment>()))
+            {
+                if (pushers.TryGetValue(reached, out List<GolemEntity> onSegment))
+                {
+                    feeders.AddRange(onSegment);
+                }
+            }
+            return feeders;
         }
 
-        /// <summary>Whether a walk from <paramref name="start"/> along <paramref name="links"/> reaches one of <paramref name="goals"/>.</summary>
-        private static bool Reaches(BeltSegment start, HashSet<BeltSegment> goals, Func<BeltSegment, IEnumerable<BeltSegment>> links)
+        /// <summary>Every segment a walk from <paramref name="start"/> along <paramref name="links"/> reaches, start included.</summary>
+        private static IEnumerable<BeltSegment> Walk(BeltSegment start, Func<BeltSegment, IEnumerable<BeltSegment>> links)
         {
             var visited = new HashSet<BeltSegment>();
             var frontier = new Stack<BeltSegment>();
@@ -198,17 +262,17 @@ namespace GolemFactory.World
                 {
                     continue;
                 }
-                if (goals.Contains(at))
-                {
-                    return true;
-                }
+                yield return at;
                 foreach (BeltSegment next in links(at))
                 {
                     frontier.Push(next);
                 }
             }
-            return false;
         }
+
+        /// <summary>Whether a walk from <paramref name="start"/> along <paramref name="links"/> reaches one of <paramref name="goals"/>.</summary>
+        private static bool Reaches(BeltSegment start, HashSet<BeltSegment> goals, Func<BeltSegment, IEnumerable<BeltSegment>> links) =>
+            Walk(start, links).Any(goals.Contains);
 
         /// <summary>
         /// Could <paramref name="golem"/> push <paramref name="good"/>? Its recipe's outputs and
@@ -306,7 +370,32 @@ namespace GolemFactory.World
             }
             foreach (GolemEntity other in Others(self))
             {
-                if (Store(EndpointAt(other.SourceCell)) == store && other.Program.appendages.Any(IsTakeStep))
+                if (Store(EndpointAt(other.SourceCell)) == store && MayTake(other, self.PushStock))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Could <paramref name="taker"/> take any of what <paramref name="stuck"/> holds? A typed
+        /// Haul takes only its good, so a golem hauling Coal from a crate full of Scrap drains
+        /// nothing (Phase 2 critique: the pusher read grey forever); an untyped Haul or an
+        /// Extract may take anything. An empty stock asks only for a take step.
+        /// </summary>
+        private static bool MayTake(GolemEntity taker, GolemInventory.Stock stuck)
+        {
+            GolemProgram program = taker.Program;
+            for (int i = 0; i < program.appendages.Count; i++)
+            {
+                AppendageActionDefinition card = program.appendages[i];
+                if (!IsTakeStep(card))
+                {
+                    continue;
+                }
+                string typed = card.actionType == AppendageActionType.Haul ? program.GetItemTypeAt(i) : null;
+                if (string.IsNullOrEmpty(typed) || stuck == null || stuck.TypesInOrder.Count == 0 || stuck.Get(typed) > 0)
                 {
                     return true;
                 }
@@ -325,7 +414,7 @@ namespace GolemFactory.World
             foreach (GolemEntity other in Others(self))
             {
                 if (EndpointAt(other.SourceCell) is BeltSegmentEndpoint from && from.Segment != null &&
-                    other.Program.appendages.Any(IsTakeStep))
+                    MayTake(other, self.PushStock))
                 {
                     taken.Add(from.Segment);
                 }

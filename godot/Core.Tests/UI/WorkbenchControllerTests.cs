@@ -553,7 +553,9 @@ namespace GolemFactory.Tests.UI
 
             rig.Session.RetargetGolem(golem);
 
-            StringAssert.Contains("PlayerGolem-003", rig.Session.TargetHeader);
+            // Its player name, from the id's number (Phase 2 critique): never the id itself.
+            StringAssert.Contains("#3", rig.Session.TargetHeader);
+            StringAssert.DoesNotContain("PlayerGolem", rig.Session.TargetHeader);
             StringAssert.DoesNotContain("Clone", rig.Session.TargetHeader,
                 "the header used to show Unity's Instantiate suffix on the one screen that names a golem");
         }

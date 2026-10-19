@@ -278,3 +278,9 @@ Chapters 1–4's texts are as §2 writes them, every one within 240 characters
    stall is never drained now (`onboarding-feedback-design.md` §15).
 4. **The kit's program steps all call `PerformPlan`**, which writes through
    `GolemProgramWriter`; the kit's behaviour is otherwise unchanged.
+
+**Critique (2026-10-19):** reviewed with `onboarding-feedback-design.md` §16. No guide defect:
+step ids are unchanged since `phase1/crates`, every step has a kit action, the program steps'
+Done checks are their plans' `Matches` over the golem's committed program, and `PlanFor` only
+reads. Golems the guide's texts talk about now print as `Scavenger #4` on every readout
+(`UI/GolemNames`); the texts themselves name roles, not numbers, and are unchanged.

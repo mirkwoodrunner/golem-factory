@@ -275,6 +275,73 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(GolemMood.Stalled, presser.Mood);
         }
 
+        // --- Phase 2 critique: false grey -------------------------------------------------
+
+        /// <summary>One crate's store on two cells, as the Post crates share one.</summary>
+        private static StorageBuffer SharedCrate(Floor floor, string id, Vector2Int a, Vector2Int b)
+        {
+            var buffer = new StorageBuffer(id, 50);
+            floor.Endpoints.Register(a, new StorageBufferEndpoint(buffer));
+            floor.Endpoints.Register(b, new StorageBufferEndpoint(buffer));
+            return buffer;
+        }
+
+        [Test]
+        public void AnEmptyLoop_OfGolemsEachWaitingOnTheOther_IsRed()
+        {
+            // A hauls X → Y, B hauls Y → X, and both crates are empty. Each "feeds" the other,
+            // so both read grey forever, but nothing will ever start the loop: the player must.
+            var floor = new Floor();
+            StorageBuffer x = SharedCrate(floor, "X", new Vector2Int(0, 0), new Vector2Int(5, 2));
+            SharedCrate(floor, "Y", new Vector2Int(0, 2), new Vector2Int(5, 0));
+            GolemEntity a = floor.Golem(new Vector2Int(0, 1), HaulScrap, Push);
+            GolemEntity b = floor.Golem(new Vector2Int(5, 1), HaulScrap, Push);
+
+            a.Tick(0);
+            Assert.AreEqual(GolemMood.Waiting, a.Mood, "B hasn't run yet: it may still deliver");
+            b.Tick(0);
+            Assert.AreEqual(StallReason.BufferEmpty, a.StallReason);
+            Assert.AreEqual(StallReason.BufferEmpty, b.StallReason);
+            Assert.AreEqual(GolemMood.Stalled, a.Mood, "an empty loop never starts on its own");
+            Assert.AreEqual(GolemMood.Stalled, b.Mood);
+
+            // One good in the loop and it runs: A takes it and is no longer stalled, so B waits on A.
+            x.Deposit(ItemType.Scrap, 1);
+            a.Tick(1);
+            Assert.AreNotEqual(GolemState.Stalled, a.Program.State);
+            Assert.AreEqual(GolemMood.Waiting, b.Mood);
+        }
+
+        [Test]
+        public void AFeederItselfStuckWithNothingFeedingIt_StillMakesTheGolemBehindItGrey()
+        {
+            // §3.2's one red at the root, grey behind it: kept by the loop rule.
+            var floor = new Floor();
+            floor.Crate(new Vector2Int(0, 0));
+            floor.Crate(new Vector2Int(0, 2));
+            GolemEntity feeder = floor.Golem(new Vector2Int(0, 1), HaulScrap, Push);
+            GolemEntity presser = floor.Golem(new Vector2Int(0, 3), HaulScrap, Push);
+
+            feeder.Tick(0);
+            presser.Tick(0);
+            Assert.AreEqual(GolemMood.Stalled, feeder.Mood);
+            Assert.AreEqual(GolemMood.Waiting, presser.Mood);
+        }
+
+        [Test]
+        public void AGolemHaulingAnotherGood_DoesNotDrainAFullCrate()
+        {
+            var floor = new Floor();
+            floor.Crate(new Vector2Int(0, 2)).Deposit(ItemType.Scrap, 50);
+            GolemEntity pusher = floor.Golem(new Vector2Int(0, 1), HaulScrap, Push);
+            pusher.Inventory.AddInput(ItemType.Scrap, 3);
+            GolemEntity coal = floor.Golem(new Vector2Int(0, 3), (AppendageActionType.Haul, ItemType.Coal), Push);
+            Assert.IsFalse(floor.Probe.Read(pusher).TargetDrained, "a Coal hauler never takes the Scrap that blocks it");
+
+            coal.Program.SetItemTypeAt(0, ItemType.Scrap);
+            Assert.IsTrue(floor.Probe.Read(pusher).TargetDrained);
+        }
+
         // --- The strip ----------------------------------------------------------------------
 
         [Test]

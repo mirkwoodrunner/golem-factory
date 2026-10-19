@@ -72,8 +72,8 @@ namespace GolemFactory.UI
                 mood = GolemMood.Straining;
             }
 
-            string chassis = golem.Program.chassis != null ? ItemTiers.DisplayName(golem.Program.chassis.name) : "Golem";
-            string title = chassis + " · " + golem.GolemId;
+            // "Clockwork Scavenger #4": the player's name for it (GolemNames), never the id.
+            string title = GolemNames.Full(golem);
             string source = tiles != null ? tiles.Name(golem.SourceCell) : TileNames.Cell(golem.SourceCell);
             string target = tiles != null ? tiles.Name(golem.TargetCell) : TileNames.Cell(golem.TargetCell);
             string route = "From " + source + " → to " + target;
@@ -85,7 +85,8 @@ namespace GolemFactory.UI
                         Fix(golem, facts), route);
                 case GolemMood.Starved:
                     return new HoverCard(title,
-                        "No steam: " + StallDiagnostics.DescribeShort(StallReason.NoSteam, golem.StallResourceId, 0, golem.SteamShortage),
+                        "No steam: " + StallDiagnostics.DescribeShort(StallReason.NoSteam,
+                            StallDiagnostics.PlayerResource(golem, StallReason.NoSteam, golem.StallResourceId, tiles), 0, golem.SteamShortage),
                         SteamFix(golem.SteamShortage), route);
                 case GolemMood.Waiting:
                     return new HoverCard(title, Waiting(golem, facts, source, target), "", route);

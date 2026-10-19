@@ -203,5 +203,66 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(StallReason.None, golem.StallReason);
             Assert.AreEqual(2, golem.Inventory.GetInput(ItemType.Scrap));
         }
-    }
+    
+        // --- Phase 2 critique: the edges of "stay on the step until the batch is held" -------
+
+        [Test]
+        public void ABatchLoweredMidCollect_RunsOnWhatIsHeld()
+        {
+            var endpoints = new SpatialEndpointRegistry();
+            var crate = new StorageBuffer("Crate");
+            crate.Deposit(ItemType.Scrap, 3);
+            endpoints.Register(Behind, new StorageBufferEndpoint(crate));
+            GolemEntity golem = Hauler(endpoints, 5);
+            golem.Tick(0);
+            Assert.AreEqual(GolemState.Stalled, golem.Program.State);
+
+            golem.Program.SetQuantityAt(0, 3);
+            golem.Tick(1);
+            Assert.AreEqual(GolemState.Running, golem.Program.State, "a lowered dial must not leave it collecting");
+            Assert.AreEqual(3, golem.Inventory.GetInput(ItemType.Scrap));
+        }
+
+        [Test]
+        public void CollectProgress_IsDerivedFromTheHold_SoALoadMidCollectResumesIt()
+        {
+            // A save keeps the hold and the step index, not the stall: a golem restored holding
+            // 3 of a batch of 5 collects the 2 it lacks and no more.
+            var endpoints = new SpatialEndpointRegistry();
+            var crate = new StorageBuffer("Crate");
+            crate.Deposit(ItemType.Scrap, 1);
+            endpoints.Register(Behind, new StorageBufferEndpoint(crate));
+            GolemEntity golem = Hauler(endpoints, 5);
+            golem.Inventory.AddInput(ItemType.Scrap, 3);
+
+            golem.Tick(0);
+            Assert.IsTrue(golem.TryGetHaulProgress(out _, out int held, out int batch));
+            Assert.AreEqual((4, 5), (held, batch));
+            crate.Deposit(ItemType.Scrap, 5);
+            golem.Tick(1);
+            Assert.AreEqual(5, golem.Inventory.GetInput(ItemType.Scrap));
+            Assert.AreEqual(4, crate.GetQuantity(ItemType.Scrap));
+        }
+
+        [Test]
+        public void ALabelledCrate_GivesOnlyItsGood_AndAHaulOfAnotherStaysPut()
+        {
+            var endpoints = new SpatialEndpointRegistry();
+            var crate = new StorageBuffer("Crate");
+            crate.Deposit(ItemType.Coal, 5);
+            endpoints.Register(Behind, new FilteredBufferEndpoint(crate, ItemType.Coal));
+            GolemEntity golem = Hauler(endpoints, 2, Card(AppendageActionType.Push));
+
+            golem.Tick(0);
+            Assert.AreEqual(GolemState.Stalled, golem.Program.State);
+            Assert.AreEqual(StallReason.MissingItem, golem.StallReason);
+            Assert.AreEqual(0, golem.Inventory.GetInput(ItemType.Coal), "a Scrap Haul took Coal");
+            Assert.AreEqual(0, golem.Program.CurrentStepIndex, "rigid: it never skips to the Push");
+
+            golem.Program.SetItemTypeAt(0, ItemType.Coal);
+            golem.Tick(1);
+            Assert.AreEqual(2, golem.Inventory.GetInput(ItemType.Coal));
+            Assert.AreEqual(3, crate.GetQuantity(ItemType.Coal));
+        }
+}
 }

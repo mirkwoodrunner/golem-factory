@@ -248,7 +248,7 @@ namespace GolemFactory.World
             WireInteractor();
             Interactor.GolemProblem = GolemProblem;
             WireWorkbench(setup.workbench);
-            Alerts = new AlertsStrip(() => _golems);
+            Alerts = new AlertsStrip(() => _golems) { Names = TileNames };
             Alerts.Attach();
             WireProgression(setup.assemblyLine);
             if (setup.tutorial)

@@ -61,7 +61,7 @@ namespace GolemFactory.Tests.EditMode
 
             HoverCard card = GolemHoverText.Compose(golem, golem.Mood, default, new TileNames(endpoints));
 
-            Assert.AreEqual("Brass Presser · PlayerGolem-004", card.Title);
+            Assert.AreEqual("Brass Presser #4", card.Title);
             Assert.AreEqual("Stuck: Crate (3,4) is empty, needs Scrap", card.State);
             Assert.AreEqual("Nothing fills it. Put Scrap in by hand (I), or stand a golem that pushes into it.", card.Fix);
             Assert.AreEqual("From Crate (3,4) → to Crate (3,6)", card.Route);

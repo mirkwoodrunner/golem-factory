@@ -77,6 +77,44 @@ namespace GolemFactory.Nodes.Scenarios
                 return count == 3 && !countsP && World.Alerts.WaitingCount >= 1 ? null : $"{count} counted, P counted {countsP}";
             });
 
+            // Phase 2 critique: every badge, the strip and the prompt in player names, and no
+            // badge over a neighbour's. F (red) and H (violet, unprogrammed) stand two cells
+            // apart in a row, as a guide line's golems do.
+            Until("badges and strip in player names, none overlapping", 3.0, () =>
+            {
+                if (!NodeOf(H).BadgeVisible || !NodeOf(F).BadgeVisible)
+                {
+                    return "F's and H's badges aren't both up yet";
+                }
+                var shown = Tree.GetNodesInGroup(GolemNodeGroup.Name).OfType<GolemNode>().Where(n => n.BadgeVisible).ToList();
+                foreach (GolemNode node in shown)
+                {
+                    string raw = UI.PlayerText.RawIdIn(node.BadgeText);
+                    if (raw != null)
+                    {
+                        return $"{node.GolemId}'s badge '{node.BadgeText}' shows the id '{raw}'";
+                    }
+                }
+                string stripRaw = UI.PlayerText.RawIdIn(World.Alerts.Text);
+                if (stripRaw != null)
+                {
+                    return $"the strip '{World.Alerts.Text}' shows the id '{stripRaw}'";
+                }
+                for (int i = 0; i < shown.Count; i++)
+                {
+                    for (int j = i + 1; j < shown.Count; j++)
+                    {
+                        if (shown[i].BadgeRect.Intersects(shown[j].BadgeRect))
+                        {
+                            return $"'{shown[i].BadgeText}' {shown[i].BadgeRect} overlaps '{shown[j].BadgeText}' {shown[j].BadgeRect}";
+                        }
+                    }
+                }
+                Log.Add($"{shown.Count} badges in player names, none overlapping ('{NodeOf(F).BadgeText}', '{NodeOf(H).BadgeText}'); strip '{World.Alerts.Text}'");
+                return null;
+            });
+            Do("capture the red street", () => { ScenarioCapture.Shot(Viewport, "critique-moods-red"); return null; });
+
             // 7. Straining: no badge, ever.
             int strainingFrames = 0;
             string badge = null;
@@ -130,6 +168,10 @@ namespace GolemFactory.Nodes.Scenarios
                 if (!prompt.Contains("Stuck: nothing to take from at (-4,-1), behind it"))
                 {
                     return $"prompt '{prompt}'";
+                }
+                if (UI.PlayerText.RawIdIn(prompt) is string raw)
+                {
+                    return $"prompt '{prompt}' shows the id '{raw}'";
                 }
                 Log.Add($"N's prompt '{prompt}'");
                 return null;

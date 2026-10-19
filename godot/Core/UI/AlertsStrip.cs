@@ -46,6 +46,12 @@ namespace GolemFactory.UI
 
         public StallTracker Tracker => _tracker;
 
+        /// <summary>
+        /// Names tiles for the strip's sentence; null (bare tests) prints the stall's ids as
+        /// before. <c>SandboxWorld</c> wires its <c>TileNames</c>.
+        /// </summary>
+        public TileNames Names { get; set; }
+
         /// <summary>Golems stalled but waiting on the factory (grey), as of the last reconcile.</summary>
         public int WaitingCount { get; private set; }
 
@@ -110,15 +116,15 @@ namespace GolemFactory.UI
                 // tracker also takes GolemStalled events, which carry no cause, and each one
                 // overwrote the reconciled snapshot -- so the live strip kept the vague line
                 // while the golem's own badge said why (G10, caught in the frames).
-                if (primary.Reason == Events.StallReason.NoSteam)
+                GolemEntity golem = _tracker.Count > 0 ? Find(primary.GolemId) : null;
+                if (primary.Reason == Events.StallReason.NoSteam && golem != null)
                 {
-                    GolemEntity golem = Find(primary.GolemId);
-                    if (golem != null)
-                    {
-                        primary = new StallSnapshot(primary.GolemId, primary.Reason, primary.ResourceId, primary.Shortfall, golem.SteamShortage);
-                    }
+                    primary = new StallSnapshot(primary.GolemId, primary.Reason, primary.ResourceId, primary.Shortfall, golem.SteamShortage);
                 }
-                return StallDiagnostics.ComposeStripText(_tracker.Count, primary, WaitingCount);
+                // In player names when the golem is known and names are wired (SandboxWorld):
+                // "Scavenger #4 stalled: Crate (2,-1) is full", never the ids (Phase 2 critique).
+                string description = golem != null && Names != null ? StallDiagnostics.Describe(golem, primary, Names) : null;
+                return StallDiagnostics.ComposeStripText(_tracker.Count, primary, WaitingCount, description);
             }
         }
     }
