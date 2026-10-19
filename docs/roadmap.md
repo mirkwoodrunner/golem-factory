@@ -6,21 +6,22 @@ smaller items stays in `docs/open-items.md`.
 
 ## Next session: start here
 
-**Phase 1 (crates) is done in code, on branch `phase1/crates`**: built, reviewed, critiqued
-(`crates-design.md` §11) and tested. All six steps of `docs/crates-design.md` §9 are in, every
-Core test and every scenario passes (each scenario run twice from a clean build, no flakes), and
-its "Done when" is pinned by `Core.Tests/Economy/LayoutMattersTests` (Phase 1 below). What it
-left unfinished is in `docs/open-items.md`, including two open questions for the user and the
-human playtest of `testscript/phase-1-playtest.md`, which has not been run.
+**Phase 1 (crates) and its follow-up, pack upgrades, are done in code, on branch
+`phase1/crates`**: built, reviewed, critiqued (`crates-design.md` §11,
+`pack-upgrades-design.md` §8) and tested. All six steps of `docs/crates-design.md` §9 are in,
+and so is `docs/pack-upgrades-design.md` (the user approved its recommendations on 2026-10-18).
+Every Core test (1796) and every scenario passes, each scenario run twice from a clean build with
+no flakes. Phase 1's "Done when" is pinned by `Core.Tests/Economy/LayoutMattersTests`, and the
+follow-up's invariant by `PriceReachTests` (Phase 1 below). **Still to run: the human playtest of
+`testscript/phase-1-playtest.md`**, which covers the crates, the pack upgrade and Floor
+Expansion's new prices. What's left is in `docs/open-items.md`.
 
 Next: **Phase 2, onboarding and readability.** Start from its two documents, to be written
 before any code: **Onboarding & Feedback Design** (the Workbench's next-drag hint, the grey
 waiting mood and red for stuck, hover names for a stuck golem's tile and good, source and target
 arrows on hover) and **Guide Chapter Texts & Playtest Kit Actions** (each chapter's step texts
 against the crate-era game, with the kit action every new step needs). Neither exists in `docs/`
-yet. Merge `phase1/crates` first. Phase 1's follow-up, **pack upgrades**
-(`docs/pack-upgrades-design.md`, Phase 1 below), is built on the same branch (the user approved
-its recommendations on 2026-10-18).
+yet. Merge `phase1/crates` first.
 
 Standing rules: tests and scenarios never write the player's real `save.json`; a renamed step `Id`
 or definition name breaks saves.
@@ -90,8 +91,12 @@ converter's scale the cost of a bad layout is the walking, which is the design's
 
 ### Phase 1 follow-up: pack upgrades
 
-Spec: `docs/pack-upgrades-design.md`. Built (2026-10-18): the user approved every recommendation,
-and the doc's §8 records the corrections.
+Spec: `docs/pack-upgrades-design.md`. **Status: done in code (2026-10-18), the playtest still to
+run.** The user approved every recommendation, and the doc's §8 records the corrections. Its test
+list is pinned: `PackUpgradeTests`, `PriceReachTests`, `FloorExpansionTests`, `PlaytestKitTests`
+and `PlaytestSessionTests` in Core, and the `management`, `save` and `playtest-kit` scenarios.
+`LayoutMattersTests` still passes with the new numbers (the table above is unchanged: crates stay
+at 50).
 The user's calls (2026-10-18): Floor Expansion keeps ramping its cost, with the clamp at the
 pack's cap removed, and its later purchases cost more advanced goods. Pack upgrades raise the
 pack's cap during play (100, 150, 200, 250) through a Pack row on the Assembly Line tab.

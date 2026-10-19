@@ -1,11 +1,14 @@
 using System.IO;
 using System.Linq;
+using GolemFactory.Buildings;
 using GolemFactory.Economy;
+using GolemFactory.Progression;
 using GolemFactory.PunchCards;
 using GolemFactory.UI;
 using GolemFactory.World;
 using NUnit.Framework;
 using static GolemFactory.Tests.EditMode.CrateWorld;
+using Vector2Int = GolemFactory.Compat.Vector2Int;
 
 namespace GolemFactory.Tests.EditMode
 {
@@ -156,6 +159,59 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsTrue(world.AssemblyLineBoard.UpgradePack(), world.AssemblyLineBoard.Status);
             Assert.AreEqual("Pack  ·  carries 150 of each good  ·  +50", Row().Text);
             Assert.AreEqual("Requires: Brass", Row().CostText);
+        }
+
+        [Test]
+        public void TheLedger_HasABiggerPackNode_AfterGearCutting()
+        {
+            // docs/pack-upgrades-design.md §5 and §8.10.
+            Assert.IsTrue(TechTreeCatalog.TryGetNode("pack.upgrades", out TechTreeNode node));
+            Assert.AreEqual("A Bigger Pack", node.DisplayName);
+            Assert.AreEqual(TechTreeNodeKind.Technique, node.Kind);
+            Assert.AreEqual(TechTreeUnlockSignal.None, node.Signal);
+            Assert.AreEqual(1, node.PhaseIndex);
+            Assert.AreEqual(8, node.Row);
+            CollectionAssert.AreEqual(new[] { "r8.gearcutting" }, node.Prerequisites);
+            Assert.AreEqual(47, TechTreeCatalog.Nodes.Count);
+        }
+
+        [Test]
+        public void AnUpgrade_GrowsThePackAlone_CratesStayAt50_AndThePostAt200()
+        {
+            // §0.7: a crate's size is what makes layout matter; the Post is a factory store.
+            SandboxWorld world = Compose();
+            ICrate crate = PlaceDepot(world, new Vector2Int(6, 6));
+            GiveRung1(world);
+
+            Assert.IsTrue(world.PackUpgrade.TryUpgrade(), world.PackUpgrade.LastStatusMessage);
+
+            Assert.AreEqual(150, world.Wallet.Pack.CapacityPerType);
+            Assert.AreEqual(50, crate.Buffer.CapacityPerType, "a crate keeps 50");
+            Assert.AreEqual(200, world.Buffers.GetOrCreate(SandboxWorld.PostBufferId).CapacityPerType, "the Post keeps 200");
+        }
+
+        [Test]
+        public void ADemolitionTheOldCapRefused_FitsAfterTheUpgrade_AndRefundsInFull()
+        {
+            // §0.6: still a full refund into the pack; RoomFor reads the live cap, so a bigger
+            // pack means fewer refusals.
+            SandboxWorld world = Compose();
+            var cell = new Vector2Int(6, 6);
+            ICrate crate = PlaceDepot(world, cell);
+            PlaceableBuilding depot = world.Build.Buildings.Single(b => !b.IsRemoved && b.Cell == cell);
+            crate.Buffer.Deposit(ItemType.Scrap, 20);
+            Give(world, ItemType.Scrap, 100);
+
+            world.Build.EnterDemolishMode();
+            world.Build.PlaceOrRemove(cell);
+            Assert.IsFalse(depot.IsRemoved, "at 100 the 15 + 20 Scrap won't fit");
+
+            GiveRung1(world);
+            Assert.IsTrue(world.PackUpgrade.TryUpgrade(), world.PackUpgrade.LastStatusMessage);
+            world.Build.PlaceOrRemove(cell);
+
+            Assert.IsTrue(depot.IsRemoved, "150 has room");
+            Assert.AreEqual(135, Pack(world, ItemType.Scrap), "100 + 15 cost + 20 contents");
         }
 
         [Test]

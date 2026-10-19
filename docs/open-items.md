@@ -30,15 +30,12 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   the guide says what is in the way of a marked tile.
 - **Crates** (`docs/crates-design.md`) are built (Phase 1): each depot is a crate of its own,
   the player carries a capped pack, and the Pneumatic Post is the shared store. Its "Done when"
-  is pinned in Core (`LayoutMattersTests`; numbers in `docs/roadmap.md`, Phase 1). **The human
-  playtest of `testscript/phase-1-playtest.md` has not been run**; it judges whether a bad
-  layout reads as visibly worse in play, not only in the numbers.
-- **Floor Expansion's price curve** (`crates-design.md` §6.1, §10.1.8): the escalating price is
-  still clamped at the pack's 100-per-good cap in code, so every purchase from the second on
-  costs 100 Scrap, plus Iron Plate rising to 100 at the third. **Decided (user, 2026-10-18):**
-  the clamp goes, the cost keeps ramping into more advanced goods, and pack upgrades (100 to 250)
-  pay for it. Built to `docs/pack-upgrades-design.md`, its §7 questions decided as recommended.
-  Phase 3's tuning sets the final numbers.
+  is pinned in Core (`LayoutMattersTests`; numbers in `docs/roadmap.md`, Phase 1). So are pack
+  upgrades (`docs/pack-upgrades-design.md`, 100 to 250) and Floor Expansion's six authored
+  prices (`PriceReachTests`). **The human playtest of `testscript/phase-1-playtest.md` has not
+  been run.** It judges whether a bad layout reads as visibly worse in play, not only in the
+  numbers, and whether the pack upgrade and the dearer extensions read as worth it. Phase 3's
+  tuning sets the final prices.
 - **Whether the Overclocker has an identity** beyond more slots: one exclusive card (`Repeat`)
   and the same dials. Decided after a full playthrough (`docs/roadmap.md`, decision 7).
 
@@ -57,19 +54,23 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 
 - **The art is placeholder** throughout, and the Workbench's lever housing, display face and
   card faces most of all.
-- **The Inventory tab's order** (`crates-design.md` §4.7, §10.1.10): it still sorts every buffer
-  by id, so the Post shows as "PneumaticPost" between the crates and the pack. The spec asks for
-  the pack first, then the Post, then crates in cell order, with headers "Pack", "Pneumatic
-  Post", "Crate (3,-2)".
+- **The Inventory tab's order** (`crates-design.md` §4.7, §10.1.10): its headers read as words
+  now ("Your pack", "Pneumatic Post", "Crate (3,-2)"), but `InventoryReadout` still sorts the
+  buffers by id: crates, the pack, masts, then the Post. The spec asks for the pack
+  first, then the Post, then crates in cell order.
 - **The side-by-side screens** (the Crate screen beside the Pack): the transfer hint is drawn
   below the panels instead of inside them, and each panel carries its own Close button, so the
   pair shows two.
+- **`PriceReachTests` doesn't check the Hand-Crank Bench's recipe inputs** (or the boiler's
+  hand-load). They charge the wallet like any price, but aren't on the test's list. Today's are
+  small; a new bench recipe isn't held to the reachable pack.
 - **`Straining`**, the only predictive mood (9 of 12 units held): kept, but moves to hover only
   (`docs/roadmap.md`, decision 6).
 
 ## 5. Deliberate cuts
 
-- No player collision; the player walks through buildings and golems.- A belt hands off only to another belt: getting goods into a depot needs a golem.
+- No player collision; the player walks through buildings and golems.
+- A belt hands off only to another belt: getting goods into a depot needs a golem.
 - `Refine` stays id-routed rather than spatial, so an untyped take can't grab the wrong input.
 - **Demolition refunds in full, and patents are free.** Settled design calls, not cuts; see
   `CLAUDE.md`.

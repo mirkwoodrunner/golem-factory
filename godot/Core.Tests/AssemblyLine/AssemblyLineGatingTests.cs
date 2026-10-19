@@ -442,7 +442,10 @@ namespace GolemFactory.Tests.EditMode
             // already holding -- the first real recipe card sat nine claims deep, eight of
             // which bought nothing.
             DraftableCardDefinition owned = MakeCard("PushOutput", unique: false);
-            DraftableCardDefinition fresh = MakeCard("Coking", unique: true);
+            // Non-unique too: since G10 an unowned UNIQUE card is offered first, so a unique
+            // `fresh` took slot 0 at seeding, the Assume below failed, and the test ran as
+            // Inconclusive. Two cycling cards keep the order the test needs.
+            DraftableCardDefinition fresh = MakeCard("Coking", unique: false);
 
             var line = new AssemblyLineState(1);
             line.SeedCandidates(new[] { owned, fresh });

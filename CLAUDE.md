@@ -27,7 +27,7 @@ Read the docs before making design calls, not just the code:
   it before planning any work. Then the plan after the port, phase by phase, and the decisions
   taken for it (scope, top-down art, placeholder audio, contracts).
 - `docs/crates-design.md` -- local crates, a capped pack, the wallet and the Pneumatic Post;
-  Phase 1, being built. Its §0 lists the invariants.
+  Phase 1, built. Its §0 lists the invariants.
 - `docs/inventory-screens-design.md` -- the Pack and Crate screens and the label picker; Phase 1.
 - `docs/pack-upgrades-design.md` -- pack upgrades (100 to 250) and Floor Expansion priced up the
   tiers, a Phase 1 follow-up, built. Its §0 lists the invariants, including "every price fits
@@ -88,7 +88,7 @@ ones. Current scenarios:
   with the camera following.
 - `build` (Sandbox): every placeable placed through the real build menu and cursor with
   synthetic mouse and key events, then drag runs, Escape, and a demolition that restores the
-  stockpile exactly.
+  pack exactly.
 - `interact` (Sandbox): the player's `[E]`, hold-`[E]`, and `[G]` at a stall, an empty stall,
   the bench and the station, using real key and mouse events.
 - `golems` (Sandbox): every chassis built, and every `AppendageActionType` run on real steam:
@@ -104,11 +104,12 @@ ones. Current scenarios:
   Patent, and close/reopen.
 - `management` (Sandbox): the HUD (alerts strip, pause and play), and Tab opening Management
   with the HUD and build menu hidden. Covers the Inventory icons, the tab exclusivity, an
-  Assembly Line claim reaching the Workbench, the Pack row's Upgrade (the Pack screen's cap line
+  Assembly Line claim reaching the Workbench, the tab's `Pack:  ·  Post:` header, the Pack row's Upgrade (the Pack screen's cap line
   reads 150), two Extends planking and walling new rows (the second at 120 Scrap), Patents
-  Load, the Ledger's plaques and recipe pane, and one screen at a time.
-- `save` (Sandbox): through the SaveLoad tab, build, save, wreck everything, and load. The
-  buildings, golems (with program and place) and stockpile must come back exactly, and two
+  Load, the Ledger's plaques and recipe pane, no drawn label holding an internal id, and one
+  screen at a time.
+- `save` (Sandbox): through the Save / Load tab, build, save, wreck everything, and load. The
+  buildings, golems (with program and place) and pack must come back exactly, and two
   more rounds must change nothing. Then it extends the room after a save and loads, and the
   rows and back wall must go back, and a pack upgraded after a save loads back at the saved rung.
   Writes `user://scenario-save.json`, never the player's save.
@@ -451,14 +452,14 @@ advancement. Simulation is plain, data-oriented C#: no ECS, no per-item nodes.
 - **Bare-string ids** identify belts, buffers and nodes across systems; `ItemType` holds the
   item-type constants. **Registries return `false` for a `null` id** rather than throwing.
 
-### Crates and the pack (Phase 1: built, pending review)
+### Crates and the pack (Phase 1: built and reviewed; the human playtest is pending)
 
 The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
 
 - **A depot publishes its own crate** (`Crate(x,y)`), a Freight Mast its own (`Mast(x,y)`, where
   a Zeppelin lands), 50 of each good. Both are `ICrate`; ask that, never the concrete part.
   **Golems never reach the pack** (`FactoryStockpile`, id kept because saves name it; 100 of
-  each). A depot with an explicit `bufferId` publishes that buffer and doesn't own it: a Post
+  each, up to 250 by upgrade). A depot with an explicit `bufferId` publishes that buffer and doesn't own it: a Post
   crate, and how a test keeps the old behaviour.
 - **Every cost goes through `PlayerWallet.TryCharge`** (pack first, then the Post store);
   refunds through `Refund`, **into the pack only, never the Post**, after `FirstMisfit` says they
@@ -486,7 +487,10 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   fits the pack reachable when it opens** on the guide's path, pack only
   (`PriceReachTests`): a new price or rung must pass it. Floor Expansion charges
   `floorExpansion.purchases`, one bundle per purchase, unclamped. A next price naming a good the
-  Ledger hasn't seen reads `Requires: <good>`, greyed.
+  Ledger hasn't seen reads `Requires: <good>`, greyed. A price with a line the pack's cap
+  can't hold (and the wallet can't cover) says so, `Upgrade your pack: …`, not `Need N more`:
+  every priced thing formats its shortfall through `ConstructionCostPolicy.FormatShortfall`,
+  passing the wallet so it reads the cap.
 - **The Ledger's live rate is fresh production** (`ProductionTally`, series `"Produced"`), not a
   buffer's level.
 - **`I` is the inventory key** (`PlayerNode.Inventory`, `PlayerInteractor.OpenInventory`): the

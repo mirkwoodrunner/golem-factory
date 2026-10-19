@@ -116,6 +116,21 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
+        public void ThePackUpgradeQuestions_AreAskedWhereTheDocSays()
+        {
+            // docs/pack-upgrades-design.md §6 and §8.5: the upgrade's question as `ledger` opens
+            // (the step after `pack`), the dear-room one as `frame-section` opens.
+            var after = PlaytestSession.Questions.ToDictionary(q => q.Id, q => q.AfterStepId);
+            Assert.AreEqual("ledger", after["pack-upgrade"]);
+            Assert.AreEqual("frame-section", after["dear-room"]);
+
+            SandboxWorld world = Compose();
+            var ids = world.Tutorial.Steps.Select(s => s.Id).ToList();
+            Assert.AreEqual(ids.IndexOf("pack") + 1, ids.IndexOf("ledger"), "`ledger` comes straight after `pack`");
+            Assert.AreEqual(ids.IndexOf("bays") + 1, ids.IndexOf("pack"), "`pack` comes straight after `bays`");
+        }
+
+        [Test]
         public void OnlyTheTowerAndTheGuideItself_WaitForTheLastStep()
         {
             // A chapter's question is asked as the next chapter opens. Nine once waited for

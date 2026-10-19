@@ -61,7 +61,7 @@ Chapter 7's Save and Load, done by F9, use their own file (`kit-save.json`), nev
 | 4 | Patents; turning a golem with R; a stall on purpose | C |
 | 5 | The Aether-Hauler, Iron Smelting, and its Slag; **feeding the smelter's crate by hand** | F |
 | 6 | Belts and a labelled depot at the Copper stall (label set on the crate screen) | F, I2 |
-| 7 | Floor Expansion, the bay upgrade, the Ledger, save and load | F, G, H, I4 |
+| 7 | Floor Expansion, the bay upgrade, **the pack upgrade**, the Ledger, save and load | F, G, H, I4 |
 | 8 | Goal steps: every good the Zeppelin costs; **the Pneumatic Post** | F, G |
 | 9 | The Zeppelin, its Freight Launch card, a Freight Mast, and **unloading the mast's crate** | G |
 | 10 | The Clock Tower in the town square: Frame Sections, and its Foundation | (new) |
@@ -96,6 +96,16 @@ moments to watch.
 - **The Pneumatic Post (chapter 8).** Every Post crate opens onto one shared store. A golem pushing
   into one Post crate fills every other, and your building spends from the Post once your pack
   runs short. Does it take a chore off you?
+- **The pack upgrade (chapter 7).** On Management's Assembly Line tab, the Pack row's **Upgrade**
+  (60 Iron Plate + 30 Gear) makes the pack carry 150 of each; later rungs make it 200 and 250.
+  The Pack screen's cap line should change at once. A rung priced in a good you haven't made yet
+  reads `Requires: …`, greyed.
+- **Floor Expansion's prices (chapter 7 onwards).** The first extension is 80 Scrap + 40 Iron
+  Plate; the second is 120 Scrap + 60 Iron Plate + 30 Gear, more Scrap than a 100 pack holds, so
+  it says `Upgrade your pack: this needs 120 Scrap, your pack holds 100` until you upgrade (or
+  the Post holds the rest). Later ones ask Copper Ingot, Brass, Casing, Glass, Lens, Mainsprings
+  and Aether Cells. Try an extension before upgrading: did the message tell you what to do? Were
+  the later ones worth it?
 - **An old save.** Load a save from before crates: everything you had is in your pack (even above
   100), every crate starts empty, and the load says so once.
 
