@@ -102,6 +102,28 @@ namespace GolemFactory.Tests.Tutorial
             StringAssert.EndsWith("kit used: yes", kit.ChaptersOneToFour(), "a kit use voids the timing");
         }
 
+        /// <summary>
+        /// Phase 2's test pass: F9 in chapter 5 or later (the Phase 1 script carries on from
+        /// here) doesn't void the chapters 1-4 time, an overrun prints past 15:00 as it is, and
+        /// the line sits at the top of the report, before the answers.
+        /// </summary>
+        [Test]
+        public void TheChaptersOneToFourLine_IgnoresLaterKitUse_AndPrintsAnOverrun()
+        {
+            var playtest = new PlaytestSession();
+            playtest.StepEntered("scrap", "Gather Scrap", 0f);
+            playtest.StepEntered("patent", "Patent a program", 900f);
+            playtest.StepEntered("r4-card", "Claim Iron Smelting", 1085.6f);
+            playtest.RecordKit("fast-forwarded chapter 5", 1200f);
+            playtest.StepEntered("copper", "Buy Copper Ore", 1210f);
+
+            Assert.AreEqual("Chapters 1–4: 18:05 (target 15:00) · kit used: no", playtest.ChaptersOneToFour());
+            string report = playtest.Compose("Build: test", 1300f);
+            Assert.Less(report.IndexOf("Chapters 1–4: 18:05", System.StringComparison.Ordinal),
+                report.IndexOf("## Your answers", System.StringComparison.Ordinal), "the line opens the report");
+            StringAssert.Contains("fast-forwarded chapter 5", report, "the later kit use is still reported");
+        }
+
         [Test]
         public void TheReport_HasAnswers_Timings_KitUses_AndErrors()
         {

@@ -261,6 +261,34 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsFalse(probe.Read(golem).TruckloadOnTheWay);
         }
 
+        /// <summary>§7's "a truckload in transit": the same empty stall reads grey while its cart
+        /// is on the road, and red again once it lands and is emptied with none ordered.</summary>
+        [Test]
+        public void AnEmptyStall_WithATruckloadOnItsWay_IsGrey()
+        {
+            var floor = new Floor();
+            var nodes = new ResourceNodeRegistry();
+            var node = new ResourceNode("CoalNode", ItemType.Coal, 0);
+            nodes.Register(node);
+            var market = new TruckloadMarket(nodes, new GameMode(false));
+            market.AddOffer(new MarketOffer("CoalNode", new List<RecipeIngredient>(), 1, 5));
+            floor.Endpoints.Register(new Vector2Int(0, 0), new ResourceNodeEndpoint(node));
+            var probe = new StallFactsProbe(() => floor.Golems, floor.Endpoints, floor.Belts, () => market);
+            GolemEntity golem = floor.Golem(new Vector2Int(0, 1), (AppendageActionType.ExtractFromNode, null), Push);
+            golem.ConfigureStallFacts(probe.Read);
+
+            golem.Tick(0);
+            Assert.AreEqual(GolemMood.Stalled, golem.Mood, "nothing ordered");
+
+            Assert.AreEqual(MarketOrderResult.Ordered, market.TryOrder("CoalNode", null, null, 0));
+            Assert.IsTrue(probe.Read(golem).TruckloadOnTheWay);
+            Assert.AreEqual(GolemMood.Waiting, golem.Mood, "a cart on the road will clear it");
+
+            market.Tick(5);
+            Assert.AreEqual(1, node.RemainingQuantity, "the cart landed");
+            Assert.IsFalse(probe.Read(golem).TruckloadOnTheWay);
+        }
+
         [Test]
         public void AGolemWithNoFactsSource_ClassifiesAsBefore()
         {

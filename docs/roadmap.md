@@ -16,23 +16,37 @@ follow-up's invariant by `PriceReachTests` (Phase 1 below). **Still to run: the 
 `testscript/phase-1-playtest.md`**, which covers the crates, the pack upgrade and Floor
 Expansion's new prices. What's left is in `docs/open-items.md`.
 
-**Phase 2, onboarding and readability: both specs are approved (2026-10-19, every
-recommendation taken) and built** (branch `phase2/onboarding`). **Still to run: the human
-playtest of `testscript/phase-2-playtest.md`**, a new player through chapters 1–4 without F9.
+**Phase 2, onboarding and readability, is done in code** (branch `phase2/onboarding`): built,
+reviewed, critiqued (`onboarding-feedback-design.md` §14–§16, `guide-chapters-design.md` §8) and
+tested. Every Core test (1860) and every scenario (15) passes, each scenario run twice from a
+clean build with no flakes. **Still to run: the human playtests**, `testscript/phase-2-playtest.md`
+first (a new player through chapters 1–4 without F9, timed by the report's "Chapters 1–4" line),
+then `testscript/phase-1-playtest.md`. The game-time floor for chapters 1–4 is measured: **7:58**
+of the 15 minutes (Phase 2 below). What's left of Phase 2 is in `docs/open-items.md`.
 
-- `docs/onboarding-feedback-design.md`: the Workbench's next-drag hint, `Waiting` (grey) against
-  stuck (red) with every `StallReason` mapped, hover (arrows, and a card naming a stuck golem's
-  tile, good and fix), `Straining` on hover only, and the overrides to
-  `cozy-automation-design.md` §2. Its §11 records the decisions.
-- `docs/guide-chapters-design.md`: chapters 1–4 rewritten for the 15-minute target, every step of
-  chapters 1–10 listed with its check, marks, flags and kit action, and the nine program plans
-  the hint and the kit share.
-- `testscript/phase-2-playtest.md`: the timing protocol for chapters 1–4 and the new questions.
+**Next: Phase 3, tuning and a full playthrough.** Write its documents before any tuning, as
+Phases 1 and 2 did:
 
-Build in `onboarding-feedback-design.md` §10's order. Merge `phase1/crates` first. The two
-findings from writing the specs are settled: a Haul now collects until it holds its batch (the
-user's call, 2026-10-19, `onboarding-feedback-design.md` §13), and the empty labelled crate's
-stall wording is fixed.
+1. **A Tuning Spreadsheet / Data Spec**: every invented number (prices, truckloads, recipe
+   durations, crank speed, boiler burn, pack and Floor Expansion curves), where it lives in
+   `godot/data/*.json` or Core, what it was set from, and the test that pins it.
+2. **A Full-Playthrough Playtest Script**: chapters 1–10 to the Clock Tower without the kit, in
+   `testscript/`, building on the Phase 1 and Phase 2 scripts.
+3. **A Performance Report Template**: frame time at about 96 golems and 500 belt items, what is
+   measured and how.
+4. **An addendum to `progression-design.md`** recording what the tuning changes and why.
+
+Phase 3 inputs gathered so far:
+
+- **Profile `GolemEntity.Mood` and `StallFactsProbe` per frame at ~96 golems.** The probe runs
+  for every stalled golem every frame, and since the critique it walks feeders depth-first
+  (`onboarding-feedback-design.md` §3.7, §16.1). The review and critique both flagged it.
+- **The Presser's price against cranking time.** Chapters 1–4 played instantly take 7:58 of game
+  time, 7:02 of it at the bench, and chapter 2 alone 4:15 of its 4:30 budget
+  (`ChaptersOneToFourFloorTests`). If the playtest overruns chapter 2, the lever is the Brass
+  Presser's 20 Iron Plate + 10 Gear (`guide-chapters-design.md` §7.1), not the guide's text.
+- **Floor Expansion and pack upgrade numbers** (`pack-upgrades-design.md`): the curves are
+  authored, not felt.
 
 Standing rules: tests and scenarios never write the player's real `save.json`; a renamed step `Id`
 or definition name breaks saves.
@@ -139,6 +153,35 @@ What they cover:
 
 **Done when:** a new player finishes chapters 1–4 without the playtest kit in under 15 minutes,
 the manual-era budget.
+
+**Status: done in code (2026-10-19), the playtest still to run.** Only a new player can meet the
+"Done when"; `testscript/phase-2-playtest.md` times one, and the report opens with
+"Chapters 1–4: mm:ss (target 15:00) · kit used: no" (`PlaytestSessionTests`). What can be
+measured is the floor: `Core.Tests/Tutorial/ChaptersOneToFourFloorTests` plays chapters 1–4 on
+the world's own clock with every action instant (no walking or reading) but every good earned with
+the player's verbs at their real rates: [E] at the stalls, truckloads that take their time,
+cranking at the bench, golems' real cycles, boilers topped up with cranked Coke. Never the kit's
+grants. It is deterministic, and pinned under 10:00.
+
+| Ch. | Budget (`guide-chapters-design.md` §1) | Game-time floor | Of which at the bench |
+|---|---|---|---|
+| 1 | 5:00 | 1:20 | Coke and 10 Iron Plate |
+| 2 | 4:30 | **4:15** | 40 Iron Plate and 10 Gears for the first Presser |
+| 3 | 3:30 | 2:16 | the second Presser's Gears and Plate, the second boiler's Plate |
+| 4 | 2:00 | 0:06 | none |
+| 1–4 | 15:00 | **7:58** | 7:02 (Iron Plate 4:57, Gears 1:05, Coke 1:00) |
+
+The spec estimated about 5¼ minutes of cranking; the measurement is 7:02. Chapters 1 and 2 crank
+about what the spec said. Chapter 3 cranks more: the spec took the second Presser's 20 Plate
+(and the second boiler's 10) from the first Presser's crate, but by then that Presser has made
+only part of it, so the rest is cranked. And the boilers' Coke, topped up by hand until the
+coker runs, adds a minute. That leaves a new player about seven
+minutes for everything else in chapters 1–4, and **chapter 2 almost none**: its floor is 15
+seconds under its budget. If the playtest overruns there, the lever is the Presser's price
+(Phase 3), as `guide-chapters-design.md` §7.1 decided.
+
+`LayoutMattersTests` still gives Phase 1's table unchanged (103, 0, 82, 101, 50) after the
+collecting Haul.
 
 ## Phase 3: Tuning and a full playthrough
 

@@ -19,8 +19,9 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 | **Whether the market is an economy or a toll booth** | Truckloads are priced and arrive in bursts. |
 | **Marked tiles** | The guide marks where to build. Do they help, or get in the way? Decides round 3 (below). |
 | **The carry outline** | Is it clear where a carried golem will land? |
-| **Golems waiting for input wear the red stall badge** | Specified for Phase 2: waiting goes grey, red is for stuck (`docs/onboarding-feedback-design.md` §3). `testscript/phase-2-playtest.md` asks whether players can tell them apart. |
-| **Chapters 1–4 in under 15 minutes** | Phase 2's "Done when". About 5¼ minutes of it is cranking no text can cut (`docs/guide-chapters-design.md` §1). |
+| **Grey for waiting, red for stuck** | Built in Phase 2 (`docs/onboarding-feedback-design.md` §3). `testscript/phase-2-playtest.md` asks whether players can tell them apart. |
+| **Chapters 1–4 in under 15 minutes** | Phase 2's "Done when". Played instantly, they take 7:58 of game time, 7:02 of it at the bench, and chapter 2 takes 4:15 of its 4:30 budget (`ChaptersOneToFourFloorTests`; table in `docs/roadmap.md`, Phase 2). Only a new player can say whether the rest fits. |
+| **The human playtests of Phase 1 and Phase 2** | Neither has been run. `testscript/phase-2-playtest.md` first, with a player who has never played; then `testscript/phase-1-playtest.md`. |
 | **Every invented number** | Listed at the end of the playtest script. None has been felt. |
 
 ## 2. Decisions waiting on the playtest
@@ -39,6 +40,12 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   tuning sets the final prices.
 - **Whether the Overclocker has an identity** beyond more slots: one exclusive card (`Repeat`)
   and the same dials. Decided after a full playthrough (`docs/roadmap.md`, decision 7).
+- **The user's call, pending: a feeder asleep on a trigger that never fires reads as feeding.**
+  An Interval core set very long, or a Signal nobody sends, still counts as feeding the crate in
+  front of it, so the golem behind reads grey (`onboarding-feedback-design.md` §16). The probe
+  can't know a trigger will never fire without simulating it. **Recommended:** leave the rule,
+  and have a waiting golem's hover card name its feeder ("Waiting for Scrap · Scavenger #1
+  brings it"), so the player can follow the chain to the sleeper.
 
 ## 3. Known gaps
 
@@ -54,6 +61,13 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   collects into the golem until it holds its batch, showing "5/10 Scrap", and never takes more
   than a batch (`docs/onboarding-feedback-design.md` §13). An Assemble now only runs on full
   batches.
+- **The Workbench hint's free-play fallback is tested only in Core.** Without a guide plan, a
+  bare golem gets TRIGGER, then STEP 1, then the lever framed, and a programmed golem nothing
+  (`WorkbenchHintTests`). No scenario draws it on screen: the `workbench` scenario's golem is the
+  guide's, so it sees the plan's hint (`onboarding-feedback-design.md` §15.1).
+- **The guide plate flashes over the vault for one frame when the Workbench opens.** The plate
+  docks clear of the Workbench (`TutorialPanel.Dock(true)`) a frame after the screen appears, so
+  for that frame it sits where it was, over the vault. Cosmetic.
 - **An empty labelled crate reported `BeltEmpty`: closed in Phase 2.** `GolemEntity.EmptyReasonFor`
   now reads a `FilteredBufferEndpoint` as `BufferEmpty`, so both crates say "no input in
   Crate(3,4)".
@@ -72,8 +86,9 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 - **`PriceReachTests` doesn't check the Hand-Crank Bench's recipe inputs** (or the boiler's
   hand-load). They charge the wallet like any price, but aren't on the test's list. Today's are
   small; a new bench recipe isn't held to the reachable pack.
-- **`Straining`**, the only predictive mood (9 of 12 units held): kept, but moves to hover only
-  (`docs/roadmap.md`, decision 6). Specified in `docs/onboarding-feedback-design.md` §4.4.
+- **`Straining`**, the only predictive mood (9 of 12 units held): on hover only since Phase 2
+  (`docs/roadmap.md`, decision 6; `onboarding-feedback-design.md` §4.4). The playtest's
+  `straining` question asks whether anyone missed a warning.
 - **The depot label picker: closed.** Built in Phase 1 on the crate screen
   (`docs/inventory-screens-design.md` §4.4), taught by step `copper-depot`.
 

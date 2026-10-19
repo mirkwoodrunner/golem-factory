@@ -32,12 +32,19 @@ Read the docs before making design calls, not just the code:
 - `docs/pack-upgrades-design.md` -- pack upgrades (100 to 250) and Floor Expansion priced up the
   tiers, a Phase 1 follow-up, built. Its §0 lists the invariants, including "every price fits
   the reachable pack".
+- `docs/onboarding-feedback-design.md` -- the Workbench's next-drag hint, grey for waiting and
+  red for stuck, hover, and the collecting Haul; Phase 2, built. Its §0 lists the invariants,
+  and §3.5 what it overrides in `cozy-automation-design.md` §2.
+- `docs/guide-chapters-design.md` -- the guide's texts, checks, marks, plans and kit actions,
+  step by step; chapters 1–4 rewritten for the 15-minute target. Phase 2, built.
 - `docs/open-items.md` -- the backlog: open decisions, known gaps, deliberate scope cuts.
 - `docs/godot-spike.md` -- what the port measured before it began.
 - `docs/history/` -- the Unity era: `unity-implementation-plan.md` (milestones M0-M9 and every
   Unity pass, with the reasons behind much of what Core still does), the Unity-to-Godot test
   ledger, and the MCP-for-Unity setup guide. History, not instructions.
 - `testscript/phase-1-playtest.md` -- how to run a playtest; the guide asks the questions.
+- `testscript/phase-2-playtest.md` -- a new player through chapters 1–4 without F9, timed
+  against 15 minutes. Run it before the Phase 1 script.
 
 ## Toolchain
 
@@ -271,7 +278,11 @@ doesn't reach yet, a belt pointing the wrong way. A step's `Builds` names what i
 
 **A new guide step needs a kit action** (`TutorialGuide.Kit.cs`, `Performs`): what the
 playtest kit does to complete it, using the player's own verbs. `PlaytestKitTests` fails for
-a step without one.
+a step without one. **Chapters 1–4 have a game-time floor**: `ChaptersOneToFourFloorTests`
+plays them instantly but earns every good at the player's real rates (stalls, truckloads, the
+bench, golem cycles), runs each step's kit action paid from those goods, and fails above 10:00
+(measured 7:58 against Phase 2's 15-minute target). A new chapter 1–4 step whose kit action
+grants goods instead of placing or building needs a case in its `Perform`.
 
 A step that wants a card claimed names it (`TutorialStep.Card`), and the Assembly Line always
 shows that card (`AssemblyLineState.Wanted`). The line otherwise offers a card only once the
@@ -440,7 +451,7 @@ advancement. Simulation is plain, data-oriented C#: no ECS, no per-item nodes.
   factory will clear on its own is `GolemMood.Waiting`, grey, decided by `StallTriage` from the
   facts `World/StallFactsProbe` reads (`SandboxWorld.StallFacts`, wired in `OnGolemSpawned`),
   never by colouring a `StallReason` on its own. A golem with no facts source reads every stall
-  red, as before. The view draws `GolemMoodRules.Presented` (Waiting only after its 2 s dwell);
+  but steam red, as before (steam is always blue, `Starved`). The view draws `GolemMoodRules.Presented` (Waiting only after its 2 s dwell);
   the alerts strip counts stopped golems only.
 - **Hover is Core's** (§4): `SandboxWorld.Inspector` picks the golem, `GolemHoverText` and
   `TileNames` write every line, `Scripts/Golems/GolemHoverNode` only feeds the pointer and
