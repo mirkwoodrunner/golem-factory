@@ -117,8 +117,20 @@ namespace GolemFactory.UI
 
         // A golem with no id (an unconfigured one, as unit tests build) is ignored rather than
         // thrown on: the bus is static, so a live world's tracker hears every golem in the process.
+        /// <summary>
+        /// Whether a golem that just stalled has STOPPED (red or blue) rather than started
+        /// waiting (grey). Null counts every stall, as before Phase 2. A waiting golem must never
+        /// show for the half second before the next reconcile (onboarding-feedback-design §3.6).
+        /// </summary>
+        public System.Func<string, bool> IsStopped { get; set; }
+
         private void OnGolemStalled(GolemStalledEvent e)
         {
+            if (e.GolemId != null && IsStopped != null && !IsStopped(e.GolemId))
+            {
+                _stalled.Remove(e.GolemId);
+                return;
+            }
             if (e.GolemId != null)
             {
                 _stalled[e.GolemId] = new StallSnapshot(e.GolemId, e.Reason, e.ResourceId, e.Shortfall);

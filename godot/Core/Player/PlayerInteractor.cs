@@ -202,6 +202,12 @@ namespace GolemFactory.Player
         /// </summary>
         public HandCrankBench NearestBench { get; private set; }
 
+        /// <summary>
+        /// What a stopped golem's problem is, as one line, or null for one that hasn't stopped.
+        /// Wired by <c>SandboxWorld</c> to the hover card's state line; null leaves the prompt as it was.
+        /// </summary>
+        public Func<GolemEntity, string> GolemProblem { get; set; }
+
         // --- Wiring ----------------------------------------------------------------------------
 
         public void Configure(
@@ -1003,7 +1009,7 @@ namespace GolemFactory.Player
 
         private int StockpileCoke => Wallet?.Quantity(ItemType.Coke) ?? 0;
 
-        private static void DescribeTarget(
+        private void DescribeTarget(
             InteractionPick pick, object target, bool isCarrying, out string targetName, out string detail)
         {
             targetName = "";
@@ -1047,6 +1053,13 @@ namespace GolemFactory.Player
                         "faces " + FacingVisuals.Describe(golem.Facing) + " · [R] turn",
                         // No id: the golem is already this caption's subject.
                         InteractionTargeting.GolemHandlingHint(null, isCarrying));
+                    // A stopped golem's problem leads, for a player without a mouse
+                    // (onboarding-feedback-design §11 question 5): the hover card's state line.
+                    string problem = GolemProblem?.Invoke(golem);
+                    if (!string.IsNullOrEmpty(problem))
+                    {
+                        detail = InteractionTargeting.AppendDetail(problem, detail);
+                    }
                     break;
                 }
             }

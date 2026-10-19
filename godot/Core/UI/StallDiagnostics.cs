@@ -204,13 +204,24 @@ namespace GolemFactory.UI
         private static bool HasAmount(string itemType, int shortfall) =>
             shortfall > 0 && !string.IsNullOrEmpty(itemType);
 
+        /// <summary>
+        /// A collecting Haul's progress, "5/10 Scrap" (docs/onboarding-feedback-design.md §13.2):
+        /// the badge shows it in place of "need 5 more Scrap".
+        /// </summary>
+        public static string HaulProgress(int held, int batch, string good) =>
+            held + "/" + batch + " " + (string.IsNullOrEmpty(good) ? "goods" : Economy.ItemTiers.DisplayName(good));
+
         // What the strip shows overall. Naming the single blocking resource beats a bare count,
         // and the "+N more" suffix keeps a cascading factory from overflowing one line.
-        public static string ComposeStripText(int stalledCount, StallSnapshot primary)
+        public static string ComposeStripText(int stalledCount, StallSnapshot primary, int waitingCount = 0)
         {
             if (stalledCount <= 0)
             {
-                return "All golems running.";
+                // Grey is visible from the HUD but never an alert
+                // (docs/onboarding-feedback-design.md §3.6).
+                return waitingCount > 0
+                    ? "No golem needs you · " + waitingCount + " waiting for goods."
+                    : "All golems running.";
             }
 
             // Plain ASCII, not the U+26A0 glyph -- TMP's default SDF atlas (LiberationSans SDF)

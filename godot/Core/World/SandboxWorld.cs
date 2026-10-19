@@ -246,6 +246,7 @@ namespace GolemFactory.World
             }
 
             WireInteractor();
+            Interactor.GolemProblem = GolemProblem;
             WireWorkbench(setup.workbench);
             Alerts = new AlertsStrip(() => _golems);
             Alerts.Attach();
@@ -754,12 +755,49 @@ namespace GolemFactory.World
             }
         }
 
+        /// <summary>
+        /// What a stalled golem's neighbours look like: the facts that tell waiting (grey) from
+        /// stuck (red) (docs/onboarding-feedback-design.md §3.2).
+        /// </summary>
+        public StallFactsProbe StallFacts =>
+            _stallFacts ??= new StallFactsProbe(() => _golems, Endpoints, Belts, () => Market);
+
+        private StallFactsProbe _stallFacts;
+
+        /// <summary>Which golem the mouse is over (onboarding-feedback-design §4.1).</summary>
+        public GolemInspector Inspector => _inspector ??= new GolemInspector(() => _golems);
+
+        private GolemInspector _inspector;
+
+        /// <summary>What the player calls the thing on a tile: "Crate (3,4)", "Scrap stall".</summary>
+        public TileNames TileNames => _tileNames ??= new TileNames(Endpoints, Masts);
+
+        private TileNames _tileNames;
+
+        /// <summary>
+        /// The hover card for <paramref name="golem"/> drawn in <paramref name="mood"/>
+        /// (onboarding-feedback-design §4.3).
+        /// </summary>
+        public HoverCard HoverCard(GolemEntity golem, GolemMood mood, bool strainingHeld = false) =>
+            GolemHoverText.Compose(golem, mood, golem?.StallFacts ?? default, TileNames, strainingHeld);
+
+        /// <summary>
+        /// The problem a stopped golem's [E] prompt carries (§11 question 5): the hover card's
+        /// state line, or null for a golem that hasn't stopped.
+        /// </summary>
+        public string GolemProblem(GolemEntity golem) =>
+            golem != null && GolemMoodRules.IsStopped(golem.Mood) ? HoverCard(golem, golem.Mood).State : null;
+
         private void OnGolemSpawned(GolemEntity golem)
         {
             if (!_golems.Contains(golem))
             {
                 _golems.Add(golem);
             }
+
+            // Spawned and respawned alike (the respawner builds through the station), so a
+            // golem's birth stays in one file and every one the world hosts reads grey or red.
+            golem.ConfigureStallFacts(StallFacts.Read);
 
             // The station publishes WorldInteractablesChanged from inside SpawnGolem, BEFORE it
             // raises GolemSpawned -- so the interactor's re-snapshot ran against a roster one

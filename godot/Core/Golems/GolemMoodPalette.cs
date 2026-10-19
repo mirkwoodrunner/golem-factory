@@ -47,6 +47,9 @@ namespace GolemFactory.Golems
                     return StarvedTint;
                 case GolemMood.Sleeping:
                 case GolemMood.Unprogrammed:
+                case GolemMood.Waiting:
+                    // Grey means "fine, just not busy", whatever the cause
+                    // (docs/onboarding-feedback-design.md §3.4).
                     return SleepingTint;
                 default:
                     // Working and Straining. A straining golem is running, and tinting it would

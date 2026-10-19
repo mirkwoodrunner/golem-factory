@@ -133,7 +133,26 @@ namespace GolemFactory.Golems
             program != null ? program.State : GolemState.Idle,
             StallReason,
             HasRunnableProgram,
-            _inventory.FullestTypeUnits);
+            _inventory.FullestTypeUnits,
+            _stallFacts == null || program == null || program.State != GolemState.Stalled
+                ? StallUrgency.Stuck
+                : StallTriage.Urgency(StallReason, _stallFacts(this)));
+
+        // Opt-in by null (docs/onboarding-feedback-design.md §3.2, invariant 6): a golem never
+        // handed a facts source -- id-routed demos, bare tests -- classifies every non-steam
+        // stall as Stalled, exactly as before. Read only while stalled, so a running factory
+        // pays nothing.
+        private System.Func<GolemEntity, StallFacts> _stallFacts;
+
+        /// <summary>
+        /// Wires what this golem's neighbours look like while it is stalled, so its mood can tell
+        /// waiting (grey) from stuck (red). <c>SandboxWorld</c> wires it for every spawned golem.
+        /// </summary>
+        public void ConfigureStallFacts(System.Func<GolemEntity, StallFacts> source) => _stallFacts = source;
+
+        /// <summary>The facts about this golem's stall, or default when it isn't stalled or has no source.</summary>
+        public StallFacts StallFacts =>
+            _stallFacts != null && program != null && program.State == GolemState.Stalled ? _stallFacts(this) : default;
 
         // Runtime-only diagnostics (deliberately not on GolemProgram, which is savable state):
         // why the current step is blocked and which belt/node/buffer id blocked it. Read by the
@@ -766,6 +785,9 @@ namespace GolemFactory.Golems
         private GolemInventory.Stock PushStock =>
             program.HasAssembleStep ? _inventory.Output : _inventory.Input;
 
+        /// <summary>The stock the next Push will empty, for a readout (the hover's "output 10/12 Scrap").</summary>
+        public GolemInventory.Stock PushStockView => PushStock;
+
         private IItemEndpoint ResolveSpatialSource()
         {
             IItemEndpoint endpoint;
@@ -806,7 +828,9 @@ namespace GolemFactory.Golems
                 return StallReason.NodeEmpty;
             }
 
-            if (endpoint is StorageBufferEndpoint)
+            // A labelled crate is a crate: it used to fall through to BeltEmpty and read
+            // "waiting on Crate(3,4)" where an unlabelled one said "no input in Crate(3,4)".
+            if (endpoint is StorageBufferEndpoint || endpoint is FilteredBufferEndpoint)
             {
                 return StallReason.BufferEmpty;
             }
@@ -903,10 +927,10 @@ namespace GolemFactory.Golems
         // the destination has room. See BeginFillInputStock (room in input stock, clamped) and
         // BeginPush (consume from stock only after the target accepts).
 
-        // --- Filling the golem: Haul and ExtractFromNode ------------------------------------
-        // The shared body of the two "pull from the tile behind into my own input stock" verbs.
-        // They differ only in how the item type is chosen and how long they take, so the
-        // ordering discipline that matters lives here, once.
+        // --- Filling the golem: ExtractFromNode (Haul collects: see BeginCollect) ----------
+        // Extract's "pull from the tile behind into my own input stock", which takes what the
+        // stall yields up to the batch and carries on. Haul shared this body until it began
+        // collecting toward a whole batch (onboarding-feedback-design §13).
         //
         // Ordering, same reasoning as BeginSpatialTransfer's CanGive-before-TryTake: nothing is
         // consumed from the source until there is somewhere confirmed to put it. Here the
@@ -1161,7 +1185,109 @@ namespace GolemFactory.Golems
 
             // The slot's good, which the player picks in the Workbench (G10); the card's own type
             // is only the default.
-            return BeginFillInputStock(program.GetItemTypeAt(program.CurrentStepIndex), quantity, out blockedResourceId);
+            return BeginCollect(program.GetItemTypeAt(program.CurrentStepIndex), quantity, out blockedResourceId);
+        }
+
+        /// <summary>
+        /// THE COLLECTING HAUL (docs/onboarding-feedback-design.md §13, the user's call,
+        /// 2026-10-19). Takes only what the golem still needs to hold one batch of the good, stays
+        /// on the step while short -- stalled, retried every tick, topped up as goods arrive -- and
+        /// lets the step run once the batch is held. Extra stays in the source.
+        ///
+        /// <para>
+        /// It replaced a take-what's-there Haul that carried on with a partial batch, after which
+        /// the Assemble behind it stalled on MissingItem for good: nothing re-runs a Haul until
+        /// ENGAGE rewinds the program. Now an Assemble only ever starts on full batches.
+        /// </para>
+        /// </summary>
+        private StallReason BeginCollect(string requestedType, int batch, out string blockedResourceId)
+        {
+            blockedResourceId = null;
+
+            IItemEndpoint source = ResolveSpatialSource();
+            if (source == null)
+            {
+                blockedResourceId = SourceCell.ToString();
+                return StallReason.NoSourceAtTile;
+            }
+
+            // An untyped Haul collects what the source offers; with the source empty, the good a
+            // half-collected batch is already of, so a batch keeps its good.
+            string itemType = !string.IsNullOrEmpty(requestedType) ? requestedType
+                : source.PeekAvailableType() ?? FirstHeldInput();
+            if (string.IsNullOrEmpty(itemType))
+            {
+                blockedResourceId = source.DisplayName;
+                return EmptyReasonFor(source);
+            }
+
+            // Already holding a batch (a lowered dial, a load, a recipe's remainder): nothing to
+            // take, and the step runs. Two Hauls of one good therefore don't add.
+            int held = _inventory.GetInput(itemType);
+            int need = batch - held;
+            if (need <= 0)
+            {
+                return StallReason.None;
+            }
+
+            // held + need = batch <= the per-type cap, so the room check can only bite on a hold
+            // already over the cap -- which nothing can produce. Kept as a guard, not a rule.
+            int room = _inventory.InputRoomFor(itemType);
+            if (room <= 0)
+            {
+                blockedResourceId = itemType;
+                return StallReason.InputFull;
+            }
+
+            if (source.TryTake(itemType, Mathf.Min(need, room), out int taken) && taken > 0)
+            {
+                _inventory.AddInput(itemType, taken);
+                held += taken;
+            }
+
+            if (held >= batch)
+            {
+                return StallReason.None;
+            }
+
+            // Short. With part of a batch in hand the stall names the good and what is missing
+            // ("5/10 Scrap" on the badge); with none it says what it always said about the source.
+            if (held > 0 || !string.IsNullOrEmpty(source.PeekAvailableType()))
+            {
+                blockedResourceId = itemType;
+                _pendingShortfall = held > 0 ? batch - held : 0;
+                return StallReason.MissingItem;
+            }
+
+            blockedResourceId = source.DisplayName;
+            return EmptyReasonFor(source);
+        }
+
+        private string FirstHeldInput()
+        {
+            var types = _inventory.Input.TypesInOrder;
+            return types.Count > 0 ? types[0] : null;
+        }
+
+        /// <summary>
+        /// While a Haul is collecting -- stalled with part of its batch held -- the good, how many
+        /// are held and the batch ("5/10 Scrap"). False otherwise.
+        /// </summary>
+        public bool TryGetHaulProgress(out string good, out int held, out int batch)
+        {
+            good = null;
+            held = 0;
+            batch = 0;
+            AppendageActionDefinition step = program.CurrentStep;
+            if (StallReason != StallReason.MissingItem || step == null ||
+                step.actionType != AppendageActionType.Haul || _stallShortfall <= 0)
+            {
+                return false;
+            }
+            good = _stallResourceId;
+            batch = CurrentStepQuantity();
+            held = _inventory.GetInput(good);
+            return held > 0 && held < batch;
         }
 
         // --- Push ---------------------------------------------------------------------------
