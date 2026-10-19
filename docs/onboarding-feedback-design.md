@@ -810,7 +810,10 @@ questions, and `guide-chapters-design.md`'s texts. Where the build differs from 
 5. **`IWorkbenchDraftView.OffersCard`** answers §2.6's "the card isn't owned"; `Next` also
    returns `None` with no chassis fitted.
 6. **The frames** are two `Panel`s (a `StyleBoxFlat` border) on the screen's root, laid each frame
-   over the target's rect grown 4 px; the vault card's frame is clipped to the vault's view.
+   over the target's rect grown 4 px; the vault card's frame is clipped to the vault's view. They
+   also **glow**: an 8 px shadow in the frame's colour at 0.55 of its alpha. In the frames a bare
+   3 px border was lost against the brass vault at the pulse's low point, and the guide calls
+   them "the glowing card and socket".
 7. **Targets:** `program-carrier`'s is the newest Presser that is neither the iron Presser nor a
    coker (§2.1 said the newest Presser): looking ahead from `r4-card`, the newest Presser is the
    coker. The unloader's and the Zeppelin's `Matches` now need a logic core, so the lever is

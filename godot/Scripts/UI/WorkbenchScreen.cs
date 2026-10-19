@@ -62,6 +62,8 @@ namespace GolemFactory.Nodes
         private static readonly Color HintDragOut = new Color(0.753f, 0.376f, 0.227f);   // #C0603A
         private const int HintBorder = 3;
         private const float HintGrow = 4f;
+        private const int HintGlow = 8;
+        private const float HintGlowAlpha = 0.55f;
 
         private const string Ui = "res://art/UI/";
 
@@ -292,7 +294,11 @@ namespace GolemFactory.Nodes
             }
             outline.GlobalPosition = rect.Position;
             outline.Size = rect.Size;
-            ((StyleBoxFlat)outline.GetThemeStylebox("panel")).BorderColor = new Color(color, alpha);
+            var box = (StyleBoxFlat)outline.GetThemeStylebox("panel");
+            box.BorderColor = new Color(color, alpha);
+            // A soft glow outside the border: the guide calls them "the glowing card and socket",
+            // and a bare 3 px line was lost against the brass vault at the pulse's low point.
+            box.ShadowColor = new Color(color, alpha * HintGlowAlpha);
         }
 
         private static string CardName(WorkbenchCardRef card) => card.LogicCore?.name ?? card.Appendage?.name;
@@ -330,6 +336,7 @@ namespace GolemFactory.Nodes
                 DrawCenter = false,
                 BorderWidthLeft = HintBorder, BorderWidthTop = HintBorder, BorderWidthRight = HintBorder, BorderWidthBottom = HintBorder,
                 BorderColor = HintBrass,
+                ShadowSize = HintGlow,
             });
             return outline;
         }
