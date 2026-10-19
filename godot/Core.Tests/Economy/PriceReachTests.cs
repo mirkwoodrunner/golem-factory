@@ -65,7 +65,8 @@ namespace GolemFactory.Tests.EditMode
             {
                 foreach (DraftableCardDefinition card in deck.Cards.Concat(deck.OpeningHand).Where(c => c != null))
                 {
-                    Add("card " + card.name, card.HasBundleCost ? card.claimCost : new[] { new RecipeIngredient(ItemType.Scrap, card.baseCost) });
+                    Add("card " + card.name, card.HasBundleCost ? card.claimCost
+                        : card.baseCost > 0 ? new[] { new RecipeIngredient(ItemType.Scrap, card.baseCost) } : new RecipeIngredient[0]);
                 }
             }
             foreach (string stall in world.Market.StallIds)
@@ -90,6 +91,14 @@ namespace GolemFactory.Tests.EditMode
                 int cap = Reachable(opens, rungsBelow);
                 string when = opens < world.Tutorial.Steps.Count ? world.Tutorial.Steps[opens].Id : "after the guide";
                 TestContext.Out.WriteLine($"{what}: opens at {when}, reachable {cap}");
+                // sandbox.json is not read by the strict DefinitionLoader, and the wallet skips a
+                // line with an empty good: a typo'd or blank good would open "after the guide",
+                // fit the top cap, and pass. Every line names a real good (critique).
+                foreach (RecipeIngredient line in price ?? new RecipeIngredient[0])
+                {
+                    Assert.IsTrue(ItemTiers.IsKnown(line.itemType), $"{what} names an unknown good '{line.itemType}'");
+                    Assert.Greater(line.quantity, 0, $"{what} has a line of {line.quantity} {line.itemType}");
+                }
                 foreach (IGrouping<string, RecipeIngredient> good in (price ?? new RecipeIngredient[0]).GroupBy(c => c.itemType))
                 {
                     int sum = good.Sum(c => c.quantity);

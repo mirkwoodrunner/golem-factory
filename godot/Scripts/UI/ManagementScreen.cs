@@ -206,7 +206,7 @@ namespace GolemFactory.Nodes
 
         private void RefreshInventory()
         {
-            List<InventoryRow> rows = InventoryReadout.Compose(_world.Buffers, _world.Sandbox.Throughput);
+            List<InventoryRow> rows = InventoryReadout.Compose(_world.Buffers, _world.Sandbox.Throughput, _world.Sandbox.StockpileBufferId, SandboxWorld.PostBufferId);
             string signature = Signature(rows);
             if (signature == _renderedInventory)
             {

@@ -48,6 +48,39 @@ namespace GolemFactory.Tests.UI
             Assert.AreEqual(AssemblyLineRowKind.Wallet, rows[0].Kind);
         }
 
+        // The header used to read "Wallet: 7 Scrap (ScrapBuffer)": a buffer id shown to the
+        // player, and blind to the Post a claim also spends from (pack-upgrades critique).
+        [Test]
+        public void TheHeader_NamesThePack_NeverABufferId()
+        {
+            var (board, _, buffers) = Build();
+            buffers.Deposit(Wallet, ItemType.Scrap, 7);
+
+            Assert.AreEqual("Pack: 7 Scrap", board.Rows()[0].Text);
+        }
+
+        [Test]
+        public void TheHeader_AddsThePost_OnceOneExists()
+        {
+            var line = new AssemblyLineState(3);
+            var buffers = new StorageBufferRegistry();
+            bool postBuilt = false;
+            var board = new AssemblyLineBoard(line, buffers, Wallet, postBufferId: "PostStore");
+            board.ConfigurePostShown(() => postBuilt);
+            buffers.Deposit(Wallet, ItemType.Scrap, 100);
+
+            Assert.AreEqual("Pack: 100 Scrap", board.Rows()[0].Text, "no Post built, none mentioned");
+
+            postBuilt = true;
+            Assert.AreEqual("Pack: 100 Scrap  ·  Post: 0 Scrap", board.Rows()[0].Text);
+
+            buffers.Deposit("PostStore", ItemType.Scrap, 40);
+            Assert.AreEqual("Pack: 100 Scrap  ·  Post: 40 Scrap", board.Rows()[0].Text);
+
+            postBuilt = false; // say every Post crate is gone: a store still holding Scrap is still spent
+            Assert.AreEqual("Pack: 100 Scrap  ·  Post: 40 Scrap", board.Rows()[0].Text);
+        }
+
         [Test]
         public void Refresh_UnaffordableSlot_DisablesItsClaimButton()
         {

@@ -322,6 +322,7 @@ namespace GolemFactory.World
             AssemblyLineBoard.ConfigureFloorExpansion(FloorExpansion);
             AssemblyLineBoard.ConfigurePackUpgrade(PackUpgrade);
             AssemblyLineBoard.ConfigureSeen(item => TechTree.Ledger.HasItem(item));
+            AssemblyLineBoard.ConfigurePostShown(() => TechTree.Ledger.HasBuilding(TechTreeCatalog.BuildingPneumaticPost));
         }
 
         private void WireWorkbench(SandboxSetup.WorkbenchRoster roster)

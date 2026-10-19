@@ -239,3 +239,20 @@ Where the code differs from the spec above, and why.
 9. **`Restore` leaves an uncapped pack uncapped**, as `TryUpgrade` does (§0.2), so a test
    fixture's unlimited pack survives a load.
 10. **Tech tree**: the new node `pack.upgrades` makes the Ledger 47 nodes.
+
+### From the critique (2026-10-18)
+
+11. **The Assembly Line header showed an internal id and ignored the Post.** It read
+    `Wallet: 100 Scrap (FactoryStockpile)`, while a claim spends the pack, then the Post. It now
+    reads `Pack: 100 Scrap`, and `Pack: 100 Scrap  ·  Post: 40 Scrap` once a Post has been built
+    (the Ledger) or the Post's store holds Scrap (`AssemblyLineBoard.WalletLine`). The `management`
+    scenario puts 40 Scrap in the Post and checks the drawn header.
+12. **The Inventory tab showed ids too**: headers `FactoryStockpile`, `PneumaticPost`,
+    `Crate(3,-2)`, and goods as `IronPlate`. Headers now read `Your pack`, `Pneumatic Post`,
+    `Crate (3,-2)`, `Freight Mast (5,4)` (`InventoryReadout.Title`), and goods their display
+    names. The row keeps the id in `BufferId`. `management` checks that no drawn label holds an id.
+13. **`sandbox.json` isn't read by the strict `DefinitionLoader`**, and the wallet skips a line
+    with an empty good. A blank or misspelt good in a rung or a floor bundle would have opened
+    "after the guide", fit the top cap, and passed `PriceReachTests`. The test now also requires
+    every line of every price to name a known good (`ItemTiers.IsKnown`) with a positive
+    quantity. A free card (`baseCost` 0) counts as an empty price, not a line of 0 Scrap.

@@ -334,9 +334,13 @@ namespace GolemFactory.Tests.World
         public void TheBoardChargesTheStockpile()
         {
             SandboxWorld world = Compose();
+            int held = world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.Scrap);
+            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 37);
             AssemblyLineRow wallet = world.AssemblyLineBoard.Rows()[0];
-            StringAssert.Contains(world.StockpileBufferId, wallet.Text,
-                "Unity's ScrapBuffer wallet was a stale M9 setting; claims pay from the stockpile");
+            // Unity's ScrapBuffer wallet was a stale M9 setting; claims pay from the stockpile,
+            // which the player calls the pack. The header names it, never its buffer id.
+            Assert.AreEqual("Pack: " + (held + 37) + " Scrap", wallet.Text);
+            StringAssert.DoesNotContain(world.StockpileBufferId, wallet.Text);
         }
 
         [Test]

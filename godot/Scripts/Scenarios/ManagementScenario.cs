@@ -125,6 +125,8 @@ namespace GolemFactory.Nodes.Scenarios
                 _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Scrap, 500);
                 _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.IronPlate, 200);
                 _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Coal, 5);
+                // Some Scrap in the Post, so the Assembly Line's header names it beside the pack.
+                _world.Buffers.Deposit(SandboxWorld.PostBufferId, ItemType.Scrap, 40);
                 return null;
             });
             Do("press Tab", () => { Tap(Key.Tab); return null; });
@@ -154,10 +156,21 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "an item row without its icon slot";
                 }
-                _log.Add($"Inventory: {items.Count} item rows with icons");
+                string id = Texts(_screen.InventoryList).FirstOrDefault(IsInternalId);
+                if (id != null)
+                {
+                    return $"the Inventory shows an internal id: '{id}'";
+                }
+                _log.Add($"Inventory: {items.Count} item rows with icons, titled for the player");
                 return null;
             });
         }
+
+        private static IEnumerable<string> Texts(Node root) =>
+            root.FindChildren("*", "Label", true, false).OfType<Label>().Select(l => l.Text);
+
+        private static bool IsInternalId(string text) =>
+            text.Contains("FactoryStockpile") || text.Contains("PneumaticPost") || text.Contains("IronPlate");
 
         private void PlanTabs()
         {
@@ -183,6 +196,18 @@ namespace GolemFactory.Nodes.Scenarios
         private void PlanAssemblyLine()
         {
             Do("open the Assembly Line tab", () => { Click(_screen.TabButtons[ManagementTab.AssemblyLine]); return null; });
+            // The header used to read "Wallet: 500 Scrap (FactoryStockpile)", blind to the Post.
+            Do("the header names the pack and the Post, never a buffer id", () =>
+            {
+                string expected = _world.AssemblyLineBoard.WalletLine();
+                List<string> texts = Texts(_screen.AssemblyLine.RowList).ToList();
+                if (!texts.Contains(expected) || !expected.StartsWith("Pack: ") || !expected.EndsWith("  ·  Post: 40 Scrap"))
+                {
+                    return $"header '{expected}', labels [{string.Join(" | ", texts.Take(3))}]";
+                }
+                string id = texts.FirstOrDefault(IsInternalId);
+                return id == null ? null : $"the Assembly Line shows an internal id: '{id}'";
+            });
             int vaultBefore = 0;
             string claimed = null;
             // The line opens on cards the player can actually use: never the opening hand,

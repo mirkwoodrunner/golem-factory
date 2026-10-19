@@ -75,6 +75,7 @@ namespace GolemFactory.UI
         private FloorExpansionService _floor;
         private PackUpgradeService _pack;
         private Func<string, bool> _seen;
+        private Func<bool> _postShown;
 
         /// <param name="postBufferId">The Pneumatic Post's store, spent after the pack (crates-design §10); null for none.</param>
         public AssemblyLineBoard(AssemblyLineState line, StorageBufferRegistry buffers, string walletBufferId,
@@ -103,6 +104,29 @@ namespace GolemFactory.UI
         /// </summary>
         public void ConfigureSeen(Func<string, bool> seen) => _seen = seen;
 
+        /// <summary>
+        /// Whether a Pneumatic Post has been built (the Ledger), so the header names its Scrap
+        /// beside the pack's: a claim spends the pack, then the Post. A Post store still holding
+        /// Scrap is named whatever this says, since the wallet still spends it.
+        /// </summary>
+        public void ConfigurePostShown(Func<bool> postShown) => _postShown = postShown;
+
+        /// <summary>
+        /// The header: "Pack: 100 Scrap", and "  ·  Post: 40 Scrap" once a Post exists. Never a
+        /// buffer id (it used to read "Wallet: 100 Scrap (FactoryStockpile)").
+        /// </summary>
+        public string WalletLine()
+        {
+            int pack = _buffers?.GetQuantity(_wallet, ItemType.Scrap) ?? 0;
+            string line = "Pack: " + pack + " Scrap";
+            if (_post == null)
+            {
+                return line;
+            }
+            int post = _buffers?.GetQuantity(_post, ItemType.Scrap) ?? 0;
+            return post > 0 || (_postShown?.Invoke() ?? false) ? line + "  ·  Post: " + post + " Scrap" : line;
+        }
+
         /// <summary>The status line under the rows: what the last action did, or why it could not.</summary>
         public string Status { get; private set; } = "";
 
@@ -115,8 +139,7 @@ namespace GolemFactory.UI
                 return rows;
             }
 
-            int scrap = _buffers?.GetQuantity(_wallet, ItemType.Scrap) ?? 0;
-            rows.Add(new AssemblyLineRow { Kind = AssemblyLineRowKind.Wallet, Text = "Wallet: " + scrap + " Scrap (" + _wallet + ")", Bright = true });
+            rows.Add(new AssemblyLineRow { Kind = AssemblyLineRowKind.Wallet, Text = WalletLine(), Bright = true });
 
             // FIRST, above the cards: the cap decides whether a claimed card can ever be put on
             // a golem, so a player who cannot build is looking for this line.

@@ -28,6 +28,25 @@ namespace GolemFactory.Tests.UI
             Assert.AreEqual(3, Rows(registry).Count);
         }
 
+        // The tab read "FactoryStockpile", "PneumaticPost", "Crate(3,-2)" and "IronPlate": buffer
+        // and item ids shown to the player (pack-upgrades critique).
+        [Test]
+        public void TheRows_NameBuffersAndGoodsForThePlayer_NeverByTheirIds()
+        {
+            var registry = new StorageBufferRegistry();
+            registry.Deposit("FactoryStockpile", ItemType.IronPlate);
+            registry.Deposit("PneumaticPost", ItemType.Scrap);
+            registry.Deposit("Crate(3,-2)", ItemType.Scrap);
+            registry.Deposit("Mast(5,4)", ItemType.Scrap);
+
+            List<InventoryRow> rows = InventoryReadout.Compose(registry, null, "FactoryStockpile", "PneumaticPost");
+            var headers = rows.FindAll(r => r.Kind == InventoryRowKind.Header).ConvertAll(r => r.Text);
+            CollectionAssert.AreEquivalent(new[] { "Your pack", "Pneumatic Post", "Crate (3,-2)", "Freight Mast (5,4)" }, headers);
+            InventoryRow plate = rows.Find(r => r.ItemType == ItemType.IronPlate);
+            Assert.AreEqual("Iron Plate", plate.Text);
+            Assert.AreEqual("FactoryStockpile", plate.BufferId, "the id stays on the row for lookups");
+        }
+
         [Test]
         public void Refresh_ClearsStaleRowsBeforeRebuilding()
         {

@@ -20,7 +20,7 @@ namespace GolemFactory.UI
     {
         public InventoryRowKind Kind;
 
-        /// <summary>The buffer id (Header), the item type (Item) or the sentence (Message).</summary>
+        /// <summary>The buffer's title (Header), the good's name (Item) or the sentence (Message). Never an id.</summary>
         public string Text = "";
 
         /// <summary>Header: "1 type" / "3 types".</summary>
@@ -60,7 +60,10 @@ namespace GolemFactory.UI
         public const string NoRegistryMessage = "Inventory unavailable: no storage registry wired.";
         public const string NoBuffersMessage = "No stockpiles yet. Harvest a resource node to start one.";
 
-        public static List<InventoryRow> Compose(StorageBufferRegistry registry, BufferRateTracker tracker)
+        /// <param name="packId">The pack's buffer, titled "Your pack"; null for none.</param>
+        /// <param name="postId">The Pneumatic Post's store, titled "Pneumatic Post"; null for none.</param>
+        public static List<InventoryRow> Compose(StorageBufferRegistry registry, BufferRateTracker tracker,
+            string packId = null, string postId = null)
         {
             var rows = new List<InventoryRow>();
             if (registry == null)
@@ -99,7 +102,7 @@ namespace GolemFactory.UI
                 rows.Add(new InventoryRow
                 {
                     Kind = InventoryRowKind.Header,
-                    Text = id,
+                    Text = Title(id, packId, postId),
                     BufferId = id,
                     CountText = types.Count == 1 ? "1 type" : types.Count + " types",
                 });
@@ -132,7 +135,7 @@ namespace GolemFactory.UI
             return new InventoryRow
             {
                 Kind = InventoryRowKind.Item,
-                Text = itemType,
+                Text = ItemTiers.DisplayName(itemType),
                 BufferId = bufferId,
                 ItemType = itemType,
                 Quantity = quantity,
@@ -142,6 +145,41 @@ namespace GolemFactory.UI
                 Trend = trend,
                 RateText = kind == StockFlowKind.Unknown ? text : BufferFlowUtility.Glyph(kind, trend) + " " + text,
             };
+        }
+
+        /// <summary>
+        /// A buffer's header, in the player's words: "Your pack", "Pneumatic Post",
+        /// "Crate (3,-2)", "Freight Mast (5,4)". Any other buffer keeps its id.
+        /// </summary>
+        public static string Title(string bufferId, string packId, string postId)
+        {
+            if (bufferId == null)
+            {
+                return "";
+            }
+            if (packId != null && bufferId == packId)
+            {
+                return CrateScreenReadout.PackTitle;
+            }
+            if (postId != null && bufferId == postId)
+            {
+                return CrateScreenReadout.PostTitle;
+            }
+            int open = bufferId.IndexOf('(');
+            if (open > 0)
+            {
+                string kind = bufferId.Substring(0, open);
+                string where = bufferId.Substring(open);
+                if (kind == "Crate")
+                {
+                    return "Crate " + where;
+                }
+                if (kind == "Mast")
+                {
+                    return "Freight Mast " + where;
+                }
+            }
+            return bufferId;
         }
 
         private static InventoryRow Message(string text) => new InventoryRow { Kind = InventoryRowKind.Message, Text = text };
