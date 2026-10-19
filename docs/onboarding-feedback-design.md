@@ -1,6 +1,6 @@
 # Onboarding and feedback: the hint, grey and red, and hover
 
-**Status: approved 2026-10-19, with every recommendation in §11. Being built.** Phase 2 of
+**Status: approved 2026-10-19, with every recommendation in §11. §3, §4 and §13 built (§14 records the corrections); §2, the hint, is next.** Phase 2 of
 `docs/roadmap.md`, from decisions 4, 5 and 6. Like `crates-design.md`, it is written before the
 code and kept as written afterwards, with corrections recorded rather than hidden. Its sibling,
 `docs/guide-chapters-design.md`, rewrites the guide's texts around what this one builds.
@@ -735,3 +735,54 @@ the old jam (a smelter hand-fed one Scrap at a time) now assembles once two are 
 belt feeding a batch of 5 completes; input already over the batch takes nothing and advances; two
 Hauls of the same good don't add; `ExtractFromNode` still takes a partial batch.
 `IdRoutedDemoRegressionTests` and `LayoutMattersTests` keep passing.
+
+**As built (2026-10-19):** `HaulCollectsTests` covers the list. `LayoutMattersTests`' numbers
+didn't move (103, 0, 82, 101, 50): its lines haul batches their sources always hold.
+
+## 14. Corrections, as built (§3, §4 and §13; 2026-10-19)
+
+Built: §3 and §4 in full, §11 question 5, §12.2 and §13. Not built here: §2 (the hint,
+`ProgramPlan`), §9's questions and the guide texts, which come next. Where the build differs from
+the text above:
+
+1. **`GolemHoverText.Compose(golem, mood, facts, tiles, strainingHeld)`** takes the golem, its
+   drawn mood, its `StallFacts` and a `TileNames`, not a `GolemHoverFacts` struct: every fact the
+   struct would carry is already on the golem. `SandboxWorld.HoverCard(golem, mood)` wires it.
+2. **`TileNames` is an instance** over the endpoint registry and the masts, and names a tile from
+   what stands on it and its cell, never by parsing an id (a placed belt is `Belt (0,-12)` because
+   a belt endpoint stands there). The Clock Tower reads "the Clock Tower".
+3. **`GolemTileOverlay.Decide` takes a `carried` flag**: a carried golem's tiles hang off its
+   landing, or hide while there is none.
+4. **Straining's hover dwell is timed over the hold**, not the mood: an AlwaysOn golem is `Idle`
+   for a tick at the end of each cycle, which restarted a mood stopwatch every cycle, so "nearly
+   full" never reached the card. The hover node counts how long the fullest good has held
+   `StrainingUnits` or more. The line reads `output` or `hold` for the stock that is full, since
+   `FullestTypeUnits` reads both: `Working · hold 11/12 Coal, nearly full`.
+5. **The hover card is on layer 42**, not 4: the guide's arrow (layer 40) covered its text in the
+   frames. It is transient and never shown over a control. The pointer is read from motion
+   events, as the GUI tracks it, so a scenario's pointer is the pointer hover sees.
+6. **Drained** counts golems with a Haul or Extract step at the cell (§3.2 also named Load):
+   `LoadIntoBuffer` on a placed golem is a Push, so it never takes.
+7. **Fed**: a golem with an Assemble pushes only its recipe's output and byproduct; its Hauls
+   fill its hold, not its target. The Scrap Recycler counts as a source (it gives Scrap), against
+   §3.2's parenthesis.
+8. **Stuck sentences at a take:** `MissingItem` where the source holds other goods reads
+   `{source} has no {good}`; a collecting Haul reads `{source} is empty, needs {good} (5/10)`.
+   No steam's fix lines are written per cause (`Lay a steam pipe to it from a lit boiler.`, `Fuel
+   its boiler with Coke (E at the boiler).`, `Build another boiler: this one already powers 8
+   golems.`).
+9. **The entry shake** plays when a golem goes from not stopped to stopped, not on every stall
+   event: a collecting Haul republishes its stall each time a good arrives.
+10. **The alerts strip** counts a stall event from a golem the roster doesn't know, as every stall
+    counted before. Its red line keeps `StallDiagnostics.Describe`'s ids (`Crate(2,-1)`).
+11. **`StallTriage.Urgency` throws** for a reason it doesn't name; `StallTriageTests` walks the
+    enum, so a new reason fails a test, not a frame.
+12. **The [E] prompt** puts a stopped golem's problem first in its detail:
+    `[E]  Program PlayerGolem-003  -  Stuck: nothing to take from at (-4,-1), behind it · faces E · [R] turn · [G] carry`.
+13. **Tile arrows** are cream on the tinted tiles (the tile's tint is its self-modulate, so the
+    arrow keeps its colour). A tile under a crate is covered by the crate, arrow and all, as any
+    floor-level thing is.
+14. **Tests** are `StallTriageTests` (triage, probe, mood, strip), `GolemHoverTextTests` (card,
+    tile names, the pick, the overlay, the font) and `HaulCollectsTests`; the scenarios `moods`
+    and `hover` share `Scripts/Scenarios/StreetFixture`. Not written yet: `TutorialGuideTests`'
+    chapter 4 facings and the guide-text budgets (with the guide texts).

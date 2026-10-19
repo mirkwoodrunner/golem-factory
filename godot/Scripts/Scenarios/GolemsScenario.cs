@@ -313,7 +313,7 @@ namespace GolemFactory.Nodes.Scenarios
                     problems.Add($"{label} draws {view.BodySprite}, not {g.Program.chassis.chassisSprite}");
                 }
             }
-            if (nodes.TryGetValue(g7, out GolemNode g7View) && !(g7View.BadgeVisible && g7View.BadgeText.StartsWith("[!] " + g7.GolemId)))
+            if (nodes.TryGetValue(g7, out GolemNode g7View) && !(g7View.BadgeVisible && g7View.BadgeText.StartsWith("[!] ") && !g7View.BadgeText.Contains(g7.GolemId)))
             {
                 problems.Add($"G7's stall badge: visible={g7View.BadgeVisible} '{g7View.BadgeText}'");
             }

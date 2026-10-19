@@ -106,8 +106,8 @@ namespace GolemFactory.Nodes
             }
             _time += (float)delta;
             SyncToEntity();
-            Animate((float)delta);
             RefreshBadge((float)delta);
+            Animate((float)delta);
         }
 
         // --- Presentation: Unity's GolemVisual, GolemFacingIndicator, GroundShadow and
@@ -134,18 +134,20 @@ namespace GolemFactory.Nodes
         private Sprite2D _arrow;
         private Sprite2D _sourceTile;
         private Sprite2D _targetTile;
+        private Sprite2D _sourceArrow;
+        private Sprite2D _targetArrow;
         private Sprite2D _dropTile;
         private Sprite2D _dropArrow;
+        private GolemMood _rawMood = (GolemMood)(-1);
+        private float _rawHeld;
+        private bool _shakePending;
+        private bool _wasStopped;
         private CanvasLayer _badgeLayer;
         private PanelContainer _badge;
         private Label _badgeLabel;
         private StyleBoxFlat _badgeStyle;
         private GolemMood _mood = (GolemMood)(-1);
         private float _moodHeld;
-        private StallReason _renderedReason;
-        private string _renderedResource;
-        private int _renderedShortfall;
-        private Steam.SteamShortage _renderedSteam;
         private float _shakeLeft;
         private float _time;
 
@@ -174,7 +176,18 @@ namespace GolemFactory.Nodes
         /// </summary>
         public bool ShowTiles { get; set; }
 
+        /// <summary>The mouse is over this golem (<c>GolemHoverNode</c>): its tiles show while it is.</summary>
+        public bool Hovered { get; set; }
+
+        /// <summary>Its hover card is up, so its badge hides: one golem, one readout.</summary>
+        public bool HoverCardUp { get; set; }
+
         public bool TilesVisible => _sourceTile != null && _sourceTile.Visible;
+
+        /// <summary>The source tile's arrow, as drawn -- for a scenario.</summary>
+        public bool TileArrowsVisible => TilesVisible && _sourceArrow.Visible && _targetArrow.Visible;
+        public int TileZ => _sourceTile.ZIndex;
+
 
         /// <summary>Whether the landing outline is up (while carried), and where -- for a scenario.</summary>
         public bool DropPreviewVisible => _dropTile != null && _dropTile.Visible;
@@ -204,6 +217,8 @@ namespace GolemFactory.Nodes
             // their cells while the golem bobs and is carried.
             _sourceTile = MakeTile(SourceTint);
             _targetTile = MakeTile(TargetTint);
+            _sourceArrow = MakeTileArrow(_sourceTile);
+            _targetArrow = MakeTileArrow(_targetTile);
 
             // The landing outline while carried: the build ghost's tile and colours (red where
             // [G] would refuse), with the facing arrow on it as the build cursor draws one.
@@ -225,6 +240,27 @@ namespace GolemFactory.Nodes
 
             EventBus.GolemStalled += OnGolemStalled;
         }
+
+        /// <summary>
+        /// The facing arrow on a routing tile, at the tile's centre and 0.6 scale. The tile's
+        /// tint is its SELF-modulate, so the arrow keeps its own colour; relative z 0 keeps it
+        /// at the tile's global −1 (onboarding-feedback-design §4.2).
+        /// </summary>
+        private static Sprite2D MakeTileArrow(Sprite2D tile)
+        {
+            tile.SelfModulate = tile.Modulate;
+            tile.Modulate = Colors.White;
+            var arrow = new Sprite2D
+            {
+                Texture = GD.Load<Texture2D>("res://art/facing_arrow.png"),
+                Modulate = TileArrowTint,
+                Scale = Vector2.One * 0.6f,
+            };
+            tile.AddChild(arrow);
+            return arrow;
+        }
+
+        private static readonly Color TileArrowTint = new Color(1f, 0.96f, 0.86f, 0.95f);
 
         private Sprite2D MakeTile(Color tint)
         {
@@ -298,14 +334,20 @@ namespace GolemFactory.Nodes
                 _dropArrow.Position = step * 0.28f;
             }
 
-            bool tiles = (ShowTiles && !carried) || landing != null;
-            _sourceTile.Visible = tiles;
-            _targetTile.Visible = tiles;
-            if (tiles)
+            // One answer for carry, focus and hover (GolemTileOverlay): carried, the tiles hang
+            // off the landing; otherwise off the golem while it is focused or hovered.
+            GolemTileOverlay.Decision tiles = GolemTileOverlay.Decide(Hovered, ShowTiles, landing, carried, Entity.Cell);
+            _sourceTile.Visible = tiles.Show;
+            _targetTile.Visible = tiles.Show;
+            if (tiles.Show)
             {
-                Compat.Vector2Int at = landing ?? Entity.Cell;
-                _sourceTile.GlobalPosition = GridConversions.CellToWorld(FacingUtility.SourceCell(at, Entity.Facing));
-                _targetTile.GlobalPosition = GridConversions.CellToWorld(FacingUtility.TargetCell(at, Entity.Facing));
+                _sourceTile.GlobalPosition = GridConversions.CellToWorld(FacingUtility.SourceCell(tiles.Cell, Entity.Facing));
+                _targetTile.GlobalPosition = GridConversions.CellToWorld(FacingUtility.TargetCell(tiles.Cell, Entity.Facing));
+                // Goods flow one way: into the golem on the teal tile, out of it on the gold one,
+                // so both arrows point along its facing.
+                float rotation = GridConversions.FacingToRotation(Entity.Facing);
+                _sourceArrow.Rotation = rotation;
+                _targetArrow.Rotation = rotation;
             }
         }
 
@@ -316,7 +358,7 @@ namespace GolemFactory.Nodes
         /// </summary>
         private void Animate(float delta)
         {
-            Compat.Color tint = GolemMoodPalette.Tint(Entity.Mood);
+            Compat.Color tint = GolemMoodPalette.Tint(_mood);
             _body.Modulate = new Color(tint.r, tint.g, tint.b, tint.a);
 
             if (_shakeLeft > 0f)
@@ -348,7 +390,7 @@ namespace GolemFactory.Nodes
 
             _body.Scale = Vector2.One;
             _body.Skew = 0f;
-            GolemAnimationUtility.BobParameters bob = GolemAnimationUtility.BobFor(Entity.Mood, BobAmplitude, BobFrequency);
+            GolemAnimationUtility.BobParameters bob = GolemAnimationUtility.BobFor(_mood, BobAmplitude, BobFrequency);
             float lift = GolemAnimationUtility.ComputeIdleBobOffset(_time, bob.Amplitude, bob.Frequency);
             _body.Position = new Vector2(0f, -lift * GridConversions.CellPixels);
         }
@@ -433,7 +475,33 @@ namespace GolemFactory.Nodes
         /// </summary>
         private void RefreshBadge(float delta)
         {
-            GolemMood mood = Entity.Mood;
+            // The classified mood has a stopwatch of its own; what is DRAWN is the presented one
+            // (GolemMoodRules.Presented), so Waiting's 2 s dwell covers the tint as well as the badge.
+            GolemMood raw = Entity.Mood;
+            if (raw != _rawMood)
+            {
+                _rawMood = raw;
+                _rawHeld = 0f;
+            }
+            else
+            {
+                _rawHeld += delta;
+            }
+
+            // The entry shake: only for a golem that has just STOPPED. One that starts waiting
+            // doesn't jolt, nor does a collecting Haul each time a good arrives.
+            bool stopped = GolemMoodRules.IsStopped(raw);
+            if (_shakePending)
+            {
+                _shakePending = false;
+                if (stopped && !_wasStopped)
+                {
+                    _shakeLeft = ShakeDuration;
+                }
+            }
+            _wasStopped = stopped;
+
+            GolemMood mood = GolemMoodRules.Presented(raw, _rawHeld, (int)_mood < 0 ? raw : _mood);
             if (mood != _mood)
             {
                 _mood = mood;
@@ -441,20 +509,20 @@ namespace GolemFactory.Nodes
                 Compat.Color badge = GolemMoodPalette.Badge(mood);
                 _badgeStyle.BgColor = new Color(badge.r, badge.g, badge.b, badge.a);
                 _badge.Scale = Vector2.One * GolemMoodPalette.BadgeScale(mood);
-                RefreshCaption(mood);
             }
             else
             {
                 _moodHeld += delta;
-                if (GolemMoodRules.IsStopped(mood) &&
-                    (Entity.StallReason != _renderedReason || Entity.StallResourceId != _renderedResource
-                     || Entity.StallShortfall != _renderedShortfall || Entity.SteamShortage != _renderedSteam))
-                {
-                    RefreshCaption(mood);
-                }
             }
 
-            bool show = GolemMoodRules.ShouldShowBadge(mood, _moodHeld) && !ModalScreens.AnyOpen(GetTree());
+            // Held for its dwell since it was CLASSIFIED, once drawn: Waiting's badge comes with
+            // its tint, not 2 s after it.
+            float held = mood == raw ? _rawHeld : _moodHeld;
+            bool show = GolemMoodRules.ShouldShowBadge(mood, held) && !HoverCardUp && !ModalScreens.AnyOpen(GetTree());
+            if (show)
+            {
+                RefreshCaption(mood);
+            }
             _badge.Visible = show;
             if (!show)
             {
@@ -496,29 +564,45 @@ namespace GolemFactory.Nodes
             return Mathf.Sqrt(dx * dx + dy * dy);
         }
 
+        /// <summary>
+        /// The badge's words. A collecting Haul shows its progress ("5/10 Scrap"); a waiting
+        /// golem what it waits for; a stopped one "[!] " and the short reason -- no id line, which
+        /// is on the hover card now (onboarding-feedback-design §3.4, §13.2).
+        /// </summary>
         private void RefreshCaption(GolemMood mood)
         {
-            if (!GolemMoodRules.IsStopped(mood))
+            string progress = Entity.TryGetHaulProgress(out string good, out int held, out int batch)
+                ? UI.StallDiagnostics.HaulProgress(held, batch, good)
+                : null;
+            string text;
+            if (GolemMoodRules.IsStopped(mood) && !GolemMoodRules.IsStopped(_rawMood))
             {
-                _badgeLabel.Text = GolemMoodRules.Caption(mood);
-                _renderedReason = StallReason.None;
-                _renderedResource = null;
-                _renderedShortfall = 0;
-                return;
+                return; // red until the grey has been held: keep the red words with the red plate
             }
-            _renderedReason = Entity.StallReason;
-            _renderedResource = Entity.StallResourceId;
-            _renderedShortfall = Entity.StallShortfall;
-            _renderedSteam = Entity.SteamShortage;
-            _badgeLabel.Text = "[!] " + Entity.GolemId + "\n" +
-                UI.StallDiagnostics.DescribeShort(_renderedReason, _renderedResource, _renderedShortfall, _renderedSteam);
+            if (GolemMoodRules.IsStopped(mood))
+            {
+                text = "[!] " + (progress ?? UI.StallDiagnostics.DescribeShort(
+                    Entity.StallReason, Entity.StallResourceId, Entity.StallShortfall, Entity.SteamShortage));
+            }
+            else if (mood == GolemMood.Waiting)
+            {
+                text = progress ?? GolemMoodRules.WaitingCaption(Economy.ItemTiers.DisplayName(Entity.StallFacts.WantedGood));
+            }
+            else
+            {
+                text = GolemMoodRules.Caption(mood);
+            }
+            if (_badgeLabel.Text != text)
+            {
+                _badgeLabel.Text = text;
+            }
         }
 
         private void OnGolemStalled(GolemStalledEvent e)
         {
             if (e.GolemId == Entity.GolemId)
             {
-                _shakeLeft = ShakeDuration;
+                _shakePending = true;
             }
         }
 

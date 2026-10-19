@@ -135,6 +135,18 @@ ones. Current scenarios:
   panels, and the wrecking bar refuses a crate whose goods won't fit in the pack (the Post's
   room doesn't count), then refunds it exactly.
   Logs the frames worth a look for `--write-movie`.
+- `moods` (Sandbox, `Scripts/Scenarios/StreetFixture`'s street on steam): a golem a sleeping
+  feeder will serve goes grey after its dwell, badge "waiting for Scrap", no shake, uncounted,
+  and the strip reads "No golem needs you · 1 waiting for goods."; a collecting Haul shows
+  "2/5 Scrap"; facing bare floor, pushing into a full crate (red) and off the steam grid (blue)
+  are counted; a straining golem wears no badge; a golem set to haul from the full crate turns
+  its feeder grey; carrying the feeder away (G) turns the waiting golem red at once; a stuck
+  golem's [E] prompt names its problem; an empty Coal stall is red until a truckload is ordered.
+- `hover` (Sandbox, the same street): the real pointer on a golem's cell, or the cell above its
+  feet, lights its source and target tiles with arrows at z −1; its card is Core's text, a stuck
+  golem's names the tile, the good and the fix, and its badge hides under the card; a straining
+  golem's card says "nearly full"; nothing is hovered over the build menu or the Workbench; a
+  carried golem's tiles follow its landing while another is hovered.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
 
 To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scenarios`.
@@ -410,12 +422,18 @@ advancement. Simulation is plain, data-oriented C#: no ECS, no per-item nodes.
 - **A golem's `Mood` is a read-only classification** (`GolemMoodRules.Classify`), derived from
   state, stall reason and inventory. Presentation polls it. Add feedback by widening the mood,
   not by adding a second floating badge.
-- **NOT YET BUILT (Phase 2, `docs/onboarding-feedback-design.md`).** Red means the player must
-  act: a stall the factory will clear on its own is `GolemMood.Waiting`, grey, decided by
-  `StallTriage` from facts a Core probe reads, never by colouring a `StallReason` on its own. A
-  golem's source and target tiles are drawn by one path (`GolemNode`'s tiles) for carry, focus
-  and hover alike. A guide program step's `ProgramPlan` is both the Workbench hint and the kit's
-  action, and the hint never fills a socket.
+- **Red means the player must act** (`docs/onboarding-feedback-design.md` §3). A stall the
+  factory will clear on its own is `GolemMood.Waiting`, grey, decided by `StallTriage` from the
+  facts `World/StallFactsProbe` reads (`SandboxWorld.StallFacts`, wired in `OnGolemSpawned`),
+  never by colouring a `StallReason` on its own. A golem with no facts source reads every stall
+  red, as before. The view draws `GolemMoodRules.Presented` (Waiting only after its 2 s dwell);
+  the alerts strip counts stopped golems only.
+- **Hover is Core's** (§4): `SandboxWorld.Inspector` picks the golem, `GolemHoverText` and
+  `TileNames` write every line, `Scripts/Golems/GolemHoverNode` only feeds the pointer and
+  draws the card. A golem's source and target tiles are drawn by one path
+  (`World/GolemTileOverlay`, `GolemNode`'s tiles) for carry, focus and hover alike.
+- **NOT YET BUILT (Phase 2, §2).** A guide program step's `ProgramPlan` is both the Workbench
+  hint and the kit's action, and the hint never fills a socket.
 
 ### Building, demolition and the wrecking bar
 
