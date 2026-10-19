@@ -16,12 +16,21 @@ follow-up's invariant by `PriceReachTests` (Phase 1 below). **Still to run: the 
 `testscript/phase-1-playtest.md`**, which covers the crates, the pack upgrade and Floor
 Expansion's new prices. What's left is in `docs/open-items.md`.
 
-Next: **Phase 2, onboarding and readability.** Start from its two documents, to be written
-before any code: **Onboarding & Feedback Design** (the Workbench's next-drag hint, the grey
-waiting mood and red for stuck, hover names for a stuck golem's tile and good, source and target
-arrows on hover) and **Guide Chapter Texts & Playtest Kit Actions** (each chapter's step texts
-against the crate-era game, with the kit action every new step needs). Neither exists in `docs/`
-yet. Merge `phase1/crates` first.
+**Phase 2, onboarding and readability: both specs are approved (2026-10-19, every
+recommendation taken) and being built** (branch `phase2/onboarding`):
+
+- `docs/onboarding-feedback-design.md`: the Workbench's next-drag hint, `Waiting` (grey) against
+  stuck (red) with every `StallReason` mapped, hover (arrows, and a card naming a stuck golem's
+  tile, good and fix), `Straining` on hover only, and the overrides to
+  `cozy-automation-design.md` §2. Its §11 records the decisions.
+- `docs/guide-chapters-design.md`: chapters 1–4 rewritten for the 15-minute target, every step of
+  chapters 1–10 listed with its check, marks, flags and kit action, and the nine program plans
+  the hint and the kit share.
+- `testscript/phase-2-playtest.md`: the timing protocol for chapters 1–4 and the new questions.
+
+Build in `onboarding-feedback-design.md` §10's order. Merge `phase1/crates` first. One finding
+from writing the specs still needs a call (`open-items.md` §3): a partial Haul can jam an
+Assemble for good. The empty labelled crate's stall wording is fixed in Phase 2.
 
 Standing rules: tests and scenarios never write the player's real `save.json`; a renamed step `Id`
 or definition name breaks saves.
@@ -111,11 +120,19 @@ new curve have nothing to pay for. The test that "every price fits a full 100 pa
 The playtest timings point here: the first program took 8 minutes, turning with R took 4½, and
 the stall badge read "vaguely".
 
+The specs (approved 2026-10-19):
+
+- `docs/onboarding-feedback-design.md`: the hint, grey and red, hover.
+- `docs/guide-chapters-design.md`: the guide's texts, checks, plans and kit actions.
+- `testscript/phase-2-playtest.md`: the playtest that judges it.
+
+What they cover:
+
 - The Workbench shows a hint of the next drag (decision 4).
 - Waiting golems go grey; red means stuck, and hovering a stuck golem names the tile and the good
   (decision 5). `Straining` moves to hover (decision 6).
 - Source and target arrows always show on a hovered golem, so facing reads without R.
-- The depot label picker from `open-items.md`: moved into Phase 1, on the crate screen
+- The depot label picker: **done in Phase 1**, on the crate screen
   (`docs/inventory-screens-design.md` §4.4).
 
 **Done when:** a new player finishes chapters 1–4 without the playtest kit in under 15 minutes,

@@ -19,7 +19,8 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 | **Whether the market is an economy or a toll booth** | Truckloads are priced and arrive in bursts. |
 | **Marked tiles** | The guide marks where to build. Do they help, or get in the way? Decides round 3 (below). |
 | **The carry outline** | Is it clear where a carried golem will land? |
-| **Golems waiting for input wear the red stall badge** | Waiting is normal in a running factory; the badge may be too loud. |
+| **Golems waiting for input wear the red stall badge** | Specified for Phase 2: waiting goes grey, red is for stuck (`docs/onboarding-feedback-design.md` §3). `testscript/phase-2-playtest.md` asks whether players can tell them apart. |
+| **Chapters 1–4 in under 15 minutes** | Phase 2's "Done when". About 5¼ minutes of it is cranking no text can cut (`docs/guide-chapters-design.md` §1). |
 | **Every invented number** | Listed at the end of the playtest script. None has been felt. |
 
 ## 2. Decisions waiting on the playtest
@@ -49,6 +50,18 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 - **After a load mid-stage, the tower's starved alarm can show briefly** until the first
   delivery lands, because supply meters aren't saved. Without that, a line that broke since the
   save would never raise the alarm.
+- **A partial Haul can jam an Assemble for good** (found writing Phase 2's spec, read from the
+  code, not yet pinned by a test). A Haul takes what its source holds, up to its batch, and
+  carries on; if that is less than the recipe needs, the Assemble stalls on `MissingItem` and
+  nothing re-runs the Haul until ENGAGE rewinds the program. Crates make it likely: a smelter
+  hand-fed one Scrap at a time can take one, then wait forever. Phase 2 shows it red with the
+  fix (`docs/onboarding-feedback-design.md` §12.1). **The user's call, under discussion:** should
+  a Haul wait for its full batch? A first rule (wait until the source holds the batch) was
+  withdrawn on 2026-10-19, since a belt may never hold one; the candidate is a Haul that keeps
+  collecting into the golem until it holds the batch, showing "5/10 Scrap".
+- **An empty labelled crate reported `BeltEmpty`: closed in Phase 2.** `GolemEntity.EmptyReasonFor`
+  now reads a `FilteredBufferEndpoint` as `BufferEmpty`, so both crates say "no input in
+  Crate(3,4)".
 
 ## 4. Polish, none of it blocking
 
@@ -65,7 +78,9 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   hand-load). They charge the wallet like any price, but aren't on the test's list. Today's are
   small; a new bench recipe isn't held to the reachable pack.
 - **`Straining`**, the only predictive mood (9 of 12 units held): kept, but moves to hover only
-  (`docs/roadmap.md`, decision 6).
+  (`docs/roadmap.md`, decision 6). Specified in `docs/onboarding-feedback-design.md` §4.4.
+- **The depot label picker: closed.** Built in Phase 1 on the crate screen
+  (`docs/inventory-screens-design.md` §4.4), taught by step `copper-depot`.
 
 ## 5. Deliberate cuts
 

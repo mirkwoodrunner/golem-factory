@@ -406,6 +406,12 @@ advancement. Simulation is plain, data-oriented C#: no ECS, no per-item nodes.
 - **A golem's `Mood` is a read-only classification** (`GolemMoodRules.Classify`), derived from
   state, stall reason and inventory. Presentation polls it. Add feedback by widening the mood,
   not by adding a second floating badge.
+- **NOT YET BUILT (Phase 2, `docs/onboarding-feedback-design.md`).** Red means the player must
+  act: a stall the factory will clear on its own is `GolemMood.Waiting`, grey, decided by
+  `StallTriage` from facts a Core probe reads, never by colouring a `StallReason` on its own. A
+  golem's source and target tiles are drawn by one path (`GolemNode`'s tiles) for carry, focus
+  and hover alike. A guide program step's `ProgramPlan` is both the Workbench hint and the kit's
+  action, and the hint never fills a socket.
 
 ### Building, demolition and the wrecking bar
 
