@@ -20,7 +20,7 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 | **Marked tiles** | The guide marks where to build. Do they help, or get in the way? Decides round 3 (below). |
 | **The carry outline** | Is it clear where a carried golem will land? |
 | **Grey for waiting, red for stuck** | Built in Phase 2 (`docs/onboarding-feedback-design.md` §3). `testscript/phase-2-playtest.md` asks whether players can tell them apart. |
-| **Chapters 1–4 in under 15 minutes** | Phase 2's "Done when". Played instantly, they take 7:58 of game time, 7:02 of it at the bench, and chapter 2 takes 4:15 of its 4:30 budget (`ChaptersOneToFourFloorTests`; table in `docs/roadmap.md`, Phase 2). Only a new player can say whether the rest fits. |
+| **Chapters 1–4 in under 15 minutes** | Phase 2's "Done when". Played instantly, they took 7:58 of game time, 7:02 of it at the bench, and chapter 2 4:15 of its 4:30 budget; after Phase 3's Presser price, 5:16 (chapter 2: 2:20) (`ChaptersOneToFourFloorTests`; table in `docs/roadmap.md`, Phase 2). Only a new player can say whether the rest fits. |
 | **The human playtests of Phase 1 and Phase 2** | Neither has been run. `testscript/phase-2-playtest.md` first, with a player who has never played; then `testscript/phase-1-playtest.md`. |
 | **Every invented number** | Listed at the end of the playtest script. None has been felt. |
 
@@ -47,6 +47,13 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   can't know a trigger will never fire without simulating it. **Recommended:** leave the rule,
   and have a waiting golem's hover card name its feeder ("Waiting for Scrap · Scavenger #1
   brings it"), so the player can follow the chain to the sleeper.
+
+- **Chapter 8's game-time floor passes its ceiling: 35:39 against 30:00**
+  (`FullRunFloorTests`, `docs/tuning-data-spec.md` §18 correction 7). One Aether-Hauler per
+  two-input good (80 Iron Plate + 40 Gear + 30 Coke each), and the Plate, Gear and Coke lines that
+  pay for them, dominate it; §8.1's raises barely touch it. The candidates: the Hauler's price,
+  chapter 8's 45-minute budget, or a floor that reprograms one Hauler across the recipes. The test
+  holds the chapter at its measured floor until this is decided.
 
 ## 3. Known gaps
 
@@ -84,9 +91,9 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 - **The side-by-side screens** (the Crate screen beside the Pack): the transfer hint is drawn
   below the panels instead of inside them, and each panel carries its own Close button, so the
   pair shows two.
-- **`PriceReachTests` doesn't check the Hand-Crank Bench's recipe inputs** (or the boiler's
-  hand-load). They charge the wallet like any price, but aren't on the test's list. Today's are
-  small; a new bench recipe isn't held to the reachable pack.
+- ~~**`PriceReachTests` doesn't check the Hand-Crank Bench's recipe inputs** (or the boiler's
+  hand-load).~~ Closed in Phase 3: both are on the price list (`PriceList`,
+  `docs/tuning-data-spec.md` §15.2).
 - **`Straining`**, the only predictive mood (9 of 12 units held): on hover only since Phase 2
   (`docs/roadmap.md`, decision 6; `onboarding-feedback-design.md` §4.4). The playtest's
   `straining` question asks whether anyone missed a warning.

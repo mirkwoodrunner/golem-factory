@@ -41,13 +41,15 @@ measure it (`testscript/phase-2-playtest.md`).
 | Ch. | Steps | Budget | Of which cranking at the bench |
 |---|---|---|---|
 | 1 | 11 | 5:00 | ~1:00 (5 Coke at 2.4 s, 10 Iron Plate at 4.8 s) |
-| 2 | 7 | 4:30 | ~3:45 if every Plate is cranked (40 Plate at 4.8 s, 10 Gears at 3.2 s) |
-| 3 | 7 | 3:30 | ~0:30 (10 Gears; the Plate comes from the first Presser's crate) |
+| 2 | 7 | 4:30 | ~1:50 if every Plate is cranked (20 Plate at 4.8 s, 5 Gears at 3.2 s), after Phase 3's Presser price |
+| 3 | 7 | 3:30 | ~0:15 (5 Gears; the Plate comes from the first Presser's crate) |
 | 4 | 7 | 2:00 | none |
 
 Crank times are `HandCrankRules.CrankTicks` (twice the recipe's `durationTicks`) at 10 ticks a
-second. About 5¼ of the 15 minutes is cranking that no text can shorten. **If chapter 2 overruns,
-the lever is the Presser's price (Phase 3's tuning), not its text.**
+second. About 5¼ of the 15 minutes was cranking that no text can shorten. **If chapter 2 overruns,
+the lever is the Presser's price (Phase 3's tuning), not its text.** Phase 3 pulled it
+(`docs/tuning-data-spec.md` §12): the Presser costs 60 Scrap + 10 Iron Plate + 5 Gear, and the
+measured floor is 5:16 with 4:14 at the bench (chapter 2: 2:20).
 
 **Text budget:** a chapter 1–4 step's body is at most **240 characters**, so it fits the guide
 plate (340 × 178) beside the counter and progress lines without the plate growing over the HUD.

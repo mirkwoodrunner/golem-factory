@@ -22,7 +22,7 @@ namespace GolemFactory.Tests.Tutorial
     {
         /// <summary>
         /// Chapters whose measured floor passes its ceiling, in seconds: an open finding for the
-        /// user (tuning-data-spec §18, correction 9), not a raised ceiling. Chapter 8 measured
+        /// user (tuning-data-spec §18, correction 7), not a raised ceiling. Chapter 8 measured
         /// 35:39 against 30:00 on 2026-10-19: one Aether-Hauler per two-input good (80 Iron Plate
         /// + 40 Gear + 30 Coke each, a chapter 1-4 price §8.1 leaves alone) and the Plate and
         /// Coke lines that pay for them. The only §8.1 raise in chapter 8 is the Post's 80 Iron

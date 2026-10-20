@@ -119,10 +119,10 @@ Coke/min, idle golems free).
 | Boiler price | `placeables.json` `BoilerPrefab` cost | 30 Scrap + 10 Iron Plate | §3.1 | **keep** | Chapter 1's floor counts it; changing it moves `ChaptersOneToFourFloorTests` |
 | Steam Pipe price | `placeables.json` `SteamPipePrefab` | 1 Iron Plate | §3.1 | **keep** | |
 | Boiler starting Coke | `placeables.json` `PlaceableBoiler.startingCoke` | 0 | | **keep** | Chapter 1's `fuel` step teaches loading it |
-| `SteamNetwork.BoilerScrapCost` etc. | `Steam/SteamNetwork.cs` constants | 30, 10, 1 | | **delete** if unread, else pin equal to the data [M] | A second copy of a price that can drift. `grep` their readers first |
+| `SteamNetwork.BoilerScrapCost` etc. | `Steam/SteamNetwork.cs` constants | 30, 10, 1 | | **delete** if unread, else pin equal to the data [M: unread, deleted, §18 M1] | A second copy of a price that can drift. `grep` their readers first |
 
 Coal-line share at stage 4 with 3/min: upkeep ~96 × 3 = 288 Coke/min (the design's 576 was at
-6/min). The coal line falls from ~41 % to about a third of the factory [M]. That is the
+6/min). The coal line falls from ~41 % to about a third of the factory [M: not measured here, §18 M2]. That is the
 playthrough's `coal-share` question, not a reason to raise the burn now.
 
 ## 4. The market: prices and truckloads
@@ -160,7 +160,7 @@ one order every 7.5 s across the whole street.
 | Coal truckload | `market[CoalNode, CoalNodeWest]` | 10 Scrap for 40, 60 ticks | **30 Scrap for 120, 90 ticks** | 411/40 = 10.3 → 3.4; the price per Coal is unchanged (¼ Scrap) |
 | Copper Ore truckload | `market[CopperOreNode, CopperOreNodeEast]` | 20 Scrap for 40, 80 ticks | **60 Scrap for 120, 120 ticks** | 112/40 = 2.8 → 0.9; ½ Scrap per ore, unchanged |
 | Zinc Ore truckload | `market[ZincOreNode, ZincOreNodeEast]` | 20 Scrap for 40, 80 ticks | **60 Scrap for 120, 120 ticks** | 56/40 = 1.4 → 0.5 |
-| Aether truckload | `market[AetherNode]` | 40 Scrap for 20, 120 ticks | **80 Scrap for 40, 150 ticks** | Aether is small at every stage; doubled to keep its stall from being the one reordered every minute at stage 3–4 [M]; 2 Scrap per crystal, unchanged |
+| Aether truckload | `market[AetherNode]` | 40 Scrap for 20, 120 ticks | **80 Scrap for 40, 150 ticks** | Aether is small at every stage; doubled to keep its stall from being the one reordered every minute at stage 3–4 [M: 0.23 and 0.18 orders a minute, §18 M3]; 2 Scrap per crystal, unchanged |
 | Free seed | `sandbox.json` `freeStallSeedNode`, `freeStallSeedQuantity` | ScrapNode, 60 | **keep** | Chapter 1's first 20 Scrap |
 
 **Result:** OrdersPerMinute(stage 1) = 2.8 + 3.4 + 0.9 + 0.5 = **7.6** (from 23.7). Every new
@@ -245,7 +245,7 @@ The appendage cards' `durationTicks` in `appendages.json` (`AssembleLensGrinding
 not read for timing (`BeginAssemble` takes the recipe's), so they need no edit; keep them equal
 to the recipe's anyway.
 
-Everything that quotes R10's inputs changes with it [M: `grep -rn "2 Glass"` over `godot/`]:
+Everything that quotes R10's inputs changes with it [M: two quotes, §18 M4]:
 the `lens` goal step's recipe line (`"2 Glass + 1 Brass → 1 Lens"`), `TechTreeCatalog`'s node
 detail if it quotes it, and `RecipeCatalogTests` only if it pins quantities (it pins shapes:
 R10 stays 2 inputs, 4 slots).
@@ -313,7 +313,7 @@ never need a rung; the Post is a convenience and stays cheap.
 Floor 4 (200 Plate), Floor 5 (180 Glass). Rung 3 (250): Floor 6 (250 Plate). Every rung has a
 reason (§15.3).
 
-**What it costs in time** [M]: 450 more Iron Plate on the guide's path (Post 80, Mast 120,
+**What it costs in time** [M: chapters 9 and 10 measure 9:34 and 24:49, §18 M5]: 450 more Iron Plate on the guide's path (Post 80, Mast 120,
 Zeppelin 150 in chapters 8–9; two Overclockers 240 in chapter 10, though the floor test builds one
 reference line). At chapter 8's ~57 Plate a minute (one smelter and the iron Presser) that is
 about 4 minutes in chapter 9 and 4 in chapter 10, inside their ceilings of 20:00 and 30:00. If
@@ -335,7 +335,7 @@ free cards (Extract, Haul, Push, Repeat, Freight Launch): claimCost [], baseCost
 |---|---|---|---|
 | `Card_R10_LensGrinding` | 8 Glass + 4 Brass | **12 Glass** + 4 Brass | The formula, at 3 Glass |
 | `Card_BrassPresser` | 15 Scrap + 5 Iron Plate + 2 Gear | 15 Scrap + **2 Iron Plate + 1 Gear** | The formula, at the new Presser price |
-| `Card_RepeatAssembly` | `prerequisiteItemProduced` "" | **"Mainspring"** | A free, cycling card no chassis before the Overclocker can hold; today it is the deck's fourth card, so it is the first refill into a slot from chapter 2 on, offering nothing [M: confirm it shows in chapter 2] |
+| `Card_RepeatAssembly` | `prerequisiteItemProduced` "" | **"Mainspring"** | A free, cycling card no chassis before the Overclocker can hold; today it is the deck's fourth card, so it is the first refill into a slot from chapter 2 on, offering nothing [M: it showed through chapter 1, §18 M6] |
 | Every other card | | keep | They follow the formula |
 | Decay | `decayFractionPerSecond` 0.01, `minCostFraction` 0.25 (all cards) | keep | A card reaches its floor after 75 s on the line |
 | `baseCost`, `decayPerSecond`, `minCost` | 20, 1, 2 (legacy Scrap price) | keep | Unread where `claimCost` is set (`HasBundleCost`) |
@@ -351,7 +351,7 @@ free cards (Extract, Haul, Push, Repeat, Freight Launch): claimCost [], baseCost
 | 3 Aether Illumination | Aether Conduit 3, **Lens 24**, Frame Section 2 | 480 s | Aether Conduit 3, **Lens 12**, Frame Section 2 | §11: keeps the stage's Slag balance at 3 Glass a Lens |
 | 4 The Chronometer | Chronometer Core 2, Great Cog 2, **Aether Conduit 1** | 600 s | keep; **remove the Aether Conduit line** only under the rule in §10.2 | `progression-design.md` §12 weakness 1 |
 
-### 10.1 Finding: under-supply slows a stage quadratically [M]
+### 10.1 Finding: under-supply slows a stage quadratically [M: confirmed and fixed, §18 M7]
 
 The guide's `stage1` text says "Short of 6 a minute it still builds, just slower." Read from the
 code, it builds much slower than that. A line's meter gains 1 a delivery and loses demand/60 a
@@ -374,7 +374,7 @@ run fails the frame budget at 96 golems **after** the stall-facts probe is no lo
 hot spot (the template's step 4). Then delete the `AetherConduit` line from
 `Stage4_TheChronometer.demands` (rates are integers; 1 is the floor short of removing it). It
 saves about 5 golems (an Overclocker part-time on R18, a Hauler on R12, part of a glass, lens and
-wire line, an Aether unloader) [M].
+wire line, an Aether unloader) [M: not measured here; the `perf` run's, §18 M2].
 
 Two caveats the user should weigh (§17 Q5): stage 3 already demands 3 Conduits a minute, so a
 player reaching stage 4 already owns a Conduit line; trimming stage 4 only lets them retire it.
@@ -430,8 +430,7 @@ Any real player adds walking and reading, so chapter 2 has 15 seconds of slack. 
 it is harvested at 6.7/s, not cranked, and it keeps the Presser a purchase that needs the first
 Scavenger's crate. The card follows (§9). `gears` asks for 5 Gears.
 
-**Expected floors** [M: the Code agent runs `ChaptersOneToFourFloorTests` and records the
-measured line in §18]:
+**Expected floors** [M: measured 5:16 (1:26, 2:20, 1:22, 0:06), §18 M8]:
 
 | Ch. | Budget | Floor today | Expected floor | Ceiling (§14) |
 |---|---|---|---|---|
@@ -453,7 +452,7 @@ Today four steps hard-code the Presser's price (`TutorialGuide.cs`: `gears` "cos
 phrase from the definition: `ConstructionCostPolicy.FormatCost(chassis.cost)` for the text, the
 chassis's lines for `Counts`, and the market offer for the truckload. The `gears` step's Done reads
 the Presser's Gear line, not 10. `TutorialGuideTests`' 240-character budget still holds every
-chapter 1–4 body [M].
+chapter 1–4 body [M: it does, §18 M9].
 
 The same for chapters 8–9's quoted prices that §8.1 raises: `post` "(10 Brass + 5 Casing)",
 `zeppelin` "6 Mainspring, 8 Lens, 3 Aether Cell, 30 Casing and 40 Brass" and its `Counts`, `mast`
@@ -469,7 +468,7 @@ everything else now, so the playthrough judges a finished chassis.
 |---|---|---|---|
 | Slots | 5 | `chassis.json` `maxAppendageSlots` | 3 inputs, or 2 inputs plus Repeat |
 | Cost | 2 Mainspring + 20 Brass + 24 Casing + 12 Gear **+ 120 Iron Plate** (§8.1) | `chassis.json` `cost` | Raw ~698; opens at `mainspring` (ch. 8), reachable 250; the guide-path limit is 150 |
-| Card | 1 Mainspring + 5 Brass + 6 Casing + 3 Gear **+ 30 Iron Plate**, prerequisite Mainspring | `Card_MainspringOverclocker` | The formula (§9). The station builds any chassis unclaimed; the card is what the Workbench's rack offers [M: confirm an unclaimed Overclocker built at the station can be programmed, as the Hauler is in chapter 5] |
+| Card | 1 Mainspring + 5 Brass + 6 Casing + 3 Gear **+ 30 Iron Plate**, prerequisite Mainspring | `Card_MainspringOverclocker` | The formula (§9). The station builds any chassis unclaimed; the card is what the Workbench's rack offers [M: it can, §18 M10] |
 | Unlock in the guide | chapter 10's `frame-section` text names it ("build a Mainspring Overclocker at the station"); no step of its own | `TutorialGuide.cs` | The full playthrough watches it (`full-playthrough.md`, chapter 10) |
 | Steam | 3 Coke/min while working, like every chassis; a Repeat iteration is working | `SteamNetwork` | No surcharge: a dearer golem that also burns more would never be chosen |
 | Repeat card | free, cycling, `prerequisiteItemProduced` **Mainspring** (§9) | `Card_RepeatAssembly` | |
@@ -506,7 +505,7 @@ before it (`WorkbenchQuantityPolicy`, read through the session). A Repeat behind
 MaxIterations is 0, or behind no Assemble, is refused by `GolemProgramWriter.TryWrite`, the one
 writer ENGAGE and the station share, with `LastStatusMessage` "Repeat can't fit another run of
 {recipe} in a 12 hold" (or "Repeat needs an Assemble before it"). A loaded save holding a larger n
-keeps its program and clamps n on load [M: where `GolemProgram` restores quantities]. No new
+keeps its program and clamps n on load [M: `SaveLoadService`, §18 M11]. No new
 `StallReason`. The Haul batch is still the player's: a batch below (n + 1) × q stalls `MissingItem`
 at the Repeat, red, with today's fix line "Raise the Haul's batch, then ENGAGE again."
 
@@ -532,19 +531,19 @@ playthrough (§17 Q6).
 the floor tests assert: two thirds of the budget, as chapters 1–4 assert 10:00 of 15:00. A floor
 plays every action instantly but earns every good at the player's real rates (§15.4).
 
-| Ch. | Steps | Budget | Ceiling | Floor today | Notes |
-|---|---|---|---|---|---|
-| 1 | 11 | 5:00 | 3:20 | 1:20 | |
-| 2 | 7 | 4:30 | 3:00 | 4:15 | fails the new ceiling until §12's change |
-| 3 | 7 | 3:30 | 2:20 | 2:16 | |
-| 4 | 7 | 2:00 | 1:20 | 0:06 | |
-| 5 | 12 | 20:00 | 13:20 | [M] | the Hauler's 80 Plate + 40 Gear + 30 Coke |
-| 6 | 8 | 15:00 | 10:00 | [M] | copper belts |
-| 7 | 6 | 10:00 | 6:40 | [M] | Floor 1, bays, pack rung 1, Ledger, save, load |
-| 8 | 9 | 45:00 | 30:00 | [M] | eight goods; the floor builds one reference line each |
-| 9 | 8 | 30:00 | 20:00 | [M] | the Zeppelin's 1,093 raw |
-| 10 | 5 | 45:00 | 30:00 | [M] | `stage1` counts as its 6:00 nominal (§15.4) |
-| 1–10 | 80 | **3:00:00** | 2:00:00 | | |
+| Ch. | Steps | Budget | Ceiling | Floor before | Floor, measured (§18) | Notes |
+|---|---|---|---|---|---|---|
+| 1 | 11 | 5:00 | 3:20 | 1:20 | 1:26 | the 30-Scrap Coal order |
+| 2 | 7 | 4:30 | 3:00 | 4:15 | 2:20 | §12's Presser price |
+| 3 | 7 | 3:30 | 2:20 | 2:16 | 1:22 | |
+| 4 | 7 | 2:00 | 1:20 | 0:06 | 0:06 | |
+| 5 | 12 | 20:00 | 13:20 | | 12:51 | the Hauler's 80 Plate + 40 Gear + 30 Coke, cranked: the `hauler` step alone 9:04 |
+| 6 | 8 | 15:00 | 10:00 | | 0:23 | copper belts |
+| 7 | 6 | 10:00 | 6:40 | | 3:09 | Floor 1, bays, pack rung 1, Ledger, save, load |
+| 8 | 9 | 45:00 | 30:00 | | **35:39** | **over its ceiling**: §18 correction 7 |
+| 9 | 8 | 30:00 | 20:00 | | 9:34 | the Zeppelin's 1,093 raw |
+| 10 | 5 | 45:00 | 30:00 | | 24:49 | `stage1` 6:15 (§15.4); 12 Frame Sections the kit grants |
+| 1–10 | 80 | **3:00:00** | 2:00:00 | | 1:31:47 | |
 
 A full run of three hours to the Foundation leaves stages 2–4 an hour or more, inside roadmap
 decision 1's 4–5 hour campaign. If a measured floor passes its ceiling, the numbers in this spec
@@ -557,13 +556,13 @@ are revisited; the ceiling is not raised to fit (as `ChaptersOneToFourFloorTests
 | Test | Pins | Change |
 |---|---|---|
 | `Core.Tests/World/SandboxSetupTests` | Scrap truckload 30, Aether price 40 (lines 83, 85) | 100; 80 |
-| `Core.Tests/Economy/TruckloadMarketTests` | [M: which sizes and prices it reads from data] | follow §4.3 |
+| `Core.Tests/Economy/TruckloadMarketTests` | [M: none; it builds its own offers, §18 M12] | follow §4.3 |
 | `Core.Tests/ClockTower/ClockTowerStageCatalogTests` | stage 3's (Aether Conduit 3, Lens 24, Frame Section 2) | Lens 12 |
 | `Core.Tests/Tutorial/ChaptersOneToFourFloorTests` | < 10:00 | adds per-chapter ceilings (§14); its `Needs` reads the Presser's cost from data already |
 | `Core.Tests/Tutorial/TutorialGuideTests` | texts ≤ 240 chars | unchanged; must still pass with data-built prices |
-| `Core.Tests/Economy/LayoutMattersTests` | 103, 0, 82, 101, 50 | [M] truckload sizes may move them; the table's shape must hold: straight ≫ apart = 0, ferry recovers most, belt ≈ straight, unemptied crate stops at 50 |
+| `Core.Tests/Economy/LayoutMattersTests` | 103, 0, 82, 101, 50 | [M: unchanged, §18 M12] truckload sizes may move them; the table's shape must hold: straight ≫ apart = 0, ferry recovers most, belt ≈ straight, unemptied crate stops at 50 |
 | `Core.Tests/Economy/PriceReachTests` | invariant 1 | adds bench recipes and the boiler hand-load (§15.2) |
-| `Core.Tests/AssemblyLine/*`, `PlaytestKitTests`, scenarios `golems`, `workbench` | [M] any that claim `RepeatAssembly` before a Mainspring | grant the Ledger a Mainspring first |
+| `Core.Tests/AssemblyLine/*`, `PlaytestKitTests`, scenarios `golems`, `workbench` | [M: none did, §18 M12] any that claim `RepeatAssembly` before a Mainspring | grant the Ledger a Mainspring first |
 
 ### 15.2 `PriceReachTests`, widened
 
@@ -624,7 +623,7 @@ keeps its name, its 10:00 assertion and gains §14's per-chapter ceilings.
 - **Goods of two or more inputs** that a kit action grants (`MakeGood`, `GrantCost`, `Feed`) are
   made by a **reference line**: `FloorPlayer.RunLine(recipe, quantity)` builds, once per recipe
   and paid from earned goods, the cheapest chassis with `inputs + 2` slots between two crates on
-  a reserved strip [M: cells in the rows `expand` adds, clear of every guide mark], claims the
+  a reserved strip [M: a block under the north wall, §18 M13], claims the
   recipe's card (paid), writes `Haul(input, q)… Assemble, Push` through `GolemProgramWriter`,
   steams it from a boiler on the strip (paid, fuelled with earned Coke), puts the inputs into its
   input crate from the pack with `CrateTransfer.Put` (earning them first, recursively), and waits
@@ -643,7 +642,7 @@ keeps its name, its 10:00 assertion and gains §14's per-chapter ceilings.
   time, as today's test prints.
 - **Asserts** each chapter under its ceiling (§14) and the run under 2:00:00.
 
-It runs in seconds of wall time only if the world advances fast [M: today's chapters 1–4 take
+It runs in seconds of wall time only if the world advances fast [M: about 6 s, §18 M13; chapters 1–4 take
 how long? If the full run exceeds 60 s wall time, mark it `[Category("Slow")]` and say so in the
 root `CLAUDE.md`'s Commands; it is still run before every Phase 3 commit].
 
@@ -747,5 +746,136 @@ taken as recommended.
 
 ## 18. Corrections and measurements, as built
 
-Empty until the code phase. Every [M] above is answered here with the measured number and the
-test that measured it.
+Code agent A, 2026-10-19, on `phase3/tuning`. Every number here comes from a test that prints
+it; the test is named.
+
+### 18.1 Measurements (the [M]s)
+
+- **M1. The steam price constants** (§3). `SteamNetwork.BoilerScrapCost`, `BoilerIronPlateCost`
+  and `SteamPipeIronPlateCost` had no reader except two aliases, `PlaceableBoiler.ScrapCost` /
+  `IronPlateCost` and `PlaceableSteamPipe.IronPlateCost`, which had none either. All five are
+  deleted; the prices live in `placeables.json` alone.
+- **M2. Not measured here:** the coal line's share at stage 4 (§3) and the golems the stage 4
+  Conduit cut would save (§10.2). Both need the endgame load (`EndgameLoad`, Code agent B's).
+- **M3. Aether truckloads** (§4.3), from §4.2's formula: stage 3 needs 9 Aether a minute (3
+  Conduits × 3 Aether Cells × 1 Aether), stage 4 needs 7 (2 Chronometer Cores × 2 Regulators × 1
+  Cell, plus 1 Conduit × 3 Cells). At 40 a truckload, 0.23 and 0.18 orders a minute (0.45 and 0.35
+  at the old 20). `MarketThroughputTests` measures stage 1: **7.59 orders a minute** (Scrap 2.76,
+  Coal 3.43, Copper Ore 0.93, Zinc Ore 0.47), against 8.
+- **M4. "2 Glass" in `godot/`** (§7): the `lens` goal's recipe line (now built from the card's
+  recipe, correction 2) and `TechTreeCatalog`'s R10 node, which still read "2 Glass". It reads 3,
+  and `TechTreeCatalogTests.EveryRecipeNode_QuotesItsRecipe_AsTheDataHasIt` now checks every recipe
+  node's quantities against `recipes.json`. `RecipeCatalogTests` pins shapes only.
+- **M5. §8.1's raises in time** (`FullRunFloorTests`): chapter 9 measures 9:34 of 20:00, chapter 10
+  24:49 of 30:00. Neither is over its ceiling, so **no Plate line was lowered**; the Mast,
+  Zeppelin and Overclocker keep 120, 150 and 120.
+- **M6. `Card_RepeatAssembly` before the gate** (§9), by a kit run of chapters 1–7 with its
+  prerequisite set back to "": it sat on the line from chapter 1's first step through `work` (10
+  steps), not from chapter 2. With the Mainspring prerequisite it is never on the line in chapters
+  1–7.
+- **M7. The tower under supply** (§10.1, `ClockTowerPartialSupplyTests`): stage 1 (6 Frame
+  Sections a minute, 6:00) at 6, 3, 2 and 1 a minute took **6:00, 23:09, 53:30 and 3:36:00**,
+  nominal × (d/s)² within a few percent. §17 Q4's fix is built (correction 1): **6:00, 12:00,
+  18:00 and 36:00**, nominal × d/s exactly. The guide's `stage1` text ("Short of 6 a minute it
+  still builds, just slower") is now true as written.
+- **M8. Chapters 1–4** (§12.2, `ChaptersOneToFourFloorTests`): **5:16** (1:26, 2:20, 1:22, 0:06),
+  4:14 of it at the bench (Iron Plate 2:54, Coke 0:48, Gears 0:32). Chapter 3 came in under the
+  expected 1:30–1:50 and the total under the expected 5:25–5:45. Every chapter is under its
+  ceiling.
+- **M9. Text budget** (§12.3): every chapter 1–4 body, its prices now built from the data, still
+  fits 240 characters (`TutorialGuideTests`).
+- **M10. An unclaimed Overclocker** (§13) built at the station is programmed in the Workbench: the
+  session takes the golem's own chassis into its draft, the gate filters only the rack. Pinned by
+  `RepeatRulesTests.AnUnclaimedOverclocker_BuiltAtTheStation_IsProgrammedInTheWorkbench_WithRepeatAtItsLimit`.
+- **M11. Where a load restores quantities** (§13.1): `SaveLoadService`, through
+  `GolemProgram.SetQuantityAt`; `RepeatRules.ClampProgram` runs right after it.
+- **M12. Tests §15.1 named:** `TruckloadMarketTests` reads no data (it builds its own offers), so
+  it is unchanged. `LayoutMattersTests` is unchanged at 103, 0, 82, 101, 50. No Core test or
+  scenario claimed Repeat before a Mainspring. One test leaned on Repeat being claimable at t=0:
+  `SaveLoadPanelTests.Progress_RoundTrips_AndALoadReplacesWhatCameAfterTheSave` needed unowned
+  cards to offer after a load, and now has its ledger see Scrap first.
+- **M13. The full run** (§15.4, `FullRunFloorTests`): every step completes; the reference lines
+  stand in a block under the workshop's north wall (two rows of lines with a steam run between
+  them, a boiler for every four golems), clear of every guide mark and golem tile, and the run
+  takes **about 6 s of wall time**, so it is not `[Category("Slow")]` and runs with every
+  `dotnet test`. Floors per chapter are in §14: **1:31:47** in all.
+
+### 18.2 Corrections
+
+1. **The meter's drain** (§10.1, §17 Q4). `ClockTowerSite.DecayRate`: a line's meter drains at the
+   rate the line delivers, up to its demand, and at the demand once nothing has arrived for a
+   minute. The last clause is not in §17's wording: without it a line that stops would hold its
+   meter above 0 forever and never raise the starved alarm. At or above the demand nothing changes.
+   `ClockTowerPartialSupplyTests` pins the linear times and a stopped line still starving.
+2. **More quotes come from the data than §12.3 lists.** The Copper truckload's text said "20
+   Scrap", which §4.3 changed to 60, and §12.3 did not list it. Rather than patch one more number,
+   every price the guide quotes is built from its definition: the boiler, the Scavenger, the
+   depot, the pipe, the Aether-Hauler, the Slag Heap, the Coal and Copper truckloads, Floor 1, pack
+   rung 1 and the Scrap Reclamation claim, as well as the Presser, Post, Zeppelin and Mast. The
+   chapter 8 and 10 goal steps read their recipe line from the card's recipe (`Goal` lost its
+   recipe argument). The kit grants the Presser's Gear line at `gears`, and its `coal-order` and
+   `copper` deliver the offer's truckload size, not 40.
+3. **The Repeat refusal is an out parameter, not a `LastStatusMessage`.** `GolemProgramWriter` is
+   static; `TryWrite(..., out string refusal)` returns why, and ENGAGE shows it as "Cannot engage:
+   {refusal}." The refusal is checked before anything is touched (the old chassis refusal clears
+   the steps first, and still does). A Repeat whose n is above its limit is written at the limit,
+   as the dial would have stopped it. The Workbench screen's + button reads the session's
+   `DraftQuantityMax` (one line in `WorkbenchScreen`).
+4. **`PriceCeilingTests`' "opens in chapters 1–4"**: for the guide-path test, the chapter of the
+   step whose kit pays the price (the step's `MenuKey`, `Card`, and a table of the chassis,
+   truckloads and purchases the kit makes); for `NothingInChaptersOneToFour_WasRaised`, the
+   chapter in which the Seen harness first sees every good of the price. That table holds 40
+   prices, the free cards among them. `EveryRung_HasAPriceThatNeedsIt` finds, for rung 1, the Mast,
+   the Overclocker, the Zeppelin and Floors 2 and 3; rung 2, Floors 4 and 5; rung 3, Floor 6.
+   `StageThreeStillBalances` measures −44 Slag a minute (§11's number).
+5. **`StepGoodsReachTests`** follows §15.3 literally, a card's claimability required even for a
+   bench recipe, and passes. The goods a step asks for are attributed per frame to the step
+   current after the frame's kit action.
+6. **The floor player** (`Core.Tests/Tutorial/FloorPlayer.cs`) departs from §15.4 where §15.4's
+   player measured badly or could not finish:
+   - **Lines from chapter 8 only.** In chapter 5 the guide adopts a line as its own: two crates
+     two apart with a golem between are the shape `SmelterLine` takes as the smelter's pair (it
+     counts a golem's tile as free), and a line's Brass Presser counts as the carrier. In chapters
+     6–7 a line costs more than it saves. Before chapter 8, one-input goods are cranked or taken
+     from the guide's lines, as chapters 1–4 always were.
+   - **One-input goods are made by lines too** from chapter 8, up to 4 lines a good; two-input
+     goods up to 2; a line is added when the player has waited 45 s on that good. One line per
+     recipe, as §15.4 says, measured chapter 8 at 52:42 and left chapter 10's 12 Frame Sections
+     unfinished after 20 minutes. The first line is Iron Plate from Scrap, its own price cranked;
+     lines on a raw good are kept full; the bench cranks the same good alongside.
+   - **Slag** comes from the guide's smelter with the carrier turned away (R) while it is taken
+     (chapter 5's `work-carrier`), and from chapter 8 from a smelting line of the player's own.
+   - **What the kit grants is earned**: what it spent is paid from the pack, earned first; what
+     it left (a goal step's goods) is made. Chapters 1–4's old repay counted a granted good still
+     in the pack as already earned, so chapter 8's goods would have cost nothing.
+   - A crate the kit fills by hand (the smelter's inputs, the carrier's Coke) is never emptied
+     to repay it; crates are taken from only for goods no golem hauls from them, so Iron Plate
+     comes out of the smelter's output crate and its Slag stays.
+   - The full run steps one tick (0.1 s) a frame; harvests within a frame are counted exactly.
+     Chapters 1–4 keep 1/30 s and measure exactly as before the refactor.
+   - Bays are upgraded when the player's lines fill them before a guide golem is built.
+   - `stage1` is held to 360 s + 60 s (the tower's one-minute windows fill first) + 1; it measures
+     6:15.
+7. **Chapter 8 passes its ceiling: 35:39 against 30:00. Open, for the user.** The floor's chapter
+   8 is dominated by one Aether-Hauler for each two-input good (80 Iron Plate + 40 Gear + 30 Coke
+   each, a chapter 1–4 price §8.1 leaves alone) and, at its first step (`copper-ingot`, 13:41), by
+   building the Plate, Gear and Coke lines that pay for them. The only §8.1 raise in chapter 8 is
+   the Post's 80 Iron Plate, and §8.1's remedy (lower the Mast, then the Zeppelin, then the
+   Overclocker) touches chapters 9 and 10, which fit. Per §14 the ceiling is not raised; the
+   candidates are the Aether-Hauler's price, chapter 8's budget, or the floor model (a player
+   reprogramming one Hauler across chapter 8's recipes). The floor moves with the floor player's
+   line policy, and none tried fits both chapter 8 and chapter 10: one line per two-input good
+   measured chapter 8 at 30:09 and left chapter 10's Frame Sections unfinished; a second
+   two-input line only after 180 s of waiting measured 30:09 and 28:47 (of 30:00); the shipped
+   policy (45 s) measures 35:39 and 24:49. Until the user decides, `FullRunFloorTests` holds
+   chapter 8 to its measured floor + 60 s, so it cannot quietly get worse, and asserts every other
+   ceiling. Chapter 10's `frame-section` (18:33 of game time, the kit's 12 Frame Sections: 184
+   Casing and the Overclocker) sits near §15.4's 20-minute stuck limit, which the test applies per
+   wait, not per step.
+8. **Test fixtures that buy late prices**: the Mast tests restore pack rung 1; the Post tests and
+   `TutorialGuideTests` give the Iron Plate; `SandboxWorldTests` places every placeable with a fully
+   upgraded pack; the `golems`, `golem-motion` and `inventory` scenarios put what the base pack
+   can't hold into the Post, which the wallet spends next; the `interact` scenario reads the Coal
+   truckload's price from its offer. §15.1 and §15.8 did not list these.
+9. **`SandboxSetupTests`** pins more than §15.1 lists: the Scrap stall's 60 delivery ticks, the
+   Coal and Copper Ore offers (30 for 120, 60 for 120) and the Aether truckload's 40.

@@ -22,7 +22,8 @@ tested. Every Core test (1860) and every scenario (15) passes, each scenario run
 clean build with no flakes. **Still to run: the human playtests**, `testscript/phase-2-playtest.md`
 first (a new player through chapters 1–4 without F9, timed by the report's "Chapters 1–4" line),
 then `testscript/phase-1-playtest.md`. The game-time floor for chapters 1–4 is measured: **7:58**
-of the 15 minutes (Phase 2 below). What's left of Phase 2 is in `docs/open-items.md`.
+of the 15 minutes (Phase 2 below), **5:16** after Phase 3's Presser price. What's left of Phase 2
+is in `docs/open-items.md`.
 
 **Next: Phase 3, tuning and a full playthrough.** Write its documents before any tuning, as
 Phases 1 and 2 did:
@@ -170,6 +171,11 @@ grants. It is deterministic, and pinned under 10:00.
 | 3 | 3:30 | 2:16 | the second Presser's Gears and Plate, the second boiler's Plate |
 | 4 | 2:00 | 0:06 | none |
 | 1–4 | 15:00 | **7:58** | 7:02 (Iron Plate 4:57, Gears 1:05, Coke 1:00) |
+
+**Phase 3 (`docs/tuning-data-spec.md` §12, §18):** the Presser now costs 60 Scrap + 10 Iron
+Plate + 5 Gear, and the Coal truckload 30 Scrap for 120. Measured again: **5:16** (1:26, 2:20,
+1:22, 0:06), 4:14 at the bench (Iron Plate 2:54, Gears 0:32, Coke 0:48), each chapter under its
+ceiling of two thirds of its budget.
 
 The spec estimated about 5¼ minutes of cranking; the measurement is 7:02. Chapters 1 and 2 crank
 about what the spec said. Chapter 3 cranks more: the spec took the second Presser's 20 Plate

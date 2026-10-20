@@ -36,7 +36,7 @@ frame to entering `r4-card`.
 | Ch. | Budget | Watch |
 |---|---|---|
 | 1 | 5:00 | `program` (was 8:00): did they follow the glowing card and socket? `work`: did they turn while carrying? |
-| 2 | 4:30 | cranking for the Presser (about 3¾ of it is the bench, and no text can cut that) |
+| 2 | 4:30 | cranking for the Presser (about 2 minutes of it is the bench since Phase 3's price, and no text can cut that) |
 | 3 | 3:30 | `pipes2`, and whether the coker read grey while it waited |
 | 4 | 2:00 | `turn` (was 4:30): which golem did R turn? `stall`: did they hover the red golem? |
 

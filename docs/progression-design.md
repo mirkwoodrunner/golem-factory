@@ -1052,12 +1052,20 @@ when the step opens; chapters 1–4 under 10:00 of game-time floor and each chap
 of its budget; the Overclocker's cost (2 Mainspring + 20 Brass + 24 Casing + 12 Gear), slots and
 steam (no surcharge).
 
+**Measured in the code phase** (`docs/tuning-data-spec.md` §18): chapters 1–4's game-time floor
+is 5:16 (was 7:58); chapters 5–10 measure 12:51, 0:23, 3:09, **35:39**, 9:34 and 24:49 (stage 1
+6:15), 1:31:47 in all, and chapter 8 passes its 30:00 ceiling, an open finding. Stage 1 at full
+demand needs 7.59 truckload orders a minute. Stage 3's Slag balance is −44 a minute. Under
+supply, the tower was quadratic as feared (1 Frame Section a minute of 6 took 3:36:00) and is
+now linear (36:00): a meter drains at the rate its line delivers.
+
 **Findings this section's numbers don't settle on their own:**
 
-- **The tower slows quadratically under demand** (§7). A meter drains at the demand rate, and an
-  empty meter freezes progress, so at a supply of *s* against a demand of *d* a stage takes about
-  nominal × (d/s)², not the nominal × d/s that §7's "scales with delivered rate" reads as. Decided:
-  once measured, the meter decays at the delivered rate.
+- **The tower slowed quadratically under demand** (§7). A meter drained at the demand rate, and an
+  empty meter freezes progress, so at a supply of *s* against a demand of *d* a stage took about
+  nominal × (d/s)², not the nominal × d/s that §7's "scales with delivered rate" reads as.
+  Measured and fixed: the meter drains at the delivered rate (up to the demand), and a stage takes
+  nominal × d/s.
 - **Stage 4's Conduit cut** (§12 weakness 1) applies only if the endgame profile
   (`docs/performance-report-template.md`) fails after the stall probe is optimised. Stage 3
   already demands 3 Conduits a minute, so the cut saves less than §12 assumed.

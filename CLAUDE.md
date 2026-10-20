@@ -281,8 +281,11 @@ playtest kit does to complete it, using the player's own verbs. `PlaytestKitTest
 a step without one. **Chapters 1–4 have a game-time floor**: `ChaptersOneToFourFloorTests`
 plays them instantly but earns every good at the player's real rates (stalls, truckloads, the
 bench, golem cycles), runs each step's kit action paid from those goods, and fails above 10:00
-(measured 7:58 against Phase 2's 15-minute target). A new chapter 1–4 step whose kit action
-grants goods instead of placing or building needs a case in its `Perform`.
+or above any chapter's ceiling (two thirds of its budget; measured 5:16 against Phase 2's
+15-minute target). `FullRunFloorTests` carries the same player (`Core.Tests/Tutorial/FloorPlayer`)
+through chapter 10, building reference lines from chapter 8, in about 6 s of wall time
+(`docs/tuning-data-spec.md` §15.4, §18). A new step whose kit action grants goods instead of
+placing or building needs a case in `FloorPlayer.Perform` (or its `Needs`).
 
 A step that wants a card claimed names it (`TutorialStep.Card`), and the Assembly Line always
 shows that card (`AssemblyLineState.Wanted`). The line otherwise offers a card only once the
@@ -297,7 +300,9 @@ town square (`Core/World/TownSquare`), is not in the build menu (`SandboxWorld.P
 versus `AllPlaceables`), and the wrecking bar refuses it. A fixture is never in
 `Build.Buildings`, which is the player's factory (save, refund, counts); its progress saves in
 `ProgressEntry` instead. It is roped off until the ledger has seen a Zeppelin
-(`ClockTowerSite.OpenWhen`), and only freshly assembled goods count toward a stage.
+(`ClockTowerSite.OpenWhen`), and only freshly assembled goods count toward a stage. A line's
+supply meter drains at the rate the line delivers, up to its demand, so a stage short of its
+demand takes nominal × demand ÷ supply (`ClockTowerSite.DecayRate`, tuning-data-spec §18).
 
 **Playtest mode writes `user://playtest-report.md`**, and keeps the previous session's as
 `playtest-report-<date>-<time>.md` before a new one starts (`PlaytestReportArchive`): every
@@ -434,7 +439,10 @@ advancement. Simulation is plain, data-oriented C#: no ECS, no per-item nodes.
   reorder; the golem stalls and retries the same step every tick, publishing
   `GolemStalledEvent`/`GolemResumedEvent`. Rigidity is structural.
 - `Repeat(n)` re-runs the preceding Assemble n more times as n sequential assemblies,
-  Overclocker-only (`ChassisDefinition.allowsRepeat`), refused at assembly time.
+  Overclocker-only (`ChassisDefinition.allowsRepeat`), refused at assembly time. **n is capped so
+  n + 1 runs fit the 12 hold** (`Golems/RepeatRules.MaxIterations`): the Workbench dial stops
+  there, `GolemProgramWriter.TryWrite` refuses a Repeat behind no Assemble or one that can't run
+  twice, and a load clamps n.
 - Triggers: `AlwaysOn`, `Interval`, `Threshold` (edge-triggered), `Signal` (latches a fire that
   arrives mid-cycle).
 - **`AppendageActionType` and `StallReason` are append-only**: serialized by integer index.
@@ -457,7 +465,11 @@ advancement. Simulation is plain, data-oriented C#: no ECS, no per-item nodes.
   `TileNames` write every line, `Scripts/Golems/GolemHoverNode` only feeds the pointer and
   draws the card. A golem's source and target tiles are drawn by one path
   (`World/GolemTileOverlay`, `GolemNode`'s tiles) for carry, focus and hover alike.
-- **A guide program step names its program once** (`TutorialStep.Program`, a `ProgramPlan`, and
+- **A quoted price is the data's** (tuning-data-spec invariant 12): a guide text or progress count
+that names a price builds it from the definition (`TutorialGuide.Price`, `CostCounts`,
+`OfferPrice`, `RecipeLine`), never a copy of the number.
+
+**A guide program step names its program once** (`TutorialStep.Program`, a `ProgramPlan`, and
   `ProgramTarget`, the golem it means). The Workbench hint walks the plan
   (`UI/WorkbenchHint`, read through `WorkbenchSession.Hint` from `TutorialGuide.PlanFor`), the
   step's Done check is `plan.Matches`, and the kit's `PerformPlan` writes it through
