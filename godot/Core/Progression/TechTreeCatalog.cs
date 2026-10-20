@@ -225,7 +225,7 @@ namespace GolemFactory.Progression
                 TechTreeUnlockSignal.Item, ItemType.Casing,
                 new[] { "r4.ironsmelting", "r7.brassalloying" }),
             new TechTreeNode(
-                "r10.lensgrinding", "R10 Lens Grinding", "2 Glass + 1 Brass -> 1 Lens",
+                "r10.lensgrinding", "R10 Lens Grinding", "3 Glass + 1 Brass -> 1 Lens",
                 TechTreeNodeKind.Recipe, 3, 10,
                 TechTreeUnlockSignal.Item, ItemType.Lens,
                 new[] { "r3.glassmaking", "r7.brassalloying" }),

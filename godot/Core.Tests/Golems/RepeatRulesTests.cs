@@ -189,6 +189,42 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void AnUnclaimedOverclocker_BuiltAtTheStation_IsProgrammedInTheWorkbench_WithRepeatAtItsLimit()
+        {
+            // tuning-data-spec §13: the station builds any chassis unclaimed, and the Workbench
+            // takes the golem's own chassis into its draft; only the cards must be owned.
+            DefinitionSet definitions = AuthoredData.Load();
+            SandboxWorld world = SandboxWorld.Compose(definitions, SandboxSetupTests.LoadReal(), PlaceableCatalogTests.LoadReal(definitions));
+            world.PackUpgrade.Restore(world.PackUpgrade.Rungs.Count);
+            ChassisDefinition overclocker = definitions.Chassis["MainspringOverclocker"];
+            foreach (RecipeIngredient c in overclocker.cost)
+            {
+                world.Buffers.Deposit(world.StockpileBufferId, c.itemType, c.quantity);
+            }
+            string user = world.Setup.assemblyLine.claimUserId;
+            var deck = definitions.Decks[world.Setup.assemblyLine.deck];
+            Assert.IsFalse(world.AssemblyLine.GetClaimedCards(user).Any(c => c.chassis == overclocker), "precondition: its card unclaimed");
+            world.AssemblyLine.GrantClaim(user, deck.Cards.First(c => c.appendage?.name == "AssembleCoking"));
+            world.AssemblyLine.GrantClaim(user, deck.Cards.First(c => c.appendage?.name == "RepeatAssembly"));
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(overclocker, out GolemEntity golem));
+            WorkbenchSession bench = world.Workbench;
+            bench.RetargetGolem(golem);
+            Assert.AreSame(overclocker, bench.DraftChassis, "the golem's own chassis, card or no card");
+            bench.HandleDrop(WorkbenchCardRef.FromVault(definitions.LogicCores["AlwaysOnCore"]), WorkbenchZone.Trigger);
+            bench.HandleDrop(WorkbenchCardRef.FromVault(definitions.Appendages["HaulScrap"]), WorkbenchZone.Socket(0));
+            bench.HandleDrop(WorkbenchCardRef.FromVault(definitions.Appendages["AssembleCoking"]), WorkbenchZone.Socket(1));
+            bench.HandleDrop(WorkbenchCardRef.FromVault(definitions.Appendages["RepeatAssembly"]), WorkbenchZone.Socket(2));
+            bench.HandleDrop(WorkbenchCardRef.FromVault(definitions.Appendages["PushOutput"]), WorkbenchZone.Socket(3));
+            bench.AdjustDraftQuantity(2, +20);
+            Assert.AreEqual(11, bench.DraftQuantityAt(2), "R1's limit");
+
+            Assert.IsTrue(bench.Engage(), bench.StatusText);
+            Assert.AreEqual(4, golem.Program.appendages.Count);
+            Assert.AreEqual(11, golem.Program.GetQuantityAt(2));
+        }
+
+        [Test]
         public void ASaveHoldingRepeatTwelve_LoadsClampedToEleven()
         {
             DefinitionSet definitions = AuthoredData.Load();

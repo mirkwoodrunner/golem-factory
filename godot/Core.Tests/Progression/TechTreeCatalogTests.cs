@@ -335,5 +335,48 @@ namespace GolemFactory.Tests.EditMode
             return count;
         }
 
+
+        [Test]
+        public void EveryRecipeNode_QuotesItsRecipe_AsTheDataHasIt()
+        {
+            // docs/tuning-data-spec.md invariant 12: the Lens went to 3 Glass, and the Ledger's
+            // node still said 2. A recipe node's detail is its recipe's inputs and output.
+            // By number: node "r10.lensgrinding" is recipe "R10_LensGrinding".
+            var recipes = new Dictionary<string, RecipeDefinition>();
+            foreach (RecipeDefinition recipe in AuthoredData.All<RecipeDefinition>())
+            {
+                recipes[recipe.name.Substring(0, recipe.name.IndexOf('_')).ToLowerInvariant()] = recipe;
+            }
+            int checkedNodes = 0;
+            foreach (TechTreeNode node in TechTreeCatalog.Nodes)
+            {
+                if (node.Kind != TechTreeNodeKind.Recipe)
+                {
+                    continue;
+                }
+                string key = node.Id.Substring(0, node.Id.IndexOf('.'));
+                Assert.IsTrue(recipes.TryGetValue(key, out RecipeDefinition recipe), $"{node.Id} names no recipe");
+                // The details abbreviate goods ("2 Copper + 1 Zinc -> 3 Brass"), so the numbers
+                // are what is checked: each input's quantity in order, then the output's.
+                string[] sides = node.Detail.Split(new[] { " -> " }, System.StringSplitOptions.None);
+                var given = new List<int>();
+                foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(sides[0], @"(\d+) "))
+                {
+                    given.Add(int.Parse(m.Groups[1].Value));
+                }
+                var expected = new List<int>();
+                foreach (RecipeIngredient input in recipe.inputs)
+                {
+                    expected.Add(input.quantity);
+                }
+                CollectionAssert.AreEqual(expected, given, $"{node.Id}'s inputs: '{node.Detail}'");
+                if (sides.Length > 1) // the tier-5 nodes list their inputs alone
+                {
+                    StringAssert.StartsWith(recipe.outputQuantity + " ", sides[1], $"{node.Id}'s output: '{node.Detail}'");
+                }
+                checkedNodes++;
+            }
+            Assert.Greater(checkedNodes, 10);
+        }
     }
 }
