@@ -95,6 +95,7 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            using var perf = NodePerf.Measure("node.cursor");
             _time += delta;
             bool active = Build.IsBuildToolActive;
             _ghost.Visible = active;

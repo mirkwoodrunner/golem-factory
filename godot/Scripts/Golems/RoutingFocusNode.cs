@@ -35,6 +35,7 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            using var perf = NodePerf.Measure("node.focus");
             if (_player == null)
             {
                 return;

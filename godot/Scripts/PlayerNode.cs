@@ -100,6 +100,7 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            using var perf = NodePerf.Measure("node.player");
             // A full screen owns the keys: the player does not walk off while choosing a chassis.
             Vector2 input = ScriptedMove
                 ?? (ModalScreens.AnyOpen(GetTree()) || TextEntry.IsTyping(GetViewport())

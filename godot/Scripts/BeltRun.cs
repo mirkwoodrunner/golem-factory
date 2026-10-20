@@ -68,8 +68,11 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta) => QueueRedraw();
 
+        // Drawing is timed as node.belts (the perf scenario's sampler; null in the game).
+
         public override void _Draw()
         {
+            using var perf = NodePerf.Measure("node.belts");
             float rotation = GridConversions.FacingToRotation(Facing);
             Vector2 half = GridConversions.FacingStep(Facing) / 2f;
             Vector2 tileHalf = _beltTexture.GetSize() / 2f;

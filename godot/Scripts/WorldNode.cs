@@ -89,6 +89,7 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            using var perf = NodePerf.Measure("node.world");
             // Unity's WorldHudSolver: lay out last frame's floating labels (the mood badges)
             // before any view asks where its own goes. This node is the scene's first child, so
             // its _Process runs before every view's.

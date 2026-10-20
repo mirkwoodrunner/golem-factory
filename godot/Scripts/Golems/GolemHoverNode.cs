@@ -63,6 +63,7 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            using var perf = NodePerf.Measure("node.hover");
             World.SandboxWorld sandbox = _world?.Sandbox;
             if (sandbox == null)
             {

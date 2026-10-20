@@ -210,6 +210,7 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            using var perf = NodePerf.Measure("node.tutorial");
             _time += (float)delta;
             TutorialGuide guide = Guide;
             bool screenOpen = ModalScreens.AnyOpen(GetTree());

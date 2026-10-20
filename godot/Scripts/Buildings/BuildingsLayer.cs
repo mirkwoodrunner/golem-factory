@@ -258,6 +258,7 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            using var perf = NodePerf.Measure("node.buildings");
             if (_tower != null)
             {
                 RefreshTower(); // a stage completing, or the rope coming down, changes the picture
@@ -275,6 +276,7 @@ namespace GolemFactory.Nodes
         /// </summary>
         public override void _Draw()
         {
+            using var perf = NodePerf.Measure("node.buildings");
             BeltSegment segment = _belt?.Segment;
             if (segment == null || segment.Items.Count == 0)
             {

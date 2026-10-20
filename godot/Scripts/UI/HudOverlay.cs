@@ -162,6 +162,7 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            using var perf = NodePerf.Measure("node.hud");
             _root.Visible = !ModalScreens.AnyOpen(GetTree());
             if (!_root.Visible)
             {
