@@ -130,7 +130,7 @@ namespace GolemFactory.Tests.EditMode
             { "bench R2_ScrapReclamation", "Scrap:1" },
             { "bench R8_GearCutting", "IronPlate:2" },
             { "boiler hand-load", "Coke:20" },
-            { "card Card_AetherHauler", "IronPlate:20 Gear:10 Coke:7" },
+            { "card Card_AetherHauler", "IronPlate:5 Gear:2 Coke:7" }, // follows its chassis
             { "card Card_BrassPresser", "Scrap:15 IronPlate:2 Gear:1" },
             { "card Card_ClockworkScavenger", "Scrap:3" },
             { "card Card_ExtractScrap", "" },
@@ -142,7 +142,9 @@ namespace GolemFactory.Tests.EditMode
             { "card Card_R4_IronSmelting", "Scrap:8 Coke:4" },
             { "card Card_R8_GearCutting", "IronPlate:8" },
             { "card Card_RepeatAssembly", "" }, // free; claimable only once a Mainspring is made (§9)
-            { "chassis AetherHauler", "IronPlate:80 Gear:40 Coke:30" },
+            // Lowered, not raised (user, 2026-10-20): chapter 8's floor was 35:39 of its 30:00
+            // ceiling at 80 Iron Plate + 40 Gear, one Hauler for each two-input good (§18).
+            { "chassis AetherHauler", "IronPlate:20 Gear:10 Coke:30" },
             { "chassis BrassPresser", "Scrap:60 IronPlate:10 Gear:5" }, // §12: was 20 Iron Plate + 10 Gear
             { "chassis ClockworkScavenger", "Scrap:12" },
             { "floor expansion 1", "Scrap:80 IronPlate:40" },

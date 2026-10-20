@@ -165,7 +165,7 @@ namespace GolemFactory.Tests.EditMode
                 { "BrassPresser", new[]
                     { (ItemType.Scrap, 60), (ItemType.IronPlate, 10), (ItemType.Gear, 5) } },
                 { "AetherHauler", new[]
-                    { (ItemType.IronPlate, 80), (ItemType.Gear, 40), (ItemType.Coke, 30) } },
+                    { (ItemType.IronPlate, 20), (ItemType.Gear, 10), (ItemType.Coke, 30) } },
                 { "MainspringOverclocker", new[]
                     {
                         (ItemType.Mainspring, 2), (ItemType.Brass, 20),

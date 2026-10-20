@@ -1025,6 +1025,7 @@ in the code phase and recorded in that spec's §18, not here.
 | Truckloads | Scrap 30; Coal 40 for 10 Scrap; ores 40 for 20; Aether 20 for 40 | Scrap 100; Coal 120 for 30; ores 120 for 60; Aether 40 for 80 | At the old sizes stage 1 needed ~24 orders a minute by hand. The price per unit is unchanged |
 | Floor Expansion 5 | 200 Glass + 20 Lens + 15 Casing | **180 Glass** + 20 Lens + 15 Casing | The same Glass in all, at 3 Glass a Lens |
 | `Card_RepeatAssembly` | no prerequisite | prerequisite Mainspring | It filled Assembly Line slots from chapter 2 on, a card no early chassis can hold |
+| Aether-Hauler (and its card) | 80 Iron Plate + 40 Gear + 30 Coke | **20 Iron Plate + 10 Gear** + 30 Coke (card 5 + 2 + 7) | Chapter 8's floor was 35:39 of its 30:00 ceiling, one Hauler per two-input good; now 23:05 (the user's call, after measuring) |
 | Mainspring Overclocker (and its card) | 2 Mainspring + 20 Brass + 24 Casing + 12 Gear | the same + **120 Iron Plate** (card + 30) | Late prices use the room the pack rungs give (below) |
 | Zeppelin Freight Loader (and its card) | 6 Mainspring + 8 Lens + 3 Aether Cell + 30 Casing + 40 Brass | the same + **150 Iron Plate** (card + 37) | The same |
 | Freight Mast | 20 Brass + 10 Casing | the same + **120 Iron Plate** | The same |
@@ -1053,9 +1054,11 @@ of its budget; the Overclocker's cost (2 Mainspring + 20 Brass + 24 Casing + 12 
 steam (no surcharge).
 
 **Measured in the code phase** (`docs/tuning-data-spec.md` §18): chapters 1–4's game-time floor
-is 5:16 (was 7:58); chapters 5–10 measure 12:51, 0:23, 3:09, **35:39**, 9:34 and 24:49 (stage 1
-6:15), 1:31:47 in all, and chapter 8 passes its 30:00 ceiling, an open finding. Stage 1 at full
-demand needs 7.59 truckload orders a minute. Stage 3's Slag balance is −44 a minute. Under
+is 5:16 (was 7:58); at the Hauler's old price chapters 5–10 measured 12:51, 0:23, 3:09, **35:39**,
+9:34 and 24:49 (stage 1 6:15), chapter 8 over its 30:00 ceiling. Stage 1 at full
+demand needs 7.59 truckload orders a minute. Chapter 8's floor was settled by **lowering the
+Aether-Hauler to 20 Iron Plate + 10 Gear + 30 Coke** (from 80 + 40 + 30; the user's call): chapters
+5–10 then measure 7:28, 0:20, 4:14, 23:05, 7:34 and 27:21, every one under its ceiling. Stage 3's Slag balance is −44 a minute. Under
 supply, the tower was quadratic as feared (1 Frame Section a minute of 6 took 3:36:00) and is
 now linear (36:00): a meter drains at the rate its line delivers.
 

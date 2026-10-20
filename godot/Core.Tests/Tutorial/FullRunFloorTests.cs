@@ -20,19 +20,6 @@ namespace GolemFactory.Tests.Tutorial
     /// </summary>
     public class FullRunFloorTests
     {
-        /// <summary>
-        /// Chapters whose measured floor passes its ceiling, in seconds: an open finding for the
-        /// user (tuning-data-spec §18, correction 7), not a raised ceiling. Chapter 8 measured
-        /// 35:39 against 30:00 on 2026-10-19: one Aether-Hauler per two-input good (80 Iron Plate
-        /// + 40 Gear + 30 Coke each, a chapter 1-4 price §8.1 leaves alone) and the Plate and
-        /// Coke lines that pay for them. The only §8.1 raise in chapter 8 is the Post's 80 Iron
-        /// Plate; lowering the Mast, Zeppelin or Overclocker would not touch it.
-        /// </summary>
-        private static readonly Dictionary<int, float> OverCeiling = new Dictionary<int, float>
-        {
-            { 8, 35 * 60 + 39 },
-        };
-
         /// <summary>§15.4: a step that hasn't finished in 20 minutes of game time is stuck.</summary>
         private const float StepTimeout = 20 * 60f;
 
@@ -92,14 +79,6 @@ namespace GolemFactory.Tests.Tutorial
             Assert.LessOrEqual(stageOne, 360f + 60f + 1f, "stage 1 at its demand builds in its nominal time");
             foreach (KeyValuePair<int, float> chapter in tookByChapter)
             {
-                if (OverCeiling.TryGetValue(chapter.Key, out float measured))
-                {
-                    // An open finding (tuning-data-spec §18): held to what was measured, so it
-                    // can't quietly get worse, until the user decides what moves.
-                    Assert.LessOrEqual(chapter.Value, measured + 60f,
-                        $"chapter {chapter.Key}'s floor, already over its ceiling, grew past its measured {FloorPlayer.Clock(measured)}");
-                    continue;
-                }
                 Assert.Less(chapter.Value, ChaptersOneToFourFloorTests.Ceilings[chapter.Key], $"chapter {chapter.Key}'s floor passes its ceiling");
             }
             Assert.Less(end, 2 * 60 * 60f, "the full run's floor passes two hours");

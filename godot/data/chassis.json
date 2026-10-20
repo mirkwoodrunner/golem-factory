@@ -5,11 +5,11 @@
     "cost": [
       {
         "itemType": "IronPlate",
-        "quantity": 80
+        "quantity": 20
       },
       {
         "itemType": "Gear",
-        "quantity": 40
+        "quantity": 10
       },
       {
         "itemType": "Coke",

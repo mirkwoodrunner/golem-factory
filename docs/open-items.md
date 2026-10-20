@@ -48,13 +48,6 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   and have a waiting golem's hover card name its feeder ("Waiting for Scrap · Scavenger #1
   brings it"), so the player can follow the chain to the sleeper.
 
-- **Chapter 8's game-time floor passes its ceiling: 35:39 against 30:00**
-  (`FullRunFloorTests`, `docs/tuning-data-spec.md` §18 correction 7). One Aether-Hauler per
-  two-input good (80 Iron Plate + 40 Gear + 30 Coke each), and the Plate, Gear and Coke lines that
-  pay for them, dominate it; §8.1's raises barely touch it. The candidates: the Hauler's price,
-  chapter 8's 45-minute budget, or a floor that reprograms one Hauler across the recipes. The test
-  holds the chapter at its measured floor until this is decided.
-
 ## 3. Known gaps
 
 - **Old saves resume the guide a few steps off.** Saves from before the guide stored its step by

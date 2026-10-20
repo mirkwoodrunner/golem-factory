@@ -9,11 +9,11 @@
     "claimCost": [
       {
         "itemType": "IronPlate",
-        "quantity": 20
+        "quantity": 5
       },
       {
         "itemType": "Gear",
-        "quantity": 10
+        "quantity": 2
       },
       {
         "itemType": "Coke",

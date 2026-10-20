@@ -259,7 +259,7 @@ R10 stays 2 inputs, 4 slots).
 |---|---|---|---|---|
 | Clockwork Scavenger | 2 | 12 Scrap | keep | |
 | **Brass Presser** | 3 | 60 Scrap + **20 Iron Plate + 10 Gear** | 60 Scrap + **10 Iron Plate + 5 Gear** | §12: chapter 2's floor is 4:15 of 4:30 |
-| Aether-Hauler | 4 | 80 Iron Plate + 40 Gear + 30 Coke | keep | |
+| Aether-Hauler | 4 | 80 Iron Plate + 40 Gear + 30 Coke | keep; **20 Iron Plate + 10 Gear + 30 Coke** after the code phase | §18 correction 10: chapter 8 over its ceiling |
 | Mainspring Overclocker | 5 | 2 Mainspring + 20 Brass + 24 Casing + 12 Gear | **+ 120 Iron Plate** | §8.1, §13 |
 | Zeppelin Freight Loader | 6 | 6 Mainspring + 8 Lens + 3 Aether Cell + 30 Casing + 40 Brass | **+ 150 Iron Plate** | §8.1. At 3 Glass its 8 Lens are 24 Glass, not 16; §11 shows the Glass is there by chapter 9 |
 
@@ -538,13 +538,13 @@ plays every action instantly but earns every good at the player's real rates (§
 | 2 | 7 | 4:30 | 3:00 | 4:15 | 2:20 | §12's Presser price |
 | 3 | 7 | 3:30 | 2:20 | 2:16 | 1:22 | |
 | 4 | 7 | 2:00 | 1:20 | 0:06 | 0:06 | |
-| 5 | 12 | 20:00 | 13:20 | | 12:51 | the Hauler's 80 Plate + 40 Gear + 30 Coke, cranked: the `hauler` step alone 9:04 |
-| 6 | 8 | 15:00 | 10:00 | | 0:23 | copper belts |
-| 7 | 6 | 10:00 | 6:40 | | 3:09 | Floor 1, bays, pack rung 1, Ledger, save, load |
-| 8 | 9 | 45:00 | 30:00 | | **35:39** | **over its ceiling**: §18 correction 7 |
-| 9 | 8 | 30:00 | 20:00 | | 9:34 | the Zeppelin's 1,093 raw |
-| 10 | 5 | 45:00 | 30:00 | | 24:49 | `stage1` 6:15 (§15.4); 12 Frame Sections the kit grants |
-| 1–10 | 80 | **3:00:00** | 2:00:00 | | 1:31:47 | |
+| 5 | 12 | 20:00 | 13:20 | | 7:28 | the Hauler's 20 Plate + 10 Gear + 30 Coke (§18 correction 10; 12:51 at 80 + 40) |
+| 6 | 8 | 15:00 | 10:00 | | 0:20 | copper belts |
+| 7 | 6 | 10:00 | 6:40 | | 4:14 | Floor 1, bays, pack rung 1, Ledger, save, load |
+| 8 | 9 | 45:00 | 30:00 | | 23:05 | 35:39 before §18 correction 10 |
+| 9 | 8 | 30:00 | 20:00 | | 7:34 | the Zeppelin's 1,093 raw |
+| 10 | 5 | 45:00 | 30:00 | | 27:21 | `stage1` 6:15 (§15.4); 12 Frame Sections the kit grants |
+| 1–10 | 80 | **3:00:00** | 2:00:00 | | 1:15:23 | |
 
 A full run of three hours to the Foundation leaves stages 2–4 an hour or more, inside roadmap
 decision 1's 4–5 hour campaign. If a measured floor passes its ceiling, the numbers in this spec
@@ -857,7 +857,7 @@ it; the test is named.
    - Bays are upgraded when the player's lines fill them before a guide golem is built.
    - `stage1` is held to 360 s + 60 s (the tower's one-minute windows fill first) + 1; it measures
      6:15.
-7. **Chapter 8 passes its ceiling: 35:39 against 30:00. Open, for the user.** The floor's chapter
+7. **Chapter 8 passed its ceiling: 35:39 against 30:00. Decided by correction 10.** The floor's chapter
    8 is dominated by one Aether-Hauler for each two-input good (80 Iron Plate + 40 Gear + 30 Coke
    each, a chapter 1–4 price §8.1 leaves alone) and, at its first step (`copper-ingot`, 13:41), by
    building the Plate, Gear and Coke lines that pay for them. The only §8.1 raise in chapter 8 is
@@ -868,9 +868,8 @@ it; the test is named.
    line policy, and none tried fits both chapter 8 and chapter 10: one line per two-input good
    measured chapter 8 at 30:09 and left chapter 10's Frame Sections unfinished; a second
    two-input line only after 180 s of waiting measured 30:09 and 28:47 (of 30:00); the shipped
-   policy (45 s) measures 35:39 and 24:49. Until the user decides, `FullRunFloorTests` holds
-   chapter 8 to its measured floor + 60 s, so it cannot quietly get worse, and asserts every other
-   ceiling. Chapter 10's `frame-section` (18:33 of game time, the kit's 12 Frame Sections: 184
+   policy (45 s) measures 35:39 and 24:49. Until the user decided, `FullRunFloorTests` held
+   chapter 8 to its measured floor + 60 s; that allowance is gone (correction 10). Chapter 10's `frame-section` (18:33 of game time, the kit's 12 Frame Sections: 184
    Casing and the Overclocker) sits near §15.4's 20-minute stuck limit, which the test applies per
    wait, not per step.
 8. **Test fixtures that buy late prices**: the Mast tests restore pack rung 1; the Post tests and
@@ -880,6 +879,24 @@ it; the test is named.
    truckload's price from its offer. §15.1 and §15.8 did not list these.
 9. **`SandboxSetupTests`** pins more than §15.1 lists: the Scrap stall's 60 delivery ticks, the
    Coal and Copper Ore offers (30 for 120, 60 for 120) and the Aether truckload's 40.
+10. **The Aether-Hauler costs 20 Iron Plate + 10 Gear + 30 Coke** (was 80 + 40 + 30; the user's
+   call, 2026-10-20, on correction 7), and its card 5 Iron Plate + 2 Gear + 7 Coke by the claim
+   formula. A chapter 1–4-era price **lowered**, not raised, so invariant 2 holds;
+   `NothingInChaptersOneToFour_WasRaised` and `ChassisCostsMatchSection6` pin the new numbers.
+   The Coke line is unchanged. Measured floors (`FullRunFloorTests`, every chapter now asserted
+   against its real ceiling): chapters 5–10 at **7:28, 0:20, 4:14, 23:05, 7:34 and 27:21**,
+   1:15:23 in all; chapters 1–4 unchanged at 5:16 (the Hauler opens in chapter 5).
+   - **How the price was chosen.** The floor responds to the price unevenly, because the floor
+     player's lines (when one is added, which good it serves first) shift with every price: half
+     (40 + 20) measured chapter 8 at 29:57, 38 + 19 at 29:09, 36 + 18 at 22:57, 34 + 17 at 31:11,
+     32 + 16 at 30:01, 28 + 14 at 29:06. Below that the floor settles: 26 + 13 at 26:19, 24 + 12 at
+     28:21, 22 + 11 at 24:28, 21 + 10 at 24:54, **20 + 10 at 23:05**, 18 + 9 at 27:48. 20 + 10 sits in
+     that band with 6:55 of chapter 8 slack and 2:39 of chapter 10's (27:21 of 30:00); 36 + 18
+     measured better but its neighbours do not, so it would not hold under the next retune.
+   - Every rung still has a price that needs it (rung 1: the Mast, the Overclocker, the Zeppelin,
+     Floors 2 and 3; rung 2: Floors 4 and 5; rung 3: Floor 6), and `PriceReachTests`,
+     `StepGoodsReachTests` and the guide's texts (which build the Hauler's price from the data)
+     need no change.
 
 ### 18.3 Code agent B: the endgame load (2026-10-20)
 
