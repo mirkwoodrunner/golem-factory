@@ -486,7 +486,7 @@ namespace GolemFactory.Nodes
             int quantity = _session.DraftQuantityAt(slot);
             row.AddChild(StepperButton("Decrease", "-", 0f, 0.22f, slot, -1, quantity > WorkbenchQuantityPolicy.MinQuantity));
             row.AddChild(Ugui.Place(Ugui.Text("Value", WorkbenchQuantityPolicy.Describe(card, quantity), 11, CardInk, align: 2), 0.24f, 0f, 0.76f, 1f));
-            row.AddChild(StepperButton("Increase", "+", 0.78f, 1f, slot, +1, quantity < WorkbenchQuantityPolicy.MaxQuantity));
+            row.AddChild(StepperButton("Increase", "+", 0.78f, 1f, slot, +1, quantity < _session.DraftQuantityMax(slot)));
             return row;
         }
 

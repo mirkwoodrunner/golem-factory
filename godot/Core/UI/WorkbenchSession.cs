@@ -236,6 +236,12 @@ namespace GolemFactory.UI
         public int DraftQuantityAt(int index) =>
             index >= 0 && index < _draftQuantities.Length ? _draftQuantities[index] : WorkbenchQuantityPolicy.MinQuantity;
 
+        /// <summary>
+        /// The dial's top for a slot: the hold for a Haul, and for a Repeat the most runs the
+        /// Assemble before it can finish (RepeatRules, docs/tuning-data-spec.md §13.1).
+        /// </summary>
+        public int DraftQuantityMax(int index) => WorkbenchQuantityPolicy.MaxFor(_draftAppendages, index);
+
         public int AssignedAppendageCount => _draftAppendages.Count(a => a != null);
 
         private int DraftMaxSlots => _draftChassis != null ? _draftChassis.maxAppendageSlots : 0;
@@ -387,7 +393,7 @@ namespace GolemFactory.UI
             {
                 return;
             }
-            _draftQuantities[index] = WorkbenchQuantityPolicy.Step(_draftQuantities[index], delta);
+            _draftQuantities[index] = WorkbenchQuantityPolicy.Step(_draftQuantities[index], delta, DraftQuantityMax(index));
             Version++;
         }
 
@@ -437,9 +443,9 @@ namespace GolemFactory.UI
             }
 
             if (!GolemProgramWriter.TryWrite(TargetGolem.Program, _draftChassis, _draftLogicCore,
-                    _draftAppendages, _draftItemTypes, _draftQuantities))
+                    _draftAppendages, _draftItemTypes, _draftQuantities, out string refusal))
             {
-                SetStatus("Cannot engage: chassis rejected the current appendage count.", WorkbenchStatusReason.Info);
+                SetStatus($"Cannot engage: {refusal}.", WorkbenchStatusReason.Info);
                 LeverRefused?.Invoke();
                 return false;
             }

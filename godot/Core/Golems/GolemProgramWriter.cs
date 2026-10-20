@@ -21,14 +21,33 @@ namespace GolemFactory.Golems
         public static bool TryWrite(
             GolemProgram program, ChassisDefinition chassis, LogicCoreDefinition logicCore,
             IReadOnlyList<AppendageActionDefinition> cards,
-            IReadOnlyList<string> itemTypes, IReadOnlyList<int> quantities)
+            IReadOnlyList<string> itemTypes, IReadOnlyList<int> quantities) =>
+            TryWrite(program, chassis, logicCore, cards, itemTypes, quantities, out _);
+
+        /// <summary>
+        /// As above, saying why when it refuses. A Repeat that could never finish is refused
+        /// before anything is touched (docs/tuning-data-spec.md §13.1): one behind no Assemble,
+        /// or behind an Assemble that can't run twice in a 12 hold. A Repeat's n above its
+        /// recipe's limit is written at the limit, as the Workbench's dial would have stopped it.
+        /// </summary>
+        public static bool TryWrite(
+            GolemProgram program, ChassisDefinition chassis, LogicCoreDefinition logicCore,
+            IReadOnlyList<AppendageActionDefinition> cards,
+            IReadOnlyList<string> itemTypes, IReadOnlyList<int> quantities, out string refusal)
         {
+            refusal = RepeatRules.Refusal(cards);
+            if (refusal != null)
+            {
+                return false;
+            }
+
             while (program.appendages.Count > 0)
             {
                 program.RemoveAppendageAt(0);
             }
             if (chassis != null && !program.TryAssignChassis(chassis))
             {
+                refusal = "chassis rejected the current appendage count";
                 return false;
             }
 
@@ -37,7 +56,12 @@ namespace GolemFactory.Golems
             {
                 if (cards[i] != null && program.TryAddAppendage(cards[i]))
                 {
-                    program.SetQuantityAt(committed, quantities[i]);
+                    int quantity = quantities[i];
+                    if (cards[i].actionType == AppendageActionType.Repeat)
+                    {
+                        quantity = System.Math.Min(quantity, RepeatRules.DialMax(cards, i));
+                    }
+                    program.SetQuantityAt(committed, quantity);
                     program.SetItemTypeAt(committed, itemTypes[i]);
                     committed++;
                 }

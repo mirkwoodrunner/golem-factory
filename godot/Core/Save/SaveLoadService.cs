@@ -370,6 +370,10 @@ namespace GolemFactory.Save
                     }
                 }
 
+                // A Repeat's n above what its recipe can finish loads at the limit, the program
+                // otherwise as saved (docs/tuning-data-spec.md §13.1).
+                RepeatRules.ClampProgram(program);
+
                 // G10: each Haul slot's good, the same way. An older save has none, and every
                 // slot keeps its card's own type.
                 if (entry.appendageItemTypes != null)
