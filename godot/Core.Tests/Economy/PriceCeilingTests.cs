@@ -24,12 +24,9 @@ namespace GolemFactory.Tests.EditMode
     {
         // --- Invariant 2: what the guide's path pays -------------------------------------------
 
-        /// <summary>The chassis a step's kit builds, by step id (TutorialGuide.Kit.cs).</summary>
-        private static readonly Dictionary<string, string> ChassisBuilt = new Dictionary<string, string>
+        /// <summary>The chassis a step has the player build, by step id: the kit's, and chapter 10's.</summary>
+        private static readonly Dictionary<string, string> ChassisBuilt = new Dictionary<string, string>(PriceList.KitBuilds)
         {
-            { "golem", "ClockworkScavenger" }, { "scav2", "ClockworkScavenger" }, { "scav3", "ClockworkScavenger" },
-            { "unloader", "ClockworkScavenger" }, { "presser", "BrassPresser" }, { "presser2", "BrassPresser" },
-            { "carrier", "BrassPresser" }, { "hauler", "AetherHauler" }, { "zeppelin", "ZeppelinFreightLoader" },
             // Chapter 10's text: "build a Mainspring Overclocker at the station" (two for stage 1).
             { "frame-section", "MainspringOverclocker" },
         };
@@ -61,7 +58,7 @@ namespace GolemFactory.Tests.EditMode
                 }
                 if (step.Card != null)
                 {
-                    DraftableCardDefinition card = list.Cards.Single(c => TutorialGuide.CardKey(c) == step.Card);
+                    DraftableCardDefinition card = list.CardFor(step);
                     path.Add((s, "card " + card.name, PriceList.ClaimPrice(card)));
                 }
                 if (ChassisBuilt.TryGetValue(step.Id, out string chassis))

@@ -838,10 +838,7 @@ namespace GolemFactory.World
             using (Perf.Measure(PerfSampler.Hover))
             {
                 GolemFactory.Golems.StallFacts facts = golem?.StallFacts ?? default;
-                IReadOnlyList<GolemEntity> feeders =
-                    mood == GolemMood.Waiting && facts.IsTake && facts.SourceGives && facts.SourceFed
-                        ? StallFacts.FeedersOf(golem)
-                        : null;
+                IReadOnlyList<GolemEntity> feeders = GolemHoverText.NamesFeeders(mood, facts) ? StallFacts.FeedersOf(golem) : null;
                 return GolemHoverText.Compose(golem, mood, facts, TileNames, strainingHeld, feeders);
             }
         }

@@ -6,6 +6,7 @@ using GolemFactory.Data;
 using GolemFactory.Economy;
 using GolemFactory.PunchCards;
 using GolemFactory.Steam;
+using GolemFactory.Tutorial;
 using GolemFactory.World;
 using NUnit.Framework;
 using static GolemFactory.Tests.EditMode.CrateWorld;
@@ -143,6 +144,17 @@ namespace GolemFactory.Tests.EditMode
             World.Definitions.Decks.Values.SelectMany(d => d.Cards.Concat(d.OpeningHand)).Where(c => c != null).Distinct();
 
         public Price Find(string what) => Prices.Single(p => p.What == what);
+
+        /// <summary>The chassis each guide step's kit builds (TutorialGuide.Kit.cs's <c>BuildGolem</c>), by step id.</summary>
+        public static readonly IReadOnlyDictionary<string, string> KitBuilds = new Dictionary<string, string>
+        {
+            { "golem", "ClockworkScavenger" }, { "scav2", "ClockworkScavenger" }, { "scav3", "ClockworkScavenger" },
+            { "unloader", "ClockworkScavenger" }, { "presser", "BrassPresser" }, { "presser2", "BrassPresser" },
+            { "carrier", "BrassPresser" }, { "hauler", "AetherHauler" }, { "zeppelin", "ZeppelinFreightLoader" },
+        };
+
+        /// <summary>The card a step asks the player to claim.</summary>
+        public DraftableCardDefinition CardFor(TutorialStep step) => Cards.Single(c => TutorialGuide.CardKey(c) == step.Card);
 
         private void Add(string what, IReadOnlyList<RecipeIngredient> price, int rungsBelow = -1) =>
             Prices.Add(new Price { What = what, Lines = price ?? new RecipeIngredient[0], RungsBelow = rungsBelow < 0 ? Rungs.Count : rungsBelow });

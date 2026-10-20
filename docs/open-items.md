@@ -66,6 +66,17 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   bare golem gets TRIGGER, then STEP 1, then the lever framed, and a programmed golem nothing
   (`WorkbenchHintTests`). No scenario draws it on screen: the `workbench` scenario's golem is the
   guide's, so it sees the plan's hint (`onboarding-feedback-design.md` §15.1).
+- **The full-run floor jumps by minutes when a price moves a little.** `FullRunFloorTests`
+  measures chapter 8 at 23:05 with the Aether-Hauler at 20 Iron Plate + 10 Gear, 22:57 at
+  36 + 18, 31:11 at 34 + 17 (over its 30:00 ceiling) and 30:01 at 32 + 16. `FloorPlayer` adds
+  lines greedily: another line for a good once the request in hand is 40 a line or more
+  (one-input goods), or once 45 s have passed in the call, and that 45 s includes time spent
+  earning inputs in nested calls. So a small price change reorders which lines are built when.
+  Counting only the call's own waiting was tried in the Phase 3 review and didn't smooth it:
+  the jumps moved (chapter 10 then failed at 30 + 15 to 34 + 17, and steps timed out at
+  10 + 5 and 24 + 12). A steady floor needs a player who plans its lines for a rate, which is
+  a redesign. Until then, check a retune against neighbouring prices too, as tuning-data-spec
+  §18 correction 10 did.
 - **The guide plate flashes over the vault for one frame when the Workbench opens.** The plate
   docks clear of the Workbench (`TutorialPanel.Dock(true)`) a frame after the screen appears, so
   for that frame it sits where it was, over the vault. Cosmetic.

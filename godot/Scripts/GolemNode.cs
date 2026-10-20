@@ -620,11 +620,6 @@ namespace GolemFactory.Nodes
             return Mathf.Sqrt(dx * dx + dy * dy);
         }
 
-        /// <summary>
-        /// The badge's words. A collecting Haul shows its progress ("5/10 Scrap"); a waiting
-        /// golem what it waits for; a stopped one "[!] " and the short reason -- no id line, which
-        /// is on the hover card now (onboarding-feedback-design §3.4, §13.2).
-        /// </summary>
         private const int BadgeResizeFrames = 2;
         private int _badgeResizes = BadgeResizeFrames;
         private UI.TileNames _tileNames;
@@ -649,6 +644,11 @@ namespace GolemFactory.Nodes
             return _screensOpen;
         }
 
+        /// <summary>
+        /// The badge's words. A collecting Haul shows its progress ("5/10 Scrap"); a waiting
+        /// golem what it waits for; a stopped one "[!] " and the short reason -- no id line, which
+        /// is on the hover card now (onboarding-feedback-design §3.4, §13.2).
+        /// </summary>
         private void RefreshCaption(GolemMood mood)
         {
             string progress = Entity.TryGetHaulProgress(out string good, out int held, out int batch)

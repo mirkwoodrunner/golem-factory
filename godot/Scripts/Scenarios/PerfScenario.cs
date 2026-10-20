@@ -187,9 +187,9 @@ namespace GolemFactory.Nodes.Scenarios
 
             if (_phase < 0 || _frame >= WarmupFrames + MeasureFrames)
             {
-                if (_phase >= 0 && !Close(_phases[_phase]))
+                if (_phase >= 0)
                 {
-                    return new ScenarioResult(false, _failure);
+                    Close(_phases[_phase]);
                 }
                 if (++_phase >= _phases.Count)
                 {
@@ -282,7 +282,7 @@ namespace GolemFactory.Nodes.Scenarios
             return true;
         }
 
-        private bool Close(Phase phase)
+        private void Close(Phase phase)
         {
             phase.Golems = _load.Golems.Count;
             phase.BeltItems = _load.BeltItems;
@@ -298,7 +298,6 @@ namespace GolemFactory.Nodes.Scenarios
             }
             GD.Print(Line(phase));
             GD.Print("[perf]   sections p95 ms/frame: " + Sections(phase));
-            return true;
         }
 
         private (long calls, double p50, double p95, double max, double callsMean, double callsP95) S(Phase p, string name) =>
@@ -308,14 +307,11 @@ namespace GolemFactory.Nodes.Scenarios
         {
             var tick = p.PerCall.TryGetValue(PerfSampler.Tick, out var t) ? t : default;
             return FormattableString.Invariant(
-                $"[perf] phase={p.Name} frames={p.Frames} p50={p.FrameMs.P50:F1} p95={p.FrameMs.P95:F1} max={p.FrameMs.Max:F1} ") +
-                FormattableString.Invariant(
-                $"tick_p95={tick.p95:F2} core_p95={p.CoreMs.P95:F2} probe_calls={S(p, PerfSampler.ProbeRead).calls} ") +
-                FormattableString.Invariant(
-                $"probe_ms={S(p, PerfSampler.ProbeRead).p95:F2} mood_ms={S(p, PerfSampler.Mood).p95:F2} ") +
-                FormattableString.Invariant(
-                $"render_cpu_p95={p.RenderCpu.P95:F1} render_gpu_p95={p.RenderGpu.P95:F1} draws={p.Draws:F0} nodes={p.Nodes:F0} ") +
-                FormattableString.Invariant($"golems={p.Golems} belt_items={p.BeltItems} stalled={p.Stalled} waiting={p.Waiting}");
+                $"[perf] phase={p.Name} frames={p.Frames} p50={p.FrameMs.P50:F1} p95={p.FrameMs.P95:F1} max={p.FrameMs.Max:F1} " +
+                $"tick_p95={tick.p95:F2} core_p95={p.CoreMs.P95:F2} probe_calls={S(p, PerfSampler.ProbeRead).calls} " +
+                $"probe_ms={S(p, PerfSampler.ProbeRead).p95:F2} mood_ms={S(p, PerfSampler.Mood).p95:F2} " +
+                $"render_cpu_p95={p.RenderCpu.P95:F1} render_gpu_p95={p.RenderGpu.P95:F1} draws={p.Draws:F0} nodes={p.Nodes:F0} " +
+                $"golems={p.Golems} belt_items={p.BeltItems} stalled={p.Stalled} waiting={p.Waiting}");
         }
 
         /// <summary>Every section's per-frame p95, node sections included, heaviest first.</summary>

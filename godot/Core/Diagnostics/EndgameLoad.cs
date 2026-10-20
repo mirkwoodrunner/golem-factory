@@ -234,7 +234,8 @@ namespace GolemFactory.Diagnostics
                     var target = new Vector2Int(x + 1, y);
 
                     PlaceableBuilding sourceCrate = load.BuildingOn(source) ?? Place(world, load, "DepotPrefab", source, Facing.North);
-                    load.Feed(sourceCrate.GetPart<ICrate>(), role.Hauls.Select(h => h.good ?? PreviousPush(row, i)));
+                    string carried = PreviousPush(world, row, i);
+                    load.Feed(sourceCrate.GetPart<ICrate>(), role.Hauls.Select(h => h.good ?? carried));
                     if (role.Launch)
                     {
                         load.OutputOnly.Add(Place(world, load, "FreightMastPrefab", target, Facing.North).GetPart<ICrate>());
@@ -250,7 +251,7 @@ namespace GolemFactory.Diagnostics
 
                     GolemEntity golem = Construct(world, role.Chassis);
                     golem.SetPlacement(new Vector2Int(x, y), Facing.East);
-                    Program(world, golem, "AlwaysOnCore", Steps(role, PreviousPush(row, i)));
+                    Program(world, golem, "AlwaysOnCore", Steps(role, carried));
                     if (role.Launch)
                     {
                         golem.BindToNearestMast();
@@ -261,7 +262,7 @@ namespace GolemFactory.Diagnostics
         }
 
         /// <summary>The good the golem before position <paramref name="i"/> pushes, for an untyped carrier's crate.</summary>
-        private static string PreviousPush(string[] row, int i)
+        private static string PreviousPush(SandboxWorld world, string[] row, int i)
         {
             if (i == 0)
             {
@@ -270,18 +271,10 @@ namespace GolemFactory.Diagnostics
             RoleDef before = Roles[row[i - 1]];
             if (before.Assemble != null)
             {
-                return AssembleOutputs.TryGetValue(before.Assemble, out string output) ? output : ItemType.Scrap;
+                return world.Definitions.Appendages[before.Assemble].recipe.outputItemType;
             }
-            return before.Hauls[0].good ?? PreviousPush(row, i - 1);
+            return before.Hauls[0].good ?? PreviousPush(world, row, i - 1);
         }
-
-        private static readonly Dictionary<string, string> AssembleOutputs = new Dictionary<string, string>
-        {
-            ["AssembleCoking"] = ItemType.Coke,
-            ["AssembleIronSmelting"] = ItemType.IronPlate,
-            ["AssembleCopperSmelting"] = ItemType.CopperIngot,
-            ["AssembleZincSmelting"] = ItemType.ZincIngot,
-        };
 
         /// <summary>A carrier hauls what the golem before it pushes (<paramref name="carried"/>): an empty Haul good means Scrap.</summary>
         private static (string card, string good, int quantity)[] Steps(RoleDef role, string carried)
@@ -382,8 +375,11 @@ namespace GolemFactory.Diagnostics
                 $"{golem.GolemId}: {refusal}");
         }
 
-        /// <summary>Puts a price into the pack, and what the pack can't hold into the Post, which the wallet spends next.</summary>
-        private static void Grant(SandboxWorld world, IEnumerable<RecipeIngredient> cost)
+        /// <summary>
+        /// Puts a price into the pack, and what the pack can't hold into the Post, which the wallet
+        /// spends next. Also how the scenarios pay the late prices without earning them.
+        /// </summary>
+        public static void Grant(SandboxWorld world, IEnumerable<RecipeIngredient> cost)
         {
             foreach (RecipeIngredient line in cost ?? Enumerable.Empty<RecipeIngredient>())
             {
@@ -421,9 +417,6 @@ namespace GolemFactory.Diagnostics
         /// <summary>Crates something only pushes into (the ends of the lines, the masts): emptied on a refill.</summary>
         public List<ICrate> OutputOnly { get; } = new List<ICrate>();
 
-        /// <summary>The crates golems take from, and the goods each is kept stocked with.</summary>
-        public IEnumerable<ICrate> SourceCrates => _fills.Keys;
-
         /// <summary>How often <see cref="Maintain"/> refills (or re-empties), in ticks: 2 s.</summary>
         public const int MaintainEveryTicks = 20;
 
@@ -446,7 +439,7 @@ namespace GolemFactory.Diagnostics
             {
                 if (Starved)
                 {
-                    KeepStarved();
+                    EmptyAll();
                 }
                 else
                 {
@@ -540,15 +533,11 @@ namespace GolemFactory.Diagnostics
         public void Starve()
         {
             Starved = true;
-            foreach (ICrate crate in _fills.Keys)
-            {
-                Empty(crate.Buffer);
-            }
-            EmptyOutputs();
+            EmptyAll();
         }
 
-        /// <summary>Keeps a starved factory starved: what golems pushed downstream is cleared again.</summary>
-        public void KeepStarved()
+        /// <summary>Every crate emptied: starves the factory, and keeps it starved once golems push downstream.</summary>
+        private void EmptyAll()
         {
             foreach (ICrate crate in _fills.Keys)
             {

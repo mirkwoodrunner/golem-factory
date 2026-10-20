@@ -2,13 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using NUnit.Framework;
 using GolemFactory.Diagnostics;
+using GolemFactory.Economy;
 using GolemFactory.Events;
-using GolemFactory.Tests.Data;
-using GolemFactory.Tests.World;
 using GolemFactory.Golems;
+using GolemFactory.PunchCards;
 using GolemFactory.World;
+using NUnit.Framework;
+using static GolemFactory.Tests.EditMode.CrateWorld;
 
 namespace GolemFactory.Tests.EditMode
 {
@@ -16,10 +17,17 @@ namespace GolemFactory.Tests.EditMode
     // scenario builds, checked here so the scenario's numbers are about the factory they claim.
     public class EndgameLoadTests
     {
-        internal static SandboxWorld Compose() =>
-            SandboxWorld.Compose(AuthoredData.Load(), SandboxSetupTests.LoadReal(), PlaceableCatalogTests.LoadReal(AuthoredData.Load()));
-
         private const float Frame = 1f / 60f;
+
+        /// <summary><paramref name="ticks"/> ticks of 0.1 s, the load maintained after each, as a frame would.</summary>
+        private static void Advance(SandboxWorld world, EndgameLoadResult load, int ticks)
+        {
+            for (int i = 0; i < ticks; i++)
+            {
+                world.Advance(0.1f);
+                load.Maintain();
+            }
+        }
 
         [Test]
         public void TheLoad_IsWhatItSays()
@@ -46,21 +54,13 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(96, load.Powered, "every golem powered after one tick");
             Assert.IsFalse(load.Golems.Any(g => g.StallReason == StallReason.NoSteam));
 
-            for (int i = 0; i < 600; i++)
-            {
-                world.Advance(0.1f);
-                load.Maintain();
-            }
+            Advance(world, load, 600);
             Assert.GreaterOrEqual(load.BeltItems, 500, "the loops keep every item");
             Assert.Less(load.Golems.Count(g => g.Program.State == GolemState.Stalled && g.Mood == GolemMood.Stalled), 10, "flowing, red: " + Stalls(load));
             TestContext.WriteLine($"flowing: {load.Stalled} stalled");
 
             load.Starve();
-            for (int i = 0; i < 300; i++)
-            {
-                world.Advance(0.1f);
-                load.Maintain();
-            }
+            Advance(world, load, 300);
             Assert.GreaterOrEqual(load.Stalled, 60, Stalls(load));
             Assert.Greater(load.Golems.Count(g => g.Mood == GolemMood.Waiting), 30, "a starved line waits grey where its feeder pushes its good");
             Assert.AreEqual(96, load.Powered, "starved, not for steam");
@@ -68,11 +68,7 @@ namespace GolemFactory.Tests.EditMode
                                   $"{load.Golems.Count(g => g.Mood == GolemMood.Stalled)} red");
 
             load.Refill();
-            for (int i = 0; i < 300; i++)
-            {
-                world.Advance(0.1f);
-                load.Maintain();
-            }
+            Advance(world, load, 300);
             Assert.Less(load.Golems.Count(g => g.Program.State == GolemState.Stalled && g.Mood == GolemMood.Stalled), 10,
                 "refilled after starving, the lines run again: " + Stalls(load));
         }
@@ -88,11 +84,7 @@ namespace GolemFactory.Tests.EditMode
             SandboxWorld world = Compose();
             EndgameLoadResult load = EndgameLoad.Build(world);
             load.Starve();
-            for (int i = 0; i < 200; i++)
-            {
-                world.Advance(0.1f);
-                load.Maintain();
-            }
+            Advance(world, load, 200);
             var bare = new StallFactsProbe(() => world.Golems, world.Endpoints, world.Belts, () => world.Market);
             int fed = 0;
             foreach (GolemEntity golem in world.Golems)
@@ -119,11 +111,7 @@ namespace GolemFactory.Tests.EditMode
             SandboxWorld world = Compose();
             EndgameLoadResult load = EndgameLoad.Build(world);
             load.Starve();
-            for (int i = 0; i < 200; i++)
-            {
-                world.Advance(0.1f);
-                load.Maintain();
-            }
+            Advance(world, load, 200);
             GolemEntity waiting = load.Golems.First(g => g.Mood == GolemMood.Waiting);
             var feeders = world.StallFacts.FeedersOf(waiting, 10).ToList();
             foreach (GolemEntity other in feeders)
@@ -138,7 +126,7 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(GolemMood.Waiting, waiting.Mood, "set down, it feeds again");
 
             GolemEntity feeder = feeders[0];
-            List<GolemFactory.PunchCards.AppendageActionDefinition> program = feeder.Program.appendages.ToList();
+            List<AppendageActionDefinition> program = feeder.Program.appendages.ToList();
             feeder.Program.appendages.Clear();
             Assert.AreEqual(GolemMood.Stalled, waiting.Mood, "a feeder with no program feeds nothing");
             feeder.Program.appendages.AddRange(program);
@@ -169,7 +157,8 @@ namespace GolemFactory.Tests.EditMode
                 }
                 for (int i = 0; i < 300; i++)
                 {
-                    Step(world, load);
+                    world.Advance(Frame);
+                    load.Maintain();
                 }
                 perf.Reset();
                 var frames = new FrameTimeStats();
@@ -211,11 +200,7 @@ namespace GolemFactory.Tests.EditMode
             // The load, flowing: Coke burned a minute, from the boilers' stock between refills.
             SandboxWorld world = Compose();
             EndgameLoadResult load = EndgameLoad.Build(world);
-            for (int i = 0; i < 300; i++)
-            {
-                world.Advance(0.1f);
-                load.Maintain();
-            }
+            Advance(world, load, 300);
             long burned = 0;
             int working = 0;
             const int ticks = 1200;
@@ -253,9 +238,9 @@ namespace GolemFactory.Tests.EditMode
         /// hauled by loaders (Haul 4, Push: 24 a minute), R4 run for the larger of its Plate and
         /// its Slag, and every golem's 3 Coke a minute added until it settles.
         /// </summary>
-        private static Dictionary<string, double> Lines(List<GolemFactory.PunchCards.RecipeDefinition> recipes, (string good, double rate)[] demands)
+        private static Dictionary<string, double> Lines(List<RecipeDefinition> recipes, (string good, double rate)[] demands)
         {
-            var byOutput = new Dictionary<string, GolemFactory.PunchCards.RecipeDefinition>();
+            var byOutput = new Dictionary<string, RecipeDefinition>();
             foreach (var r in recipes)
             {
                 byOutput[r.outputItemType] = r;
@@ -265,16 +250,16 @@ namespace GolemFactory.Tests.EditMode
             for (int round = 0; round < 30; round++)
             {
                 var need = demands.ToDictionary(d => d.good, d => d.rate);
-                need[GolemFactory.Economy.ItemType.Coke] = (need.TryGetValue(GolemFactory.Economy.ItemType.Coke, out double c) ? c : 0) + steam;
+                need[ItemType.Coke] = (need.TryGetValue(ItemType.Coke, out double c) ? c : 0) + steam;
                 result = new Dictionary<string, double>();
                 // Highest tier first, so every consumer has added its demand before a good is made.
-                foreach (string good in GolemFactory.Economy.ItemTiers.CanonicalOrder.Reverse())
+                foreach (string good in ItemTiers.CanonicalOrder.Reverse())
                 {
                     if (!need.TryGetValue(good, out double rate) || rate <= 0)
                     {
                         continue;
                     }
-                    if (good == GolemFactory.Economy.ItemType.Slag || good == GolemFactory.Economy.ItemType.IronPlate)
+                    if (good == ItemType.Slag || good == ItemType.IronPlate)
                     {
                         continue; // R4, below, once both are known
                     }
@@ -284,14 +269,14 @@ namespace GolemFactory.Tests.EditMode
                         continue;
                     }
                     Run(recipe, rate / recipe.outputQuantity, need, result);
-                    if (good == GolemFactory.Economy.ItemType.Glass)
+                    if (good == ItemType.Glass)
                     {
                         // Glass's Slag is now known: smelt for the Plate and the Slag together.
                         var r4 = recipes.First(r => r.name == "R4_IronSmelting");
-                        double plate = need.TryGetValue(GolemFactory.Economy.ItemType.IronPlate, out double p) ? p : 0;
-                        double slag = need.TryGetValue(GolemFactory.Economy.ItemType.Slag, out double s) ? s : 0;
+                        double plate = need.TryGetValue(ItemType.IronPlate, out double p) ? p : 0;
+                        double slag = need.TryGetValue(ItemType.Slag, out double s) ? s : 0;
                         Run(r4, Math.Max(plate / r4.outputQuantity, slag / r4.byproductQuantity), need, result);
-                        need[GolemFactory.Economy.ItemType.IronPlate] = 0;
+                        need[ItemType.IronPlate] = 0;
                     }
                 }
                 double next = result.Values.Sum() * 3.0;
@@ -304,7 +289,7 @@ namespace GolemFactory.Tests.EditMode
             return result;
         }
 
-        private static void Run(GolemFactory.PunchCards.RecipeDefinition recipe, double runsPerMinute,
+        private static void Run(RecipeDefinition recipe, double runsPerMinute,
             Dictionary<string, double> need, Dictionary<string, double> lines)
         {
             int cycle = recipe.inputs.Sum(i => StepDurationRules.Haul(i.quantity)) + recipe.durationTicks +
@@ -314,12 +299,6 @@ namespace GolemFactory.Tests.EditMode
             {
                 need[input.itemType] = (need.TryGetValue(input.itemType, out double n) ? n : 0) + runsPerMinute * input.quantity;
             }
-        }
-
-        private static void Step(SandboxWorld world, EndgameLoadResult load)
-        {
-            world.Advance(Frame);
-            load.Maintain();
         }
     }
 }

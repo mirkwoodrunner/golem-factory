@@ -53,6 +53,13 @@ namespace GolemFactory.UI
     /// </summary>
     public static class GolemHoverText
     {
+        /// <summary>
+        /// Whether the card names <paramref name="mood"/>'s feeders (§17.4): a waiting golem whose
+        /// take's source gives and is fed. Only then are the feeders looked up, for the one hovered golem.
+        /// </summary>
+        public static bool NamesFeeders(GolemMood mood, StallFacts facts) =>
+            mood == GolemMood.Waiting && facts.IsTake && facts.SourceGives && facts.SourceFed;
+
         /// <param name="golem">The hovered golem.</param>
         /// <param name="mood">The mood as drawn (<c>GolemMoodRules.Presented</c>).</param>
         /// <param name="facts">Its stall facts, default when it isn't stalled.</param>

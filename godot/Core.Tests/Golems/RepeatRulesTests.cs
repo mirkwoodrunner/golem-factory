@@ -7,8 +7,6 @@ using GolemFactory.Economy;
 using GolemFactory.Events;
 using GolemFactory.Golems;
 using GolemFactory.PunchCards;
-using GolemFactory.Tests.Data;
-using GolemFactory.Tests.World;
 using GolemFactory.UI;
 using GolemFactory.World;
 using NUnit.Framework;
@@ -188,19 +186,26 @@ namespace GolemFactory.Tests.EditMode
             }
         }
 
+        /// <summary>The real Sandbox, its pack at the top rung, and the Overclocker's price in it, as the station asks.</summary>
+        private static (SandboxWorld world, ChassisDefinition overclocker) PaidForOverclocker()
+        {
+            SandboxWorld world = CrateWorld.Compose();
+            world.PackUpgrade.Restore(world.PackUpgrade.Rungs.Count);
+            ChassisDefinition overclocker = world.Definitions.Chassis["MainspringOverclocker"];
+            foreach (RecipeIngredient c in overclocker.cost)
+            {
+                CrateWorld.Give(world, c.itemType, c.quantity);
+            }
+            return (world, overclocker);
+        }
+
         [Test]
         public void AnUnclaimedOverclocker_BuiltAtTheStation_IsProgrammedInTheWorkbench_WithRepeatAtItsLimit()
         {
             // tuning-data-spec §13: the station builds any chassis unclaimed, and the Workbench
             // takes the golem's own chassis into its draft; only the cards must be owned.
-            DefinitionSet definitions = AuthoredData.Load();
-            SandboxWorld world = SandboxWorld.Compose(definitions, SandboxSetupTests.LoadReal(), PlaceableCatalogTests.LoadReal(definitions));
-            world.PackUpgrade.Restore(world.PackUpgrade.Rungs.Count);
-            ChassisDefinition overclocker = definitions.Chassis["MainspringOverclocker"];
-            foreach (RecipeIngredient c in overclocker.cost)
-            {
-                world.Buffers.Deposit(world.StockpileBufferId, c.itemType, c.quantity);
-            }
+            (SandboxWorld world, ChassisDefinition overclocker) = PaidForOverclocker();
+            DefinitionSet definitions = world.Definitions;
             string user = world.Setup.assemblyLine.claimUserId;
             var deck = definitions.Decks[world.Setup.assemblyLine.deck];
             Assert.IsFalse(world.AssemblyLine.GetClaimedCards(user).Any(c => c.chassis == overclocker), "precondition: its card unclaimed");
@@ -227,14 +232,8 @@ namespace GolemFactory.Tests.EditMode
         [Test]
         public void ASaveHoldingRepeatTwelve_LoadsClampedToEleven()
         {
-            DefinitionSet definitions = AuthoredData.Load();
-            SandboxWorld world = SandboxWorld.Compose(definitions, SandboxSetupTests.LoadReal(), PlaceableCatalogTests.LoadReal(definitions));
-            world.PackUpgrade.Restore(world.PackUpgrade.Rungs.Count);
-            ChassisDefinition overclocker = definitions.Chassis["MainspringOverclocker"];
-            foreach (RecipeIngredient c in overclocker.cost)
-            {
-                world.Buffers.Deposit(world.StockpileBufferId, c.itemType, c.quantity);
-            }
+            (SandboxWorld world, ChassisDefinition overclocker) = PaidForOverclocker();
+            DefinitionSet definitions = world.Definitions;
             Assert.IsTrue(world.StarterStation.TryConstructGolem(overclocker, out GolemEntity golem));
             IReadOnlyList<AppendageActionDefinition> cards = Cards(definitions, "HaulScrap", "AssembleCoking", "RepeatAssembly", "PushOutput");
             Assert.IsTrue(GolemProgramWriter.TryWrite(golem.Program, null, definitions.LogicCores["AlwaysOnCore"],

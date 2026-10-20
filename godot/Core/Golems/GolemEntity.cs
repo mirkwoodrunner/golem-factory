@@ -1,4 +1,5 @@
 using GolemFactory.Compat;
+using GolemFactory.Diagnostics;
 using GolemFactory.Simulation;
 using GolemFactory.Events;
 using GolemFactory.PunchCards;
@@ -133,12 +134,8 @@ namespace GolemFactory.Golems
         {
             get
             {
-                Diagnostics.PerfSampler perf = _perf?.Invoke();
-                if (perf == null)
-                {
-                    return ClassifyMood();
-                }
-                using (perf.Start(Diagnostics.PerfSampler.Mood))
+                PerfSampler perf = _perf?.Invoke();
+                using (perf.Measure(PerfSampler.Mood))
                 {
                     return ClassifyMood();
                 }
@@ -149,9 +146,9 @@ namespace GolemFactory.Golems
         /// The endgame profile's sampler, read each time the mood is (docs/performance-report-template.md
         /// §3); null, the default, measures nothing. <c>SandboxWorld</c> wires it at spawn.
         /// </summary>
-        public void ConfigurePerf(System.Func<Diagnostics.PerfSampler> perf) => _perf = perf;
+        public void ConfigurePerf(System.Func<PerfSampler> perf) => _perf = perf;
 
-        private System.Func<Diagnostics.PerfSampler> _perf;
+        private System.Func<PerfSampler> _perf;
 
         private GolemMood ClassifyMood() => GolemMoodRules.Classify(
             program != null ? program.State : GolemState.Idle,

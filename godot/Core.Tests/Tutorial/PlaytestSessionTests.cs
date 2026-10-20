@@ -177,7 +177,7 @@ namespace GolemFactory.Tests.Tutorial
         [Test]
         public void TheGuide_ReportsEachStepsChapter()
         {
-            SandboxWorld world = SandboxWorld.Compose(AuthoredData.Load(), SandboxSetupTests.LoadReal(), PlaceableCatalogTests.LoadReal(AuthoredData.Load()));
+            SandboxWorld world = Compose();
             string report = world.Tutorial.Playtest.Compose("", 1f);
             StringAssert.Contains("| 1 | 0:01 (so far) | 5:00 |", report);
         }

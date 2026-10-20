@@ -13,6 +13,7 @@ using GolemFactory.Golems;
 using GolemFactory.Player;
 using GolemFactory.PunchCards;
 using GolemFactory.Tests.Data;
+using GolemFactory.Tests.EditMode;
 using GolemFactory.Tests.World;
 using GolemFactory.Tutorial;
 using GolemFactory.World;
@@ -88,6 +89,73 @@ namespace GolemFactory.Tests.Tutorial
 
         private DefinitionSet Defs => _w.Definitions;
 
+        // --- Chapters --------------------------------------------------------------------------
+
+        /// <summary>tuning-data-spec §14: a chapter's ceiling, two thirds of its budget, in seconds.</summary>
+        public static float Ceiling(int chapter) => PlaytestSession.ChapterBudgetSeconds[chapter - 1] * 2f / 3f;
+
+        /// <summary>What <see cref="PlayWhile"/> measured, in game seconds.</summary>
+        public sealed class Run
+        {
+            public SortedDictionary<int, float> ChapterTook { get; } = new SortedDictionary<int, float>();
+
+            public Dictionary<string, float> StepTook { get; } = new Dictionary<string, float>();
+
+            /// <summary>"scrap 12.3s", in the order played.</summary>
+            public List<string> StepTimes { get; } = new List<string>();
+
+            public float End { get; set; }
+        }
+
+        /// <summary>
+        /// Plays the guide's steps while <paramref name="more"/> holds for the current one, timing
+        /// each step and each chapter (from its first step to the next chapter's, or the end).
+        /// <paramref name="trace"/> prints each step as it finishes, and where a long one went.
+        /// </summary>
+        public Run PlayWhile(Func<TutorialStep, bool> more, bool trace = false)
+        {
+            var run = new Run();
+            var chapterStart = new SortedDictionary<int, float>();
+            TutorialGuide guide = Guide;
+            while (more(guide.Current))
+            {
+                TutorialStep step = guide.Current;
+                int chapter = guide.ChapterOf(guide.Index);
+                if (!chapterStart.ContainsKey(chapter))
+                {
+                    chapterStart[chapter] = Now;
+                }
+                float entered = Now;
+                var spentBefore = new Dictionary<string, float>(Spent);
+                Play(step.Id);
+                float took = Now - entered;
+                run.StepTook[step.Id] = took;
+                run.StepTimes.Add($"{step.Id} {took:0.0}s");
+                if (trace)
+                {
+                    TestContext.Progress.WriteLine($"  {Clock(Now)}  chapter {chapter}  {step.Id} {took:0.0}s");
+                    if (took > 60f)
+                    {
+                        TestContext.Progress.WriteLine("      " + string.Join(", ", Spent
+                            .Select(kv => (kv.Key, s: kv.Value - (spentBefore.TryGetValue(kv.Key, out float b) ? b : 0f)))
+                            .Where(kv => kv.s >= 1f)
+                            .OrderByDescending(kv => kv.s)
+                            .Select(kv => $"{kv.Key} {kv.s:0}s")));
+                    }
+                }
+            }
+            run.End = Now;
+            foreach (int c in chapterStart.Keys)
+            {
+                run.ChapterTook[c] = (chapterStart.TryGetValue(c + 1, out float next) ? next : run.End) - chapterStart[c];
+            }
+            return run;
+        }
+
+        /// <summary>"cranking 16:50 (Coke 535s, IronPlate 259s)".</summary>
+        public string CrankedSummary() =>
+            $"cranking {Clock(Cranked.Values.Sum())} ({string.Join(", ", Cranked.Select(kv => $"{kv.Key} {kv.Value:0}s"))})";
+
         // --- A step ----------------------------------------------------------------------------
 
         /// <summary>Does what <paramref name="stepId"/> asks, as the player would, then waits for the guide to move on.</summary>
@@ -142,7 +210,7 @@ namespace GolemFactory.Tests.Tutorial
             for (int round = 0; round < 5; round++)
             {
                 AcquireAll(Needs(stepId).ToList());
-                if (!BuildsAGolem.Contains(stepId) || _w.AssemblyBay.HasFreeSlot)
+                if (!PriceList.KitBuilds.ContainsKey(stepId) || _w.AssemblyBay.HasFreeSlot)
                 {
                     break;
                 }
@@ -221,11 +289,6 @@ namespace GolemFactory.Tests.Tutorial
             return contents;
         }
 
-        private static readonly HashSet<string> BuildsAGolem = new HashSet<string>
-        {
-            "golem", "scav2", "scav3", "unloader", "presser", "presser2", "carrier", "hauler", "zeppelin",
-        };
-
         private static readonly string[] AcquireOrder =
         {
             ItemType.FrameSection, ItemType.AetherCell, ItemType.Mainspring, ItemType.Lens, ItemType.Casing, ItemType.Brass,
@@ -236,6 +299,10 @@ namespace GolemFactory.Tests.Tutorial
         /// <summary>What a step's kit action spends, so the player earns it before, not after.</summary>
         private IEnumerable<RecipeIngredient> Needs(string stepId)
         {
+            if (PriceList.KitBuilds.TryGetValue(stepId, out string chassis))
+            {
+                return Defs.Chassis[chassis].cost;
+            }
             switch (stepId)
             {
                 case "boiler":
@@ -254,15 +321,6 @@ namespace GolemFactory.Tests.Tutorial
                 case "belts": return Cost("BeltPrefab", _w.Tutorial.BeltSpots.Length);
                 case "post": return Cost("PneumaticPostPrefab", _w.Tutorial.PostSpots.Length);
                 case "mast": return Cost("FreightMastPrefab", 1);
-                case "golem":
-                case "scav2":
-                case "scav3":
-                case "unloader": return Defs.Chassis["ClockworkScavenger"].cost;
-                case "presser":
-                case "presser2":
-                case "carrier": return Defs.Chassis["BrassPresser"].cost;
-                case "hauler": return Defs.Chassis["AetherHauler"].cost;
-                case "zeppelin": return Defs.Chassis["ZeppelinFreightLoader"].cost;
                 case "expand": return _w.FloorExpansion.NextCost();
                 case "bays": return _w.AssemblyBay.UpgradeCost;
                 case "pack": return _w.PackUpgrade.NextCost();
@@ -316,7 +374,7 @@ namespace GolemFactory.Tests.Tutorial
             float started = Now;
             while (site.StageIndex < 1 && !site.IsComplete)
             {
-                Assert.Less(Now - started, _timeout, "stage 1 never finished at its demand rate");
+                Within(started, () => "stage 1 never finished at its demand rate");
                 if (Now - started >= next)
                 {
                     next += interval;
@@ -357,7 +415,7 @@ namespace GolemFactory.Tests.Tutorial
             {
                 // Before lines, the guide's smelter's Slag; after, a smelting line of the player's
                 // own, whose Slag nobody carries off.
-                if (LinesAllowed && !_acquiring.Contains(good))
+                if (_linesAllowed && !_acquiring.Contains(good))
                 {
                     WithCarriersTurned(() => Making(good, () => RunLine(Defs.Recipes["R4_IronSmelting"], quantity, ItemType.Slag)));
                 }
@@ -371,7 +429,7 @@ namespace GolemFactory.Tests.Tutorial
             int shortfall = quantity - Pack.GetQuantity(good);
             bool crankable = HandCrankRules.IsCrankable(recipe);
             bool hasLine = _lines.TryGetValue(recipe.name, out List<RefLine> made) && made.Count > 0;
-            if (!LinesAllowed)
+            if (!_linesAllowed)
             {
                 // Chapters 1-7: the bench, and the guide's own lines.
                 if (good == ItemType.IronPlate && shortfall >= Bulk)
@@ -459,7 +517,7 @@ namespace GolemFactory.Tests.Tutorial
             float started = Now;
             while (Pack.GetQuantity(good) < quantity)
             {
-                Assert.Less(Now - started, _timeout, $"harvesting {quantity} {good}");
+                Within(started, () => $"harvesting {quantity} {good}");
                 TakeFromCrates(good, quantity);
                 if (Pack.GetQuantity(good) >= quantity)
                 {
@@ -565,7 +623,7 @@ namespace GolemFactory.Tests.Tutorial
         {
             var turned = new List<(GolemEntity golem, Facing facing)>();
             foreach (GolemEntity carrier in _w.Golems.Where(g => !g.IsRemoved && HaulsOf(g, ItemType.Slag)
-                && !_lines.Values.SelectMany(l => l).Any(l => l.Golem == g.Cell)).ToList())
+                && !IsLineGolem(g)).ToList())
             {
                 turned.Add((carrier, carrier.Facing));
                 carrier.SetPlacement(carrier.Cell, FacingUtility.RotateClockwise(carrier.Facing));
@@ -605,7 +663,7 @@ namespace GolemFactory.Tests.Tutorial
                 RecipeDefinition r4 = Defs.Recipes["R4_IronSmelting"];
                 // The guide's carrier hauls Slag with the Coke that burns it: its crate needs Coke too.
                 foreach (GolemEntity carrier in _w.Golems.Where(g => !g.IsRemoved && HaulsOf(g, ItemType.Slag) && HaulsOf(g, ItemType.Coke)
-                    && !_lines.Values.SelectMany(l => l).Any(l => l.Golem == g.Cell)).ToList())
+                    && !IsLineGolem(g)).ToList())
                 {
                     ICrate crate = CrateOn(carrier.SourceCell);
                     if (crate?.Buffer != null && crate.Buffer.GetQuantity(ItemType.Coke) < 2)
@@ -616,7 +674,7 @@ namespace GolemFactory.Tests.Tutorial
                     }
                 }
                 foreach (GolemEntity smelter in _w.Golems.Where(g => !g.IsRemoved && g.HasRunnableProgram
-                    && !_lines.Values.SelectMany(l => l).Any(l => l.Golem == g.Cell)
+                    && !IsLineGolem(g)
                     && g.Program.appendages.Any(a => a?.recipe == r4)).ToList())
                 {
                     ICrate crate = CrateOn(smelter.SourceCell);
@@ -668,8 +726,6 @@ namespace GolemFactory.Tests.Tutorial
         /// </summary>
         private const int LinesFromChapter = 8;
 
-        private bool LinesAllowed => _linesAllowed;
-
         // Set as each step begins, so a step chapter 5 finishes part-way keeps its rule.
         private bool _linesAllowed;
 
@@ -680,6 +736,8 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         private readonly Dictionary<string, List<RefLine>> _lines = new Dictionary<string, List<RefLine>>();
+
+        private bool IsLineGolem(GolemEntity golem) => _lines.Values.Any(lines => lines.Any(l => l.Golem == golem.Cell));
         private readonly HashSet<Vector2Int> _lineInputs = new HashSet<Vector2Int>();
 
         /// <summary>
@@ -706,11 +764,7 @@ namespace GolemFactory.Tests.Tutorial
             float lastAdded = Now;
             while (Pack.GetQuantity(good) < quantity)
             {
-                Assert.Less(Now - started, _timeout, $"{lines.Count} {recipe.name} line(s) making {quantity} {good} (pack {Pack.GetQuantity(good)}; their crates hold "
-                    + string.Join("; ", lines.Select(l => string.Join(", ", CrateOn(l.In).Buffer.Quantities.Select(q => $"{q.Value} {q.Key}"))))
-                    + "; their golems " + string.Join("; ", lines.Select(l => GolemOn(l.Golem)).Select(g => g == null ? "gone" : $"{g.Program.State} {g.StallReason} {g.StallResourceId}"))
-                    + "; outputs " + string.Join("; ", lines.Select(l => { PlaceableBuilding ob = _w.Build.Buildings.First(b => !b.IsRemoved && b.Cell == l.Out); return $"{l.Out} {ob.PrefabKey} holds {ob.GetPart<ICrate>()?.Buffer?.GetQuantity(good)} owns {ob.GetPart<ICrate>()?.OwnsBuffer} feeds {Feeds(ob, good)} fed {_handFed.Contains((l.Out, good))} input {_lineInputs.Contains(l.Out)} by {string.Join(",", _w.Golems.Where(x => !x.IsRemoved && x.SourceCell == l.Out).Select(x => x.GolemId))}"; }))
-                    + "): " + GolemStates());
+                Within(started, () => $"{lines.Count} {recipe.name} line(s) making {quantity} {good} ({LinesState(lines, good)}): " + GolemStates());
                 if (good == ItemType.Slag)
                 {
                     // The guide's smelter too, its carrier turned away while the Slag is taken.
@@ -770,6 +824,19 @@ namespace GolemFactory.Tests.Tutorial
             bench.IsCranking = false;
         }
 
+        /// <summary>Where a stuck line's goods are: what a timeout says.</summary>
+        private string LinesState(List<RefLine> lines, string good) =>
+            $"pack {Pack.GetQuantity(good)}; their crates hold "
+            + string.Join("; ", lines.Select(l => string.Join(", ", CrateOn(l.In).Buffer.Quantities.Select(q => $"{q.Value} {q.Key}"))))
+            + "; their golems " + string.Join("; ", lines.Select(l => GolemOn(l.Golem)).Select(g => g == null ? "gone" : $"{g.Program.State} {g.StallReason} {g.StallResourceId}"))
+            + "; outputs " + string.Join("; ", lines.Select(l =>
+            {
+                PlaceableBuilding output = _w.Build.Buildings.First(b => !b.IsRemoved && b.Cell == l.Out);
+                return $"{l.Out} {output.PrefabKey} holds {output.GetPart<ICrate>()?.Buffer?.GetQuantity(good)} owns {output.GetPart<ICrate>()?.OwnsBuffer} "
+                    + $"feeds {Feeds(output, good)} fed {_handFed.Contains((l.Out, good))} input {_lineInputs.Contains(l.Out)} "
+                    + $"by {string.Join(",", _w.Golems.Where(x => !x.IsRemoved && x.SourceCell == l.Out).Select(x => x.GolemId))}";
+            }));
+
         private bool _servicing;
 
         /// <summary>
@@ -780,26 +847,24 @@ namespace GolemFactory.Tests.Tutorial
         /// </summary>
         private void EnsurePlateLine()
         {
-            foreach ((string recipe, string good) in new[] { ("R2_ScrapReclamation", ItemType.IronPlate) })
+            const string recipe = "R2_ScrapReclamation";
+            if (_inChore || _bootstrapping || _acquiring.Contains(ItemType.IronPlate)
+                || (_lines.TryGetValue(recipe, out List<RefLine> made) && made.Count > 0))
             {
-                if (_inChore || _bootstrapping || _acquiring.Contains(good)
-                    || (_lines.TryGetValue(recipe, out List<RefLine> made) && made.Count > 0))
-                {
-                    continue;
-                }
-                if (!_lines.ContainsKey(recipe))
-                {
-                    _lines[recipe] = new List<RefLine>();
-                }
-                _bootstrapping = true;
-                try
-                {
-                    Making(good, () => AddLine(Defs.Recipes[recipe], _lines[recipe]));
-                }
-                finally
-                {
-                    _bootstrapping = false;
-                }
+                return;
+            }
+            if (!_lines.ContainsKey(recipe))
+            {
+                _lines[recipe] = new List<RefLine>();
+            }
+            _bootstrapping = true;
+            try
+            {
+                Making(ItemType.IronPlate, () => AddLine(Defs.Recipes[recipe], _lines[recipe]));
+            }
+            finally
+            {
+                _bootstrapping = false;
             }
         }
 
@@ -1103,8 +1168,17 @@ namespace GolemFactory.Tests.Tutorial
             Step();
             while (_w.Tutorial.Current.Id == stepId)
             {
-                Assert.Less(Now - started, _timeout, $"stuck on '{stepId}': " + GolemStates());
+                Within(started, () => $"stuck on '{stepId}': " + GolemStates());
                 Step();
+            }
+        }
+
+        /// <summary>Fails once <see cref="_timeout"/> game seconds have passed since <paramref name="started"/>, saying <paramref name="what"/>.</summary>
+        private void Within(float started, Func<string> what)
+        {
+            if (Now - started >= _timeout)
+            {
+                Assert.Less(Now - started, _timeout, what());
             }
         }
 
@@ -1116,7 +1190,7 @@ namespace GolemFactory.Tests.Tutorial
             float started = Now;
             while (!done())
             {
-                Assert.Less(Now - started, _timeout, what + ": " + GolemStates());
+                Within(started, () => what + ": " + GolemStates());
                 Step();
             }
         }
@@ -1128,7 +1202,7 @@ namespace GolemFactory.Tests.Tutorial
         /// as measured before Phase 3 (1 and 5); later, with lines on the floor, sooner and more,
         /// so a Coke line steamed by that boiler never waits on its own fuel.
         /// </summary>
-        private int RefuelBelow => LinesAllowed ? 5 : 1;
+        private int RefuelBelow => _linesAllowed ? 5 : 1;
 
         private int RefuelWith => _lines.TryGetValue("R1_Coking", out List<RefLine> coke) && coke.Count > 0 ? 20 : 5;
 

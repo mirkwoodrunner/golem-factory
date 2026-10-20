@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using GolemFactory.Tutorial;
 using NUnit.Framework;
 
 namespace GolemFactory.Tests.Tutorial
@@ -28,60 +26,28 @@ namespace GolemFactory.Tests.Tutorial
         {
             var wall = Stopwatch.StartNew();
             var player = new FloorPlayer(StepTimeout, dt: 0.1f);
-            TutorialGuide guide = player.Guide;
+            FloorPlayer.Run run = player.PlayWhile(step => step != null && step.Id != "done", trace: true);
+            float stageOne = run.StepTook["stage1"];
 
-            var chapterStart = new SortedDictionary<int, float>();
-            var stepTimes = new List<string>();
-            float stageOne = 0f;
-            while (guide.Current != null && guide.Current.Id != "done")
+            foreach (KeyValuePair<int, float> chapter in run.ChapterTook)
             {
-                TutorialStep step = guide.Current;
-                int chapter = guide.ChapterOf(guide.Index);
-                if (!chapterStart.ContainsKey(chapter))
-                {
-                    chapterStart[chapter] = player.Now;
-                }
-                float entered = player.Now;
-                var spentBefore = new Dictionary<string, float>(player.Spent);
-                player.Play(step.Id);
-                float took = player.Now - entered;
-                if (step.Id == "stage1")
-                {
-                    stageOne = took;
-                }
-                stepTimes.Add($"{step.Id} {took:0.0}s");
-                TestContext.Progress.WriteLine($"  {FloorPlayer.Clock(player.Now)}  chapter {chapter}  {step.Id} {took:0.0}s");
-                if (took > 60f)
-                {
-                    TestContext.Progress.WriteLine("      " + string.Join(", ", player.Spent.Where(kv => kv.Value - (spentBefore.TryGetValue(kv.Key, out float b) ? b : 0f) >= 1f)
-                        .OrderByDescending(kv => kv.Value - (spentBefore.TryGetValue(kv.Key, out float b2) ? b2 : 0f))
-                        .Select(kv => $"{kv.Key} {kv.Value - (spentBefore.TryGetValue(kv.Key, out float b3) ? b3 : 0f):0}s")));
-                }
+                TestContext.Out.WriteLine($"chapter {chapter.Key}: {FloorPlayer.Clock(chapter.Value)} (ceiling {FloorPlayer.Clock(FloorPlayer.Ceiling(chapter.Key))})");
             }
-            float end = player.Now;
-
-            var tookByChapter = new Dictionary<int, float>();
-            foreach (int c in chapterStart.Keys)
-            {
-                tookByChapter[c] = (chapterStart.ContainsKey(c + 1) ? chapterStart[c + 1] : end) - chapterStart[c];
-                TestContext.Out.WriteLine($"chapter {c}: {FloorPlayer.Clock(tookByChapter[c])} (ceiling {FloorPlayer.Clock(ChaptersOneToFourFloorTests.Ceilings[c])})");
-            }
-            TestContext.Out.WriteLine($"chapters 1-10: {FloorPlayer.Clock(end)} of game time; stage 1 {FloorPlayer.Clock(stageOne)}; "
-                + $"cranking {FloorPlayer.Clock(player.Cranked.Values.Sum())} ({string.Join(", ", player.Cranked.Select(kv => $"{kv.Key} {kv.Value:0}s"))})");
+            TestContext.Out.WriteLine($"chapters 1-10: {FloorPlayer.Clock(run.End)} of game time; stage 1 {FloorPlayer.Clock(stageOne)}; {player.CrankedSummary()}");
             TestContext.Out.WriteLine($"reference lines: {string.Join("; ", player.LinesBuilt)}");
-            TestContext.Out.WriteLine(string.Join(" · ", stepTimes));
+            TestContext.Out.WriteLine(string.Join(" · ", run.StepTimes));
             TestContext.Out.WriteLine($"wall time {wall.Elapsed.TotalSeconds:0.0} s");
 
-            Assert.AreEqual(10, tookByChapter.Count, "every chapter was played");
+            Assert.AreEqual(10, run.ChapterTook.Count, "every chapter was played");
             // Stage 1 at exactly its demand takes its nominal time once the tower's one-minute
             // windows have filled; for the minute before, they are filling (ClockTowerSite), and
             // the step waits on the guide's own check besides. Measured: 6:15.
             Assert.LessOrEqual(stageOne, 360f + 60f + 1f, "stage 1 at its demand builds in its nominal time");
-            foreach (KeyValuePair<int, float> chapter in tookByChapter)
+            foreach (KeyValuePair<int, float> chapter in run.ChapterTook)
             {
-                Assert.Less(chapter.Value, ChaptersOneToFourFloorTests.Ceilings[chapter.Key], $"chapter {chapter.Key}'s floor passes its ceiling");
+                Assert.Less(chapter.Value, FloorPlayer.Ceiling(chapter.Key), $"chapter {chapter.Key}'s floor passes its ceiling");
             }
-            Assert.Less(end, 2 * 60 * 60f, "the full run's floor passes two hours");
+            Assert.Less(run.End, 2 * 60 * 60f, "the full run's floor passes two hours");
         }
     }
 }

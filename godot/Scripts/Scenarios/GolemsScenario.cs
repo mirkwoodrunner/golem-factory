@@ -4,6 +4,7 @@ using System.Linq;
 using Godot;
 using GolemFactory.Buildings;
 using GolemFactory.Data;
+using GolemFactory.Diagnostics;
 using GolemFactory.Economy;
 using GolemFactory.Events;
 using GolemFactory.Golems;
@@ -241,20 +242,9 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void Deposit(string itemType, int quantity) => _world.Buffers.Deposit(_world.StockpileBufferId, itemType, quantity);
 
-        private void Pay(IEnumerable<RecipeIngredient> cost)
-        {
-            foreach (RecipeIngredient c in cost)
-            {
-                // A late price can ask more than a base pack holds (the Freight Mast's 120 Iron
-                // Plate, tuning-data-spec §8.1): the rest waits in the Post, which the wallet
-                // spends from once the pack runs short.
-                int held = _world.Buffers.Deposit(_world.StockpileBufferId, c.itemType, c.quantity);
-                if (held < c.quantity)
-                {
-                    _world.Buffers.Deposit(SandboxWorld.PostBufferId, c.itemType, c.quantity - held);
-                }
-            }
-        }
+        // A late price can ask more than a base pack holds (the Freight Mast's 120 Iron Plate,
+        // tuning-data-spec §8.1): the rest waits in the Post, which the wallet spends next.
+        private void Pay(IEnumerable<RecipeIngredient> cost) => EndgameLoad.Grant(_world, cost);
 
         private void Feed(ICrate crate, string itemType, int quantity)
         {

@@ -34,7 +34,7 @@ namespace GolemFactory.Tests.EditMode
                 var asked = new HashSet<string>(list.Deposited[s].Keys);
                 if (step.Card != null)
                 {
-                    DraftableCardDefinition card = cards.Single(c => TutorialGuide.CardKey(c) == step.Card);
+                    DraftableCardDefinition card = list.CardFor(step);
                     asked.UnionWith(PriceList.ClaimPrice(card).Select(c => c.itemType));
                 }
 

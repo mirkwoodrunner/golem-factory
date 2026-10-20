@@ -7,6 +7,7 @@ using GolemFactory.Compat;
 using GolemFactory.Economy;
 using GolemFactory.Events;
 using GolemFactory.Golems;
+using GolemFactory.PunchCards;
 using GolemFactory.World;
 
 namespace GolemFactory.Tutorial
@@ -655,7 +656,7 @@ namespace GolemFactory.Tutorial
 
         private static int HaulsOf(GolemProgram program, string itemType) =>
             Enumerable.Range(0, program.appendages.Count).Count(i =>
-                program.appendages[i]?.actionType == PunchCards.AppendageActionType.Haul
+                program.appendages[i]?.actionType == AppendageActionType.Haul
                 && program.GetItemTypeAt(i) == itemType);
 
         /// <summary>Chapters 1, 4 and 6: Extract, then Push. Any trigger, either order.</summary>
@@ -747,36 +748,36 @@ namespace GolemFactory.Tutorial
         // docs/tuning-data-spec.md \u00a712.3 and invariant 12: a text or a count that names a price
         // builds it from the definition, so a retune can't leave the guide quoting the old number.
 
-        private static readonly PunchCards.RecipeIngredient[] NoCost = new PunchCards.RecipeIngredient[0];
+        private static readonly IReadOnlyList<RecipeIngredient> NoCost = Array.Empty<RecipeIngredient>();
 
-        private IReadOnlyList<PunchCards.RecipeIngredient> ChassisCost(string chassis) =>
-            _world.Definitions?.Chassis != null && _world.Definitions.Chassis.TryGetValue(chassis, out PunchCards.ChassisDefinition c) && c.cost != null
+        private IReadOnlyList<RecipeIngredient> ChassisCost(string chassis) =>
+            _world.Definitions?.Chassis != null && _world.Definitions.Chassis.TryGetValue(chassis, out ChassisDefinition c) && c.cost != null
                 ? c.cost
-                : (IReadOnlyList<PunchCards.RecipeIngredient>)NoCost;
+                : NoCost;
 
-        private IReadOnlyList<PunchCards.RecipeIngredient> PlaceableCost(string key) =>
-            _world.Placeables?.FirstOrDefault(p => p.Key == key)?.Prefab?.Cost ?? (IReadOnlyList<PunchCards.RecipeIngredient>)NoCost;
+        private IReadOnlyList<RecipeIngredient> PlaceableCost(string key) =>
+            _world.Placeables?.FirstOrDefault(p => p.Key == key)?.Prefab?.Cost ?? NoCost;
 
         /// <summary>How much of <paramref name="item"/> a price asks, summed as the wallet sums it.</summary>
-        private static int LineOf(IReadOnlyList<PunchCards.RecipeIngredient> cost, string item) =>
+        private static int LineOf(IReadOnlyList<RecipeIngredient> cost, string item) =>
             cost.Where(c => c.itemType == item).Sum(c => c.quantity);
 
-        private static IEnumerable<PunchCards.RecipeIngredient> Lines(IReadOnlyList<PunchCards.RecipeIngredient> cost) =>
+        private static IEnumerable<RecipeIngredient> Lines(IReadOnlyList<RecipeIngredient> cost) =>
             cost.Where(c => c.quantity > 0 && !string.IsNullOrEmpty(c.itemType));
 
         /// <summary>"60 Scrap + 10 Iron Plate + 5 Gear".</summary>
-        private static string Price(IReadOnlyList<PunchCards.RecipeIngredient> cost) =>
+        private static string Price(IReadOnlyList<RecipeIngredient> cost) =>
             string.Join(" + ", Lines(cost).Select(c => $"{c.quantity} {ItemTiers.DisplayName(c.itemType)}"));
 
         /// <summary>"6 Mainspring, 8 Lens and 3 Aether Cell".</summary>
-        private static string PriceList(IReadOnlyList<PunchCards.RecipeIngredient> cost)
+        private static string PriceList(IReadOnlyList<RecipeIngredient> cost)
         {
             string[] parts = Lines(cost).Select(c => $"{c.quantity} {ItemTiers.DisplayName(c.itemType)}").ToArray();
             return parts.Length < 2 ? string.Join("", parts) : string.Join(", ", parts.Take(parts.Length - 1)) + " and " + parts[parts.Length - 1];
         }
 
         /// <summary>A price as the step's progress line counts it, one good at a time.</summary>
-        private string CostCounts(IReadOnlyList<PunchCards.RecipeIngredient> cost) =>
+        private string CostCounts(IReadOnlyList<RecipeIngredient> cost) =>
             Counts(Lines(cost).GroupBy(c => c.itemType).Select(g => (g.Key, g.Sum(c => c.quantity))).ToArray());
 
         private MarketOffer Offer(string stall) =>
@@ -796,8 +797,8 @@ namespace GolemFactory.Tutorial
         /// <summary>"2 Copper Ore + 1 Coke \u2192 1 Copper Ingot": a card's recipe, from its definition.</summary>
         private string RecipeLine(string card)
         {
-            PunchCards.RecipeDefinition recipe = _world.Definitions?.Appendages != null
-                && _world.Definitions.Appendages.TryGetValue(card, out PunchCards.AppendageActionDefinition a) ? a.recipe : null;
+            RecipeDefinition recipe = _world.Definitions?.Appendages != null
+                && _world.Definitions.Appendages.TryGetValue(card, out AppendageActionDefinition a) ? a.recipe : null;
             if (recipe == null)
             {
                 return "";
@@ -805,14 +806,14 @@ namespace GolemFactory.Tutorial
             return Price(recipe.inputs) + " \u2192 " + recipe.outputQuantity + " " + ItemTiers.DisplayName(recipe.outputItemType);
         }
 
-        private IReadOnlyList<PunchCards.RecipeIngredient> PresserCost => ChassisCost("BrassPresser");
+        private IReadOnlyList<RecipeIngredient> PresserCost => ChassisCost("BrassPresser");
 
-        private IReadOnlyList<PunchCards.RecipeIngredient> FirstFloorCost =>
-            _world.Setup?.floorExpansion?.purchases?.FirstOrDefault() ?? (IReadOnlyList<PunchCards.RecipeIngredient>)NoCost;
+        private IReadOnlyList<RecipeIngredient> FirstFloorCost =>
+            _world.Setup?.floorExpansion?.purchases?.FirstOrDefault() ?? NoCost;
 
         private PackUpgradeRung FirstRung => _world.Setup?.packUpgrades?.FirstOrDefault();
 
-        private IReadOnlyList<PunchCards.RecipeIngredient> FirstRungCost => FirstRung?.cost ?? (IReadOnlyList<PunchCards.RecipeIngredient>)NoCost;
+        private IReadOnlyList<RecipeIngredient> FirstRungCost => FirstRung?.cost ?? NoCost;
 
         /// <summary>The Gears the Brass Presser costs: what chapter 2's "gears" step asks for.</summary>
         private int PresserGears => LineOf(PresserCost, ItemType.Gear);

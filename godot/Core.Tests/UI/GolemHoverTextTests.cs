@@ -228,9 +228,7 @@ namespace GolemFactory.Tests.EditMode
             {
                 GolemMood mood = golem.Mood;
                 StallFacts facts = golem.StallFacts;
-                IReadOnlyList<GolemEntity> feeders = mood == GolemMood.Waiting && facts.IsTake && facts.SourceGives && facts.SourceFed
-                    ? Probe.FeedersOf(golem)
-                    : null;
+                IReadOnlyList<GolemEntity> feeders = GolemHoverText.NamesFeeders(mood, facts) ? Probe.FeedersOf(golem) : null;
                 HoverCard card = GolemHoverText.Compose(golem, mood, facts, Names, false, feeders);
                 Lines.Add(card.Text);
                 return card.State;
