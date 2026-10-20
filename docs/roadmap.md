@@ -25,29 +25,47 @@ then `testscript/phase-1-playtest.md`. The game-time floor for chapters 1–4 is
 of the 15 minutes (Phase 2 below), **5:16** after Phase 3's Presser price. What's left of Phase 2
 is in `docs/open-items.md`.
 
-**Next: Phase 3, tuning and a full playthrough.** Write its documents before any tuning, as
-Phases 1 and 2 did:
+**Phase 3, tuning and a full playthrough, is built and reviewed but not yet critiqued or
+tested** (branch `phase3/tuning`, from `phase2/onboarding`; no phase branch is pushed until all
+nine phases are done, the user's call). Done:
+- **Docs:** `tuning-data-spec.md` (user-approved: §8.1 late prices, §17 decisions, §18
+  measurements and corrections), `testscript/full-playthrough.md`,
+  `performance-report-template.md` and the filled `performance-report-phase3.md`,
+  `progression-design.md` §14, and `onboarding-feedback-design.md` §17 (the feeder hover).
+- **Code A:** the tuning data, guide prices read from data, Repeat limits, and the tower meter
+  draining at the delivered rate.
+- **Code B:** the feeder hover, the `perf` scenario, and the probe and badge optimisations. The
+  budget holds at 96 golems.
+- **The Aether-Hauler** was lowered to 20 Iron Plate + 10 Gear + 30 Coke, so chapter 8 fits:
+  23:05 of 30:00. The full run's floor is 1:15:23.
+- **The review** (87f1356).
 
-1. **A Tuning Spreadsheet / Data Spec**: every invented number (prices, truckloads, recipe
-   durations, crank speed, boiler burn, pack and Floor Expansion curves), where it lives in
-   `godot/data/*.json` or Core, what it was set from, and the test that pins it.
-2. **A Full-Playthrough Playtest Script**: chapters 1–10 to the Clock Tower without the kit, in
-   `testscript/`, building on the Phase 1 and Phase 2 scripts.
-3. **A Performance Report Template**: frame time at about 96 golems and 500 belt items, what is
-   measured and how.
-4. **An addendum to `progression-design.md`** recording what the tuning changes and why.
+At the latest test run, 1905 Core tests and 16 scenarios passed.
 
-Phase 3 inputs gathered so far:
+**Resume here:**
+1. **The critique was stopped mid-run (2026-10-20, usage limit).** Its one finding so far is
+   committed: the Ledger's chassis and boiler texts quoted stale prices. Rerun the critique
+   with `tuning-data-spec.md` §0 and its checklist:
+   - saves (Repeat above its limit, the old tower meter, truckloads in flight);
+   - the tower meter's edge cases;
+   - a patent bypassing the Repeat limit;
+   - the feeder hover's text;
+   - hard-coded numbers left in guide text;
+   - no guide step builds the Overclocker;
+   - probe indices invalidated on every change;
+   - `full-playthrough.md` accuracy.
 
-- **Profile `GolemEntity.Mood` and `StallFactsProbe` per frame at ~96 golems.** The probe runs
-  for every stalled golem every frame, and since the critique it walks feeders depth-first
-  (`onboarding-feedback-design.md` §3.7, §16.1). The review and critique both flagged it.
-- **The Presser's price against cranking time.** Chapters 1–4 played instantly take 7:58 of game
-  time, 7:02 of it at the bench, and chapter 2 alone 4:15 of its 4:30 budget
-  (`ChaptersOneToFourFloorTests`). If the playtest overruns chapter 2, the lever is the Brass
-  Presser's 20 Iron Plate + 10 Gear (`guide-chapters-design.md` §7.1), not the guide's text.
-- **Floor Expansion and pack upgrade numbers** (`pack-upgrades-design.md`): the curves are
-  authored, not felt.
+   Also add a test that pins the Ledger's chassis and boiler texts to the data.
+2. **Then the Phase 3 Test agent:**
+   - all tests;
+   - every scenario run twice;
+   - `verify_art.py`;
+   - the "Done when": a complete run with no stuck step (`FullRunFloorTests`), and the frame
+     budget at the endgame (`perf`).
+3. **Then the human playtests:** phase-2, then phase-1, then `full-playthrough.md`.
+
+`FloorPlayer`'s chapter 8 floor jumps around as prices change (`open-items.md` §3), so check
+any retune at neighbouring prices.
 
 Standing rules: tests and scenarios never write the player's real `save.json`; a renamed step `Id`
 or definition name breaks saves.

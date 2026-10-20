@@ -107,12 +107,12 @@ namespace GolemFactory.Progression
                 TechTreeUnlockSignal.Item, ItemType.Coke,
                 new[] { "bench.handcrank" }),
             new TechTreeNode(
-                "chassis.presser", "Brass Presser", "3 slots · 1 input · 60 Scrap + 20 Plate + 10 Gear",
+                "chassis.presser", "Brass Presser", "3 slots · 1 input · 60 Scrap + 10 Plate + 5 Gear",
                 TechTreeNodeKind.Chassis, 1, 3,
                 TechTreeUnlockSignal.Chassis, ChassisPresser,
                 new[] { "chassis.scavenger", "r2.reclamation", "r8.gearcutting" }, isKeystone: true),
             new TechTreeNode(
-                "bldg.boiler", "Boiler", "Powers 8 golems · 6 Coke/min each",
+                "bldg.boiler", "Boiler", "Powers 8 golems · 3 Coke/min each",
                 TechTreeNodeKind.Building, 1, 4,
                 TechTreeUnlockSignal.Building, BuildingBoiler,
                 new[] { "r2.reclamation", "r1.coking" }),
@@ -167,7 +167,7 @@ namespace GolemFactory.Progression
             // Hauler under phase 3's "newly gated" and phase 4's "newly available", and the same
             // reading puts the Presser in II and the Overclocker in V.
             new TechTreeNode(
-                "chassis.hauler", "Aether-Hauler", "4 slots · 2 inputs · 80 Plate + 40 Gear + 30 Coke",
+                "chassis.hauler", "Aether-Hauler", "4 slots · 2 inputs · 20 Plate + 10 Gear + 30 Coke",
                 TechTreeNodeKind.Chassis, 3, 0,
                 TechTreeUnlockSignal.Chassis, ChassisHauler,
                 new[] { "chassis.presser", "r1.coking", "r8.gearcutting" }, isKeystone: true),
@@ -255,7 +255,7 @@ namespace GolemFactory.Progression
 
             // ---- V · The Great Works --------------------------------------------------------
             new TechTreeNode(
-                "chassis.overclocker", "Mainspring Overclocker", "5 slots · 3 inputs · 2 Mainspring + 20 Brass + 24 Casing + 12 Gear",
+                "chassis.overclocker", "Mainspring Overclocker", "5 slots · 3 inputs · 2 Mainspring + 20 Brass + 24 Casing + 12 Gear + 120 Plate",
                 TechTreeNodeKind.Chassis, 4, 0,
                 TechTreeUnlockSignal.Chassis, ChassisOverclocker,
                 new[] { "r11.mainspringwinding", "r9.casingpress" }, isKeystone: true),
@@ -289,7 +289,7 @@ namespace GolemFactory.Progression
                 TechTreeUnlockSignal.Item, ItemType.AetherConduit,
                 new[] { "chassis.overclocker", "r12.aethercontainment", "r19.wiredrawing" }),
             new TechTreeNode(
-                "chassis.zeppelin", "Zeppelin Freight Loader", "6 slots · 4 inputs · 6 Mainspring + 8 Lens + 3 Aether Cell + 30 Casing + 40 Brass",
+                "chassis.zeppelin", "Zeppelin Freight Loader", "6 slots · 4 inputs · 6 Mainspring + 8 Lens + 3 Aether Cell + 30 Casing + 40 Brass + 150 Plate",
                 TechTreeNodeKind.Chassis, 4, 6,
                 TechTreeUnlockSignal.Chassis, ChassisZeppelin,
                 new[] { "r11.mainspringwinding", "r10.lensgrinding", "r12.aethercontainment" }, isKeystone: true),
@@ -303,7 +303,7 @@ namespace GolemFactory.Progression
                 TechTreeUnlockSignal.None, null,
                 new[] { "chassis.zeppelin" }),
             new TechTreeNode(
-                "bldg.freightmast", "Freight Mast", "20 Brass + 10 Casing · one Zeppelin per mast",
+                "bldg.freightmast", "Freight Mast", "20 Brass + 10 Casing + 120 Plate · one Zeppelin per mast",
                 TechTreeNodeKind.Building, 4, 8,
                 TechTreeUnlockSignal.Building, BuildingFreightMast,
                 new[] { "verb.freightlink" }),
