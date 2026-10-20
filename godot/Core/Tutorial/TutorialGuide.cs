@@ -742,6 +742,81 @@ namespace GolemFactory.Tutorial
         private string Counts(params (string item, int goal)[] goals) =>
             string.Join("  \u00b7  ", goals.Select(g => Count(g.item, g.goal)));
 
+        // --- Quoted prices come from the data -------------------------------------------------
+        //
+        // docs/tuning-data-spec.md \u00a712.3 and invariant 12: a text or a count that names a price
+        // builds it from the definition, so a retune can't leave the guide quoting the old number.
+
+        private static readonly PunchCards.RecipeIngredient[] NoCost = new PunchCards.RecipeIngredient[0];
+
+        private IReadOnlyList<PunchCards.RecipeIngredient> ChassisCost(string chassis) =>
+            _world.Definitions?.Chassis != null && _world.Definitions.Chassis.TryGetValue(chassis, out PunchCards.ChassisDefinition c) && c.cost != null
+                ? c.cost
+                : (IReadOnlyList<PunchCards.RecipeIngredient>)NoCost;
+
+        private IReadOnlyList<PunchCards.RecipeIngredient> PlaceableCost(string key) =>
+            _world.Placeables?.FirstOrDefault(p => p.Key == key)?.Prefab?.Cost ?? (IReadOnlyList<PunchCards.RecipeIngredient>)NoCost;
+
+        /// <summary>How much of <paramref name="item"/> a price asks, summed as the wallet sums it.</summary>
+        private static int LineOf(IReadOnlyList<PunchCards.RecipeIngredient> cost, string item) =>
+            cost.Where(c => c.itemType == item).Sum(c => c.quantity);
+
+        private static IEnumerable<PunchCards.RecipeIngredient> Lines(IReadOnlyList<PunchCards.RecipeIngredient> cost) =>
+            cost.Where(c => c.quantity > 0 && !string.IsNullOrEmpty(c.itemType));
+
+        /// <summary>"60 Scrap + 10 Iron Plate + 5 Gear".</summary>
+        private static string Price(IReadOnlyList<PunchCards.RecipeIngredient> cost) =>
+            string.Join(" + ", Lines(cost).Select(c => $"{c.quantity} {ItemTiers.DisplayName(c.itemType)}"));
+
+        /// <summary>"6 Mainspring, 8 Lens and 3 Aether Cell".</summary>
+        private static string PriceList(IReadOnlyList<PunchCards.RecipeIngredient> cost)
+        {
+            string[] parts = Lines(cost).Select(c => $"{c.quantity} {ItemTiers.DisplayName(c.itemType)}").ToArray();
+            return parts.Length < 2 ? string.Join("", parts) : string.Join(", ", parts.Take(parts.Length - 1)) + " and " + parts[parts.Length - 1];
+        }
+
+        /// <summary>A price as the step's progress line counts it, one good at a time.</summary>
+        private string CostCounts(IReadOnlyList<PunchCards.RecipeIngredient> cost) =>
+            Counts(Lines(cost).GroupBy(c => c.itemType).Select(g => (g.Key, g.Sum(c => c.quantity))).ToArray());
+
+        private MarketOffer Offer(string stall) =>
+            _world.Market != null && _world.Market.TryGetOffer(stall, out MarketOffer offer) ? offer : null;
+
+        /// <summary>"30 Scrap": what a truckload at <paramref name="stall"/> costs.</summary>
+        private string OfferPrice(string stall)
+        {
+            MarketOffer offer = Offer(stall);
+            return offer == null || offer.IsFree ? "free" : Price(offer.Price.ToList());
+        }
+
+        private int OfferScrap(string stall) => Offer(stall) == null ? 0 : LineOf(Offer(stall).Price.ToList(), ItemType.Scrap);
+
+        private int OfferSize(string stall) => Offer(stall)?.TruckloadSize ?? 0;
+
+        /// <summary>"2 Copper Ore + 1 Coke \u2192 1 Copper Ingot": a card's recipe, from its definition.</summary>
+        private string RecipeLine(string card)
+        {
+            PunchCards.RecipeDefinition recipe = _world.Definitions?.Appendages != null
+                && _world.Definitions.Appendages.TryGetValue(card, out PunchCards.AppendageActionDefinition a) ? a.recipe : null;
+            if (recipe == null)
+            {
+                return "";
+            }
+            return Price(recipe.inputs) + " \u2192 " + recipe.outputQuantity + " " + ItemTiers.DisplayName(recipe.outputItemType);
+        }
+
+        private IReadOnlyList<PunchCards.RecipeIngredient> PresserCost => ChassisCost("BrassPresser");
+
+        private IReadOnlyList<PunchCards.RecipeIngredient> FirstFloorCost =>
+            _world.Setup?.floorExpansion?.purchases?.FirstOrDefault() ?? (IReadOnlyList<PunchCards.RecipeIngredient>)NoCost;
+
+        private PackUpgradeRung FirstRung => _world.Setup?.packUpgrades?.FirstOrDefault();
+
+        private IReadOnlyList<PunchCards.RecipeIngredient> FirstRungCost => FirstRung?.cost ?? (IReadOnlyList<PunchCards.RecipeIngredient>)NoCost;
+
+        /// <summary>The Gears the Brass Presser costs: what chapter 2's "gears" step asks for.</summary>
+        private int PresserGears => LineOf(PresserCost, ItemType.Gear);
+
         // Chapter 3 builds a boiler that feeds itself, beside the Coal stall: a Presser extracts
         // Coal from the stall behind it, cokes it, and pushes the Coke straight into a second
         // boiler in front of it. A pipe run from the FIRST boiler, along the stalls' row and up
@@ -936,12 +1011,13 @@ namespace GolemFactory.Tutorial
         /// Done once the factory has EVER made the good (the tech tree's ledger, which only
         /// grows), the same question the Assembly Line asks of a card's price.
         /// </summary>
-        private TutorialStep Goal(string id, string title, string body, string good, string card, string recipe, string stall = null) =>
+        private TutorialStep Goal(string id, string title, string body, string good, string card, string stall = null) =>
             new TutorialStep(
                 id, title, body,
                 w => _world.TechTree.Ledger.HasItem(good),
                 w => stall != null ? Stall(stall) : null,
-                w => (HasClaimed(card) ? "Card claimed" : "Claim the card") + "  ·  " + recipe,
+                // The recipe line from the card's own recipe (tuning-data-spec §12.3), not a copy.
+                w => (HasClaimed(card) ? "Card claimed" : "Claim the card") + "  ·  " + RecipeLine(card),
                 card: card,
                 workbench: true);
 
@@ -1017,10 +1093,10 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "coal", "Buy Coal",
-                "The Coal stall is empty. Press E there to order a truckload (10 Scrap). "
+                $"The Coal stall is empty. Press E there to order a truckload ({OfferPrice("CoalNode")}). "
                 + "When the cart arrives, press E again to take Coal.",
                 w => Stock(ItemType.Coal) >= 5,
-                w => _world.Market != null && !_world.Market.IsInTransit("CoalNode") && Stock(ItemType.Scrap) < 10
+                w => _world.Market != null && !_world.Market.IsInTransit("CoalNode") && Stock(ItemType.Scrap) < OfferScrap("CoalNode")
                     ? Stall("ScrapNode")
                     : Stall("CoalNode"),
                 w => Count(ItemType.Coal, 5)),
@@ -1042,12 +1118,12 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "boiler", "Build a Boiler",
-                "Golems run on steam. Click Boiler in the build menu (30 Scrap + 10 Iron Plate), click the marked "
+                $"Golems run on steam. Click Boiler in the build menu ({Price(PlaceableCost("BoilerPrefab"))}), click the marked "
                 + "tile beside the Scrap stall, then press Escape.",
                 // Its own layout counts too, if steam from it already reaches the golem's tile.
                 w => BoilerBuildings.Any(b => b.Cell == BoilerSpot) || Plan.Golem1Steamable,
-                w => ScrapFirst(30, BoilerSpot),
-                w => Count(ItemType.Scrap, 30),
+                w => ScrapFirst(LineOf(PlaceableCost("BoilerPrefab"), ItemType.Scrap), BoilerSpot),
+                w => Count(ItemType.Scrap, LineOf(PlaceableCost("BoilerPrefab"), ItemType.Scrap)),
                 menuKey: "BoilerPrefab",
                 spot: () => BoilerSpot,
                 builds: IsBoiler, exactTile: true),
@@ -1060,7 +1136,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "golem", "Build a Golem",
-                "At the construction station, press E and pick the Clockwork Scavenger (12 Scrap). The Workbench "
+                $"At the construction station, press E and pick the Clockwork Scavenger ({Price(ChassisCost("ClockworkScavenger"))}). The Workbench "
                 + "opens on it.",
                 w => LiveGolems.Any(),
                 w => ScrapFirst(12, Station),
@@ -1078,7 +1154,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "depot", "Build a Depot",
-                "A golem takes from the tile behind it and gives to the tile in front. Build a Depot (15 Scrap) on "
+                $"A golem takes from the tile behind it and gives to the tile in front. Build a Depot ({Price(PlaceableCost("DepotPrefab"))}) on "
                 + "the marked tile: a crate of 50 of each good. Misplaced? X takes it back, full refund.",
                 w => Built.Any(b => b.Cell == DepotSpot && b.GetPart<PlaceableDepot>() != null),
                 w => ScrapFirst(15, DepotSpot),
@@ -1113,31 +1189,32 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "gears", "Cut Gears",
-                "The Brass Presser crafts, and costs 10 Gears. Press R at the bench until it shows R8 Gear Cutting "
+                $"The Brass Presser crafts, and costs {PresserGears} Gears. Press R at the bench until it shows R8 Gear Cutting "
                 + "(2 Iron Plate make 1 Gear), then hold E. Short of Plate? Back to R2.",
-                w => Stock(ItemType.Gear) >= 10,
+                // The Presser's own Gear line, not a copy of it (tuning-data-spec §12.3).
+                w => Stock(ItemType.Gear) >= PresserGears,
                 w => ScrapFirst(1, Bench),
-                w => Counts((ItemType.Gear, 10), (ItemType.IronPlate, 2))),
+                w => Counts((ItemType.Gear, PresserGears), (ItemType.IronPlate, 2))),
 
             new TutorialStep(
                 "claim", "Claim Scrap Reclamation",
                 "A golem can only use cards you own. Press Tab, open the Assembly Line and click Claim on "
-                + "Assemble Scrap Reclamation (4 Scrap): Scrap in, Iron Plate out.",
+                + $"Assemble Scrap Reclamation ({ClaimCost("AssembleScrapReclamation", ItemType.Scrap)} Scrap): Scrap in, Iron Plate out.",
                 w => HasClaimed("AssembleScrapReclamation"),
                 w => null,
                 card: "AssembleScrapReclamation"),
 
             new TutorialStep(
                 "presser", "Build a Brass Presser",
-                "At the station, build the Brass Presser (60 Scrap + 20 Iron Plate + 10 Gear). Short of Scrap? "
+                $"At the station, build the Brass Presser ({Price(PresserCost)}). Short of Scrap? "
                 + "Collect from your Scavenger's crate. Program it now if you like: the cards glow.",
                 w => Pressers.Any(),
-                w => ScrapFirst(60, Station),
-                w => Counts((ItemType.Scrap, 60), (ItemType.IronPlate, 20), (ItemType.Gear, 10))),
+                w => ScrapFirst(LineOf(PresserCost, ItemType.Scrap), Station),
+                w => CostCounts(PresserCost)),
 
             new TutorialStep(
                 "pipe", "Lay a steam pipe",
-                "The Presser will stand two tiles from the boiler, out of its reach. Lay Steam Pipe (1 Iron Plate "
+                $"The Presser will stand two tiles from the boiler, out of its reach. Lay Steam Pipe ({Price(PlaceableCost("SteamPipePrefab"))} "
                 + "each) on the marked tiles: steam reaches any golem beside a pipe.",
                 w => SteamReachesPresserSpot,
                 // The route can be empty (steam already there, or nothing to build it from).
@@ -1193,19 +1270,19 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "presser2", "A second Presser",
-                "Build another Brass Presser (60 Scrap + 20 Iron Plate + 10 Gear). Take Plate from the first "
+                $"Build another Brass Presser ({Price(PresserCost)}). Take Plate from the first "
                 + "Presser's crate (E); crank the Gears (R8). A full crate turns its golem red.",
                 w => Pressers.Count() >= 2,
-                w => ScrapFirst(60, Station),
-                w => Counts((ItemType.Scrap, 60), (ItemType.IronPlate, 20), (ItemType.Gear, 10))),
+                w => ScrapFirst(LineOf(PresserCost, ItemType.Scrap), Station),
+                w => CostCounts(PresserCost)),
 
             new TutorialStep(
                 "boiler2", "A boiler for the coal line",
                 "Build a second Boiler on the marked tile, two out from the Coal stall. The coking Presser will "
                 + "stand between them and push Coke into it.",
                 w => BoilerBuildings.Any(b => b.Cell == Boiler2Spot),
-                w => ScrapFirst(30, Boiler2Spot),
-                w => Counts((ItemType.Scrap, 30), (ItemType.IronPlate, 10)),
+                w => ScrapFirst(LineOf(PlaceableCost("BoilerPrefab"), ItemType.Scrap), Boiler2Spot),
+                w => CostCounts(PlaceableCost("BoilerPrefab")),
                 menuKey: "BoilerPrefab",
                 spot: () => Boiler2Spot,
                 builds: IsBoiler, exactTile: true),
@@ -1225,7 +1302,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "coal-order", "Stock the Coal stall",
                 "Golems take from stalls as you do. Press E at the empty Coal stall to order a truckload "
-                + "(10 Scrap for 40 Coal).",
+                + $"({OfferPrice("CoalNode")} for {OfferSize("CoalNode")} Coal).",
                 w => CoalStallStocked,
                 w => Stall("CoalNode")),
 
@@ -1274,7 +1351,7 @@ namespace GolemFactory.Tutorial
             // step's own instructions could not be followed.
             new TutorialStep(
                 "scav2", "Build one from the patent",
-                "At the station, under From a patent, click your patent: a Scavenger (12 Scrap) arrives already "
+                $"At the station, under From a patent, click your patent: a Scavenger ({Price(ChassisCost("ClockworkScavenger"))}) arrives already "
                 + "programmed.",
                 w => SecondScavenger != null,
                 w => ScrapFirst(12, Station),
@@ -1346,11 +1423,11 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "hauler", "Build an Aether-Hauler",
-                "Two inputs need a bigger frame. Build an Aether-Hauler at the station (80 Iron Plate + 40 Gear "
-                + "+ 30 Coke): four slots, enough for two Hauls, an Assemble and a Push.",
+                "Two inputs need a bigger frame. Build an Aether-Hauler at the station "
+                + $"({Price(ChassisCost("AetherHauler"))}): four slots, enough for two Hauls, an Assemble and a Push.",
                 w => Haulers.Any(),
                 w => Station,
-                w => Counts((ItemType.IronPlate, 80), (ItemType.Gear, 40), (ItemType.Coke, 30))),
+                w => CostCounts(ChassisCost("AetherHauler"))),
 
             new TutorialStep(
                 "smelt-depots", "Depots for the smelter",
@@ -1410,10 +1487,10 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "slag-heap", "Somewhere for the Slag",
                 "Slag piles up every cycle, and a full store stalls the smelter. Build a Slag Heap on the "
-                + "marked tile (20 Scrap + 10 Iron Plate): it burns 1 Coke for every 4 Slag.",
+                + $"marked tile ({Price(PlaceableCost("SlagHeapPrefab"))}): it burns 1 Coke for every 4 Slag.",
                 w => HeapAt(SlagHeapSpot) != null,
-                w => ScrapFirst(20, SlagHeapSpot),
-                w => Counts((ItemType.Scrap, 20), (ItemType.IronPlate, 10)),
+                w => ScrapFirst(LineOf(PlaceableCost("SlagHeapPrefab"), ItemType.Scrap), SlagHeapSpot),
+                w => CostCounts(PlaceableCost("SlagHeapPrefab")),
                 menuKey: "SlagHeapPrefab",
                 spot: () => SlagHeapSpot,
                 builds: b => b.GetPart<PlaceableSlagHeap>() != null, exactTile: true),
@@ -1422,8 +1499,8 @@ namespace GolemFactory.Tutorial
                 "carrier", "A carrier",
                 "Build another Brass Presser at the station. It will make nothing: it carries.",
                 w => Pressers.Count() >= 3,
-                w => ScrapFirst(60, Station),
-                w => Counts((ItemType.Scrap, 60), (ItemType.IronPlate, 20), (ItemType.Gear, 10))),
+                w => ScrapFirst(LineOf(PresserCost, ItemType.Scrap), Station),
+                w => CostCounts(PresserCost)),
 
             new TutorialStep(
                 "program-carrier", "Carry Slag and its fuel",
@@ -1464,7 +1541,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "copper", "Buy Copper Ore",
-                "Press E at the empty Copper stall to order a truckload (20 Scrap). When it arrives, take one "
+                $"Press E at the empty Copper stall to order a truckload ({OfferPrice("CopperOreNode")}). When it arrives, take one "
                 + "by hand with E: a crate's label can only name a good your factory has handled.",
                 w => Stock(ItemType.CopperOre) >= 1,
                 w => Stall("CopperOreNode"),
@@ -1548,10 +1625,10 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "expand", "More room",
                 "Eight golems fill a workshop fast. Press Tab, open the Assembly Line, and click Extend "
-                + "(80 Scrap + 40 Iron Plate): two more rows of workshop, floored and walled.",
+                + $"({Price(FirstFloorCost)}): two more rows of workshop, floored and walled.",
                 w => _world.Bounds.NorthExtent > _world.Bounds.MinNorthExtent,
-                w => ScrapFirst(80, null),
-                w => Counts((ItemType.Scrap, 80), (ItemType.IronPlate, 40))),
+                w => ScrapFirst(LineOf(FirstFloorCost, ItemType.Scrap), null),
+                w => CostCounts(FirstFloorCost)),
 
             new TutorialStep(
                 "bays", "More golems",
@@ -1564,11 +1641,11 @@ namespace GolemFactory.Tutorial
             // docs/pack-upgrades-design.md §6: the next extension asks more than a 100 pack holds.
             new TutorialStep(
                 "pack", "A bigger pack",
-                "Your pack carries 100 of each good. On the same tab, click Upgrade on the pack (60 Iron Plate "
-                + "+ 30 Gear): 150 of each. The next extension needs it.",
+                $"Your pack carries {_world.Setup?.packCapacityPerType ?? 100} of each good. On the same tab, click Upgrade on the pack "
+                + $"({Price(FirstRungCost)}): {FirstRung?.capacityPerType ?? 150} of each. The next extension needs it.",
                 w => _world.PackUpgrade.Tier >= 1,
                 w => null,
-                w => Counts((ItemType.IronPlate, 60), (ItemType.Gear, 30))),
+                w => CostCounts(FirstRungCost)),
 
             new TutorialStep(
                 "ledger", "Read the Ledger",
@@ -1598,27 +1675,27 @@ namespace GolemFactory.Tutorial
                 "From here the guide names a good and its card, and you choose where to build. Claim Copper "
                 + "Smelting and set an Aether-Hauler on it: Haul Copper Ore and Coke, Assemble, Push. Each line's "
                 + "crates are its own: feed them by hand, by golem or by belt.",
-                ItemType.CopperIngot, "AssembleCopperSmelting", "2 Copper Ore + 1 Coke → 1 Copper Ingot"),
+                ItemType.CopperIngot, "AssembleCopperSmelting"),
 
             Goal("zinc-ingot", "Smelt Zinc",
                 "Order Zinc Ore at the Zinc stall, claim Zinc Smelting, and smelt it the same way.",
-                ItemType.ZincIngot, "AssembleZincSmelting", "2 Zinc Ore + 1 Coke → 1 Zinc Ingot", "ZincOreNode"),
+                ItemType.ZincIngot, "AssembleZincSmelting", "ZincOreNode"),
 
             Goal("brass", "Alloy Brass",
                 "Brass is two ingots in one: claim Brass Alloying and feed one golem Copper and Zinc Ingot. "
                 + "Two inputs, so an Aether-Hauler.",
-                ItemType.Brass, "AssembleBrassAlloying", "2 Copper Ingot + 1 Zinc Ingot → 1 Brass"),
+                ItemType.Brass, "AssembleBrassAlloying"),
 
             Goal("casing", "Press Casings",
                 "Claim Casing Press: Iron Plate and Brass in, a Casing out. Two Hauls, an Assemble and a Push "
                 + "fill an Aether-Hauler's four slots; a Brass Presser has only three.",
-                ItemType.Casing, "AssembleCasingPress", "4 Iron Plate + 1 Brass → 1 Casing"),
+                ItemType.Casing, "AssembleCasingPress"),
 
             // crates-design §10: the late-game store, the walking between lines taken off the
             // player. No marks: like the rest of chapter 8, where is the player's call.
             new TutorialStep(
                 "post", "A Pneumatic Post",
-                "Brass and Casing buy a Pneumatic Post crate (10 Brass + 5 Casing). Every Post crate opens onto "
+                $"Brass and Casing buy a Pneumatic Post crate ({Price(PlaceableCost("PneumaticPostPrefab"))}). Every Post crate opens onto "
                 + "one shared store, 200 of each good: a golem pushing into one fills what every other gives, and "
                 + "your building spends from it once your pack runs short. Build two, wherever a line could use them.",
                 w => PostCrates >= 2,
@@ -1629,20 +1706,20 @@ namespace GolemFactory.Tutorial
             Goal("glass", "Glass from Slag",
                 "Your smelters' Slag is not only waste. Claim Glassmaking, and send some Slag to a golem "
                 + "running it instead of the heap.",
-                ItemType.Glass, "AssembleGlassmaking", "1 Slag → 1 Glass"),
+                ItemType.Glass, "AssembleGlassmaking"),
 
             Goal("lens", "Grind a Lens",
                 "Claim Lens Grinding: Glass and Brass make a Lens, on an Aether-Hauler.",
-                ItemType.Lens, "AssembleLensGrinding", "2 Glass + 1 Brass → 1 Lens"),
+                ItemType.Lens, "AssembleLensGrinding"),
 
             Goal("mainspring", "Wind a Mainspring",
                 "Claim Mainspring Winding: Brass and Gears make a Mainspring, on an Aether-Hauler.",
-                ItemType.Mainspring, "AssembleMainspringWinding", "3 Brass + 2 Gear → 1 Mainspring"),
+                ItemType.Mainspring, "AssembleMainspringWinding"),
 
             Goal("aether-cell", "Bottle the Aether",
                 "Order Aether at the Aether stall, claim Aether Containment, and seal it behind Lenses on an "
                 + "Aether-Hauler.",
-                ItemType.AetherCell, "AssembleAetherContainment", "1 Aether + 2 Lens → 1 Aether Cell", "AetherNode"),
+                ItemType.AetherCell, "AssembleAetherContainment", "AetherNode"),
 
             // --- Chapter 9: the Zeppelin ---------------------------------------------------------------
             // The playtest script's Freight Link (Part G): a Zeppelin flies goods to a mast in one
@@ -1668,19 +1745,19 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "zeppelin", "Build the Zeppelin",
-                "At the construction station, build a Zeppelin Freight Loader: 6 Mainspring, 8 Lens, 3 Aether "
-                + "Cell, 30 Casing and 40 Brass.",
+                "At the construction station, build a Zeppelin Freight Loader: "
+                + PriceList(ChassisCost("ZeppelinFreightLoader")) + ".",
                 w => Zeppelin != null,
                 w => ScrapFirst(1, Station),
-                w => Counts((ItemType.Mainspring, 6), (ItemType.Lens, 8), (ItemType.AetherCell, 3), (ItemType.Casing, 30), (ItemType.Brass, 40))),
+                w => CostCounts(ChassisCost("ZeppelinFreightLoader"))),
 
             new TutorialStep(
                 "mast", "Raise a Freight Mast",
                 "A Zeppelin flies to a Freight Mast, and the mast lands what it brings in its own crate. "
-                + "Build one on the marked tile (20 Brass + 10 Casing); anywhere would do.",
+                + $"Build one on the marked tile ({Price(PlaceableCost("FreightMastPrefab"))}); anywhere would do.",
                 w => HasMast,
                 w => HasMast ? (Vector2Int?)null : MastSpot,
-                w => Counts((ItemType.Brass, 20), (ItemType.Casing, 10)),
+                w => CostCounts(PlaceableCost("FreightMastPrefab")),
                 menuKey: "FreightMastPrefab",
                 spot: () => MastSpot,
                 builds: b => b.GetPart<PlaceableFreightMast>() != null),
@@ -1738,7 +1815,7 @@ namespace GolemFactory.Tutorial
                 "Stage 1, the Foundation, wants Frame Sections, and keeps wanting them: 6 a minute, every minute, "
                 + "until it is built. Claim the card and start a line. Three inputs need five slots: build a "
                 + "Mainspring Overclocker at the station.",
-                ItemType.FrameSection, "AssembleFrameSection", "10 Casing + 6 Iron Plate + 4 Brass → 1 Frame Section"),
+                ItemType.FrameSection, "AssembleFrameSection"),
 
             new TutorialStep(
                 "tower-feed", "Feed the tower",

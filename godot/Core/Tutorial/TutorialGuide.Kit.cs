@@ -143,7 +143,7 @@ namespace GolemFactory.Tutorial
             ["work"] = () => LiveGolems.FirstOrDefault(IsProgrammed)?.SetPlacement(GolemSpot, GolemFacing),
             ["collect"] = () => Collect(FirstDepot),
 
-            ["gears"] = () => Grant(ItemType.Gear, 10),
+            ["gears"] = () => Grant(ItemType.Gear, PresserGears),
             ["claim"] = () => Claim("AssembleScrapReclamation"),
             ["presser"] = () => BuildGolem("BrassPresser"),
             ["pipe"] = () =>
@@ -171,7 +171,7 @@ namespace GolemFactory.Tutorial
             {
                 if (_world.Nodes.TryGetNode("CoalNode", out ResourceNode node))
                 {
-                    node.Deliver(40); // the truckload, without the wait
+                    node.Deliver(OfferSize("CoalNode")); // the truckload, without the wait
                 }
             },
             ["program-coker"] = () => PerformPlan("program-coker"),
@@ -249,7 +249,7 @@ namespace GolemFactory.Tutorial
             {
                 if (_world.Nodes.TryGetNode("CopperOreNode", out ResourceNode node))
                 {
-                    node.Deliver(40);
+                    node.Deliver(OfferSize("CopperOreNode"));
                 }
                 Grant(ItemType.CopperOre, 1);
             },
