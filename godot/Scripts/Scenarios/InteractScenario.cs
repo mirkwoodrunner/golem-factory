@@ -18,7 +18,7 @@ namespace GolemFactory.Nodes.Scenarios
     /// <list type="number">
     ///   <item>At the free Scrap stall: the ring and the "[E] ..." caption show; E harvests one
     ///   Scrap and a "+1 Scrap" popup rises.</item>
-    ///   <item>At an empty Coal stall with 10 Scrap: E orders a truckload and pays for it.</item>
+    ///   <item>At an empty Coal stall with its truckload's price in Scrap: E orders a truckload and pays for it.</item>
     ///   <item>At the starter bench: the Hand-Crank panel shows its readout; holding E cranks.</item>
     ///   <item>At the starter station: E opens "Construct Golem" with a row per chassis; clicking
     ///   the Scavenger's row builds one and closes the panel; Escape would close it too.</item>
@@ -110,9 +110,13 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
 
-            Do("walk up to the empty Coal stall with 10 Scrap", () =>
+            // The offer's price, from sandbox.json (tuning-data-spec §4.3), not a copy of it.
+            int price = _world.Market.TryGetOffer("CoalNode", out MarketOffer coalOffer)
+                ? coalOffer.Price.Where(c => c.itemType == ItemType.Scrap).Sum(c => c.quantity) : 0;
+            Do("walk up to the empty Coal stall with the truckload's price", () =>
             {
-                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Scrap, 9);
+                // One Scrap is already in the pack, harvested above.
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Scrap, price - 1);
                 Stand(coal.x, coal.y + 1f);
                 return null;
             });
@@ -120,7 +124,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("the empty stall offers a truckload and its price", () =>
             {
                 offered = _prompt.Caption;
-                return offered.StartsWith("[E]  Order a truckload of Coal  -  10 Scrap") ? null : $"caption '{offered}'";
+                return offered.StartsWith($"[E]  Order a truckload of Coal  -  {price} Scrap") ? null : $"caption '{offered}'";
             });
             Do("press E", () => { Tap(Key.E); return null; });
             Do("the truckload is ordered and paid for", () =>
@@ -128,7 +132,7 @@ namespace GolemFactory.Nodes.Scenarios
                 int left = _world.Buffers.GetQuantity(_world.StockpileBufferId, ItemType.Scrap);
                 if (left != 0)
                 {
-                    return $"{left} Scrap left; the 10 Scrap price was not paid";
+                    return $"{left} Scrap left; the {price} Scrap price was not paid";
                 }
                 return null;
             });
@@ -138,7 +142,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return $"caption '{_prompt.Caption}'";
                 }
-                _log.Add($"Coal stall: '{offered}', E ordered it for 10 Scrap, then '{_prompt.Caption}'");
+                _log.Add($"Coal stall: '{offered}', E ordered it for {price} Scrap, then '{_prompt.Caption}'");
                 return null;
             });
         }
