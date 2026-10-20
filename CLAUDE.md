@@ -37,6 +37,8 @@ Read the docs before making design calls, not just the code:
   and §3.5 what it overrides in `cozy-automation-design.md` §2.
 - `docs/guide-chapters-design.md` -- the guide's texts, checks, marks, plans and kit actions,
   step by step; chapters 1–4 rewritten for the 15-minute target. Phase 2, built.
+- `docs/performance-report-template.md` -- the endgame profile's spec and budget;
+  `docs/performance-report-phase3.md` is its first filled-in run (the budget holds at 96 golems).
 - `docs/open-items.md` -- the backlog: open decisions, known gaps, deliberate scope cuts.
 - `docs/godot-spike.md` -- what the port measured before it began.
 - `docs/history/` -- the Unity era: `unity-implementation-plan.md` (milestones M0-M9 and every
@@ -70,7 +72,8 @@ output as resources.
 ## Commands
 
 ```sh
-dotnet test godot/GolemFactory.sln            # Core tests: ~0.6 s, no engine involved
+dotnet test godot/GolemFactory.sln            # Core tests: ~10 s, no engine involved
+dotnet test godot/GolemFactory.sln -c Release --filter Category=Perf   # the explicit endgame benchmark
 
 G=".../Godot_v4.7.2-stable_mono_win64_console.exe"
 "$G" --headless --path godot --build-solutions --quit             # compile the Godot project
@@ -160,8 +163,18 @@ ones. Current scenarios:
   golem's names the tile, the good and the fix, and its badge hides under the card; a straining
   golem's card says "nearly full"; nothing is hovered over the build menu or the Workbench; a
   carried golem's tiles follow its landing while another is hovered. A card names the golem
-  and no id, and a tile's arrow rides above the crate that covers it.
+  and no id, and a tile's arrow rides above the crate that covers it. A waiting golem's card
+  names its feeder (`StallFactsProbe.FeedersOf`, `onboarding-feedback-design.md` §17): while S
+  sleeps, P's reads "Scavenger #1 brings it when its trigger fires" (captured as
+  `critique-hover-feeder`); once S wakes, "brings it" without the clause.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
+- `perf` (Sandbox): the endgame profile (`docs/performance-report-template.md` §4). Core's
+  `Diagnostics/EndgameLoad` builds 96 golems, 500 belt items and 12 boilers; five phases of
+  1,200 frames (flowing at 1× and 4×, starved, hover, world drawing hidden) are timed with
+  `SandboxWorld.Perf` (Core's sections) and `NodePerf` (the nodes'). Windowed it must hold frame
+  p95 ≤ 16.6 ms and max ≤ 33.3 ms; headless, Core's share p95 ≤ 6 ms. One `[perf]` line a
+  phase, and the report's tables in `user://perf-report.md`. About a minute headless. The last
+  filled-in report is `docs/performance-report-phase3.md`.
 
 To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scenarios`.
 `--demo` (alias `--spike-demo`) only runs the scripted setup, for `--write-movie` captures.
@@ -461,6 +474,13 @@ advancement. Simulation is plain, data-oriented C#: no ECS, no per-item nodes.
   never by colouring a `StallReason` on its own. A golem with no facts source reads every stall
   but steam red, as before (steam is always blue, `Starved`). The view draws `GolemMoodRules.Presented` (Waiting only after its 2 s dwell);
   the alerts strip counts stopped golems only.
+- **The probe indexes, it never caches an answer.** `StallFactsProbe` keeps, per presentation
+  frame (`SandboxWorld.PresentationFrame`), who pushes into and takes from each store, rebuilt the
+  moment a golem moves, turns, is carried or changes whether it runs; everything else is read
+  live. A per-frame cache of facts was tried and removed: a program written mid-frame read the
+  old verdict. Profiling is opt-in by null (`SandboxWorld.Perf`, `NodePerf.Sampler`).
+- **Golem badges share one `CanvasLayer` (`GolemBadges`) and one font.** A layer and a
+  `FontVariation` per golem cost ~4 ms of render CPU at 96 golems, badges showing or not.
 - **Hover is Core's** (§4): `SandboxWorld.Inspector` picks the golem, `GolemHoverText` and
   `TileNames` write every line, `Scripts/Golems/GolemHoverNode` only feeds the pointer and
   draws the card. A golem's source and target tiles are drawn by one path

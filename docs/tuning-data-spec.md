@@ -122,7 +122,8 @@ Coke/min, idle golems free).
 | `SteamNetwork.BoilerScrapCost` etc. | `Steam/SteamNetwork.cs` constants | 30, 10, 1 | | **delete** if unread, else pin equal to the data [M: unread, deleted, §18 M1] | A second copy of a price that can drift. `grep` their readers first |
 
 Coal-line share at stage 4 with 3/min: upkeep ~96 × 3 = 288 Coke/min (the design's 576 was at
-6/min). The coal line falls from ~41 % to about a third of the factory [M: not measured here, §18 M2]. That is the
+6/min). The coal line falls from ~41 % to about a third of the factory [M: §18.3 B1: a third of the
+endgame load's golems, but 41 % counted from the recipes]. That is the
 playthrough's `coal-share` question, not a reason to raise the burn now.
 
 ## 4. The market: prices and truckloads
@@ -374,7 +375,7 @@ run fails the frame budget at 96 golems **after** the stall-facts probe is no lo
 hot spot (the template's step 4). Then delete the `AetherConduit` line from
 `Stage4_TheChronometer.demands` (rates are integers; 1 is the floor short of removing it). It
 saves about 5 golems (an Overclocker part-time on R18, a Hauler on R12, part of a glass, lens and
-wire line, an Aether unloader) [M: not measured here; the `perf` run's, §18 M2].
+wire line, an Aether unloader) [M: 5.6 golem-equivalents, §18.3 B2; the trim was not needed].
 
 Two caveats the user should weigh (§17 Q5): stage 3 already demands 3 Conduits a minute, so a
 player reaching stage 4 already owns a Conduit line; trimming stage 4 only lets them retire it.
@@ -755,8 +756,8 @@ it; the test is named.
   and `SteamPipeIronPlateCost` had no reader except two aliases, `PlaceableBoiler.ScrapCost` /
   `IronPlateCost` and `PlaceableSteamPipe.IronPlateCost`, which had none either. All five are
   deleted; the prices live in `placeables.json` alone.
-- **M2. Not measured here:** the coal line's share at stage 4 (§3) and the golems the stage 4
-  Conduit cut would save (§10.2). Both need the endgame load (`EndgameLoad`, Code agent B's).
+- **M2. Measured by Code agent B** (§18.3): the coal line's share at stage 4 (§3) and the golems
+  the stage 4 Conduit cut would save (§10.2), from the endgame load (`EndgameLoad`).
 - **M3. Aether truckloads** (§4.3), from §4.2's formula: stage 3 needs 9 Aether a minute (3
   Conduits × 3 Aether Cells × 1 Aether), stage 4 needs 7 (2 Chronometer Cores × 2 Regulators × 1
   Cell, plus 1 Conduit × 3 Cells). At 40 a truckload, 0.23 and 0.18 orders a minute (0.45 and 0.35
@@ -879,3 +880,26 @@ it; the test is named.
    truckload's price from its offer. §15.1 and §15.8 did not list these.
 9. **`SandboxSetupTests`** pins more than §15.1 lists: the Scrap stall's 60 delivery ticks, the
    Coal and Copper Ore offers (30 for 120, 60 for 120) and the Aether truckload's 40.
+
+### 18.3 Code agent B: the endgame load (2026-10-20)
+
+The profile is `docs/performance-report-phase3.md`. Both numbers come from
+`EndgameLoadTests.StageFour_CoalShare_AndTheConduitLine` (explicit, `Category=Perf`).
+
+- **B1. The coal line's share at stage 4** (§3). The endgame load burns **288 Coke a minute**
+  with all 96 golems working: 3 a golem, as §3 says, 10.5 guide cokers' output. The load stands
+  32 coal-line golems of 96 (23 cokers, two Repeat Overclockers on R1, 7 Coal loaders): **a
+  third**, as §3 expected. Counted from the recipes instead (stage 4 at full demand, every line at
+  the guide's program shape and §2's step times, raw goods hauled by loaders at 24 a minute, and 3
+  Coke a minute for every golem), stage 4 needs 73.1 golem-equivalents and **the coal line is
+  29.8 of them, 41 %**: the smelters' Coke (R4, R5, R6) and Coal hauled by loader keep it at the
+  design's old share, burn halved or not. That is the playthrough's `coal-share` question, not a
+  reason to change the burn; no number was changed.
+- **B2. The golems the stage 4 Conduit trim would save** (§10.2): **5.6 golem-equivalents**
+  (73.1 → 67.5), close to §10.2's guess of about 5. The R18 Overclocker itself is 0.16; the rest
+  is its Aether Cells, Lens, Glass, Brass, Copper and Zinc, Wire, their loaders, and 2.0 of Coke
+  and Coal.
+- **B3. The trim was not applied.** The `perf` run fails §1's budget only before optimising; after
+  `docs/performance-report-template.md` §5.2 steps 2 and 3 it holds in every phase (worst p95
+  15.1 ms, worst max 25.3 ms over two windowed runs), so §10.2's rule does not fire and
+  `Stage4_TheChronometer` keeps its Aether Conduit line.

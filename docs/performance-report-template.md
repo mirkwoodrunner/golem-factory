@@ -279,3 +279,10 @@ Stage 4 Conduit trimmed:     yes / no  (tuning-data-spec.md §10.2)
 ## 8. Measurements, as built
 
 Empty until the first run. Record each run's §6 here, newest first, with the commit.
+
+- **2026-10-20, 18044ef, Code agent B:** `docs/performance-report-phase3.md`. The budget holds at
+  96 golems, 500 belt items and 12 boilers (windowed p95 9.3–15.1 ms, max ≤ 25.3 ms) after §5.2
+  steps 2 (the probe's indices) and 3 (one badge layer and font, badge sizing, the build menu).
+  The Conduit was not trimmed. Deviations from §2–§5 are listed in that report's §1.1 and §8:
+  stalls stocked rather than Creative Mode, chains of crates rather than a crate pair per golem,
+  starving empties crates only, and the nodes are timed too (`NodePerf`).

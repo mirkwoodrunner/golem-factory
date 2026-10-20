@@ -1041,3 +1041,23 @@ header comment gains a line for §17. `moods` is unchanged: badges and the strip
 it") is the same mechanism in the other direction, and a sleeping drainer has the same blind spot.
 It isn't part of the user's approval, so it is left as a question for the user. If approved, it
 reuses `TakenFrom`'s search the way §17.3 reuses `Feeders`.
+
+### 17.9 As built (Code agent B, 2026-10-20)
+
+Built as §17.3–§17.7 say, with one difference and two additions:
+
+1. **`FeedersOf` doesn't check that the stalled step is a take.** §17.3 lists it among the cases
+   that answer empty, but `Read`'s `SourceFed` doesn't check it either, and §17.2's agreement
+   ("non-empty exactly when the facts read `SourceGives && SourceFed`") is the invariant. So
+   `FeedersOf` mirrors `IsFed` exactly, and the take check is `SandboxWorld.HoverCard`'s, which
+   passes feeders only for `Waiting` with `IsTake && SourceGives && SourceFed`, as §17.4 says.
+   The card reads the same.
+2. `FeedersOf_TwoFeedersOneInAnEmptyLoop_NamesOnlyTheDeliveringOne` pins §17.5's row. The
+   agreement test's fixtures also cover the Post and a carried feeder.
+3. The probe now indexes who pushes into and takes from each store (Phase 3's profile,
+   `docs/performance-report-phase3.md` §8), and `FeedersOf` reads the same indices, so the card
+   and the colour still come from one search.
+
+The `critique-hover-feeder` capture shows the card readable over the street: "Clockwork Scavenger
+#2 / Waiting for Scrap · Scavenger #1 brings it when its trigger fires / From Crate (-7,1) → to
+Crate (-5,1)".
