@@ -1,6 +1,7 @@
 # Tuning data spec: every number, where it lives, and what pins it
 
-**Status: draft, 2026-10-19, for the user's approval.** Phase 3 of `docs/roadmap.md` ("Tuning and
+**Status: approved by the user on 2026-10-19, with §17's decisions (question 1 replaced by the
+user's own call; 2–8 as recommended).** Phase 3 of `docs/roadmap.md` ("Tuning and
 a full playthrough"). Like `crates-design.md` and `pack-upgrades-design.md`, it is written before
 the code and kept as written afterwards, with corrections recorded rather than hidden. Its
 siblings:
@@ -23,12 +24,15 @@ has a test in `Core.Tests`; §15 names it.
 1. **Every price fits the pack reachable when it opens** (`pack-upgrades-design.md` §0.1, §1),
    counting the pack alone, never the Post. Unchanged; this spec adds the bench's recipes and the
    boiler's hand-load to the list of prices (`open-items.md` §4).
-2. **No line of any price is above 100, except Floor Expansion's.** 100 is
-   `sandbox.json` `packCapacityPerType`, the pack before any upgrade. So the pack upgrade is
-   needed for Floor Expansion and nothing else, and a player who never extends never meets the
-   cap. Floor Expansion purchases 2–6 (120 to 250 in one line) are exempt, because the user
-   approved them to ask more than a base pack (`pack-upgrades-design.md` §3, §4); they stay held
-   by invariant 1. A line is one good of one price, summed per good as `TryCharge` sums them.
+2. **A price's ceiling is the reachable pack, and late prices use it** (user, 2026-10-19,
+   replacing a flat "no line above 100"). Invariant 1 is the only ceiling: a line may go up to the
+   cap reachable when its price opens (100, then 150, 200, 250). Prices that open after a rung
+   should use some of that room, so each upgrade is worth buying; §8.1 raises them. Two limits:
+   nothing that opens in chapters 1–4 is raised, and a price **on the guide's path** (a step's
+   kit pays it) asks no more than **150** in a line, the rung chapter 7's `pack` step teaches;
+   rungs 2 and 3 are bought by the player's own choice, for Floor Expansion. And **every rung
+   has at least one price that needs it** (§15.3). A line is one good of one price, summed per
+   good as `TryCharge` sums them.
 3. **Every good a step asks for is makeable when the step opens.** For each guide step, every
    good its kit action grants (that is what the step needs the player to have) and every good of
    the card it names is makeable from the goods the Ledger has seen before the step, the stalls,
@@ -160,7 +164,8 @@ one order every 7.5 s across the whole street.
 | Free seed | `sandbox.json` `freeStallSeedNode`, `freeStallSeedQuantity` | ScrapNode, 60 | **keep** | Chapter 1's first 20 Scrap |
 
 **Result:** OrdersPerMinute(stage 1) = 2.8 + 3.4 + 0.9 + 0.5 = **7.6** (from 23.7). Every new
-price is ≤ 100 (invariant 2) and opens at `scrap`, where the pack holds 100 (invariant 1).
+price is ≤ 100 and opens at `scrap`, where the pack holds 100 (invariant 1). Truckloads open in
+chapters 1–6, so they are not raised under invariant 2.
 
 **What it costs.** Chapter 1's `coal` step now needs 30 Scrap, not 10: about 1.5 s more of
 harvesting at 6.7/s, plus the 20 Scrap the player already holds from `scrap`. Chapter 3's
@@ -177,7 +182,7 @@ not a number: a standing order per stall. That is a user's call (§17 Q3), not p
 
 | Tunable | Lives in | Current | Proposed | Why |
 |---|---|---|---|---|
-| Pack, base | `sandbox.json` `packCapacityPerType` | 100 | **keep** | Invariant 2's line |
+| Pack, base | `sandbox.json` `packCapacityPerType` | 100 | **keep** | The cap every chapter 1–4 price fits |
 | Pack, by upgrade | `sandbox.json` `packUpgrades[].capacityPerType` | 150, 200, 250 | **keep** | `pack-upgrades-design.md` §3 |
 | Crate | `sandbox.json` `crateCapacityPerType` | 50 | **keep** | Phase 1's "Done when" (`LayoutMattersTests`) rests on it |
 | Post | `sandbox.json` `postCapacityPerType` | 200 | **keep** | `pack-upgrades-design.md` §7 Q2: its own upgrade only if play asks |
@@ -199,10 +204,10 @@ not a number: a standing order per stall. That is a user's call (§17 Q3), not p
 | Rung 3 (250) | 60 Iron Plate + 10 Casing + 4 Mainspring | `mainspring` | **keep** | |
 | Floor 1 | 80 Scrap + 40 Iron Plate | `iron` | **keep** | Chapter 7's `expand` |
 | Floor 2 | 120 Scrap + 60 Iron Plate + 30 Gear | `gears` | **keep** | |
-| Floor 3 | 150 Iron Plate + 40 Gear + 50 Copper Ingot | `copper-ingot` | **keep** | |
-| Floor 4 | 200 Iron Plate + 20 Brass + 10 Casing | `casing` | **keep** | |
+| Floor 3 | 150 Iron Plate + 40 Gear + 50 Copper Ingot | `copper-ingot` | 150 Iron Plate + **80 Gear** + 50 Copper Ingot | §8.1: reachable 150; Gear is cut from plentiful Plate |
+| Floor 4 | 200 Iron Plate + 20 Brass + 10 Casing | `casing` | 200 Iron Plate + 20 Brass + **20 Casing** | §8.1: reachable 200 |
 | Floor 5 | 200 Glass + 20 Lens + 15 Casing | `lens` | **180 Glass** + 20 Lens + 15 Casing | At 3 Glass a Lens, 20 Lens are 60 Glass, not 40: 180 keeps the purchase's Glass at 240, as it was |
-| Floor 6 | 250 Iron Plate + 6 Mainspring + 4 Aether Cell + 15 Casing | `aether-cell` | **keep** | |
+| Floor 6 | 250 Iron Plate + 6 Mainspring + 4 Aether Cell + 15 Casing | `aether-cell` | 250 Iron Plate + 6 Mainspring + 4 Aether Cell + **30 Casing** | §8.1: reachable 250 |
 
 The roadmap calls these "authored, not felt". The human playtest of `testscript/phase-1-playtest.md`
 and the full playthrough's `dear-room` and `pack-upgrade` answers are what move them; this spec
@@ -254,10 +259,66 @@ R10 stays 2 inputs, 4 slots).
 | Clockwork Scavenger | 2 | 12 Scrap | keep | |
 | **Brass Presser** | 3 | 60 Scrap + **20 Iron Plate + 10 Gear** | 60 Scrap + **10 Iron Plate + 5 Gear** | §12: chapter 2's floor is 4:15 of 4:30 |
 | Aether-Hauler | 4 | 80 Iron Plate + 40 Gear + 30 Coke | keep | |
-| Mainspring Overclocker | 5 | 2 Mainspring + 20 Brass + 24 Casing + 12 Gear | keep | §13 |
-| Zeppelin Freight Loader | 6 | 6 Mainspring + 8 Lens + 3 Aether Cell + 30 Casing + 40 Brass | keep | At 3 Glass its 8 Lens are 24 Glass, not 16; §11 shows the Glass is there by chapter 9 |
+| Mainspring Overclocker | 5 | 2 Mainspring + 20 Brass + 24 Casing + 12 Gear | **+ 120 Iron Plate** | §8.1, §13 |
+| Zeppelin Freight Loader | 6 | 6 Mainspring + 8 Lens + 3 Aether Cell + 30 Casing + 40 Brass | **+ 150 Iron Plate** | §8.1. At 3 Glass its 8 Lens are 24 Glass, not 16; §11 shows the Glass is there by chapter 9 |
 
-`ChassisCostAcyclicityTests` stays true: the Presser still costs only hand-made goods.
+`ChassisCostAcyclicityTests` stays true: the Presser still costs only hand-made goods, and Iron
+Plate is Presser output, so the Overclocker and Zeppelin still cost only Hauler-tier goods.
+
+### 8.1 Late prices that use the pack's room (invariant 2)
+
+The user's call (2026-10-19): "some costs could be higher if they're expected to come later when
+we'd expect the player to upgrade their limits." Every price in chapters 5–10 was checked against
+the cap reachable when it opens (`pack-upgrades-design.md` §1: rung 1 opens at `gears`, rungs 2
+and 3 at `brass` and `mainspring`).
+
+**The raise goes into Iron Plate, Gear and Casing**, the goods the factory makes in bulk by then
+(Iron Plate is §5.3(e)'s "universal filler"). The scarce goods (Mainspring, Lens, Aether Cell,
+Brass) keep their counts: raising them would lengthen chapters 8–10 by whole production lines, not
+by minutes. **Guide-path prices stop at 150** (invariant 2): the guide teaches rung 1 only, and a
+chassis that needed rung 2 would put an untaught purchase in front of a step.
+
+| Price | Old | New | Opens at | Reachable | On the guide's path |
+|---|---|---|---|---|---|
+| Mainspring Overclocker | 2 Mainspring + 20 Brass + 24 Casing + 12 Gear | the same **+ 120 Iron Plate** | `mainspring` (ch. 8) | 250 | yes (two for `stage1`) |
+| `Card_MainspringOverclocker` | 1 Mainspring + 5 Brass + 6 Casing + 3 Gear | the same **+ 30 Iron Plate** | `mainspring` | 250 | no (optional claim) |
+| Zeppelin Freight Loader | 6 Mainspring + 8 Lens + 3 Aether Cell + 30 Casing + 40 Brass | the same **+ 150 Iron Plate** | `aether-cell` (ch. 8) | 250 | yes (`zeppelin`) |
+| `Card_ZeppelinFreightLoader` | 1 Mainspring + 2 Lens + 1 Aether Cell + 7 Casing + 10 Brass | the same **+ 37 Iron Plate** | `aether-cell` | 250 | yes (`zeppelin-card`) |
+| Freight Mast | 20 Brass + 10 Casing | the same **+ 120 Iron Plate** | `casing` (ch. 8) | 200 | yes (`mast`) |
+| Pneumatic Post crate | 10 Brass + 5 Casing | the same **+ 40 Iron Plate** | `casing` | 200 | yes, ×2 (`post`): 80 Plate in all |
+| Floor 3 | 150 Iron Plate + 40 Gear + 50 Copper Ingot | 40 → **80 Gear** | `copper-ingot` | 150 | no |
+| Floor 4 | 200 Iron Plate + 20 Brass + 10 Casing | 10 → **20 Casing** | `casing` | 200 | no |
+| Floor 6 | 250 Iron Plate + 6 Mainspring + 4 Aether Cell + 15 Casing | 15 → **30 Casing** | `aether-cell` | 250 | no |
+
+Cards follow the claim formula (invariant 8): max(1, ⌊q/4⌋) of each chassis line, so 120 Plate is
+30 and 150 is 37. The Post's two crates are under 100 a crate, but charged one at a time they
+never need a rung; the Post is a convenience and stays cheap.
+
+**Left as they are, and why:**
+
+- **Everything opening in chapters 1–4**, including the Aether-Hauler, the Slag Heap and the Scrap
+  Recycler (all priced in goods seen by chapter 3), the boiler, the depot, belts and pipes.
+- **Recipe cards.** They follow 4 × the recipe's inputs (invariant 8), and one formula covers
+  chapters 1–10; raising late cards alone would need a second multiplier. A claim also decays to a
+  quarter in 75 s, so a dearer claim mostly means a longer wait. Recommended: unchanged.
+- **Bench recipes.** Their "price" is one craft's inputs (1–2 units); the bench is a fallback, not
+  a sink.
+- **The pack rungs.** They stay inside the cap before each rung (rung 2's 40 Plate ≤ 150, rung 3's
+  60 ≤ 200): a dearer upgrade is the opposite of a reason to buy one.
+- **The Construction Station placeable** (25 Scrap + 5 Brass): not on the guide's path, opens at
+  `brass`; left as authored, since a second station is a layout tool, not a sink.
+
+**Which price needs which rung**, after the change: rung 1 (150): Floor 2 (120 Scrap), Floor 3
+(150 Plate), the Overclocker (120), the Zeppelin (150), the Freight Mast (120). Rung 2 (200):
+Floor 4 (200 Plate), Floor 5 (180 Glass). Rung 3 (250): Floor 6 (250 Plate). Every rung has a
+reason (§15.3).
+
+**What it costs in time** [M]: 450 more Iron Plate on the guide's path (Post 80, Mast 120,
+Zeppelin 150 in chapters 8–9; two Overclockers 240 in chapter 10, though the floor test builds one
+reference line). At chapter 8's ~57 Plate a minute (one smelter and the iron Presser) that is
+about 4 minutes in chapter 9 and 4 in chapter 10, inside their ceilings of 20:00 and 30:00. If
+`FullRunFloorTests` puts a chapter over its ceiling, the Plate lines come down first, Mast before
+Zeppelin before Overclocker.
 
 ## 9. Assembly Line card prices
 
@@ -304,7 +365,7 @@ stage time ≈ nominal × (d / s)²      for s < d        (at s = d / 6: 36 × n
 
 The design's §7 says progress "scales with delivered rate", which reads linear (nominal × d/s).
 The Code agent measures it first (`ClockTowerPartialSupplyTests`, §15.6). If the measurement
-confirms it, the fix is the user's (§17 Q4); this spec doesn't change the rule.
+confirms it, the meter decays at the delivered rate instead (§17, decision 4), in an addendum.
 
 ### 10.2 The stage 4 Conduit rule
 
@@ -394,6 +455,10 @@ chassis's lines for `Counts`, and the market offer for the truckload. The `gears
 the Presser's Gear line, not 10. `TutorialGuideTests`' 240-character budget still holds every
 chapter 1–4 body [M].
 
+The same for chapters 8–9's quoted prices that §8.1 raises: `post` "(10 Brass + 5 Casing)",
+`zeppelin` "6 Mainspring, 8 Lens, 3 Aether Cell, 30 Casing and 40 Brass" and its `Counts`, `mast`
+"(20 Brass + 10 Casing)" and its `Counts`. Each now names its Iron Plate line, built from the data.
+
 ## 13. The Mainspring Overclocker, final
 
 Roadmap decision 7 decides its *identity* after the full playthrough: if players never choose it
@@ -403,8 +468,8 @@ everything else now, so the playthrough judges a finished chassis.
 | Aspect | Final | Lives in | Note |
 |---|---|---|---|
 | Slots | 5 | `chassis.json` `maxAppendageSlots` | 3 inputs, or 2 inputs plus Repeat |
-| Cost | 2 Mainspring + 20 Brass + 24 Casing + 12 Gear (unchanged) | `chassis.json` `cost` | Raw ~578; every line ≤ 100; opens at `mainspring` (ch. 8) |
-| Card | 1 Mainspring + 5 Brass + 6 Casing + 3 Gear, prerequisite Mainspring (unchanged) | `Card_MainspringOverclocker` | The formula (§9). The station builds any chassis unclaimed; the card is what the Workbench's rack offers [M: confirm an unclaimed Overclocker built at the station can be programmed, as the Hauler is in chapter 5] |
+| Cost | 2 Mainspring + 20 Brass + 24 Casing + 12 Gear **+ 120 Iron Plate** (§8.1) | `chassis.json` `cost` | Raw ~698; opens at `mainspring` (ch. 8), reachable 250; the guide-path limit is 150 |
+| Card | 1 Mainspring + 5 Brass + 6 Casing + 3 Gear **+ 30 Iron Plate**, prerequisite Mainspring | `Card_MainspringOverclocker` | The formula (§9). The station builds any chassis unclaimed; the card is what the Workbench's rack offers [M: confirm an unclaimed Overclocker built at the station can be programmed, as the Hauler is in chapter 5] |
 | Unlock in the guide | chapter 10's `frame-section` text names it ("build a Mainspring Overclocker at the station"); no step of its own | `TutorialGuide.cs` | The full playthrough watches it (`full-playthrough.md`, chapter 10) |
 | Steam | 3 Coke/min while working, like every chassis; a Repeat iteration is working | `SteamNetwork` | No surcharge: a dearer golem that also burns more would never be chosen |
 | Repeat card | free, cycling, `prerequisiteItemProduced` **Mainspring** (§9) | `Card_RepeatAssembly` | |
@@ -457,7 +522,7 @@ guide's programs (§2):
 | R4 Iron Smelting, Repeat 5 | 36.4 Plate/min | 12 + 6 + 24 + 120 + 20 = 182 t per 6 runs: 39.6 | +9 % |
 
 Repeat amortises only the fixed 2-tick overheads, so it buys 8–20 %. That is the number the
-playthrough's `overclocker` question weighs: is an Overclocker worth 578 raw goods and a bay slot
+playthrough's `overclocker` question weighs: is an Overclocker worth 698 raw goods and a bay slot
 for that? Decision 7's remedy (a second exclusive card) stays the user's call after the
 playthrough (§17 Q6).
 
@@ -505,12 +570,24 @@ are revisited; the ceiling is not raised to fit (as `ChaptersOneToFourFloorTests
 Add to the price list: each of the starter bench's crankable recipes' inputs ("bench R2: 1
 Scrap"), and the boiler's hand-load (`HandLoadBatch` Coke). Closes `open-items.md` §4.
 
-### 15.3 New: `Core.Tests/Economy/MaxPriceTests`
+### 15.3 New: `Core.Tests/Economy/PriceCeilingTests`
 
-- `NoLineOfAnyPrice_IsAboveTheBasePack_ButFloorExpansion`: over the same list as `PriceReachTests`
-  (placeables, chassis, every deck card's opening price, truckloads, bays, pack rungs, bench
-  recipes, boiler hand-load), every good's summed line ≤ `packCapacityPerType`. Floor Expansion's
-  purchases are listed separately and skipped, with a comment pointing to invariant 2.
+Named for what it pins: the ceiling on a price is the reachable pack (invariants 1 and 2), plus
+the data checks this spec adds. It shares `PriceReachTests`' price list and its Seen(s) harness
+(move both into a helper, `PriceList`, rather than copy them).
+
+- `GuidePathPrices_AskNoMoreThanTheTaughtRung` (invariant 2): every price a guide step's kit pays
+  (the chassis it builds, the buildings it places, the cards it claims, the truckloads it orders),
+  opening after chapter 4, has every summed line ≤ `packUpgrades[0].capacityPerType` (150). Prices
+  opening in chapters 1–4 have every line ≤ `packCapacityPerType` (100).
+- `EveryRung_HasAPriceThatNeedsIt` (invariant 2): for each rung *k*, some price on the list has a
+  summed line above the cap below the rung (rung 1: > 100, rung 2: > 150, rung 3: > 200) and no
+  more than rung *k*'s cap, and opens no sooner than rung *k*. **Recommended**, so a later edit
+  can't leave an upgrade with nothing to buy. Today: rung 1 Floor 2, rung 2 Floor 4, rung 3
+  Floor 6.
+- `NothingInChaptersOneToFour_WasRaised`: the prices that open in chapters 1–4 equal a table in
+  the test, copied from §8 and §4.3 as proposed (the Presser at its new price, the truckloads at
+  their new sizes). A later raise there must edit the test and say why.
 - `TheLensCostsThreeGlass`: `R10_LensGrinding` has inputs exactly (Glass 3, Brass 1), output 1 Lens.
 - `StageThreeStillBalances`: computes stage 3's Slag balance from the data with §11's arithmetic
   (Lens demand + 2 Lens per Aether Cell × 3 Cells per Conduit × Conduit demand, × Glass per Lens;
@@ -605,8 +682,9 @@ retuned prices along the guide.
 
 Each is a data edit or a small Core change; build and run `dotnet test` after each group.
 
-1. **Guards first** (they fail, then pass): `MaxPriceTests` (all but `TheLensCostsThreeGlass` and
-   `StageThreeStillBalances`, which fail until step 4), `PriceReachTests` widened,
+1. **Guards first** (they fail, then pass): `PriceCeilingTests` (`TheLensCostsThreeGlass` and
+   `StageThreeStillBalances` fail until step 4, `ClaimPricesFollowTheirFormula` until step 5b,
+   `NothingInChaptersOneToFour_WasRaised` until step 5), `PriceReachTests` widened,
    `StepGoodsReachTests`, `MarketThroughputTests` (fails until step 3),
    `ClockTowerPartialSupplyTests` (record only).
 2. **Quoted prices from data** (§12.3), with no number changed: `TutorialGuideTests` and the
@@ -620,6 +698,11 @@ Each is a data edit or a small Core change; build and run `dotnet test` after ea
 5. **Presser** (§12): `chassis.json` `BrassPresser` cost 60 Scrap + 10 Iron Plate + 5 Gear;
    `Card_BrassPresser` 15 Scrap + 2 Iron Plate + 1 Gear; `ChaptersOneToFourFloorTests` per-chapter
    ceilings; record the measured floor in §18 and in `docs/roadmap.md`'s Phase 2 table note.
+5b. **Late prices** (§8.1): `chassis.json` Overclocker + 120 Iron Plate, Zeppelin + 150;
+   `assembly_line_cards.json` their cards + 30 and + 37; `placeables.json` Freight Mast + 120,
+   Pneumatic Post + 40; `sandbox.json` Floor 3 Gear 80, Floor 4 Casing 20, Floor 6 Casing 30; the
+   `post`, `zeppelin` and `mast` texts and `Counts` (§12.3). `PriceReachTests` and
+   `PriceCeilingTests` pass.
 6. **Overclocker** (§13): `Golems/RepeatRules.cs`, the dial clamp, the writer's refusal, the load
    clamp, `RepeatRulesTests`; `Card_RepeatAssembly` prerequisite Mainspring.
 7. **Floor test** (§15.4): `FloorPlayer`, `FullRunFloorTests`. Record every chapter's floor in §14
@@ -638,44 +721,29 @@ Each is a data edit or a small Core change; build and run `dotnet test` after ea
    §1's crank column and `testscript/phase-2-playtest.md`'s "about 3¾ of it is the bench" follow
    §12; `docs/open-items.md` closes the bench-price gap and the feeder item.
 
-## 17. Open questions for the user
+## 17. Questions, decided
 
-Each is a choice with a recommendation.
+**Decided by the user on 2026-10-19.** Question 1 was rejected as written and replaced; 2–8 were
+taken as recommended.
 
-1. **"No price above 100": per line, Floor Expansion exempt?** (a) As invariant 2 says: no line
-   above 100 except Floor Expansion, whose larger lines are what the pack upgrades exist for.
-   (b) Every line of every price, Floor Expansion too: purchases 2–6 shrink to ≤ 100 a line, and
-   the pack ladder loses its purpose (`pack-upgrades-design.md` would be reopened).
-   **Recommended: (a).**
-2. **The Presser's price now, or after the Phase 2 playtest?** (a) Now, as §12: 15 seconds of slack
-   is no slack for a real player. (b) Wait for `testscript/phase-2-playtest.md` and change it only
-   if chapter 2 overruns. **Recommended: (a)**; the playtest then measures the retuned game.
-3. **The market: bigger truckloads, or standing orders?** (a) §4.3's sizes (×3–4, same unit
-   price): a data change, 7.6 orders a minute at stage 1. (b) A standing order per stall that
-   reorders when the stall empties, charged to the wallet: a new system, its own spec, invariants
-   and scenario. (c) Both. **Recommended: (a) now, and decide (b) from the playthrough's `market`
-   answer.**
-4. **Under-supply slows the tower quadratically** (§10.1), if the measurement confirms it. (a) Make
-   the meter decay at the line's delivered rate instead of its demand, so a steady line under
-   demand never starves and stage time is nominal × d/s, as §7 and the guide's text say. (b) Keep
-   the rule and lower stage 1 to 3 Frame Sections a minute. (c) Keep both and reword `stage1`'s
-   text. **Recommended: (a)**, specified in a short addendum once the numbers are in.
-5. **Stage 4's Conduit trim** (§10.2): (a) only after the probe is optimised and the budget still
-   fails, as written. (b) Trim it now, before profiling. **Recommended: (a)**; stage 3's Conduit
-   line stands anyway, so the trim saves less than it seems.
-6. **The Overclocker's identity**, after the playthrough (decision 7). If players never choose it
-   for Repeat: (a) a second exclusive card, as decision 7 says (to be designed then); (b) Repeat's
-   iterations run at 75 % of the recipe's ticks (`StepDurationRules.Repeat`): R1 52.6 Coke/min
-   (+49 %), R8 37.5 (+31 %), R4 47.4 Plate (+30 %), a number, local to the golem, no aura; (c)
-   leave it as the 3-input chassis only. **Recommended: play first with Repeat at 100 %; if the
-   answer is "never", try (b) before designing (a)**, since it is one constant.
-7. **Lens at 3 Glass needs stage 3's Lens halved** (§11). (a) Both, as proposed. (b) Neither:
-   keep 2 Glass and stage 3 as built. **Recommended: (a).**
-
-8. **Name the drainer too?** (`onboarding-feedback-design.md` §17.8) A golem waiting on a full
-   target behind a sleeping drainer has the same blind spot as the feeder case. (a) Leave it out of
-   Phase 3, as approved. (b) Add "Hauler #6 takes from it" by the same mechanism. **Recommended:
-   (a)**, and ask the playthrough's `whole-run` notes whether anyone hit it.
+1. **"No price above 100" is dropped.** The user: "I think some costs could be higher if they're
+   expected to come later when we'd expect the player to upgrade their limits." The ceiling on a
+   line is the pack reachable when the price opens (invariant 1), Floor Expansion needs no
+   exemption, and late prices use the room the rungs give (invariant 2, §8.1).
+2. **The Presser's price changes now** (§12), before the Phase 2 playtest, which then measures the
+   retuned game.
+3. **The market gets bigger truckloads now** (§4.3). A standing order per stall is decided from
+   the playthrough's `market` answer, as its own spec if it comes.
+4. **Under-supply:** once `ClockTowerPartialSupplyTests` confirms §10.1, the meter decays at the
+   line's delivered rate instead of its demand, so stage time is nominal × d/s, as §7 and the
+   `stage1` text say. Specified in a short addendum to this spec once the numbers are in.
+5. **Stage 4's Conduit is trimmed only** if the budget still fails after the probe is optimised
+   (§10.2).
+6. **The Overclocker** plays the full run with Repeat at 100 %. If the answer is "never", Repeat
+   iterations at 75 % of the recipe's ticks are tried before a second exclusive card is designed.
+7. **Lens at 3 Glass, with stage 3's Lens demand halved to 12** (§11).
+8. **The drainer is not named in Phase 3** (`onboarding-feedback-design.md` §17.8); the
+   playthrough's notes say whether anyone hit the case.
 
 ## 18. Corrections and measurements, as built
 

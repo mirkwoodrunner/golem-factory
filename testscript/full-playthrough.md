@@ -149,6 +149,7 @@ Truckload orders in five minutes of chapter 8–10: ___
 | Truckloads | Scrap 100 free; Coal 120 for 30 Scrap; Copper and Zinc Ore 120 for 60; Aether 40 for 80 | `sandbox.json` `market` |
 | Brass Presser | 60 Scrap + 10 Iron Plate + 5 Gear | `chassis.json` |
 | Lens | 3 Glass + 1 Brass | `recipes.json` R10 |
+| Late prices | Overclocker + 120 Iron Plate, Zeppelin + 150, Freight Mast + 120, Post crate + 40: past a base pack of 100, so the pack upgrade matters | `chassis.json`, `placeables.json` |
 | Stage 1 | 6 Frame Sections a minute for 6:00 | `clock_tower_stages.json` |
 | Repeat | up to the recipe's limit (11 for Coking, 5 for Gears) | `Golems/RepeatRules` |
 

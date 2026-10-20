@@ -185,7 +185,7 @@ collecting Haul.
 
 ## Phase 3: Tuning and a full playthrough
 
-The specs (written 2026-10-19, awaiting the user's approval):
+The specs (written 2026-10-19; the tuning spec's decisions approved the same day, its §17):
 
 - `docs/tuning-data-spec.md`: every number, where it lives, the test that pins it, the proposed
   changes (§16) and the open questions (§17).

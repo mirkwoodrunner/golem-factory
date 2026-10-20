@@ -1025,19 +1025,39 @@ in the code phase and recorded in that spec's §18, not here.
 | Truckloads | Scrap 30; Coal 40 for 10 Scrap; ores 40 for 20; Aether 20 for 40 | Scrap 100; Coal 120 for 30; ores 120 for 60; Aether 40 for 80 | At the old sizes stage 1 needed ~24 orders a minute by hand. The price per unit is unchanged |
 | Floor Expansion 5 | 200 Glass + 20 Lens + 15 Casing | **180 Glass** + 20 Lens + 15 Casing | The same Glass in all, at 3 Glass a Lens |
 | `Card_RepeatAssembly` | no prerequisite | prerequisite Mainspring | It filled Assembly Line slots from chapter 2 on, a card no early chassis can hold |
+| Mainspring Overclocker (and its card) | 2 Mainspring + 20 Brass + 24 Casing + 12 Gear | the same + **120 Iron Plate** (card + 30) | Late prices use the room the pack rungs give (below) |
+| Zeppelin Freight Loader (and its card) | 6 Mainspring + 8 Lens + 3 Aether Cell + 30 Casing + 40 Brass | the same + **150 Iron Plate** (card + 37) | The same |
+| Freight Mast | 20 Brass + 10 Casing | the same + **120 Iron Plate** | The same |
+| Pneumatic Post crate | 10 Brass + 5 Casing | the same + **40 Iron Plate** | The same |
+| Floor Expansion 3, 4, 6 | 40 Gear; 10 Casing; 15 Casing | **80 Gear; 20 Casing; 30 Casing** | The same |
 
-**Unchanged, and now invariants:** no line of any price above 100 except Floor Expansion's; every
+**Price ceilings (the user's call, 2026-10-19).** A flat "no line above 100" was proposed and
+rejected: "some costs could be higher if they're expected to come later when we'd expect the player
+to upgrade their limits." The only ceiling on a line is the pack reachable when its price opens
+(100, 150, 200, 250; §13.3), and prices opening after a rung use that room, raised in bulk goods
+(Iron Plate, Gear, Casing) rather than scarce ones. Nothing opening in chapters 1–4 is raised; a
+price the guide's path pays stays within 150, the rung chapter 7 teaches; every rung has a price
+that needs it.
+
+**Decided with it** (the spec's §17): the Presser's price changes now; bigger truckloads now and
+standing orders only if the playthrough asks; once measured, the tower's meter decays at the
+delivered rate so under-supply slows a stage linearly; stage 4's Conduit is trimmed only if the
+profile still fails after the probe is optimised; the Overclocker plays the full run with Repeat at
+100 %, then 75 % is tried before a second card; Lens at 3 Glass with stage 3's Lens at 12; the
+drainer is not named on the hover card in Phase 3.
+
+**Unchanged, and now invariants:** every
 price fits the pack reachable when it opens (§13.3); every good a guide step asks for is makeable
 when the step opens; chapters 1–4 under 10:00 of game-time floor and each chapter under two thirds
 of its budget; the Overclocker's cost (2 Mainspring + 20 Brass + 24 Casing + 12 Gear), slots and
 steam (no surcharge).
 
-**Findings this section's numbers don't settle**, left to the user in the spec's §17:
+**Findings this section's numbers don't settle on their own:**
 
 - **The tower slows quadratically under demand** (§7). A meter drains at the demand rate, and an
   empty meter freezes progress, so at a supply of *s* against a demand of *d* a stage takes about
-  nominal × (d/s)², not the nominal × d/s that §7's "scales with delivered rate" reads as. To be
-  measured, then decided.
+  nominal × (d/s)², not the nominal × d/s that §7's "scales with delivered rate" reads as. Decided:
+  once measured, the meter decays at the delivered rate.
 - **Stage 4's Conduit cut** (§12 weakness 1) applies only if the endgame profile
   (`docs/performance-report-template.md`) fails after the stall probe is optimised. Stage 3
   already demands 3 Conduits a minute, so the cut saves less than §12 assumed.
