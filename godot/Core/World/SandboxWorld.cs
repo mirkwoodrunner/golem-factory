@@ -772,9 +772,9 @@ namespace GolemFactory.World
 
         /// <summary>
         /// Moves on once a frame, after the frame's ticks, and whenever a building or a golem
-        /// comes or goes: the stall-facts probe keeps one frame's indices and facts until it
-        /// moves (docs/performance-report-template.md §5.2 step 2). A golem carried, turned or
-        /// reprogrammed between two of the world's frames is read afresh on the next one.
+        /// comes or goes: the stall-facts probe keeps its indices until it moves, or until a
+        /// golem moves, turns, is carried or changes whether it runs
+        /// (docs/performance-report-template.md §5.2 step 2).
         /// </summary>
         public long PresentationFrame { get; private set; }
 

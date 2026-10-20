@@ -109,8 +109,12 @@ namespace GolemFactory.Tests.EditMode
             Assert.Greater(fed, 20, "the starved load has fed golems to compare");
         }
 
+        /// <summary>
+        /// The indices last a frame, but a change between two reads in one frame is seen at once:
+        /// the moods scenario writes a program and reads the crate's pusher in the same step.
+        /// </summary>
         [Test]
-        public void TheFramedProbe_KeepsAFramesFacts_UntilTheWorldMovesOn()
+        public void TheFramedProbe_SeesAChangeWithinAFrame()
         {
             SandboxWorld world = Compose();
             EndgameLoadResult load = EndgameLoad.Build(world);
@@ -121,15 +125,24 @@ namespace GolemFactory.Tests.EditMode
                 load.Maintain();
             }
             GolemEntity waiting = load.Golems.First(g => g.Mood == GolemMood.Waiting);
-            GolemEntity feeder = world.StallFacts.FeedersOf(waiting).First();
-            foreach (GolemEntity other in world.StallFacts.FeedersOf(waiting, 10))
+            var feeders = world.StallFacts.FeedersOf(waiting, 10).ToList();
+            foreach (GolemEntity other in feeders)
             {
                 other.SetHeld(true);
             }
-            Assert.AreEqual(GolemMood.Waiting, waiting.Mood, "within a frame the facts are kept");
-            world.InvalidateStallFacts();
-            Assert.AreEqual(GolemMood.Stalled, waiting.Mood, "a carried feeder feeds nothing, from the next frame");
-            Assert.IsTrue(feeder.IsHeld);
+            Assert.AreEqual(GolemMood.Stalled, waiting.Mood, "a carried feeder feeds nothing, in the same frame");
+            foreach (GolemEntity other in feeders)
+            {
+                other.SetHeld(false);
+            }
+            Assert.AreEqual(GolemMood.Waiting, waiting.Mood, "set down, it feeds again");
+
+            GolemEntity feeder = feeders[0];
+            List<GolemFactory.PunchCards.AppendageActionDefinition> program = feeder.Program.appendages.ToList();
+            feeder.Program.appendages.Clear();
+            Assert.AreEqual(GolemMood.Stalled, waiting.Mood, "a feeder with no program feeds nothing");
+            feeder.Program.appendages.AddRange(program);
+            Assert.AreEqual(GolemMood.Waiting, waiting.Mood);
         }
 
         private static string Stalls(EndgameLoadResult load) => string.Join("; ", load.Golems

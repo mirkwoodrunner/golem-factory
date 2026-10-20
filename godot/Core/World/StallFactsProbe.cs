@@ -52,18 +52,50 @@ namespace GolemFactory.World
         private int _walked;
 
         /// <summary>
-        /// The presentation frame, when the probe has one (<c>SandboxWorld</c> wires its own): the
-        /// world's golems and buildings change only between frames, so within one the probe
-        /// builds its indices once and reads each golem's facts once, however many readers ask
-        /// (the golem's node, the strip, the hover card). Null, as on a bare probe in a test: the
-        /// indices are rebuilt on every read and nothing is kept, so a test may change the world
-        /// between two reads. Either way a read answers exactly as it did before the indices.
+        /// The presentation frame, when the probe has one (<c>SandboxWorld</c> wires its own,
+        /// moved on by every frame and by every building placed or removed). Within a frame the
+        /// probe keeps its indices of who pushes into and takes from each store, and rebuilds
+        /// them only when a golem moves, turns, is carried, set down, removed, or gains or loses
+        /// a runnable program (<see cref="IndexStale"/>). Programs, holds and stalls are read
+        /// live, so a read answers exactly as it did before the indices. Null, as on a bare
+        /// probe in a test: the indices are rebuilt on every read.
         /// </summary>
         public Func<long> Frame { get; set; }
 
         private bool _indexed;
         private long _indexFrame;
-        private readonly Dictionary<GolemEntity, StallFacts> _facts = new Dictionary<GolemEntity, StallFacts>();
+
+        // What each golem looked like when the indices were built, in roster order.
+        private readonly List<IndexedGolem> _indexedAs = new List<IndexedGolem>();
+
+        /// <summary>
+        /// What decides a golem's place in the indices: where it stands and faces (its source and
+        /// target), its mast and whether it launches (its push cell), and whether it runs.
+        /// </summary>
+        private readonly struct IndexedGolem
+        {
+            public readonly GolemEntity Golem;
+            public readonly Vector2Int Cell;
+            public readonly Facing Facing;
+            public readonly Vector2Int? Mast;
+            public readonly bool Launches;
+            public readonly bool Live;
+
+            public IndexedGolem(GolemEntity golem)
+            {
+                Golem = golem;
+                Cell = golem?.Cell ?? default;
+                Facing = golem?.Facing ?? default;
+                Mast = golem?.BoundMastCell;
+                Launches = golem != null && golem.Program != null && HasLaunch(golem.Program);
+                Live = StallFactsProbe.Live(golem);
+            }
+
+            public bool Describes(GolemEntity golem) =>
+                Golem == golem && (golem == null ||
+                    (Live == StallFactsProbe.Live(golem) && Cell == golem.Cell && Facing == golem.Facing &&
+                     Mast == golem.BoundMastCell && Launches == HasLaunch(golem.Program)));
+        }
 
         // Who pushes into, and takes from, each store and each belt lane: every golem that could
         // feed or drain (live, standing, programmed), in roster order; the asker is excluded at
@@ -79,55 +111,61 @@ namespace GolemFactory.World
             PerfSampler perf = Perf;
             if (perf == null)
             {
-                return ReadCached(golem);
+                EnsureIndex();
+                return ReadNow(golem);
             }
             _walked = 0;
             using (perf.Start(PerfSampler.ProbeRead))
             {
-                StallFacts facts = ReadCached(golem);
+                EnsureIndex();
+                StallFacts facts = ReadNow(golem);
                 perf.Tally(PerfSampler.LoopWalk, _walked);
                 return facts;
             }
         }
 
-        private StallFacts ReadCached(GolemEntity golem)
+        /// <summary>Whether the indices no longer describe the golems: one moved, turned, was carried or removed, or changed whether it runs.</summary>
+        private bool IndexStale(IEnumerable<GolemEntity> golems)
         {
-            bool framed = EnsureIndex();
-            if (golem == null)
+            int i = 0;
+            foreach (GolemEntity golem in golems)
             {
-                return default;
+                if (i >= _indexedAs.Count)
+                {
+                    return true;
+                }
+                if (!_indexedAs[i++].Describes(golem))
+                {
+                    return true;
+                }
             }
-            if (framed && _facts.TryGetValue(golem, out StallFacts cached))
-            {
-                return cached;
-            }
-            StallFacts facts = ReadNow(golem);
-            if (framed)
-            {
-                _facts[golem] = facts;
-            }
-            return facts;
+            return i != _indexedAs.Count;
         }
 
-        /// <summary>Builds the indices unless this frame's are built; true when they may be kept.</summary>
-        private bool EnsureIndex()
+        private static bool Live(GolemEntity golem) =>
+            golem != null && !golem.IsRemoved && !golem.IsHeld && golem.HasRunnableProgram;
+
+        /// <summary>Builds the indices unless they still describe this frame's golems.</summary>
+        private void EnsureIndex()
         {
+            IEnumerable<GolemEntity> golems = _golems?.Invoke() ?? Enumerable.Empty<GolemEntity>();
             long? frame = Frame?.Invoke();
-            if (frame.HasValue && _indexed && _indexFrame == frame.Value)
+            if (frame.HasValue && _indexed && _indexFrame == frame.Value && !IndexStale(golems))
             {
-                return true;
+                return;
             }
             _indexed = frame.HasValue;
             _indexFrame = frame ?? 0;
-            _facts.Clear();
+            _indexedAs.Clear();
             _pushersByStore.Clear();
             _pushersBySegment.Clear();
             _takersByStore.Clear();
             _takersBySegment.Clear();
             _upstream = null;
-            foreach (GolemEntity golem in _golems?.Invoke() ?? Enumerable.Empty<GolemEntity>())
+            foreach (GolemEntity golem in golems)
             {
-                if (golem == null || golem.IsRemoved || golem.IsHeld || !golem.HasRunnableProgram)
+                _indexedAs.Add(new IndexedGolem(golem));
+                if (!Live(golem))
                 {
                     continue;
                 }
@@ -152,7 +190,6 @@ namespace GolemFactory.World
                     Add(_takersByStore, source, golem);
                 }
             }
-            return frame.HasValue;
         }
 
         private static void Add<TKey>(Dictionary<TKey, List<GolemEntity>> index, TKey key, GolemEntity golem)
@@ -459,7 +496,12 @@ namespace GolemFactory.World
         private static bool MayPush(GolemEntity golem, string good)
         {
             GolemProgram program = golem.Program;
-            if (!program.appendages.Any(IsPushStep))
+            bool pushes = false;
+            for (int i = 0; i < program.appendages.Count && !pushes; i++)
+            {
+                pushes = IsPushStep(program.appendages[i]);
+            }
+            if (!pushes)
             {
                 return false;
             }
@@ -511,10 +553,26 @@ namespace GolemFactory.World
 
         /// <summary>Where a golem's goods land: its bound mast for a Zeppelin's launch, else the tile in front.</summary>
         private static Vector2Int PushCell(GolemEntity golem) =>
-            golem.Program.appendages.Any(c => c != null && c.actionType == AppendageActionType.FreightLaunch) &&
-            golem.BoundMastCell is Vector2Int mast
+            HasLaunch(golem.Program) && golem.BoundMastCell is Vector2Int mast
                 ? mast
                 : golem.TargetCell;
+
+        private static bool HasLaunch(GolemProgram program)
+        {
+            List<AppendageActionDefinition> cards = program?.appendages;
+            if (cards == null)
+            {
+                return false;
+            }
+            for (int i = 0; i < cards.Count; i++)
+            {
+                if (cards[i] != null && cards[i].actionType == AppendageActionType.FreightLaunch)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
 
         // --- Drained -------------------------------------------------------------------------
 
