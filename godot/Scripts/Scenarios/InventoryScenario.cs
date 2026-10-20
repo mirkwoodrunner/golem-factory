@@ -502,6 +502,10 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 Give(ItemType.Brass, 20);
                 Give(ItemType.Casing, 10);
+                // The Mast's 120 Iron Plate (tuning-data-spec §8.1) is more than a base pack
+                // holds: the rest waits in the Post, which the wallet spends once the pack is out.
+                int plate = _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.IronPlate, 120);
+                _world.Buffers.Deposit(SandboxWorld.PostBufferId, ItemType.IronPlate, 120 - plate);
                 _world.Build.SetActivePrefab(_world.Placeables.Single(p => p.Key == "FreightMastPrefab").Prefab);
                 _world.Build.PlaceOrRemove(MastCell);
                 _world.Build.CancelPlacement();
@@ -540,6 +544,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     Give(ItemType.Brass, 10);
                     Give(ItemType.Casing, 5);
+                    Give(ItemType.IronPlate, 40);
                     _world.Build.SetActivePrefab(_world.Placeables.Single(p => p.Key == "PneumaticPostPrefab").Prefab);
                     _world.Build.PlaceOrRemove(cell);
                     _world.Build.CancelPlacement();
