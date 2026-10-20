@@ -65,15 +65,9 @@ namespace GolemFactory.Steam
         /// <summary>§3.1: a Boiler powers at most 8 golems.</summary>
         public const int MaxGolemsPerBoiler = 8;
 
-        /// <summary>
-        /// Costs from §3.1, recorded here rather than wired into placement, because Iron Plate
-        /// does not exist as an ItemType until §1.5 authors it (and §11 item 8 replaces the
-        /// scrap/brass cost pair with an item bundle at the same time). Invented as a runtime
-        /// cost now, they would have to be re-expressed twice.
-        /// </summary>
-        public const int BoilerScrapCost = 30;
-        public const int BoilerIronPlateCost = 10;
-        public const int SteamPipeIronPlateCost = 1;
+        // The boiler's and the pipe's prices live in data/placeables.json, read by build mode.
+        // Copies here (BoilerScrapCost, BoilerIronPlateCost, SteamPipeIronPlateCost) had no
+        // reader and could only drift from it, so they were deleted (tuning-data-spec §3).
 
         private readonly Dictionary<string, SteamBoiler> _boilers = new Dictionary<string, SteamBoiler>();
         private readonly HashSet<Vector2Int> _pipes = new HashSet<Vector2Int>();
