@@ -12,7 +12,8 @@ namespace GolemFactory.Nodes.Scenarios
     /// pointer (or the cell above its feet) lights its source and target tiles with arrows at z
     /// −1, and after a moment its card names what it is doing -- for a stuck one, the tile, the
     /// good and the fix -- while its badge steps aside. Nothing is hovered over the build menu,
-    /// over a full screen, or with the wrecking bar up.
+    /// over a full screen, or with the wrecking bar up. A waiting golem's card names the golem
+    /// that feeds it, and says "when its trigger fires" while that feeder sleeps (§17).
     /// </summary>
     public sealed class HoverScenario : StreetFixture
     {
@@ -43,8 +44,41 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
 
+            // 2b. §17: P waits on S, which sleeps, so P's card names S and says when.
+            Until("P's card names S as its feeder", 1.0, () =>
+            {
+                string text = _hover.CardText;
+                string wanted = UI.GolemNames.Short(S) + " brings it when its trigger fires";
+                if (!_hover.CardVisible || !text.Contains("Waiting for Scrap") || !text.Contains(wanted))
+                {
+                    return $"card visible={_hover.CardVisible} '{text}', wanted '{wanted}' ({P.Mood})";
+                }
+                if (UI.PlayerText.RawIdIn(text) != null)
+                {
+                    return $"card '{text}' shows an id ('{UI.PlayerText.RawIdIn(text)}')";
+                }
+                Log.Add($"P's feeder card '{text.Replace('\n', '|')}'");
+                return null;
+            });
+            Do("capture P's feeder card", () => { ScenarioCapture.Shot(Viewport, "critique-hover-feeder"); return null; });
+
             // 3. A stuck golem behind an empty, unfed crate (S, asleep -- so make it run).
             Do("wake S", () => { S.Program.logicCore = World.Definitions.LogicCores["AlwaysOnCore"]; return null; });
+
+            // S, awake, stalls red on its own empty crate; P stays grey behind it and still names
+            // it, now without the trigger clause (one red at the root, §3.2).
+            Do("point back at P", () => { PointAtCell(P.Cell); return null; });
+            Until("P still names S, without the trigger clause", 2.0, () =>
+            {
+                string text = _hover.CardText;
+                string wanted = UI.GolemNames.Short(S) + " brings it";
+                if (!_hover.CardVisible || !text.Contains(wanted) || text.Contains("when its trigger fires"))
+                {
+                    return $"card '{text}' (S {S.Mood} {S.StallReason}, P {P.Mood})";
+                }
+                Log.Add($"S awake: P's card '{text.Split('\n')[1]}'");
+                return null;
+            });
             Do("point at S", () => { PointAtCell(S.Cell); return null; });
             Until("S's card names the tile, the good and the fix", 2.0, () =>
             {

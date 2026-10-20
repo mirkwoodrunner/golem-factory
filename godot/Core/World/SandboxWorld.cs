@@ -7,6 +7,7 @@ using GolemFactory.Buildings;
 using GolemFactory.ClockTower;
 using GolemFactory.Compat;
 using GolemFactory.Data;
+using GolemFactory.Diagnostics;
 using GolemFactory.Economy;
 using GolemFactory.Golems;
 using GolemFactory.AssemblyLine;
@@ -197,7 +198,8 @@ namespace GolemFactory.World
 
             // Steam ticks on the simulation clock: Coke burns per unit of work, so the burn has
             // to follow Play/Pause and the speed multiplier.
-            Clock.Register(new TickAdapter(Steam.Tick));
+            _steamTick = new TickAdapter(Steam.Tick);
+            Clock.Register(_steamTick);
 
             FloorExpansion.Configure(Bounds, Buffers, _stockpileBufferId, PostBufferId);
             if (setup.floorExpansion != null)
@@ -766,6 +768,40 @@ namespace GolemFactory.World
 
         private StallFactsProbe _stallFacts;
 
+        /// <summary>
+        /// The endgame profile's sampler (docs/performance-report-template.md §3): null, the
+        /// default, unless a perf run sets it, so the game pays a null check. Setting it reaches
+        /// the clock (each tick, by registrant), the probe, every golem's mood, the alerts strip
+        /// and the hover card.
+        /// </summary>
+        public PerfSampler Perf
+        {
+            get => _perf;
+            set
+            {
+                _perf = value;
+                Clock.Perf = value;
+                Clock.PerfGroup = value != null ? PerfGroupOf : (Func<Simulation.ITickable, string>)null;
+                StallFacts.Perf = value;
+                if (Alerts != null)
+                {
+                    Alerts.Perf = value;
+                }
+            }
+        }
+
+        private PerfSampler _perf;
+
+        private string PerfGroupOf(Simulation.ITickable tickable)
+        {
+            switch (tickable)
+            {
+                case GolemEntity _: return PerfSampler.TickGolems;
+                case ConveyorSystem _: return PerfSampler.TickBelts;
+                default: return tickable == _steamTick ? PerfSampler.TickSteam : PerfSampler.TickOther;
+            }
+        }
+
         /// <summary>Which golem the mouse is over (onboarding-feedback-design §4.1).</summary>
         public GolemInspector Inspector => _inspector ??= new GolemInspector(() => _golems);
 
@@ -780,8 +816,22 @@ namespace GolemFactory.World
         /// The hover card for <paramref name="golem"/> drawn in <paramref name="mood"/>
         /// (onboarding-feedback-design §4.3).
         /// </summary>
-        public HoverCard HoverCard(GolemEntity golem, GolemMood mood, bool strainingHeld = false) =>
-            GolemHoverText.Compose(golem, mood, golem?.StallFacts ?? default, TileNames, strainingHeld);
+        /// <remarks>
+        /// A waiting golem whose source is fed names its feeders (§17.4); they are found here, for
+        /// the one hovered golem, never per frame for every golem (§17.2 invariant 3).
+        /// </remarks>
+        public HoverCard HoverCard(GolemEntity golem, GolemMood mood, bool strainingHeld = false)
+        {
+            using (Perf.Measure(PerfSampler.Hover))
+            {
+                GolemFactory.Golems.StallFacts facts = golem?.StallFacts ?? default;
+                IReadOnlyList<GolemEntity> feeders =
+                    mood == GolemMood.Waiting && facts.IsTake && facts.SourceGives && facts.SourceFed
+                        ? StallFacts.FeedersOf(golem)
+                        : null;
+                return GolemHoverText.Compose(golem, mood, facts, TileNames, strainingHeld, feeders);
+            }
+        }
 
         /// <summary>
         /// The problem a stopped golem's [E] prompt carries (§11 question 5): the hover card's
@@ -800,6 +850,7 @@ namespace GolemFactory.World
             // Spawned and respawned alike (the respawner builds through the station), so a
             // golem's birth stays in one file and every one the world hosts reads grey or red.
             golem.ConfigureStallFacts(StallFacts.Read);
+            golem.ConfigurePerf(() => _perf);
 
             // The station publishes WorldInteractablesChanged from inside SpawnGolem, BEFORE it
             // raises GolemSpawned -- so the interactor's re-snapshot ran against a roster one
@@ -840,6 +891,7 @@ namespace GolemFactory.World
 
         private float _realSeconds;
         private float _nextThroughputSample;
+        private TickAdapter _steamTick;
 
         /// <summary>The Inventory tab's rate history (Unity's BufferThroughputMonitor), sampled in real time.</summary>
         public BufferRateTracker Throughput { get; } = new BufferRateTracker();

@@ -370,6 +370,141 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsTrue(floor.Probe.Read(pusher).TargetDrained);
         }
 
+        // --- §17: the feeders the hover card names ------------------------------------------
+
+        /// <summary>
+        /// §17.2's one answer: on every fixture, a golem's feeder list is non-empty exactly when
+        /// its facts read SourceGives and SourceFed, so the card never names a feeder the colour
+        /// doesn't follow, nor misses one it does.
+        /// </summary>
+        [Test]
+        public void FeedersOf_AgreesWithSourceFed()
+        {
+            int fed = 0, notFed = 0;
+            foreach ((string name, Floor floor) in AgreementFixtures())
+            {
+                foreach (GolemEntity golem in floor.Golems)
+                {
+                    StallFacts facts = floor.Probe.Read(golem);
+                    bool expected = facts.SourceGives && facts.SourceFed;
+                    Assert.AreEqual(expected, floor.Probe.FeedersOf(golem).Count > 0,
+                        name + ": " + golem.GolemId + " (" + golem.StallReason + ")");
+                    if (expected)
+                    {
+                        fed++;
+                    }
+                    else
+                    {
+                        notFed++;
+                    }
+                }
+            }
+            Assert.Greater(fed, 0, "no fixture had a fed golem");
+            Assert.Greater(notFed, 0, "no fixture had an unfed golem");
+        }
+
+        private static IEnumerable<(string, Floor)> AgreementFixtures()
+        {
+            // The sleeper: a feeder on an Interval core that hasn't fired.
+            var sleeper = new Floor();
+            sleeper.Crate(new Vector2Int(0, 0));
+            sleeper.Crate(new Vector2Int(0, 2));
+            GolemEntity s = sleeper.Golem(new Vector2Int(0, 1), HaulScrap, Push);
+            s.Program.logicCore = new LogicCoreDefinition { triggerType = TriggerType.Interval, intervalTicks = 1000003 };
+            sleeper.Golem(new Vector2Int(0, 3), HaulScrap, Push).Tick(0);
+            yield return ("sleeper", sleeper);
+
+            // The empty loop: each stalled on the other.
+            var loop = new Floor();
+            SharedCrate(loop, "X", new Vector2Int(0, 0), new Vector2Int(5, 2));
+            SharedCrate(loop, "Y", new Vector2Int(0, 2), new Vector2Int(5, 0));
+            GolemEntity a = loop.Golem(new Vector2Int(0, 1), HaulScrap, Push);
+            GolemEntity b = loop.Golem(new Vector2Int(5, 1), HaulScrap, Push);
+            a.Tick(0);
+            b.Tick(0);
+            yield return ("empty loop", loop);
+
+            // The chain: S1 → S2 → P, every crate empty, so S1 is red at the root.
+            var chain = new Floor();
+            chain.Crate(new Vector2Int(0, 0));
+            chain.Crate(new Vector2Int(0, 2));
+            chain.Crate(new Vector2Int(0, 4));
+            GolemEntity s1 = chain.Golem(new Vector2Int(0, 1), HaulScrap, Push);
+            GolemEntity s2 = chain.Golem(new Vector2Int(0, 3), HaulScrap, Push);
+            GolemEntity p = chain.Golem(new Vector2Int(0, 5), HaulScrap, Push);
+            s1.Tick(0);
+            s2.Tick(0);
+            p.Tick(0);
+            yield return ("chain", chain);
+
+            // The belt: fed by a pusher upstream.
+            var belt = new Floor();
+            belt.Crate(new Vector2Int(0, 0));
+            belt.Belts.TryPlace(new Vector2Int(0, 2), Facing.North, out _);
+            belt.Belts.TryPlace(new Vector2Int(0, 3), Facing.North, out _);
+            belt.Golem(new Vector2Int(0, 1), HaulScrap, Push);
+            belt.Golem(new Vector2Int(0, 4), HaulScrap, Push).Tick(0);
+            yield return ("belt", belt);
+
+            // The labelled crate: a Scrap-labelled depot fed by a Scrap pusher, and a Coal taker
+            // behind a Coal-labelled one nothing feeds.
+            var labelled = new Floor();
+            labelled.Crate(new Vector2Int(0, 0));
+            labelled.Endpoints.Register(new Vector2Int(0, 2), new FilteredBufferEndpoint(new StorageBuffer("L", 50), ItemType.Scrap));
+            labelled.Golem(new Vector2Int(0, 1), HaulScrap, Push);
+            labelled.Golem(new Vector2Int(0, 3), HaulScrap, Push).Tick(0);
+            labelled.Endpoints.Register(new Vector2Int(4, 2), new FilteredBufferEndpoint(new StorageBuffer("C", 50), ItemType.Coal));
+            labelled.Golem(new Vector2Int(4, 3), (AppendageActionType.Haul, ItemType.Coal), Push).Tick(0);
+            yield return ("labelled crate", labelled);
+
+            // The wrong good: the feeder hauls Coal, the golem behind wants Scrap.
+            var wrong = new Floor();
+            wrong.Crate(new Vector2Int(0, 0));
+            wrong.Crate(new Vector2Int(0, 2));
+            wrong.Golem(new Vector2Int(0, 1), (AppendageActionType.Haul, ItemType.Coal), Push);
+            wrong.Golem(new Vector2Int(0, 3), HaulScrap, Push).Tick(0);
+            yield return ("wrong good", wrong);
+
+            // The Post: fed through another Post crate.
+            var post = new Floor();
+            var store = new StorageBuffer(SandboxWorld.PostBufferId, 200);
+            post.Endpoints.Register(new Vector2Int(5, 2), new StorageBufferEndpoint(store));
+            post.Endpoints.Register(new Vector2Int(0, 2), new StorageBufferEndpoint(store));
+            post.Crate(new Vector2Int(5, 0));
+            post.Golem(new Vector2Int(5, 1), HaulScrap, Push);
+            post.Golem(new Vector2Int(0, 3), HaulScrap, Push).Tick(0);
+            yield return ("post", post);
+
+            // A carried feeder feeds nothing.
+            var carried = new Floor();
+            carried.Crate(new Vector2Int(0, 0));
+            carried.Crate(new Vector2Int(0, 2));
+            carried.Golem(new Vector2Int(0, 1), HaulScrap, Push).SetHeld(true);
+            carried.Golem(new Vector2Int(0, 3), HaulScrap, Push).Tick(0);
+            yield return ("carried feeder", carried);
+        }
+
+        [Test]
+        public void FeedersOf_TwoFeedersOneInAnEmptyLoop_NamesOnlyTheDeliveringOne()
+        {
+            // §17.5: B and C both push into the crate P hauls from. B's own source is empty and
+            // unfed (red at the root, so it counts); C hauls from X, which only P fills: an empty
+            // loop through P, which never starts on its own.
+            var floor = new Floor();
+            floor.Crate(new Vector2Int(0, 0));
+            SharedCrate(floor, "P-src", new Vector2Int(0, 2), new Vector2Int(3, 2));
+            SharedCrate(floor, "X", new Vector2Int(0, 4), new Vector2Int(3, 0));
+            GolemEntity b = floor.Golem(new Vector2Int(0, 1), HaulScrap, Push);   // (0,0) → P-src
+            GolemEntity c = floor.Golem(new Vector2Int(3, 1), HaulScrap, Push);   // X → P-src
+            GolemEntity p = floor.Golem(new Vector2Int(0, 3), HaulScrap, Push);   // P-src → X
+            b.Tick(0);
+            c.Tick(0);
+            p.Tick(0);
+
+            Assert.IsTrue(floor.Probe.Read(p).SourceFed);
+            CollectionAssert.AreEqual(new[] { b }, floor.Probe.FeedersOf(p));
+        }
+
         // --- The strip ----------------------------------------------------------------------
 
         [Test]

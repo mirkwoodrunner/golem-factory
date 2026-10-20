@@ -5,6 +5,7 @@ using GolemFactory.Belts;
 using GolemFactory.Buildings;
 using GolemFactory.ClockTower;
 using GolemFactory.Compat;
+using GolemFactory.Diagnostics;
 using GolemFactory.Economy;
 using GolemFactory.Events;
 using GolemFactory.Golems;
@@ -41,7 +42,32 @@ namespace GolemFactory.World
             _market = market;
         }
 
+        /// <summary>
+        /// The endgame profile's sampler (docs/performance-report-template.md §3): <c>probe.read</c>
+        /// times each read, <c>loop.walk</c> counts the golems the feeder walk visits. Null, the
+        /// default, measures nothing.
+        /// </summary>
+        public PerfSampler Perf { get; set; }
+
+        private int _walked;
+
         public StallFacts Read(GolemEntity golem)
+        {
+            PerfSampler perf = Perf;
+            if (perf == null)
+            {
+                return ReadNow(golem);
+            }
+            _walked = 0;
+            using (perf.Start(PerfSampler.ProbeRead))
+            {
+                StallFacts facts = ReadNow(golem);
+                perf.Tally(PerfSampler.LoopWalk, _walked);
+                return facts;
+            }
+        }
+
+        private StallFacts ReadNow(GolemEntity golem)
         {
             if (golem == null || golem.Program == null)
             {
@@ -137,6 +163,49 @@ namespace GolemFactory.World
             return false;
         }
 
+        /// <summary>
+        /// The golems that make <paramref name="golem"/> wait (docs/onboarding-feedback-design.md
+        /// §17.3): the direct feeders of its source for the good it wants, found as
+        /// <see cref="IsFed"/> finds them, kept only when they deliver, in the order of the number
+        /// in their id, at most <paramref name="max"/>. Empty exactly when <see cref="Read"/> says
+        /// the source doesn't give or isn't fed (§17.2's one answer). Read for the hovered golem
+        /// only, when its card is composed; never per frame for every golem.
+        /// </summary>
+        public IReadOnlyList<GolemEntity> FeedersOf(GolemEntity golem, int max = 3)
+        {
+            var named = new List<GolemEntity>();
+            if (golem == null || golem.Program == null || max <= 0)
+            {
+                return named;
+            }
+            IItemEndpoint source = EndpointAt(golem.SourceCell);
+            if (!Gives(source))
+            {
+                return named;
+            }
+            string wanted = WantedGood(golem, golem.Program.CurrentStep, source);
+            foreach (GolemEntity feeder in Feeders(golem, source, wanted).OrderBy(NumberOrder).ThenBy(g => g.GolemId, StringComparer.Ordinal))
+            {
+                // A fresh visited set each: one feeder's walk can't mark a golem another reaches.
+                if (Delivers(feeder, new HashSet<GolemEntity> { golem }))
+                {
+                    named.Add(feeder);
+                    if (named.Count >= max)
+                    {
+                        break;
+                    }
+                }
+            }
+            return named;
+        }
+
+        /// <summary>Numbered ids first, by number; ids without one after them.</summary>
+        private static long NumberOrder(GolemEntity golem)
+        {
+            int number = UI.GolemNames.Number(golem.GolemId);
+            return number >= 0 ? number : long.MaxValue;
+        }
+
         private bool Delivers(GolemEntity feeder, HashSet<GolemEntity> visited)
         {
             if (feeder.Program.State != GolemState.Stalled || !IsEmptyTake(feeder))
@@ -149,6 +218,7 @@ namespace GolemFactory.World
                 // returns the moment any path delivers, so a golem seen twice never did.
                 return false;
             }
+            _walked++;
             IItemEndpoint source = EndpointAt(feeder.SourceCell);
             if (!Gives(source))
             {

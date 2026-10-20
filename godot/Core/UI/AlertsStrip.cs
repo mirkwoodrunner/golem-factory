@@ -70,8 +70,19 @@ namespace GolemFactory.UI
             }
         }
 
+        /// <summary>The endgame profile's sampler (§3's <c>strip</c>); null, the default, measures nothing.</summary>
+        public GolemFactory.Diagnostics.PerfSampler Perf { get; set; }
+
         /// <summary>Re-reads every golem's state into the tracker.</summary>
         public void Reconcile()
+        {
+            using (GolemFactory.Diagnostics.PerfSamplerExtensions.Measure(Perf, GolemFactory.Diagnostics.PerfSampler.Strip))
+            {
+                ReconcileNow();
+            }
+        }
+
+        private void ReconcileNow()
         {
             _snapshots.Clear();
             int waiting = 0;

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using GolemFactory.Economy;
 using GolemFactory.Events;
 using GolemFactory.Golems;
@@ -60,8 +61,12 @@ namespace GolemFactory.UI
         /// <see cref="NearlyFull"/> has held for its dwell (§4.4): a working or sleeping golem's
         /// card then reads as straining.
         /// </param>
+        /// <param name="feeders">
+        /// For a waiting golem, the golems that will fill its source (<c>StallFactsProbe.FeedersOf</c>,
+        /// §17): the state line names them instead of the empty source. Null or empty: as before.
+        /// </param>
         public static HoverCard Compose(GolemEntity golem, GolemMood mood, StallFacts facts, TileNames tiles,
-            bool strainingHeld = false)
+            bool strainingHeld = false, IReadOnlyList<GolemEntity> feeders = null)
         {
             if (golem == null)
             {
@@ -89,7 +94,7 @@ namespace GolemFactory.UI
                             StallDiagnostics.PlayerResource(golem, StallReason.NoSteam, golem.StallResourceId, tiles), 0, golem.SteamShortage),
                         SteamFix(golem.SteamShortage), route);
                 case GolemMood.Waiting:
-                    return new HoverCard(title, Waiting(golem, facts, source, target), "", route);
+                    return new HoverCard(title, Waiting(golem, facts, source, target, feeders), "", route);
                 case GolemMood.Unprogrammed:
                     return new HoverCard(title, "No program · press E at it to open the Workbench", "", route);
                 case GolemMood.Sleeping:
@@ -134,7 +139,8 @@ namespace GolemFactory.UI
             return subtitle.StartsWith(prefix) ? subtitle.Substring(prefix.Length) : subtitle;
         }
 
-        private static string Waiting(GolemEntity golem, StallFacts facts, string source, string target)
+        private static string Waiting(GolemEntity golem, StallFacts facts, string source, string target,
+            IReadOnlyList<GolemEntity> feeders)
         {
             string good = WantedGood(golem, facts);
             string head = string.IsNullOrEmpty(good) ? "Waiting" : "Waiting for " + Good(good);
@@ -143,9 +149,32 @@ namespace GolemFactory.UI
                 head += " · " + held + "/" + batch;
             }
             string why = golem.StallReason == StallReason.BeltFull ? target + " is full"
+                : feeders != null && feeders.Count > 0 ? BringIt(feeders)
                 : facts.TruckloadOnTheWay ? "a truckload is on its way"
                 : source + " is empty";
             return head + " · " + why;
+        }
+
+        /// <summary>
+        /// "Scavenger #1 brings it", "… and Presser #3 bring it", "… and others bring it" (§17.4).
+        /// A lone feeder on a trigger other than Always On "brings it when its trigger fires": read
+        /// from its core, not its state, so the clause doesn't flicker between cycles.
+        /// </summary>
+        private static string BringIt(IReadOnlyList<GolemEntity> feeders)
+        {
+            string first = GolemNames.Short(feeders[0]);
+            if (feeders.Count >= 3)
+            {
+                return first + " and others bring it";
+            }
+            if (feeders.Count == 2)
+            {
+                return first + " and " + GolemNames.Short(feeders[1]) + " bring it";
+            }
+            LogicCoreDefinition core = feeders[0].Program?.logicCore;
+            return core != null && core.triggerType != TriggerType.AlwaysOn
+                ? first + " brings it when its trigger fires"
+                : first + " brings it";
         }
 
         private static string Stuck(GolemEntity golem, StallFacts facts, string source, string target, TileNames tiles)

@@ -129,7 +129,31 @@ namespace GolemFactory.Golems
             program != null && program.logicCore != null && program.appendages.Count > 0;
 
         /// <summary>What this golem is doing, as the player reads it.</summary>
-        public GolemMood Mood => GolemMoodRules.Classify(
+        public GolemMood Mood
+        {
+            get
+            {
+                Diagnostics.PerfSampler perf = _perf?.Invoke();
+                if (perf == null)
+                {
+                    return ClassifyMood();
+                }
+                using (perf.Start(Diagnostics.PerfSampler.Mood))
+                {
+                    return ClassifyMood();
+                }
+            }
+        }
+
+        /// <summary>
+        /// The endgame profile's sampler, read each time the mood is (docs/performance-report-template.md
+        /// §3); null, the default, measures nothing. <c>SandboxWorld</c> wires it at spawn.
+        /// </summary>
+        public void ConfigurePerf(System.Func<Diagnostics.PerfSampler> perf) => _perf = perf;
+
+        private System.Func<Diagnostics.PerfSampler> _perf;
+
+        private GolemMood ClassifyMood() => GolemMoodRules.Classify(
             program != null ? program.State : GolemState.Idle,
             StallReason,
             HasRunnableProgram,
