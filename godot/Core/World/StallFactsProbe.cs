@@ -51,21 +51,123 @@ namespace GolemFactory.World
 
         private int _walked;
 
+        /// <summary>
+        /// The presentation frame, when the probe has one (<c>SandboxWorld</c> wires its own): the
+        /// world's golems and buildings change only between frames, so within one the probe
+        /// builds its indices once and reads each golem's facts once, however many readers ask
+        /// (the golem's node, the strip, the hover card). Null, as on a bare probe in a test: the
+        /// indices are rebuilt on every read and nothing is kept, so a test may change the world
+        /// between two reads. Either way a read answers exactly as it did before the indices.
+        /// </summary>
+        public Func<long> Frame { get; set; }
+
+        private bool _indexed;
+        private long _indexFrame;
+        private readonly Dictionary<GolemEntity, StallFacts> _facts = new Dictionary<GolemEntity, StallFacts>();
+
+        // Who pushes into, and takes from, each store and each belt lane: every golem that could
+        // feed or drain (live, standing, programmed), in roster order; the asker is excluded at
+        // the query.
+        private readonly Dictionary<object, List<GolemEntity>> _pushersByStore = new Dictionary<object, List<GolemEntity>>();
+        private readonly Dictionary<BeltSegment, List<GolemEntity>> _pushersBySegment = new Dictionary<BeltSegment, List<GolemEntity>>();
+        private readonly Dictionary<object, List<GolemEntity>> _takersByStore = new Dictionary<object, List<GolemEntity>>();
+        private readonly Dictionary<BeltSegment, List<GolemEntity>> _takersBySegment = new Dictionary<BeltSegment, List<GolemEntity>>();
+        private Dictionary<BeltSegment, List<BeltSegment>> _upstream;
+
         public StallFacts Read(GolemEntity golem)
         {
             PerfSampler perf = Perf;
             if (perf == null)
             {
-                return ReadNow(golem);
+                return ReadCached(golem);
             }
             _walked = 0;
             using (perf.Start(PerfSampler.ProbeRead))
             {
-                StallFacts facts = ReadNow(golem);
+                StallFacts facts = ReadCached(golem);
                 perf.Tally(PerfSampler.LoopWalk, _walked);
                 return facts;
             }
         }
+
+        private StallFacts ReadCached(GolemEntity golem)
+        {
+            bool framed = EnsureIndex();
+            if (golem == null)
+            {
+                return default;
+            }
+            if (framed && _facts.TryGetValue(golem, out StallFacts cached))
+            {
+                return cached;
+            }
+            StallFacts facts = ReadNow(golem);
+            if (framed)
+            {
+                _facts[golem] = facts;
+            }
+            return facts;
+        }
+
+        /// <summary>Builds the indices unless this frame's are built; true when they may be kept.</summary>
+        private bool EnsureIndex()
+        {
+            long? frame = Frame?.Invoke();
+            if (frame.HasValue && _indexed && _indexFrame == frame.Value)
+            {
+                return true;
+            }
+            _indexed = frame.HasValue;
+            _indexFrame = frame ?? 0;
+            _facts.Clear();
+            _pushersByStore.Clear();
+            _pushersBySegment.Clear();
+            _takersByStore.Clear();
+            _takersBySegment.Clear();
+            _upstream = null;
+            foreach (GolemEntity golem in _golems?.Invoke() ?? Enumerable.Empty<GolemEntity>())
+            {
+                if (golem == null || golem.IsRemoved || golem.IsHeld || !golem.HasRunnableProgram)
+                {
+                    continue;
+                }
+                IItemEndpoint into = EndpointAt(PushCell(golem));
+                if (into is BeltSegmentEndpoint onto && onto.Segment != null)
+                {
+                    Add(_pushersBySegment, onto.Segment, golem);
+                }
+                object store = Store(into);
+                if (store != null)
+                {
+                    Add(_pushersByStore, store, golem);
+                }
+                IItemEndpoint from = EndpointAt(golem.SourceCell);
+                if (from is BeltSegmentEndpoint off && off.Segment != null)
+                {
+                    Add(_takersBySegment, off.Segment, golem);
+                }
+                object source = Store(from);
+                if (source != null)
+                {
+                    Add(_takersByStore, source, golem);
+                }
+            }
+            return frame.HasValue;
+        }
+
+        private static void Add<TKey>(Dictionary<TKey, List<GolemEntity>> index, TKey key, GolemEntity golem)
+        {
+            if (!index.TryGetValue(key, out List<GolemEntity> list))
+            {
+                index[key] = list = new List<GolemEntity>();
+            }
+            list.Add(golem);
+        }
+
+        private static readonly List<GolemEntity> None = new List<GolemEntity>();
+
+        private static List<GolemEntity> At<TKey>(Dictionary<TKey, List<GolemEntity>> index, TKey key) =>
+            key != null && index.TryGetValue(key, out List<GolemEntity> list) ? list : None;
 
         private StallFacts ReadNow(GolemEntity golem)
         {
@@ -178,6 +280,7 @@ namespace GolemFactory.World
             {
                 return named;
             }
+            EnsureIndex();
             IItemEndpoint source = EndpointAt(golem.SourceCell);
             if (!Gives(source))
             {
@@ -259,10 +362,16 @@ namespace GolemFactory.World
                 : PushedInto(self, Store(source), good);
 
         /// <summary>Other golems that push <paramref name="good"/> (any, when null) into <paramref name="store"/>.</summary>
-        private IEnumerable<GolemEntity> PushedInto(GolemEntity self, object store, string good) =>
-            store == null
-                ? Enumerable.Empty<GolemEntity>()
-                : Others(self).Where(other => Store(EndpointAt(PushCell(other))) == store && MayPush(other, good)).ToList();
+        private IEnumerable<GolemEntity> PushedInto(GolemEntity self, object store, string good)
+        {
+            foreach (GolemEntity other in At(_pushersByStore, store))
+            {
+                if (other != self && MayPush(other, good))
+                {
+                    yield return other;
+                }
+            }
+        }
 
         /// <summary>
         /// The golems pushing onto a segment that a belt's run, walked upstream, reaches. The
@@ -272,27 +381,33 @@ namespace GolemFactory.World
         private List<GolemEntity> BeltFeeders(GolemEntity self, BeltSegment segment, string good)
         {
             var feeders = new List<GolemEntity>();
-            if (segment == null || _belts == null)
+            if (segment == null || _belts == null || _pushersBySegment.Count == 0)
             {
                 return feeders;
             }
-            var pushers = new Dictionary<BeltSegment, List<GolemEntity>>();
-            foreach (GolemEntity other in Others(self))
+            Dictionary<BeltSegment, List<BeltSegment>> upstream = Upstream();
+            foreach (BeltSegment reached in Walk(segment, at => upstream.TryGetValue(at, out List<BeltSegment> before)
+                ? before : (IEnumerable<BeltSegment>)Array.Empty<BeltSegment>()))
             {
-                if (EndpointAt(PushCell(other)) is BeltSegmentEndpoint onto && onto.Segment != null && MayPush(other, good))
+                foreach (GolemEntity other in At(_pushersBySegment, reached))
                 {
-                    if (!pushers.TryGetValue(onto.Segment, out List<GolemEntity> onSegment))
+                    if (other != self && MayPush(other, good))
                     {
-                        pushers[onto.Segment] = onSegment = new List<GolemEntity>();
+                        feeders.Add(other);
                     }
-                    onSegment.Add(other);
                 }
             }
-            if (pushers.Count == 0)
+            return feeders;
+        }
+
+        /// <summary>Each belt lane's feeding lanes, gathered once per index.</summary>
+        private Dictionary<BeltSegment, List<BeltSegment>> Upstream()
+        {
+            if (_upstream != null)
             {
-                return feeders;
+                return _upstream;
             }
-            var upstream = new Dictionary<BeltSegment, List<BeltSegment>>();
+            _upstream = new Dictionary<BeltSegment, List<BeltSegment>>();
             foreach (PlacedBelt belt in _belts.Belts)
             {
                 if (belt.Segment == null)
@@ -301,22 +416,14 @@ namespace GolemFactory.World
                 }
                 foreach (BeltSegment next in belt.Segment.Outputs)
                 {
-                    if (!upstream.TryGetValue(next, out List<BeltSegment> before))
+                    if (!_upstream.TryGetValue(next, out List<BeltSegment> before))
                     {
-                        upstream[next] = before = new List<BeltSegment>();
+                        _upstream[next] = before = new List<BeltSegment>();
                     }
                     before.Add(belt.Segment);
                 }
             }
-            foreach (BeltSegment reached in Walk(segment, at => upstream.TryGetValue(at, out List<BeltSegment> before)
-                ? before : (IEnumerable<BeltSegment>)Array.Empty<BeltSegment>()))
-            {
-                if (pushers.TryGetValue(reached, out List<GolemEntity> onSegment))
-                {
-                    feeders.AddRange(onSegment);
-                }
-            }
-            return feeders;
+            return _upstream;
         }
 
         /// <summary>Every segment a walk from <paramref name="start"/> along <paramref name="links"/> reaches, start included.</summary>
@@ -438,9 +545,9 @@ namespace GolemFactory.World
             {
                 return false;
             }
-            foreach (GolemEntity other in Others(self))
+            foreach (GolemEntity other in At(_takersByStore, store))
             {
-                if (Store(EndpointAt(other.SourceCell)) == store && MayTake(other, self.PushStock))
+                if (other != self && MayTake(other, self.PushStock))
                 {
                     return true;
                 }
@@ -481,12 +588,15 @@ namespace GolemFactory.World
                 return false;
             }
             var taken = new HashSet<BeltSegment>();
-            foreach (GolemEntity other in Others(self))
+            foreach (KeyValuePair<BeltSegment, List<GolemEntity>> lane in _takersBySegment)
             {
-                if (EndpointAt(other.SourceCell) is BeltSegmentEndpoint from && from.Segment != null &&
-                    MayTake(other, self.PushStock))
+                foreach (GolemEntity other in lane.Value)
                 {
-                    taken.Add(from.Segment);
+                    if (other != self && MayTake(other, self.PushStock))
+                    {
+                        taken.Add(lane.Key);
+                        break;
+                    }
                 }
             }
             return taken.Count > 0 && Reaches(segment, taken, at => at.Outputs);
@@ -496,11 +606,6 @@ namespace GolemFactory.World
             card != null && StallFacts.IsTakeAction(card.actionType);
 
         // --- Helpers -------------------------------------------------------------------------
-
-        /// <summary>Every other golem that could feed or drain: live, standing, programmed. Never the golem itself.</summary>
-        private IEnumerable<GolemEntity> Others(GolemEntity self) =>
-            (_golems?.Invoke() ?? Enumerable.Empty<GolemEntity>())
-            .Where(g => g != null && g != self && !g.IsRemoved && !g.IsHeld && g.HasRunnableProgram);
 
         private IItemEndpoint EndpointAt(Vector2Int cell) =>
             _endpoints != null && _endpoints.TryGetEndpoint(cell, out IItemEndpoint endpoint) ? endpoint : null;

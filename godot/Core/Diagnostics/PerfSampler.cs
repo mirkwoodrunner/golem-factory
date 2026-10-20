@@ -81,10 +81,17 @@ namespace GolemFactory.Diagnostics
                 TotalCalls += count;
             }
 
+            /// <summary>The last closed frame's milliseconds and calls, for sums across sections.</summary>
+            public double LastFrameMs { get; private set; }
+
+            public long LastFrameCalls { get; private set; }
+
             internal void CloseFrame()
             {
+                LastFrameMs = FrameTimestamps * MsPerTimestamp;
+                LastFrameCalls = FrameCount;
                 FrameCalls.Add(FrameCount);
-                FrameMs.Add(FrameTimestamps * MsPerTimestamp);
+                FrameMs.Add(LastFrameMs);
                 FrameCount = 0;
                 FrameTimestamps = 0;
             }

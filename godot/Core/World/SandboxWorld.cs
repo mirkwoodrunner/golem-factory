@@ -730,6 +730,7 @@ namespace GolemFactory.World
 
         private void OnBuildingPlaced(PlaceableBuilding building)
         {
+            InvalidateStallFacts();
             // BuildModeController already asked ConfigureStation through the seam; hosting the
             // station's golems is the part only the world can do.
             GolemConstructionStation station = building.GetPart<GolemConstructionStation>();
@@ -751,6 +752,7 @@ namespace GolemFactory.World
 
         private void OnBuildingRemoved(PlaceableBuilding building)
         {
+            InvalidateStallFacts();
             HandCrankBench bench = building.GetPart<HandCrankBench>();
             if (bench != null)
             {
@@ -764,9 +766,20 @@ namespace GolemFactory.World
         /// stuck (red) (docs/onboarding-feedback-design.md §3.2).
         /// </summary>
         public StallFactsProbe StallFacts =>
-            _stallFacts ??= new StallFactsProbe(() => _golems, Endpoints, Belts, () => Market);
+            _stallFacts ??= new StallFactsProbe(() => _golems, Endpoints, Belts, () => Market) { Frame = () => PresentationFrame };
 
         private StallFactsProbe _stallFacts;
+
+        /// <summary>
+        /// Moves on once a frame, after the frame's ticks, and whenever a building or a golem
+        /// comes or goes: the stall-facts probe keeps one frame's indices and facts until it
+        /// moves (docs/performance-report-template.md §5.2 step 2). A golem carried, turned or
+        /// reprogrammed between two of the world's frames is read afresh on the next one.
+        /// </summary>
+        public long PresentationFrame { get; private set; }
+
+        /// <summary>Says the world changed outside a frame's ticks, so this frame's stall facts are stale.</summary>
+        public void InvalidateStallFacts() => PresentationFrame++;
 
         /// <summary>
         /// The endgame profile's sampler (docs/performance-report-template.md §3): null, the
@@ -849,6 +862,7 @@ namespace GolemFactory.World
 
             // Spawned and respawned alike (the respawner builds through the station), so a
             // golem's birth stays in one file and every one the world hosts reads grey or red.
+            InvalidateStallFacts();
             golem.ConfigureStallFacts(StallFacts.Read);
             golem.ConfigurePerf(() => _perf);
 
@@ -863,6 +877,7 @@ namespace GolemFactory.World
 
         private void OnGolemDismantled(GolemEntity golem)
         {
+            InvalidateStallFacts();
             _golems.Remove(golem);
             Interactor.RefreshInteractables(); // the same ordering, the other way round
             GolemDismantled?.Invoke(golem);
@@ -872,6 +887,7 @@ namespace GolemFactory.World
         public void Advance(float seconds)
         {
             Clock.Advance(seconds);
+            InvalidateStallFacts();
 
             // Unity's BufferThroughputMonitor and AlertsPanel ran on Update in real time, not on
             // simulation ticks: the rate column reads "per minute of the player's time", and
