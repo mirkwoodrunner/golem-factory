@@ -201,6 +201,7 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            using var perf = NodePerf.Measure("node.menu");
             // Unity's BuildMenuPanel asked HudScreenPolicy every frame: no world HUD over a
             // full screen. HudScreenExclusivityTests' last case is the `management` scenario's.
             Panel.Visible = !ModalScreens.AnyOpen(GetTree());
@@ -270,8 +271,20 @@ namespace GolemFactory.Nodes
             return row;
         }
 
+        // What each row was last drawn as. Theme overrides notify and re-lay out the row even
+        // when the value is the same, and doing that for every row every frame cost ~3 ms (the
+        // perf scenario's node.menu, docs/performance-report-phase3.md); a row is restyled only
+        // when its state changes.
+        private readonly Dictionary<Button, (bool active, bool hovered)> _drawnAs = new Dictionary<Button, (bool, bool)>();
+
         private void Highlight(Button row, bool active)
         {
+            (bool, bool) look = (active, row == _hovered);
+            if (_drawnAs.TryGetValue(row, out (bool, bool) drawn) && drawn == look)
+            {
+                return;
+            }
+            _drawnAs[row] = look;
             StyleBoxTexture style = active ? _rowActiveStyle : _rowStyle;
             foreach (string state in new[] { "normal", "hover", "pressed", "hover_pressed", "focus" })
             {

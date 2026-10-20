@@ -90,6 +90,7 @@ namespace GolemFactory.Nodes
             _sourceTile?.QueueFree();
             _targetTile?.QueueFree();
             _dropTile?.QueueFree();
+            _badge?.QueueFree(); // on the shared layer, not under this node
             if (_ownsWiring)
             {
                 _world.Clock.Unregister(Entity);
@@ -99,6 +100,7 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            using var perf = NodePerf.Measure("node.golems");
             if (Entity.IsRemoved)
             {
                 QueueFree();
@@ -228,8 +230,7 @@ namespace GolemFactory.Nodes
             _dropArrow = new Sprite2D { Texture = GD.Load<Texture2D>("res://art/facing_arrow.png") };
             _dropTile.AddChild(_dropArrow);
 
-            _badgeLayer = new CanvasLayer { Layer = 4 };
-            AddChild(_badgeLayer);
+            _badgeLayer = SharedBadgeLayer();
             _badgeStyle = new StyleBoxFlat { ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 3, ContentMarginBottom = 3 };
             _badge = new PanelContainer { Visible = false, MouseFilter = Control.MouseFilterEnum.Ignore };
             _badge.AddThemeStyleboxOverride("panel", _badgeStyle);
@@ -238,9 +239,32 @@ namespace GolemFactory.Nodes
             _badgeLabel.AddThemeColorOverride("font_color", Colors.White);
             _badge.AddChild(_badgeLabel);
             _badgeLayer.AddChild(_badge);
-            _badgeLabel.AddThemeFontOverride("font", new FontVariation { BaseFont = _badgeLabel.GetThemeDefaultFont(), VariationEmbolden = 0.6f });
+            _badgeLabel.AddThemeFontOverride("font", _badgeFont ??= new FontVariation { BaseFont = _badgeLabel.GetThemeDefaultFont(), VariationEmbolden = 0.6f });
 
             EventBus.GolemStalled += OnGolemStalled;
+        }
+
+        // Every golem's badge on one CanvasLayer (4), in one emboldened font. A layer and a
+        // FontVariation each per golem drew the same badges, but as 96 canvases with 96 glyph
+        // caches, which broke every batch (the perf scenario's starved phase,
+        // docs/performance-report-phase3.md).
+        private static FontVariation _badgeFont;
+
+        public const string BadgeLayerName = "GolemBadges";
+
+        private static CanvasLayer _sharedBadgeLayer;
+
+        private CanvasLayer SharedBadgeLayer()
+        {
+            if (_sharedBadgeLayer != null && IsInstanceValid(_sharedBadgeLayer))
+            {
+                return _sharedBadgeLayer;
+            }
+            // Deferred: a golem authored into a scene is readied while its parents are still
+            // adding children, and the scene root refuses a child then.
+            _sharedBadgeLayer = new CanvasLayer { Name = BadgeLayerName, Layer = 4 };
+            (GetTree().CurrentScene ?? GetTree().Root).CallDeferred(Node.MethodName.AddChild, _sharedBadgeLayer);
+            return _sharedBadgeLayer;
         }
 
         /// <summary>
@@ -527,6 +551,7 @@ namespace GolemFactory.Nodes
                 Compat.Color badge = GolemMoodPalette.Badge(mood);
                 _badgeStyle.BgColor = new Color(badge.r, badge.g, badge.b, badge.a);
                 _badge.Scale = Vector2.One * GolemMoodPalette.BadgeScale(mood);
+                _badgeResizes = BadgeResizeFrames;
             }
             else
             {
@@ -536,7 +561,7 @@ namespace GolemFactory.Nodes
             // Held for its dwell since it was CLASSIFIED, once drawn: Waiting's badge comes with
             // its tint, not 2 s after it.
             float held = mood == raw ? _rawHeld : _moodHeld;
-            bool show = GolemMoodRules.ShouldShowBadge(mood, held) && !HoverCardUp && !ModalScreens.AnyOpen(GetTree());
+            bool show = GolemMoodRules.ShouldShowBadge(mood, held) && !HoverCardUp && !ScreensOpen(GetTree());
             if (show)
             {
                 RefreshCaption(mood);
@@ -549,7 +574,14 @@ namespace GolemFactory.Nodes
 
             var anchor = new Compat.Vector3(Position.X / GridConversions.CellPixels, -Position.Y / GridConversions.CellPixels + BadgeLiftCells, 0f);
             Transform2D canvas = GetViewport().GetCanvasTransform();
-            _badge.ResetSize();
+            if (_badgeResizes > 0)
+            {
+                // Only after its words or its scale changed (and the frame after, while the label
+                // settles): a reset every frame re-laid out every badge, ~25 µs each
+                // (docs/performance-report-phase3.md).
+                _badgeResizes--;
+                _badge.ResetSize();
+            }
             // Its drawn width in cells, so the layout keeps it off a neighbour's badge two cells
             // away as well as one in its own column (WorldHudLayout.SpreadWideLabels).
             float cellOnScreen = GridConversions.CellPixels * Mathf.Max(0.01f, canvas.X.Length());
@@ -593,6 +625,30 @@ namespace GolemFactory.Nodes
         /// golem what it waits for; a stopped one "[!] " and the short reason -- no id line, which
         /// is on the hover card now (onboarding-feedback-design §3.4, §13.2).
         /// </summary>
+        private const int BadgeResizeFrames = 2;
+        private int _badgeResizes = BadgeResizeFrames;
+        private UI.TileNames _tileNames;
+
+        private UI.TileNames TileNames() => _tileNames ??= WorldNode.Find(this)?.Sandbox?.TileNames;
+
+        private static ulong _screensFrame = ulong.MaxValue;
+        private static bool _screensOpen;
+
+        /// <summary>
+        /// Whether a full screen is up, asked once a frame for every badge rather than once per
+        /// golem: the group scan cost ~10 µs a golem at the endgame's 96.
+        /// </summary>
+        private static bool ScreensOpen(SceneTree tree)
+        {
+            ulong frame = Engine.GetProcessFrames();
+            if (frame != _screensFrame)
+            {
+                _screensFrame = frame;
+                _screensOpen = ModalScreens.AnyOpen(tree);
+            }
+            return _screensOpen;
+        }
+
         private void RefreshCaption(GolemMood mood)
         {
             string progress = Entity.TryGetHaulProgress(out string good, out int held, out int batch)
@@ -607,7 +663,7 @@ namespace GolemFactory.Nodes
             {
                 // In player names ("Crate (2,-1) full"), through the TileNames the hover card
                 // reads: the ids ("Crate(2,-1)", "ScrapNode") used to show verbatim.
-                text = "[!] " + (progress ?? UI.StallDiagnostics.DescribeShort(Entity, WorldNode.Find(this)?.Sandbox?.TileNames));
+                text = "[!] " + (progress ?? UI.StallDiagnostics.DescribeShort(Entity, TileNames()));
             }
             else if (mood == GolemMood.Waiting)
             {
@@ -620,6 +676,7 @@ namespace GolemFactory.Nodes
             if (_badgeLabel.Text != text)
             {
                 _badgeLabel.Text = text;
+                _badgeResizes = BadgeResizeFrames;
             }
         }
 
