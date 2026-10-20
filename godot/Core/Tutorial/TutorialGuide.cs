@@ -513,7 +513,7 @@ namespace GolemFactory.Tutorial
                 return;
             }
             TutorialStep step = Current;
-            Playtest.StepEntered(step?.Id ?? "finished", step?.Title ?? "Finished", _clock());
+            Playtest.StepEntered(step?.Id ?? "finished", step?.Title ?? "Finished", _clock(), ChapterOf(Index));
         }
 
         private void OnGolemCompleted(GolemCompletedEvent e)

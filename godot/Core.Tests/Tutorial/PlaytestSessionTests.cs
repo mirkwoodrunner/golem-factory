@@ -124,6 +124,64 @@ namespace GolemFactory.Tests.Tutorial
             StringAssert.Contains("fast-forwarded chapter 5", report, "the later kit use is still reported");
         }
 
+        /// <summary>
+        /// performance-report-template.md §5: "Time per chapter" (before the answers, each chapter
+        /// against its budget), the "Chapters 1–10" line once `done` is reached, and "Frame rate"
+        /// (after the step timings) with each chapter's percentiles and its last counts.
+        /// </summary>
+        [Test]
+        public void TheReport_TimesEachChapter_AndChaptersOneToTen()
+        {
+            var playtest = new PlaytestSession();
+            playtest.StepEntered("scrap", "Gather Scrap", 0f, 1);
+            playtest.StepEntered("coal", "Buy Coal", 100f, 1);
+            playtest.StepEntered("gears", "Gears", 290f, 2);
+            Assert.IsNull(playtest.ChaptersOneToTen(), "not done yet");
+
+            string report = playtest.Compose("", 400f);
+            StringAssert.Contains("| 1 | 4:50 | 5:00 |", report);
+            StringAssert.Contains("| 2 | 1:50 (so far) | 4:30 |", report);
+            Assert.Less(report.IndexOf("## Time per chapter", System.StringComparison.Ordinal),
+                report.IndexOf("## Your answers", System.StringComparison.Ordinal));
+
+            playtest.RecordKit("fast-forwarded chapter 8", 5000f);
+            playtest.StepEntered("tower-visit", "Visit the tower", 7000f, 10);
+            playtest.StepEntered("done", "Done", 9667f, 10);
+            Assert.AreEqual("Chapters 1–10: 2:41:07 (target 3:00:00) · kit used: yes", playtest.ChaptersOneToTen());
+            report = playtest.Compose("", 9700f);
+            StringAssert.Contains("| 10 | 44:27 | 45:00 |", report, "the last chapter ends at done");
+            StringAssert.Contains("Chapters 1–10: 2:41:07", report);
+        }
+
+        [Test]
+        public void TheFrameRateSection_HasEachChaptersPercentiles()
+        {
+            var playtest = new PlaytestSession();
+            playtest.StepEntered("scrap", "Gather Scrap", 0f, 1);
+            for (int i = 1; i <= 100; i++)
+            {
+                playtest.RecordFrame(1, i, 0, 0);
+            }
+            playtest.RecordFrame(5, 16.6, 12, 40);
+            playtest.RecordFrame(5, 20.0, 14, 52);
+
+            string report = playtest.Compose("", 10f);
+            StringAssert.Contains("## Frame rate", report);
+            StringAssert.Contains("| Chapter | Frames | p50 ms | p95 ms | worst ms | golems | belt items |", report);
+            StringAssert.Contains("| 1 | 100 | 50.0 | 95.0 | 100.0 | 0 | 0 |", report);
+            StringAssert.Contains("| 5 | 2 | 16.6 | 20.0 | 20.0 | 14 | 52 |", report, "golems and belt items at the chapter's last frame");
+            Assert.Less(report.IndexOf("## Time on each step", System.StringComparison.Ordinal),
+                report.IndexOf("## Frame rate", System.StringComparison.Ordinal));
+        }
+
+        [Test]
+        public void TheGuide_ReportsEachStepsChapter()
+        {
+            SandboxWorld world = SandboxWorld.Compose(AuthoredData.Load(), SandboxSetupTests.LoadReal(), PlaceableCatalogTests.LoadReal(AuthoredData.Load()));
+            string report = world.Tutorial.Playtest.Compose("", 1f);
+            StringAssert.Contains("| 1 | 0:01 (so far) | 5:00 |", report);
+        }
+
         [Test]
         public void TheReport_HasAnswers_Timings_KitUses_AndErrors()
         {

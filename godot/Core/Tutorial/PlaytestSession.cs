@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using GolemFactory.Diagnostics;
 
 namespace GolemFactory.Tutorial
 {
@@ -164,7 +165,7 @@ namespace GolemFactory.Tutorial
         };
 
         private readonly List<PlaytestAnswer> _answers = new List<PlaytestAnswer>();
-        private readonly List<(string stepId, string title, float enteredAt)> _steps = new List<(string, string, float)>();
+        private readonly List<(string stepId, string title, float enteredAt, int chapter)> _steps = new List<(string, string, float, int)>();
         private readonly List<string> _errors = new List<string>();
         private readonly HashSet<string> _asked = new HashSet<string>();
         private readonly Queue<PlaytestQuestion> _pending = new Queue<PlaytestQuestion>();
@@ -181,13 +182,13 @@ namespace GolemFactory.Tutorial
         private readonly List<string> _kitUses = new List<string>();
 
         /// <summary>The guide entered a step: time it, and queue any question that waits for it.</summary>
-        public void StepEntered(string stepId, string title, float atSeconds)
+        public void StepEntered(string stepId, string title, float atSeconds, int chapter = 0)
         {
             if (_steps.Count > 0 && _steps[_steps.Count - 1].stepId == stepId)
             {
                 return;
             }
-            _steps.Add((stepId, title, atSeconds));
+            _steps.Add((stepId, title, atSeconds, chapter));
             foreach (PlaytestQuestion question in Questions)
             {
                 if (question.AfterStepId == stepId && _asked.Add(question.Id))
@@ -239,6 +240,86 @@ namespace GolemFactory.Tutorial
             Version++;
         }
 
+        // --- Frame rate (docs/performance-report-template.md §5) -------------------------------
+
+        private sealed class ChapterFrames
+        {
+            public readonly FrameTimeStats Ms = new FrameTimeStats(4096);
+            public int Golems;
+            public int BeltItems;
+        }
+
+        private readonly SortedDictionary<int, ChapterFrames> _frames = new SortedDictionary<int, ChapterFrames>();
+
+        /// <summary>
+        /// One frame's wall milliseconds, in the guide's current <paramref name="chapter"/>, with
+        /// the golems and belt items standing then (the table keeps a chapter's last). Doesn't
+        /// bump <see cref="Version"/>: the report picks the frames up at its next rewrite.
+        /// </summary>
+        public void RecordFrame(int chapter, double milliseconds, int golems, int beltItems)
+        {
+            if (!_frames.TryGetValue(chapter, out ChapterFrames frames))
+            {
+                _frames[chapter] = frames = new ChapterFrames();
+            }
+            frames.Ms.Add(milliseconds);
+            frames.Golems = golems;
+            frames.BeltItems = beltItems;
+        }
+
+        // --- Chapters ------------------------------------------------------------------------
+
+        /// <summary>Each chapter's human budget, in seconds (docs/tuning-data-spec.md §14), chapters 1-10.</summary>
+        public static readonly float[] ChapterBudgetSeconds = { 300, 270, 210, 120, 1200, 900, 600, 2700, 1800, 2700 };
+
+        /// <summary>The guide's last step: chapters 1-10 are timed to it.</summary>
+        public const string DoneStepId = "done";
+
+        /// <summary>The full playthrough's target (testscript/full-playthrough.md), in seconds.</summary>
+        public const float ChaptersOneToTenTargetSeconds = 3 * 3600;
+
+        /// <summary>
+        /// Each chapter's time, from its first step to the first step of the next (or to
+        /// <c>done</c> for the last), and whether it is still running.
+        /// </summary>
+        private IEnumerable<(int chapter, float seconds, bool running)> ChapterTimes(float nowSeconds)
+        {
+            var starts = new SortedDictionary<int, float>();
+            foreach ((string _, string _, float at, int chapter) in _steps)
+            {
+                if (chapter > 0 && !starts.ContainsKey(chapter))
+                {
+                    starts[chapter] = at;
+                }
+            }
+            float? done = _steps.Where(st => st.stepId == DoneStepId).Select(st => (float?)st.enteredAt).FirstOrDefault();
+            List<int> chapters = starts.Keys.ToList();
+            for (int i = 0; i < chapters.Count; i++)
+            {
+                float start = starts[chapters[i]];
+                float? end = i + 1 < chapters.Count ? starts[chapters[i + 1]] : done;
+                yield return (chapters[i], (end ?? nowSeconds) - start, end == null);
+            }
+        }
+
+        /// <summary>
+        /// "Chapters 1–10: 2:41:07 (target 3:00:00) · kit used: no", from the session's start to
+        /// reaching <c>done</c>; null until then.
+        /// </summary>
+        public string ChaptersOneToTen()
+        {
+            int at = _steps.FindIndex(st => st.stepId == DoneStepId);
+            if (at < 0)
+            {
+                return null;
+            }
+            float reached = _steps[at].enteredAt;
+            bool kit = _kitTimes.Any(t => t <= reached);
+            return $"Chapters 1–10: {Clock(reached)} (target {Clock(ChaptersOneToTenTargetSeconds)}) · kit used: {(kit ? "yes" : "no")}";
+        }
+
+        private static string Ms(double ms) => ms.ToString("F1", CultureInfo.InvariantCulture);
+
         /// <summary>The report, as Markdown: answers, step timings, kit uses, errors.</summary>
         public string Compose(string header, float nowSeconds)
         {
@@ -258,6 +339,23 @@ namespace GolemFactory.Tutorial
                 b.AppendLine(chapters);
                 b.AppendLine();
             }
+            string allChapters = ChaptersOneToTen();
+            if (allChapters != null)
+            {
+                b.AppendLine(allChapters);
+                b.AppendLine();
+            }
+
+            b.AppendLine("## Time per chapter");
+            b.AppendLine();
+            b.AppendLine("| Chapter | Time | Budget |");
+            b.AppendLine("|---|---|---|");
+            foreach ((int chapter, float seconds, bool running) in ChapterTimes(nowSeconds))
+            {
+                string budget = chapter >= 1 && chapter <= ChapterBudgetSeconds.Length ? Clock(ChapterBudgetSeconds[chapter - 1]) : "";
+                b.AppendLine($"| {chapter} | {Clock(seconds)}{(running ? " (so far)" : "")} | {budget} |");
+            }
+            b.AppendLine();
 
             b.AppendLine("## Your answers");
             b.AppendLine();
@@ -279,6 +377,17 @@ namespace GolemFactory.Tutorial
             {
                 float end = i + 1 < _steps.Count ? _steps[i + 1].enteredAt : nowSeconds;
                 b.AppendLine($"| {_steps[i].title} | {Clock(_steps[i].enteredAt)} | {Clock(end - _steps[i].enteredAt)} |");
+            }
+            b.AppendLine();
+
+            b.AppendLine("## Frame rate");
+            b.AppendLine();
+            b.AppendLine("| Chapter | Frames | p50 ms | p95 ms | worst ms | golems | belt items |");
+            b.AppendLine("|---|---|---|---|---|---|---|");
+            foreach (KeyValuePair<int, ChapterFrames> entry in _frames)
+            {
+                FrameTimeStats ms = entry.Value.Ms;
+                b.AppendLine($"| {entry.Key} | {ms.Count} | {Ms(ms.P50)} | {Ms(ms.P95)} | {Ms(ms.Max)} | {entry.Value.Golems} | {entry.Value.BeltItems} |");
             }
             b.AppendLine();
 

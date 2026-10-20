@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.IO;
+using System.Linq;
 using Godot;
 using GolemFactory.Tutorial;
 
@@ -113,6 +114,8 @@ namespace GolemFactory.Nodes
                 _session.RecordError(line, Now);
             }
 
+            RecordFrame();
+
             PlaytestQuestion question = _session.Current;
             bool show = question != null && !ModalScreens.AnyOpen(GetTree());
             _card.Visible = show;
@@ -133,6 +136,32 @@ namespace GolemFactory.Nodes
             {
                 WriteReport();
             }
+        }
+
+        private ulong _lastFrameUsec;
+
+        /// <summary>
+        /// The frame's wall time, in the guide's chapter, for the report's "Frame rate" table
+        /// (docs/performance-report-template.md §5): the time since this node's last frame, the
+        /// whole frame, process and render.
+        /// </summary>
+        private void RecordFrame()
+        {
+            ulong now = Time.GetTicksUsec();
+            ulong last = _lastFrameUsec;
+            _lastFrameUsec = now;
+            World.SandboxWorld sandbox = _world?.Sandbox;
+            if (last == 0 || sandbox?.Tutorial == null)
+            {
+                return;
+            }
+            int belts = 0;
+            foreach (World.PlacedBelt belt in sandbox.Belts.Belts)
+            {
+                belts += belt.Segment?.Items.Count ?? 0;
+            }
+            _session.RecordFrame(sandbox.Tutorial.ChapterOf(sandbox.Tutorial.Index), (now - last) / 1000.0,
+                sandbox.Golems.Count(g => !g.IsRemoved), belts);
         }
 
         private void BuildCard()
