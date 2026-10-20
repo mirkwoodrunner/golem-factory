@@ -163,6 +163,8 @@ namespace GolemFactory.Tests.EditMode
             SandboxWorld world = Compose();
             Give(world, ItemType.Brass, 20);
             Give(world, ItemType.Casing, 10);
+            world.PackUpgrade.Restore(1); // the Mast's 120 Iron Plate needs rung 1 (tuning-data-spec §8.1)
+            Give(world, ItemType.IronPlate, 120);
             var cell = new Vector2Int(6, 6);
             world.Build.SetActivePrefab(world.Placeables.Single(p => p.Key == "FreightMastPrefab").Prefab);
             world.Build.PlaceOrRemove(cell);

@@ -55,10 +55,10 @@
     "purchases": [
       [{ "itemType": "Scrap", "quantity": 80 }, { "itemType": "IronPlate", "quantity": 40 }],
       [{ "itemType": "Scrap", "quantity": 120 }, { "itemType": "IronPlate", "quantity": 60 }, { "itemType": "Gear", "quantity": 30 }],
-      [{ "itemType": "IronPlate", "quantity": 150 }, { "itemType": "Gear", "quantity": 40 }, { "itemType": "CopperIngot", "quantity": 50 }],
-      [{ "itemType": "IronPlate", "quantity": 200 }, { "itemType": "Brass", "quantity": 20 }, { "itemType": "Casing", "quantity": 10 }],
-      [{ "itemType": "Glass", "quantity": 200 }, { "itemType": "Lens", "quantity": 20 }, { "itemType": "Casing", "quantity": 15 }],
-      [{ "itemType": "IronPlate", "quantity": 250 }, { "itemType": "Mainspring", "quantity": 6 }, { "itemType": "AetherCell", "quantity": 4 }, { "itemType": "Casing", "quantity": 15 }]
+      [{ "itemType": "IronPlate", "quantity": 150 }, { "itemType": "Gear", "quantity": 80 }, { "itemType": "CopperIngot", "quantity": 50 }],
+      [{ "itemType": "IronPlate", "quantity": 200 }, { "itemType": "Brass", "quantity": 20 }, { "itemType": "Casing", "quantity": 20 }],
+      [{ "itemType": "Glass", "quantity": 180 }, { "itemType": "Lens", "quantity": 20 }, { "itemType": "Casing", "quantity": 15 }],
+      [{ "itemType": "IronPlate", "quantity": 250 }, { "itemType": "Mainspring", "quantity": 6 }, { "itemType": "AetherCell", "quantity": 4 }, { "itemType": "Casing", "quantity": 30 }]
     ]
   },
   "nodes": [
@@ -73,15 +73,15 @@
     { "id": "ZincOreNodeEast", "itemType": "ZincOre", "sprite": "stall_zinc_ore", "x": 16, "y": -16 }
   ],
   "market": [
-    { "nodeId": "ScrapNode", "price": [], "truckloadSize": 30, "deliveryTicks": 40 },
-    { "nodeId": "ScrapNodeWest", "price": [], "truckloadSize": 30, "deliveryTicks": 40 },
-    { "nodeId": "CoalNode", "price": [{ "itemType": "Scrap", "quantity": 10 }], "truckloadSize": 40, "deliveryTicks": 60 },
-    { "nodeId": "CoalNodeWest", "price": [{ "itemType": "Scrap", "quantity": 10 }], "truckloadSize": 40, "deliveryTicks": 60 },
-    { "nodeId": "CopperOreNode", "price": [{ "itemType": "Scrap", "quantity": 20 }], "truckloadSize": 40, "deliveryTicks": 80 },
-    { "nodeId": "CopperOreNodeEast", "price": [{ "itemType": "Scrap", "quantity": 20 }], "truckloadSize": 40, "deliveryTicks": 80 },
-    { "nodeId": "ZincOreNode", "price": [{ "itemType": "Scrap", "quantity": 20 }], "truckloadSize": 40, "deliveryTicks": 80 },
-    { "nodeId": "ZincOreNodeEast", "price": [{ "itemType": "Scrap", "quantity": 20 }], "truckloadSize": 40, "deliveryTicks": 80 },
-    { "nodeId": "AetherNode", "price": [{ "itemType": "Scrap", "quantity": 40 }], "truckloadSize": 20, "deliveryTicks": 120 }
+    { "nodeId": "ScrapNode", "price": [], "truckloadSize": 100, "deliveryTicks": 60 },
+    { "nodeId": "ScrapNodeWest", "price": [], "truckloadSize": 100, "deliveryTicks": 60 },
+    { "nodeId": "CoalNode", "price": [{ "itemType": "Scrap", "quantity": 30 }], "truckloadSize": 120, "deliveryTicks": 90 },
+    { "nodeId": "CoalNodeWest", "price": [{ "itemType": "Scrap", "quantity": 30 }], "truckloadSize": 120, "deliveryTicks": 90 },
+    { "nodeId": "CopperOreNode", "price": [{ "itemType": "Scrap", "quantity": 60 }], "truckloadSize": 120, "deliveryTicks": 120 },
+    { "nodeId": "CopperOreNodeEast", "price": [{ "itemType": "Scrap", "quantity": 60 }], "truckloadSize": 120, "deliveryTicks": 120 },
+    { "nodeId": "ZincOreNode", "price": [{ "itemType": "Scrap", "quantity": 60 }], "truckloadSize": 120, "deliveryTicks": 120 },
+    { "nodeId": "ZincOreNodeEast", "price": [{ "itemType": "Scrap", "quantity": 60 }], "truckloadSize": 120, "deliveryTicks": 120 },
+    { "nodeId": "AetherNode", "price": [{ "itemType": "Scrap", "quantity": 80 }], "truckloadSize": 40, "deliveryTicks": 150 }
   ],
   "starterBench": { "x": 0, "y": 3, "recipes": "all" },
   "starterStation": { "x": 3, "y": -1, "facing": "North", "roster": "all" }

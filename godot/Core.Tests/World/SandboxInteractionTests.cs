@@ -33,6 +33,10 @@ namespace GolemFactory.Tests.World
         private static SandboxSetup.NodeEntry Stall(SandboxWorld world, string id) =>
             world.Setup.nodes.Single(n => n.id == id);
 
+        /// <summary>What a Coal truckload costs in Scrap, read from the market's offer.</summary>
+        private static int CoalPrice(SandboxWorld world) =>
+            world.Market.TryGetOffer("CoalNode", out MarketOffer offer) ? offer.Price.Single().quantity : 0;
+
         [Test]
         public void AtTheFreeScrapStall_EOffersAHarvest_AndHarvests()
         {
@@ -53,12 +57,12 @@ namespace GolemFactory.Tests.World
         {
             SandboxWorld world = Compose();
             SandboxSetup.NodeEntry coal = Stall(world, "CoalNode");
-            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 10);
+            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, CoalPrice(world));
             StandAt(world, new Vector2Int(coal.x, coal.y));
 
             Assert.AreNotEqual(InteractionAffordance.Hidden, world.Interactor.CurrentAffordance);
             Assert.IsTrue(world.Interactor.Interact(), world.Interactor.LastStatusMessage);
-            Assert.AreEqual(0, world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.Scrap), "the 10 Scrap price was paid");
+            Assert.AreEqual(0, world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.Scrap), "the Coal truckload's price was paid");
         }
 
         // G10, at the user's call: an empty stall's caption names what [E] does there.
@@ -70,7 +74,8 @@ namespace GolemFactory.Tests.World
             StandAt(world, new Vector2Int(copper.x, copper.y));
 
             Assert.AreEqual(InteractionAffordance.Ready, world.Interactor.CurrentAffordance);
-            Assert.AreEqual("[E]  Order a truckload of Copper Ore  -  20 Scrap", world.Interactor.CurrentPrompt);
+            Assert.IsTrue(world.Market.TryGetOffer("CopperOreNode", out MarketOffer offer));
+            Assert.AreEqual($"[E]  Order a truckload of Copper Ore  -  {offer.Price.Single().quantity} Scrap", world.Interactor.CurrentPrompt);
         }
 
         [Test]
@@ -78,7 +83,7 @@ namespace GolemFactory.Tests.World
         {
             SandboxWorld world = Compose();
             SandboxSetup.NodeEntry coal = Stall(world, "CoalNode");
-            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 10);
+            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, CoalPrice(world));
             StandAt(world, new Vector2Int(coal.x, coal.y));
             Assert.IsTrue(world.Interactor.Interact(), "precondition: ordered");
             world.Interactor.Poll();
@@ -92,7 +97,7 @@ namespace GolemFactory.Tests.World
         {
             SandboxWorld world = Compose();
             SandboxSetup.NodeEntry copper = Stall(world, "CopperOreNode");
-            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 20);
+            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 100);
             StandAt(world, new Vector2Int(copper.x, copper.y));
             Assert.IsTrue(world.Interactor.Interact(), "precondition: ordered");
             world.Market.Tick(1_000_000); // the cart arrives

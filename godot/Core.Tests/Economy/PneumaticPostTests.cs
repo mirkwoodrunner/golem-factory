@@ -32,6 +32,7 @@ namespace GolemFactory.Tests.EditMode
         {
             Give(world, ItemType.Brass, 10);
             Give(world, ItemType.Casing, 5);
+            Give(world, ItemType.IronPlate, 40);
             return Place(world, "PneumaticPostPrefab", cell).GetPart<ICrate>();
         }
 
@@ -75,10 +76,11 @@ namespace GolemFactory.Tests.EditMode
         {
             SandboxWorld world = Compose();
             Give(world, ItemType.Brass, 4);
+            Give(world, ItemType.IronPlate, 40);
             world.Buffers.Deposit(SandboxWorld.PostBufferId, ItemType.Brass, 30);
             world.Buffers.Deposit(SandboxWorld.PostBufferId, ItemType.Casing, 5);
 
-            // A Post crate's own price: 10 Brass (4 from the pack, 6 from the Post) and 5 Casing.
+            // A Post crate's own price: 10 Brass (4 from the pack, 6 from the Post), 5 Casing and 40 Iron Plate.
             Assert.AreEqual(34, world.Wallet.Quantity(ItemType.Brass));
             Place(world, "PneumaticPostPrefab", new Vector2Int(5, 5));
             Assert.AreEqual(0, Pack(world, ItemType.Brass), "the pack first");

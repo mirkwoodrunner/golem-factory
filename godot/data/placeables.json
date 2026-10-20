@@ -404,6 +404,10 @@
           {
             "itemType": "Casing",
             "quantity": 10
+          },
+          {
+            "itemType": "IronPlate",
+            "quantity": 120
           }
         ],
         "dragPlaceable": 0
@@ -475,6 +479,10 @@
           {
             "itemType": "Casing",
             "quantity": 5
+          },
+          {
+            "itemType": "IronPlate",
+            "quantity": 40
           }
         ],
         "dragPlaceable": 0

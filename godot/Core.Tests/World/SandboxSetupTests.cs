@@ -80,9 +80,18 @@ namespace GolemFactory.Tests.World
 
             Assert.IsTrue(market.TryGetOffer("ScrapNode", out MarketOffer scrap));
             Assert.AreEqual(0, scrap.Price.Count, "scrap is free");
-            Assert.AreEqual(30, scrap.TruckloadSize);
+            // docs/tuning-data-spec.md §4.3: sized so stage 1 needs at most 8 orders a minute.
+            Assert.AreEqual(100, scrap.TruckloadSize);
+            Assert.AreEqual(60, scrap.DeliveryTicks);
+            Assert.IsTrue(market.TryGetOffer("CoalNode", out MarketOffer coal));
+            Assert.AreEqual(30, coal.Price.Single().quantity);
+            Assert.AreEqual(120, coal.TruckloadSize);
+            Assert.IsTrue(market.TryGetOffer("CopperOreNode", out MarketOffer copper));
+            Assert.AreEqual(60, copper.Price.Single().quantity);
+            Assert.AreEqual(120, copper.TruckloadSize);
             Assert.IsTrue(market.TryGetOffer("AetherNode", out MarketOffer aether));
-            Assert.AreEqual(40, aether.Price.Single().quantity);
+            Assert.AreEqual(80, aether.Price.Single().quantity);
+            Assert.AreEqual(40, aether.TruckloadSize);
         }
 
         [Test]

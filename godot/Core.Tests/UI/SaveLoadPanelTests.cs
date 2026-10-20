@@ -179,6 +179,10 @@ namespace GolemFactory.Tests.UI
             // are saved. A load REPLACES them, or a card bought after the save would survive a
             // load that also hands back the goods it cost.
             SandboxWorld world = Compose();
+            // A factory that has handled Scrap, so the line has unowned cards to offer after the
+            // load: with Repeat Assembly gated on a Mainspring (tuning-data-spec §9), a fresh
+            // ledger unlocks only Freight Launch beyond the opening hand.
+            world.TechTree.Ledger.RecordItem(ItemType.Scrap);
             Fund(world);
             ClaimFirstAffordable(world);
             Assert.IsTrue(world.AssemblyLineBoard.ExtendFloor(), world.AssemblyLineBoard.Status);

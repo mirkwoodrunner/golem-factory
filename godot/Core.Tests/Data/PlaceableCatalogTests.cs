@@ -39,10 +39,10 @@ namespace GolemFactory.Tests.Data
         [TestCase("SteamPipePrefab", "IronPlate:1")]
         [TestCase("ClockTowerPrefab", "")]
         [TestCase("HandCrankBenchPrefab", "")]
-        [TestCase("FreightMastPrefab", "Brass:20 Casing:10")]
+        [TestCase("FreightMastPrefab", "Brass:20 Casing:10 IronPlate:120")] // tuning-data-spec §8.1
         [TestCase("SlagHeapPrefab", "Scrap:20 IronPlate:10")]
         [TestCase("ScrapRecyclerPrefab", "Scrap:20 IronPlate:10")]
-        [TestCase("PneumaticPostPrefab", "Brass:10 Casing:5")] // crates-design §10's placeholder
+        [TestCase("PneumaticPostPrefab", "Brass:10 Casing:5 IronPlate:40")] // crates-design §10, raised by tuning-data-spec §8.1
         public void CostsMatchTheUnityPrefabs(string key, string cost)
         {
             PlaceableEntry entry = LoadReal().Single(e => e.Key == key);

@@ -40,11 +40,11 @@
       },
       {
         "itemType": "IronPlate",
-        "quantity": 5
+        "quantity": 2
       },
       {
         "itemType": "Gear",
-        "quantity": 2
+        "quantity": 1
       }
     ],
     "decayFractionPerSecond": 0.01,
@@ -137,6 +137,10 @@
       {
         "itemType": "Gear",
         "quantity": 3
+      },
+      {
+        "itemType": "IronPlate",
+        "quantity": 30
       }
     ],
     "decayFractionPerSecond": 0.01,
@@ -169,7 +173,7 @@
     "claimCost": [
       {
         "itemType": "Glass",
-        "quantity": 8
+        "quantity": 12
       },
       {
         "itemType": "Brass",
@@ -619,7 +623,7 @@
     "decayFractionPerSecond": 0.01,
     "minCostFraction": 0.25,
     "prerequisiteCards": [],
-    "prerequisiteItemProduced": "",
+    "prerequisiteItemProduced": "Mainspring",
     "isUnique": 0
   },
   "Card_ZeppelinFreightLoader": {
@@ -649,6 +653,10 @@
       {
         "itemType": "Brass",
         "quantity": 10
+      },
+      {
+        "itemType": "IronPlate",
+        "quantity": 37
       }
     ],
     "decayFractionPerSecond": 0.01,

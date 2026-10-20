@@ -58,6 +58,9 @@ namespace GolemFactory.Tests.World
         {
             SandboxWorld world = Compose();
             var cell = new Vector2Int(2, 2);
+            // Late prices use the room the pack's rungs give (tuning-data-spec §8.1): the Freight
+            // Mast asks 120 Iron Plate, so this pack is a fully upgraded one.
+            world.PackUpgrade.Restore(world.PackUpgrade.Rungs.Count);
 
             foreach (PlaceableEntry entry in world.Placeables)
             {

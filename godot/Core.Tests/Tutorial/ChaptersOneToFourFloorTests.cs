@@ -105,13 +105,13 @@ namespace GolemFactory.Tests.Tutorial
                 case "coal": Acquire(ItemType.Coal, 5); return;
                 case "coke": Acquire(ItemType.Coke, 5); return;
                 case "iron": Acquire(ItemType.IronPlate, 10); return;
-                case "gears": Acquire(ItemType.Gear, 10); return;
+                case "gears": Acquire(ItemType.Gear, _w.Definitions.Chassis["BrassPresser"].cost.Where(c => c.itemType == ItemType.Gear).Sum(c => c.quantity)); return;
                 case "fuel":
                     Acquire(ItemType.Coke, 1);
                     Assert.IsTrue(_w.Interactor.TryRefuelBoiler(Boilers().First()), _w.Interactor.LastStatusMessage);
                     return;
                 case "coal-order":
-                    Acquire(ItemType.Scrap, 10);
+                    Acquire(ItemType.Scrap, CoalPrice);
                     Assert.IsTrue(_w.Interactor.TryOrderTruckload(Marker("CoalNode")), _w.Interactor.LastStatusMessage);
                     return;
                 case "collect":
@@ -250,8 +250,8 @@ namespace GolemFactory.Tests.Tutorial
                     }
                     else if (!_w.Markers.Any(m => m.ItemType == good && _w.Market.IsInTransit(m.NodeId)))
                     {
-                        // One paid cart at a time, 10 Scrap each.
-                        Acquire(ItemType.Scrap, 10);
+                        // One paid cart at a time, at the offer's price.
+                        Acquire(ItemType.Scrap, CoalPrice);
                         Assert.IsTrue(_w.Interactor.TryOrderTruckload(Marker("CoalNode")), _w.Interactor.LastStatusMessage);
                     }
                     at = null;
@@ -364,6 +364,8 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         private StorageBuffer Pack => _w.Wallet.Pack;
+
+        private int CoalPrice => _w.Market.TryGetOffer("CoalNode", out MarketOffer offer) ? offer.Price.Sum(c => c.quantity) : 0;
 
         private IEnumerable<PlaceableBoiler> Boilers() => _w.Build.Buildings
             .Where(b => !b.IsRemoved)

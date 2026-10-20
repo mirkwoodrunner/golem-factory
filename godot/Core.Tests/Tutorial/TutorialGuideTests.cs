@@ -34,8 +34,11 @@ namespace GolemFactory.Tests.Tutorial
         {
             world.Build.SetActivePrefab(world.Placeables.Single(p => p.Key == key).Prefab);
             world.Build.PlaceOrRemove(new Vector2Int(x, y));
+            string status = world.Build.LastStatusMessage;
             world.Build.CancelPlacement();
-            return world.Build.Buildings.Single(b => !b.IsRemoved && b.Cell == new Vector2Int(x, y));
+            PlaceableBuilding placed = world.Build.Buildings.SingleOrDefault(b => !b.IsRemoved && b.Cell == new Vector2Int(x, y));
+            Assert.IsNotNull(placed, $"{key} placed at ({x}, {y}): {status}");
+            return placed;
         }
 
         /// <summary>A full pack of the goods every build asks for: the pack holds 100 of each.</summary>
@@ -201,6 +204,7 @@ namespace GolemFactory.Tests.Tutorial
 
             // Order the truckload at the stall, as the player does, and wait for the cart.
             SandboxSetup.NodeEntry coalStall = world.Setup.nodes.Single(n => n.id == "CoalNode");
+            Give(world, ItemType.Scrap, 100);
             world.Interactor.Position = new Compat.Vector3(coalStall.x, coalStall.y + 1f, 0f);
             world.Interactor.Poll();
             Assert.IsTrue(world.Interactor.Interact(), "ordered: " + world.Interactor.LastStatusMessage);
@@ -351,6 +355,7 @@ namespace GolemFactory.Tests.Tutorial
             // --- Chapter 6: belts, and a label ------------------------------------------------------
             // Order Copper at the stall, wait for the cart, take one by hand.
             SandboxSetup.NodeEntry copperStall = world.Setup.nodes.Single(n => n.id == "CopperOreNode");
+            Give(world, ItemType.Scrap, 100);
             world.Interactor.Position = new Compat.Vector3(copperStall.x, copperStall.y + 1f, 0f);
             world.Interactor.Poll();
             Assert.IsTrue(world.Interactor.Interact(), "ordered Copper: " + world.Interactor.LastStatusMessage);
@@ -472,6 +477,7 @@ namespace GolemFactory.Tests.Tutorial
                     {
                         Give(world, ItemType.Brass, 10);
                         Give(world, ItemType.Casing, 5);
+                        Give(world, ItemType.IronPlate, 40);
                         Place(world, "PneumaticPostPrefab", cell.x, cell.y);
                         world.Advance(1f / 30f);
                     }
@@ -525,11 +531,14 @@ namespace GolemFactory.Tests.Tutorial
             Give(world, ItemType.AetherCell, 3);
             Give(world, ItemType.Casing, 40);
             Give(world, ItemType.Brass, 60);
+            Give(world, ItemType.IronPlate, 150); // chapter 7's pack rung holds it
             Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["ZeppelinFreightLoader"], out GolemEntity zeppelin));
             Assert.AreEqual("mast", StepId(world));
 
+            Give(world, ItemType.IronPlate, 120);
             Place(world, "FreightMastPrefab", world.Tutorial.MastSpot.x, world.Tutorial.MastSpot.y);
             Assert.AreEqual("zeppelin-pipe", StepId(world));
+            Give(world, ItemType.IronPlate, 10);
             Place(world, "SteamPipePrefab", world.Tutorial.ZeppelinPipeSpot.x, world.Tutorial.ZeppelinPipeSpot.y);
             Assert.AreEqual("program-zeppelin", StepId(world));
 
@@ -1558,6 +1567,8 @@ namespace GolemFactory.Tests.Tutorial
             SandboxWorld world = Plenty();
             Give(world, ItemType.Brass, 20);
             Give(world, ItemType.Casing, 10);
+            world.PackUpgrade.Restore(1); // the Mast's 120 Iron Plate needs rung 1 (tuning-data-spec §8.1)
+            Give(world, ItemType.IronPlate, 120);
             Place(world, "FreightMastPrefab", world.Tutorial.MastSpot.x, world.Tutorial.MastSpot.y);
             GoTo(world, "mast-collect");
             Assert.AreEqual(world.Tutorial.MastSpot, world.Tutorial.TargetCell);
