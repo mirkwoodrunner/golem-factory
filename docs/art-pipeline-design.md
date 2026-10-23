@@ -254,6 +254,18 @@ them):
 The Steampunk licence note (`docs/source-assets/SteampunkFantasyUIPack/`) stays until S6, since
 seven pieces remain.
 
+**Done (2026-10-23).** Every file was searched for again first (code, scenes, data, generators,
+names built at run time such as `ManagementScreen`'s `"Steampunk/" + sprite`); none of the 26 was
+read. The captures are the scenarios' `screen-*` shots (`--capture-dir`, one per screen listed
+above, plus the four `critique-*`), committed in `public/images/cleanup/before/` and `after/`:
+all 17 are identical pixel for pixel, and two runs before the deletion were too, so the
+comparison is exact. All 16 scenarios passed headless before and after. `verify_art.py`: 129
+PNGs, 71 generated (60 byte-identical, 11 hand-replaced), 0 drifted, 58 not generated, as
+expected. Besides the lines named above, the deleted names also left `generate_placeholder_art.py`'s
+`--legacy` list and `trim_character_alpha.py`'s list (which would have failed on a missing file).
+One pre-existing flake, not from this change: the `hover` scenario fails about one windowed run in
+two ("W's card says nearly full"); it passes headless, which is how scenarios are run.
+
 ## 4. Inventory, by set
 
 "Reads" is the code or data that loads the file or depends on its size or pivot. Sizes are

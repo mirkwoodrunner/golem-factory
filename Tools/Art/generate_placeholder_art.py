@@ -1331,9 +1331,8 @@ def make_chronometer_core_item() -> Image.Image:
 
 
 def generate_belts() -> None:
-    save(make_belt_lane(), "belt_lane.png")
-    save(make_belt_arrow(), "belt_arrow.png")
-    save(make_belt_roller(), "belt_roller.png")
+    # belt_lane, belt_arrow and belt_roller were written here until the Phase 4 cleanup
+    # (art-pipeline-design.md 3.1): nothing drew them, so they and their lines are gone.
     # These three keep their original file names (and therefore their GUIDs and every existing
     # scene reference) -- they are a reskin, not new assets.
     save(make_scrap_item(), "item_scrap.png")
@@ -1572,18 +1571,12 @@ def generate_legacy_placeholders() -> None:
     save(make_floor_tile(WOOD_MID, WOOD_LIGHT, accent=BRASS), "floor_tile_accent.png")
 
     save(make_golem(COPPER, COPPER_DARK, TEAL_GLOW), "golem_generic_copper.png")
-    save(make_golem(BRASS, BRASS_DARK, TEAL_GLOW), "golem_generic_brass.png")
-    save(make_golem(STEEL, STEEL_DARK, TEAL_GLOW), "golem_generic_steel.png")
 
     save(make_clockwork_scavenger(COPPER, COPPER_DARK, TEAL_GLOW), "chassis_clockwork_scavenger.png")
     save(make_brass_presser(BRASS, BRASS_DARK, TEAL_GLOW), "chassis_brass_presser.png")
     save(make_aether_hauler(STEEL, STEEL_DARK, TEAL_GLOW), "chassis_aether_hauler.png")
     save(make_mainspring_overclocker(WOOD_MID, WOOD_DARK, TEAL_GLOW), "chassis_mainspring_overclocker.png")
     save(make_zeppelin_freight_loader(BRASS_DARK, WOOD_DARK, TEAL_GLOW), "chassis_zeppelin_freight_loader.png")
-
-    save(make_player(WOOD_MID, WOOD_DARK, BRASS), "player.png")
-
-    save(make_building_block(WOOD_DARK, WOOD_MID), "building_block.png")
 
     # NOTE: item_scrap/item_brass/item_aether used to be regenerated here from
     # make_item_icon. They now live in generate_belts() (the belt readability pass reskinned

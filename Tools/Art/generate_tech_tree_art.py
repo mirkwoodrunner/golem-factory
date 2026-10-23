@@ -290,8 +290,6 @@ def main() -> None:
     save(make_badge_anvil(), "tt_badge_anvil.png")
     save(make_badge_hand(), "tt_badge_hand.png")
     save(make_badge_tower(), "tt_badge_tower.png")
-    save(make_line_h(), "tt_line_h.png")
-    save(make_line_v(), "tt_line_v.png")
 
 
 if __name__ == "__main__":
