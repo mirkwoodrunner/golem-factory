@@ -1682,5 +1682,56 @@ namespace GolemFactory.Tests.Tutorial
             }
             Assert.IsFalse(world.Tutorial.KitRunning, $"the kit finished (stuck on '{world.Tutorial.Current?.Title}')");
         }
+            // --- Quoted rates and recipes come from the data (tuning-data-spec invariant 12; Phase 3 critique)
+
+        private static string Body(SandboxWorld world, string id) => world.Tutorial.Steps.Single(s => s.Id == id).Body;
+
+        [Test]
+        public void TheGuidesRecipesRatesAndRooms_ReadTheData_NotACopyOfIt()
+        {
+            // Retune every number the guide quotes about a recipe, a crate, the Post or the
+            // tower, and the texts must follow: none may be a literal.
+            DefinitionSet definitions = AuthoredData.Load();
+            definitions.Recipes["R1_Coking"].inputs[0] = new RecipeIngredient(ItemType.Coal, 3);
+            definitions.Recipes["R2_ScrapReclamation"].outputQuantity = 2;
+            definitions.Recipes["R8_GearCutting"].inputs[0] = new RecipeIngredient(ItemType.IronPlate, 5);
+            RecipeDefinition r4 = definitions.Recipes["R4_IronSmelting"];
+            r4.inputs[r4.inputs.FindIndex(i => i.itemType == ItemType.Scrap)] = new RecipeIngredient(ItemType.Scrap, 3);
+            r4.inputs[r4.inputs.FindIndex(i => i.itemType == ItemType.Coke)] = new RecipeIngredient(ItemType.Coke, 2);
+            definitions.ClockTowerStages.Values.Single(s => s.stageNumber == 1).demands[0] = new ClockTower.StageDemand(ItemType.FrameSection, 7);
+            SandboxSetup setup = SandboxSetupTests.LoadReal();
+            setup.crateCapacityPerType = 45;
+            setup.postCapacityPerType = 190;
+            SandboxWorld world = SandboxWorld.Compose(definitions, setup, PlaceableCatalogTests.LoadReal(definitions));
+
+            StringAssert.Contains("3 Coal make 1 Coke", Body(world, "coke"));
+            StringAssert.Contains("1 Scrap makes 2 Iron Plate", Body(world, "iron"));
+            StringAssert.Contains("5 Iron Plate make 1 Gear", Body(world, "gears"));
+            StringAssert.Contains("Set the first to 3: the recipe takes 3 Scrap and 2 Coke", Body(world, "program-smelter"));
+            StringAssert.Contains("Each cycle takes 3 Scrap and 2 Coke", Body(world, "smelt-feed"));
+            StringAssert.Contains("a crate of 45 of each good", Body(world, "depot"));
+            StringAssert.Contains("Its crate holds 45 of each", Body(world, "work-smelter"));
+            StringAssert.Contains("45 of each good, not in your pack", Body(world, "mast-collect"));
+            StringAssert.Contains("190 of each good", Body(world, "post"));
+            StringAssert.Contains("7 a minute, every minute", Body(world, "frame-section"));
+            StringAssert.Contains("Short of 7 a minute", Body(world, "stage1"));
+            StringAssert.Contains($"1 Coke for every {SlagHeap.SlagPerCoke} Slag", Body(world, "slag-heap"));
+            StringAssert.Contains($"{GolemEntity.FreightLaunchTicks} ticks", Body(world, "launch"));
+        }
+
+        [Test]
+        public void TheGuidesFixedPlans_HaulWhatTheirRecipesAndTheHeapTake()
+        {
+            // The plans are static, so a data test holds them: the smelter hauls one R4 run, and
+            // the carrier the Slag one Coke burns at the heap.
+            RecipeDefinition r4 = AuthoredData.Load().Recipes["R4_IronSmelting"];
+            PlanSlot[] smelter = TutorialGuide.SmelterPlan.Slots.Where(s => s.Good != null).ToArray();
+            CollectionAssert.AreEquivalent(
+                r4.inputs.Select(i => (i.itemType, i.quantity)),
+                smelter.Select(s => (s.Good, s.Quantity)));
+            PlanSlot[] carrier = TutorialGuide.CarrierPlan.Slots.Where(s => s.Good != null).ToArray();
+            Assert.AreEqual(SlagHeap.SlagPerCoke, carrier.Single(s => s.Good == ItemType.Slag).Quantity);
+            Assert.AreEqual(1, carrier.Single(s => s.Good == ItemType.Coke).Quantity);
+        }
     }
 }
