@@ -22,7 +22,7 @@ once ControlNet and IP-Adapter are installed (§1.4).
 | Generated, `generate_building_art.py` | 11 (depot, station, Post, mast, recycler, slag heap, five pipe pieces) | Yes |
 | Generated, `generate_workbench_ui_art.py` | 10 (`UI/Workbench/wb_*`) | Yes |
 | Generated, `generate_tech_tree_art.py` | 13 (`UI/TechTree/tt_*`) | Yes |
-| Generated, `generate_placeholder_art.py` | 27 (25 goods, `belt_lane`, `belt_arrow`, `belt_roller`) | **No: see §1.3** |
+| Generated, `generate_placeholder_art.py` | 27 (24 goods, `belt_lane`, `belt_arrow`, `belt_roller`) | **No: see §1.3** |
 | Hand-replaced, ComfyUI | 11 (six Clock Tower, five market carts) | Listed as hand-replaced |
 | ComfyUI, never generated | 1 (`fx_steam_puff.png`) | Listed as "not generated" |
 | AI-authored before decision 3 (RetroDiffusion) | 22 (five chassis, sixteen Artificer walk frames, `player.png`) | Listed as "not generated" |
@@ -83,6 +83,9 @@ those names (`TOP_DOWN_OWNED`), so a bare run of the script fails too.
 
 This matters to Phase 4 because the goods are a replacement set and copper ore's colour is an
 invariant (`art-style-bible.md` §0.6). The fix is a tooling task (§5.5).
+
+**Fixed (2026-10-23, §5.5).** `verify_art.py` now regenerates and compares all 24 goods: 95
+generated (84 byte-identical, 11 hand-replaced), 0 drifted, 34 not generated.
 
 ### 1.4 ComfyUI on this machine
 
@@ -224,7 +227,7 @@ Workbench; goods; the HUD.
 | L | **Lighting** (§6) | No art files; `LightingRules`, `ShellNode`, boiler glow, hot pipe variants | Right after S2, so later sets are reviewed under the final light |
 | S3 | **Buildings** | Depot, station, Post, mast, recycler, slag heap, boiler, bench, belt tiles, pipe pieces (+ hot variants) | Carts and tower are done |
 | S4 | **The Workbench** | Lever housing, display face, card faces, panels | The core verb's screen |
-| S5 | **Goods** | 25 `item_*` | Small, generator-owned, cheap; copper ore stays green |
+| S5 | **Goods** | 24 `item_*` | Small, generator-owned, cheap; copper ore stays green |
 | S6 | **The HUD** | The seven Steampunk pieces in use, redrawn under new names; the tech tree chrome | Last: mostly flat style boxes today. The pack leaves the tree here |
 
 Overlays (`build_ghost_tile`, `facing_arrow`, `interaction_ring`) are state tools, not
@@ -380,7 +383,7 @@ S6 with the rest of the pack.
 | `item_coke`, `item_iron_plate`, `item_slag`, `item_glass`, `item_copper_ingot`, `item_zinc_ingot`, `item_copper_wire`, `item_gear`, `item_casing`, `item_lens`, `item_mainspring`, `item_aether_cell`, `item_mechanism`, `item_regulator`, `item_frame_section`, `item_aether_conduit`, `item_chronometer_core`, `item_great_cog` | 32 × 32 | Gen placeholder (`goods` section) | same |
 
 `item_copper_ore.png` stays malachite green (`art-style-bible.md` §0.6). The goods are redrawn
-through ComfyUI like every set and hand-replaced (all 25 into `generate_placeholder_art.py`'s
+through ComfyUI like every set and hand-replaced (all 24 into `generate_placeholder_art.py`'s
 `HAND_REPLACED`); the rows stay at 24 (decision 6), so each good is checked at 24 at all four
 sampling phases (`art-style-bible.md` §5.4, check 11).
 
@@ -601,6 +604,9 @@ flag; that both together form one valid graph; and that it refuses `godot/art/`.
   file is replaced.
 - Test (`tests/test_verify_art.py`): with `--out-root` at a temporary folder, the placeholder
   generator writes its files there and nothing under `godot/art/`.
+- **Done (2026-10-23).** The guard is one helper, `art_paths.skip_hand_replaced` (with
+  `writes_into_godot_art`), which the three generators' `save` functions call; each has an empty
+  `HAND_REPLACED` until its first file is replaced. The top-down generator keeps its own copy.
 
 ### 5.6 `Tools/Art/pose_guide.py`
 

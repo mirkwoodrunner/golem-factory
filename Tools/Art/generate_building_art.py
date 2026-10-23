@@ -28,11 +28,17 @@ Re-runnable and deterministic -- no randomness, so a re-run writes byte-identica
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from art_paths import art_dir  # noqa: E402
+from art_paths import art_dir, skip_hand_replaced  # noqa: E402
 
 from PIL import Image, ImageDraw
 
 OUT_DIR = art_dir()
+
+# Files a Phase 4 set has replaced (art-pipeline-design.md §2, step 13). Writing them into
+# godot/art/ would quietly put this script's pictures back, so they are skipped there;
+# --out-root <dir> still renders the originals, which verify_art.py compares and reports as
+# hand-replaced. Each name here is also in verify_art.py's KNOWN_HAND_REPLACED. None yet.
+HAND_REPLACED = set()
 
 TRANSPARENT = (0, 0, 0, 0)
 OUTLINE = (28, 18, 22, 255)
@@ -52,6 +58,8 @@ GLOW = (120, 214, 198, 255)
 
 def save(image: Image.Image, name: str) -> None:
     """Writes trimmed to the drawing's alpha bounds -- see the BottomCenter note above."""
+    if skip_hand_replaced(name, HAND_REPLACED, OUT_DIR):
+        return
     bounds = image.getbbox()
     if bounds is not None:
         image = image.crop(bounds)
@@ -138,6 +146,8 @@ def save_tile(image: Image.Image, name: str) -> None:
     tile next to it -- so cropping an end cap to its ink would move its axis off the cell centre
     and shear the run.
     """
+    if skip_hand_replaced(name, HAND_REPLACED, OUT_DIR):
+        return
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, name)
     image.save(path)

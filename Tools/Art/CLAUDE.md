@@ -8,9 +8,15 @@ root unless they say otherwise. The project font rule stays in the root.
   here. Their root comes from `Tools/Art/art_paths.py`, and `--out-root <dir>` redirects any
   of them.
 - **`python Tools/Art/verify_art.py`** regenerates everything into a scratch folder and
-  compares it with `godot/art/`. Exit 1 means a generated sprite drifted. It also lists the
-  sprites that are authored rather than generated (walk frames, item and chassis art, the
-  Steampunk pack), so "not generated" is never mistaken for "verified".
+  compares it with `godot/art/`. Exit 1 means a generated sprite drifted. It covers every
+  generator, the goods included (`generate_placeholder_art.py` honours `--out-root`; a bare
+  run writes only its `belts` and `goods` sections). It also lists the sprites that are
+  authored rather than generated (walk frames, chassis art, the Steampunk pack), so "not
+  generated" is never mistaken for "verified".
+- **A generator that owns a replaced file skips it under `godot/art/`** through its
+  `HAND_REPLACED` set and `art_paths.skip_hand_replaced`, so `--out-root` still renders the
+  original for `verify_art.py` to report as hand-replaced. A name in `HAND_REPLACED` is also in
+  `verify_art.py`'s `KNOWN_HAND_REPLACED` (art-pipeline-design.md §2, step 13).
 - Texture filtering is nearest-neighbour project-wide. Standing sprites are placed with
   `GridConversions.StandOnCell`, Unity's BottomCenter pivot. The five pipe tiles are
   centre-pivoted (they rotate in quarter turns). 9-slice UI uses `StyleBoxTexture` margins.

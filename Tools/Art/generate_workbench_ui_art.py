@@ -17,12 +17,18 @@ Re-run to regenerate. Requires Pillow.
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from art_paths import art_dir  # noqa: E402
+from art_paths import art_dir, skip_hand_replaced  # noqa: E402
 import random
 
 from PIL import Image, ImageDraw
 
 OUT_DIR = art_dir("UI", "Workbench")
+
+# Files a Phase 4 set has replaced (art-pipeline-design.md §2, step 13). Writing them into
+# godot/art/ would quietly put this script's pictures back, so they are skipped there;
+# --out-root <dir> still renders the originals, which verify_art.py compares and reports as
+# hand-replaced. Each name here is also in verify_art.py's KNOWN_HAND_REPLACED. None yet.
+HAND_REPLACED = set()
 
 # Mahogany-and-brass palette, extending generate_placeholder_art.py's warm wood/brass set.
 MAHOGANY_DEEP = (46, 24, 18, 255)
@@ -44,6 +50,8 @@ TRANSPARENT = (0, 0, 0, 0)
 
 
 def save(img: Image.Image, name: str) -> None:
+    if skip_hand_replaced(name, HAND_REPLACED, OUT_DIR):
+        return
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, name)
     img.save(path)

@@ -9,10 +9,17 @@ pixel art later without touching any code. Re-run to regenerate; output goes to 
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from art_paths import art_dir  # noqa: E402
+from art_paths import art_dir, skip_hand_replaced  # noqa: E402
 from PIL import Image, ImageDraw
 
 OUT_DIR = art_dir()
+
+# Files a Phase 4 set has replaced (art-pipeline-design.md §2, step 13). Writing them into
+# godot/art/ would quietly put this script's pictures back, so they are skipped there;
+# --out-root <dir> still renders the originals, which verify_art.py compares and reports as
+# hand-replaced. Each name here is also in verify_art.py's KNOWN_HAND_REPLACED. None yet; the goods (S5)
+# land here.
+HAND_REPLACED = set()
 
 # Warm wood-and-brass steampunk palette (docs/digital-design.md).
 WOOD_DARK = (74, 48, 33, 255)
@@ -108,6 +115,8 @@ def save(img: Image.Image, name: str) -> None:
             f"the projection switch. Run the top-down generator instead, or delete this name from\n"
             f"TOP_DOWN_OWNED if the isometric set is genuinely being restored."
         )
+    if skip_hand_replaced(name, HAND_REPLACED, OUT_DIR):
+        return
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, name)
     img.save(path)
@@ -1586,19 +1595,39 @@ def generate_legacy_placeholders() -> None:
     save(make_ghost_placeholder(), "ghost_placeholder.png")
 
 
+# What a bare run writes: the only sections that don't trip TOP_DOWN_OWNED. The others
+# (environment, interaction, routing) raise on purpose when named.
+DEFAULT_SECTIONS = ("belts", "goods")
+
+
+def sections(argv) -> list:
+    """The section names in argv: every argument that isn't a flag, nor the folder after
+    --out-root (which used to be read as a section, so verify_art.py's run wrote nothing;
+    art-pipeline-design.md §1.3). None named means DEFAULT_SECTIONS."""
+    names, skip = [], False
+    for arg in argv:
+        if skip:
+            skip = False
+        elif arg == "--out-root":
+            skip = True
+        elif not arg.startswith("--"):
+            names.append(arg)
+    return names or list(DEFAULT_SECTIONS)
+
+
 def main() -> None:
     import sys
 
-    only = [a for a in sys.argv[1:] if not a.startswith("--")]
-    if not only or "environment" in only:
+    only = sections(sys.argv[1:])
+    if "environment" in only:
         generate_environment()
-    if not only or "belts" in only:
+    if "belts" in only:
         generate_belts()
-    if not only or "goods" in only:
+    if "goods" in only:
         generate_goods()
-    if not only or "interaction" in only:
+    if "interaction" in only:
         generate_interaction()
-    if not only or "routing" in only:
+    if "routing" in only:
         generate_routing()
     if "--legacy" in sys.argv:
         generate_legacy_placeholders()
