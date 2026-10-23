@@ -22,6 +22,35 @@ root unless they say otherwise. The project font rule stays in the root.
   centre-pivoted (they rotate in quarter turns). 9-slice UI uses `StyleBoxTexture` margins.
   Those are set where each sprite is drawn, in G5 and G7, not by an import pass.
 
+# The Phase 4 tooling (`docs/art-pipeline-design.md` §5)
+
+```sh
+python Tools/Art/verify_art.py                 # generated art reproduces
+python Tools/Art/check_art.py                  # the manifest: sizes, feet, palette, frames, light, readability
+python Tools/Art/check_art.py --write          # refresh the manifest's size and footRow from the files
+python -m unittest discover Tools/Art/tests    # the tools' own tests (no ComfyUI, no godot/art/ writes)
+```
+
+- **Every PNG under `godot/art/` has an entry in `art_manifest.json`**, and every entry a file
+  (check 1). A new or renamed sprite adds its entry in the same change; only `size` and
+  `footRow` are mechanical (`--write`), the rest is kept by hand.
+- **`palette` is `legacy` until a set is replaced**, then `bible` (or a list of ramps). Replacing
+  a set flips its entries, which turns its WARNs into FAILs: a replaced set must pass checks
+  4–11, 13 and 14 outright.
+- **The palette is `palette.json`** (art-style-bible.md §1). Change a colour there and in the
+  bible together.
+- **The shared measures are `art_metrics.py`** (OKLab, masks at the feet, IoU, the edge-light
+  score, the 32 → 24 phases, the palette). A tool or check that measures imports it rather than
+  measuring its own way.
+- **Only the commit step writes into `godot/art/`**: `palette_snap.py` and `reshade_mirror.py`
+  with `--into-art`. `pose_guide.py`, `review_sheet.py` and `comfy_redraw.py` refuse it;
+  sources, guides, raw candidates and review sheets go in `public/images/<set>/`.
+- **`comfy_redraw.py` only talks to ComfyUI's HTTP API** (`127.0.0.1:8188`) and takes every
+  ControlNet and IP-Adapter model by name; nothing here writes into `G:/AI/ComfyUI`. Whoever
+  starts ComfyUI stops it when the set is done.
+- **`check_art.py` reads the mood tints from `GolemMoodPalette.cs`** by regex (check 10), so a
+  tint change in Core re-checks the golems; keep the `*Tint = new Color(...)` field form.
+
 # AI image generation (optional, personal MCP)
 
 If an image-generation MCP server is configured in the user's global Claude config, use it for
@@ -37,13 +66,14 @@ If an image-generation MCP server is configured in the user's global Claude conf
 - Say which file you wrote and the prompt used. Do not wire a generated image into a scene unless
   asked.
 - **One exception, at the user's call: the Clock Tower.** Its six sprites in `godot/art/`
-  (`clock_tower_site`, `clock_tower_stage0`–`4`) are a 192×640 ComfyUI redraw, composited by
+  (`clock_tower_site`, `clock_tower_stage0`, `clock_tower_stage1`, `clock_tower_stage2`,
+  `clock_tower_stage3`, `clock_tower_stage4`) are a 192×640 ComfyUI redraw, composited by
   hand, and they replaced `generate_clock_tower_art.py`'s 192×448 pictures. That generator now
   refuses to write into `godot/art/`, `verify_art.py` lists the six as hand-replaced, and
   `ClockTowerArt.CanvasHeight` is 640. Any change to the tower's art has to keep all three
   in step.
-- **And a second: the five market carts** (`stall_scrap`, `_coal`, `_copper_ore`,
-  `_zinc_ore`, `_aether`). They were redrawn in ComfyUI from hand-drawn drafts, then softened
+- **And a second: the five market carts** (`stall_scrap`, `stall_coal`, `stall_copper_ore`,
+  `stall_zinc_ore`, `stall_aether`). They were redrawn in ComfyUI from hand-drawn drafts, then softened
   to match the props: the near-black ink became warm brown outlines, and the wood was shifted
   toward the props' red-brown. They keep the generator's 96×120 canvas and its pivot. Their
   wheels stand on row 117, so `SpritePivots` is unchanged. `generate_topdown_environment.py`

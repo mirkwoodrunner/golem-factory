@@ -95,10 +95,20 @@ first image after a start takes about 7 minutes while SDXL loads from the HDD, t
 a step.
 
 - Models: `sd_xl_base_1.0`, `sdxl-vae-fp16-fix`, LoRAs `lcm-lora-sdxl` and `pixel-art-xl`.
-- **ControlNet and IP-Adapter are being installed (decision 12, 2026-10-23)**, separately from
-  this repo's work, in `G:/AI/ComfyUI`. When that is done, this section records the custom node
-  pack, the node class names, the model files and the measured step time with each on. Until
-  then §5.4's node names are expectations, and S1 does not start.
+- **ControlNet and IP-Adapter are installed (decision 12, 2026-10-23)**, separately from this
+  repo's work, in `G:/AI/ComfyUI`, and a smoke test rendered through both. What it proved, and
+  what `comfy_redraw.py` (§5.4) uses:
+  - ControlNet: the core nodes `ControlNetLoader` and `ControlNetApplyAdvanced` (this build's
+    `ControlNetApplyAdvanced` takes the `vae` as an input); models
+    `control-lora-{canny,depth,sketch}-rank128.safetensors`. The canny preprocessor is
+    `CannyEdgePreprocessor` (comfyui_controlnet_aux); `pose_guide.py`'s lineart is already
+    white edges on black, so it is fed without one by default.
+  - IP-Adapter (ComfyUI_IPAdapter_plus): `IPAdapterModelLoader` (`ipadapter_file`),
+    `CLIPVisionLoader`, `IPAdapterAdvanced` (weight 0.7, weight type `style transfer`, embeds
+    `V only`); models `ip-adapter-plus_sdxl_vit-h.safetensors` or `ip-adapter_sdxl_vit-h`, with
+    `CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors` as the image encoder.
+  - Measured with both on: **about 11 s an image warm, about 6 minutes for the first after a
+    start**, within the 6 GB.
 - **Nothing in this repo writes into `G:/AI/ComfyUI`.** The tooling talks to the server over its
   HTTP API only, and takes model names as arguments (§5.4), so an install change needs no code
   change.
@@ -443,6 +453,31 @@ masks aligned at the feet, intersection over union, the edge-light score
 the tool it checks can't measure differently. Its tests: OKLab of known colours, IoU of known
 masks, the edge-light score of a left-lit and a right-lit gradient (positive, negative).
 
+**Built (2026-10-23)**, with 79 unit tests (`python -m unittest discover Tools/Art/tests`).
+Where the build settled something this section left open:
+
+- **The manifest** has 129 entries and three fields beyond §5.1: `kind` (`standing`, `floor`,
+  `edge`, `tile`, `good`, `fx`, `shadow`, `overlay`, `ui`), which picks the colour-count limit
+  and which checks apply; `footSlack` with a `footNote` (the six tower pictures stand 2 rows above
+  their canvas bottom, measured, and say so); and `wallHung` (the tool rack hangs on the wall, so
+  it has no foot row). Overlays carry `partialAlpha`. The carts and the tower are set `reference`.
+  `--write` is `check_art.py --write`.
+- **check_art.py** binds checks 1–3, 12, 15 and 16 on everything; 4–6 only on a replaced entry
+  (`palette` not `legacy`); 7–11, 13 and 14 FAIL on a replaced entry and WARN on legacy art, so
+  the report shows the baseline without failing the build. Check 10's ambient is white until
+  `LightingRules` exists (§6). Check 12's "ore pixels" are the saturated pixels outside the wood
+  hues (0°–60°), on the good and the cart alike. Check 15 reads `Tools/Art/CLAUDE.md`, where the
+  hand-replaced list now lives, and wants each file's full name in backticks.
+- **palette_snap.py** judges `--outline` on the colour before the snap (step 3 would otherwise
+  have moved a black edge onto another ramp's dark tone first).
+- **review_sheet.py** reads the in-game columns as `<frame stem>-{default,close,wide}.png` from
+  `--game-before` and `--game-after`; the `art` scenario's per-frame crops are its input once
+  that scenario exists, and a missing one is an empty, labelled cell.
+- **The baseline** (`check_art.py` on today's art): 0 FAIL, 63 WARN. The golems would fail
+  checks 8 (three pairs at 0.58–0.60), 10 (lightness 0.27–0.34 on four chassis; Stalled shift
+  0.057–0.083; stopped tints 0.041–0.059 apart), 13 (1 of 28 frames each) and 14 (four chassis
+  and all 16 walk frames under +0.02); the goods checks 7 (zinc's steel blue) and 11.
+
 ### 5.1 The manifest: `Tools/Art/art_manifest.json`
 
 One entry per PNG under `godot/art/`, keyed by its path relative to it, built after the cleanup
@@ -582,7 +617,12 @@ python Tools/Art/comfy_redraw.py --init <8x.png> --out public/images/<set>/raw/<
 - **`--reference`** adds IP-Adapter: `CLIPVisionLoader` of `--clip-vision`, the IP-Adapter
   model loader of `--ipadapter-model`, and the apply node on the model at `--ipadapter-weight`,
   with the cleaned south base as the image. The class names are the installed pack's, recorded
-  in §1.4; until then they are `IPAdapterModelLoader` and `IPAdapterAdvanced`.
+  in §1.4: `IPAdapterModelLoader`, `CLIPVisionLoader` and `IPAdapterAdvanced` (weight type
+  `style transfer`, as the smoke test ran it; `--ipadapter-weight-type` changes it).
+- **Built (2026-10-23).** It also takes `--guide-preprocess canny` (the
+  `CannyEdgePreprocessor` before ControlNet, for a guide that isn't already lineart),
+  `--negative`, `--seed-base`, `--url` and `--dry-run` (prints the workflow, queues nothing).
+  Candidates are named `<frame>_d<denoise>_s<seed>.png` in `--out`.
 - **6 GB:** batch size 1, one ControlNet, the models named on the command line (no defaults
   that load a larger model), and the guide and reference at the render size, never larger.
 - It refuses an `--out` under `godot/art/` and a `--guide` without `--control-model`.

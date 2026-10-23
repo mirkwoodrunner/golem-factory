@@ -1,0 +1,21 @@
+{
+  "about": "The approved palette (docs/art-style-bible.md section 1, decision 1, 2026-10-23). Each ramp runs dark to light. The brass highlight #e2c27a and the fire ramp are confirmed on the first chassis's review sheet; if the user marks them there, they change here and in the bible before the second chassis. Read by Tools/Art/art_metrics.Palette.",
+  "ramps": {
+    "outline":  { "colours": ["#2f211c", "#3c2620", "#432a24"], "note": "warm brown, never black; the carts' outline" },
+    "mahogany": { "colours": ["#34261f", "#432e25", "#553c30", "#775039", "#874f33", "#815e47"], "note": "red-brown wood, the carts after softening" },
+    "floor":    { "colours": ["#231710", "#36251c", "#413027", "#574430"], "note": "the darkest wood; background" },
+    "bone":     { "colours": ["#bda694", "#c1ab98", "#d0bfaa"], "note": "highlights, awnings, paper" },
+    "brass":    { "colours": ["#7d7153", "#967850", "#c49544", "#e2c27a"], "note": "#e2c27a confirmed on the first chassis" },
+    "copper":   { "colours": ["#874f33", "#b87d5f", "#c08564"], "note": "boiler and tower trim" },
+    "iron":     { "colours": ["#474242", "#51534f", "#6a6261", "#7d736f", "#9a8d85"], "note": "tower masonry, cart ironwork" },
+    "malachite":{ "colours": ["#3e704a", "#567a56", "#609e68", "#96c896"], "note": "copper ore only (invariant 6)" },
+    "aether":   { "colours": ["#296b6a", "#326f69", "#5ed6c8"], "note": "teal, and the golems' eyes" },
+    "steam":    { "colours": ["#6e584e", "#b0a096", "#ded6cc", "#faf6ee"], "note": "puffs, vapour" },
+    "fire":     { "colours": ["#7a2e14", "#c4561f", "#f0a040", "#ffe08a"], "note": "fireboxes, the hearth, the Overclocker's glow; confirmed on the first chassis" }
+  },
+  "reserved": {
+    "red":       { "hue": [345, 15], "saturationAbove": 0.55, "lightnessAbove": 0.35, "maxFraction": 0.05 },
+    "steelBlue": { "hue": [200, 230], "saturationAbove": 0.30, "maxFraction": 0.05 }
+  },
+  "colourCounts": { "standing": 48, "good": 12, "floor": 16 }
+}
