@@ -12,3 +12,6 @@ art-review/
 
 # Python bytecode (Tools/ scripts import each other since the art-path helper)
 __pycache__/
+
+# Art pipeline working files (docs/art-pipeline-design.md): images stay local, the JSON inputs are kept
+public/images/**/*.png

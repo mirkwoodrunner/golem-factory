@@ -143,6 +143,12 @@ Every set goes through these steps, in order. **Cleanup is tool-only** (decision
 assumes anyone edits pixels by hand. The user sees every set before it is committed, and only
 the frames the user marks are worked on again.
 
+**Working files stay out of git.** `public/images/<set>/` is the set's working folder; `.gitignore`
+drops every PNG under `public/images/`, so captures, sources, raw results and review sheets stay
+local (5.4 MB for the cleanup's captures alone, and S1 makes hundreds). The JSON inputs
+(`poses.json`, `fixes.json`, `review.json`) are committed: they are what makes a set's result
+reproducible from its sources. What ships is only what lands in `godot/art/`.
+
 1. **Brief.** Fill the set's row in §4: what each file must show (from `digital-design.md`'s
    roster or the building's role), its palette ramps (`art-style-bible.md` §1), its canvas,
    pivot, frames and facings, and what code reads it.
@@ -271,7 +277,7 @@ seven pieces remain.
 **Done (2026-10-23).** Every file was searched for again first (code, scenes, data, generators,
 names built at run time such as `ManagementScreen`'s `"Steampunk/" + sprite`); none of the 26 was
 read. The captures are the scenarios' `screen-*` shots (`--capture-dir`, one per screen listed
-above, plus the four `critique-*`), committed in `public/images/cleanup/before/` and `after/`:
+above, plus the four `critique-*`), taken into `public/images/cleanup/before/` and `after/`:
 all 17 are identical pixel for pixel, and two runs before the deletion were too, so the
 comparison is exact. All 16 scenarios passed headless before and after. `verify_art.py`: 129
 PNGs, 71 generated (60 byte-identical, 11 hand-replaced), 0 drifted, 58 not generated, as
