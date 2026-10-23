@@ -66,7 +66,7 @@ namespace GolemFactory.Progression
             new TechTreePhase("III · Steam & Scale", "Build a coal line that outgrows its own consumption"),
             new TechTreePhase("IV · The Metal Lines", "Two-input metallurgy, and Slag as a disposal obligation"),
             new TechTreePhase("V · The Great Works", "Mechanisms, remote outposts, and the last two chassis"),
-            new TechTreePhase("VI · The Clock Tower", "Four rate-scaled stages against a factory of ~96 golems")
+            new TechTreePhase("VI · The Clock Tower", "Four rate-scaled stages")
         };
 
         private static readonly TechTreeNode[] NodeTable =
@@ -325,12 +325,12 @@ namespace GolemFactory.Progression
                 TechTreeUnlockSignal.Building, BuildingClockTower,
                 new[] { "r15.framesection" }, isKeystone: true),
             new TechTreeNode(
-                "tower.stage1", "Stage 1 · Foundation", "Frame Section @ 6/min · ~63 golems",
+                "tower.stage1", "Stage 1 · Foundation", "Frame Section @ 6/min",
                 TechTreeNodeKind.Milestone, 5, 1,
                 TechTreeUnlockSignal.TowerStage, "1",
                 new[] { "bldg.clocktower" }),
             new TechTreeNode(
-                "tower.stage2", "Stage 2 · The Movement", "Great Cog @ 3 · Frame @ 3 /min · ~72 golems",
+                "tower.stage2", "Stage 2 · The Movement", "Great Cog @ 3 · Frame @ 3 /min",
                 TechTreeNodeKind.Milestone, 5, 2,
                 TechTreeUnlockSignal.TowerStage, "2",
                 new[] { "tower.stage1", "r16.greatcog" }),
@@ -340,7 +340,7 @@ namespace GolemFactory.Progression
                 TechTreeUnlockSignal.TowerStage, "3",
                 new[] { "tower.stage2", "r18.aetherconduit" }),
             new TechTreeNode(
-                "tower.stage4", "Stage 4 · The Chronometer", "Core @ 2 · Cog @ 2 · Conduit @ 1 /min · ~96 golems",
+                "tower.stage4", "Stage 4 · The Chronometer", "Core @ 2 · Cog @ 2 · Conduit @ 1 /min",
                 TechTreeNodeKind.Milestone, 5, 4,
                 TechTreeUnlockSignal.TowerStage, "4",
                 new[] { "tower.stage3", "r17.chronometercore" }),

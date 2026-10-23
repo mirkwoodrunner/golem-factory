@@ -1005,8 +1005,12 @@ what was fixed. Every fix has a test; 1,921 Core tests and all 16 scenarios pass
 
 ### 19.3 Not changed, for the user
 
-- **The Ledger's golem estimates** ("~63 golems", "~72", "~96") are design estimates, not
-  data; the tests leave them. They predate the burn halving and the Lens change.
+- **The Ledger's golem estimates** ("~63 golems", "~72", "~96") were design estimates, not
+  data, and predated the burn halving and the Lens change. **Decided 2026-10-22: dropped.**
+  The user chose removal over a re-estimate from `EndgameLoad`. The stage lines quote only
+  their demands, phase VI's goal reads "Four rate-scaled stages", and
+  `TechTreeCatalogTests.NoLedgerText_EstimatesAGolemCount` fails on any "~N golems" or
+  "factory of" in a Ledger text.
 - **A Repeat behind a recipe that can't repeat, in an old save,** loads with n held to 1 and
   stalls red as it always did; `ClampProgram` doesn't remove a card. A rigid golem stalls
   rather than adapts.

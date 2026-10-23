@@ -546,6 +546,23 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void NoLedgerText_EstimatesAGolemCount()
+        {
+            // The user's call (tuning-data-spec §19.3): a hand-written "~96 golems" was a guess
+            // the data never checked, so the Ledger names no factory size at all.
+            var estimate = new System.Text.RegularExpressions.Regex(@"~\s*\d+\s+golems|factory of");
+            foreach (TechTreePhase phase in TechTreeCatalog.Phases)
+            {
+                Assert.IsFalse(estimate.IsMatch(phase.Goal), $"{phase.Title}: '{phase.Goal}'");
+            }
+            foreach (TechTreeNode node in TechTreeCatalog.Nodes)
+            {
+                Assert.IsFalse(estimate.IsMatch(node.Detail), $"{node.Id}: '{node.Detail}'");
+                Assert.IsFalse(node.Detail.TrimEnd().EndsWith("·"), $"{node.Id}: dangling separator in '{node.Detail}'");
+            }
+        }
+
+        [Test]
         public void TheBenchBaysPackAndFloorNodes_QuoteTheirRules()
         {
             StringAssert.Contains($"at {HandCrankRules.SpeedPercent}% speed", Node("bench.handcrank").Detail);
