@@ -25,11 +25,11 @@ then `testscript/phase-1-playtest.md`. The game-time floor for chapters 1–4 is
 of the 15 minutes (Phase 2 below), **5:16** after Phase 3's Presser price. What's left of Phase 2
 is in `docs/open-items.md`.
 
-**Phase 3, tuning and a full playthrough, is built and reviewed but not yet critiqued or
+**Phase 3, tuning and a full playthrough, is built, reviewed and critiqued, but not yet
 tested** (branch `phase3/tuning`, from `phase2/onboarding`; no phase branch is pushed until all
 nine phases are done, the user's call). Done:
 - **Docs:** `tuning-data-spec.md` (user-approved: §8.1 late prices, §17 decisions, §18
-  measurements and corrections), `testscript/full-playthrough.md`,
+  measurements and corrections, §19 the critique), `testscript/full-playthrough.md`,
   `performance-report-template.md` and the filled `performance-report-phase3.md`,
   `progression-design.md` §14, and `onboarding-feedback-design.md` §17 (the feeder hover).
 - **Code A:** the tuning data, guide prices read from data, Repeat limits, and the tower meter
@@ -39,30 +39,24 @@ nine phases are done, the user's call). Done:
 - **The Aether-Hauler** was lowered to 20 Iron Plate + 10 Gear + 30 Coke, so chapter 8 fits:
   23:05 of 30:00. The full run's floor is 1:15:23.
 - **The review** (87f1356).
+- **The critique** (`tuning-data-spec.md` §19, c73068c to 8669354): saves keep the market
+  street (stall stock and truckloads on the road; a cart ordered after a save no longer arrives
+  on a load that refunds it); a patent whose Repeat can't finish is refused before the station
+  charges; the Ledger's texts are pinned to the data (three more were stale); the guide's
+  recipes, rates and rooms read the data; the full playthrough's six questions exist
+  (`market-late`, not `market`); and the Godot project compiles again (the review broke
+  `PerfScenario`).
 
-At the latest test run, 1905 Core tests and 16 scenarios passed.
+At the latest test run, 1920 Core tests and 16 scenarios passed.
 
 **Resume here:**
-1. **The critique was stopped mid-run (2026-10-20, usage limit).** Its one finding so far is
-   committed: the Ledger's chassis and boiler texts quoted stale prices. Rerun the critique
-   with `tuning-data-spec.md` §0 and its checklist:
-   - saves (Repeat above its limit, the old tower meter, truckloads in flight);
-   - the tower meter's edge cases;
-   - a patent bypassing the Repeat limit;
-   - the feeder hover's text;
-   - hard-coded numbers left in guide text;
-   - no guide step builds the Overclocker;
-   - probe indices invalidated on every change;
-   - `full-playthrough.md` accuracy.
-
-   Also add a test that pins the Ledger's chassis and boiler texts to the data.
-2. **Then the Phase 3 Test agent:**
+1. **The Phase 3 Test agent:**
    - all tests;
    - every scenario run twice;
    - `verify_art.py`;
    - the "Done when": a complete run with no stuck step (`FullRunFloorTests`), and the frame
      budget at the endgame (`perf`).
-3. **Then the human playtests:** phase-2, then phase-1, then `full-playthrough.md`.
+2. **Then the human playtests:** phase-2, then phase-1, then `full-playthrough.md`.
 
 `FloorPlayer`'s chapter 8 floor jumps around as prices change (`open-items.md` §3), so check
 any retune at neighbouring prices.

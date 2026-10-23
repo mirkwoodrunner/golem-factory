@@ -56,7 +56,7 @@ namespace GolemFactory.Tutorial
         /// The script's questions, keyed to the step that FOLLOWS the experience they ask about:
         /// the light on the first step, the manual era once the first Presser runs, the market
         /// once Coal has been bought, the burn once the coal line feeds its boiler. Each chapter's
-        /// question is asked as the next chapter opens; only the tower's and the guide's own wait
+        /// question is asked as the next chapter opens; only chapter 10's, the run's and the guide's own wait
         /// for the end. (Nine used to wait for "done", after the Clock Tower's Foundation, so a
         /// playtest that stopped sooner never asked them, and one that didn't asked hours late.)
         /// </summary>

@@ -58,6 +58,14 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 - **After a load mid-stage, the tower's starved alarm can show briefly** until the first
   delivery lands, because supply meters aren't saved. Without that, a line that broke since the
   save would never raise the alarm.
+- **The Ledger's golem estimates are hand-written** ("~63 golems" for stage 1, "~72", "~96").
+  They predate the halved burn and the Lens at 3 Glass, and no test holds them, since no
+  definition owns them (`tuning-data-spec.md` §19.3). Every other number the Ledger quotes is
+  pinned to the data. Re-estimate them from `EndgameLoad`, or drop them: the user's call.
+- **The guide's smelter and carrier plans are static** (`TutorialGuide.SmelterPlan`,
+  `CarrierPlan`): their Haul quantities are literals, held to R4 and the Slag Heap by
+  `TheGuidesFixedPlans_HaulWhatTheirRecipesAndTheHeapTake`, so a retune fails that test rather
+  than drifting. Making them read the data would need plans built per world.
 - **A partial Haul could jam an Assemble for good: closed 2026-10-19.** The user decided a Haul
   collects into the golem until it holds its batch, showing "5/10 Scrap", and never takes more
   than a batch (`docs/onboarding-feedback-design.md` §13). An Assemble now only runs on full
