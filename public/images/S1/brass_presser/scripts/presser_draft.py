@@ -23,6 +23,8 @@ import sys
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+from compose import layer_rank  # noqa: E402  (the per-facing layering rule)
 PALETTE = os.path.normpath(os.path.join(HERE, "..", "..", "..", "..", "..", "Tools", "Art", "palette.json"))
 RAMPS = {k: [tuple(int(c[i:i + 2], 16) for i in (1, 3, 5)) for c in v["colours"]]
          for k, v in json.load(open(PALETTE))["ramps"].items()}
@@ -32,7 +34,7 @@ STATES = ["base", "idle_1", "work_0", "work_1", "work_2", "stall", "carry"]
 FACINGS = ["south", "north", "east", "west"]
 # Parts that move rigidly between frames: compose.py copies the cleaned base's pixels for them,
 # shifted by the frame's offset. Arms and hands change shape, so they are always the draft's.
-RIGID = ["legs", "body", "head", "ram", "pack"]
+RIGID = ["legs", "far_leg", "body", "head", "ram", "pack"]
 
 
 # --- shapes ------------------------------------------------------------------------------------
@@ -85,16 +87,33 @@ class Canvas:
 
     DROP = 4  # everything above the legs sits this much lower: a squat golem
 
-    def __init__(self, mirror=False):
+    def __init__(self, facing, mirror=False):
         self.colour = {}
         self.part = {}
+        self.facing = facing
         self.mirror = mirror  # west: the east profile's shapes mirrored, then shaded as ever
+        self._ops = []
+        self._done = False
+
+    def _defer(self, part, op):
+        """Every drawing call waits, then runs in compose.LAYERS order for the facing (stable:
+        within a part, in the order given)."""
+        self._ops.append((layer_rank(self.facing, part), len(self._ops), op))
+
+    def _flush(self):
+        if not self._done:
+            for _, _, op in sorted(self._ops, key=lambda o: (o[0], o[1])):
+                op()
+            self._done = True
 
     def _drop(self, part, pixels):
-        dy = 0 if part == "legs" else self.DROP
+        dy = 0 if part in ("legs", "far_leg") else self.DROP
         return {((W - 1 - x) if self.mirror else x, y + dy) for x, y in pixels}
 
     def layer(self, part, ramp, pixels, tones=None, flat=None, light=True):
+        self._defer(part, lambda: self._layer(part, ramp, pixels, tones, flat, light))
+
+    def _layer(self, part, ramp, pixels, tones=None, flat=None, light=True):
         ramp_c = RAMPS[ramp]
         tones = tones or list(range(len(ramp_c)))
         pixels = {(x, y) for x, y in self._drop(part, pixels) if 0 <= x < W and 0 <= y < H}
@@ -126,7 +145,10 @@ class Canvas:
             self.part[(x, y)] = part
 
     def dots(self, part, ramp, tone, points, size=2):
-        points = [((W - size - x) if self.mirror else x, y + (0 if part == "legs" else self.DROP)) for x, y in points]
+        self._defer(part, lambda: self._dots(part, ramp, tone, points, size))
+
+    def _dots(self, part, ramp, tone, points, size=2):
+        points = [((W - size - x) if self.mirror else x, y + (0 if part in ("legs", "far_leg") else self.DROP)) for x, y in points]
         for x0, y0 in points:
             for y in range(y0, y0 + size):
                 for x in range(x0, x0 + size):
@@ -135,12 +157,16 @@ class Canvas:
                         self.part[(x, y)] = part
 
     def paint(self, part, ramp, tone, pixels):
+        self._defer(part, lambda: self._paint(part, ramp, tone, pixels))
+
+    def _paint(self, part, ramp, tone, pixels):
         for x, y in self._drop(part, pixels):
             if 0 <= x < W and 0 <= y < H:
                 self.colour[(x, y)] = RAMPS[ramp][tone]
                 self.part[(x, y)] = part
 
     def image(self):
+        self._flush()
         img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         px = img.load()
         for (x, y), c in self.colour.items():
@@ -156,6 +182,7 @@ class Canvas:
         return out
 
     def part_map(self):
+        self._flush()
         return {f"{x},{y}": p for (x, y), p in self.part.items()}
 
 
@@ -192,7 +219,19 @@ SIDE = {
     "stall":  dict(ram=(43, 80), hand=(45, 82), elbow=(38, 72), far_hand=(48, 82), far_elbow=(42, 72), head=4, body=2, eye="dim"),
     "carry":  dict(ram=(37, 60), hand=(39, 65), elbow=(31, 62), far_hand=(42, 64), far_elbow=(35, 61), legs=(-6, 0)),
 }
-for table in (FRONT, SIDE):
+# North: the golem faces away, so what it holds is in front of it, further up the floor: drawn
+# a little higher on screen than from the south and behind its body (compose.LAYERS["north"]).
+# The arms reach forward: the upper arms show at the shoulders, the forearms and hands go
+# behind the head and body.
+BACK = dict(FRONT)
+BACK.update({
+    "work_0": dict(ram=(17, 22), hands=[(26, 30), (37, 30)], elbows=[(16, 42), (47, 42)]),
+    "work_1": dict(ram=(17, 72), hands=[(17, 76), (46, 76)], elbows=[(8, 70), (55, 70)]),
+    "work_2": dict(ram=(17, 56), hands=[(16, 62), (47, 62)], elbows=[(5, 60), (58, 60)]),
+    "stall":  dict(ram=(17, 72), hands=[(18, 76), (45, 76)], elbows=[(9, 72), (54, 72)], head=4, body=2, eye="dim", fire="dim"),
+    "carry":  dict(ram=(17, 60), hands=[(18, 65), (45, 65)], elbows=[(9, 63), (54, 63)], legs=(-6, 3)),
+})
+for table in (FRONT, SIDE, BACK):
     table["idle_1"] = dict(table["base"], eye="bright")
 
 
@@ -205,8 +244,8 @@ def eye_tones(mode):
 
 
 def draw_front(state, back=False):
-    p = FRONT[state]
-    cv = Canvas()
+    p = (BACK if back else FRONT)[state]
+    cv = Canvas("north" if back else "south")
     hd, bd = p.get("head", 0), p.get("body", 0)
     lt_dy, lt_dx = p.get("legs", (0, 0))
     # Legs and feet (iron), bolted soles.
@@ -219,9 +258,6 @@ def draw_front(state, back=False):
         cv.dots("legs", "copper", 1, [(lx - 2 + lt_dx * flip if sx == 0 else lx + 9 + lt_dx * flip, 92 + lt_dy)], 2)
     ram = p["ram"]
     ram_px = shift(rrect(0, 0, 29, 11, 2), *ram)
-    if back:
-        # From behind, the ram is in front of the body: drawn first, mostly hidden.
-        cv.layer("ram", "brass", ram_px, [0, 1, 2, 3])
     # Body: two brass pillars, an iron belly plate, a crossbeam of shoulders (the press frame).
     body = shift(rrect(10, 54, 53, 74, 5) | rrect(16, 70, 47, 82, 4), 0, bd)
     cv.layer("body", "iron", body, [1, 2, 3, 4])
@@ -271,15 +307,17 @@ def draw_front(state, back=False):
     # Arms (iron, copper elbows) from the shoulders to the hands.
     shoulders = [(6, 57 + bd), (57, 57 + bd)]
     for s, e, h in zip(shoulders, p["elbows"], p["hands"]):
-        cv.layer("arms", "iron", capsule(s, e, 4.2) | capsule(e, h, 3.6), [1, 2, 3, 4])
+        cv.layer("arms", "iron", capsule(s, e, 4.2), [1, 2, 3, 4])
+        cv.layer("forearms", "iron", capsule(e, h, 3.6), [1, 2, 3, 4])
         cv.layer("arms", "copper", ellipse(e[0], e[1], 3.2, 3.2), [0, 1, 2])
-    if not back:
-        cv.layer("ram", "brass", ram_px, [0, 1, 2, 3])
-        cv.paint("ram", "iron", 1, shift(rect(1, 9, 28, 11), *ram))
-        cv.paint("ram", "iron", 3, shift(rect(1, 9, 6, 9), *ram))
-        cv.dots("ram", "copper", 1, [(ram[0] + 4, ram[1] + 3), (ram[0] + 24, ram[1] + 3)], 2)
+    # The ram is in front of the golem; compose.LAYERS puts it over the body from the south and
+    # under it from the north.
+    cv.layer("ram", "brass", ram_px, [0, 1, 2, 3])
+    cv.paint("ram", "iron", 1, shift(rect(1, 9, 28, 11), *ram))
+    cv.paint("ram", "iron", 3, shift(rect(1, 9, 6, 9), *ram))
+    cv.dots("ram", "copper", 1, [(ram[0] + 4, ram[1] + 3), (ram[0] + 24, ram[1] + 3)], 2)
     for h in p["hands"]:
-        cv.layer("arms", "brass", ellipse(h[0], h[1], 4.0, 4.0), [0, 1, 2, 3])
+        cv.layer("hands", "brass", ellipse(h[0], h[1], 4.0, 4.0), [0, 1, 2, 3])
     return cv
 
 
@@ -290,13 +328,13 @@ def draw_side(state, mirror=False):
     mirror of its back, so re-shading the finished east frame run by run can't put the light back
     (+0.05 against a source's +0.11)."""
     p = SIDE[state]
-    cv = Canvas(mirror)
+    cv = Canvas("west" if mirror else "east", mirror)
     hd, bd = p.get("head", 0), p.get("body", 0)
     lt_dy, lt_dx = p.get("legs", (0, 0))
     # Far arm, far leg (darker), then the body, the pack, the near leg, the head, the ram, the near arm.
-    cv.layer("arms", "iron", capsule((30, 56 + bd), p["far_elbow"], 3.6) | capsule(p["far_elbow"], p["far_hand"], 3.2), [0, 1, 2])
-    cv.layer("legs", "iron", shift(rect(24, 79, 31, 89), lt_dx, lt_dy), [0, 1, 2])
-    cv.layer("legs", "iron", shift(rrect(22, 88, 36, 95, 2), lt_dx, lt_dy), [0, 1, 2])
+    cv.layer("far_arm", "iron", capsule((30, 56 + bd), p["far_elbow"], 3.6) | capsule(p["far_elbow"], p["far_hand"], 3.2), [0, 1, 2])
+    cv.layer("far_leg", "iron", shift(rect(24, 79, 31, 89), lt_dx, lt_dy), [0, 1, 2])
+    cv.layer("far_leg", "iron", shift(rrect(22, 88, 36, 95, 2), lt_dx, lt_dy), [0, 1, 2])
     body = shift(rrect(19, 54, 44, 82, 5), 0, bd)
     cv.layer("body", "iron", body, [1, 2, 3, 4])
     cv.layer("body", "brass", shift(rrect(19, 54, 26, 82, 2), 0, bd), [0, 1, 2, 3])
@@ -329,9 +367,10 @@ def draw_side(state, mirror=False):
     cv.layer("ram", "brass", shift(rrect(0, 0, 13, 11, 2), *ram), [0, 1, 2, 3])
     cv.paint("ram", "iron", 1, shift(rect(1, 9, 12, 11), *ram))
     cv.dots("ram", "copper", 1, [(ram[0] + 5, ram[1] + 3)], 2)
-    cv.layer("arms", "iron", capsule((32, 56 + bd), p["elbow"], 4.2) | capsule(p["elbow"], p["hand"], 3.6), [1, 2, 3, 4])
-    cv.layer("arms", "copper", ellipse(p["elbow"][0], p["elbow"][1], 3.2, 3.2), [0, 1, 2])
-    cv.layer("arms", "brass", ellipse(p["hand"][0], p["hand"][1], 4.0, 4.0), [0, 1, 2, 3])
+    cv.layer("arms", "iron", capsule((32, 56 + bd), p["elbow"], 4.2), [1, 2, 3, 4])
+    cv.layer("forearms", "iron", capsule(p["elbow"], p["hand"], 3.6), [1, 2, 3, 4])
+    cv.layer("forearms", "copper", ellipse(p["elbow"][0], p["elbow"][1], 3.2, 3.2), [0, 1, 2])
+    cv.layer("hands", "brass", ellipse(p["hand"][0], p["hand"][1], 4.0, 4.0), [0, 1, 2, 3])
     return cv
 
 
@@ -343,11 +382,11 @@ def draw(facing, state):
 
 def offsets(facing, state):
     """How far each rigid part moved from the base, for compose.py."""
-    table = SIDE if facing in ("east", "west") else FRONT
+    table = SIDE if facing in ("east", "west") else (BACK if facing == "north" else FRONT)
     b, p = table["base"], table[state]
     ldy, ldx = p.get("legs", (0, 0))
     bd, hd = p.get("body", 0), p.get("head", 0)
-    out = {"body": [0, bd], "pack": [0, bd], "head": [0, hd + bd], "legs": [ldx, ldy],
+    out = {"body": [0, bd], "pack": [0, bd], "head": [0, hd + bd], "legs": [ldx, ldy], "far_leg": [ldx, ldy],
            "ram": [p["ram"][0] - b["ram"][0], p["ram"][1] - b["ram"][1]]}
     if facing in ("south", "north") and ldx:
         out["legs"] = None  # the two legs move apart, not as one: the draft's legs are used

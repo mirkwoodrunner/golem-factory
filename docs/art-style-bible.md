@@ -347,7 +347,15 @@ The Artificer keeps its 16 names, `artificer_walk_{down,left,right,up}_{0..3}.pn
   creature's: the Presser's arms raise the ram (wind-up), slam it down (impact) and recover; a
   stalled golem slumps with its head down; a carried one tucks its legs and arms. Its side view
   is a true profile (one arm and leg in front of the other), its back view its back (head, back
-  plate, a boiler or vent), never a narrowed or masked front view. Its surface texture is stable
+  plate, a boiler or vent), never a narrowed or masked front view.
+- **What a golem holds is in front of it, in every facing.** From the north the golem faces
+  away, so its body and head hide what it holds and the hands and forearms holding it: only what
+  sticks out beside or above it shows (the Presser's ram overhead peeks round its head; on the
+  floor at impact, a sliver beside its legs). Something in front of it on the floor sits a
+  little higher on screen than its feet, behind its body, never over its legs. In a profile it
+  is over the body on the facing side. The upper arms stay on top from behind. A redraw draws
+  its parts in that order per facing (the Presser's `compose.py` `LAYERS`); the review sheet
+  catches a tool drawn over a back view. Its surface texture is stable
   across its frames: every frame is derived from the cleaned base of its facing, so a speckle
   never moves between frames and shimmers.
 - **Each chassis is told apart by its silhouette alone, in every facing.** Check: for each

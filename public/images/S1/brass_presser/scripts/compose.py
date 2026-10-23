@@ -1,4 +1,4 @@
-"""Every frame of the Brass Presser from its facing's cleaned base (art-style-bible.md §5.1:
+"""Every frame of the Brass Presser from its facing's cleaned base (art-style-bible.md Â§5.1:
 texture stable across frames).
 
     python compose.py <drafts dir> <clean dir> <out dir>
@@ -32,7 +32,28 @@ import art_metrics as m  # noqa: E402
 
 STEM = "chassis_brass_presser"
 STATES = ["base", "idle_1", "work_0", "work_1", "work_2", "stall", "carry"]
-RIGID = {"legs", "body", "head", "ram", "pack"}
+RIGID = {"legs", "far_leg", "body", "head", "ram", "pack"}
+
+# Which parts are in front of which, per facing, back to front (art-style-bible.md §5.1). What a
+# golem holds or works with (its tool, the hands and forearms that hold it) is in FRONT of the
+# golem: over the body seen from the south, under it seen from the north (the golem faces away,
+# so its body hides what it holds; only what sticks out beside or above it shows), and over the
+# body on the facing side of a profile. The upper arms hang from the shoulders, so they stay on
+# top from behind. The far limbs of a profile are behind the body. A chassis draws its parts
+# under these names, in any order: the draft sorts them by this list.
+LAYERS = {
+    "south": ["legs", "body", "head", "arms", "ram", "forearms", "hands"],
+    "north": ["ram", "hands", "forearms", "legs", "body", "head", "arms"],
+    "east": ["far_arm", "far_leg", "body", "pack", "legs", "head", "arms", "ram", "forearms", "hands"],
+    "west": ["far_arm", "far_leg", "body", "pack", "legs", "head", "arms", "ram", "forearms", "hands"],
+}
+
+
+def layer_rank(facing, part):
+    """Where a part is drawn in a facing, back to front; a part the list doesn't name is drawn
+    in the order it was given, after the named ones (and fails nothing)."""
+    order = LAYERS[facing]
+    return order.index(part) if part in order else len(order)
 P = m.Palette.load()
 OUTLINE = P.outline()
 
