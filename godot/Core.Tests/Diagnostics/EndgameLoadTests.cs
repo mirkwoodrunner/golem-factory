@@ -10,6 +10,7 @@ using GolemFactory.PunchCards;
 using GolemFactory.World;
 using NUnit.Framework;
 using static GolemFactory.Tests.EditMode.CrateWorld;
+using Vector2Int = GolemFactory.Compat.Vector2Int;
 
 namespace GolemFactory.Tests.EditMode
 {
@@ -131,6 +132,34 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(GolemMood.Stalled, waiting.Mood, "a feeder with no program feeds nothing");
             feeder.Program.appendages.AddRange(program);
             Assert.AreEqual(GolemMood.Waiting, waiting.Mood);
+        }
+
+        /// <summary>
+        /// The other half of the probe's index key (Phase 3 critique): a feeder turned away, or
+        /// moved off its tile, stops feeding in the same frame, and is seen feeding again once
+        /// it is put back. The test above covers carry and program.
+        /// </summary>
+        [Test]
+        public void TheFramedProbe_SeesAFeederTurnOrMove_WithinAFrame()
+        {
+            SandboxWorld world = Compose();
+            EndgameLoadResult load = EndgameLoad.Build(world);
+            load.Starve();
+            Advance(world, load, 200);
+            GolemEntity waiting = load.Golems.First(g => g.Mood == GolemMood.Waiting && world.StallFacts.FeedersOf(g, 10).Count == 1);
+            GolemEntity feeder = world.StallFacts.FeedersOf(waiting, 10).Single();
+            Vector2Int cell = feeder.Cell;
+            Facing facing = feeder.Facing;
+
+            feeder.SetFacing(FacingUtility.Opposite(facing));
+            Assert.AreEqual(GolemMood.Stalled, waiting.Mood, "a feeder turned away feeds nothing, in the same frame");
+            feeder.SetFacing(facing);
+            Assert.AreEqual(GolemMood.Waiting, waiting.Mood, "turned back, it feeds again");
+
+            feeder.SetPlacement(cell + new Vector2Int(0, 40), facing);
+            Assert.AreEqual(GolemMood.Stalled, waiting.Mood, "moved away, it feeds nothing");
+            feeder.SetPlacement(cell, facing);
+            Assert.AreEqual(GolemMood.Waiting, waiting.Mood, "put back, it feeds again");
         }
 
         private static string Stalls(EndgameLoadResult load) => string.Join("; ", load.Golems
