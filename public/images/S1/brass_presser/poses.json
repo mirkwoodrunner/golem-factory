@@ -1,0 +1,18 @@
+{
+  "_about": "Brass Presser pose guides (art-pipeline-design.md §2 step 3, §5.6). Coordinates are the cleaned base's, one set per facing: south and north share the front frame, east is the side view. The ram is the rod (kept, plus a moved copy so it stretches) and the block with its plate.",
+  "south_work_0": {"parts": [{"rect": [19, 36, 26, 20], "translate": [0, -8]}]},
+  "south_work_1": {"parts": [{"rect": [27, 22, 10, 14], "translate": [0, 0]}, {"rect": [27, 22, 10, 14], "translate": [0, 10]}, {"rect": [19, 36, 26, 20], "translate": [0, 10]}]},
+  "south_work_2": {"parts": [{"rect": [27, 22, 10, 14], "translate": [0, 0]}, {"rect": [27, 22, 10, 14], "translate": [0, 4]}, {"rect": [19, 36, 26, 20], "translate": [0, 4]}]},
+  "south_stall":  {"parts": [{"rect": [27, 22, 10, 14], "translate": [0, 0]}, {"rect": [27, 22, 10, 14], "translate": [0, 6]}, {"rect": [19, 36, 26, 20], "rotate": 6, "translate": [0, 6]}]},
+  "south_carry":  {"parts": [{"rect": [19, 36, 26, 20], "translate": [0, -8]}], "hide": [[3, 88, 4, 8], [57, 88, 4, 8]]},
+  "north_work_0": {"parts": [{"rect": [19, 36, 26, 20], "translate": [0, -8]}]},
+  "north_work_1": {"parts": [{"rect": [27, 22, 10, 14], "translate": [0, 0]}, {"rect": [27, 22, 10, 14], "translate": [0, 10]}, {"rect": [19, 36, 26, 20], "translate": [0, 10]}]},
+  "north_work_2": {"parts": [{"rect": [27, 22, 10, 14], "translate": [0, 0]}, {"rect": [27, 22, 10, 14], "translate": [0, 4]}, {"rect": [19, 36, 26, 20], "translate": [0, 4]}]},
+  "north_stall":  {"parts": [{"rect": [27, 22, 10, 14], "translate": [0, 0]}, {"rect": [27, 22, 10, 14], "translate": [0, 6]}, {"rect": [19, 36, 26, 20], "rotate": 6, "translate": [0, 6]}]},
+  "north_carry":  {"parts": [{"rect": [19, 36, 26, 20], "translate": [0, -8]}], "hide": [[3, 88, 4, 8], [57, 88, 4, 8]]},
+  "east_work_0":  {"parts": [{"rect": [23, 36, 18, 20], "translate": [0, -8]}]},
+  "east_work_1":  {"parts": [{"rect": [28, 22, 8, 14], "translate": [0, 0]}, {"rect": [28, 22, 8, 14], "translate": [0, 10]}, {"rect": [23, 36, 18, 20], "translate": [0, 10]}]},
+  "east_work_2":  {"parts": [{"rect": [28, 22, 8, 14], "translate": [0, 0]}, {"rect": [28, 22, 8, 14], "translate": [0, 4]}, {"rect": [23, 36, 18, 20], "translate": [0, 4]}]},
+  "east_stall":   {"parts": [{"rect": [28, 22, 8, 14], "translate": [0, 0]}, {"rect": [28, 22, 8, 14], "translate": [0, 6]}, {"rect": [23, 36, 18, 20], "rotate": 6, "translate": [0, 6]}]},
+  "east_carry":   {"parts": [{"rect": [23, 36, 18, 20], "translate": [0, -8]}], "hide": [[9, 88, 4, 8], [51, 88, 4, 8]]}
+}
