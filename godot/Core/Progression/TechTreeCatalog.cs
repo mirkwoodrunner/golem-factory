@@ -73,7 +73,7 @@ namespace GolemFactory.Progression
         {
             // ---- I · The Cold Workshop ------------------------------------------------------
             new TechTreeNode(
-                "bench.handcrank", "Hand-Crank Bench", "1-input recipes by hand, at 25% speed",
+                "bench.handcrank", "Hand-Crank Bench", "1-input recipes by hand, at 50% speed",
                 TechTreeNodeKind.Building, 0, 0,
                 TechTreeUnlockSignal.Building, BuildingHandCrankBench,
                 new string[0]),
@@ -248,7 +248,7 @@ namespace GolemFactory.Progression
             // crate is one store every Post crate shares, which the player's spending reaches
             // after the pack. Gated by its price in Brass and Casing, as the Freight Mast is.
             new TechTreeNode(
-                "bldg.pneumaticpost", "Pneumatic Post", "Brass + Casing · every Post crate shares one store",
+                "bldg.pneumaticpost", "Pneumatic Post", "Brass + Casing + Plate · every Post crate shares one store",
                 TechTreeNodeKind.Building, 3, 14,
                 TechTreeUnlockSignal.Building, BuildingPneumaticPost,
                 new[] { "r7.brassalloying", "r9.casingpress" }),
@@ -335,7 +335,7 @@ namespace GolemFactory.Progression
                 TechTreeUnlockSignal.TowerStage, "2",
                 new[] { "tower.stage1", "r16.greatcog" }),
             new TechTreeNode(
-                "tower.stage3", "Stage 3 · Aether Illumination", "Conduit @ 3 · Lens @ 24 · Frame @ 2 /min",
+                "tower.stage3", "Stage 3 · Aether Illumination", "Conduit @ 3 · Lens @ 12 · Frame @ 2 /min",
                 TechTreeNodeKind.Milestone, 5, 3,
                 TechTreeUnlockSignal.TowerStage, "3",
                 new[] { "tower.stage2", "r18.aetherconduit" }),
