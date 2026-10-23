@@ -339,6 +339,14 @@ namespace GolemFactory.Buildings
             {
                 return $"{blueprint.BlueprintId} has more steps than a {WorkbenchDiagnostics.Humanize(blueprint.Chassis.name)} holds.";
             }
+            // The writer's own refusal, asked before anything is charged: a Repeat that could
+            // never finish (docs/tuning-data-spec.md §13.1). Unasked, the writer refused after
+            // the charge and the patent built a bare golem (Phase 3 critique).
+            string repeat = RepeatRules.Refusal(blueprint.Appendages);
+            if (repeat != null)
+            {
+                return $"{blueprint.BlueprintId}: {repeat}.";
+            }
             return "";
         }
 
@@ -382,7 +390,8 @@ namespace GolemFactory.Buildings
             }
 
             // Written before the Workbench and the host hear of the golem, so both meet it
-            // already programmed. Cannot refuse: BlueprintRefusal checked the slot count.
+            // already programmed. Cannot refuse: BlueprintRefusal checked the slot count and
+            // the writer's Repeat refusal.
             if (stamp != null)
             {
                 var cards = stamp.Appendages;

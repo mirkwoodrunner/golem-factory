@@ -229,6 +229,65 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(11, golem.Program.GetQuantityAt(2));
         }
 
+        /// <summary>Overclocker cards in the pack's wallet's view: what the pack holds of each good.</summary>
+        private static Dictionary<string, int> PackOf(SandboxWorld world) =>
+            world.Definitions.Chassis["MainspringOverclocker"].cost
+                .ToDictionary(c => c.itemType, c => world.Wallet.Quantity(c.itemType));
+
+        [Test]
+        public void APatentWhoseRepeatCantFinish_IsRefusedAtTheStation_BeforeAnythingIsCharged()
+        {
+            // Critique (Phase 3): the station wrote a patent through GolemProgramWriter but ignored
+            // its refusal, so a patent holding a Repeat behind no Assemble charged the chassis and
+            // stood up a bare golem. BlueprintRefusal now asks RepeatRules first, as ENGAGE does.
+            (SandboxWorld world, ChassisDefinition overclocker) = PaidForOverclocker();
+            DefinitionSet definitions = world.Definitions;
+            var patent = new Blueprints.Blueprint("BP-900", "LocalPlayer", overclocker, definitions.LogicCores["AlwaysOnCore"],
+                Cards(definitions, "HaulScrap", "PushOutput", "RepeatAssembly"), new[] { ItemType.Scrap, "", "" }, new[] { 1, 1, 3 });
+            Dictionary<string, int> before = PackOf(world);
+            int golems = world.Golems.Count;
+
+            Assert.IsFalse(world.StarterStation.TryConstructFromBlueprint(patent, out GolemEntity golem));
+            Assert.IsNull(golem);
+            StringAssert.Contains("Repeat needs an Assemble before it", world.StarterStation.LastRefusalReason);
+            StringAssert.Contains("Repeat needs an Assemble before it", world.StarterStation.BlueprintRefusal(patent),
+                "the panel greys the row by the same answer");
+            CollectionAssert.AreEquivalent(before, PackOf(world), "nothing charged");
+            Assert.AreEqual(golems, world.Golems.Count, "no golem stood up");
+        }
+
+        [Test]
+        public void APatentHoldingRepeatAboveItsLimit_BuildsAtTheLimit()
+        {
+            (SandboxWorld world, ChassisDefinition overclocker) = PaidForOverclocker();
+            DefinitionSet definitions = world.Definitions;
+            var patent = new Blueprints.Blueprint("BP-901", "LocalPlayer", overclocker, definitions.LogicCores["AlwaysOnCore"],
+                Cards(definitions, "HaulScrap", "AssembleCoking", "RepeatAssembly", "PushOutput"),
+                new[] { ItemType.Coal, "", "", "" }, new[] { 12, 1, 12, 1 });
+
+            Assert.IsTrue(world.StarterStation.TryConstructFromBlueprint(patent, out GolemEntity golem), world.StarterStation.LastRefusalReason);
+            Assert.AreEqual(4, golem.Program.appendages.Count, "the patent's program is engaged");
+            Assert.AreEqual(11, golem.Program.GetQuantityAt(2), "n held to R1's limit, as the dial would");
+        }
+
+        [Test]
+        public void TheWorkbench_WontPatentADraftItCouldNotEngage()
+        {
+            (SandboxWorld world, ChassisDefinition overclocker) = PaidForOverclocker();
+            DefinitionSet definitions = world.Definitions;
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(overclocker, out GolemEntity golem));
+            WorkbenchSession bench = world.Workbench;
+            bench.RetargetGolem(golem);
+            bench.HandleDrop(WorkbenchCardRef.FromVault(definitions.LogicCores["AlwaysOnCore"]), WorkbenchZone.Trigger);
+            bench.HandleDrop(WorkbenchCardRef.FromVault(definitions.Appendages["HaulScrap"]), WorkbenchZone.Socket(0));
+            bench.HandleDrop(WorkbenchCardRef.FromVault(definitions.Appendages["RepeatAssembly"]), WorkbenchZone.Socket(1));
+            int patents = world.Patents.Blueprints.Count;
+
+            Assert.IsNull(bench.Patent(), "a patent the station would refuse is not filed");
+            StringAssert.Contains("Repeat needs an Assemble before it", bench.StatusText);
+            Assert.AreEqual(patents, world.Patents.Blueprints.Count);
+        }
+
         [Test]
         public void ASaveHoldingRepeatTwelve_LoadsClampedToEleven()
         {

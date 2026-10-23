@@ -468,6 +468,15 @@ namespace GolemFactory.UI
                 return null;
             }
 
+            // A draft ENGAGE would refuse is not a patent either: the station would refuse to
+            // build it (GolemConstructionStation.BlueprintRefusal), so filing it files nothing.
+            string refusal = RepeatRules.Refusal(_draftAppendages);
+            if (refusal != null)
+            {
+                SetStatus($"Cannot patent: {refusal}.", WorkbenchStatusReason.Info);
+                return null;
+            }
+
             string id = $"BP-{_nextBlueprintNumber:D3}";
             _nextBlueprintNumber++;
             var filled = Enumerable.Range(0, _draftAppendages.Length).Where(i => _draftAppendages[i] != null).ToList();
