@@ -232,14 +232,29 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
-        public void OnlyTheTowerAndTheGuideItself_WaitForTheLastStep()
+        public void OnlyTheTowerTheRunAndTheGuideItself_WaitForTheLastStep()
         {
             // A chapter's question is asked as the next chapter opens. Nine once waited for
             // "done", after the Clock Tower's Foundation, so a playtest that stopped sooner never
-            // asked them at all.
+            // asked them at all. Chapter 10's own (the Overclocker it builds, the stage's rate)
+            // and the whole run's have nowhere later to go.
             CollectionAssert.AreEquivalent(
-                new[] { "tower", "guide" },
+                new[] { "tower", "overclocker", "stage-rate", "whole-run", "guide" },
                 PlaytestSession.Questions.Where(q => q.AfterStepId == "done").Select(q => q.Id));
+        }
+
+        [Test]
+        public void ThePhaseThreeQuestions_AreAskedWhereTheFullPlaythroughSays()
+        {
+            // testscript/full-playthrough.md, "The questions" (its `market` is `market-late`).
+            var after = PlaytestSession.Questions.ToDictionary(q => q.Id, q => q.AfterStepId);
+            Assert.AreEqual("copper-ingot", after["coal-share"]);
+            Assert.AreEqual("post", after["market-late"]);
+            Assert.AreEqual("aether-cell", after["lens-glass"]);
+            Assert.AreEqual("done", after["overclocker"]);
+            Assert.AreEqual("done", after["stage-rate"]);
+            Assert.AreEqual("done", after["whole-run"]);
+            Assert.AreEqual("program-coker", after["market"], "chapter 3's market question keeps its saved name");
         }
 
         [Test]

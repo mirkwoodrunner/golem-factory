@@ -1,6 +1,6 @@
 # Golem Factory — Phase 3 playtest: the full playthrough
 
-**Runnable once `docs/tuning-data-spec.md` §16 is built.** This judges Phase 3
+**Runnable now: `docs/tuning-data-spec.md` §16 is built.** This judges Phase 3
 (`docs/roadmap.md`): a complete run of chapters 1–10, to the Clock Tower's Foundation, **without
 the playtest kit (F9)**, with no step anyone stalls on and the frame rate holding at the end.
 
@@ -43,7 +43,7 @@ add the sittings' chapter times by hand in the notes.
 | 2 | 4:30 | The bench: the Presser now costs 10 Iron Plate + 5 Gear. How long did they crank? |
 | 3 | 3:30 | `pipes2`; the coker grey while it waits |
 | 4 | 2:00 | `turn`, `stall` |
-| 5 | 20:00 | The Hauler's price (80 Plate + 40 Gear + 30 Coke): how did they make it? `work-smelter` (a full Slag slot stops it) |
+| 5 | 20:00 | The Hauler's price (20 Iron Plate + 10 Gear + 30 Coke, `tuning-data-spec.md` §18 correction 10): how did they make it? `work-smelter` (a full Slag slot stops it) |
 | 6 | 15:00 | `belts` pointing the right way; `copper-depot`'s label |
 | 7 | 10:00 | `expand`, `bays`, `pack`: did they find the Assembly Line tab's rows? |
 | 8 | 45:00 | Goal steps with no marks: did they know what to build? Brass's two ingots in one golem; Glass from Slag; Lens at 3 Glass |
@@ -103,13 +103,14 @@ the existing questions stay where they are.
 | Id | Asked at step | Question | Answers |
 |---|---|---|---|
 | `coal-share` | `copper-ingot` | How much of your factory was feeding the boilers? | About right · Too much · Hardly noticed it |
-| `market` | `post` | Ordering truckloads at the stalls: | Fine · A chore · I ran out a lot |
+| `market-late` | `post` | Ordering truckloads at the stalls: | Fine · A chore · I ran out a lot |
 | `lens-glass` | `aether-cell` | Was there enough Glass for your Lenses? | Plenty · Just enough · Never enough |
 | `overclocker` | `done` | Did you use Repeat on the Overclocker? | Often · Tried it · Didn't know it existed |
 | `stage-rate` | `done` | How fast did the Foundation build at your rate? | Fair · Slow · It kept freezing |
 | `whole-run` | `done` | Which chapter dragged? | None · 5 · 6 · 7 · 8 · 9 · 10 |
 
-The ids are the questions' saved names, like a step's `Id`; don't rename one.
+The ids are the questions' saved names, like a step's `Id`; don't rename one. `market-late` is
+not `market` because chapter 3's market question already holds that name (Phase 3 critique).
 
 ## After the run
 
@@ -148,8 +149,9 @@ Truckload orders in five minutes of chapter 8–10: ___
 | Steam | 3 Coke a minute per working golem, 8 golems per boiler | `SteamNetwork` |
 | Truckloads | Scrap 100 free; Coal 120 for 30 Scrap; Copper and Zinc Ore 120 for 60; Aether 40 for 80 | `sandbox.json` `market` |
 | Brass Presser | 60 Scrap + 10 Iron Plate + 5 Gear | `chassis.json` |
+| Aether-Hauler | 20 Iron Plate + 10 Gear + 30 Coke | `chassis.json` |
 | Lens | 3 Glass + 1 Brass | `recipes.json` R10 |
-| Late prices | Overclocker + 120 Iron Plate, Zeppelin + 150, Freight Mast + 120, Post crate + 40: past a base pack of 100, so the pack upgrade matters | `chassis.json`, `placeables.json` |
+| Late prices | Overclocker + 120 Iron Plate, Zeppelin + 150, Freight Mast + 120: past a base pack of 100, so the pack upgrade matters; Post crate + 40 | `chassis.json`, `placeables.json` |
 | Stage 1 | 6 Frame Sections a minute for 6:00 | `clock_tower_stages.json` |
 | Repeat | up to the recipe's limit (11 for Coking, 5 for Gears) | `Golems/RepeatRules` |
 

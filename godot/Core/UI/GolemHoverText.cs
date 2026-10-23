@@ -228,7 +228,7 @@ namespace GolemFactory.UI
                 case StallReason.OutputFull:
                     return "its output is full of " + Good(resource) + "; " + target + " won't take it";
                 case StallReason.NodeCrowded:
-                    return source + " already has 2 golems";
+                    return source + " already has " + World.NodeExtractorRegistry.MaxExtractorsPerNode + " golems";
                 default:
                     return "its program can't run";
             }
@@ -278,7 +278,7 @@ namespace GolemFactory.UI
             switch (shortage)
             {
                 case SteamShortage.BoilerOutOfCoke: return "Fuel its boiler with Coke (E at the boiler).";
-                case SteamShortage.BoilerAtCapacity: return "Build another boiler: this one already powers 8 golems.";
+                case SteamShortage.BoilerAtCapacity: return "Build another boiler: this one already powers " + SteamNetwork.MaxGolemsPerBoiler + " golems.";
                 default: return "Lay a steam pipe to it from a lit boiler.";
             }
         }

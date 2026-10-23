@@ -46,7 +46,7 @@ namespace GolemFactory.UI
                 {
                     case SteamShortage.NoPipe: return "no steam pipe reaches me";
                     case SteamShortage.BoilerOutOfCoke: return "my boiler is out of Coke";
-                    case SteamShortage.BoilerAtCapacity: return "my boiler already powers 8 golems";
+                    case SteamShortage.BoilerAtCapacity: return "my boiler already powers " + SteamNetwork.MaxGolemsPerBoiler + " golems";
                 }
             }
 
@@ -106,7 +106,7 @@ namespace GolemFactory.UI
                 case StallReason.NodeCrowded:
                     return string.IsNullOrEmpty(resourceId)
                         ? "seam already crewed"
-                        : resourceId + " already has 2 extractors";
+                        : resourceId + " already has " + World.NodeExtractorRegistry.MaxExtractorsPerNode + " extractors";
                 // §1's labelled crate. Says what the destination WILL NOT take rather than what
                 // it wants, because the golem is standing there holding the refused good and
                 // that is the thing the player has to re-route. "Depot wants Iron Plate" would
@@ -138,7 +138,7 @@ namespace GolemFactory.UI
                     case SteamShortage.BoilerOutOfCoke:
                         return who + " stalled: its boiler is out of Coke - fuel it with [E]";
                     case SteamShortage.BoilerAtCapacity:
-                        return who + " stalled: its boiler already powers 8 golems - build another";
+                        return who + " stalled: its boiler already powers " + SteamNetwork.MaxGolemsPerBoiler + " golems - build another";
                 }
             }
             string beltCell = PlacedBeltCell(resourceId);
