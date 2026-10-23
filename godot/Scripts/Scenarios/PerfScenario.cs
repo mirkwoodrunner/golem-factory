@@ -306,7 +306,8 @@ namespace GolemFactory.Nodes.Scenarios
         private string Line(Phase p)
         {
             var tick = p.PerCall.TryGetValue(PerfSampler.Tick, out var t) ? t : default;
-            return FormattableString.Invariant(
+            // One invariant string: concatenated interpolations bind to the handler, not to FormattableString.
+            return string.Create(System.Globalization.CultureInfo.InvariantCulture,
                 $"[perf] phase={p.Name} frames={p.Frames} p50={p.FrameMs.P50:F1} p95={p.FrameMs.P95:F1} max={p.FrameMs.Max:F1} " +
                 $"tick_p95={tick.p95:F2} core_p95={p.CoreMs.P95:F2} probe_calls={S(p, PerfSampler.ProbeRead).calls} " +
                 $"probe_ms={S(p, PerfSampler.ProbeRead).p95:F2} mood_ms={S(p, PerfSampler.Mood).p95:F2} " +
