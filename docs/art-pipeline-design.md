@@ -1,7 +1,7 @@
 # Art pipeline: Phase 4
 
 Written 2026-10-22 for Phase 4 (`docs/roadmap.md`, "Phase 4: Art"), on branch `phase4/art`;
-revised 2026-10-23 to the user's twelve decisions (§9, all decided). It says how each set of art
+revised 2026-10-23 to the user's twelve decisions (§9, all decided) and a thirteenth at the first review sheet (golems are creatures). It says how each set of art
 is replaced, in what order, which files each set holds and what reads them, the tooling that
 makes cleanup, mirroring, checks and review repeatable, the lighting, the scenarios that pin it
 all, and when the phase is done. **What the art looks like** is `docs/art-style-bible.md`; its
@@ -1008,3 +1008,10 @@ Each records the decision and, where it differs, what this document first recomm
     ControlNet, and IP-Adapter holds the character (§2, steps 3–4); `comfy_redraw.py` takes both
     (§5.4). The 6 GB of VRAM limits the models and the batch (§1.4). *First recommended:* don't
     install one yet.
+13. **Golems are creatures** (the user, 2026-10-23, at the first Brass Presser review sheet).
+    The first Presser was drawn as a stamping press, a machine with no one in it; the user
+    rejected it: "It could look similar but with some arms and legs and a head. The cozy factory
+    vibe needs it." Every golem has a head with a face or eye, arms and legs; its chassis motif is
+    worn or wielded, never the whole body (`art-style-bible.md` invariant 17, §5.1). The same
+    review asked for true side profiles, a clean back view, texture that holds still across
+    frames, and more detail where the light check allows.

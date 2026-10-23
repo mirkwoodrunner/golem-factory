@@ -1,7 +1,7 @@
 # Art style bible
 
 Written 2026-10-22 for Phase 4 (`docs/roadmap.md`, "Phase 4: Art"); revised 2026-10-23 to the
-user's twelve decisions (`art-pipeline-design.md` §9). It says what the game's art looks like
+user's twelve decisions (`art-pipeline-design.md` §9) and the thirteenth (golems are creatures, invariant 17). It says what the game's art looks like
 and which numbers the code depends on. `docs/art-pipeline-design.md` says how a set is made,
 checked, shown and committed, and in what order.
 
@@ -100,6 +100,11 @@ An art pass must not break any of these. Each names what catches a violation tod
     check (`art-pipeline-design.md` §5.2, check 14).
 16. **No set is committed before the user has seen its review sheet**: before and after, at the
     default, closest and widest zooms (`art-pipeline-design.md` §2, step 10).
+17. **Every golem is a creature** (`art-pipeline-design.md` §9, decision 13): a head with a face
+    or eye, two arms and two legs (or the chassis's own limbs: the Hauler's treads stand in for
+    legs, the Scavenger's tripod for three). Its chassis motif, the press, the cargo bed, the
+    balloon, is worn or wielded, never the whole body. A golem that reads as a machine with no
+    one inside it breaks the cozy factory. Caught by: the review sheet.
 
 ## 1. Palette
 
@@ -335,6 +340,16 @@ The Artificer keeps its 16 names, `artificer_walk_{down,left,right,up}_{0..3}.pn
 
 ### 5.1 Golems
 
+- **A golem is a creature first** (invariant 17). Head, face or eye, arms and legs, stubby and
+  sturdy rather than a knight; the chassis's motif is what it wears or works with: the Presser
+  drives a ram held in a brass press frame on its shoulders, with its furnace glowing in its
+  chest; the Hauler carries its cargo bed; the Zeppelin wears its balloon. Poses are the
+  creature's: the Presser's arms raise the ram (wind-up), slam it down (impact) and recover; a
+  stalled golem slumps with its head down; a carried one tucks its legs and arms. Its side view
+  is a true profile (one arm and leg in front of the other), its back view its back (head, back
+  plate, a boiler or vent), never a narrowed or masked front view. Its surface texture is stable
+  across its frames: every frame is derived from the cleaned base of its facing, so a speckle
+  never moves between frames and shimmers.
 - **Each chassis is told apart by its silhouette alone, in every facing.** Check: for each
   facing, the alpha masks of any two chassis' base frames, aligned at the feet, overlap at most
   **0.50** (intersection over union). Measured today (one facing): Presser and Zeppelin 0.60,
