@@ -240,6 +240,7 @@ namespace GolemFactory.Nodes.Scenarios
                     ScenarioCapture.Shot(_tree.Root, $"art-golems-{Snake(chassis)}-{zoom}");
                     return null;
                 });
+                PlanCrops(() => gallery, zoom, size);
             }
             Do($"check {chassis}'s feet", CheckFeet);
             Do($"clear {chassis}'s gallery", () =>
@@ -253,21 +254,69 @@ namespace GolemFactory.Nodes.Scenarios
             });
         }
 
+        /// <summary>
+        /// The review sheet's in-game cells (docs/art-pipeline-design.md §5.8): each frame cut from
+        /// the game view at this zoom, the camera aimed at the golem first so the cell is never
+        /// clipped, saved as <c>&lt;frame file stem&gt;-&lt;zoom&gt;.png</c>. Only with
+        /// <c>--capture-dir</c>; the frame's name is its slot's, so a "before" run shows what the
+        /// game draws there today, the fallback included.
+        /// </summary>
+        private void PlanCrops(Func<List<GalleryGolem>> gallery, string zoom, float size)
+        {
+            if (string.IsNullOrEmpty(ScenarioCapture.Directory))
+            {
+                return;
+            }
+            for (int i = 0; i < ArtGallery.Facings.Length * ArtGallery.FramesOf(Facing.South).Count; i++)
+            {
+                int index = i;
+                Do($"aim at frame {index} ({zoom})", () =>
+                {
+                    GalleryGolem g = gallery()[index];
+                    AimCameraAt(new Compat.Vector2(g.Golem.Cell.x, g.Golem.Cell.y + 0.5f), size);
+                    return null;
+                });
+                Do($"settle frame {index} ({zoom})", () => null);
+                Do($"crop frame {index} ({zoom})", () =>
+                {
+                    GalleryGolem g = gallery()[index];
+                    GolemNode node = Nodes()[g.Golem];
+                    Viewport view = _tree.Root;
+                    Vector2 feet = node.GetGlobalTransformWithCanvas().Origin;
+                    float scale = view.GetCanvasTransform().X.X;
+                    Vector2 viewSize = view.GetVisibleRect().Size;
+                    var rect = ArtGallery.CropRect(new Compat.Vector2(feet.X, feet.Y), scale, (int)viewSize.X, (int)viewSize.Y);
+                    if (rect == null)
+                    {
+                        // The camera eases after the player; aim again from where it is now.
+                        AimCameraAt(new Compat.Vector2(g.Golem.Cell.x, g.Golem.Cell.y + 0.5f), size);
+                        return Wait;
+                    }
+                    string stem = GolemFrames.Stem(g.Golem.Program.chassis?.chassisSprite);
+                    string name = GolemFrames.FileName(stem, g.Frame);
+                    ScenarioCapture.ShotRegion(view, name.Substring(0, name.Length - 4) + "-" + zoom,
+                        new Rect2I(rect.Value.x, rect.Value.y, rect.Value.width, rect.Value.height));
+                    return null;
+                });
+            }
+        }
+
+        private void AimCameraAt(Compat.Vector2 centre, float size)
+        {
+            foreach (CameraRigNode camera in _tree.Root.FindChildren("*", "Camera2D", true, false).OfType<CameraRigNode>())
+            {
+                camera.SetOrthographicSize(size);
+                camera.Offset = new Vector2(centre.x, -centre.y) * GridConversions.CellPixels - camera.GlobalPosition;
+            }
+        }
+
         private Dictionary<GolemEntity, GolemNode> Nodes() =>
             _tree.GetNodesInGroup(GolemNodeGroup.Name).OfType<GolemNode>()
                 .Where(n => !n.Entity.IsRemoved)
                 .ToDictionary(n => n.Entity, n => n);
 
-        private void AimCamera(float size)
-        {
-            var centre = new Compat.Vector2(GalleryTopLeft.x + 6f, GalleryTopLeft.y - 3.5f);
-            Compat.Vector3 at = _player.CorePosition;
-            foreach (CameraRigNode camera in _tree.Root.FindChildren("*", "Camera2D", true, false).OfType<CameraRigNode>())
-            {
-                camera.SetOrthographicSize(size);
-                camera.Offset = new Vector2(centre.x - at.x, at.y - centre.y) * GridConversions.CellPixels;
-            }
-        }
+        private void AimCamera(float size) =>
+            AimCameraAt(new Compat.Vector2(GalleryTopLeft.x + 6f, GalleryTopLeft.y - 3.5f), size);
 
         private static string Snake(string name) =>
             string.Concat(name.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + char.ToLowerInvariant(c) : char.ToLowerInvariant(c).ToString()));

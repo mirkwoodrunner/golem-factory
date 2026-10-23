@@ -32,5 +32,22 @@ namespace GolemFactory.Nodes.Scenarios
             DirAccess.MakeDirRecursiveAbsolute(dir);
             image.SavePng(System.IO.Path.Combine(dir, name + ".png"));
         }
+
+        /// <summary>Writes one rectangle of the view (viewport pixels, y down), as <see cref="Shot"/> does the whole.</summary>
+        public static void ShotRegion(Viewport viewport, string name, Rect2I region)
+        {
+            string dir = Directory;
+            if (string.IsNullOrEmpty(dir) || DisplayServer.GetName() == "headless")
+            {
+                return;
+            }
+            Image image = viewport.GetTexture()?.GetImage();
+            if (image == null)
+            {
+                return;
+            }
+            DirAccess.MakeDirRecursiveAbsolute(dir);
+            image.GetRegion(region).SavePng(System.IO.Path.Combine(dir, name + ".png"));
+        }
     }
 }

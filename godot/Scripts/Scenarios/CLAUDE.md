@@ -94,7 +94,9 @@ Current scenarios:
   tower, the walk frames), and every chassis's 28 `GolemFrames` names resolve, through the
   fallback while its set hasn't landed. Core's `Diagnostics/ArtGallery` stands each chassis's 28
   frames in a grid, pinned (`GolemNode.PinnedFrame`), captured as
-  `art-golems-<chassis>-{default,close,wide}.png`; and every standing sprite's lowest opaque row
+  `art-golems-<chassis>-{default,close,wide}.png`, plus each frame cut out at each zoom (the camera
+  aimed at it first, `ArtGallery.CropRect`) as `<frame file stem>-<zoom>.png`, the review sheet's
+  in-game cells; and every standing sprite's lowest opaque row
   sits on its node's origin within the manifest's allowance. A new sprite needs its manifest
   entry or this fails.
 

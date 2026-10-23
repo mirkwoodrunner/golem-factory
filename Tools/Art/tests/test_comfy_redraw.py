@@ -138,3 +138,16 @@ class RefusalTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UploadNameTests(unittest.TestCase):
+    def test_two_images_with_one_file_name_upload_under_two_names(self):
+        a = c.upload_name("init", b"one image")
+        b = c.upload_name("reference", b"another image")
+        self.assertNotEqual(a, b)
+        self.assertNotEqual(c.upload_name("init", b"one image"),
+                            c.upload_name("init", b"another image"))
+
+    def test_the_same_image_and_role_upload_under_one_name(self):
+        self.assertEqual(c.upload_name("guide", b"x"), c.upload_name("guide", b"x"))
+        self.assertTrue(c.upload_name("guide", b"x").endswith(".png"))

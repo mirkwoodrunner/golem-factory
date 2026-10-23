@@ -477,6 +477,15 @@ Where the build settled something this section left open:
   hand-replaced list now lives, and wants each file's full name in backticks.
 - **palette_snap.py** judges `--outline` on the colour before the snap (step 3 would otherwise
   have moved a black edge onto another ramp's dark tone first).
+- **Added in the first S1 run (2026-10-23):** `palette_snap.py --key <colour> [--key-holes N]`
+  clears a render's flat background (ComfyUI returns no alpha; the init is composited on that
+  colour), `--canvas W,H` stands the result on its canvas with the feet on the bottom row, a
+  `fixes.json` entry may give a `"ramp"` instead of a `"tone"` (the rectangle's pixels move to that
+  ramp's nearest tones: one part, one material, which `reshade_mirror.py` needs), and
+  `--max-change` counts only pixels the snap moved further than 0.08 in OKLab (every render is a
+  shade off the palette, so "moved at all" refused everything). `comfy_redraw.py` uploads each
+  image under its role and a hash of its bytes: by file name, an init and a reference both called
+  `init.png` were one image on the server.
 - **review_sheet.py** reads the in-game columns as `<frame stem>-{default,close,wide}.png` from
   `--game-before` and `--game-after`; the `art` scenario's per-frame crops are its input once
   that scenario exists, and a missing one is an empty, labelled cell.

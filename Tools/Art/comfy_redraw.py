@@ -39,6 +39,7 @@ It refuses an --out under godot/art/, a --guide without --control-model, and a -
 without --ipadapter-model and --clip-vision.
 """
 import argparse
+import hashlib
 import json
 import os
 import struct
@@ -188,11 +189,18 @@ def _get(url, path):
         return json.load(r)
 
 
-def upload(url, path):
+def upload_name(role, data):
+    """The name an image is uploaded under: its role and a hash of its bytes. Never the file's
+    own name: the server overwrites by name, and pose_guide.py writes init.png and guide.png in
+    every frame's folder, so an init and a reference both called init.png were one image."""
+    return f"gf-{role}-{hashlib.sha1(data).hexdigest()[:16]}.png"
+
+
+def upload(url, path, role="image"):
     boundary = uuid.uuid4().hex
-    name = os.path.basename(path)
     with open(path, "rb") as handle:
         data = handle.read()
+    name = upload_name(role, data)
     body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"image\"; filename=\"{name}\"\r\n"
             f"Content-Type: image/png\r\n\r\n").encode() + data + \
            f"\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"overwrite\"\r\n\r\ntrue\r\n--{boundary}--\r\n".encode()
@@ -267,7 +275,7 @@ def main(argv):
         if not args.dry_run:
             for key, path in (("init", None if args.txt2img else args.init), ("guide", args.guide), ("reference", args.reference)):
                 if path:
-                    names[key] = upload(args.url, path)
+                    names[key] = upload(args.url, path, key)
         else:
             names = {k: os.path.basename(p) for k, p in (("init", args.init), ("guide", args.guide),
                                                           ("reference", args.reference)) if p}

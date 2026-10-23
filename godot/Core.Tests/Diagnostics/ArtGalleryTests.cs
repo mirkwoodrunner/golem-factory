@@ -47,6 +47,29 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void ACrop_IsTheBoxAroundTheFeet_AtTheZoom()
+        {
+            var crop = ArtGallery.CropRect(new GolemFactory.Compat.Vector2(640f, 400f), 2f, 1280, 720);
+            Assert.IsTrue(crop.HasValue);
+            Assert.AreEqual((640 - 96, 400 - 224, 192, 256), crop.Value);
+
+            // At 0.56 a pixel (the default zoom at 720 high) the box shrinks with the art.
+            var small = ArtGallery.CropRect(new GolemFactory.Compat.Vector2(640f, 400f), 0.5625f, 1280, 720).Value;
+            Assert.AreEqual(54, small.width);
+            Assert.AreEqual(72, small.height);
+            Assert.AreEqual(400 - 63, small.y);
+        }
+
+        [Test]
+        public void ACropOffScreen_IsNull_SoTheCameraIsAimedFirst()
+        {
+            Assert.IsNull(ArtGallery.CropRect(new GolemFactory.Compat.Vector2(20f, 400f), 2f, 1280, 720));
+            Assert.IsNull(ArtGallery.CropRect(new GolemFactory.Compat.Vector2(640f, 100f), 2f, 1280, 720));
+            Assert.IsNull(ArtGallery.CropRect(new GolemFactory.Compat.Vector2(640f, 700f), 2f, 1280, 720));
+            Assert.IsNull(ArtGallery.CropRect(new GolemFactory.Compat.Vector2(640f, 400f), 0f, 1280, 720));
+        }
+
+        [Test]
         public void TheGrid_KeepsBodiesApart()
         {
             var topLeft = new Vector2Int(0, 0);

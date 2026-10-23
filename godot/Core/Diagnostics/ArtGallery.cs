@@ -65,6 +65,39 @@ namespace GolemFactory.Diagnostics
             return new Vector2Int(topLeft.x + column * ColumnStep, topLeft.y - row * RowStep);
         }
 
+        /// <summary>A frame's crop, in art pixels: the 64-wide body with 16 on each side.</summary>
+        public const int CropArtWidth = 96;
+
+        /// <summary>A frame's crop, in art pixels: 112 above the feet (a 96-tall body, 16 clear), 16 below.</summary>
+        public const int CropArtAbove = 112;
+
+        public const int CropArtBelow = 16;
+
+        /// <summary>
+        /// The screen rectangle the review sheet's in-game cell of one frame is cut from
+        /// (docs/art-pipeline-design.md §5.8): the box of <see cref="CropArtWidth"/> art pixels,
+        /// <see cref="CropArtAbove"/> above the golem's feet and <see cref="CropArtBelow"/> below,
+        /// at <paramref name="screenPerArtPixel"/>, as (x, y, width, height) in viewport pixels
+        /// with y down. Null when any of it falls outside the view, so a caller aims the camera
+        /// first rather than saving a clipped cell.
+        /// </summary>
+        public static (int x, int y, int width, int height)? CropRect(Vector2 feetOnScreen, float screenPerArtPixel, int viewWidth, int viewHeight)
+        {
+            if (screenPerArtPixel <= 0f)
+            {
+                return null;
+            }
+            int width = (int)Math.Ceiling(CropArtWidth * screenPerArtPixel);
+            int height = (int)Math.Ceiling((CropArtAbove + CropArtBelow) * screenPerArtPixel);
+            int x = (int)Math.Floor(feetOnScreen.x - width / 2f);
+            int y = (int)Math.Floor(feetOnScreen.y - CropArtAbove * screenPerArtPixel);
+            if (x < 0 || y < 0 || x + width > viewWidth || y + height > viewHeight)
+            {
+                return null;
+            }
+            return (x, y, width, height);
+        }
+
         /// <summary>
         /// Builds one chassis's 28 golems, standing each on its frame's cell in that frame's facing.
         /// Unprogrammed: the gallery shows pictures, not work.
