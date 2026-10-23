@@ -120,7 +120,7 @@ namespace GolemFactory.Tutorial
         internal bool ExactTile { get; }
 
         internal Func<SandboxWorld, bool> Done { get; }
-        internal Func<SandboxWorld, string> ProgressText { get; }
+        public Func<SandboxWorld, string> ProgressText { get; }
         internal Func<SandboxWorld, Vector2Int?> Target { get; }
 
         internal TutorialStep(
@@ -827,6 +827,10 @@ namespace GolemFactory.Tutorial
             _world.Placeables?.FirstOrDefault(p => p.Key == key)?.Prefab?.Cost ?? NoCost;
 
         /// <summary>How much of <paramref name="item"/> a price asks, summed as the wallet sums it.</summary>
+        /// <summary>The Scrap a Scavenger and a Depot cost: what the build steps count toward.</summary>
+        private int ScavengerScrap => LineOf(ChassisCost("ClockworkScavenger"), ItemType.Scrap);
+        private int DepotScrap => LineOf(PlaceableCost("DepotPrefab"), ItemType.Scrap);
+
         private static int LineOf(IReadOnlyList<RecipeIngredient> cost, string item) =>
             cost.Where(c => c.itemType == item).Sum(c => c.quantity);
 
@@ -1257,8 +1261,8 @@ namespace GolemFactory.Tutorial
                 $"At the construction station, press E and pick the Clockwork Scavenger ({Price(ChassisCost("ClockworkScavenger"))}). The Workbench "
                 + "opens on it.",
                 w => LiveGolems.Any(),
-                w => ScrapFirst(12, Station),
-                w => Count(ItemType.Scrap, 12)),
+                w => ScrapFirst(ScavengerScrap, Station),
+                w => Count(ItemType.Scrap, ScavengerScrap)),
 
             new TutorialStep(
                 "program", "Program it",
@@ -1275,8 +1279,8 @@ namespace GolemFactory.Tutorial
                 $"A golem takes from the tile behind it and gives to the tile in front. Build a Depot ({Price(PlaceableCost("DepotPrefab"))}) on "
                 + $"the marked tile: a crate of {CrateHolds} of each good. Misplaced? X takes it back, full refund.",
                 w => Built.Any(b => b.Cell == DepotSpot && b.GetPart<PlaceableDepot>() != null),
-                w => ScrapFirst(15, DepotSpot),
-                w => Count(ItemType.Scrap, 15),
+                w => ScrapFirst(DepotScrap, DepotSpot),
+                w => Count(ItemType.Scrap, DepotScrap),
                 menuKey: "DepotPrefab",
                 spot: () => DepotSpot,
                 builds: IsDepot, exactTile: true),
@@ -1346,8 +1350,8 @@ namespace GolemFactory.Tutorial
                 "Build a second Depot on the marked tile. The Presser will take Scrap from the first crate, behind "
                 + "it, and push Iron Plate into this one.",
                 w => Built.Any(b => b.Cell == PresserDepotSpot && b.GetPart<PlaceableDepot>() != null),
-                w => ScrapFirst(15, PresserDepotSpot),
-                w => Count(ItemType.Scrap, 15),
+                w => ScrapFirst(DepotScrap, PresserDepotSpot),
+                w => Count(ItemType.Scrap, DepotScrap),
                 menuKey: "DepotPrefab",
                 spot: () => PresserDepotSpot,
                 builds: IsDepot, exactTile: true),
@@ -1472,8 +1476,8 @@ namespace GolemFactory.Tutorial
                 $"At the station, under From a patent, click your patent: a Scavenger ({Price(ChassisCost("ClockworkScavenger"))}) arrives already "
                 + "programmed.",
                 w => SecondScavenger != null,
-                w => ScrapFirst(12, Station),
-                w => Count(ItemType.Scrap, 12)),
+                w => ScrapFirst(ScavengerScrap, Station),
+                w => Count(ItemType.Scrap, ScavengerScrap)),
 
             // Passed at once when the Scavenger was built from the patent; it only shows for
             // a golem built bare.
@@ -1492,8 +1496,8 @@ namespace GolemFactory.Tutorial
                 "Build a Depot on the marked tile, two out from another side of the Scrap stall. Leave the tile "
                 + "between empty: the new Scavenger stands there.",
                 w => Built.Any(b => b.Cell == Depot3Spot && b.GetPart<PlaceableDepot>() != null),
-                w => ScrapFirst(15, Depot3Spot),
-                w => Count(ItemType.Scrap, 15),
+                w => ScrapFirst(DepotScrap, Depot3Spot),
+                w => Count(ItemType.Scrap, DepotScrap),
                 menuKey: "DepotPrefab",
                 spot: () => Depot3Spot,
                 builds: IsDepot, exactTile: true),
@@ -1693,8 +1697,8 @@ namespace GolemFactory.Tutorial
                 "scav3", "An extractor",
                 "Build a Scavenger and program it Extract, Push Output: it will push ore onto the belt.",
                 w => CopperExtractor != null && IsProgrammed(CopperExtractor),
-                w => ScrapFirst(12, Station),
-                w => Count(ItemType.Scrap, 12),
+                w => ScrapFirst(ScavengerScrap, Station),
+                w => Count(ItemType.Scrap, ScavengerScrap),
                 workbench: true,
                 program: ScavengerPlan,
                 programTarget: g => g == CopperExtractor),
@@ -1712,8 +1716,8 @@ namespace GolemFactory.Tutorial
                 "A belt only hands goods to another belt, so the ore stops at the end. Build a Depot on the "
                 + "marked tile past it, then stand by it, press I and choose Copper Ore for its label.",
                 w => DepotAt(CopperDepotSpot)?.FilterItemType == ItemType.CopperOre,
-                w => DepotAt(CopperDepotSpot) == null ? ScrapFirst(15, CopperDepotSpot) : CopperDepotSpot,
-                w => DepotAt(CopperDepotSpot) == null ? Count(ItemType.Scrap, 15) : "Label: " + DepotAt(CopperDepotSpot).FilterLabel,
+                w => DepotAt(CopperDepotSpot) == null ? ScrapFirst(DepotScrap, CopperDepotSpot) : CopperDepotSpot,
+                w => DepotAt(CopperDepotSpot) == null ? Count(ItemType.Scrap, DepotScrap) : "Label: " + DepotAt(CopperDepotSpot).FilterLabel,
                 menuKey: "DepotPrefab",
                 spot: () => CopperDepotSpot,
                 builds: IsDepot, exactTile: true, crate: true),
@@ -1723,8 +1727,8 @@ namespace GolemFactory.Tutorial
                 "Build one more Scavenger and program it Haul, set to Copper Ore, then Push Output. It takes "
                 + "ore off the belt's end and pushes it into the labelled depot.",
                 w => CopperUnloader != null && UnloaderPlan.Matches(CopperUnloader.Program),
-                w => ScrapFirst(12, Station),
-                w => Count(ItemType.Scrap, 12),
+                w => ScrapFirst(ScavengerScrap, Station),
+                w => Count(ItemType.Scrap, ScavengerScrap),
                 workbench: true,
                 program: UnloaderPlan,
                 programTarget: g => g == CopperUnloader),

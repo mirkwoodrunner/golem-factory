@@ -1,3 +1,4 @@
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using GolemFactory.Buildings;
@@ -1718,6 +1719,29 @@ namespace GolemFactory.Tests.Tutorial
             StringAssert.Contains("Short of 7 a minute", Body(world, "stage1"));
             StringAssert.Contains($"1 Coke for every {world.Tutorial.HeapSlagPerCoke} Slag", Body(world, "slag-heap"));
             StringAssert.Contains($"{GolemEntity.FreightLaunchTicks} ticks", Body(world, "launch"));
+        }
+
+        [Test]
+        public void TheGuidesBuildSteps_CountTheScavengerAndDepotPrices_FromTheData()
+        {
+            // A Scavenger at 14 Scrap and a Depot at 17: every step that builds one counts toward
+            // the new price, never the 12 and 15 the guide once held as literals.
+            DefinitionSet definitions = AuthoredData.Load();
+            definitions.Chassis["ClockworkScavenger"].cost = new List<RecipeIngredient> { new RecipeIngredient(ItemType.Scrap, 14) };
+            string json = File.ReadAllText(Path.Combine(AuthoredData.DataDirectory, PlaceableCatalog.FileName));
+            var depotPrice = new System.Text.RegularExpressions.Regex("(\"DepotPrefab\"[^\\]]*?\"quantity\": )15");
+            Assert.IsTrue(depotPrice.IsMatch(json), "placeables.json's Depot price");
+            json = depotPrice.Replace(json, "${1}17", 1);
+            SandboxWorld world = SandboxWorld.Compose(definitions, SandboxSetupTests.LoadReal(), PlaceableCatalog.Load(json, definitions));
+
+            foreach (string id in new[] { "golem", "scav2", "scav3", "unloader" })
+            {
+                StringAssert.Contains("/ 14", world.Tutorial.Steps.Single(s => s.Id == id).ProgressText(world), id);
+            }
+            foreach (string id in new[] { "depot", "depot2", "depot3", "copper-depot" })
+            {
+                StringAssert.Contains("/ 17", world.Tutorial.Steps.Single(s => s.Id == id).ProgressText(world), id);
+            }
         }
 
         [Test]
