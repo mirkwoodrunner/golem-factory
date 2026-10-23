@@ -62,10 +62,12 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   drop them. The stage lines no longer say "~63 golems", "~72" or "~96", and phase VI reads
   "Four rate-scaled stages"; `NoLedgerText_EstimatesAGolemCount` keeps them out
   (`tuning-data-spec.md` §19.3).
-- **The guide's smelter and carrier plans are static** (`TutorialGuide.SmelterPlan`,
-  `CarrierPlan`): their Haul quantities are literals, held to R4 and the Slag Heap by
-  `TheGuidesFixedPlans_HaulWhatTheirRecipesAndTheHeapTake`, so a retune fails that test rather
-  than drifting. Making them read the data would need plans built per world.
+- **The guide's smelter and carrier plans were static: closed 2026-10-22.** The user decided to
+  build them from the data. `TutorialGuide` builds the iron Presser's, the coker's, the
+  smelter's and the carrier's plans per world from the loaded recipes (R2, R1, R4) and the Slag
+  Heap's ratio, now `slagPerCoke` in `placeables.json`. The hint, the kit and the step texts
+  follow a retune (`TheGuidesPlans_FollowARetunedRecipeAndHeap_InTheHintTheKitAndTheCheck`).
+  `Matches` still reads no batch, so older saves still count (`tuning-data-spec.md` §19.3).
 - **A partial Haul could jam an Assemble for good: closed 2026-10-19.** The user decided a Haul
   collects into the golem until it holds its batch, showing "5/10 Scrap", and never takes more
   than a batch (`docs/onboarding-feedback-design.md` §13). An Assemble now only runs on full

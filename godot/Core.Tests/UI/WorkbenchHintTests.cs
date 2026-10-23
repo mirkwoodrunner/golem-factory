@@ -82,7 +82,7 @@ namespace GolemFactory.Tests.UI
         [Test]
         public void AGoodMismatch_HintsThePicker_AndABatchMismatch_TheDialTowardThePlan()
         {
-            Open("AetherHauler", TutorialGuide.SmelterPlan);
+            Open("AetherHauler", TutorialGuide.SmelterPlanFor(AuthoredData.Load()));
             Drop("AlwaysOnCore", WorkbenchZone.Trigger);
             Drop("HaulScrap", WorkbenchZone.Socket(0));
             Assert.AreEqual(new WorkbenchHintTarget(WorkbenchHintKind.QuantityDial, null, WorkbenchZone.Socket(0), +1), _session.Hint,
@@ -100,7 +100,7 @@ namespace GolemFactory.Tests.UI
         [Test]
         public void TheSmeltersHauls_InEitherOrder_GoToTheLever()
         {
-            Open("AetherHauler", TutorialGuide.SmelterPlan);
+            Open("AetherHauler", TutorialGuide.SmelterPlanFor(AuthoredData.Load()));
             Drop("AlwaysOnCore", WorkbenchZone.Trigger);
             Drop("HaulScrap", WorkbenchZone.Socket(0));
             Drop("HaulScrap", WorkbenchZone.Socket(1));
@@ -148,10 +148,10 @@ namespace GolemFactory.Tests.UI
         [Test]
         public void APlanThatDoesNotFit_OrNamesACardNotOffered_HintsNothing()
         {
-            Open("ClockworkScavenger", TutorialGuide.SmelterPlan);
+            Open("ClockworkScavenger", TutorialGuide.SmelterPlanFor(AuthoredData.Load()));
             Assert.AreEqual(WorkbenchHintTarget.None, _session.Hint, "four slots on a two-slot Scavenger");
 
-            Open("BrassPresser", TutorialGuide.IronPresserPlan);
+            Open("BrassPresser", TutorialGuide.IronPresserPlanFor(AuthoredData.Load()));
             _session.ConfigureRoster(_defs.Chassis.Values.ToArray(), _defs.LogicCores.Values.ToArray(),
                 _defs.Appendages.Values.Where(a => a.name != "AssembleScrapReclamation").ToArray());
             Assert.AreEqual(WorkbenchHintTarget.None, _session.Hint, "the card isn't claimed yet: the step's text says so");

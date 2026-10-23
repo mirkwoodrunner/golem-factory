@@ -495,8 +495,10 @@ that names a price builds it from the definition (`TutorialGuide.Price`, `CostCo
   `ProgramTarget`, the golem it means). The Workbench hint walks the plan
   (`UI/WorkbenchHint`, read through `WorkbenchSession.Hint` from `TutorialGuide.PlanFor`), the
   step's Done check is `plan.Matches`, and the kit's `PerformPlan` writes it through
-  `GolemProgramWriter`. Don't hand-write a program step's cards in the kit or its check. **The
-  hint never fills a socket**: reading it changes nothing (`WorkbenchSession.Version` holds), and
+  `GolemProgramWriter`. Don't hand-write a program step's cards in the kit or its check. Plans
+  are built per world from the loaded data (`TutorialGuide`'s `*PlanFor` builders), so a Haul
+  quantity matching a recipe or a ratio (R4's inputs, the Slag Heap's `slagPerCoke`) is never a
+  literal. **The hint never fills a socket**: reading it changes nothing (`WorkbenchSession.Version` holds), and
   `WorkbenchScreen` only draws frames around controls that already exist. Without a plan, only a
   golem never programmed gets the fallback (TRIGGER, STEP 1, the lever).
 

@@ -15,7 +15,11 @@ namespace GolemFactory.Buildings
 
         private string heapId = "";
         private int startingCoke;
+        private int slagPerCoke = SlagHeap.DefaultSlagPerCoke;
         private SlagHeap _heap;
+
+        /// <summary>Slag voided per Coke burned (placeables.json), for every heap this prefab places.</summary>
+        public int SlagPerCoke => slagPerCoke;
 
         public SlagHeap Heap
         {
@@ -23,19 +27,21 @@ namespace GolemFactory.Buildings
             {
                 if (_heap == null)
                 {
-                    _heap = new SlagHeap(heapId, startingCoke);
+                    _heap = new SlagHeap(heapId, startingCoke, slagPerCoke);
                 }
                 return _heap;
             }
         }
 
-        public void Configure(string id, int coke)
+        public void Configure(string id, int coke, int slagPerCokeBurned = SlagHeap.DefaultSlagPerCoke)
         {
             heapId = id ?? "";
             startingCoke = coke;
+            slagPerCoke = slagPerCokeBurned < 1 ? 1 : slagPerCokeBurned;
         }
 
-        public IBuildingPart CloneForInstance() => new PlaceableSlagHeap { heapId = heapId, startingCoke = startingCoke };
+        public IBuildingPart CloneForInstance() =>
+            new PlaceableSlagHeap { heapId = heapId, startingCoke = startingCoke, slagPerCoke = slagPerCoke };
 
         public bool RegisterAsSpatialEndpoint(SpatialEndpointRegistry endpoints, Vector2Int cell)
         {
@@ -47,7 +53,7 @@ namespace GolemFactory.Buildings
             if (string.IsNullOrEmpty(heapId))
             {
                 heapId = "SlagHeap(" + cell.x + "," + cell.y + ")";
-                _heap = new SlagHeap(heapId, startingCoke);
+                _heap = new SlagHeap(heapId, startingCoke, slagPerCoke);
             }
 
             endpoints.Register(cell, new SlagHeapEndpoint(Heap));

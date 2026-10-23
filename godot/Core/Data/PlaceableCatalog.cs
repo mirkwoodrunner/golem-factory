@@ -132,7 +132,8 @@ namespace GolemFactory.Data
                         entry.Prefab.AddPart(new PlaceableFreightMast()).Configure(fields.String("bufferId"));
                         break;
                     case "PlaceableSlagHeap":
-                        entry.Prefab.AddPart(new PlaceableSlagHeap()).Configure(fields.String("heapId"), fields.Int("startingCoke"));
+                        entry.Prefab.AddPart(new PlaceableSlagHeap()).Configure(
+                            fields.String("heapId"), fields.Int("startingCoke"), fields.Int("slagPerCoke"));
                         break;
                     case "PlaceableScrapRecycler":
                         entry.Prefab.AddPart(new PlaceableScrapRecycler()).Configure(fields.String("recyclerId"), fields.Int("startingCoke"));

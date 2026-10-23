@@ -9,6 +9,7 @@ using GolemFactory.PunchCards;
 using GolemFactory.Tests.Data;
 using GolemFactory.Tests.World;
 using GolemFactory.Tutorial;
+using GolemFactory.UI;
 using GolemFactory.World;
 using NUnit.Framework;
 using Vector2Int = GolemFactory.Compat.Vector2Int;
@@ -1707,7 +1708,7 @@ namespace GolemFactory.Tests.Tutorial
             StringAssert.Contains("3 Coal make 1 Coke", Body(world, "coke"));
             StringAssert.Contains("1 Scrap makes 2 Iron Plate", Body(world, "iron"));
             StringAssert.Contains("5 Iron Plate make 1 Gear", Body(world, "gears"));
-            StringAssert.Contains("Set the first to 3: the recipe takes 3 Scrap and 2 Coke", Body(world, "program-smelter"));
+            StringAssert.Contains("Set the first to 3 and the second to 2: the recipe takes 3 Scrap and 2 Coke", Body(world, "program-smelter"));
             StringAssert.Contains("Each cycle takes 3 Scrap and 2 Coke", Body(world, "smelt-feed"));
             StringAssert.Contains("a crate of 45 of each good", Body(world, "depot"));
             StringAssert.Contains("Its crate holds 45 of each", Body(world, "work-smelter"));
@@ -1715,23 +1716,118 @@ namespace GolemFactory.Tests.Tutorial
             StringAssert.Contains("190 of each good", Body(world, "post"));
             StringAssert.Contains("7 a minute, every minute", Body(world, "frame-section"));
             StringAssert.Contains("Short of 7 a minute", Body(world, "stage1"));
-            StringAssert.Contains($"1 Coke for every {SlagHeap.SlagPerCoke} Slag", Body(world, "slag-heap"));
+            StringAssert.Contains($"1 Coke for every {world.Tutorial.HeapSlagPerCoke} Slag", Body(world, "slag-heap"));
             StringAssert.Contains($"{GolemEntity.FreightLaunchTicks} ticks", Body(world, "launch"));
         }
 
         [Test]
-        public void TheGuidesFixedPlans_HaulWhatTheirRecipesAndTheHeapTake()
+        public void TheGuidesPlans_HaulWhatTheirRecipesAndTheHeapTake_AsTheDataSaysToday()
         {
-            // The plans are static, so a data test holds them: the smelter hauls one R4 run, and
-            // the carrier the Slag one Coke burns at the heap.
-            RecipeDefinition r4 = AuthoredData.Load().Recipes["R4_IronSmelting"];
-            PlanSlot[] smelter = TutorialGuide.SmelterPlan.Slots.Where(s => s.Good != null).ToArray();
-            CollectionAssert.AreEquivalent(
-                r4.inputs.Select(i => (i.itemType, i.quantity)),
-                smelter.Select(s => (s.Good, s.Quantity)));
-            PlanSlot[] carrier = TutorialGuide.CarrierPlan.Slots.Where(s => s.Good != null).ToArray();
-            Assert.AreEqual(SlagHeap.SlagPerCoke, carrier.Single(s => s.Good == ItemType.Slag).Quantity);
-            Assert.AreEqual(1, carrier.Single(s => s.Good == ItemType.Coke).Quantity);
+            SandboxWorld world = ComposeRetuned(null, null);
+            AssertHauls(world.Tutorial.SmelterPlan, (ItemType.Scrap, 2), (ItemType.Coke, 1));
+            AssertHauls(world.Tutorial.CarrierPlan, (ItemType.Slag, 4), (ItemType.Coke, 1));
+            Assert.AreEqual(1, world.Tutorial.IronPresserPlan.Slots[0].Quantity, "R2 takes 1 Scrap");
+            Assert.AreEqual(1, world.Tutorial.CokerPlan.Slots[0].Quantity, "R1 takes 1 Coal");
+        }
+
+        [Test]
+        public void TheGuidesPlans_FollowARetunedRecipeAndHeap_InTheHintTheKitAndTheCheck()
+        {
+            // R4 at 3 Scrap + 2 Coke and a heap burning 5 Slag a Coke: no batch the guide names
+            // may be a literal (CLAUDE.md, "A guide program step names its program once").
+            SandboxWorld world = ComposeRetuned(scrap: 3, coke: 2, slagPerCoke: 5);
+            DefinitionSet defs = world.Definitions;
+            TutorialGuide guide = world.Tutorial;
+
+            // The plans.
+            AssertHauls(guide.SmelterPlan, (ItemType.Scrap, 3), (ItemType.Coke, 2));
+            AssertHauls(guide.CarrierPlan, (ItemType.Slag, 5), (ItemType.Coke, 1));
+            Assert.AreSame(guide.SmelterPlan, guide.Steps.Single(s => s.Id == "program-smelter").Program);
+            Assert.AreSame(guide.CarrierPlan, guide.Steps.Single(s => s.Id == "program-carrier").Program);
+            Assert.AreEqual(5, guide.HeapSlagPerCoke);
+
+            // The texts that name them.
+            StringAssert.Contains("Set the first to 3 and the second to 2: the recipe takes 3 Scrap and 2 Coke", Body(world, "program-smelter"));
+            StringAssert.Contains("1 Coke for every 5 Slag", Body(world, "slag-heap"));
+            StringAssert.Contains("Haul set to Slag with the dial at 5, Haul set to Coke at 1", Body(world, "program-carrier"));
+            StringAssert.Contains("5 Slag and the one Coke", Body(world, "program-carrier"));
+
+            // The Workbench hint walks the new batches: the Scrap dial up to 3, the Coke one to 2.
+            var session = new WorkbenchSession(6);
+            session.ConfigureRoster(defs.Chassis.Values.ToArray(), defs.LogicCores.Values.ToArray(), defs.Appendages.Values.ToArray());
+            var bare = new GolemEntity();
+            bare.Configure("PlayerGolem-901", null);
+            bare.Program.TryAssignChassis(defs.Chassis["AetherHauler"]);
+            session.HintSource = g => guide.SmelterPlan;
+            session.RetargetGolem(bare);
+            session.Open();
+            session.HandleDrop(WorkbenchCardRef.FromVault(defs.LogicCores["AlwaysOnCore"]), WorkbenchZone.Trigger);
+            session.HandleDrop(WorkbenchCardRef.FromVault(defs.Appendages["HaulScrap"]), WorkbenchZone.Socket(0));
+            Assert.AreEqual(new WorkbenchHintTarget(WorkbenchHintKind.QuantityDial, null, WorkbenchZone.Socket(0), +1), session.Hint);
+            session.AdjustDraftQuantity(0, +1);
+            Assert.AreEqual(WorkbenchHintKind.QuantityDial, session.Hint.Kind, "2 is today's batch, not this recipe's");
+            session.AdjustDraftQuantity(0, +1);
+            Assert.AreEqual(new WorkbenchHintTarget(WorkbenchHintKind.VaultCard, "HaulScrap", WorkbenchZone.Socket(1), 0), session.Hint, "3 Scrap: on to the Coke Haul");
+            session.HandleDrop(WorkbenchCardRef.FromVault(defs.Appendages["HaulScrap"]), WorkbenchZone.Socket(1));
+            while (session.DraftItemTypeAt(1) != ItemType.Coke)
+            {
+                session.CycleDraftItemType(1, +1);
+            }
+            Assert.AreEqual(new WorkbenchHintTarget(WorkbenchHintKind.QuantityDial, null, WorkbenchZone.Socket(1), +1), session.Hint, "Coke at 2");
+
+            // The kit writes the new batches, and the step's check (its plan's Matches) passes.
+            Give(world, ItemType.Scrap, 400);
+            Give(world, ItemType.IronPlate, 200);
+            Give(world, ItemType.Gear, 100);
+            Give(world, ItemType.Coke, 100);
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["AetherHauler"], out GolemEntity smelter));
+            WriteAsTheKitDoes(defs, smelter, guide.SmelterPlan);
+            Assert.AreEqual(3, smelter.Program.GetQuantityAt(0));
+            Assert.AreEqual(2, smelter.Program.GetQuantityAt(1));
+            Assert.IsTrue(guide.SmelterPlan.Matches(smelter.Program));
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["BrassPresser"], out GolemEntity carrier));
+            WriteAsTheKitDoes(defs, carrier, guide.CarrierPlan);
+            Assert.AreEqual(5, carrier.Program.GetQuantityAt(0));
+            Assert.IsTrue(guide.CarrierPlan.Matches(carrier.Program));
+
+            // A golem programmed with today's batches (a save from before the retune) still counts.
+            smelter.Program.SetQuantityAt(0, 2);
+            smelter.Program.SetQuantityAt(1, 1);
+            Assert.IsTrue(guide.SmelterPlan.Matches(smelter.Program), "Matches never reads a batch");
+            carrier.Program.SetQuantityAt(0, 4);
+            Assert.IsTrue(guide.CarrierPlan.Matches(carrier.Program), "Matches never reads a batch");
+        }
+
+        /// <summary>The real data, with R4's Scrap and Coke and the heap's ratio retuned where given.</summary>
+        private static SandboxWorld ComposeRetuned(int? scrap, int? coke, int? slagPerCoke = null)
+        {
+            DefinitionSet definitions = AuthoredData.Load();
+            RecipeDefinition r4 = definitions.Recipes["R4_IronSmelting"];
+            if (scrap.HasValue)
+            {
+                r4.inputs[r4.inputs.FindIndex(i => i.itemType == ItemType.Scrap)] = new RecipeIngredient(ItemType.Scrap, scrap.Value);
+            }
+            if (coke.HasValue)
+            {
+                r4.inputs[r4.inputs.FindIndex(i => i.itemType == ItemType.Coke)] = new RecipeIngredient(ItemType.Coke, coke.Value);
+            }
+            string json = File.ReadAllText(Path.Combine(AuthoredData.DataDirectory, PlaceableCatalog.FileName));
+            if (slagPerCoke.HasValue)
+            {
+                Assert.AreEqual(1, System.Text.RegularExpressions.Regex.Matches(json, "\"slagPerCoke\": 4").Count, "placeables.json's heap ratio");
+                json = json.Replace("\"slagPerCoke\": 4", $"\"slagPerCoke\": {slagPerCoke.Value}");
+            }
+            return SandboxWorld.Compose(definitions, SandboxSetupTests.LoadReal(), PlaceableCatalog.Load(json, definitions));
+        }
+
+        private static void AssertHauls(ProgramPlan plan, params (string good, int quantity)[] hauls) =>
+            CollectionAssert.AreEquivalent(hauls, plan.Slots.Where(s => s.Good != null).Select(s => (s.Good, s.Quantity)), plan.ToString());
+
+        private static void WriteAsTheKitDoes(DefinitionSet defs, GolemEntity golem, ProgramPlan plan)
+        {
+            var resolved = plan.Resolve(defs.LogicCores, defs.Appendages).Value;
+            Assert.IsTrue(GolemProgramWriter.TryWrite(golem.Program, null, resolved.core, resolved.cards, resolved.goods, resolved.quantities,
+                out string refusal), refusal);
         }
     }
 }

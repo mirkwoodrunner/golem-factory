@@ -4,6 +4,7 @@ using System.Linq;
 using GolemFactory.AssemblyLine;
 using GolemFactory.Buildings;
 using GolemFactory.Compat;
+using GolemFactory.Data;
 using GolemFactory.Economy;
 using GolemFactory.Events;
 using GolemFactory.Golems;
@@ -178,6 +179,12 @@ namespace GolemFactory.Tutorial
         public TutorialGuide(SandboxWorld world)
         {
             _world = world;
+            // Before the steps, which hold their plans: built from this world's data, so a
+            // batch that mirrors a recipe or the heap's ratio is never a literal.
+            IronPresserPlan = IronPresserPlanFor(world.Definitions);
+            CokerPlan = CokerPlanFor(world.Definitions);
+            SmelterPlan = SmelterPlanFor(world.Definitions);
+            CarrierPlan = CarrierPlanFor(HeapSlagPerCoke);
             _steps = BuildSteps();
             foreach (TutorialStep step in _steps)
             {
@@ -644,6 +651,12 @@ namespace GolemFactory.Tutorial
         // Workbench hint walks the slots, the step's Done check is the plan's Matches (the check
         // each step always had, moved onto its plan), and the kit writes the slots. The cards,
         // goods and batch sizes are what the kit always passed.
+        //
+        // A plan that only names cards is static. A plan whose batch mirrors a recipe or the Slag
+        // Heap's ratio is built from this world's loaded data in the constructor (the *PlanFor
+        // builders), so a retune moves the hint, the kit and the step's text with it, and no
+        // batch that matches a recipe or a ratio is a literal. Matches never reads a batch size,
+        // so a golem programmed with an older batch still counts.
 
         private const string AlwaysOn = "AlwaysOnCore";
 
@@ -664,22 +677,22 @@ namespace GolemFactory.Tutorial
             p => HasCards(p, "ExtractScrap", "PushOutput"),
             Slot("ExtractScrap"), Slot("PushOutput"));
 
-        public static readonly ProgramPlan IronPresserPlan = new ProgramPlan(AlwaysOn,
-            p => HasCards(p, "HaulScrap", "AssembleScrapReclamation", "PushOutput"),
-            Slot("HaulScrap"), Slot("AssembleScrapReclamation"), Slot("PushOutput"));
+        /// <summary>Chapter 2: Haul, Assemble Scrap Reclamation, Push. Built from the data: <see cref="IronPresserPlanFor"/>.</summary>
+        public ProgramPlan IronPresserPlan { get; }
 
-        public static readonly ProgramPlan CokerPlan = new ProgramPlan(AlwaysOn,
-            p => HasCards(p, "ExtractScrap", "AssembleCoking", "PushOutput"),
-            Slot("ExtractScrap"), Slot("AssembleCoking"), Slot("PushOutput"));
+        /// <summary>Chapter 3: Extract, Assemble Coking, Push. Built from the data: <see cref="CokerPlanFor"/>.</summary>
+        public ProgramPlan CokerPlan { get; }
 
-        /// <summary>Two Hauls, Scrap and Coke, in either order.</summary>
-        public static readonly ProgramPlan SmelterPlan = new ProgramPlan(AlwaysOn,
-            p => HasCards(p, "AssembleIronSmelting", "PushOutput") && HaulsOf(p, ItemType.Scrap) > 0 && HaulsOf(p, ItemType.Coke) > 0,
-            Slot("HaulScrap", ItemType.Scrap, 2), Slot("HaulScrap", ItemType.Coke, 1), Slot("AssembleIronSmelting"), Slot("PushOutput"));
+        /// <summary>Chapter 5: two Hauls, Scrap and Coke, in either order. Built from the data: <see cref="SmelterPlanFor"/>.</summary>
+        public ProgramPlan SmelterPlan { get; }
 
-        public static readonly ProgramPlan CarrierPlan = new ProgramPlan(AlwaysOn,
-            p => HasCards(p, "PushOutput") && HaulsOf(p, ItemType.Slag) > 0 && HaulsOf(p, ItemType.Coke) > 0,
-            Slot("HaulScrap", ItemType.Slag, 4), Slot("HaulScrap", ItemType.Coke, 1), Slot("PushOutput"));
+        /// <summary>Chapter 5: Slag and the Coke that burns it, then Push. Built from the data: <see cref="CarrierPlanFor"/>.</summary>
+        public ProgramPlan CarrierPlan { get; }
+
+        // The unloader's and the Zeppelin's Haul of 1 Copper Ore is a teaching choice, not a
+        // mirror: nothing downstream takes ore in batches (a Push empties whatever is held, and
+        // Freight Launch flies whatever it holds), so one ore a trip is simply the plainest
+        // setting to show. Neither step's text names the number.
 
         public static readonly ProgramPlan UnloaderPlan = new ProgramPlan(AlwaysOn,
             p => HasCards(p, "PushOutput") && HaulsOf(p, ItemType.CopperOre) > 0,
@@ -688,6 +701,61 @@ namespace GolemFactory.Tutorial
         public static readonly ProgramPlan ZeppelinPlan = new ProgramPlan(AlwaysOn,
             p => HasCards(p, "FreightLaunch") && HaulsOf(p, ItemType.CopperOre) > 0,
             Slot("HaulScrap", ItemType.CopperOre, 1), Slot("FreightLaunch"));
+
+        /// <summary>
+        /// One run of <paramref name="card"/>'s recipe's <paramref name="item"/>, from
+        /// <paramref name="definitions"/>: the batch a slot feeding that recipe hauls. 0 when the
+        /// card or recipe is unknown, which a <see cref="PlanSlot"/> reads as "the card's own batch".
+        /// </summary>
+        public static int RecipeInput(DefinitionSet definitions, string card, string item)
+        {
+            RecipeDefinition recipe = definitions?.Appendages != null
+                && definitions.Appendages.TryGetValue(card, out AppendageActionDefinition a) ? a.recipe : null;
+            return recipe == null ? 0 : LineOf(recipe.inputs, item);
+        }
+
+        /// <summary>The iron Presser's Haul takes one run of R2's Scrap (Assemble Scrap Reclamation).</summary>
+        public static ProgramPlan IronPresserPlanFor(DefinitionSet definitions) => new ProgramPlan(AlwaysOn,
+            p => HasCards(p, "HaulScrap", "AssembleScrapReclamation", "PushOutput"),
+            Slot("HaulScrap", quantity: RecipeInput(definitions, "AssembleScrapReclamation", ItemType.Scrap)),
+            Slot("AssembleScrapReclamation"), Slot("PushOutput"));
+
+        /// <summary>The coker's Extract takes one run of R1's Coal (Assemble Coking).</summary>
+        public static ProgramPlan CokerPlanFor(DefinitionSet definitions) => new ProgramPlan(AlwaysOn,
+            p => HasCards(p, "ExtractScrap", "AssembleCoking", "PushOutput"),
+            Slot("ExtractScrap", quantity: RecipeInput(definitions, "AssembleCoking", ItemType.Coal)),
+            Slot("AssembleCoking"), Slot("PushOutput"));
+
+        /// <summary>The smelter's two Hauls take one run of R4's Scrap and Coke (Assemble Iron Smelting).</summary>
+        public static ProgramPlan SmelterPlanFor(DefinitionSet definitions) => new ProgramPlan(AlwaysOn,
+            p => HasCards(p, "AssembleIronSmelting", "PushOutput") && HaulsOf(p, ItemType.Scrap) > 0 && HaulsOf(p, ItemType.Coke) > 0,
+            Slot("HaulScrap", ItemType.Scrap, RecipeInput(definitions, "AssembleIronSmelting", ItemType.Scrap)),
+            Slot("HaulScrap", ItemType.Coke, RecipeInput(definitions, "AssembleIronSmelting", ItemType.Coke)),
+            Slot("AssembleIronSmelting"), Slot("PushOutput"));
+
+        /// <summary>
+        /// The carrier hauls one burn's worth to the heap: <paramref name="slagPerCoke"/> Slag (the
+        /// heap's ratio) and the one Coke that burns them. The Coke is 1 by the ratio's own
+        /// definition, Slag per ONE Coke, not by choice.
+        /// </summary>
+        public static ProgramPlan CarrierPlanFor(int slagPerCoke) => new ProgramPlan(AlwaysOn,
+            p => HasCards(p, "PushOutput") && HaulsOf(p, ItemType.Slag) > 0 && HaulsOf(p, ItemType.Coke) > 0,
+            Slot("HaulScrap", ItemType.Slag, slagPerCoke), Slot("HaulScrap", ItemType.Coke, CokePerBurn),
+            Slot("PushOutput"));
+
+        /// <summary>A Slag Heap's ratio is Slag per one Coke burned.</summary>
+        private const int CokePerBurn = 1;
+
+        /// <summary>
+        /// The Slag Heap's ratio as this world's build menu places it (placeables.json's
+        /// <c>slagPerCoke</c>), or the rule's default without one.
+        /// </summary>
+        public int HeapSlagPerCoke =>
+            _world.Placeables?.FirstOrDefault(p => p.Key == "SlagHeapPrefab")?.Prefab?.GetPart<PlaceableSlagHeap>()?.SlagPerCoke
+            ?? SlagHeap.DefaultSlagPerCoke;
+
+        /// <summary>The batch <paramref name="plan"/> sets on its Haul of <paramref name="good"/>.</summary>
+        private static int Batch(ProgramPlan plan, string good) => plan.Slots.FirstOrDefault(s => s.Good == good).Quantity;
 
         /// <summary>
         /// The plan for <paramref name="golem"/>: the first step, from the current one to the end
@@ -714,7 +782,7 @@ namespace GolemFactory.Tutorial
             return null;
         }
 
-        private static bool IsIronPresser(GolemEntity golem) => IronPresserPlan.Matches(golem.Program);
+        private bool IsIronPresser(GolemEntity golem) => IronPresserPlan.Matches(golem.Program);
 
         /// <summary>The Presser chapter 2 set to make Iron Plate, or null.</summary>
         private GolemEntity IronPresser => Pressers.FirstOrDefault(IsIronPresser);
@@ -831,16 +899,20 @@ namespace GolemFactory.Tutorial
         }
 
         /// <summary>How much of <paramref name="item"/> one run of a card's recipe takes.</summary>
-        private int Input(string card, string item)
-        {
-            RecipeDefinition recipe = RecipeOf(card);
-            return recipe == null ? 0 : LineOf(recipe.inputs, item);
-        }
+        private int Input(string card, string item) => RecipeInput(_world.Definitions, card, item);
 
-        /// <summary>The smelter's Scrap and Coke a cycle (R4): what chapter 5 asks the player to set and feed.</summary>
-        private int SmeltScrap => Input("AssembleIronSmelting", ItemType.Scrap);
+        /// <summary>
+        /// The smelter's Scrap and Coke a cycle (R4): what chapter 5 asks the player to set and
+        /// feed, read off its plan so the text, the hint and the kit name one number.
+        /// </summary>
+        private int SmeltScrap => Batch(SmelterPlan, ItemType.Scrap);
 
-        private int SmeltCoke => Input("AssembleIronSmelting", ItemType.Coke);
+        private int SmeltCoke => Batch(SmelterPlan, ItemType.Coke);
+
+        /// <summary>The carrier's Slag and Coke a trip: one burn at the heap, off its plan.</summary>
+        private int CarrySlag => Batch(CarrierPlan, ItemType.Slag);
+
+        private int CarryCoke => Batch(CarrierPlan, ItemType.Coke);
 
         /// <summary>A crate's room per good (sandbox.json).</summary>
         private int CrateHolds => _world.Setup?.crateCapacityPerType ?? 50;
@@ -890,7 +962,7 @@ namespace GolemFactory.Tutorial
         /// </summary>
         public Vector2Int[] Pipe2Spots => Plan.Pipe2;
 
-        private static bool IsCoker(GolemEntity golem) => CokerPlan.Matches(golem.Program);
+        private bool IsCoker(GolemEntity golem) => CokerPlan.Matches(golem.Program);
 
         /// <summary>
         /// What claiming a card costs in one good right now: its slot's current price if the line
@@ -983,9 +1055,9 @@ namespace GolemFactory.Tutorial
         private IEnumerable<GolemEntity> Haulers =>
             LiveGolems.Where(g => g.Program?.chassis != null && g.Program.chassis.name == "AetherHauler");
 
-        private static bool IsSmelter(GolemEntity golem) => SmelterPlan.Matches(golem.Program);
+        private bool IsSmelter(GolemEntity golem) => SmelterPlan.Matches(golem.Program);
 
-        private static bool IsCarrier(GolemEntity golem) => CarrierPlan.Matches(golem.Program);
+        private bool IsCarrier(GolemEntity golem) => CarrierPlan.Matches(golem.Program);
 
         // Chapter 6 moves goods with a belt and sorts them with a label, at the Copper stall: an
         // extractor pushes ore onto a belt run, an unloader hauls it off the end into a depot
@@ -1501,7 +1573,9 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "program-smelter", "Two Hauls, two goods",
                 "In the Workbench: Always On, then Haul, Haul, Assemble Iron Smelting and Push Output. On the "
-                + $"second Haul, click the arrow until it says Coke. Set the first to {SmeltScrap}: the recipe takes {Takes("AssembleIronSmelting")}.",
+                + $"second Haul, click the arrow until it says Coke. Set the first to {SmeltScrap}"
+                + (SmeltCoke > 1 ? $" and the second to {SmeltCoke}" : "")
+                + $": the recipe takes {Takes("AssembleIronSmelting")}.",
                 w => Haulers.Any(IsSmelter),
                 w => Haulers.Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
                 workbench: true,
@@ -1533,7 +1607,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "slag-heap", "Somewhere for the Slag",
                 "Slag piles up every cycle, and a full store stalls the smelter. Build a Slag Heap on the "
-                + $"marked tile ({Price(PlaceableCost("SlagHeapPrefab"))}): it burns 1 Coke for every {SlagHeap.SlagPerCoke} Slag.",
+                + $"marked tile ({Price(PlaceableCost("SlagHeapPrefab"))}): it burns 1 Coke for every {HeapSlagPerCoke} Slag.",
                 w => HeapAt(SlagHeapSpot) != null,
                 w => ScrapFirst(LineOf(PlaceableCost("SlagHeapPrefab"), ItemType.Scrap), SlagHeapSpot),
                 w => CostCounts(PlaceableCost("SlagHeapPrefab")),
@@ -1550,8 +1624,8 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "program-carrier", "Carry Slag and its fuel",
-                $"Program it: Always On, Haul set to Slag with the dial at {SlagHeap.SlagPerCoke}, Haul set to Coke at 1, then Push "
-                + $"Output. {SlagHeap.SlagPerCoke} Slag and the one Coke that burns them, every trip.",
+                $"Program it: Always On, Haul set to Slag with the dial at {CarrySlag}, Haul set to Coke at {CarryCoke}, then Push "
+                + $"Output. {CarrySlag} Slag and the one Coke that burns them, every trip.",
                 w => Pressers.Any(IsCarrier),
                 w => NewestPresser?.Cell,
                 workbench: true,
@@ -1564,10 +1638,10 @@ namespace GolemFactory.Tutorial
                 "carrier-feed", "Coke for the carrier",
                 "The carrier hauls from the smelter's output crate, and the smelter pushes Slag there but no Coke. "
                 + "Stand at that depot, press I, and Shift-click Coke in your pack to move all that fits.",
-                w => InCrate(SmeltOutSpot, ItemType.Coke) >= 1
+                w => InCrate(SmeltOutSpot, ItemType.Coke) >= CarryCoke
                     || Pressers.Any(g => IsCarrier(g) && _completedSinceEntry.Contains(g.GolemId)),
                 w => SmeltOutSpot,
-                w => CrateCount(SmeltOutSpot, ItemType.Coke, 1),
+                w => CrateCount(SmeltOutSpot, ItemType.Coke, CarryCoke),
                 crate: true),
 
             new TutorialStep(

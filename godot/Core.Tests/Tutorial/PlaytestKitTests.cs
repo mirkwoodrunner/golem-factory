@@ -186,7 +186,7 @@ namespace GolemFactory.Tests.Tutorial
             }
             Assert.IsNotNull(presser, "the kit built the Presser on its step");
             Assert.AreEqual("presser", world.Tutorial.Current.Id, "two steps before 'Program the Presser'");
-            Assert.AreSame(TutorialGuide.IronPresserPlan, world.Tutorial.PlanFor(presser));
+            Assert.AreSame(world.Tutorial.IronPresserPlan, world.Tutorial.PlanFor(presser));
 
             GolemEntity scavenger = world.Golems.First(g => g.Program.chassis?.name == "ClockworkScavenger");
             Assert.IsNull(world.Tutorial.PlanFor(scavenger), "the first Scavenger is no step's golem in chapter 2");

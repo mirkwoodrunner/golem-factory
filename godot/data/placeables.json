@@ -438,7 +438,8 @@
       },
       "PlaceableSlagHeap": {
         "heapId": "",
-        "startingCoke": 0
+        "startingCoke": 0,
+        "slagPerCoke": 4
       }
     }
   },

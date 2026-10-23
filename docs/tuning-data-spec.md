@@ -1011,6 +1011,21 @@ what was fixed. Every fix has a test; 1,921 Core tests and all 16 scenarios pass
   their demands, phase VI's goal reads "Four rate-scaled stages", and
   `TechTreeCatalogTests.NoLedgerText_EstimatesAGolemCount` fails on any "~N golems" or
   "factory of" in a Ledger text.
+- **The guide's program plans held literal batches** (the smelter's 2 Scrap and 1 Coke, the
+  carrier's 4 Slag and 1 Coke), pinned to R4 and the heap by a test instead of read from them.
+  **Decided 2026-10-22: built from the data.** `TutorialGuide`'s constructor builds
+  `IronPresserPlan` (R2's Scrap), `CokerPlan` (R1's Coal, on its Extract), `SmelterPlan` (R4's
+  Scrap and Coke) and `CarrierPlan` (the heap's ratio, and the one Coke a burn takes) from the
+  world's loaded definitions, before the steps that hold them. To make the heap's ratio
+  retunable, it moved from the constant `SlagHeap.SlagPerCoke` to `slagPerCoke` on the Slag
+  Heap prefab in `placeables.json` (4, unchanged; `SlagHeap.DefaultSlagPerCoke` is the fallback).
+  The program texts and the carrier-feed count read the plan's batches. The unloader's and the
+  Zeppelin's Haul of 1 Copper Ore stays a literal: a teaching choice that mirrors no recipe or
+  ratio, and their texts name no number. `ProgramPlan.Matches` still ignores batches, so a golem
+  programmed with older numbers still passes its step.
+  `TheGuidesPlans_FollowARetunedRecipeAndHeap_InTheHintTheKitAndTheCheck` retunes R4 to 3 Scrap +
+  2 Coke and the heap to 5, and checks the plans, the texts, the Workbench hint's dial, the kit's
+  write and the step's check.
 - **A Repeat behind a recipe that can't repeat, in an old save,** loads with n held to 1 and
   stalls red as it always did; `ClampProgram` doesn't remove a card. A rigid golem stalls
   rather than adapts.

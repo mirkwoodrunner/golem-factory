@@ -109,10 +109,10 @@ namespace GolemFactory.Tests.Tutorial
 
             var all = new[] { scavenger, reversed, iron, coker, smelter, carrier, unloader, zeppelin, gears };
             AssertMatchesOnly(TutorialGuide.ScavengerPlan, all, scavenger, reversed, coker);
-            AssertMatchesOnly(TutorialGuide.IronPresserPlan, all, iron);
-            AssertMatchesOnly(TutorialGuide.CokerPlan, all, coker);
-            AssertMatchesOnly(TutorialGuide.SmelterPlan, all, smelter);
-            AssertMatchesOnly(TutorialGuide.CarrierPlan, all, carrier);
+            AssertMatchesOnly(TutorialGuide.IronPresserPlanFor(d), all, iron);
+            AssertMatchesOnly(TutorialGuide.CokerPlanFor(d), all, coker);
+            AssertMatchesOnly(TutorialGuide.SmelterPlanFor(d), all, smelter);
+            AssertMatchesOnly(TutorialGuide.CarrierPlanFor(Compose().Tutorial.HeapSlagPerCoke), all, carrier);
             AssertMatchesOnly(TutorialGuide.UnloaderPlan, all, unloader);
             AssertMatchesOnly(TutorialGuide.ZeppelinPlan, all, zeppelin);
 
