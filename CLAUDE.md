@@ -38,7 +38,8 @@ Read the docs before making design calls, not just the code:
 ## Toolchain
 
 - **Godot 4.7.2 mono** at `G:\Godot_v4.7.2-stable_mono_win64\Godot_v4.7.2-stable_mono_win64\`. The folder name is
-  doubled. Use `Godot_v4.7.2-stable_mono_win64_console.exe` for anything run from a shell.
+  doubled. Use `Godot_v4.7.2-stable_mono_win64_console.exe` for anything run from a shell. Always the **mono**
+  build: the standard Godot can't load C# and shows a grey screen ("No loader found for resource: …cs" in the log).
 - **.NET SDK 10**. Every project targets `net10.0`. GodotSharp 4.7.2 is built for net8.0, but only the .NET 10 runtime
   is installed, and net10 can reference net8.
 - `nuget.config` points at the Godot install's bundled packages, so `dotnet build` works without opening the editor

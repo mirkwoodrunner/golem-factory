@@ -7,11 +7,11 @@ makes cleanup, mirroring, checks and review repeatable, the lighting, the scenar
 all, and when the phase is done. **What the art looks like** is `docs/art-style-bible.md`; its
 §0 invariants hold for every step here.
 
-**Next:** S1, the golems (§2, §4): the Brass Presser's 28 frames are in (approved 2026-10-23 at
-its third review round, `public/images/S1/brass_presser/review.json`); the next chassis waits
-for the user's go. Done on 2026-10-23: the cleanup commit (§3.1), the
-`verify_art.py` fix (§5.5), the tooling (§5), Core's `GolemFrames` (§7.4) and the `art`
-scenario's first part (§7.1); ControlNet and IP-Adapter are installed (§1.4).
+**Next:** S1, the golems (§2, §4): the Brass Presser's 28 frames are in (8f09b0e, approved
+2026-10-23 at its third review round, `public/images/S1/brass_presser/review.json`). The other
+four chassis wait for the user's go; make each the Presser's way (§3.2). Done on 2026-10-23: the
+cleanup commit (§3.1), the `verify_art.py` fix (§5.5), the tooling (§5), Core's `GolemFrames`
+(§7.4) and the `art` scenario's first part (§7.1); ControlNet and IP-Adapter are installed (§1.4).
 
 ## 1. Where things stand (measured 2026-10-22, at 8b3ec0b)
 
@@ -287,6 +287,40 @@ expected. Besides the lines named above, the deleted names also left `generate_p
 `--legacy` list and `trim_character_alpha.py`'s list (which would have failed on a missing file).
 One pre-existing flake, not from this change: the `hover` scenario fails about one windowed run in
 two ("W's card says nearly full"); it passes headless, which is how scenarios are run.
+
+### 3.2 The Presser, the template for the next chassis
+
+What the Presser's three review rounds settled (2026-10-23), so the next chassis starts there:
+
+- **A creature, drawn as a layered draft first.** Plain image-to-image from the old sprite, or
+  text-to-image, can't hold a design across 28 frames. The Presser's frames come from a script
+  (`public/images/S1/brass_presser/scripts/presser_draft.py`) that draws each frame as named parts
+  (legs, body, head, upper arms, forearms, hands, the held tool, the pack; `far_arm`/`far_leg` in
+  profile) with a map of which part owns each pixel. Copy it per chassis and change the shapes.
+- **Only each facing's base goes through ComfyUI.** South, north and east bases: img2img of the
+  draft at denoise 0.35–0.55 (0.55 picked for south and north, 0.45 for east), seeds swept, the
+  control-LoRA canny at 0.7 ending at 0.8, IP-Adapter plus vit-h at 0.5 ("style transfer") on
+  `stall_scrap` at 4×, 512×768 on a `#28be46` key, 8 LCM steps, cfg 1.5. `pick_base.py` picks by
+  `check_art` metrics. Higher denoise lost the upper-left light.
+- **Every other frame is composed, never rendered** (`compose.py`): rigid parts move by the
+  pose's offsets, arms come from the draft, and the render adds only a one-tone step inside a part,
+  never on its border, so texture can't shimmer between frames. `compose.py`'s `LAYERS` gives the
+  draw order per facing; from the north, what the golem holds is drawn first, behind it.
+- **West is the east shapes mirrored and re-lit by the draft's shading**, then composed with the
+  mirrored east texture. `reshade_mirror.py` on finished east frames failed the light check for a
+  profile (its front isn't the mirror of its back).
+- **Cleanup:** `palette_snap.py --key #28be46 --key-holes 256 --reduce 8 --outline --canvas 64,96`
+  with the chassis's ramps; fire only through fixes (with fire in the snap, bright brass landed on
+  fire orange).
+- **Review:** `review_sheet.py` plus a compact numbered grid (`grid.py`: 4×, rows south, north,
+  east, west; columns base, idle_1, work_0–2, stall, carry; today's sprite beside). The user marks
+  frames by number. Install: the frames into `godot/art/` with their `.import` files, manifest
+  entries (`owner: comfyui`, `mirroredFrom` on west), `review.json`, and the `art`, `golems`,
+  `golem-motion` scenarios plus a look at the game.
+- **Time:** about 5 min for ComfyUI's first image, 7–11 s after; the renders are ~10 min a
+  chassis. Drafting the creature and its poses is most of the work.
+- **Still plainer than the carts**, and the profile is mostly iron with a small ram; the user
+  accepted it. A later pass may raise detail where the light check allows.
 
 ## 4. Inventory, by set
 

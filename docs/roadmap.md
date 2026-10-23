@@ -65,24 +65,31 @@ call): built, reviewed, critiqued and tested. Done:
   their prices (7a79046). 1925 Core tests pass.
 
 **Resume here:**
-1. **Phase 4 (Art) is under way** on branch `phase4/art`, from `phase3/tuning`: see Phase 4
-   below. Its specs are written and the user made all twelve calls on 2026-10-23
-   (`art-pipeline-design.md` §9). **Done (2026-10-23):** the cleanup commit (§3.1: 26 sprites
-   gone, every scenario and every screen capture unchanged across it); `verify_art.py` covers
-   the goods (§5.5: 95 generated, 84 identical, 11 hand-replaced, 0 drifted); the `Tools/Art/`
-   tooling (§5: `art_manifest.json`, `palette.json`, `art_metrics.py`, `check_art.py`,
-   `palette_snap.py`, `reshade_mirror.py`, `pose_guide.py`, `review_sheet.py`,
-   `comfy_redraw.py` on the installed ControlNet and IP-Adapter nodes; 79 tool tests);
-   Core's `GolemFrames` with `GolemNode` drawing it (every frame falls back to the south base
-   today, and the game looks as before); and the `art` scenario's first part (§7.1 items 1–3,
-   the golem gallery). `check_art.py`: 0 FAIL, 63 WARN, the baseline the golems must clear
-   (§5's "Built" note). Next: **S1, the golems** (§2's workflow, §4 S1), chassis by chassis:
-   its south base, then its north and east bases, then each facing's frames, west by mirror,
-   and the review sheet before any commit. ComfyUI is installed; start it with
-   `G:/AI/start_comfyui.bat` and stop it when the set is done. `LightingRules` waits for its
-   set (L, after S2).
+1. **Phase 4 (Art), on branch `phase4/art`: the Brass Presser is in the game and the user is
+   testing it.** The other four chassis wait for the user's go (2026-10-23). When they say go:
+   - **The user's test of the Presser first.** Ask what they saw. Nothing has looked at a tinted
+     Presser on screen yet (stuck red, waiting grey, out of steam blue; `check_art.py` measures
+     the tints as readable, but `moods`' street uses Scavengers). Add a tinted Presser to a
+     scenario's captures, and fold any of the user's notes into the Presser before moving on.
+   - **Then the next chassis**, the Scavenger suggested (the first golem a player builds),
+     the way the Presser was made: `art-pipeline-design.md` §3.2, "The Presser, the template".
+     Each chassis goes to its review sheet and a compact numbered grid, the user marks frames,
+     and nothing enters `godot/art/` until they approve.
+   - **Rules from the Presser's reviews:** golems are creatures with a head, arms and legs,
+     wearing or wielding their chassis motif (`art-style-bible.md` invariant 17, the user's call);
+     what a golem holds is in front of it, so from the north its body hides it (§5.1).
+   - **Watch the silhouettes:** the Presser overlaps today's Hauler at 0.49 against the 0.50
+     limit, so the Hauler's redraw must differ clearly.
+   - Then the Artificer (S1b), floor and walls (S2), lighting (L), buildings, the Workbench,
+     goods and the HUD, each with its own review sheet (`art-pipeline-design.md` §3).
+   - Before Phase 4's test run: fix the windowed `hover` flake (`open-items.md` §4).
+   Done so far: the specs and the user's thirteen calls (§9), the cleanup, `verify_art.py`'s
+   gap, the `Tools/Art/` tooling, Core's `GolemFrames`, the `art` scenario's golem gallery,
+   ControlNet and IP-Adapter in ComfyUI (§1.4), and the Presser (8f09b0e).
 2. **The human playtests, still to run:** `testscript/phase-2-playtest.md`, then
-   `testscript/phase-1-playtest.md`, then `testscript/full-playthrough.md`.
+   `testscript/phase-1-playtest.md`, then `testscript/full-playthrough.md`. Run the game with the
+   **mono** Godot build (a grey screen and "No loader found for resource: …cs" means the
+   standard build was used).
 
 `FloorPlayer`'s chapter 8 floor jumps around as prices change (`open-items.md` §3), so check
 any retune at neighbouring prices.
