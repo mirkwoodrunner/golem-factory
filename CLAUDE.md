@@ -320,7 +320,9 @@ demand takes nominal × demand ÷ supply (`ClockTowerSite.DecayRate`, tuning-dat
 **Playtest mode writes `user://playtest-report.md`**, and keeps the previous session's as
 `playtest-report-<date>-<time>.md` before a new one starts (`PlaytestReportArchive`): every
 launch used to overwrite it. A question is asked as the chapter after its experience opens
-(`PlaytestQuestion.AfterStepId`); only the tower's and the guide's own wait for `done`. The
+(`PlaytestQuestion.AfterStepId`); only the end-of-run ones (`tower`, `overclocker`,
+`stage-rate`, `whole-run`, `guide`) wait for `done`. A new question needs a new id: saves store
+the ids already asked, so reusing one (chapter 3's `market`) skips it. The
 kit's chapter 7 Save and Load use `kit-save.json` beside the player's save, never the save
 itself. Scenario runs write
 `user://scenario-playtest-report.md` instead, and save to `user://scenario-save.json`
