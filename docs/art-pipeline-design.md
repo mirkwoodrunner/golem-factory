@@ -7,7 +7,9 @@ makes cleanup, mirroring, checks and review repeatable, the lighting, the scenar
 all, and when the phase is done. **What the art looks like** is `docs/art-style-bible.md`; its
 §0 invariants hold for every step here.
 
-**Next:** S1, the golems (§2, §4). Done on 2026-10-23: the cleanup commit (§3.1), the
+**Next:** S1, the golems (§2, §4): the Brass Presser's 28 frames are in (approved 2026-10-23 at
+its third review round, `public/images/S1/brass_presser/review.json`); the next chassis waits
+for the user's go. Done on 2026-10-23: the cleanup commit (§3.1), the
 `verify_art.py` fix (§5.5), the tooling (§5), Core's `GolemFrames` (§7.4) and the `art`
 scenario's first part (§7.1); ControlNet and IP-Adapter are installed (§1.4).
 

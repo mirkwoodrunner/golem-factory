@@ -14,7 +14,8 @@ Current scenarios:
   the bench and the station, using real key and mouse events.
 - `golems` (Sandbox): every chassis built, and every `AppendageActionType` run on real steam:
   extract, haul, push, load, assemble plus repeat, refine, and freight. A golem out of steam
-  must stall and wear its badge.
+  must stall and wear its badge. Each golem draws its own chassis's frame for what it is doing,
+  in its facing (`GolemFrames.Resolve`; the south base while a chassis has no frames).
 - `golem-motion` (Sandbox): every chassis at its signature verb on steam, side by side on the
   street and zoomed in, with stocks fed and drained so none stops. Each body must make its
   work motion (`Core/Golems/GolemWorkMotion`): the Presser stamps, the Overclocker stamps and

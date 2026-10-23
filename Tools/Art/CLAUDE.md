@@ -81,3 +81,12 @@ If an image-generation MCP server is configured in the user's global Claude conf
   lists them as hand-replaced. **Copper ore is green**, as malachite, on the cart and on the
   `item_copper_ore` good alike. The good is still generated (`generate_placeholder_art.py`),
   so a change to one has to be matched in the other.
+- **And the golems, set by set (S1).** The Brass Presser's 28 frames (`chassis_brass_presser.png`
+  and its 27 `chassis_brass_presser_<state>_<facing>.png`) are a creature redraw (style bible
+  invariant 17), approved at its third review round on 2026-10-23. No generator ever owned them,
+  so they are owner `comfyui` in the manifest, not hand-replaced, and `verify_art.py` lists them as
+  not generated. They are made by `public/images/S1/brass_presser/scripts/`: `presser_draft.py`
+  draws each frame as a part-mapped draft, ComfyUI redraws only each facing's base, and
+  `compose.py` derives every frame from its facing's cleaned base (texture as one-tone steps,
+  parts layered per facing by its `LAYERS`); west is the east profile mirrored and re-lit. A
+  change to one frame is made there and the 28 composed again, never by hand in `godot/art/`.

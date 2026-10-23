@@ -305,9 +305,17 @@ namespace GolemFactory.Nodes.Scenarios
                     problems.Add($"{label} has no node");
                     continue;
                 }
-                if (view.BodySprite != g.Program.chassis.chassisSprite)
+                // Its own chassis's frame for what it is doing, in its facing (GolemFrames): the
+                // frame file where the chassis has one, its south base where it doesn't yet.
+                string stem = GolemFrames.Stem(g.Program.chassis.chassisSprite);
+                string want = GolemFrames.Resolve(stem, view.DrawnFrame, n => ResourceLoader.Exists("res://art/" + n));
+                if (view.DrawnFrame.Facing != g.Facing)
                 {
-                    problems.Add($"{label} draws {view.BodySprite}, not {g.Program.chassis.chassisSprite}");
+                    problems.Add($"{label} faces {g.Facing} but draws its {view.DrawnFrame.Facing} frame");
+                }
+                if (view.BodySprite != want || !want.StartsWith(stem, StringComparison.Ordinal))
+                {
+                    problems.Add($"{label} draws {view.BodySprite}, not its own {want}");
                 }
             }
             if (nodes.TryGetValue(g7, out GolemNode g7View) && !(g7View.BadgeVisible && g7View.BadgeText.StartsWith("[!] ") && !g7View.BadgeText.Contains(g7.GolemId)))
