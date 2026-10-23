@@ -229,7 +229,7 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(11, golem.Program.GetQuantityAt(2));
         }
 
-        /// <summary>Overclocker cards in the pack's wallet's view: what the pack holds of each good.</summary>
+        /// <summary>What the wallet holds of each good the Overclocker costs.</summary>
         private static Dictionary<string, int> PackOf(SandboxWorld world) =>
             world.Definitions.Chassis["MainspringOverclocker"].cost
                 .ToDictionary(c => c.itemType, c => world.Wallet.Quantity(c.itemType));

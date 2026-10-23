@@ -231,8 +231,44 @@ namespace GolemFactory.Economy
             return -1;
         }
 
-        /// <summary>Forgets every cart on the road. The load path: a save restores stall stock,
-        /// and replaying a delivery that was in flight when the player quit would mint goods.</summary>
+        /// <summary>Forgets every cart on the road.</summary>
         public void Clear() => _inTransit.Clear();
+
+        /// <summary>
+        /// Every cart on the road as a save records it: the stall, the load, and the ticks it
+        /// still has to go. Ticks left, not the arrival tick, because a save keeps no tick count.
+        /// </summary>
+        public IEnumerable<(string nodeId, int quantity, long ticksLeft)> CartsOnTheRoad(long currentTick)
+        {
+            foreach (PendingDelivery delivery in _inTransit)
+            {
+                long left = delivery.ArrivesOnTick - currentTick;
+                yield return (delivery.NodeId, delivery.Quantity, left < 0 ? 0 : left);
+            }
+        }
+
+        /// <summary>
+        /// A load: the carts a save had on the road replace the ones on it now, each arriving
+        /// as many ticks from now as it had left. Without it, a cart paid for before the save
+        /// vanished on a fresh launch, and one ordered after the save arrived anyway on a load,
+        /// with the price back in the pack (Phase 3 critique). One per stall, as an order is.
+        /// </summary>
+        public void RestoreCarts(IEnumerable<(string nodeId, int quantity, long ticksLeft)> carts, long currentTick)
+        {
+            _inTransit.Clear();
+            foreach ((string nodeId, int quantity, long ticksLeft) in carts)
+            {
+                if (string.IsNullOrEmpty(nodeId) || quantity <= 0 || IsInTransit(nodeId))
+                {
+                    continue;
+                }
+                _inTransit.Add(new PendingDelivery
+                {
+                    NodeId = nodeId,
+                    Quantity = quantity,
+                    ArrivesOnTick = currentTick + (ticksLeft < 0 ? 0 : ticksLeft),
+                });
+            }
+        }
     }
 }

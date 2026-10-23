@@ -401,6 +401,7 @@ namespace GolemFactory.World
             List<GolemEntity> live = LiveGolems();
             SaveData data = SaveLoadService.CaptureState(Buffers, Patents, live, Build.Buildings);
             data.progress = CaptureProgress();
+            data.market = CaptureMarket();
             SaveFileIO.WriteToFile(data, path);
             return $"Saved {live.Count} golems and {data.buildings.Count} buildings.";
         }
@@ -423,6 +424,7 @@ namespace GolemFactory.World
             }
 
             RestoreProgress(data.progress);
+            RestoreMarket(data.market);
 
             IGolemRespawner respawner = _stationTemplate != null ? new StationGolemRespawner(_stationTemplate) : null;
             SaveLoadService.RestoreReport report = SaveLoadService.RestoreState(
@@ -462,6 +464,53 @@ namespace GolemFactory.World
 
         private DraftableCardCatalog _deck;
         private string _claimUserId;
+
+        /// <summary>
+        /// The stalls' stock and the carts on the road. A load restores them with the pack, so
+        /// a truckload paid for before a save arrives after loading it, even on a fresh launch,
+        /// and one ordered after the save does not arrive on top of its refunded price.
+        /// </summary>
+        private MarketEntry CaptureMarket()
+        {
+            var market = new MarketEntry();
+            foreach (ResourceNode node in Nodes.Nodes)
+            {
+                if (node.RemainingQuantity != ResourceNode.Infinite)
+                {
+                    market.stallIds.Add(node.NodeId);
+                    market.stallStocks.Add(node.RemainingQuantity);
+                }
+            }
+            if (Market != null)
+            {
+                foreach ((string nodeId, int quantity, long ticksLeft) in Market.CartsOnTheRoad(Clock.CurrentTick))
+                {
+                    market.cartStallIds.Add(nodeId);
+                    market.cartQuantities.Add(quantity);
+                    market.cartTicksLeft.Add(ticksLeft);
+                }
+            }
+            return market;
+        }
+
+        private void RestoreMarket(MarketEntry market)
+        {
+            if (market == null)
+            {
+                return; // a save from before the street was saved: leave it as it is
+            }
+            for (int i = 0; i < market.stallIds.Count && i < market.stallStocks.Count; i++)
+            {
+                if (Nodes.TryGetNode(market.stallIds[i], out ResourceNode node))
+                {
+                    node.RestoreQuantity(market.stallStocks[i]);
+                }
+            }
+            int carts = System.Math.Min(market.cartStallIds.Count,
+                System.Math.Min(market.cartQuantities.Count, market.cartTicksLeft.Count));
+            Market?.RestoreCarts(Enumerable.Range(0, carts)
+                .Select(i => (market.cartStallIds[i], market.cartQuantities[i], market.cartTicksLeft[i])), Clock.CurrentTick);
+        }
 
         private ProgressEntry CaptureProgress()
         {

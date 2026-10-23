@@ -11,6 +11,9 @@ namespace GolemFactory.World
 
         public void Register(ResourceNode node) => _nodes[node.NodeId] = node;
 
+        /// <summary>Every node, in the order they were registered: what a save walks.</summary>
+        public IEnumerable<ResourceNode> Nodes => _nodes.Values;
+
         public bool TryGetNode(string nodeId, out ResourceNode node)
         {
             if (nodeId == null)

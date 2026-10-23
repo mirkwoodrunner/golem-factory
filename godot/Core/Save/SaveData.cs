@@ -36,6 +36,27 @@ namespace GolemFactory.Save
         // The factory's progress (G10): what Unity's save never held. Null in a save written
         // before it existed, and a load then leaves progress exactly as it is.
         public ProgressEntry progress;
+
+        /// <summary>
+        /// The market street: what each stall holds and the carts on the road (Phase 3
+        /// critique). Null in a save written before it, and a load then leaves the street as it is.
+        /// </summary>
+        public MarketEntry market;
+    }
+
+    /// <summary>
+    /// The stalls' stock and the truckloads in flight, as parallel lists like
+    /// <see cref="BufferEntry"/>. A truckload keeps the ticks it still has to travel, since a
+    /// save keeps no tick count.
+    /// </summary>
+    [Serializable]
+    public sealed class MarketEntry
+    {
+        public List<string> stallIds = new List<string>();
+        public List<int> stallStocks = new List<int>();
+        public List<string> cartStallIds = new List<string>();
+        public List<int> cartQuantities = new List<int>();
+        public List<long> cartTicksLeft = new List<long>();
     }
 
     /// <summary>
