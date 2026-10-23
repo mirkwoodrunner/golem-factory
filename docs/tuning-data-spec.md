@@ -925,7 +925,7 @@ The profile is `docs/performance-report-phase3.md`. Both numbers come from
 
 The Phase 3 Critique agent, on `phase3/tuning` from c73068c (where an interrupted run had fixed
 the Ledger's chassis and boiler texts). Each item of the roadmap's checklist, its verdict, and
-what was fixed. Every fix has a test; 1,920 Core tests and all 16 scenarios pass.
+what was fixed. Every fix has a test; 1,921 Core tests and all 16 scenarios pass.
 
 ### 19.1 Verdicts
 

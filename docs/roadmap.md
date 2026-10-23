@@ -47,7 +47,7 @@ nine phases are done, the user's call). Done:
   (`market-late`, not `market`); and the Godot project compiles again (the review broke
   `PerfScenario`).
 
-At the latest test run, 1920 Core tests and 16 scenarios passed.
+At the latest test run, 1921 Core tests and 16 scenarios passed.
 
 **Resume here:**
 1. **The Phase 3 Test agent:**
