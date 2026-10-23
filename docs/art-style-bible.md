@@ -1,14 +1,19 @@
 # Art style bible
 
-Written 2026-10-22 for Phase 4 (`docs/roadmap.md`, "Phase 4: Art"). It says what the game's
-art looks like and which numbers the code depends on. `docs/art-pipeline-design.md` says how a
-set is made, checked and committed, in what order, and what the user still has to decide.
+Written 2026-10-22 for Phase 4 (`docs/roadmap.md`, "Phase 4: Art"); revised 2026-10-23 to the
+user's twelve decisions (`art-pipeline-design.md` §9). It says what the game's art looks like
+and which numbers the code depends on. `docs/art-pipeline-design.md` says how a set is made,
+checked, shown and committed, and in what order.
 
-The two references are the art that already took the chosen route (roadmap decision 3, ComfyUI
-plus hand cleanup): **the five market carts** (`stall_*.png`) and **the Clock Tower**
-(`clock_tower_*.png`). Every number below that says "measured" was read from those files, or from
-the current sprites, on 2026-10-22 at 8b3ec0b. A number that says "proposed" waits for the user's
-approval (`art-pipeline-design.md` §9, decision 1).
+The two references are the art that already took the ComfyUI route: **the five market carts**
+(`stall_*.png`) and **the Clock Tower** (`clock_tower_*.png`). Every number below that says
+"measured" was read from those files, or from the current sprites, on 2026-10-22 at 8b3ec0b.
+
+**Cleanup is tool-only** (decision 4). Every set is cleaned by `Tools/Art/` scripts, shown to the
+user on a before/after review sheet, and only the frames the user marks get a ComfyUI redo, a
+scripted fix, or the user's hand on that one frame. Where this document says "hand-replaced",
+it means the bookkeeping owner (a file a generator no longer owns, as `verify_art.py`'s
+`KNOWN_HAND_REPLACED` and `CLAUDE.md` name it), not that a hand did the work.
 
 ## 0. Invariants
 
@@ -36,23 +41,28 @@ An art pass must not break any of these. Each names what catches a violation tod
    - A chassis is at most 64 × 96. Its badge floats `BadgeLiftCells` = 1.75 cells (112 px) above
      the feet (`GolemNode`), and hover picks "the golem's cell, or the cell above its feet". A
      taller golem hides its own badge and has a head that can't be hovered.
+   - **All 28 frame files of one chassis share one canvas size and one foot row** (§4), so a
+     frame swap never makes the golem jump.
    - Pipe and belt tiles are 64 × 64 and centre-pivoted, because they rotate in quarter turns.
    - The 9-slice UI plates keep their margins (§6.7): a redraw that moves a plate's border moves
-     every screen laid out in `Ugui` numbers.
+     every screen laid out in `Ugui` numbers. The HUD redraw (S6) keeps each pack piece's size
+     and margins under its new name.
    - The walk frames are 16 files, `artificer_walk_{down,left,right,up}_{0..3}.png`, all one
      size (`ArtificerWalkAnimation`, 4 directions × 4 frames).
 5. **File names are API.** `data/*.json` names sprites (`chassisSprite`, `sprite`,
    `itemSprites`, the shape sprites), `ItemIcons.PathFor` builds `item_<snake_case>.png` from the
-   item type, `ClockTowerArt.Stage(n)` builds `clock_tower_stage<n>`, and `SandboxLayout` names
-   the walls and props. A redraw replaces a file under its own name. Renaming one is a code change.
+   item type, `ClockTowerArt.Stage(n)` builds `clock_tower_stage<n>`, `GolemFrames` builds the
+   golem frame names from `chassisSprite` (§4), and `SandboxLayout` names the walls and props. A
+   redraw replaces a file under its own name. Renaming one is a code change, made in the same
+   commit as the art (S6's HUD pieces are the one planned case).
 6. **Copper ore is green**, as malachite, on the cart (`stall_copper_ore.png`) and on the good
    (`item_copper_ore.png`) alike. The good is generated (`generate_placeholder_art.py`); the cart
    is hand-replaced. A change to one is matched in the other in the same commit.
 7. **Moods read over the art.** A golem's mood is a multiplicative body tint
    (`GolemMoodPalette.Tint`) plus a badge, and its source and target tiles are drawn on the floor
-   at z −1 (`GolemTileOverlay`). New art must leave all three readable (§5). Red, steel blue and
-   grey belong to the moods (invariant 8). Caught by: the `moods` and `hover` scenarios, and
-   `check_art.py`'s tint-shift check (§5.2).
+   at z −1 (`GolemTileOverlay`). New art must leave all three readable (§5), in every facing.
+   Red, steel blue and grey belong to the moods (invariant 8). Caught by: the `moods` and `hover`
+   scenarios, and `check_art.py`'s tint-shift check (§5.1).
 8. **Reserved state colours.** Saturated red means "the player must act", steel blue means "no
    steam", grey means "waiting, fine" (`docs/onboarding-feedback-design.md` §3). No sprite uses
    a large area of saturated red or of steel blue as its own colour (§5.3), so a tint or badge is
@@ -67,28 +77,41 @@ An art pass must not break any of these. Each names what catches a violation tod
     user wants replaced moves to `hand-replaced`; it never stays "generated" with different
     pixels.
 11. **The route the user chose, and only that route, ships.** Shipped art is made through
-    ComfyUI plus hand cleanup (roadmap decision 3), or by a generator in `Tools/Art/`, or it is
-    the third-party Steampunk UI pack already in the tree. Throwaway mockups go to
-    `public/images/`, never `godot/art/` (`CLAUDE.md`, "AI image generation"). The chassis and
-    the Artificer came from RetroDiffusion before that decision; they are on the replacement list
-    (`art-pipeline-design.md` §3), not a precedent.
+    ComfyUI with tool-only cleanup (roadmap decision 3, narrowed by decision 4 here), or by a
+    generator in `Tools/Art/`. The user's hand touches only a frame the user marked on a review
+    sheet. **The Steampunk UI pack is being replaced** (decision 9): nothing new is taken from
+    it, and its files leave the tree when S6 lands. Throwaway mockups go to `public/images/`,
+    never `godot/art/` (`CLAUDE.md`, "AI image generation"). The chassis and the Artificer came
+    from RetroDiffusion before decision 3; they are replaced first (S1, S1b), not a precedent.
 12. **The font is not art.** Text stays in the project font, printable Latin-1 plus → ≥ █ ░
     (`font-glyphs` scenario). Nothing is lettered into a sprite that the player must read: a
-    label in a texture can't be translated or checked by `PlayerText.RawIdIn`.
+    label in a texture can't be translated or checked by `PlayerText.RawIdIn`. This also keeps
+    mirroring safe: a mirrored frame has no text to reverse.
 13. **Depth bands stay where they are.** The floor is z −10, floor-level things (belts, pipes,
     ghost, shadows, the tile overlay) are −1, a belt's own tile −2. New art adds no layer below
     −10. A sprite's painted contact shadow sits inside its pivot allowance (the carts' three
     rows, a wall's three), and every other shadow is the shared `ground_shadow.png` at z −1.
 14. **The perf budget holds with the new art and the lighting on**
     (`docs/performance-report-template.md` §1). Art that needs more nodes, more lights or a
-    shader per golem is measured by the `perf` scenario before it ships.
+    shader per golem is measured by the `perf` scenario before it ships. A frame swap is a
+    texture change on the existing body sprite, never a node.
+15. **The light comes from the upper left in every frame, mirrored ones included** (§2.2). A
+    mirrored frame is re-shaded before it ships. Caught by: `check_art.py`'s light-direction
+    check (`art-pipeline-design.md` §5.2, check 14).
+16. **No set is committed before the user has seen its review sheet**: before and after, at the
+    default, closest and widest zooms (`art-pipeline-design.md` §2, step 10).
 
 ## 1. Palette
 
-**Proposed.** Built from the carts and the tower (measured), with the brass highlight and the
-glow colours taken from the generators where the references have none. `check_art.py` reads it
-from `Tools/Art/palette.json` (`art-pipeline-design.md` §5.2). Every opaque pixel of a sprite in
-a replaced set is one of these colours, or the set's manifest entry lists the extra colours it
+**Approved 2026-10-23** (decision 1), as proposed. The two ramps no reference measured, the
+brass highlight `#e2c27a` and the fire ramp, are confirmed on the first chassis's review sheet
+before any other set uses them; if the user marks them there, they change here and in
+`palette.json` before the second chassis.
+
+Built from the carts and the tower (measured), with the brass highlight and the glow colours
+taken from the generators where the references have none. `check_art.py` reads it from
+`Tools/Art/palette.json` (`art-pipeline-design.md` §5.2). Every opaque pixel of a sprite in a
+replaced set is one of these colours, or the set's manifest entry lists the extra colours it
 needs (a good's own hue, for instance) and why.
 
 Each ramp runs dark to light. Four tones is the usual material; the outline sits below the ramp.
@@ -99,13 +122,13 @@ Each ramp runs dark to light. Four tones is the usual material; the outline sits
 | **Mahogany** (red-brown wood) | `#34261f` `#432e25` `#553c30` `#775039` `#874f33` `#815e47` | The carts' wood after the softening pass (measured) |
 | **Floor plank** (the darkest wood; background) | `#231710` `#36251c` `#413027` `#574430` | `floor_tile*.png` (measured); the floor stays below the props in value |
 | **Bone / canvas** (highlights, awnings, paper) | `#bda694` `#c1ab98` `#d0bfaa` | Cart awnings and the tower's stone highlight (measured) |
-| **Brass** | `#7d7153` `#967850` `#c49544` `#e2c27a` | `#7d7153` carts, `#967850` tower (measured); `#c49544` is `generate_placeholder_art.BRASS`; `#e2c27a` proposed |
+| **Brass** | `#7d7153` `#967850` `#c49544` `#e2c27a` | `#7d7153` carts, `#967850` tower (measured); `#c49544` is `generate_placeholder_art.BRASS`; `#e2c27a` approved, confirmed on the first chassis |
 | **Copper** | `#874f33` `#b87d5f` `#c08564` | Boiler and tower trim (measured) |
 | **Iron / stone** | `#474242` `#51534f` `#6a6261` `#7d736f` `#9a8d85` | Tower masonry, cart ironwork (measured) |
 | **Malachite** (copper ore only) | `#3e704a` `#567a56` `#609e68` `#96c896` | `item_copper_ore.png` and its cart (measured); invariant 6 |
 | **Aether** (teal, and the golems' eyes) | `#296b6a` `#326f69` `#5ed6c8` | Aether cart (measured); `#5ed6c8` is `TEAL_GLOW` |
 | **Steam** (puffs, vapour) | `#6e584e` `#b0a096` `#ded6cc` `#faf6ee` | `fx_steam_puff.png` (measured) |
-| **Fire** (fireboxes, the hearth, the Overclocker's glow) | `#7a2e14` `#c4561f` `#f0a040` `#ffe08a` | Proposed; it matches `GolemNode.GlowTint`'s forge orange |
+| **Fire** (fireboxes, the hearth, the Overclocker's glow) | `#7a2e14` `#c4561f` `#f0a040` `#ffe08a` | Approved; it matches `GolemNode.GlowTint`'s forge orange; confirmed on the first chassis |
 
 What stays out:
 
@@ -124,7 +147,8 @@ What stays out:
 - One pixel wide, on the silhouette only, in the outline ramp. No black.
 - **Selective outline:** where a lit edge meets the background, the outline may step up to the
   material's darkest tone instead (the carts do this on their awnings). It never steps up on the
-  shadow side.
+  shadow side. On a mirrored frame, `reshade_mirror.py` moves the stepped-up outline back to
+  the lit (left) side.
 - Interior lines (a panel seam, a rivet row) use the material's darkest tone, not the outline
   colour, so the silhouette stays the strongest line in the sprite.
 - **Floor tiles, belts and pipes have no outline.** They are background: a seam or a rim in the
@@ -135,7 +159,12 @@ What stays out:
 ### 2.2 Light direction
 
 - **The key light comes from the upper left** (north-west, about ten o'clock). Highlights go on
-  top and left edges, shade on the right and bottom.
+  top and left edges, shade on the right and bottom. This holds for every facing of a golem and
+  every direction of the Artificer: the light is the room's, not the body's.
+- **A mirrored frame is re-shaded, never shipped as a plain flip.** Mirroring an east frame to
+  make the west one moves its highlights to the right edge. `reshade_mirror.py`
+  (`art-pipeline-design.md` §5.7) puts them back on the left, and `check_art.py` measures it
+  (§5.1's light-direction rule).
 - The room's real light, the sconces on the north wall, comes from the top. The painted light
   agrees with it, so a lit pool on the floor and a highlight on a crate don't argue.
 - **Sprites that rotate are lit from straight above**: belt and pipe tiles, the facing arrow,
@@ -162,22 +191,29 @@ What stays out:
 
 ### 2.4 Alpha
 
-- Alpha is 0 or 255. The one-pixel soft edge an AI render leaves is removed in cleanup
+- Alpha is 0 or 255. The one-pixel soft edge an AI render leaves is removed by tool
   (`palette_snap.py`, `art-pipeline-design.md` §5.3), as `slice_artificer_walk.py` already does
   with its hard alpha threshold.
 - Allowed partial alpha: a contact shadow inside the pivot allowance (the carts' rows 114–119,
   measured), `ground_shadow.png`, FX (`fx_steam_puff.png`, future glows), and UI glow frames.
 
-### 2.5 Pixel density
+### 2.5 Pixel density and zoom
 
-- One art pixel per world pixel (invariant 2). **The camera's zoom is continuous**:
-  `CameraRigNode` sets an orthographic size in cells (`CameraRigRules.Zoom`, clamped to
-  `MinOrthographicSize`..`MaxOrthographicSize`), so at most zooms one art pixel covers a
-  non-whole number of screen pixels and nearest-neighbour makes some columns one pixel wider than
-  others. Art is judged at the default zoom, the closest zoom and the widest. Whether zoom should
-  snap to whole pixel scales is decision 7 in `art-pipeline-design.md` §9.
-- **Detail size:** the smallest feature that must read is 2 × 2 pixels at zoom 1 (an eye, a
-  rivet you want seen). A 1-pixel detail is texture, not information.
+- One art pixel per world pixel (invariant 2). **The camera's zoom stays continuous for Phase 4**
+  (decision 7): `CameraRigNode` sets an orthographic size in cells (half the view's height,
+  `CameraRigRules.Zoom`, clamped to `MinOrthographicSize` 3 .. `MaxOrthographicSize` 15, default
+  10). Snapping zoom to whole pixel scales is a Phase 6 (game feel) call.
+- **What the three zooms do to a pixel** (screen px per art px = half the window height ÷
+  (size × 64)). At the project's 1280 × 720 window: **default 0.56, closest 1.88, widest 0.38**;
+  at a 1080-high window, 0.84, 2.81 and 0.56. So at the default and widest zooms the art is
+  shrunk, and nearest-neighbour drops whole rows and columns. A run of *k* art pixels always
+  survives a scale *s* when *k* ≥ ⌈1/*s*⌉: 2 pixels at the default zoom, 3 at the widest.
+- **Detail size:** the smallest feature that must read is **2 × 2** pixels (an eye, a rivet you
+  want seen), so it survives the default zoom. The features that tell one chassis or one good
+  from another (an eye, a notch in the silhouette, the gap between treads) are **3 pixels**
+  across, so they survive the widest. A 1-pixel detail is texture, not information.
+- **Art is judged at the default, closest and widest zooms**, and every review sheet shows all
+  three (invariant 16).
 - **ComfyUI renders at 8× the target grid** and is reduced to it with nearest-neighbour or
   k-centroid, never bilinear (`G:/AI/comfy_generate.py` does 1024 → 128 for the Pixel Art XL
   LoRA). A 64 × 96 chassis renders at 512 × 768.
@@ -189,12 +225,12 @@ that category. `art-pipeline-design.md` §4 lists every file.
 
 | Category | Canvas | Pivot | Notes |
 |---|---|---|---|
-| Golem chassis | **64 × ≤ 96** (today 64 × 86 to 64 × 96) | BottomCenter, feet on the bottom row | Badge at 112 px; hover covers the cell and the one above |
+| Golem chassis | **64 × ≤ 96** (today 64 × 86 to 64 × 96), one size for all 28 frames of a chassis | BottomCenter, feet on the bottom row | Badge at 112 px; hover covers the cell and the one above |
 | Artificer walk frames | 64 × 93, all 16 the same | BottomCenter | One shared foot row (`trim_character_alpha.py`'s shared-minimum rule) |
 | Floor, street tiles | 64 × 64, seamless on all four sides | centred on the cell | Variants (`_wood_b/c/d`, `_cobble_b`) share edges |
 | Floor edge, kerb | 64 × 24 | top centre (`1f`) | Hang below their edge |
-| North wall | 64 × 96 | (0.5, 3/96) | Lamp variants identical except the sconce |
-| Side walls | 40 × 64 | x 3/40 (E) or 37/40 (W), y centre | Mirror pair |
+| North wall | 64 × 96 | (0.5, 3/96) | Lamp variant identical except the sconce |
+| Side walls | 40 × 64 | x 3/40 (E) or 37/40 (W), y centre | Mirror pair (lit from straight above, so no re-shade) |
 | Corner post | 50 × 96 | (0.5, 1/96) | |
 | Props | ≤ 56 × 56 | (0.5, 1/56) | Stand on `ground_shadow` |
 | One-cell buildings | ≤ 80 wide × ≤ 120 tall | BottomCenter | Depot 62 × 69, Post 62 × 92, boiler 71 × 114, mast 52 × 118 today |
@@ -212,57 +248,128 @@ The simulation runs at 10 ticks a second at 1× (`SimulationClock.TicksPerSecond
 today is one body sprite moved by transforms: scale, skew, offset and tint
 (`GolemWorkMotion`, `GolemAnimationUtility`), with the steam puff on impacts. **That stays.**
 Frames are added on top of it, never instead of it, because the transform motion is what the
-`golem-motion` scenario checks and what ties the stroke to the tick the output appears.
+`golem-motion` scenario checks and what ties the stroke to the tick the output appears. The
+motion already knows the facing (a lunge shifts along it), so it needs no change for facing
+frames.
 
-**Proposed** frame sets (decision 2 in the pipeline doc says how many to draw):
+### 4.1 The frame set (decided: the full set, decision 2; every facing, decision 3)
 
-| State | Frames per chassis | Timing | What changes |
-|---|---|---|---|
-| **Idle** (Working with no motion, Sleeping, Waiting, Unprogrammed) | 2 | Eye-glow pulse: frame 0 for 1.6 s, frame 1 for 0.2 s, wall-clock | The eye or core lamp brightens. The body doesn't move; the bob does that |
-| **Work**, the signature verb only | 3 key poses: wind-up, impact, recover | **Progress-driven**, by stroke phase: wind-up 0 – 0.62, impact 0.62 – 0.80, recover 0.80 – 1 (`StampImpact` = 0.62) | Presser: ram up, ram down. Overclocker: same, mainspring wound. Scavenger: arm reaching, gripping. Hauler: cargo bed tipped back. Zeppelin: crouched, launch |
-| Work, other verbs | 0 (base frame) | — | Transform motion only, as today |
-| **Stall** (Stalled, Starved) | 1 | Held while stopped | Slumped: head down, eye dim. The shake and the tint still play |
-| **Carry** | 1 | Held while carried | Limbs or treads tucked, as if lifted |
-| Walk | — | Golems never walk | — |
-| **Artificer walk** | 4 directions × 4 | Stride-driven (`ArtificerWalkAnimation.DefaultStrideLength` = 0.35 cells a frame) | As today |
+**Every chassis gets every frame, in every facing.** Nothing is staged or cut.
+
+| State | Frame slots per facing | Distinct files per facing | Timing | What changes |
+|---|---|---|---|---|
+| **Base** | 1 | 1 | — | The resting body. Also the work frame for every verb but the signature one, the Workbench's chassis pane (south), and the fallback for any missing frame |
+| **Idle** (Working with no motion, Sleeping, Waiting, Unprogrammed) | 2 | 1 (`idle_1`; idle 0 *is* the base) | Eye-glow pulse: frame 0 for 1.6 s, frame 1 for 0.2 s, wall-clock | The eye or core lamp brightens. The body doesn't move; the bob does that |
+| **Work**, the signature verb only | 3 key poses: wind-up, impact, recover | 3 | **Progress-driven**, by stroke phase: wind-up 0 – 0.62, impact 0.62 – 0.80, recover 0.80 – 1 (`StampImpact` = 0.62) | Presser: ram up, ram down. Overclocker: same, mainspring wound. Scavenger: arm reaching, gripping. Hauler: cargo bed tipped back. Zeppelin: crouched, launch |
+| Work, other verbs | 0 (base frame) | 0 | — | Transform motion only, as today |
+| **Stall** (Stalled, Starved) | 1 | 1 | Held while stopped | Slumped: head down, eye dim. The shake and the tint still play |
+| **Carry** | 1 | 1 | Held while carried | Limbs or treads tucked, as if lifted |
+| **Total** | **8** | **7** | | |
+| Walk | — | — | Golems never walk | — |
+| **Artificer walk** | 4 directions × 4 | 16 | Stride-driven (`ArtificerWalkAnimation.DefaultStrideLength` = 0.35 cells a frame) | As today |
+
+**The count, exactly.** 8 frame slots per facing, 7 distinct pictures (the idle pulse's first
+frame is the base). Per chassis, 7 × 4 facings = **28 files**: 21 drawn through ComfyUI (south,
+north, east) and 7 made by `reshade_mirror.py` (west, from east). For the five chassis,
+**140 files: 105 drawn, 35 mirrored and re-shaded.** The "35 × 4 = 140" quoted with decision 3
+counts the same files: 35 is 7 pictures × 5 chassis. The fallback
+`golem_generic_copper.png` stays one file, south only, since play never shows it. The Artificer
+is 16 files: 12 drawn (down, up, right) and 4 mirrored and re-shaded (left, from right).
 
 Stroke lengths the work frames follow (`GolemWorkMotion`): a stamp is 8 ticks (0.8 s at 1×), the
 Overclocker's 5 ticks (0.5 s), a tug 7 ticks (0.7 s). At 4× a stamp is 0.2 s, so the impact pose
 is on screen for about two frames at 60 fps; it must read in one.
 
-**One facing.** A golem has one picture for all four facings today; the facing arrow says which
-way it points. Facing frames would multiply every count above by up to 3 (decision 3).
+### 4.2 Facings (decided: full facing, decision 3)
 
-**Choosing a frame is a rule, so it lives in Core**: a pure `GolemFrames.FrameFor(mood, motion,
-strokePhase, carried, time)` beside `GolemWorkMotion`, with tests, and `GolemNode` only sets the
-texture. A chassis with no frames for a state falls back to its base frame, so the art can land
-one chassis at a time.
+Four facings, `Facing.North`, `East`, `South`, `West` (`Core/World/Facing`). Each frame is made
+**three ways drawn, one way mirrored**:
+
+- **South** (front), **north** (back) and **east** (side, facing right) are drawn through
+  ComfyUI (`art-pipeline-design.md` §2).
+- **West** is east mirrored, then re-shaded by `reshade_mirror.py` so the light still comes from
+  the upper left (§2.2), then checked (`check_art.py` check 14) and shown on the review sheet
+  like every other frame.
+
+The facing arrow stays: it is a state tool, and it says which tile is in front even where a
+body's front and back look alike.
+
+### 4.3 File names
+
+The south base keeps the name the data gives it, `chassisSprite` in `data/chassis.json`
+(`chassis_brass_presser.png`): it is what the Workbench pane and the fallback show, and renaming
+it is a data change for nothing. **Every other frame is named from that stem:**
+
+```
+<stem>_<state>[_<n>]_<facing>.png
+stem   = chassisSprite without ".png"          (chassis_brass_presser)
+state  = base | idle_1 | work_0 | work_1 | work_2 | stall | carry
+facing = north | east | south | west
+```
+
+So `chassis_brass_presser_work_1_east.png` is the Presser's impact pose facing east, and
+`chassis_brass_presser_base_south.png` does not exist: the south base is `chassis_brass_presser.png`.
+`<n>` is the frame's index within its state (idle 0 is the base, so only `idle_1` has a file).
+The names are built in Core, so no chassis name is written in code.
+
+The Artificer keeps its 16 names, `artificer_walk_{down,left,right,up}_{0..3}.png` (invariant 4).
+
+### 4.4 Choosing a frame is a rule, so it lives in Core
+
+- **`GolemFrames.FrameFor(mood, motion, strokePhase, carried, time, facing)`**, pure, beside
+  `GolemWorkMotion`, with tests, returns a `GolemFrameKey` (state, index, facing). Facing is an
+  input: each facing has its own frame set.
+- **`GolemFrames.FileName(stem, key)`** builds the name of §4.3.
+- **`GolemFrames.Resolve(stem, key, exists)`** walks the fallback, with `exists` a predicate the
+  node passes (`ResourceLoader.Exists`; a test passes a set):
+  1. the frame in its facing;
+  2. **a missing facing falls back to south**, the same state and index;
+  3. a missing state falls back to the base in the asked facing;
+  4. then the south base (`<stem>.png`);
+  5. then `golem_generic_copper.png`, `GolemNode.FallbackSprite`, as today.
+- `GolemNode` resolves each key once per chassis and caches the textures, and only sets
+  `_body.Texture`. The fallback lets art land one chassis at a time, though Phase 4 is not done
+  until every chassis has all 28 files (`art-pipeline-design.md` §8).
 
 ## 5. Readability
 
 ### 5.1 Golems
 
-- **Each chassis is told apart by its silhouette alone.** Check: the alpha masks of any two
-  chassis, aligned at the feet, overlap at most **0.50** (intersection over union). Measured
-  today: Presser and Zeppelin 0.60, Hauler and Zeppelin 0.59, Hauler and Presser 0.58; the
-  Scavenger and Overclocker pairs 0.28–0.40. The three boxy humanoids are the problem.
-  `docs/digital-design.md`'s roster gives each its shape: the Scavenger a rickety tripod, the
-  Presser bolted to the floor, the Hauler on treads, the Overclocker a thin butler, the Zeppelin
-  a massive behemoth. The redraw follows the roster, not the current sprites.
+- **Each chassis is told apart by its silhouette alone, in every facing.** Check: for each
+  facing, the alpha masks of any two chassis' base frames, aligned at the feet, overlap at most
+  **0.50** (intersection over union). Measured today (one facing): Presser and Zeppelin 0.60,
+  Hauler and Zeppelin 0.59, Hauler and Presser 0.58; the Scavenger and Overclocker pairs
+  0.28–0.40. The three boxy humanoids are the problem. `docs/digital-design.md`'s roster gives
+  each its shape: the Scavenger a rickety tripod, the Presser bolted to the floor, the Hauler on
+  treads, the Overclocker a thin butler, the Zeppelin a massive behemoth. The redraw follows the
+  roster, not the current sprites. Side views are where bodies differ most; back views, where
+  they differ least, so north is the facing to watch.
+- **A pose keeps its chassis.** Every frame of a chassis overlaps its own base in that facing
+  more than it overlaps any other chassis' base in that facing, so a stall or carry pose never
+  reads as a different golem.
+- **The light comes from the upper left on every frame** (invariant 15). Measured as the
+  *edge-light score*: over the rows of a sprite, the mean OKLab lightness of the first
+  non-outline pixel inside each row's left silhouette edge, minus that of the last one inside
+  the right edge. Every frame of a standing sprite scores at least **+0.02**; a mirrored frame
+  scores at least **0.8 ×** its source's score. A plain flip of a correctly lit frame scores
+  about minus its source, so it fails.
 - **A golem is light enough for its tint to read.** The mood tint multiplies the body, so a dark
-  body barely changes. Check: the body's mean OKLab lightness is at least **0.40**, and the
-  Stalled tint moves its mean colour at least **0.10** in OKLab. Measured today: lightness
-  0.28–0.42, Stalled shift 0.056 (Presser) to 0.125 (Overclocker). Only the Overclocker passes.
-- **The Stalled, Starved and Waiting tints stay distinct** on every chassis: pairwise OKLab
-  distance of the tinted means at least 0.06 (today 0.054–0.079).
+  body barely changes. Check, on every frame: the body's mean OKLab lightness is at least
+  **0.40**, and the Stalled tint moves its mean colour at least **0.10** in OKLab. Measured
+  today: lightness 0.28–0.42, Stalled shift 0.056 (Presser) to 0.125 (Overclocker). Only the
+  Overclocker passes.
+- **The Stalled, Starved and Waiting tints stay distinct** on every chassis and facing: pairwise
+  OKLab distance of the tinted means at least 0.06 (today 0.054–0.079).
 - Golems are the most saturated, highest-contrast things on the floor (§2.3), and every chassis
-  has a lit teal eye or lamp, the one teal the room allows apart from Aether.
+  has a lit teal eye or lamp in its south and side views (on the north view, a lamp on the back
+  or none), the one teal the room allows apart from Aether.
 
 ### 5.2 Tiles and overlays
 
 - The source and target tiles (`build_ghost_tile.png`, tinted teal and gold) and the facing
   arrow must read on every floor tile, street tile and belt. The `hover` scenario's capture is
-  the check, with the lighting on.
+  the check, with the lighting on, and `LightingRulesTests` checks it in numbers
+  (`art-pipeline-design.md` §6.4).
 - The floor's value range stays narrow (`#231710` to `#574430`) so that every tint, ghost and
   overlay sits on a quiet ground.
 
@@ -277,24 +384,34 @@ one chassis at a time.
 
 ### 5.4 Goods icons
 
-- **Each good is told apart by shape, not colour alone.** Check: at 24 × 24 (nearest-neighbour
-  from 32, which is how inventory rows draw them), any two goods' alpha masks overlap at most
-  **0.80**, or their mean colours differ by at least 0.15 in OKLab. Measured today: Brass and
-  Copper Ingot share an identical silhouette (overlap 1.00), Copper Wire and Lens 0.83, Copper
-  Ore and Lens 0.81.
+**The inventory rows stay at 24 pixels** (decision 6: the user declined drawing them at 32).
+Goods are drawn once, at 32, and the rows scale them by 0.75.
+
+- **24 is not a whole fraction of 32, a known unevenness.** At 0.75 nearest-neighbour drops one
+  row and one column in every four, and which ones depends on where the icon lands on screen. A
+  one-pixel line can vanish in a row and not on the belt. It is accepted, not fixed: the rule
+  below makes every feature that matters survive it.
+- **Draw for the drop.** At 0.75 no two adjacent pixels are both dropped, so a 2-pixel feature
+  always survives. A good's identifying features (the hole in a gear, the coil of a wire, a
+  lens's rim) are at least 2 pixels wide, as §2.5 asks of everything.
+- **Each good still reads at 24.** Check, at each of the four sampling phases (the 32 → 24
+  nearest reduction offset by 0–3 pixels): the good's mask keeps the same number of connected
+  pieces as at 32, and at least three of its tones survive.
+- **Each good is told apart by shape, not colour alone.** Check, at 24 × 24 and at each of the
+  four phases: any two goods' alpha masks overlap at most **0.80**, or their mean colours differ
+  by at least 0.15 in OKLab. Measured today (phase 0): Brass and Copper Ingot share an identical
+  silhouette (overlap 1.00), Copper Wire and Lens 0.83, Copper Ore and Lens 0.81.
 - Raw goods read as heaps or rocks, refined goods as bars and plates, parts as cogs and springs,
   so the tier shows at a glance (`Economy/ItemTiers`).
 - A good on a belt sits on the belt tile at z −1, so it carries its own one-pixel outline: it is
   the one floor-level sprite that is outlined.
-- **24 is not a whole fraction of 32.** The inventory rows scale icons by 0.75, which drops
-  pixels unevenly. The redraw is checked at 24, and the pipeline doc asks whether the rows should
-  draw at 32 instead (decision 6).
 
 ## 6. What the code reads, by category
 
 The full table, file by file, is `art-pipeline-design.md` §4; this is what each set must keep.
 
-1. **Golems:** `data/chassis.json` `chassisSprite`; `GolemNode.StandOnCell`; the fallback
+1. **Golems:** `data/chassis.json` `chassisSprite` (the south base); `GolemFrames` builds the
+   other 27 names from it (§4.3); `GolemNode.StandOnCell`; the fallback
    `golem_generic_copper.png`; `fx_steam_puff.png` loaded by path.
 2. **Artificer:** `PlayerNode` builds `res://art/artificer_walk_{row}_{frame}.png`.
 3. **Floor and walls:** `FloorLayer` (floor and street tiles, by name), `SandboxLayout` and
@@ -308,6 +425,8 @@ The full table, file by file, is `art-pipeline-design.md` §4; this is what each
    `interaction_ring.png`, `ground_shadow.png`.
 7. **UI (9-slice margins, in pixels):** `wb_panel_mahogany`, `wb_panel_iron`,
    `wb_panel_blueprint` 12; `wb_plate_brass`, `wb_slot_socket`, `wb_card_face`, `tt_phase_plate`
-   and the `tt_node_*` plaques 10; `wb_tape` 0; Steampunk `iron_panel_nobolt` and the buttons 8;
-   `steampunk_panel_iron_bolt` 12/10/12/10. The lever is `wb_lever_track` 40 × 120 with
-   `wb_lever_handle` 34 × 30; the dial pip is `wb_gauge_needle` 16 × 16.
+   and the `tt_node_*` plaques 10; `wb_tape` 0. The lever is `wb_lever_track` 40 × 120 with
+   `wb_lever_handle` 34 × 30; the dial pip is `wb_gauge_needle` 16 × 16. The HUD pieces, today
+   the Steampunk pack's and after S6 their redraws under `UI/Hud/` (`art-pipeline-design.md`
+   §4, S6), keep the pack's sizes and margins: the panels 64 × 64 (bolted 12/10/12/10, plain
+   8), the buttons 34 × 34 (8), the gear 58 × 59.

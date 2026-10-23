@@ -1,10 +1,14 @@
 # Art pipeline: Phase 4
 
-Written 2026-10-22 for Phase 4 (`docs/roadmap.md`, "Phase 4: Art"), on branch `phase4/art`. It
-says how each set of art is replaced, in what order, which files each set holds and what reads
-them, the tooling that makes cleanup and checks repeatable, the lighting, the scenarios that pin
-it all, and when the phase is done. **What the art looks like** is `docs/art-style-bible.md`;
-its §0 invariants hold for every step here.
+Written 2026-10-22 for Phase 4 (`docs/roadmap.md`, "Phase 4: Art"), on branch `phase4/art`;
+revised 2026-10-23 to the user's twelve decisions (§9, all decided). It says how each set of art
+is replaced, in what order, which files each set holds and what reads them, the tooling that
+makes cleanup, mirroring, checks and review repeatable, the lighting, the scenarios that pin it
+all, and when the phase is done. **What the art looks like** is `docs/art-style-bible.md`; its
+§0 invariants hold for every step here.
+
+**Next:** the unused-sprite cleanup commit (§3.1), then the tooling (§5), then S1, the golems,
+once ControlNet and IP-Adapter are installed (§1.4).
 
 ## 1. Where things stand (measured 2026-10-22, at 8b3ec0b)
 
@@ -19,23 +23,27 @@ its §0 invariants hold for every step here.
 | Generated, `generate_workbench_ui_art.py` | 10 (`UI/Workbench/wb_*`) | Yes |
 | Generated, `generate_tech_tree_art.py` | 13 (`UI/TechTree/tt_*`) | Yes |
 | Generated, `generate_placeholder_art.py` | 27 (25 goods, `belt_lane`, `belt_arrow`, `belt_roller`) | **No: see §1.3** |
-| Hand-replaced, ComfyUI plus cleanup | 11 (six Clock Tower, five market carts) | Listed as hand-replaced |
+| Hand-replaced, ComfyUI | 11 (six Clock Tower, five market carts) | Listed as hand-replaced |
 | ComfyUI, never generated | 1 (`fx_steam_puff.png`) | Listed as "not generated" |
 | AI-authored before decision 3 (RetroDiffusion) | 22 (five chassis, sixteen Artificer walk frames, `player.png`) | Listed as "not generated" |
 | Authored, origin not recorded | 8 (`steam_boiler`, `hand_crank_bench`, `golem_generic_*` ×3, `building_block`, `ghost_placeholder`, `facing_arrow`) | Listed as "not generated" |
-| Third-party, Steampunk & Fantasy UI Pack (Scott Jenkins, free use; `docs/source-assets/`) | 21 (`UI/Steampunk/*`) | Listed as "not generated" |
+| Third-party, Steampunk & Fantasy UI Pack (Scott Jenkins, free use; `docs/source-assets/SteampunkFantasyUIPack/`, its `ReadMe.txt` the licence note) | 21 (`UI/Steampunk/*`) | Listed as "not generated" |
 
 `verify_art.py` today: 76 generated, 65 byte-identical, 11 hand-replaced, 0 drifted, 79
 "committed but not generated".
 
-**Apparently unused** (no script, data file or scene names them, by string search): `player.png`,
-`golem_generic_brass`, `golem_generic_steel`, `building_block`, `belt_lane`, `belt_arrow`,
-`belt_roller`, `floor_edge_se`, `wall_segment_ne`, `wall_segment_ne_lamp`, `tt_line_h`,
-`tt_line_v`, and 13 of the 21 Steampunk pieces (only eight are named:
-`steampunk_panel_iron_bolt`, `steampunk_button_blank`, `steampunk_button_blank_iron`,
-`iron_panel_nobolt`, `gauge`, `gear_large`, `steampunk_button_accept` and
-`steampunk_button_exit`). None of these is redrawn. Whether to delete
-them is decision 11.
+**Unused** (no script, scene, data file or Core file names them; rechecked by string search on
+2026-10-23), 26 files:
+
+- 12 of ours: `player.png`, `golem_generic_brass`, `golem_generic_steel`, `building_block` (named
+  only in a comment in `BuildGhostVisuals`), `belt_lane`, `belt_arrow`, `belt_roller`,
+  `floor_edge_se`, `wall_segment_ne`, `wall_segment_ne_lamp`, `tt_line_h`, `tt_line_v`.
+- 14 of the 21 Steampunk pieces. **Seven are in use**: `steampunk_panel_iron_bolt`,
+  `iron_panel_nobolt`, `steampunk_button_blank`, `steampunk_button_blank_iron`,
+  `steampunk_button_accept`, `steampunk_button_exit` and `gear_large`. (The first survey counted
+  `gauge` as used; nothing loads it. `HudOverlay._gauge` is a text label.)
+
+They are deleted before S1 (decision 11, §3.1).
 
 ### 1.2 What the frames show
 
@@ -52,12 +60,16 @@ captures (`--write-movie` and `--capture-dir`):
   under a red tint are the worst case; the badge carries the mood today.
 - **Three chassis share a silhouette.** Presser, Hauler and Zeppelin are boxy humanoids; their
   alpha masks overlap 0.58–0.60. The roster (`digital-design.md`) gives each a different body.
+- **One picture for four facings.** A golem facing west looks exactly like one facing north;
+  only the arrow differs (decision 3 changes that).
 - **The boiler and the bench** are drawn in the chassis' harsher palette (purple outlines,
   saturated copper) and stand out from the carts beside them.
 - **Goods:** Brass and Copper Ingot have the same silhouette (overlap 1.00); only their colour
   differs.
 - **The Workbench** is placeholder throughout (`open-items.md` §4): the lever is an iron panel
   with a track and a handle, the cards are one 32 × 32 9-slice tinted per kind.
+- **The art is shrunk at the default zoom**: 0.56 screen pixels per art pixel at the 1280 × 720
+  window (`art-style-bible.md` §2.5), so a one-pixel line can drop out.
 
 ### 1.3 A blind spot in `verify_art.py`
 
@@ -70,22 +82,35 @@ section, no section matches, and **the script writes nothing**. Its 27 files are
 those names (`TOP_DOWN_OWNED`), so a bare run of the script fails too.
 
 This matters to Phase 4 because the goods are a replacement set and copper ore's colour is an
-invariant (`art-style-bible.md` §0.6). The fix is the first tooling task (§5.5).
+invariant (`art-style-bible.md` §0.6). The fix is a tooling task (§5.5).
 
 ### 1.4 ComfyUI on this machine
 
-**Installed, not running.** `G:/AI/ComfyUI/ComfyUI_windows_portable` (the portable build), started
-by `G:/AI/start_comfyui.bat`, tuned for an RTX 2060 (6 GB) with fp8 weights: the first image
-after a start takes about 7 minutes while SDXL loads from the HDD, then about 1.4 s a step.
+`G:/AI/ComfyUI/ComfyUI_windows_portable` (the portable build), started by
+`G:/AI/start_comfyui.bat`, tuned for an **RTX 2060 with 6 GB of VRAM** with fp8 weights: the
+first image after a start takes about 7 minutes while SDXL loads from the HDD, then about 1.4 s
+a step.
 
 - Models: `sd_xl_base_1.0`, `sdxl-vae-fp16-fix`, LoRAs `lcm-lora-sdxl` and `pixel-art-xl`.
-- No ControlNet, IP-Adapter or upscale models, and no custom nodes.
+- **ControlNet and IP-Adapter are being installed (decision 12, 2026-10-23)**, separately from
+  this repo's work, in `G:/AI/ComfyUI`. When that is done, this section records the custom node
+  pack, the node class names, the model files and the measured step time with each on. Until
+  then §5.4's node names are expectations, and S1 does not start.
+- **Nothing in this repo writes into `G:/AI/ComfyUI`.** The tooling talks to the server over its
+  HTTP API only, and takes model names as arguments (§5.4), so an install change needs no code
+  change.
 - `G:/AI/comfy_generate.py` drives it from a shell: text to image only (SDXL + LCM 8 steps +
   Pixel Art XL at 1.2, 1024 px, reduced 8× with nearest-neighbour to a 128 px grid). It is
   outside the repo.
 - Image to image and inpainting need only core nodes (`LoadImage`, `VAEEncode`,
-  `VAEEncodeForInpaint`, a KSampler below denoise 1), so a redraw from the current sprite needs
-  no install. The tower's build stages used inpainting.
+  `VAEEncodeForInpaint`, a KSampler below denoise 1). The tower's build stages used inpainting.
+
+**The 6 GB limit shapes every workflow.** SDXL in fp8 already uses most of it. With ControlNet
+and IP-Adapter added: one ControlNet at a time, its small or control-LoRA variant in fp16, the
+IP-Adapter's image encoder loaded once per batch of frames, batch size 1, and ComfyUI's low-VRAM
+offloading accepted as the price (slower steps, not failure). A workflow that runs out of memory
+drops IP-Adapter weight first, never the ControlNet guide, because the guide is what keeps the
+pose. The first S1 run measures the step time and records it here.
 
 Whoever starts ComfyUI stops it when the set that needed it is done.
 
@@ -100,101 +125,180 @@ the steam are unlit. The playtest already asks "Look around the workshop. Is the
 
 ## 2. The per-set workflow
 
-Every set goes through these steps, in order. The Clock Tower and the carts went this way;
-this writes it down so each set is done the same.
+Every set goes through these steps, in order. **Cleanup is tool-only** (decision 4): no step
+assumes anyone edits pixels by hand. The user sees every set before it is committed, and only
+the frames the user marks are worked on again.
 
 1. **Brief.** Fill the set's row in §4: what each file must show (from `digital-design.md`'s
    roster or the building's role), its palette ramps (`art-style-bible.md` §1), its canvas,
-   pivot and frames, and what code reads it.
-2. **Source.** Either the current sprite, enlarged 8× with nearest-neighbour, or a hand-drawn
-   draft (the carts' route, which held their silhouettes best). Sources go in
-   `public/images/<set>/source/`.
-3. **ComfyUI redraw.** Image to image from the source (`Tools/Art/comfy_redraw.py`, §5.4), a
-   denoise sweep (0.35, 0.5, 0.65) over three or four seeds, at 8× the target canvas. Raw
-   results go in `public/images/<set>/raw/`, never `godot/art/`.
-4. **Pick.** A comparison sheet (`public/images/<set>/comparison.png`: the current sprite beside
-   each candidate, at 1× and 4×, standing on a floor tile under the room's light). The user picks
-   (decision 4 says who). The carts and the tower kept their sheets the same way.
-5. **Reduce.** 8× to 1× by nearest-neighbour or k-centroid (`palette_snap.py --reduce 8`),
-   never bilinear.
-6. **Hand cleanup.** In a pixel editor: the outline, eyes at 2 × 2, the foot row, stray
-   pixels, symmetry where the body is symmetric, and the softening the carts got (near-black ink
-   to warm brown, contrast eased). Decision 4 says who does it.
-7. **Palette snap and alpha.** `palette_snap.py` (§5.3): every opaque pixel to the nearest
-   colour of the set's ramps in OKLab, alpha to 0 or 255 outside the allowed shadow rows, any
-   black or purple-black outline pixel to the outline ramp. It reports how many pixels moved;
-   more than 10% means the cleanup was off-palette and goes back to step 6.
-8. **Canvas and pivot.** Placed on the manifest's canvas with the contact line on the pivot row.
+   pivot, frames and facings, and what code reads it.
+2. **Before captures.** The `art` scenario's gallery (§7.1) on the committed art, at the default,
+   closest and widest zooms, into `public/images/<set>/before/`. These are the review sheet's
+   "before" column.
+3. **Sources and guides**, in `public/images/<set>/source/`:
+   - **A base frame** (the south base, or a building, tile or good): the current sprite enlarged
+     8× with nearest-neighbour, for image to image. A draft the user offers is used the same
+     way; none is asked for.
+   - **The other facings' bases** (golems and the Artificer): north from a guide `pose_guide.py`
+     (§5.6) makes from the cleaned south base with the front details (eyes, face plate) masked
+     out; east with no ControlNet guide, from the text prompt ("side view, facing right") and
+     the IP-Adapter holding the character (§5.4), swept over seeds.
+   - **Every other frame** (idle, work poses, stall, carry, walk steps): a pose guide from
+     `pose_guide.py`, made from the **cleaned base of the same facing** with the moving parts
+     transformed as `public/images/<set>/poses.json` says (the ram moved down for impact, the
+     head tipped for stall). Frames are never generated from nothing, so the body doesn't drift
+     between them (the Artificer's frames share one palette and one foot row for the same
+     reason, `slice_artificer_walk.py`).
+4. **ComfyUI redraw** (`Tools/Art/comfy_redraw.py`, §5.4), at 8× the target canvas.
+   - A base frame: image to image from its source, a denoise sweep (0.35, 0.5, 0.65) over three
+     or four seeds.
+   - Every other frame, and every non-south base: **ControlNet driven by the frame's guide**
+     holds the pose and silhouette; **IP-Adapter with the cleaned south base as its reference**
+     holds the character (materials, colours, details); image to image from the guide's colour
+     composite at denoise 0.5–0.65.
+   - Raw results go in `public/images/<set>/raw/`, never `godot/art/`.
+5. **Pick.** The candidates are scored by `check_art.py`'s metrics (silhouette, lightness, tint
+   shift, palette distance) and the best-scoring candidate that looks right is picked. A
+   comparison sheet (`public/images/<set>/comparison.png`: the current sprite beside each
+   candidate, at 1× and 4×, on a floor tile) records the pick and the runners-up, so the user
+   can swap a pick at review.
+6. **Reduce.** 8× to 1× by k-centroid (`palette_snap.py --reduce 8`), never bilinear.
+7. **Scripted cleanup** (`palette_snap.py`, §5.3), which replaces the hand cleanup the carts
+   once had:
+   - every opaque pixel to the nearest colour of the set's ramps in OKLab;
+   - alpha to 0 or 255 outside the allowed shadow rows;
+   - any black or purple-black outline pixel to the outline ramp (the carts' softening, as a
+     tool);
+   - the set's scripted fixes, `public/images/<set>/fixes.json` (rectangles of a ramp tone,
+     per file), for anything the snap can't decide, such as a 2 × 2 eye or a symmetric rivet
+     row.
+
+   It reports how many pixels moved; more than 10% in the snap means the redraw was off-palette,
+   and the frame goes back to step 4.
+8. **Canvas and pivot.** Placed on the manifest's canvas with the contact line on the pivot row;
+   a frame set shares one foot row (`trim_character_alpha.py`'s shared-minimum rule).
    `check_art.py <file>` (§5.2) must pass.
-9. **Frames.** Extra frames are edited from the cleaned base frame, never generated
-   separately, so the body doesn't drift between them (the Artificer's frames share one palette
-   and one foot row for the same reason, `slice_artificer_walk.py`).
-10. **Commit the art.** Into `godot/art/` under the same name (`art-style-bible.md` §0.5), with
-    its `.import`. New frame files get names the manifest and the code agree on.
-11. **Bookkeeping**, in the same commit:
-    - the generator's `HAND_REPLACED` set (add one to a generator that has none, copying
-      `generate_topdown_environment.py`'s `_save` guard: it skips the name only when writing to
-      `godot/art/`, so `--out-root` still renders the original);
-    - `verify_art.py`'s `KNOWN_HAND_REPLACED`;
-    - the manifest entry's `owner` to `hand-replaced`, with its `source` folder;
+9. **Mirror** (golems and the Artificer). The west frames from the east ones, the Artificer's
+   left from its right, by `reshade_mirror.py` (§5.7): flip, re-shade so the light is back on
+   the upper left, then `check_art.py` (check 14, light direction).
+10. **Review sheet**, shown to the user **before anything is committed** (invariant 16).
+    - The candidate art goes into `godot/art/` in the working tree, uncommitted, and the `art`
+      scenario captures the "after" gallery at the default, closest and widest zooms.
+    - `review_sheet.py` (§5.8) builds `public/images/<set>/review-<page>.png`: every frame
+      numbered, before and after at 4× pixel view and in the game at the three zooms.
+    - The user names the frames that look wrong by their numbers. **Only those** are worked on
+      again, each one way: a ComfyUI redo (back to step 4), a scripted fix in `fixes.json`
+      (back to step 7), or the user's hand on that one frame. The redone frames go on a new
+      sheet. The rest stay as they are.
+    - The set goes on when the user passes the sheet.
+11. **Verify.** `verify_art.py`, `check_art.py`, `python -m unittest discover Tools/Art/tests`,
+    `dotnet test`, the `art` scenario and the set's own scenarios (§7.5), and `perf` when the set
+    adds nodes, frames or lights.
+12. **Commit the art.** Into `godot/art/` under the names the manifest and the code agree on
+    (`art-style-bible.md` §0.5, §4.3), each with its `.import`, and the review sheet and
+    `review.json` in `public/images/<set>/`.
+13. **Bookkeeping**, in the same commit:
+    - a file a generator owned: that generator's `HAND_REPLACED` set (add one to a generator
+      that has none, copying `generate_topdown_environment.py`'s `_save` guard: it skips the
+      name only when writing to `godot/art/`, so `--out-root` still renders the original), and
+      `verify_art.py`'s `KNOWN_HAND_REPLACED`; its manifest `owner` becomes `hand-replaced`;
+    - a file no generator owned (the chassis, the Artificer, the boiler, the bench, the HUD):
+      its manifest `owner` becomes `comfyui`;
+    - the manifest entry's `palette` to `bible` and its `source` folder;
     - one line in `CLAUDE.md`'s "AI image generation" exceptions (the tower and carts are the
       model).
-12. **Verify.** `verify_art.py`, `check_art.py`, `python -m unittest discover Tools/Art/tests`,
-    `dotnet test`, the `art` scenario and the set's own scenarios (§7.4), and `perf` when the set
-    adds nodes, frames or lights. Look at the captures: a sprite that passes every check can
-    still look wrong.
-13. **Review sheet.** `public/images/<set>/ingame.png`, the `art` scenario's capture of the set
-    in the room, as `market-carts-ingame.png` was.
 
-One commit per set, or per chassis inside the golem set.
+One commit per set, or per chassis inside the golem set (all 28 of its files at once).
 
 ## 3. Replacement order
 
-The roadmap's order, by screen time, with the two additions this survey found. Decision 10 asks
-whether to keep it.
+**Decided** (decision 10): golems; the Artificer; floor and walls; lighting; buildings; the
+Workbench; goods; the HUD.
 
 | # | Set | Files | Why here |
 |---|---|---|---|
-| S1 | **Golems** | 5 chassis, their frames (`art-style-bible.md` §4), the fallback `golem_generic_copper` | Most watched, weakest today, and the moods depend on them |
-| S1b | **The Artificer** (not in the roadmap's list) | 16 walk frames | Always on screen, and the other RetroDiffusion art. Decision 5 |
+| — | **Cleanup** (§3.1) | Delete the 26 unused files | Before S1, so nothing unused is redrawn or listed |
+| S1 | **Golems** | 5 chassis × 28 frame files (140), the fallback `golem_generic_copper` | Most watched, weakest today, and the moods depend on them |
+| S1b | **The Artificer** | 16 walk frames | Always on screen, and the other RetroDiffusion art (decision 5) |
 | S2 | **Floor and walls** | Floor and street tiles, edges, walls, posts, props, `ground_shadow` | The ground everything is judged against; the lighting is tuned on it |
 | L | **Lighting** (§6) | No art files; `LightingRules`, `ShellNode`, boiler glow, hot pipe variants | Right after S2, so later sets are reviewed under the final light |
 | S3 | **Buildings** | Depot, station, Post, mast, recycler, slag heap, boiler, bench, belt tiles, pipe pieces (+ hot variants) | Carts and tower are done |
 | S4 | **The Workbench** | Lever housing, display face, card faces, panels | The core verb's screen |
 | S5 | **Goods** | 25 `item_*` | Small, generator-owned, cheap; copper ore stays green |
-| S6 | **The HUD** | The Steampunk pieces in use, the tech tree chrome, overlays | Last: mostly flat style boxes today |
+| S6 | **The HUD** | The seven Steampunk pieces in use, redrawn under new names; the tech tree chrome | Last: mostly flat style boxes today. The pack leaves the tree here |
 
 Overlays (`build_ghost_tile`, `facing_arrow`, `interaction_ring`) are state tools, not
-decoration. They stay generated and are only re-coloured to the palette if the review asks.
+decoration. They stay generated and are only re-coloured to the palette if a review asks.
+
+### 3.1 The cleanup commit (decision 11)
+
+One commit, before S1 and before the tooling's manifest is built (so the manifest never lists
+them):
+
+1. **A full scenario run** on the current tree (every scenario, headless), and **a capture of
+   each screen** (windowed, `--capture-dir`): the room at the default zoom, the HUD and alerts
+   strip, the build menu, the guide panel, the playtest card, the construction panel, the
+   Workbench, every Management tab, the Pack screen and a Crate screen. Into
+   `public/images/cleanup/before/`.
+2. Delete the 26 files of §1.1 with their `.import` files, and their generator lines:
+   `belt_lane`, `belt_arrow`, `belt_roller` in `generate_placeholder_art.py`; `floor_edge_se`,
+   `wall_segment_ne`, `wall_segment_ne_lamp` in `generate_topdown_environment.py`; `tt_line_h`,
+   `tt_line_v` in `generate_tech_tree_art.py`.
+3. The same scenario run and the same captures, into `public/images/cleanup/after/`. Every
+   scenario passes, and each after capture matches its before capture pixel for pixel (nothing
+   drawn used a deleted file).
+4. `verify_art.py` exits 0. Expected: **129 PNGs; 71 generated (60 byte-identical, 11
+   hand-replaced), 0 drifted, 58 not generated.** After the §5.5 fix: **95 generated (84
+   identical, 11 hand-replaced), 34 not generated.**
+
+The Steampunk licence note (`docs/source-assets/SteampunkFantasyUIPack/`) stays until S6, since
+seven pieces remain.
 
 ## 4. Inventory, by set
 
 "Reads" is the code or data that loads the file or depends on its size or pivot. Sizes are
 pixels. "Gen" names the generator (`topdown` = `generate_topdown_environment.py`, `building`,
-`placeholder`, `workbench_ui`, `tech_tree`, `clock_tower`).
+`placeholder`, `workbench_ui`, `tech_tree`, `clock_tower`). The unused files of §1.1 are left
+out: they are gone before S1.
 
 ### S1 Golems
 
 | File | Size | Owner | Frames | Reads |
 |---|---|---|---|---|
-| `chassis_clockwork_scavenger.png` | 64 × 96 | RetroDiffusion | 1 | `data/chassis.json` `chassisSprite`; `GolemNode.ApplyChassisSprite` (`StandOnCell`); `WorkbenchScreen` (chassis pane, enlarged) |
-| `chassis_brass_presser.png` | 64 × 90 | RetroDiffusion | 1 | same |
-| `chassis_aether_hauler.png` | 64 × 86 | RetroDiffusion | 1 | same |
-| `chassis_mainspring_overclocker.png` | 64 × 96 | RetroDiffusion | 1 | same; `GolemNode.GlowTint` multiplies it |
-| `chassis_zeppelin_freight_loader.png` | 64 × 93 | RetroDiffusion | 1 | same |
-| `golem_generic_copper.png` | 64 × 92 | authored (legacy placeholder) | 1 | `GolemNode.FallbackSprite` |
+| `chassis_clockwork_scavenger.png` | 64 × 96 | RetroDiffusion | south base | `data/chassis.json` `chassisSprite`; `GolemNode.ApplyChassisSprite` (`StandOnCell`); `WorkbenchScreen` (chassis pane, enlarged) |
+| `chassis_brass_presser.png` | 64 × 90 | RetroDiffusion | south base | same |
+| `chassis_aether_hauler.png` | 64 × 86 | RetroDiffusion | south base | same |
+| `chassis_mainspring_overclocker.png` | 64 × 96 | RetroDiffusion | south base | same; `GolemNode.GlowTint` multiplies it |
+| `chassis_zeppelin_freight_loader.png` | 64 × 93 | RetroDiffusion | south base | same |
+| `<stem>_<state>[_<n>]_<facing>.png`, 27 per chassis, 135 in all (new) | the chassis' one size | ComfyUI (105 with the bases) / `reshade_mirror.py` (35, west) | the rest of the set | `GolemFrames.FileName`, `Resolve` (§7.4) |
+| `golem_generic_copper.png` | 64 × 92 | authored (legacy placeholder) | 1, south | `GolemNode.FallbackSprite` |
 | `fx_steam_puff.png` | 24 × 20 | ComfyUI | 1 | `GolemNode.PuffSprite`, scaled by `GolemWorkMotion.Puff` |
 | `ground_shadow.png` | 48 × 36 | Gen topdown | 1 | `SpritePivots` (0.5, 0.5); under golems and props |
 
-Code limits: ≤ 64 × 96 (`BadgeLiftCells` 1.75; hover covers two cells); feet on the bottom row.
-New frame files: `chassis_<name>_<state>_<n>.png`, chosen by `GolemFrames` (§7.2).
+**The frame count** (decisions 2 and 3, `art-style-bible.md` §4.1): 8 frame slots per facing,
+7 distinct files (base, `idle_1`, `work_0`–`work_2`, `stall`, `carry`; the idle pulse's first
+frame is the base). **28 files per chassis, 140 for the five: 105 drawn (south, north, east),
+35 mirrored and re-shaded (west).** The south base keeps its data name; the other 27 are named
+`<stem>_<state>[_<n>]_<facing>.png` (`art-style-bible.md` §4.3), for example
+`chassis_brass_presser_work_1_east.png`.
+
+Code limits: ≤ 64 × 96 (`BadgeLiftCells` 1.75; hover covers two cells); feet on the bottom row;
+one canvas and foot row for all 28 files of a chassis. The redraw may change a chassis' height
+within 96 (all five may become 64 × 96); `GolemNode` stands each on its feet whatever its height.
+
+Order inside S1, per chassis: south base → north and east bases → the other frames, facing by
+facing → west by mirror → review sheet → commit. The first chassis's sheet also confirms the
+brass highlight and the fire ramp (decision 1).
 
 ### S1b The Artificer
 
 | File | Size | Owner | Frames | Reads |
 |---|---|---|---|---|
-| `artificer_walk_{down,left,right,up}_{0..3}.png` (16) | 64 × 93 each | RetroDiffusion concept sheet, sliced by `slice_artificer_walk.py` | 4 × 4 | `PlayerNode` builds the names; `ArtificerWalkAnimation` (4 directions, 4 frames, stride 0.35 cells) |
-| `player.png` | 96 × 143 | RetroDiffusion | 1 | unused |
+| `artificer_walk_{down,up,right}_{0..3}.png` (12) | 64 × 93 each | RetroDiffusion concept sheet, sliced by `slice_artificer_walk.py`; redrawn through ComfyUI | 3 × 4 drawn | `PlayerNode` builds the names; `ArtificerWalkAnimation` (4 directions, 4 frames, stride 0.35 cells) |
+| `artificer_walk_left_{0..3}.png` (4) | 64 × 93 each | the same; then made by `reshade_mirror.py` from `right` | 4 mirrored | same |
+
+Frame 0 of each direction is that direction's base; frames 1–3 are pose guides from it (§2,
+step 3). A mirrored walk cycle swaps the leading leg, which reads as walking the other way.
 
 ### S2 Floor and walls
 
@@ -205,9 +309,7 @@ New frame files: `chassis_<name>_<state>_<n>.png`, chosen by `GolemFrames` (§7.
 | `street_cobble.png`, `street_cobble_b.png` | 64 × 64 | Gen topdown | `FloorLayer` |
 | `street_edge.png` | 64 × 24 | Gen topdown | `SpritePivots` (0.5, 1) |
 | `floor_edge_sw.png` | 64 × 24 | Gen topdown | `SandboxLayout`, `SpritePivots` (0.5, 1) |
-| `floor_edge_se.png` | 64 × 24 | Gen topdown | unused |
 | `wall_segment_nw.png`, `wall_segment_nw_lamp.png` | 64 × 96 | Gen topdown | `SandboxLayout` (lamp on every fourth), `SpritePivots` (0.5, 3/96) |
-| `wall_segment_ne.png`, `wall_segment_ne_lamp.png` | 64 × 96 | Gen topdown | unused |
 | `wall_side_e.png`, `wall_side_w.png` | 40 × 64 | Gen topdown | `SpritePivots` (3/40 or 37/40, 0.5) |
 | `wall_corner_post.png` | 50 × 96 | Gen topdown | `SpritePivots` (0.5, 1/96) |
 | `prop_barrel.png` | 40 × 56 | Gen topdown | `SandboxLayout.Props`, `SpritePivots` (0.5, 1/56) |
@@ -215,7 +317,7 @@ New frame files: `chassis_<name>_<state>_<n>.png`, chosen by `GolemFrames` (§7.
 | `prop_shelf.png` | 52 × 56 | Gen topdown | same |
 | `prop_tool_rack.png` | 48 × 56 | Gen topdown | same |
 
-The lamp walls' painted sconce sits where `ShellNode` puts the light
+The lamp wall's painted sconce sits where `ShellNode` puts the light
 (`LampLightInsetCells` −0.25 below the wall's anchor); a redraw keeps the flame in the same column.
 
 ### S3 Buildings
@@ -255,6 +357,8 @@ panels. Drawing them as pictures, a housing with the lever in it, a framed displ
 punched edge, means new files (`wb_lever_housing.png`, `wb_display_face.png`, card frames per
 kind) and a change to `WorkbenchScreen`'s `Ugui` numbers. That is a code change inside the set,
 with the `workbench` scenario as its check (the hint's frames must still sit on the controls).
+The Workbench's Steampunk pieces (its gear, close, chassis and patent buttons) are redrawn in
+S6 with the rest of the pack.
 
 ### S5 Goods
 
@@ -263,19 +367,48 @@ with the `workbench` scenario as its check (the hint's frames must still sit on 
 | `item_scrap`, `item_coal`, `item_copper_ore`, `item_zinc_ore`, `item_aether`, `item_brass` | 32 × 32 | Gen placeholder (`belts` section) | `placeables.json` `itemSprites` (belts, drawn at 32); `ItemIcons.PathFor` (UI rows, drawn at 24); `BeltRun` default `item_scrap` |
 | `item_coke`, `item_iron_plate`, `item_slag`, `item_glass`, `item_copper_ingot`, `item_zinc_ingot`, `item_copper_wire`, `item_gear`, `item_casing`, `item_lens`, `item_mainspring`, `item_aether_cell`, `item_mechanism`, `item_regulator`, `item_frame_section`, `item_aether_conduit`, `item_chronometer_core`, `item_great_cog` | 32 × 32 | Gen placeholder (`goods` section) | same |
 
-`item_copper_ore.png` stays malachite green (`art-style-bible.md` §0.6). Since the goods are
-generated, replacing them means either redrawing in the generator (it stays the owner, and
-`verify_art.py` keeps checking it) or hand-replacing all 25 (decision 4 applies).
+`item_copper_ore.png` stays malachite green (`art-style-bible.md` §0.6). The goods are redrawn
+through ComfyUI like every set and hand-replaced (all 25 into `generate_placeholder_art.py`'s
+`HAND_REPLACED`); the rows stay at 24 (decision 6), so each good is checked at 24 at all four
+sampling phases (`art-style-bible.md` §5.4, check 11).
 
 ### S6 The HUD
 
+**The Steampunk pack is dropped** (decision 9). The seven pieces in use are redrawn through
+ComfyUI like everything else, under new names in `UI/Hud/`, with **the same size and 9-slice
+margins**, so no `Ugui` number moves:
+
+| Today (`UI/Steampunk/`) | Redrawn as (`UI/Hud/`) | Size | 9-slice | Reads (path changes in S6) |
+|---|---|---|---|---|
+| `steampunk_panel_iron_bolt.png` | `hud_panel_bolted.png` | 64 × 64 | 12/10/12/10 | `HudOverlay` (alerts strip), `BuildMenuNode` (menu, card), `TutorialPanel` (plate, notice), `PlaytestNode` (card) |
+| `iron_panel_nobolt.png` | `hud_panel_plain.png` | 64 × 64 | 8 | `ManagementScreen` (background), `ConstructionPanelNode`, `InventoryPanel` |
+| `steampunk_button_blank.png` | `hud_button.png` | 34 × 34 | 8 | `BuildMenuNode` (rows), `AssemblyLineTab`, `ConstructionPanelNode`, `ManagementScreen` (tabs, Load), `CrateScreen` (label, Take all), `WorkbenchScreen` (chassis) |
+| `steampunk_button_blank_iron.png` | `hud_button_active.png` | 34 × 34 | 8 | `BuildMenuNode` (active row), `WorkbenchScreen` (Patent) |
+| `steampunk_button_accept.png` | `hud_button_accept.png` | 34 × 34 | 8 | `ManagementScreen` (Save) |
+| `steampunk_button_exit.png` | `hud_button_close.png` | 34 × 34 | 8 | `ManagementScreen`, `InventoryPanel`, `WorkbenchScreen` (Close) |
+| `gear_large.png` | `hud_gear.png` | 58 × 59 | — | `WorkbenchScreen` (the gear) |
+
+Each gets a manifest entry (owner `comfyui`, `set: S6`, its `nineSlice`). Renaming is a code
+change (`art-style-bible.md` §0.5), made in S6's commit: the paths in the ten files above
+(`CrateScreen` and `InventoryPanel` build them from a `Steampunk` constant). The buttons carry
+no lettering (invariant 12); the code draws "Close", "Save" and the rest in the font.
+
+**When S6 lands**, in the same commit:
+
+- `godot/art/UI/Steampunk/` is removed, all seven files and their `.import`s;
+- `docs/source-assets/SteampunkFantasyUIPack/` (the PSD and `ReadMe.txt`, the licence note) is
+  removed, since no piece of the pack remains;
+- the wording that names the pack is updated: `CLAUDE.md`'s art section ("the Steampunk pack" in
+  `verify_art.py`'s not-generated list), `verify_art.py`'s docstring, and
+  `generate_workbench_ui_art.py`'s header comment. The history docs
+  (`docs/history/unity-implementation-plan.md`) and the Phase 1 design docs that mention the
+  pack keep their wording; they record what was true then.
+
+The rest of the HUD set:
+
 | Files | Size | Owner | Reads |
 |---|---|---|---|
-| `UI/Steampunk/steampunk_panel_iron_bolt.png` | 64 × 64 | third-party | `HudOverlay`, `BuildMenuNode`, `TutorialPanel`, `PlaytestNode`; 9-slice 12/10/12/10 |
-| `steampunk_button_blank.png`, `_blank_iron.png` | 34 × 34 | third-party | `BuildMenuNode`, `AssemblyLineTab`, `ConstructionPanelNode`; 9-slice 8 |
-| `iron_panel_nobolt.png` | 64 × 64 | third-party | `ConstructionPanelNode`, Management; 9-slice 8 |
-| `gauge.png`, `gear_large.png`, the accept and exit buttons | 34 × 44, 58 × 59, 34 × 34 | third-party | Management and the panels |
-| `UI/TechTree/tt_*` (13) | 16 × 16 to 32 × 32 | Gen tech_tree | `LedgerTab`; plaques and phase plate 9-slice 10 |
+| `UI/TechTree/tt_*` (11 after the cleanup) | 16 × 16 to 32 × 32 | Gen tech_tree | `LedgerTab`; plaques and phase plate 9-slice 10 |
 | `interaction_ring.png` | 64 × 64 | Gen topdown | `InteractionPromptNode` |
 | `facing_arrow.png` | 28 × 28 | authored | `GolemNode` (and at 0.6 on the tiles), `BuildCursorNode`, `TutorialPanel` |
 | `build_ghost_tile.png` | 64 × 64 | Gen topdown | `BuildCursorNode`, `GolemNode` (tile overlay, carry preview) |
@@ -285,30 +418,47 @@ generated, replacing them means either redrawing in the generator (it stays the 
 All of it in `Tools/Art/`, Python 3 with Pillow (already required), standard library otherwise.
 Tests are `unittest` in `Tools/Art/tests/`, run by `python -m unittest discover Tools/Art/tests`,
 on small synthetic images built in the test, so they need neither ComfyUI nor `godot/art/`.
+Every tool that writes images refuses an output under `godot/art/` unless it is the commit step
+(`palette_snap.py` and `reshade_mirror.py` take `--into-art` for that, and nothing else does).
+
+The shared measures live in one module, **`Tools/Art/art_metrics.py`**: sRGB to OKLab, alpha
+masks aligned at the feet, intersection over union, the edge-light score
+(`art-style-bible.md` §5.1), and the 32 → 24 reduction at a sampling phase. `check_art.py`,
+`reshade_mirror.py`, `review_sheet.py` and the pick (§2, step 5) all import it, so a check and
+the tool it checks can't measure differently. Its tests: OKLab of known colours, IoU of known
+masks, the edge-light score of a left-lit and a right-lit gradient (positive, negative).
 
 ### 5.1 The manifest: `Tools/Art/art_manifest.json`
 
-One entry per PNG under `godot/art/`, keyed by its path relative to it:
+One entry per PNG under `godot/art/`, keyed by its path relative to it, built after the cleanup
+commit:
 
 ```json
-"chassis_brass_presser.png": {
+"chassis_brass_presser_work_1_west.png": {
   "set": "S1",
-  "size": [64, 90],
+  "size": [64, 96],
   "pivot": "bottom-center",
-  "footRow": 89,
-  "owner": "retrodiffusion",
-  "frames": 1,
-  "palette": "legacy",
-  "readers": ["data/chassis.json", "GolemNode.ApplyChassisSprite"]
+  "footRow": 95,
+  "owner": "comfyui",
+  "chassis": "chassis_brass_presser",
+  "state": "work_1",
+  "facing": "west",
+  "mirroredFrom": "chassis_brass_presser_work_1_east.png",
+  "palette": "bible",
+  "source": "public/images/S1/brass_presser/",
+  "readers": ["GolemFrames.FileName", "GolemNode"]
 }
 ```
 
-- `owner`: `generated:<script>`, `hand-replaced`, `comfyui`, `retrodiffusion`, `authored`,
-  `third-party`, or `unused`.
+- `owner`: `generated:<script>`, `hand-replaced` (a generator owned it once), `comfyui` (no
+  generator ever did), `retrodiffusion`, `authored`, or `third-party` (until S6).
 - `pivot`: `bottom-center`, `center`, or `[x, y]` in Unity's bottom-left fractions, exactly as
   `SpritePivots` writes them. `footRow` is derived and stored so a reader needn't compute it.
 - `palette`: `bible` once the set is replaced (the palette and alpha rules apply), `legacy`
   until then (they don't), or a list of extra ramps.
+- `chassis`, `state`, `facing` (golem and Artificer frames): what `GolemFrames` would ask for;
+  check 13 reads them. `mirroredFrom`: the drawn frame a mirrored one came from; check 14 reads
+  it.
 - `shadowRows`: rows where partial alpha is allowed (the carts' 114–119).
 - `nineSlice`: the margins the code passes, for UI plates.
 
@@ -335,31 +485,47 @@ Checks:
 5. **Palette** (`bible` only): every opaque colour is in the set's ramps; report the strays.
 6. **Colour count** against `art-style-bible.md` §2.3 (48, 12, 16).
 7. **Reserved colours** (§5.3): no more than 5% saturated red or steel blue.
-8. **Silhouettes** (S1): pairwise alpha-mask overlap of the chassis ≤ 0.50, aligned at the
-   feet.
-9. **Tint shift** (S1): mean OKLab lightness ≥ 0.40; Stalled shift ≥ 0.10; the three stopped
-   or waiting tints ≥ 0.06 apart. The tints are read from `GolemMoodPalette.cs` by a regex, so
-   the check can't drift from the code, and multiplied by the room's ambient colour from
-   `LightingRules` (§6) once that exists.
-10. **Goods** (S5): at 24 × 24, pairwise mask overlap ≤ 0.80 or mean colour ≥ 0.15 apart.
-11. **Copper ore** is green on both files: the most common opaque hue of `item_copper_ore.png`
+8. **Silhouettes, per facing** (S1): for each facing, the pairwise alpha-mask overlap of the
+   five chassis' base frames, aligned at the feet, ≤ 0.50.
+9. **A pose keeps its chassis** (S1): every frame overlaps its own chassis' base in its facing
+   more than any other chassis' base in that facing.
+10. **Tint shift** (S1, every frame): mean OKLab lightness ≥ 0.40; Stalled shift ≥ 0.10; the
+    three stopped or waiting tints ≥ 0.06 apart. The tints are read from `GolemMoodPalette.cs`
+    by a regex, so the check can't drift from the code, and multiplied by the room's ambient
+    colour from `LightingRules` (§6) once that exists.
+11. **Goods** (S5), at 24 × 24 and at each of the four sampling phases: pairwise mask overlap
+    ≤ 0.80 or mean colour ≥ 0.15 apart; and each good keeps its number of connected pieces and
+    at least three tones (`art-style-bible.md` §5.4).
+12. **Copper ore** is green on both files: the most common opaque hue of `item_copper_ore.png`
     and of the ore pixels of `stall_copper_ore.png` falls in 100°–160°.
-12. **Hand-replaced bookkeeping:** an entry with `owner: hand-replaced` appears in
+13. **Frame sets complete** (S1, S1b): every chassis in `data/chassis.json` has its south base
+    and 27 frame files, all one size and one foot row; the Artificer has its 16. Before a
+    chassis' set lands, missing frames are warnings (the fallback covers them); once any frame
+    of a chassis is `bible`, all 28 must be.
+14. **Light from the upper left** (every `bible` standing sprite): the edge-light score
+    (`art-style-bible.md` §5.1) is ≥ +0.02; and a frame with `mirroredFrom` scores ≥ 0.8 × its
+    source's, has the plain flip's alpha mask exactly, and has every pixel in the same ramp as
+    the plain flip's (re-shading changes tone, never material or shape).
+15. **Hand-replaced bookkeeping:** an entry with `owner: hand-replaced` appears in
     `verify_art.py`'s `KNOWN_HAND_REPLACED` and in `CLAUDE.md`; a `KNOWN_HAND_REPLACED` name has
     an entry that says so.
+16. **No pack left** (once S6 lands): no entry has `owner: third-party`, and nothing under
+    `UI/Steampunk/` exists.
 
-Checks 8–11 run on the current art too and report its baseline (§1.2) as warnings while the set
+Checks 8–12 run on the current art too and report its baseline (§1.2) as warnings while the set
 is `legacy`, failures once it is `bible`.
 
 Tests (`tests/test_check_art.py`): one synthetic image per failure (a canvas a pixel too tall, a
-floating foot row, a half-alpha pixel, an off-palette pixel, two identical silhouettes, a red
-body, a copper ore turned orange, a missing manifest entry), each failing with its message, and a
-clean image passing.
+floating foot row, a half-alpha pixel, an off-palette pixel, two identical silhouettes in one
+facing, a stall pose closer to another chassis than its own, a red body, a copper ore turned
+orange, a good that splits in two at one sampling phase, a chassis missing its north stall
+frame, a right-lit frame, a plain-flipped mirror, a missing manifest entry), each failing with
+its message, and a clean image passing.
 
 ### 5.3 `Tools/Art/palette_snap.py`
 
 `python Tools/Art/palette_snap.py <in.png> <out.png> --ramps outline,mahogany,brass
-[--reduce 8] [--alpha 128] [--outline]`
+[--reduce 8] [--alpha 128] [--outline] [--fixes <fixes.json>] [--max-change 0.10]`
 
 1. `--reduce N`: N× to 1×, k-centroid per block (the block's most common colour after a
    two-means split), which keeps a one-pixel line that a nearest pick can drop.
@@ -367,41 +533,151 @@ clean image passing.
 3. Each opaque pixel to the nearest colour of the named ramps, in OKLab.
 4. `--outline`: an opaque pixel next to transparency whose OKLab lightness is under 0.2 becomes
    the outline ramp's nearest tone, which is the carts' black-to-brown softening as a tool.
-5. Prints pixels changed per step, and fails if more than `--max-change` (default 10%) moved in
-   step 3.
+5. `--fixes`: the scripted fixes for this file from the set's `fixes.json`, each a rectangle
+   and a ramp tone (or transparent), applied last and checked to be on the palette.
+6. Prints pixels changed per step, and fails if more than `--max-change` moved in step 3.
 
 Tests (`tests/test_palette_snap.py`): a 2 × 2 block reduces to its majority colour; a
 one-pixel line survives `--reduce 8`; a half-alpha pixel goes to 0 or 255; an off-palette pixel
 lands on its nearest ramp colour and an on-palette pixel doesn't move; a black outline turns
-warm brown; the shadow rows keep their alpha.
+warm brown; the shadow rows keep their alpha; a fix paints its rectangle, and a fix with an
+off-palette colour is refused.
 
 ### 5.4 `Tools/Art/comfy_redraw.py`
 
-Image to image against the local ComfyUI, standard library only, in the shape of
-`G:/AI/comfy_generate.py`: `LoadImage` of the 8× source, `VAEEncode`, KSampler (LCM, 8 steps,
-cfg 1.5) at `--denoise`, Pixel Art XL at 1.2, `VAEDecode`, save. `--seeds`, `--denoise 0.35,0.5,0.65`
-for a sweep, `--out public/images/<set>/raw/`. It refuses an `--out` under `godot/art/`. No test
-needs the server: the workflow it builds is a function, and a test asserts its nodes and that it
-refuses `godot/art/`.
+Against the local ComfyUI's HTTP API, standard library only, in the shape of
+`G:/AI/comfy_generate.py`. One call renders one frame's candidates.
+
+```
+python Tools/Art/comfy_redraw.py --init <8x.png> --out public/images/<set>/raw/<frame>/
+    [--prompt "..."] [--denoise 0.35,0.5,0.65] [--seeds 4]
+    [--guide <guide_8x.png> --control-model <name> --control-strength 0.8 --control-end 0.8]
+    [--reference <cleaned_south_base_8x.png> --ipadapter-model <name>
+     --clip-vision <name> --ipadapter-weight 0.7]
+    [--txt2img --width 512 --height 768]
+```
+
+- **The base workflow:** `LoadImage` of `--init`, `VAEEncode`, KSampler (LCM, 8 steps, cfg 1.5)
+  at each `--denoise`, SDXL with Pixel Art XL at 1.2, `VAEDecode`, save. `--txt2img` starts
+  from an empty latent instead (an east base, §2 step 3).
+- **`--guide`** adds ControlNet: `LoadImage` of the guide, `ControlNetLoader` of
+  `--control-model`, `ControlNetApplyAdvanced` on the positive and negative conditioning at
+  `--control-strength`, ending at `--control-end` of the steps (so the last steps can settle
+  the pixels). The guide is `pose_guide.py`'s lineart.
+- **`--reference`** adds IP-Adapter: `CLIPVisionLoader` of `--clip-vision`, the IP-Adapter
+  model loader of `--ipadapter-model`, and the apply node on the model at `--ipadapter-weight`,
+  with the cleaned south base as the image. The class names are the installed pack's, recorded
+  in §1.4; until then they are `IPAdapterModelLoader` and `IPAdapterAdvanced`.
+- **6 GB:** batch size 1, one ControlNet, the models named on the command line (no defaults
+  that load a larger model), and the guide and reference at the render size, never larger.
+- It refuses an `--out` under `godot/art/` and a `--guide` without `--control-model`.
+
+No test needs the server: the workflow it builds is a function. Tests assert the base
+workflow's nodes; that `--guide` adds the ControlNet nodes wired into both conditionings and
+`--reference` adds the IP-Adapter nodes wired into the model, and neither appears without its
+flag; that both together form one valid graph; and that it refuses `godot/art/`.
 
 ### 5.5 `verify_art.py` and the placeholder generator
 
 - `generate_placeholder_art.py`: drop the value after `--out-root` from the section list, and
   make the default sections `belts` and `goods` (the only ones that can run without tripping
   `TOP_DOWN_OWNED`).
-- `verify_art.py`: run it with those sections. The expected result after the fix is 103
-  generated (92 identical, 11 hand-replaced), 52 not generated.
+- `verify_art.py`: run it with those sections. The expected result after the cleanup and the fix
+  is 95 generated (84 identical, 11 hand-replaced), 34 not generated (§3.1).
 - Add a `HAND_REPLACED` guard to `generate_building_art.py`, `generate_placeholder_art.py` and
   `generate_workbench_ui_art.py`, the same shape as the top-down generator's, before their first
   file is replaced.
 - Test (`tests/test_verify_art.py`): with `--out-root` at a temporary folder, the placeholder
-  generator writes its 27 files there and nothing under `godot/art/`.
+  generator writes its files there and nothing under `godot/art/`.
 
-### 5.6 Commands this adds to `CLAUDE.md`
+### 5.6 `Tools/Art/pose_guide.py`
+
+Makes the ControlNet guide and the image-to-image start for one frame from a cleaned base.
+
+```
+python Tools/Art/pose_guide.py <cleaned_base.png> --poses public/images/<set>/poses.json
+    --frame work_1 --out public/images/<set>/source/<frame>/ [--scale 8]
+```
+
+- `poses.json` gives, per frame, a list of parts: a rectangle or a set of ramp colours that
+  selects the part's pixels, and its transform (translate in pixels, rotate in quarter or free
+  degrees about a named pivot pixel, scale), plus `hide` rectangles (the face masked out for a
+  north base).
+- It moves the parts on a copy of the base at 1×, fills the holes they leave with transparency,
+  and writes two files at `--scale`: `guide.png`, the lineart (white on black: the silhouette and
+  every boundary between two ramps), and `init.png`, the moved colour image, both enlarged by
+  nearest-neighbour.
+- It refuses an `--out` under `godot/art/`.
+
+Tests (`tests/test_pose_guide.py`): an identity pose gives the base's own edges; a translated
+part's edges move by exactly its offset; a hidden rectangle leaves no edges in it; both files
+are `--scale` × the base; it refuses `godot/art/`.
+
+### 5.7 `Tools/Art/reshade_mirror.py`
+
+Makes a west frame from an east one (and the Artificer's left from its right) so the light still
+comes from the upper left (`art-style-bible.md` §2.2, invariant 15).
+
+```
+python Tools/Art/reshade_mirror.py <east.png> <west.png> --ramps <set's ramps> [--into-art]
+```
+
+1. **Flip** horizontally about the canvas centre. The canvas width must be even (every chassis
+   and the Artificer are 64), so a BottomCenter pivot and the foot row stay exactly where they
+   were; an odd width is refused.
+2. **Classify** each opaque pixel by its ramp and its tone index in that ramp
+   (`palette.json`). A pixel in no ramp is left alone and counted.
+3. **Re-shade the interior.** In each row, for each maximal horizontal run of pixels of one
+   ramp (the outline ramp excluded), reverse the tone indices along the run: each pixel keeps
+   its ramp and its place, and takes the tone of its mirror place in the run. The flip reversed
+   every run, so this restores the source's left-to-right tone order, which puts the highlights
+   back on the left. Vertical shading is untouched, because a horizontal flip never moved it.
+4. **Re-shade the outline.** In each row, swap the tones of the leftmost and rightmost outline
+   pixels of each silhouette span, so a selective outline's stepped-up tone is back on the lit
+   side (`art-style-bible.md` §2.1).
+5. **Measure.** Prints the source's and the result's edge-light scores (`art_metrics`) and the
+   count of untouched pixels, and exits 1 if the result scores under 0.8 × the source or under
+   +0.02.
+
+What it keeps on purpose: an asymmetric detail (a lamp on one shoulder) stays on the mirrored
+side, as a mirrored body would carry it. What it can't fix, a shading that isn't a left-to-right
+ramp across a run, shows on the review sheet, where the user can mark the frame.
+
+Tests (`tests/test_reshade_mirror.py`): on a synthetic left-lit sprite, a plain flip scores
+negative and the re-shaded one at least 0.8 × the source; the result's alpha mask equals the
+plain flip's; every pixel stays in its plain-flip ramp and on the palette; the foot row doesn't
+move; the stepped-up outline moves to the left; a pixel in no ramp is untouched and counted;
+re-shading a re-shaded mirror's mirror gives back the source exactly; an odd width is refused.
+
+### 5.8 `Tools/Art/review_sheet.py`
+
+Builds the sheet the user reviews before a set is committed (§2, step 10; invariant 16).
+
+```
+python Tools/Art/review_sheet.py --set S1 --frames <file …>
+    --before public/images/<set>/before/ --after public/images/<set>/after/
+    --out public/images/<set>/
+```
+
+- One row per frame, **numbered from 1**: the before frame and the after frame at 4× pixel view
+  on a floor tile; then, from the `art` scenario's captures, the frame in the game at the
+  default, closest and widest zooms, before and after. A new frame with no before (a facing or
+  pose that didn't exist) shows the frame it was made from, labelled so.
+- A mirrored frame's row also shows its plain flip, so a re-shade that went wrong is visible.
+- Pages of at most 28 rows (one chassis), `review-<page>.png`, and `review.json` mapping each
+  number to its file, so "12 and 31 look wrong" maps back to files without guessing.
+- Labels are drawn by Pillow's default font; the sheet is for the user, not the game.
+- It refuses an `--out` under `godot/art/`.
+
+Tests (`tests/test_review_sheet.py`): numbering follows the `--frames` order and is stable
+across runs; `review.json` maps every number to its file; a page holds at most 28 rows; a frame
+with no before is labelled; it refuses `godot/art/`.
+
+### 5.9 Commands this adds to `CLAUDE.md`
 
 ```sh
 python Tools/Art/verify_art.py                 # generated art reproduces (exists)
-python Tools/Art/check_art.py                  # the manifest: sizes, pivots, palette, readability
+python Tools/Art/check_art.py                  # the manifest: sizes, pivots, palette, frames, light, readability
 python -m unittest discover Tools/Art/tests    # the tools' own tests
 ```
 
@@ -411,27 +687,38 @@ Three things the roadmap asks for: sconces that light the floor, a warm room tin
 glows. All of it in the GL Compatibility renderer, with no normal maps (an AI redraw can't be
 given consistent ones) and no light occluders (cost).
 
+**Decided** (decision 8): **start subtle** (a warm ambient averaging about 0.88, today's sconce
+energy, banded pools), with **every value in Core's `LightingRules`**, and let the playtest's
+`light` question tune it. The floor is never darker than the mood tints and the tile overlays
+can read on, and a test says so.
+
 ### 6.1 The rules in Core
 
 `Core/World/LightingRules` (pure, engine-free, tested by `LightingRulesTests`), read by
 `ShellNode` and `BuildingsLayer`:
 
-- `Ambient`: the `CanvasModulate` colour. Proposed warm (0.94, 0.88, 0.80) for the 0.95 grey.
-  The HUD and the golem badges are on their own `CanvasLayer`s and are not tinted.
-- `Sconce`: colour, energy, radius (today's values the default).
+- `Ambient`: the `CanvasModulate` colour. Warm (0.94, 0.88, 0.80), average 0.873, in place of
+  the 0.95 grey. The HUD and the golem badges are on their own `CanvasLayer`s and are not tinted.
+- `Sconce`: colour, energy, radius, and the number of bands. Today's values (colour (1, 0.72,
+  0.42), energy 1.1, radius 5.5 cells) are the start.
 - `BoilerGlow(fuelLeft, load)`: off with no fuel; on, energy rising with the boiler's load, so a
   busy boiler glows brighter. A boiler that goes out goes dark at once, which reads as the
   Starved blue's cause.
 - `PipeHot(reached)`: whether a pipe piece shows its hot variant: the same answer the guide reads
   for "steam reaches here".
+- `FloorReadable`: the floor and overlay numbers `LightingRulesTests` checks (§6.4), kept here so
+  a retune moves them together.
+
+No lighting number is written in a node. The playtest's answer to `light` moves `LightingRules`,
+and the tests say whether the new values are allowed.
 
 ### 6.2 How it's drawn
 
 - **Warm tint:** the existing `CanvasModulate`, coloured from `LightingRules.Ambient`.
 - **Sconce pools:** the existing seven lights, with the radial gradient replaced by a
   **banded** one (four or five flat steps), so the pool reads as pixel art instead of a smooth
-  airbrush, and its energy and radius from the rules. The lamp walls' painted flames get an
-  unshaded material so they stay bright under the tint.
+  airbrush, and its energy and radius from the rules. The lamp wall's painted flame gets an
+  unshaded material so it stays bright under the tint.
 - **Boilers:** one small `PointLight2D` per boiler at its firebox (radius about 1.5 cells, the
   fire ramp), driven by `BoilerGlow`. The endgame has 12 boilers, so 19 lights in all.
 - **Steam:** no light per pipe. Each pipe shape gets a hot variant (`steam_pipe*_hot.png`,
@@ -443,22 +730,31 @@ given consistent ones) and no light occluders (cost).
 
 The budget is `performance-report-template.md` §1: windowed p95 ≤ 16.6 ms and worst ≤ 33.3 ms
 in every phase. On an idle machine at 7a79046 the worst p95 was 14.6 ms (`hover`), so the
-lighting has about 2 ms. **Proposed sub-budget: lighting adds at most 1.0 ms of render CPU p95
-at the endgame load.** Whether lights cost per item in this renderer is measured, not assumed.
+lighting has about 2 ms. **Sub-budget: lighting adds at most 1.0 ms of render CPU p95 at the
+endgame load.** Whether lights cost per item in this renderer is measured, not assumed.
 
 If it doesn't fit, cut in this order: boiler glows beyond the eight nearest the camera, then the
 banded texture's size, then boiler glows altogether (the hot pipes stay, as they cost nothing).
 
 ### 6.4 What covers it
 
-- `LightingRulesTests`: the ambient is warm and not darker than 0.75 in any channel (the tile
-  overlay must read on it); a boiler with no fuel has no glow; glow rises with load; a pipe is hot
-  exactly where steam reaches.
+- `LightingRulesTests`:
+  - the ambient is warm (red ≥ green ≥ blue) and **not darker than 0.75 in any channel**;
+  - **the floor stays readable**: the darkest and the lightest floor-plank tones
+    (`Tools/Art/palette.json`'s floor ramp, read by the test) multiplied by the ambient, with
+    no sconce light, have OKLab lightness at least that of today's floor under today's 0.95 grey
+    less 0.03; the source and target tile tints (`GolemTileOverlay`'s teal and gold, at their
+    alpha) composited over each of them differ from the floor by at least 0.10 in OKLab; and the
+    Stalled, Starved and Waiting badge colours over each differ from it by at least 0.15;
+  - a boiler with no fuel has no glow; glow rises with load; a pipe is hot exactly where steam
+    reaches.
+- `check_art.py` check 10 multiplies the golem tint check by `LightingRules.Ambient`, so a
+  darker room fails the golems before it ships.
 - The `world` scenario: the `CanvasModulate` colour is `LightingRules.Ambient`; still seven
   sconces; each boiler's light follows its state (a fuelled boiler glows, one run dry doesn't).
 - The `perf` scenario (§7.3): an `unlit` phase measures the lighting's cost.
 - The playtest's `light` question ("Is the room too dark?") answers whether the strength is
-  right (decision 8).
+  right; a change it asks for goes into `LightingRules` and must pass the tests above.
 
 ## 7. Scenarios and tests
 
@@ -467,128 +763,165 @@ banded texture's size, then boiler glows altogether (the hot pipes stay, as they
 1. **Every manifest entry loads** through `ResourceLoader` as a `Texture2D` of the manifest size,
    and every `res://art/**.png` has an entry. Every sprite named in `data/*.json` and every name
    the code builds (`ItemIcons.PathFor` for every `ItemType`, `ClockTowerArt.Stage(0..4)`, the
-   walk frames, `GolemFrames`' names) exists.
+   walk frames, every `GolemFrames.FileName` for every chassis, state and facing) exists, or,
+   while a chassis' set hasn't landed, resolves through `GolemFrames.Resolve` to one that does.
 2. **Pivots, placed for real:** every standing sprite the shell, the buildings layer and the
    golems place, its lowest opaque row (read from the texture's `Image`) lands on its node's
-   origin, within its shadow rows. The `world` scenario checks y-sort at the feet; this checks the
-   art's foot row against the code's pivot.
+   origin, within its shadow rows, in every facing. The `world` scenario checks y-sort at the
+   feet; this checks the art's foot row against the code's pivot.
 3. **The gallery**, captured with `--capture-dir`: a layout built in Core
-   (`Diagnostics/ArtGallery`, beside `EndgameLoad`) and drawn by the normal nodes.
-   - `art-golems.png`: each chassis in every mood (tint and badge), working at its impact pose,
-     carried, and hovered with its tiles.
+   (`Diagnostics/ArtGallery`, beside `EndgameLoad`) and drawn by the normal nodes. `ArtGallery`
+   can pin a golem's frame key (a diagnostic seam on the golem's view, null in play), so every
+   frame is shown without waiting for the moment it plays.
+   - `art-golems-<chassis>.png`: one chassis, every frame in every facing (28), then in every
+     mood (tint and badge), carried, and hovered with its tiles.
+   - `art-artificer.png`: the 16 walk frames.
    - `art-buildings.png`: every placeable, a belt with every good on it, pipes cold and hot.
    - `art-goods.png`: every good at 32 on a belt and at 24 in an inventory row.
-   - `art-room-lit.png` and `art-room-unlit.png`: the room at the default zoom, lights on and off.
+   - `art-room-lit.png` and `art-room-unlit.png`: the room, lights on and off.
    - `art-workbench.png`: the Workbench with every card kind in the vault.
+   - `art-hud.png`: the HUD, the build menu, Management, the Pack screen and the guide panel.
 
-   Each frame is also written at the closest zoom (`-close`).
-4. **Readability in the game**: for each chassis in the gallery, the drawn body's mean colour
-   under Stalled, Starved and Waiting (read back from the viewport) differs pairwise by the
-   style bible's margins, with the ambient applied.
+   **Every capture is written at the default, closest and widest zooms** (`-default`, `-close`,
+   `-wide`; for the screens, which don't zoom, once). These are the review sheet's in-game
+   columns (§5.8).
+4. **Readability in the game**: for each chassis and facing in the gallery, the drawn body's
+   mean colour under Stalled, Starved and Waiting (read back from the viewport) differs pairwise
+   by the style bible's margins, with the ambient applied.
 
 ### 7.2 Extended
 
 - `golem-motion`: for a chassis with work frames, the impact frame is showing on the stroke's
-  impact (the scenario already samples `StampImpact`), and the transform motion still passes as
-  it does today.
+  impact (the scenario already samples `StampImpact`), in the golem's facing, and the transform
+  motion still passes as it does today.
+- `golems`: each chassis built in each facing shows that facing's base frame.
 - `moods`, `hover`: unchanged checks, rerun on the new art, and their `critique-*` captures
   viewed.
-- `workbench`: when S4 changes the layout, the hint's frames still sit on the controls they name.
+- `interact`: a carried golem shows its carry frame, and turning it with R changes its facing
+  frame.
+- `workbench`: the chassis pane shows the south base; when S4 changes the layout, the hint's
+  frames still sit on the controls they name.
 - `world`: the lighting checks (§6.4).
 
 ### 7.3 `perf`
 
 A sixth phase, `unlit`: the `flowing-1x` load with `ShellNode`'s lights and the boiler glows off.
 Its render CPU p95 against `flowing-1x`'s is the lighting's cost, a new row in the report's
-§6.4. Every lit phase must still pass. The run is recorded in `docs/performance-report-phase4.md`.
+§6.4. Every lit phase must still pass with all 28 frames per chassis in use. The run is recorded
+in `docs/performance-report-phase4.md`.
 
 ### 7.4 Core tests
 
 - `ArtManifestTests` (no engine): reads `Tools/Art/art_manifest.json` and each PNG's size from its
-  IHDR header. Every sprite named in `data/*.json` is in the manifest; every chassis is ≤ 64 × 96;
-  the tower's entries match `ClockTowerArt.CanvasWidth`/`CanvasHeight`; there are
+  IHDR header. Every sprite named in `data/*.json` is in the manifest; every chassis frame is
+  ≤ 64 × 96 and a chassis' 28 files are one size; the tower's entries match
+  `ClockTowerArt.CanvasWidth`/`CanvasHeight`; there are
   `ArtificerWalkAnimation.DirectionCount × FramesPerDirection` walk frames of one size; every
   `ItemType` has an icon entry.
-- `GolemFramesTests`: the frame for each mood, motion, stroke phase and carried state; a chassis
-  without a frame falls back to its base; the work frame follows step progress, not time (pausing
-  the clock holds it).
+- `GolemFramesTests`:
+  - the frame for each mood, motion, stroke phase, carried state and **facing**;
+  - the idle pulse's frame 0 is the base key;
+  - the work frame follows step progress, not time (pausing the clock holds it);
+  - `FileName`: the south base is `<stem>.png`, every other key `<stem>_<state>[_<n>]_<facing>.png`;
+  - `Resolve`, with a set of existing names: the frame → the same frame facing south → the base
+    in the asked facing → the south base → `golem_generic_copper.png`, each step taken only when
+    the one before is missing.
 - `LightingRulesTests` (§6.4).
 
 ### 7.5 Which checks each set runs
 
 | Set | Python | Core | Scenarios |
 |---|---|---|---|
-| S1 Golems | verify, check (8, 9) | `ArtManifestTests`, `GolemFramesTests` | `art`, `golem-motion`, `moods`, `hover`, `golems`, `workbench`, `perf` |
-| S1b Artificer | check (3, size) | `ArtManifestTests` | `art`, `world`, `interact` |
+| Cleanup | verify | — | every scenario, before and after; the screen captures (§3.1) |
+| S1 Golems | verify, check (8–10, 13, 14) | `ArtManifestTests`, `GolemFramesTests` | `art`, `golem-motion`, `golems`, `moods`, `hover`, `interact`, `workbench`, `perf` |
+| S1b Artificer | check (3, 13, 14, size) | `ArtManifestTests` | `art`, `world`, `interact` |
 | S2 Floor and walls | verify, check | `SandboxLayoutTests` | `art`, `world`, `hover`, `management` (Extends) |
-| Lighting | — | `LightingRulesTests` | `world`, `art`, `perf` |
+| Lighting | check (10, with the ambient) | `LightingRulesTests` | `world`, `art`, `hover`, `perf` |
 | S3 Buildings | verify, check | `ArtManifestTests` | `art`, `build`, `world`, `perf` |
 | S4 Workbench | verify, check (nine-slice) | — | `workbench`, `tutorial`, `art` |
-| S5 Goods | verify, check (10, 11) | `ArtManifestTests` | `art`, `inventory`, `management` |
-| S6 HUD | check | — | `management`, `tutorial`, `inventory`, `font-glyphs`, `art` |
+| S5 Goods | verify, check (11, 12) | `ArtManifestTests` | `art`, `inventory`, `management` |
+| S6 HUD | check (16), verify | — | `management`, `inventory`, `build`, `interact`, `workbench`, `tutorial`, `playtest-kit`, `font-glyphs`, `art` |
 
 ## 8. Done when
 
-**Proposed.** Phase 4 is done when all of these hold:
+Phase 4 is done when all of these hold:
 
-1. **Every set in §3 is replaced through §2, or deferred** in §4 with the user's OK and a reason.
-   The golems (S1) are not deferrable.
-2. **The checks are green:** `verify_art.py` exits 0 and covers every generator (the §1.3 blind
+1. **The cleanup commit is in** (§3.1): the 26 unused files gone, every scenario passing and
+   every screen capture unchanged across it.
+2. **Every set in §3 is replaced through §2.** Nothing is deferred without the user's OK and a
+   reason recorded in §4; the golems (S1) and the Artificer (S1b) are not deferrable.
+3. **The golems have the full frame set in every facing:** every chassis has its 28 files
+   (8 frame slots, 7 distinct files, × 4 facings), **140 for the five, 105 drawn and 35
+   mirrored and re-shaded**, one canvas and foot row per chassis, chosen by `GolemFrames` with
+   facing as an input. The Artificer's 16 walk frames are redrawn, 4 of them mirrored and
+   re-shaded.
+4. **The Steampunk pack is gone:** `godot/art/UI/Steampunk/` and
+   `docs/source-assets/SteampunkFantasyUIPack/` are removed, the seven HUD pieces in use are
+   redrawn under `UI/Hud/` with manifest entries, and no doc that describes the current tree
+   names the pack as present.
+5. **Every set's review sheet was shown to the user before its commit**, at the default, closest
+   and widest zooms, and every frame the user marked was redone, fixed by script or by the
+   user's hand and shown again. The sheets and their `review.json` are in
+   `public/images/<set>/`.
+6. **The checks are green:** `verify_art.py` exits 0 and covers every generator (the §1.3 blind
    spot fixed); `check_art.py` exits 0 over the whole manifest with every replaced set at
-   `palette: bible`, including the silhouette, tint-shift, goods and copper-ore checks; the tools'
-   unit tests pass.
-3. **The lighting is in**, from `LightingRules`, and the **windowed `perf` run passes on an idle
-   machine with it on**, its cost recorded in `docs/performance-report-phase4.md`.
-4. **Every Core test and every scenario passes**, the new `art` scenario included, each scenario
+   `palette: bible`, including the per-facing silhouette, pose, tint-shift, light-direction,
+   frame-set, goods (at 24, all four phases) and copper-ore checks; the tools' unit tests pass.
+7. **The lighting is in**, every value from `LightingRules`, `LightingRulesTests` passing
+   (the floor stays readable), and the **windowed `perf` run passes on an idle machine with it
+   on**, its cost recorded in `docs/performance-report-phase4.md`.
+8. **Every Core test and every scenario passes**, the new `art` scenario included, each scenario
    run twice headless from a clean build with no flakes.
-5. **The captures are looked at:** the `art` gallery, lit and unlit, and the `moods`, `hover` and
-   `workbench` critiques, with each set's in-game sheet in `public/images/<set>/`.
-6. **The record is complete:** every hand-replaced file is in its generator's guard,
-   `KNOWN_HAND_REPLACED`, the manifest and `CLAUDE.md`'s art section, and no RetroDiffusion art
-   is left in a replaced set.
+9. **The record is complete:** every hand-replaced file is in its generator's guard,
+   `KNOWN_HAND_REPLACED`, the manifest and `CLAUDE.md`'s art section; every `comfyui` file is in
+   the manifest; and no RetroDiffusion or third-party art is left in `godot/art/`.
 
-## 9. Decisions for the user
+## 9. Decisions (all made by the user, 2026-10-23)
 
-Each has a recommendation. Only the user can make these calls.
+Each records the decision and, where it differs, what this document first recommended.
 
-1. **The palette** (`art-style-bible.md` §1). *Recommend:* approve it as proposed. Check the two
-   proposed ramps (the brass highlight `#e2c27a` and the fire ramp) on the first chassis before
-   they spread.
-2. **How many golem frames.** None (redraw the base only), minimal (base, stall, carry: 15
-   files), or the bible's full set (base, two idle, three signature work poses, stall, carry: 35
-   files, fewer if idle is cut). *Recommend:* stage it. Base, stall and carry for all five first,
-   since the stall frame helps the mood read, then the signature work poses, then the idle pulse,
-   which is the first to cut.
-3. **Facing frames** for golems. *Recommend:* no. The facing arrow already says it, and facing
-   frames would multiply every count by up to 3. Revisit in Phase 6 (game feel), where mirroring
-   east and west costs no art.
-4. **Who does the hand cleanup.** The user in a pixel editor, or tool-only (`palette_snap.py`,
-   `check_art.py`, and scripted pixel fixes, reviewed on the comparison sheets). *Recommend:* the
-   user's hand on the golems, the Artificer and the three Workbench centrepieces, where a stray
-   pixel shows; tool-only for floor, walls, goods, belts and pipes, which are small and
-   tile-like. If the user would rather not, tool-only everywhere, with every set's sheet shown
-   before it's committed.
-5. **The Artificer.** It isn't in the roadmap's list. *Recommend:* add it after the golems
-   (S1b). It is always on screen, and it and the chassis are the RetroDiffusion art left.
-6. **Inventory icon size.** The rows draw 32-pixel goods at 24, which drops pixels unevenly.
-   *Recommend:* draw the rows at 32 (a small `InventoryPanel` change), so each good is drawn once
-   and shown whole.
-7. **Pixel-exact zoom.** The camera zooms continuously, so pixels are uneven at most zooms.
-   *Recommend:* keep it continuous for Phase 4 and judge art at the default, closest and widest
-   zooms; snapping zoom is a game-feel call for Phase 6.
-8. **Lighting strength.** *Recommend:* start subtle (warm ambient around 0.88 average, today's
-   sconce energy, banded pools), with every value in `LightingRules`, and let the playtest's
-   `light` question move it. Never darker than the tile overlay can read on.
-9. **The Steampunk UI pack.** *Recommend:* keep the eight pieces in use for Phase 4, snapped to the
-   palette only if S6's review says they clash. The pack is free to use, and the HUD is last in
-   screen time.
-10. **The order.** *Recommend:* the roadmap's, with the Artificer after the golems and the
-    lighting straight after floor and walls (§3). Goods could move ahead of the Workbench (they
-    are on the belts all the time and are cheap), but the Workbench is the core verb's screen.
-    The roadmap's order is fine.
-11. **The unused sprites** (§1.1). *Recommend:* delete them in one cleanup commit before S1, with
-    their generator lines, after a full scenario run confirms nothing loads them. Fewer files
-    means a shorter manifest and nothing redrawn by mistake.
-12. **ControlNet.** None is installed. *Recommend:* don't install one yet. Image to image at
-    moderate denoise from the current sprite or a draft held the carts' silhouettes. Revisit only
-    if a golem's redraw keeps drifting from its brief.
+1. **The palette** (`art-style-bible.md` §1). **Approved as proposed.** The brass highlight
+   `#e2c27a` and the fire ramp are checked on the first chassis's review sheet. (As
+   recommended.)
+2. **How many golem frames.** **The full set for every chassis, nothing staged or cut:** base,
+   two idle pulse, three signature work poses, stall, carry; 8 frame slots per facing, 7
+   distinct files (the idle pulse's first frame is the base). *First recommended:* stage it
+   (base, stall and carry for all five first, then the work poses, then the idle pulse, the
+   first to cut).
+3. **Facing frames.** **Yes, full facing**: four facings per frame, three drawn (south, north,
+   east) and west made by mirroring east and re-shading it by tool so the light still comes
+   from the upper left, then the review sheet. 28 files per chassis, **140 for the five (105
+   drawn, 35 mirrored)**; the "35 × 4" quoted with the decision counts the same files.
+   `GolemFrames.FrameFor` takes the facing, a missing facing falls back to south, then to the
+   base (`art-style-bible.md` §4). *First recommended:* no facing frames; the arrow says it, and
+   Phase 6 could mirror east and west for free.
+4. **Who does the hand cleanup.** **Tool-only everywhere.** Every set gets a before/after review
+   sheet at the default, closest and widest zooms, shown to the user before commit; the user
+   marks frames that look wrong, and only those get a ComfyUI redo, a scripted fix, or the
+   user's hand on that one frame (§2, steps 7 and 10). *First recommended:* the user's hand on
+   the golems, the Artificer and the Workbench centrepieces, tool-only elsewhere.
+5. **The Artificer.** **Added as set S1b, right after the golems** (16 walk frames). (As
+   recommended.)
+6. **Inventory icon size.** **The rows stay at 24 pixels.** Goods are drawn at 32; each must
+   still read at 24 (checked at all four sampling phases), and the 0.75 scale's uneven pixel
+   drop is a known, accepted unevenness (`art-style-bible.md` §5.4). *First recommended:* draw
+   the rows at 32.
+7. **Pixel-exact zoom.** **Zoom stays continuous for Phase 4**; art is judged at the default,
+   closest and widest zooms; snapping is Phase 6's. (As recommended.)
+8. **Lighting strength.** **Start subtle**: a warm ambient averaging about 0.88, today's sconce
+   energy, banded pools; every value in Core's `LightingRules`; the playtest's `light` question
+   tunes it; a test holds the floor no darker than the mood tints and tile overlays read on
+   (§6.4). (As recommended, with the test made explicit.)
+9. **The Steampunk UI pack.** **Dropped.** The HUD set (S6) is redrawn through ComfyUI like
+   everything else; each of the seven pieces in use gets a pipeline entry and a new name under
+   `UI/Hud/`; the pack's files, and its licence note, are removed when S6 lands (§4, S6).
+   *First recommended:* keep the pieces in use for Phase 4.
+10. **The order.** **Golems; the Artificer; floor and walls; lighting; buildings; the Workbench;
+    goods; the HUD** (§3). (As recommended.)
+11. **The unused sprites.** **Deleted in one cleanup commit before S1**, after a full scenario
+    run and a capture of each screen (§3.1). (As recommended, with the screen captures added.)
+12. **ControlNet and IP-Adapter.** **Installed before the golems** (being done separately, in
+    `G:/AI/ComfyUI`). Per frame, a pose or lineart guide made from the cleaned base drives
+    ControlNet, and IP-Adapter holds the character (§2, steps 3–4); `comfy_redraw.py` takes both
+    (§5.4). The 6 GB of VRAM limits the models and the batch (§1.4). *First recommended:* don't
+    install one yet.

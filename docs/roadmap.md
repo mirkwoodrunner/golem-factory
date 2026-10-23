@@ -66,8 +66,13 @@ call): built, reviewed, critiqued and tested. Done:
 
 **Resume here:**
 1. **Phase 4 (Art) is under way** on branch `phase4/art`, from `phase3/tuning`: see Phase 4
-   below. Its specs are written; next is the user's calls in `art-pipeline-design.md` §9, then
-   the tooling (§5), then the golems.
+   below. Its specs are written and the user made all twelve calls on 2026-10-23
+   (`art-pipeline-design.md` §9). Next: **the unused-sprite cleanup commit**
+   (`art-pipeline-design.md` §3.1: a full scenario run and a capture of each screen, before and
+   after), then **the `Tools/Art/` tooling** (§5: the manifest, `check_art.py`,
+   `palette_snap.py`, `comfy_redraw.py` with ControlNet and IP-Adapter, `pose_guide.py`,
+   `reshade_mirror.py`, `review_sheet.py`, and the `verify_art.py` fix), then **S1, the golems**,
+   once ControlNet and IP-Adapter are installed in `G:/AI/ComfyUI` (being done separately).
 2. **The human playtests, still to run:** `testscript/phase-2-playtest.md`, then
    `testscript/phase-1-playtest.md`, then `testscript/full-playthrough.md`.
 
@@ -83,7 +88,7 @@ or definition name breaks saves.
 |---|---|---|
 | 1 | Scope | **A polished 4–5 hour campaign first**, the size `progression-design.md` is built for, then endless play after the Clock Tower. No new tiers of goods: that re-opens tuning checked twice. |
 | 2 | Art direction | **Top-down is final.** The isometric call in `digital-design.md` was an older version. |
-| 3 | Who makes the art | **ComfyUI plus hand cleanup**, the route the Clock Tower and the carts took. Whether anything is commissioned is the user's call, made separately from this plan. |
+| 3 | Who makes the art | **ComfyUI plus hand cleanup**, the route the Clock Tower and the carts took. Whether anything is commissioned is the user's call, made separately from this plan. *Narrowed 2026-10-23: cleanup is tool-only, with a review sheet before every commit and the user's hand only on a frame the user marks (`art-pipeline-design.md` §9.4).* |
 | 4 | The first Workbench program | **A hint of the next drag**, never pre-filled cards. Programming is the core verb; the player makes every drag. |
 | 5 | Waiting versus stuck | **A golem waiting for input gets a quiet grey idle mood.** Red is for failures the player has to fix. |
 | 6 | `Straining` | **Kept, shown on hover only**, not as a badge, until a playtest says otherwise. |
@@ -239,21 +244,35 @@ frame budget holds at endgame.
 
 ## Phase 4: Art
 
-The specs (written 2026-10-22; their proposals wait for the user's calls):
+The specs (written 2026-10-22, revised 2026-10-23 to the user's decisions):
 
 - `docs/art-style-bible.md`: the invariants (§0), palette, outlines, light direction, shading,
-  pixel density, canvas sizes, animation frames and timings, and the readability rules, with
-  today's art measured against them.
-- `docs/art-pipeline-design.md`: the per-set workflow, the replacement order, every file by set
-  with its owner and what code reads it, the tooling to build (`art_manifest.json`,
-  `check_art.py`, `palette_snap.py`, `comfy_redraw.py`, and a fix for a `verify_art.py` blind
-  spot), the lighting, the `art` scenario, and **§9, the decisions for the user**.
+  pixel density and zoom, canvas sizes, animation frames, facings and file names, and the
+  readability rules, with today's art measured against them.
+- `docs/art-pipeline-design.md`: the per-set workflow (tool-only cleanup, a review sheet before
+  every commit), the replacement order and the cleanup commit, every file by set with its owner
+  and what code reads it, the tooling to build (`art_manifest.json`, `check_art.py`,
+  `palette_snap.py`, `comfy_redraw.py`, `pose_guide.py`, `reshade_mirror.py`,
+  `review_sheet.py`, and a fix for a `verify_art.py` blind spot), the lighting, the `art`
+  scenario, and **§9, the user's twelve decisions**.
 
-**Done when** (proposed, `art-pipeline-design.md` §8): every set replaced through the pipeline or
-deferred with the user's OK (golems not deferrable); `verify_art.py` and `check_art.py` green;
-the lighting in and the windowed `perf` run passing with it on; every Core test and scenario,
-the new `art` scenario included, passing twice; the captures looked at; and every hand-replaced
-file recorded.
+**The decisions, in short** (2026-10-23, `art-pipeline-design.md` §9): the palette approved; the
+full golem frame set for every chassis in all four facings (28 files a chassis, 140 in all: 105
+drawn, 35 mirrored from the east side and re-shaded by tool); tool-only cleanup with a review
+sheet at three zooms before every commit; the Artificer as S1b; inventory icons stay at 24;
+zoom stays continuous; subtle lighting from `LightingRules`; the Steampunk UI pack dropped and
+redrawn in S6; the unused sprites deleted before S1; ControlNet and IP-Adapter installed before
+the golems.
+
+**Order:** the cleanup commit; the tooling; then golems, the Artificer, floor and walls,
+lighting, buildings, the Workbench, goods, the HUD.
+
+**Done when** (`art-pipeline-design.md` §8): the cleanup commit in; every set replaced through
+the pipeline (golems and Artificer not deferrable); every chassis with its full frame set in
+every facing; the Steampunk pack gone; every set's review sheet shown to the user before its
+commit; `verify_art.py` and `check_art.py` green; the lighting in from `LightingRules` and the
+windowed `perf` run passing with it on; every Core test and scenario, the new `art` scenario
+included, passing twice; and every replaced file recorded.
 
 The roadmap's brief:
 
@@ -261,8 +280,9 @@ The roadmap's brief:
   outline rules, light direction, pixel density at PPU 64, animation frame counts.
 - **Replace in order of screen time**: golems (idle, work, stall and carry frames), floor and
   walls, buildings, the Workbench (lever housing, display face, card faces), goods icons, the HUD.
-- Each set goes the Clock Tower's way: ComfyUI redraw, hand cleanup, `HAND_REPLACED` in its
-  generator, listed in `verify_art.py`, and `CLAUDE.md`'s art section updated.
+- Each set goes the Clock Tower's way: ComfyUI redraw, cleanup (tool-only since 2026-10-23),
+  `HAND_REPLACED` in its generator, listed in `verify_art.py`, and `CLAUDE.md`'s art section
+  updated.
 - **Lighting**: sconces that light the floor around them, a warm room tint, steam that glows.
 
 ## Phase 5: Audio
