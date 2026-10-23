@@ -56,6 +56,21 @@ Paths here are relative to `godot/` unless they say otherwise.
   draws the card. A golem's source and target tiles are drawn by one path
   (`World/GolemTileOverlay`, `GolemNode`'s tiles) for carry, focus and hover alike.
 
+# A golem's picture
+
+- **Which frame a golem shows is Core's `GolemFrames`** (`docs/art-style-bible.md` §4):
+  `FrameFor(mood, motion, strokePhase, carried, time, facing)` picks it (carry, then stall for
+  Stalled/Starved, then the chassis's signature stroke by phase, else the idle pulse), and
+  `Resolve` walks the fallback: the frame, the frame facing south, the base in its facing, the
+  south base (`chassisSprite`), then `golem_generic_copper.png`. `GolemNode` only resolves the
+  key (cached per chassis and key) and sets `_body.Texture`; the transform motion
+  (`GolemWorkMotion`) still runs on top. Work frames play for the signature verb only
+  (`GolemFrames.SignatureMotion`) and follow step progress, never time.
+- **File names are built from `chassisSprite`** (`GolemFrames.FileName`): the south base is
+  `<stem>.png`, every other frame `<stem>_<state>[_<n>]_<facing>.png`. Don't write a chassis's
+  file name in code; a new chassis needs a signature verb (`GolemFramesTests` checks the data).
+- A frame swap is a texture change on the one body sprite, never a node (invariant 14).
+
 # The golem object
 
 - **`GolemEntity` is a plain class.** `Attach()`/`Detach()` replace Unity's

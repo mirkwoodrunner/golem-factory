@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Godot;
 using GolemFactory.Data;
 using GolemFactory.Events;
@@ -121,7 +122,6 @@ namespace GolemFactory.Nodes
         private const float ShakeAmplitude = 0.08f;
         private const float ShakeFrequency = 45f;
         private const float ShakeDuration = 0.35f;
-        private const string FallbackSprite = "golem_generic_copper.png";
 
         // GolemFacingIndicator's tints.
         private static readonly Color SourceTint = new Color(0.37f, 0.90f, 0.84f, 0.72f);
@@ -212,7 +212,7 @@ namespace GolemFactory.Nodes
 
             _body = new Sprite2D();
             AddChild(_body);
-            ApplyChassisSprite();
+            ApplyFrame(carried: false);
 
             _arrow = new Sprite2D { Texture = GD.Load<Texture2D>("res://art/facing_arrow.png"), Modulate = ArrowTint, ZIndex = 1 };
             AddChild(_arrow);
@@ -314,17 +314,45 @@ namespace GolemFactory.Nodes
             return tile;
         }
 
-        /// <summary>The chassis's own art once one is fitted; a generic copper golem before.</summary>
-        private void ApplyChassisSprite()
+        // Which file each (chassis, frame) resolves to, walked once: GolemFrames.Resolve's
+        // fallback asks ResourceLoader.Exists, which is too slow for every golem every frame.
+        private static readonly Dictionary<(string stem, GolemFrameKey key), string> ResolvedFrames =
+            new Dictionary<(string, GolemFrameKey), string>();
+
+        /// <summary>The frame GolemFrames picked this frame (a diagnostic for scenarios).</summary>
+        public GolemFrameKey DrawnFrame { get; private set; }
+
+        /// <summary>
+        /// The body's picture (docs/art-style-bible.md §4.4): Core picks the frame from the mood,
+        /// the signature stroke, carrying and the facing; the file is resolved through
+        /// GolemFrames' fallback, so with only a chassis's south base every frame is that base,
+        /// and before a chassis is fitted, the generic copper golem. Only the texture changes.
+        /// </summary>
+        private void ApplyFrame(bool carried)
         {
-            string sprite = Entity.Program.chassis?.chassisSprite;
-            if (string.IsNullOrEmpty(sprite))
+            GolemProgram program = Entity.Program;
+            string stem = GolemFrames.Stem(program.chassis?.chassisSprite);
+            GolemWorkMotion.Motion motion = GolemWorkMotion.Motion.None;
+            float phase = 0f;
+            AppendageActionDefinition step = program.CurrentStep;
+            if (program.State == GolemState.Running && step != null && program.StepProgressTicks > 0)
             {
-                sprite = FallbackSprite;
+                motion = GolemFrames.WorkMotionFor(program.chassis?.name, step.actionType);
+                if (motion != GolemWorkMotion.Motion.None)
+                {
+                    float fraction = _world?.Clock != null && _world.Clock.State == Simulation.ClockState.Running
+                        ? _world.Clock.TickFraction
+                        : 0f;
+                    phase = GolemFrames.StrokePhase(motion, program.StepProgressTicks + fraction, Entity.StepDurationTicks);
+                }
             }
-            if (!sprite.EndsWith(".png"))
+            GolemFrameKey key = GolemFrames.FrameFor(_mood, motion, phase, carried, _time, Entity.Facing);
+            DrawnFrame = key;
+
+            if (!ResolvedFrames.TryGetValue((stem, key), out string sprite))
             {
-                sprite += ".png";
+                sprite = GolemFrames.Resolve(stem, key, name => ResourceLoader.Exists("res://art/" + name));
+                ResolvedFrames[(stem, key)] = sprite;
             }
             if (sprite == _bodySprite)
             {
@@ -350,7 +378,7 @@ namespace GolemFactory.Nodes
                 Position = GridConversions.CellToWorld(Entity.Cell);
             }
 
-            ApplyChassisSprite();
+            ApplyFrame(carried);
 
             Vector2 step = GridConversions.FacingStep(Entity.Facing);
             _arrow.Rotation = GridConversions.FacingToRotation(Entity.Facing);

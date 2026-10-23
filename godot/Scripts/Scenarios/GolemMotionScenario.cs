@@ -34,6 +34,8 @@ namespace GolemFactory.Nodes.Scenarios
             public GolemEntity Golem;
             public GolemNode View;
             public float MinScaleY = 1f, MaxScaleY = 1f, MaxSkew, MinOffsetX, MaxOffsetX, MaxLift, MaxRed;
+            public readonly HashSet<string> Frames = new HashSet<string>();
+            public readonly HashSet<string> Bodies = new HashSet<string>();
         }
 
         private SandboxWorld _world;
@@ -154,6 +156,9 @@ namespace GolemFactory.Nodes.Scenarios
                 w.MaxOffsetX = Math.Max(w.MaxOffsetX, w.View.DrawnOffset.X / cell);
                 w.MaxLift = Math.Max(w.MaxLift, -w.View.DrawnOffset.Y / cell);
                 w.MaxRed = Math.Max(w.MaxRed, w.View.DrawnModulate.R);
+                GolemFrameKey frame = w.View.DrawnFrame;
+                w.Frames.Add(frame.State == GolemFrameState.Work ? "work_" + frame.Index : frame.State.ToString());
+                w.Bodies.Add(w.View.BodySprite);
             }
 
             _elapsed += delta;
@@ -227,11 +232,32 @@ namespace GolemFactory.Nodes.Scenarios
             Expect("AetherHauler", ha.MinOffsetX < -0.04f && ha.MaxOffsetX > 0.08f && ha.MinScaleY < 0.93f, "heave and lunge");
             Expect("ZeppelinFreightLoader", ze.MinScaleY < 0.9f && ze.MaxLift > 0.2f, "crouch and hop");
 
+            // GolemFrames (art-style-bible.md §4.4): each signature stroke picks its wind-up, impact
+            // and recover frames; a chassis with no frame files yet draws its south base for all
+            // of them, so the game looks as it did before the frames existed.
+            foreach ((string chassis, Watch w) in _watch)
+            {
+                string[] strokes = { "work_0", "work_1", "work_2" };
+                string missing = string.Join(",", strokes.Where(f => !w.Frames.Contains(f)));
+                if (missing.Length > 0)
+                {
+                    problems.Add($"{chassis} never picked {missing} (picked {string.Join(",", w.Frames)})");
+                }
+                string south = w.Golem.Program.chassis?.chassisSprite;
+                string stem = GolemFrames.Stem(south);
+                bool hasFrames = DirAccess.GetFilesAt("res://art").Any(f => f.StartsWith(stem + "_") && f.EndsWith(".png"));
+                if (!hasFrames && (w.Bodies.Count != 1 || !w.Bodies.Contains(south)))
+                {
+                    problems.Add($"{chassis} has no frame files but drew {string.Join(",", w.Bodies)}, not {south}");
+                }
+            }
+
             if (problems.Count > 0)
             {
                 return new ScenarioResult(false, string.Join("; ", problems));
             }
-            return new ScenarioResult(true, string.Join("; ", _watch.Select(kv => $"{kv.Key}: {Seen(kv.Value)}")));
+            return new ScenarioResult(true, string.Join("; ", _watch.Select(kv =>
+                $"{kv.Key}: {Seen(kv.Value)} frames {string.Join("/", kv.Value.Frames.OrderBy(f => f))} drawn {string.Join("/", kv.Value.Bodies)}")));
         }
 
         private PlaceableBuilding Place(string key, int x, int y)

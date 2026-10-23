@@ -19,7 +19,9 @@ Current scenarios:
   street and zoomed in, with stocks fed and drained so none stops. Each body must make its
   work motion (`Core/Golems/GolemWorkMotion`): the Presser stamps, the Overclocker stamps and
   glows, the Scavenger tugs at the Scrap stall, the Hauler heaves and lunges, the Zeppelin
-  crouches and hops. It is also the fixture for capturing the motions with `--write-movie`.
+  crouches and hops. Each also picks its stroke's three work frames (`Core/Golems/GolemFrames`),
+  and a chassis with no frame files draws its south base throughout. It is also the fixture for
+  capturing the motions with `--write-movie`.
 - `workbench` (Sandbox): program a golem end to end through the Workbench with real mouse
   drags. Also covers socket highlights, the dial, failed drags leaving no orphans, Engage,
   Patent, and close/reopen. Its golem is the guide's first, so it checks the next-drag hint
