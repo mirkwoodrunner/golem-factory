@@ -66,7 +66,8 @@ call): built, reviewed, critiqued and tested. Done:
 
 **Resume here:**
 1. **Phase 4 (Art) is under way** on branch `phase4/art`, from `phase3/tuning`: see Phase 4
-   below.
+   below. Its specs are written; next is the user's calls in `art-pipeline-design.md` §9, then
+   the tooling (§5), then the golems.
 2. **The human playtests, still to run:** `testscript/phase-2-playtest.md`, then
    `testscript/phase-1-playtest.md`, then `testscript/full-playthrough.md`.
 
@@ -237,6 +238,24 @@ The specs (written 2026-10-19; the tuning spec's decisions approved the same day
 frame budget holds at endgame.
 
 ## Phase 4: Art
+
+The specs (written 2026-10-22; their proposals wait for the user's calls):
+
+- `docs/art-style-bible.md`: the invariants (§0), palette, outlines, light direction, shading,
+  pixel density, canvas sizes, animation frames and timings, and the readability rules, with
+  today's art measured against them.
+- `docs/art-pipeline-design.md`: the per-set workflow, the replacement order, every file by set
+  with its owner and what code reads it, the tooling to build (`art_manifest.json`,
+  `check_art.py`, `palette_snap.py`, `comfy_redraw.py`, and a fix for a `verify_art.py` blind
+  spot), the lighting, the `art` scenario, and **§9, the decisions for the user**.
+
+**Done when** (proposed, `art-pipeline-design.md` §8): every set replaced through the pipeline or
+deferred with the user's OK (golems not deferrable); `verify_art.py` and `check_art.py` green;
+the lighting in and the windowed `perf` run passing with it on; every Core test and scenario,
+the new `art` scenario included, passing twice; the captures looked at; and every hand-replaced
+file recorded.
+
+The roadmap's brief:
 
 - **A style bible first**: palette (brass, mahogany, the warm brown outlines of the cart redraw),
   outline rules, light direction, pixel density at PPU 64, animation frame counts.

@@ -37,6 +37,10 @@ Read the docs before making design calls, not just the code:
   and §3.5 what it overrides in `cozy-automation-design.md` §2.
 - `docs/guide-chapters-design.md` -- the guide's texts, checks, marks, plans and kit actions,
   step by step; chapters 1–4 rewritten for the 15-minute target. Phase 2, built.
+- `docs/art-style-bible.md` -- Phase 4's look: palette, outlines, light, canvas sizes, frames and
+  readability. Its §0 lists the invariants any art pass must keep.
+- `docs/art-pipeline-design.md` -- Phase 4's how: the per-set ComfyUI workflow and order, every
+  sprite by set and owner, the art tooling and lighting to build, and the user's decisions (§9).
 - `docs/performance-report-template.md` -- the endgame profile's spec and budget;
   `docs/performance-report-phase3.md` is its first filled-in run (the budget holds at 96 golems).
 - `docs/open-items.md` -- the backlog: open decisions, known gaps, deliberate scope cuts.
