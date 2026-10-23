@@ -67,12 +67,20 @@ call): built, reviewed, critiqued and tested. Done:
 **Resume here:**
 1. **Phase 4 (Art) is under way** on branch `phase4/art`, from `phase3/tuning`: see Phase 4
    below. Its specs are written and the user made all twelve calls on 2026-10-23
-   (`art-pipeline-design.md` §9). Next: **the unused-sprite cleanup commit**
-   (`art-pipeline-design.md` §3.1: a full scenario run and a capture of each screen, before and
-   after), then **the `Tools/Art/` tooling** (§5: the manifest, `check_art.py`,
-   `palette_snap.py`, `comfy_redraw.py` with ControlNet and IP-Adapter, `pose_guide.py`,
-   `reshade_mirror.py`, `review_sheet.py`, and the `verify_art.py` fix), then **S1, the golems**,
-   once ControlNet and IP-Adapter are installed in `G:/AI/ComfyUI` (being done separately).
+   (`art-pipeline-design.md` §9). **Done (2026-10-23):** the cleanup commit (§3.1: 26 sprites
+   gone, every scenario and every screen capture unchanged across it); `verify_art.py` covers
+   the goods (§5.5: 95 generated, 84 identical, 11 hand-replaced, 0 drifted); the `Tools/Art/`
+   tooling (§5: `art_manifest.json`, `palette.json`, `art_metrics.py`, `check_art.py`,
+   `palette_snap.py`, `reshade_mirror.py`, `pose_guide.py`, `review_sheet.py`,
+   `comfy_redraw.py` on the installed ControlNet and IP-Adapter nodes; 79 tool tests);
+   Core's `GolemFrames` with `GolemNode` drawing it (every frame falls back to the south base
+   today, and the game looks as before); and the `art` scenario's first part (§7.1 items 1–3,
+   the golem gallery). `check_art.py`: 0 FAIL, 63 WARN, the baseline the golems must clear
+   (§5's "Built" note). Next: **S1, the golems** (§2's workflow, §4 S1), chassis by chassis:
+   its south base, then its north and east bases, then each facing's frames, west by mirror,
+   and the review sheet before any commit. ComfyUI is installed; start it with
+   `G:/AI/start_comfyui.bat` and stop it when the set is done. `LightingRules` waits for its
+   set (L, after S2).
 2. **The human playtests, still to run:** `testscript/phase-2-playtest.md`, then
    `testscript/phase-1-playtest.md`, then `testscript/full-playthrough.md`.
 

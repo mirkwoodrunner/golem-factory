@@ -7,8 +7,9 @@ makes cleanup, mirroring, checks and review repeatable, the lighting, the scenar
 all, and when the phase is done. **What the art looks like** is `docs/art-style-bible.md`; its
 §0 invariants hold for every step here.
 
-**Next:** the unused-sprite cleanup commit (§3.1), then the tooling (§5), then S1, the golems,
-once ControlNet and IP-Adapter are installed (§1.4).
+**Next:** S1, the golems (§2, §4). Done on 2026-10-23: the cleanup commit (§3.1), the
+`verify_art.py` fix (§5.5), the tooling (§5), Core's `GolemFrames` (§7.4) and the `art`
+scenario's first part (§7.1); ControlNet and IP-Adapter are installed (§1.4).
 
 ## 1. Where things stand (measured 2026-10-22, at 8b3ec0b)
 
@@ -846,6 +847,15 @@ banded texture's size, then boiler glows altogether (the hot pipes stay, as they
 4. **Readability in the game**: for each chassis and facing in the gallery, the drawn body's
    mean colour under Stalled, Starved and Waiting (read back from the viewport) differs pairwise
    by the style bible's margins, with the ambient applied.
+
+**Built (2026-10-23), the part S1 needs:** items 1 and 2 as written (the data's names are every
+`"*.png"` string in `data/*.json`), and item 3's golem gallery: `Diagnostics/ArtGallery` stands
+each chassis's 28 frames in a 7 × 4 grid in the room (columns are states, rows facings, two cells
+apart, clear of the bench and the station), pins them, and captures
+`art-golems-<chassis>-{default,close,wide}.png`. Still to come, each with the set that needs it:
+the gallery's mood, carried and hovered rows (S1, once frames differ), `art-artificer` (S1b),
+`art-buildings`, `art-goods`, `art-room-lit/unlit`, `art-workbench`, `art-hud`, and item 4's
+in-game readability (Lighting, since it reads the ambient).
 
 ### 7.2 Extended
 

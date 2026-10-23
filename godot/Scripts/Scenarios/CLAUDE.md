@@ -88,6 +88,15 @@ Current scenarios:
   p95 ≤ 16.6 ms and max ≤ 33.3 ms; headless, Core's share p95 ≤ 6 ms. One `[perf]` line a
   phase, and the report's tables in `user://perf-report.md`. About a minute headless. The last
   filled-in report is `docs/performance-report-phase3.md`.
+- `art` (Sandbox): the art against `Tools/Art/art_manifest.json` (`docs/art-pipeline-design.md`
+  §7.1). Every entry loads at its size and every `res://art/**.png` has one; every name the data
+  and the code build exists (the data's `.png` names, `ItemIcons.PathFor` for every good, the
+  tower, the walk frames), and every chassis's 28 `GolemFrames` names resolve, through the
+  fallback while its set hasn't landed. Core's `Diagnostics/ArtGallery` stands each chassis's 28
+  frames in a grid, pinned (`GolemNode.PinnedFrame`), captured as
+  `art-golems-<chassis>-{default,close,wide}.png`; and every standing sprite's lowest opaque row
+  sits on its node's origin within the manifest's allowance. A new sprite needs its manifest
+  entry or this fails.
 
 **Screen captures:** a windowed run with `--capture-dir=<dir>` writes `screen-*.png`, one per
 screen (`world` the room, `management` the HUD and every tab, `build` the menu, `tutorial` the

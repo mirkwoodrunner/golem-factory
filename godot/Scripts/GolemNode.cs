@@ -323,6 +323,12 @@ namespace GolemFactory.Nodes
         public GolemFrameKey DrawnFrame { get; private set; }
 
         /// <summary>
+        /// A diagnostic seam for the <c>art</c> scenario's gallery (Core's <c>ArtGallery</c>):
+        /// when set, the body shows this frame whatever the golem is doing. Null in play.
+        /// </summary>
+        public GolemFrameKey? PinnedFrame { get; set; }
+
+        /// <summary>
         /// The body's picture (docs/art-style-bible.md §4.4): Core picks the frame from the mood,
         /// the signature stroke, carrying and the facing; the file is resolved through
         /// GolemFrames' fallback, so with only a chassis's south base every frame is that base,
@@ -346,7 +352,7 @@ namespace GolemFactory.Nodes
                     phase = GolemFrames.StrokePhase(motion, program.StepProgressTicks + fraction, Entity.StepDurationTicks);
                 }
             }
-            GolemFrameKey key = GolemFrames.FrameFor(_mood, motion, phase, carried, _time, Entity.Facing);
+            GolemFrameKey key = PinnedFrame ?? GolemFrames.FrameFor(_mood, motion, phase, carried, _time, Entity.Facing);
             DrawnFrame = key;
 
             if (!ResolvedFrames.TryGetValue((stem, key), out string sprite))
