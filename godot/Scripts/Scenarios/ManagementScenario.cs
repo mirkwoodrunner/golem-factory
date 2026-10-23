@@ -104,6 +104,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("let the alerts strip reconcile", () => null);
             Do("the strip says all golems are running", () =>
                 _hud.AlertsText.Contains("running") ? null : $"strip reads '{_hud.AlertsText}'");
+            Do("capture the HUD", () => { ScenarioCapture.Shot(_tree.Root, "screen-hud"); return null; });
             Do("click PAUSE", () => { Click(_hud.PlayPauseButton); return null; });
             Do("the clock is paused", () => _world.Clock.State == ClockState.Paused ? null : "PAUSE did not pause the clock");
             Do("click PLAY", () => { Click(_hud.PlayPauseButton); return null; });
@@ -189,6 +190,7 @@ namespace GolemFactory.Nodes.Scenarios
                     int sameAsLit = _screen.TabButtons.Values.Count(b => b.SelfModulate == lit);
                     return sameAsLit == 1 ? null : $"{sameAsLit} tab buttons wear the lit plate";
                 });
+                Do($"capture the {tab} tab", () => { ScenarioCapture.Shot(_tree.Root, $"screen-management-{captured}"); return null; });
             }
             Do("tabs", () => { _log.Add("each tab shows only itself, lit alone"); return null; });
         }

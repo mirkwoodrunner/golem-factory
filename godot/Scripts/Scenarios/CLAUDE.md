@@ -87,6 +87,13 @@ Current scenarios:
   phase, and the report's tables in `user://perf-report.md`. About a minute headless. The last
   filled-in report is `docs/performance-report-phase3.md`.
 
+**Screen captures:** a windowed run with `--capture-dir=<dir>` writes `screen-*.png`, one per
+screen (`world` the room, `management` the HUD and every tab, `build` the menu, `tutorial` the
+playtest card and the guide panel, `interact` the construction panel, `inventory` the Pack and
+Crate screens), beside the `critique-*` shots. They are deterministic under `--fixed-fps 60`,
+so an art change that shouldn't move a screen is checked by comparing them pixel for pixel
+(`docs/art-pipeline-design.md` §3.1).
+
 **Scenario input:** `Input.ParseInputEvent` **without** `FlushBufferedEvents` for key presses,
 and a tap must hold the key down across at least one frame. A press and release in the same
 frame, or a flush from inside `_Process`, never reads as "just pressed" to a node that has

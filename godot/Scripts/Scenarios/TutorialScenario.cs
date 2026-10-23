@@ -69,6 +69,7 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 return _panel.Plate.Visible ? "the guide plate shows over the question" : null;
             });
+            Do("capture the playtest card", () => { ScenarioCapture.Shot(_tree.Root, "screen-playtest-card"); return null; });
             Do("type a note with a W in it", () =>
             {
                 standing = _player.CorePosition;
@@ -112,6 +113,7 @@ namespace GolemFactory.Nodes.Scenarios
                 _panel.Plate.Visible && _panel.TitleText == "Gather Scrap" && _panel.ProgressText == "Scrap  0 / 20"
                     ? null
                     : $"plate {_panel.Plate.Visible}, '{_panel.TitleText}', '{_panel.ProgressText}'");
+            Do("capture the guide panel", () => { ScenarioCapture.Shot(_tree.Root, "screen-guide-panel"); return null; });
             Do("its arrow points at the Scrap stall from the screen's edge", () =>
             {
                 if (!_panel.Arrow.Visible || !_panel.OffScreen)

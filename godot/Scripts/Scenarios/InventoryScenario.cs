@@ -164,6 +164,7 @@ namespace GolemFactory.Nodes.Scenarios
                 Shot("pack screen");
                 return null;
             });
+            Do("capture the Pack screen", () => { ScenarioCapture.Shot(_viewport, "screen-pack"); return null; });
             foreach (Key closer in new[] { Key.I, Key.E, Key.Escape })
             {
                 Key captured = closer;
@@ -297,6 +298,7 @@ namespace GolemFactory.Nodes.Scenarios
                 _log.Add($"crate screen: '{_crate.CrateTitle}' beside the pack, alone, prompt hidden");
                 return null;
             });
+            Do("capture the Crate screen", () => { ScenarioCapture.Shot(_viewport, "screen-crate"); return null; });
         }
 
         // --- 4. Put and take --------------------------------------------------------------------

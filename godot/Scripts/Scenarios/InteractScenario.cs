@@ -211,6 +211,7 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 return _prompt.Caption == "" ? null : "the world prompt still shows over the open panel";
             });
+            Do("capture the construction panel", () => { ScenarioCapture.Shot(_player.GetViewport(), "screen-construction-panel"); return null; });
             CoreVector3 heldAt = default;
             Do("hold W while it is open", () =>
             {

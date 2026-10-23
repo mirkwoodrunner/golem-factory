@@ -161,6 +161,9 @@ namespace GolemFactory.Nodes.Scenarios
                     return null;
 
                 case Phase.Settle when _elapsed >= SettleSeconds:
+                    // The room at the default zoom, the player back inside (the cleanup's before
+                    // and after captures, art-pipeline-design.md §3.1).
+                    ScenarioCapture.Shot(_player.GetViewport(), "screen-room");
                     // Down the middle the street opens into the town square (G10), so the walk ends
                     // at the SQUARE's kerb.
                     int farRow = TownSquare.Bottom;
