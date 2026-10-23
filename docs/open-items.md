@@ -111,6 +111,10 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 - **`Straining`**, the only predictive mood (9 of 12 units held): on hover only since Phase 2
   (`docs/roadmap.md`, decision 6; `onboarding-feedback-design.md` §4.4). The playtest's
   `straining` question asks whether anyone missed a warning.
+- **A first-launch hitch:** the first windowed `perf` run after a clean rebuild had one 142 ms
+  frame in its first phase; the immediate rerun's worst frame was 22.8 ms. Most likely a
+  first-run cost (shader or pipeline compilation, a cold .NET JIT). A player's first launch
+  may stutter once. Worth a look in Phase 6 (game feel) or Phase 9; not reproduced warm.
 - **The depot label picker: closed.** Built in Phase 1 on the crate screen
   (`docs/inventory-screens-design.md` §4.4), taught by step `copper-depot`.
 

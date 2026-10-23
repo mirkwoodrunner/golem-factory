@@ -25,7 +25,7 @@ then `testscript/phase-1-playtest.md`. The game-time floor for chapters 1–4 is
 of the 15 minutes (Phase 2 below), **5:16** after Phase 3's Presser price. What's left of Phase 2
 is in `docs/open-items.md`.
 
-**Phase 3, tuning and a full playthrough, is done in code** (branch `phase3/tuning`, from
+**Phase 3, tuning and a full playthrough, is done in code, and its "Done when" holds** (branch `phase3/tuning`, from
 `phase2/onboarding`; no phase branch is pushed until all nine phases are done, the user's
 call): built, reviewed, critiqued and tested. Done:
 - **Docs:** `tuning-data-spec.md` (user-approved: §8.1 late prices, §17 decisions, §18
@@ -54,18 +54,21 @@ call): built, reviewed, critiqued and tested. Done:
   stuck step through chapter 10 and every chapter under its ceiling (75:23 of game time; chapters
   1-4 take 5:16). **Done when, part 2:** the windowed `perf` run failed (worst p95 23.4 ms,
   hover), but Satisfactory was running alongside it at about 60% CPU, and every section,
-  headless and windowed, read about twice the recorded run at 18044ef. Core's share stayed in
-  budget (p95 at most 3.0 ms headless). So the budget is unconfirmed, not broken. Rerun it on
-  an idle machine.
+  headless and windowed, read about twice the recorded run at 18044ef. **Rerun on an idle
+  machine (2026-10-22, at 7a79046): PASS**, every phase within budget: flowing p95 10.0 ms,
+  4× 10.3, starved 13.9, hover 14.6, no-draw 7.5, worst frame 22.8 ms, matching
+  `performance-report-phase3.md`. The first windowed launch after a clean rebuild had one
+  142 ms frame (the rest of that run passed); see `open-items.md` §4.
+- **After the test run** (the user's calls, 2026-10-22): the Ledger names no golem count
+  (15541fe); the guide's program plans are built from the data, and the Slag Heap's ratio is
+  `slagPerCoke` in `placeables.json` (9dcca18); the guide's Scavenger and Depot counts read
+  their prices (7a79046). 1925 Core tests pass.
 
 **Resume here:**
-1. **Rerun `perf` windowed on an idle machine**, with no game or other heavy process running:
-   `"$G" --path godot --fixed-fps 60 -- --scenario perf`. It must hold p95 ≤ 16.6 ms and max
-   ≤ 33.3 ms in every phase, as `performance-report-phase3.md` recorded. If it fails while the
-   machine is idle, that is a regression since 18044ef.
-2. **The human playtests:** `testscript/phase-2-playtest.md`, then
+1. **Phase 4 (Art) is under way** on branch `phase4/art`, from `phase3/tuning`: see Phase 4
+   below.
+2. **The human playtests, still to run:** `testscript/phase-2-playtest.md`, then
    `testscript/phase-1-playtest.md`, then `testscript/full-playthrough.md`.
-3. **Then Phase 4 (Art):** its design docs, once the user says go.
 
 `FloorPlayer`'s chapter 8 floor jumps around as prices change (`open-items.md` §3), so check
 any retune at neighbouring prices.
