@@ -225,12 +225,14 @@ SIDE = {
 }
 # North: the golem faces away, so the claw and what it holds are in front of it, further up the
 # floor: drawn a little higher on screen than from the south and behind its body (chassis.json
-# "layers"). The arms reach forward: the upper arms show at the shoulders, the rest goes behind.
+# "layers"). The arms still hang at its sides, where they show (tucked in behind the bucket, the
+# user saw arms cut off at the elbow, first review). The whole view is drawn mirrored
+# (draw_front), so the claw arm, the antenna and the scrap are on the golem's own side.
 BACK = {}
 for state, p in FRONT.items():
     q = dict(p)
-    q["claw"] = (p["claw"][0] + 6, p["claw"][1] - 8)
-    q["elbow"] = (p["elbow"][0] + 3, p["elbow"][1] - 4)
+    q["claw"] = (p["claw"][0], p["claw"][1] - 6)
+    q["elbow"] = (p["elbow"][0], p["elbow"][1] - 3)
     BACK[state] = q
 for table in (FRONT, SIDE, BACK):
     table["idle_1"] = dict(table["base"], eye="bright")
@@ -286,7 +288,9 @@ def front_legs(cv, p, back):
 
 def draw_front(state, back=False):
     p = (BACK if back else FRONT)[state]
-    cv = Canvas("north" if back else "south")
+    # From behind, the golem's right is on the screen's right: the back is the front's shapes
+    # mirrored, then shaded from the upper left as ever.
+    cv = Canvas("north" if back else "south", mirror=back)
     hd, bd = p.get("head", 0), p.get("body", 0)
     front_legs(cv, p, back)
     # Body: a small copper kettle, a brass band round its middle, an iron hip disc under it.
@@ -300,19 +304,18 @@ def draw_front(state, back=False):
         for x in (30, 33):
             cv.paint("body", "iron", 0, shift(rect(x, 48, x, 51), 0, bd))
         cv.dots("body", "brass", 2, [(29, 61 + bd), (34, 61 + bd)], 2)
-    # The scrap bin (an iron bucket, brass rim and straps) on its back: from the south its rim shows over the left shoulder (screen
-    # right); from the north it is the whole back, with scrap sticking out of it.
+    # The scrap bin (an iron bucket, brass rim and straps) on its back, centred: from the north it
+    # is the whole back; from the south (behind the body) its rim shows behind the neck and its
+    # scrap either side of the head, so it reads as a backpack. On one shoulder only, the user saw
+    # a box beside the head (first review). It is no wider than the body: wider, the south
+    # silhouette overlapped today's Hauler at 0.52 (at most 0.50; this is 0.48).
+    cv.layer("pack", "iron", shift(rrect(21, 38, 43, 60, 3), 0, bd), [0, 1, 2, 3, 4])
+    cv.layer("pack", "brass", shift(rect(21, 38, 43, 40), 0, bd), [1, 2, 3])
+    cv.layer("pack", "brass", shift(rrect(17, 32, 22, 39, 1), 0, bd), [0, 1, 2, 3])
+    cv.layer("pack", "copper", shift(rrect(42, 30, 47, 39, 1), 0, bd), [0, 1, 2])
     if back:
-        cv.layer("pack", "iron", shift(rrect(20, 40, 44, 63, 3), 0, bd), [0, 1, 2, 3, 4])
-        cv.layer("pack", "brass", shift(rect(20, 40, 44, 42), 0, bd), [1, 2, 3])
         for x in (25, 38):
-            cv.paint("pack", "brass", 1, shift(rect(x, 44, x + 1, 62), 0, bd))
-        cv.layer("pack", "brass", shift(rrect(23, 35, 30, 41, 1), 0, bd), [0, 1, 2, 3])
-        cv.layer("pack", "copper", shift(rrect(34, 33, 41, 41, 1), 0, bd), [0, 1, 2])
-    else:
-        cv.layer("pack", "iron", shift(rrect(40, 36, 53, 49, 2), 0, bd), [0, 1, 2, 3, 4])
-        cv.layer("pack", "brass", shift(rect(40, 36, 53, 38), 0, bd), [1, 2, 3])
-        cv.layer("pack", "copper", shift(rrect(44, 31, 50, 37, 1), 0, bd), [0, 1, 2])
+            cv.paint("pack", "brass", 1, shift(rect(x, 42, x + 1, 62), 0, bd))
     # Head: a round copper bulb on an iron neck, one big eye, a little antenna with a brass tip.
     o = hd + bd
     cv.layer("head", "iron", shift(rect(29, 39, 35, 44), 0, o), [1, 2, 3, 4])

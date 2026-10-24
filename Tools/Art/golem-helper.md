@@ -31,6 +31,8 @@ python Tools/Art/golem_set.py <set> run         # draft → render → pick → 
 
 Run it in the background: the render takes about 15 minutes (5 of them ComfyUI loading). Then:
 
+0. **Draft.** If it stops on "the south base draft's silhouette overlaps …", or warns that a
+   render may push it over, report the line: the draft is the lead's to change.
 1. **Render.** It ends with `render: 3 facings in N min` and `stopped ComfyUI`. If ComfyUI
    didn't come up, report the last 20 lines of the log it names. A rerun skips the facings
    already on disk; `--force` renders again only if the brief says so.

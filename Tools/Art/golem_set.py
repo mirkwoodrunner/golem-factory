@@ -195,6 +195,31 @@ def step_draft(gs, log=print):
     if missing:
         raise SetError(f"{gs.draft} didn't write {', '.join(missing[:4])}{' ...' if len(missing) > 4 else ''}")
     log(f"draft: 28 frames in {gs.drafts}")
+    check_draft_silhouette(gs, log)
+
+
+SILHOUETTE_MARGIN = 0.02
+
+
+def check_draft_silhouette(gs, log=print):
+    """The pick step holds the south base to SILHOUETTE_MAX_IOU against every other chassis'
+    sprite, today's included, where check_art only notes an overlap with one not yet replaced. So
+    measure the draft here, before a render: over the bound stops the run; within the margin
+    under it warns, since a render can move the outline a pixel or two (the Scavenger's wider
+    bucket, 0.52 against the Hauler, cost a render)."""
+    draft = m.foot_mask(m.load(os.path.join(gs.drafts, "draft_south_base.png")))
+    stems = check_art.Context.from_repo().chassis_stems
+    overlaps = {s: m.iou(draft, m.foot_mask(m.load(os.path.join(ART, s + ".png")))) for s in stems if s != gs.stem}
+    if not overlaps:
+        return
+    worst = max(overlaps, key=overlaps.get)
+    bound = check_art.SILHOUETTE_MAX_IOU
+    if overlaps[worst] > bound:
+        raise SetError(f"the south base draft's silhouette overlaps {worst} at {overlaps[worst]:.2f} "
+                       f"(at most {bound:.2f}): change the draft before rendering")
+    if overlaps[worst] > bound - SILHOUETTE_MARGIN:
+        log(f"draft: WARN south silhouette {overlaps[worst]:.2f} against {worst}, within {SILHOUETTE_MARGIN} "
+            f"of {bound:.2f}: a render may push it over")
 
 
 # --- 2. render ---------------------------------------------------------------------------------

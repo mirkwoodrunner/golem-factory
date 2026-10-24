@@ -104,6 +104,15 @@ class GolemSetTests(unittest.TestCase):
         self.assertEqual(["data/chassis.json chassisSprite"], out["chassis_t.png"]["readers"])
         self.assertEqual("retrodiffusion", base["owner"], "the manifest given is not changed")
 
+    def test_a_draft_whose_silhouette_overlaps_another_chassis_stops_before_the_render(self):
+        gs = g.GolemSet(self.root, config())
+        os.makedirs(gs.drafts)
+        # The Presser's own sprite as the draft: it overlaps the Presser completely.
+        shutil.copy(os.path.join(_art.GODOT_ART, "chassis_brass_presser.png"), os.path.join(gs.drafts, "draft_south_base.png"))
+        with self.assertRaises(g.SetError) as raised:
+            g.check_draft_silhouette(gs, log=lambda *_: None)
+        self.assertIn("silhouette", str(raised.exception))
+
     def test_compose_never_writes_into_godot_art(self):
         with self.assertRaises(g.SetError):
             g.step_compose(g.GolemSet(self.root, config()), out_dir=_art.GODOT_ART, log=lambda *_: None)

@@ -6,7 +6,7 @@
   "rigid": ["legs", "far_leg", "body", "head", "pack"],
   "layers": {
     "south": ["far_leg", "pack", "legs", "body", "head", "arms", "forearms", "hands", "claw"],
-    "north": ["claw", "hands", "forearms", "legs", "body", "far_leg", "pack", "head", "arms"],
+    "north": ["forearms", "hands", "claw", "legs", "body", "far_leg", "arms", "head", "pack"],
     "east": ["far_arm", "far_leg", "pack", "body", "legs", "head", "arms", "forearms", "hands", "claw"],
     "west": ["far_arm", "far_leg", "pack", "body", "legs", "head", "arms", "forearms", "hands", "claw"]
   },
