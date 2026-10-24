@@ -300,11 +300,12 @@ What the Presser's three review rounds settled (2026-10-23), so the next chassis
 - **Only each facing's base goes through ComfyUI.** South, north and east bases: img2img of the
   draft at denoise 0.35–0.55 (0.55 picked for south and north, 0.45 for east), seeds swept, the
   control-LoRA canny at 0.7 ending at 0.8, IP-Adapter plus vit-h at 0.5 ("style transfer") on
-  `stall_scrap` at 4×, 512×768 on a `#28be46` key, 8 LCM steps, cfg 1.5. `pick_base.py` picks by
-  `check_art` metrics. Higher denoise lost the upper-left light.
-- **Every other frame is composed, never rendered** (`compose.py`): rigid parts move by the
+  `stall_scrap` at 4×, 512×768 on a `#28be46` key, 8 LCM steps, cfg 1.5. The pick step scores
+  every candidate by `check_art`'s measures; all nine of each Presser facing passed, so the pick
+  among them is taste (§5.10). Higher denoise lost the upper-left light.
+- **Every other frame is composed, never rendered** (`golem_set.py`'s compose): rigid parts move by the
   pose's offsets, arms come from the draft, and the render adds only a one-tone step inside a part,
-  never on its border, so texture can't shimmer between frames. `compose.py`'s `LAYERS` gives the
+  never on its border, so texture can't shimmer between frames. `golem_set.LAYERS` gives the
   draw order per facing; from the north, what the golem holds is drawn first, behind it.
 - **West is the east shapes mirrored and re-lit by the draft's shading**, then composed with the
   mirrored east texture. `reshade_mirror.py` on finished east frames failed the light check for a
@@ -312,13 +313,17 @@ What the Presser's three review rounds settled (2026-10-23), so the next chassis
 - **Cleanup:** `palette_snap.py --key #28be46 --key-holes 256 --reduce 8 --outline --canvas 64,96`
   with the chassis's ramps; fire only through fixes (with fire in the snap, bright brass landed on
   fire orange).
-- **Review:** `review_sheet.py` plus a compact numbered grid (`grid.py`: 4×, rows south, north,
+- **Review:** `review_sheet.py` plus a compact numbered grid (`grid.png`: 4×, rows south, north,
   east, west; columns base, idle_1, work_0–2, stall, carry; today's sprite beside). The user marks
   frames by number. Install: the frames into `godot/art/` with their `.import` files, manifest
   entries (`owner: comfyui`, `mirroredFrom` on west), `review.json`, and the `art`, `golems`,
   `golem-motion` scenarios plus a look at the game.
 - **Time:** about 5 min for ComfyUI's first image, 7–11 s after; the renders are ~10 min a
   chassis. Drafting the creature and its poses is most of the work.
+- **All of it is one command now** (2026-10-24): `python Tools/Art/golem_set.py <set> run`,
+  with the chassis' own settings in `<set>/chassis.json` (§5.10). The Presser's `chassis.json`
+  records its prompts and picks, and `golem_set.py public/images/S1/brass_presser verify`
+  recomposes its 28 frames pixel for pixel from the kept renders.
 - **Still plainer than the carts**, and the profile is mostly iron with a small ram; the user
   accepted it. A later pass may raise detail where the light check allows.
 
@@ -782,6 +787,42 @@ python Tools/Art/review_sheet.py --set S1 --frames <file …>
 Tests (`tests/test_review_sheet.py`): numbering follows the `--frames` order and is stable
 across runs; `review.json` maps every number to its file; a page holds at most 28 rows; a frame
 with no before is labelled; it refuses `godot/art/`.
+
+### 5.10 `Tools/Art/golem_set.py`: a chassis in one command
+
+Added 2026-10-24, after the Presser (§3.2), so a chassis costs a draft and the reviews, and the
+mechanical steps can go to a helper agent on a smaller model (`Tools/Art/golem-helper.md`).
+
+```sh
+python Tools/Art/golem_set.py <set> run        # draft, render, pick, compose, check, review
+python Tools/Art/golem_set.py <set> <step>     # draft | render | pick | compose | check | review [--game]
+python Tools/Art/golem_set.py <set> install    # refuses until chassis.json has "approved"
+python Tools/Art/golem_set.py <set> verify     # recompose from the kept renders = godot/art/?
+```
+
+- **`<set>/chassis.json` holds what is the chassis' own:** `stem`, `title`, `draft` (its draft
+  script, relative to the set), `ramps`, `prompts` for south, north and east; optionally
+  `layers` (per-facing part order over `golem_set.LAYERS`), `rigid`, `textured`, the render
+  settings (defaults are the Presser's: denoise 0.35/0.45/0.55 × 3 seeds from 5000, canny 0.7
+  to 0.8, IP-Adapter 0.5 on `stall_scrap`), `picks`, `dirs` and `approved`.
+- **render** starts ComfyUI if it isn't up and stops it afterwards only if it started it, and
+  skips a facing whose candidates are all on disk.
+- **pick** scores every candidate and picks the one with the most render texture of those that
+  pass `check_art`'s bounds (feet, silhouette, lightness, the tints, the edge light). The
+  Presser showed that every candidate can pass, and its picks were made by eye: the auto pick
+  matched 1 of 3. So the step writes `candidates_<facing>.png`, every candidate's base frame
+  best first, and a choice by eye goes in `chassis.json`'s `picks`.
+- **check** is `check_art` over a scratch copy of `godot/art/` with the frames in place, as if
+  replaced. **install** reruns it and refuses on a FAIL, then copies, writes the manifest
+  entries, imports (a headless Godot it starts and stops itself) and runs `art`, `golems` and
+  `golem-motion`. It commits nothing.
+- Only install writes into `godot/art/`.
+
+Tests (`tests/test_golem_set.py`): a config missing its own parts is refused; defaults merge;
+the 28 frames in review order; candidate names as `comfy_redraw.py` writes them; no failing
+candidate is picked, and the pick is the most texture then the edge light; the manifest entries
+(owner, ramps, west's `mirroredFrom`); compose refuses `godot/art/`; install refuses without
+`approved`; the layering rule.
 
 ### 5.9 Commands this adds to `CLAUDE.md`
 

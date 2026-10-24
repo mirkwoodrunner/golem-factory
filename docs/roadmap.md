@@ -75,6 +75,12 @@ call): built, reviewed, critiqued and tested. Done:
      the way the Presser was made: `art-pipeline-design.md` §3.2, "The Presser, the template".
      Each chassis goes to its review sheet and a compact numbered grid, the user marks frames,
      and nothing enters `godot/art/` until they approve.
+     **How (the user's call, 2026-10-24, to save usage):** the lead writes the chassis' draft
+     script and `chassis.json` (copy the Presser's), then a helper agent on Sonnet runs
+     `Tools/Art/golem_set.py <set> run` per `Tools/Art/golem-helper.md` and reports. The lead
+     looks at `candidates_*.png` and the grid, sends the grid to the user, makes the fixes
+     they mark, and sets `approved` once they approve; the helper installs. The Scavenger is the
+     trial: afterwards, report how much usage the split saved.
    - **Rules from the Presser's reviews:** golems are creatures with a head, arms and legs,
      wearing or wielding their chassis motif (`art-style-bible.md` invariant 17, the user's call);
      what a golem holds is in front of it, so from the north its body hides it (§5.1).

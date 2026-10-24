@@ -29,7 +29,17 @@ python Tools/Art/verify_art.py                 # generated art reproduces
 python Tools/Art/check_art.py                  # the manifest: sizes, feet, palette, frames, light, readability
 python Tools/Art/check_art.py --write          # refresh the manifest's size and footRow from the files
 python -m unittest discover Tools/Art/tests    # the tools' own tests (no ComfyUI, no godot/art/ writes)
+python Tools/Art/golem_set.py <set> run        # a golem chassis' 28 frames: draft → … → review grid
+python Tools/Art/golem_set.py <set> install    # only after the user approves ("approved" in chassis.json)
 ```
+
+- **A golem chassis is made with `golem_set.py`** (art-pipeline-design.md §5.10): its own
+  settings in `public/images/S1/<chassis>/chassis.json`, its draft script beside it. It starts
+  and stops ComfyUI and Godot itself. A helper agent on a smaller model runs it from
+  **`Tools/Art/golem-helper.md`**: point the helper at that file and the set, and keep the
+  draft, `picks`, `approved` and the user's review for the lead.
+- **Among candidates that all pass, the pick is taste:** look at `candidates_<facing>.png`
+  and record a choice by eye in `chassis.json`'s `picks`.
 
 - **Every PNG under `godot/art/` has an entry in `art_manifest.json`**, and every entry a file
   (check 1). A new or renamed sprite adds its entry in the same change; only `size` and
@@ -85,8 +95,10 @@ If an image-generation MCP server is configured in the user's global Claude conf
   and its 27 `chassis_brass_presser_<state>_<facing>.png`) are a creature redraw (style bible
   invariant 17), approved at its third review round on 2026-10-23. No generator ever owned them,
   so they are owner `comfyui` in the manifest, not hand-replaced, and `verify_art.py` lists them as
-  not generated. They are made by `public/images/S1/brass_presser/scripts/`: `presser_draft.py`
-  draws each frame as a part-mapped draft, ComfyUI redraws only each facing's base, and
-  `compose.py` derives every frame from its facing's cleaned base (texture as one-tone steps,
-  parts layered per facing by its `LAYERS`); west is the east profile mirrored and re-lit. A
-  change to one frame is made there and the 28 composed again, never by hand in `godot/art/`.
+  not generated. They are made by `golem_set.py` from `public/images/S1/brass_presser/`
+  (`chassis.json`, `scripts/presser_draft.py`): the draft script draws each frame as a
+  part-mapped draft, ComfyUI redraws only each facing's base, and the compose step derives every
+  frame from its facing's cleaned base (texture as one-tone steps, parts layered per facing by
+  `golem_set.LAYERS`); west is the east profile mirrored and re-lit. A change to one frame is
+  made there and the 28 composed again, never by hand in `godot/art/`; `golem_set.py
+  public/images/S1/brass_presser verify` proves the installed 28 still reproduce.

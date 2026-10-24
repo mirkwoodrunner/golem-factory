@@ -2,7 +2,8 @@
 of every frame in the three drawn facings, with a part map, so that
 
 - each facing's base is the image-to-image start and ControlNet guide for ComfyUI, and
-- every other frame is derived from the cleaned base by moving its rigid parts (compose.py),
+- every other frame is derived from the cleaned base by moving its rigid parts
+  (Tools/Art/golem_set.py's compose step),
   so its surface texture never changes between frames.
 
 A squat brass golem: stubby iron legs with bolted feet, a body framed by two brass pillars and a
@@ -24,7 +25,8 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from compose import layer_rank  # noqa: E402  (the per-facing layering rule)
+sys.path.insert(0, os.path.normpath(os.path.join(HERE, "..", "..", "..", "..", "..", "Tools", "Art")))
+from golem_set import layer_rank  # noqa: E402  (the per-facing layering rule)
 PALETTE = os.path.normpath(os.path.join(HERE, "..", "..", "..", "..", "..", "Tools", "Art", "palette.json"))
 RAMPS = {k: [tuple(int(c[i:i + 2], 16) for i in (1, 3, 5)) for c in v["colours"]]
          for k, v in json.load(open(PALETTE))["ramps"].items()}
@@ -32,7 +34,7 @@ W, H = 64, 96
 KEY = (40, 190, 70)
 STATES = ["base", "idle_1", "work_0", "work_1", "work_2", "stall", "carry"]
 FACINGS = ["south", "north", "east", "west"]
-# Parts that move rigidly between frames: compose.py copies the cleaned base's pixels for them,
+# Parts that move rigidly between frames: golem_set.py's compose copies the cleaned base's pixels for them,
 # shifted by the frame's offset. Arms and hands change shape, so they are always the draft's.
 RIGID = ["legs", "far_leg", "body", "head", "ram", "pack"]
 
@@ -96,7 +98,7 @@ class Canvas:
         self._done = False
 
     def _defer(self, part, op):
-        """Every drawing call waits, then runs in compose.LAYERS order for the facing (stable:
+        """Every drawing call waits, then runs in golem_set.LAYERS order for the facing (stable:
         within a part, in the order given)."""
         self._ops.append((layer_rank(self.facing, part), len(self._ops), op))
 
@@ -220,7 +222,7 @@ SIDE = {
     "carry":  dict(ram=(37, 60), hand=(39, 65), elbow=(31, 62), far_hand=(42, 64), far_elbow=(35, 61), legs=(-6, 0)),
 }
 # North: the golem faces away, so what it holds is in front of it, further up the floor: drawn
-# a little higher on screen than from the south and behind its body (compose.LAYERS["north"]).
+# a little higher on screen than from the south and behind its body (golem_set.LAYERS["north"]).
 # The arms reach forward: the upper arms show at the shoulders, the forearms and hands go
 # behind the head and body.
 BACK = dict(FRONT)
@@ -310,7 +312,7 @@ def draw_front(state, back=False):
         cv.layer("arms", "iron", capsule(s, e, 4.2), [1, 2, 3, 4])
         cv.layer("forearms", "iron", capsule(e, h, 3.6), [1, 2, 3, 4])
         cv.layer("arms", "copper", ellipse(e[0], e[1], 3.2, 3.2), [0, 1, 2])
-    # The ram is in front of the golem; compose.LAYERS puts it over the body from the south and
+    # The ram is in front of the golem; golem_set.LAYERS puts it over the body from the south and
     # under it from the north.
     cv.layer("ram", "brass", ram_px, [0, 1, 2, 3])
     cv.paint("ram", "iron", 1, shift(rect(1, 9, 28, 11), *ram))
@@ -381,7 +383,7 @@ def draw(facing, state):
 
 
 def offsets(facing, state):
-    """How far each rigid part moved from the base, for compose.py."""
+    """How far each rigid part moved from the base, for golem_set.py's compose."""
     table = SIDE if facing in ("east", "west") else (BACK if facing == "north" else FRONT)
     b, p = table["base"], table[state]
     ldy, ldx = p.get("legs", (0, 0))
