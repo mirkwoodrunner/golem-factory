@@ -65,33 +65,42 @@ call): built, reviewed, critiqued and tested. Done:
   their prices (7a79046). 1925 Core tests pass.
 
 **Resume here:**
-1. **Phase 4 (Art), on branch `phase4/art`: the Brass Presser is in the game and the user is
-   testing it.** The other four chassis wait for the user's go (2026-10-23). When they say go:
+1. **Phase 4 (Art), on branch `phase4/art`: the Brass Presser and the Clockwork Scavenger are
+   in the game** (the Scavenger approved 2026-10-24 at its second review round). The other three
+   chassis (Overclocker, Hauler, Zeppelin) wait for the user's go. When they say go:
    - **The user's test of the Presser first.** Ask what they saw. Nothing has looked at a tinted
      Presser on screen yet (stuck red, waiting grey, out of steam blue; `check_art.py` measures
      the tints as readable, but `moods`' street uses Scavengers). Add a tinted Presser to a
      scenario's captures, and fold any of the user's notes into the Presser before moving on.
-   - **Then the next chassis**, the Scavenger suggested (the first golem a player builds),
-     the way the Presser was made: `art-pipeline-design.md` §3.2, "The Presser, the template".
+   - **Then the next chassis**, the way the Presser and Scavenger were made: `art-pipeline-design.md` §3.2, "The Presser, the template".
      Each chassis goes to its review sheet and a compact numbered grid, the user marks frames,
      and nothing enters `godot/art/` until they approve.
      **How (the user's call, 2026-10-24, to save usage):** the lead writes the chassis' draft
      script and `chassis.json` (copy the Presser's), then a helper agent on Sonnet runs
      `Tools/Art/golem_set.py <set> run` per `Tools/Art/golem-helper.md` and reports. The lead
      looks at `candidates_*.png` and the grid, sends the grid to the user, makes the fixes
-     they mark, and sets `approved` once they approve; the helper installs. The Scavenger is the
-     trial: afterwards, report how much usage the split saved.
+     they mark, and sets `approved` once they approve; the helper installs.
+     **The Scavenger trial's result (2026-10-24):** the helper's render was killed by Claude
+     Code's low-memory reaper (ComfyUI holds most of the 16 GB), so **the user runs
+     `golem_set.py <set> run` in their own terminal**, which also costs no usage, and tells the
+     lead when it's done. A helper is still fine for install and verify (no ComfyUI); the lead
+     can run those directly too, they're short. Don't restart a reaper-killed render unasked.
    - **Rules from the Presser's reviews:** golems are creatures with a head, arms and legs,
      wearing or wielding their chassis motif (`art-style-bible.md` invariant 17, the user's call);
      what a golem holds is in front of it, so from the north its body hides it (§5.1).
-   - **Watch the silhouettes:** the Presser overlaps today's Hauler at 0.49 against the 0.50
-     limit, so the Hauler's redraw must differ clearly.
+   - **Watch the silhouettes:** the Presser overlaps today's Hauler at 0.49 and the Scavenger
+     at 0.48 against the 0.50 limit, so the Hauler's redraw must differ clearly. The draft step
+     now stops a run whose south draft is over the limit, before any render.
+   - **Rules from the Scavenger's review:** from the north, what's worn on the back (its scrap
+     bucket) is drawn over the head and upper arms; the north view is the south mirrored and
+     re-lit, so a one-handed tool stays on the golem's own side.
    - Then the Artificer (S1b), floor and walls (S2), lighting (L), buildings, the Workbench,
      goods and the HUD, each with its own review sheet (`art-pipeline-design.md` §3).
    - Before Phase 4's test run: fix the windowed `hover` flake (`open-items.md` §4).
    Done so far: the specs and the user's thirteen calls (§9), the cleanup, `verify_art.py`'s
    gap, the `Tools/Art/` tooling, Core's `GolemFrames`, the `art` scenario's golem gallery,
-   ControlNet and IP-Adapter in ComfyUI (§1.4), and the Presser (8f09b0e).
+   ControlNet and IP-Adapter in ComfyUI (§1.4), the Presser (8f09b0e), `golem_set.py` (77042e9)
+   and the Scavenger.
 2. **The human playtests, still to run:** `testscript/phase-2-playtest.md`, then
    `testscript/phase-1-playtest.md`, then `testscript/full-playthrough.md`. Run the game with the
    **mono** Godot build (a grey screen and "No loader found for resource: …cs" means the

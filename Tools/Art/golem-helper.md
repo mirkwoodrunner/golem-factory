@@ -29,7 +29,10 @@ Paths are from the repo root, `G:\GitHub\golem-factory`. `<set>` is the folder t
 python Tools/Art/golem_set.py <set> run         # draft → render → pick → compose → check → review
 ```
 
-Run it in the background: the render takes about 15 minutes (5 of them ComfyUI loading). Then:
+The render takes about 15 minutes (5 of them ComfyUI loading). **The user runs it in their own
+terminal** unless the brief says otherwise: started from Claude Code, its memory use gets it
+killed by Claude Code's low-memory reaper. Never restart a killed render; report it. Then read
+its output (or rerun `pick`, `check`, `review`, which are quick):
 
 0. **Draft.** If it stops on "the south base draft's silhouette overlaps …", or warns that a
    render may push it over, report the line: the draft is the lead's to change.

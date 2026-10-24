@@ -10,6 +10,8 @@
     "east": ["far_arm", "far_leg", "pack", "body", "legs", "head", "arms", "forearms", "hands", "claw"],
     "west": ["far_arm", "far_leg", "pack", "body", "legs", "head", "arms", "forearms", "hands", "claw"]
   },
+  "picks": {"south": "d0.35_s5002", "north": "d0.45_s5002", "east": "d0.35_s5002"},
+  "approved": "2026-10-24",
   "prompts": {
     "south": "front view of a cute rickety copper golem creature standing on three thin spindly iron tripod legs with copper knees, small round copper kettle body with a brass band, round copper bulb head with one huge teal glass eye and a little antenna, an iron scrap bucket with a brass rim on its back, thin iron arm holding a brass grabber claw",
     "north": "back view of a cute rickety copper golem creature standing on three thin spindly iron tripod legs with copper knees, round copper bulb head seen from behind with a little antenna, an iron scrap bucket with a brass rim and brass straps, full of scrap, on its back, thin iron arms",

@@ -35,7 +35,8 @@ python Tools/Art/golem_set.py <set> install    # only after the user approves ("
 
 - **A golem chassis is made with `golem_set.py`** (art-pipeline-design.md §5.10): its own
   settings in `public/images/S1/<chassis>/chassis.json`, its draft script beside it. It starts
-  and stops ComfyUI and Godot itself. A helper agent on a smaller model runs it from
+  and stops ComfyUI and Godot itself. **The user runs `run` (the render) in their own
+  terminal**: run from Claude Code, Claude Code's low-memory reaper kills it. A helper agent on a smaller model runs the rest from
   **`Tools/Art/golem-helper.md`**: point the helper at that file and the set, and keep the
   draft, `picks`, `approved` and the user's review for the lead.
 - **Among candidates that all pass, the pick is taste:** look at `candidates_<facing>.png`
@@ -102,3 +103,8 @@ If an image-generation MCP server is configured in the user's global Claude conf
   `golem_set.LAYERS`); west is the east profile mirrored and re-lit. A change to one frame is
   made there and the 28 composed again, never by hand in `godot/art/`; `golem_set.py
   public/images/S1/brass_presser verify` proves the installed 28 still reproduce.
+  The Clockwork Scavenger's 28 (`public/images/S1/clockwork_scavenger/`,
+  `scripts/scavenger_draft.py`, approved 2026-10-24) are made the same way. Its `chassis.json`
+  sets its own `layers` (the back-worn bucket over the head from the north) and `rigid` parts
+  (a tripod: `legs` and `far_leg`); its north view is the south mirrored, so the claw arm stays
+  on its own side.
