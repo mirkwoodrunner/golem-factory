@@ -1,0 +1,317 @@
+{
+  "south": {
+    "picked": "d0.45_s5002",
+    "auto": "d0.45_s5002",
+    "candidates": {
+      "d0.35_s5000": {
+        "feet": 95,
+        "silhouette": 0.4513962530929657,
+        "lightness": 0.5013259550308894,
+        "stalledShift": 0.16700004882853758,
+        "tintsApart": 0.09209714469976472,
+        "edgeLight": 0.12783386592251295,
+        "texture": 358,
+        "taken": 414,
+        "fails": []
+      },
+      "d0.35_s5001": {
+        "feet": 95,
+        "silhouette": 0.4513962530929657,
+        "lightness": 0.4997993400402523,
+        "stalledShift": 0.166236399942038,
+        "tintsApart": 0.09182909373746641,
+        "edgeLight": 0.13792378692110083,
+        "texture": 394,
+        "taken": 476,
+        "fails": []
+      },
+      "d0.35_s5002": {
+        "feet": 95,
+        "silhouette": 0.4513962530929657,
+        "lightness": 0.5019508122377037,
+        "stalledShift": 0.16701178967095526,
+        "tintsApart": 0.09230332358125092,
+        "edgeLight": 0.14493727008996535,
+        "texture": 424,
+        "taken": 516,
+        "fails": []
+      },
+      "d0.45_s5000": {
+        "feet": 95,
+        "silhouette": 0.4513962530929657,
+        "lightness": 0.49795898942920314,
+        "stalledShift": 0.1655446943054627,
+        "tintsApart": 0.09142050989046438,
+        "edgeLight": 0.13760157787926655,
+        "texture": 448,
+        "taken": 517,
+        "fails": []
+      },
+      "d0.45_s5001": {
+        "feet": 95,
+        "silhouette": 0.4513962530929657,
+        "lightness": 0.5014751256981379,
+        "stalledShift": 0.16698669366560928,
+        "tintsApart": 0.09215107959513362,
+        "edgeLight": 0.1364377453006811,
+        "texture": 364,
+        "taken": 417,
+        "fails": []
+      },
+      "d0.45_s5002": {
+        "feet": 95,
+        "silhouette": 0.4513962530929657,
+        "lightness": 0.4989913526283349,
+        "stalledShift": 0.16596968840972093,
+        "tintsApart": 0.0916411372267926,
+        "edgeLight": 0.13748386066448698,
+        "texture": 452,
+        "taken": 522,
+        "fails": []
+      },
+      "d0.55_s5000": {
+        "feet": 95,
+        "silhouette": 0.4513962530929657,
+        "lightness": 0.49673816247319963,
+        "stalledShift": 0.16498095253291983,
+        "tintsApart": 0.09119412752760525,
+        "edgeLight": 0.1454934710151225,
+        "texture": 387,
+        "taken": 461,
+        "fails": []
+      },
+      "d0.55_s5001": {
+        "feet": 95,
+        "silhouette": 0.4513962530929657,
+        "lightness": 0.4976379372641843,
+        "stalledShift": 0.16538816611472906,
+        "tintsApart": 0.0913629850827693,
+        "edgeLight": 0.1443292336686801,
+        "texture": 323,
+        "taken": 374,
+        "fails": []
+      },
+      "d0.55_s5002": {
+        "feet": 95,
+        "silhouette": 0.4513962530929657,
+        "lightness": 0.4994640792554831,
+        "stalledShift": 0.1661096114791282,
+        "tintsApart": 0.0917555890424173,
+        "edgeLight": 0.1392944522001266,
+        "texture": 385,
+        "taken": 437,
+        "fails": []
+      }
+    }
+  },
+  "north": {
+    "picked": "d0.35_s5001",
+    "auto": "d0.35_s5001",
+    "candidates": {
+      "d0.35_s5000": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.5014817820949714,
+        "stalledShift": 0.16711240283764453,
+        "tintsApart": 0.09194519795434732,
+        "edgeLight": 0.15277896152510262,
+        "texture": 353,
+        "taken": 405,
+        "fails": []
+      },
+      "d0.35_s5001": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.5032312640123001,
+        "stalledShift": 0.167551518463353,
+        "tintsApart": 0.0924215807400282,
+        "edgeLight": 0.14680438500258505,
+        "texture": 440,
+        "taken": 503,
+        "fails": []
+      },
+      "d0.35_s5002": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.5004017853958708,
+        "stalledShift": 0.16684742058701868,
+        "tintsApart": 0.09166784449824651,
+        "edgeLight": 0.15900964665133666,
+        "texture": 321,
+        "taken": 360,
+        "fails": []
+      },
+      "d0.45_s5000": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.5007279218512015,
+        "stalledShift": 0.16698715080643783,
+        "tintsApart": 0.09172949810231766,
+        "edgeLight": 0.1515423401677101,
+        "texture": 371,
+        "taken": 401,
+        "fails": []
+      },
+      "d0.45_s5001": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.5021820113926132,
+        "stalledShift": 0.1673556513755075,
+        "tintsApart": 0.09211320327147644,
+        "edgeLight": 0.14798378433050408,
+        "texture": 389,
+        "taken": 435,
+        "fails": []
+      },
+      "d0.45_s5002": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.4970415766727783,
+        "stalledShift": 0.16554944379425443,
+        "tintsApart": 0.09094546648958672,
+        "edgeLight": 0.1461032857537895,
+        "texture": 399,
+        "taken": 442,
+        "fails": []
+      },
+      "d0.55_s5000": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.49928211137333195,
+        "stalledShift": 0.16651281938556683,
+        "tintsApart": 0.09139591311124635,
+        "edgeLight": 0.15255790159723115,
+        "texture": 342,
+        "taken": 354,
+        "fails": []
+      },
+      "d0.55_s5001": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.49943622926268005,
+        "stalledShift": 0.16656995980803377,
+        "tintsApart": 0.09143129491167806,
+        "edgeLight": 0.15610063185706716,
+        "texture": 331,
+        "taken": 377,
+        "fails": []
+      },
+      "d0.55_s5002": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.4975937325731714,
+        "stalledShift": 0.16573325813023287,
+        "tintsApart": 0.09107851000343928,
+        "edgeLight": 0.15327723974309404,
+        "texture": 366,
+        "taken": 388,
+        "fails": []
+      }
+    }
+  },
+  "east": {
+    "picked": "d0.35_s5002",
+    "auto": "d0.35_s5002",
+    "candidates": {
+      "d0.35_s5000": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.5276608846811253,
+        "stalledShift": 0.1748090889310498,
+        "tintsApart": 0.09870817489513133,
+        "edgeLight": 0.13918359340066508,
+        "texture": 318,
+        "taken": 353,
+        "fails": []
+      },
+      "d0.35_s5001": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.5291410525346166,
+        "stalledShift": 0.17571703072145883,
+        "tintsApart": 0.0988971616724431,
+        "edgeLight": 0.13518956777943755,
+        "texture": 283,
+        "taken": 317,
+        "fails": []
+      },
+      "d0.35_s5002": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.5299439101690099,
+        "stalledShift": 0.17606766852681147,
+        "tintsApart": 0.09906989616982859,
+        "edgeLight": 0.12972471312514125,
+        "texture": 366,
+        "taken": 413,
+        "fails": []
+      },
+      "d0.45_s5000": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.5280111419045357,
+        "stalledShift": 0.17503949951177017,
+        "tintsApart": 0.09873471391407862,
+        "edgeLight": 0.1350112784357722,
+        "texture": 268,
+        "taken": 311,
+        "fails": []
+      },
+      "d0.45_s5001": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.528455880783484,
+        "stalledShift": 0.17519888498589062,
+        "tintsApart": 0.0988323330600239,
+        "edgeLight": 0.13991183235861696,
+        "texture": 287,
+        "taken": 343,
+        "fails": []
+      },
+      "d0.45_s5002": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.528714644493524,
+        "stalledShift": 0.1753958056204242,
+        "tintsApart": 0.09885831020746162,
+        "edgeLight": 0.13366075675937522,
+        "texture": 249,
+        "taken": 282,
+        "fails": []
+      },
+      "d0.55_s5000": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.529076668183478,
+        "stalledShift": 0.17553707242097374,
+        "tintsApart": 0.09894427909410229,
+        "edgeLight": 0.1298415492422224,
+        "texture": 338,
+        "taken": 387,
+        "fails": []
+      },
+      "d0.55_s5001": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.5257845131944612,
+        "stalledShift": 0.17412673502877435,
+        "tintsApart": 0.09827791137120807,
+        "edgeLight": 0.13206008472970002,
+        "texture": 320,
+        "taken": 359,
+        "fails": []
+      },
+      "d0.55_s5002": {
+        "feet": 95,
+        "silhouette": null,
+        "lightness": 0.5274516114554462,
+        "stalledShift": 0.17506106979370992,
+        "tintsApart": 0.09852894722032894,
+        "edgeLight": 0.13047546887481828,
+        "texture": 288,
+        "taken": 320,
+        "fails": []
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "stem": "chassis_clockwork_scavenger",
+  "title": "S1 Clockwork Scavenger (creature)",
+  "draft": "scripts/scavenger_draft.py",
+  "ramps": ["outline", "copper", "iron", "brass", "aether", "steam"],
+  "rigid": ["legs", "far_leg", "body", "head", "pack"],
+  "layers": {
+    "south": ["far_leg", "pack", "legs", "body", "head", "arms", "forearms", "hands", "claw"],
+    "north": ["claw", "hands", "forearms", "legs", "body", "far_leg", "pack", "head", "arms"],
+    "east": ["far_arm", "far_leg", "pack", "body", "legs", "head", "arms", "forearms", "hands", "claw"],
+    "west": ["far_arm", "far_leg", "pack", "body", "legs", "head", "arms", "forearms", "hands", "claw"]
+  },
+  "prompts": {
+    "south": "front view of a cute rickety copper golem creature standing on three thin spindly iron tripod legs with copper knees, small round copper kettle body with a brass band, round copper bulb head with one huge teal glass eye and a little antenna, an iron scrap bucket with a brass rim on its back, thin iron arm holding a brass grabber claw",
+    "north": "back view of a cute rickety copper golem creature standing on three thin spindly iron tripod legs with copper knees, round copper bulb head seen from behind with a little antenna, an iron scrap bucket with a brass rim and brass straps, full of scrap, on its back, thin iron arms",
+    "east": "side view facing right of a cute rickety copper golem creature on three thin spindly iron tripod legs with copper knees, small round copper kettle body, round copper bulb head with a big teal glass eye lens on the front and a little antenna, iron scrap bucket with a brass rim on its back, thin iron arm reaching forward with a brass grabber claw"
+  }
+}
