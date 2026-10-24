@@ -73,7 +73,8 @@ Current scenarios:
   Every badge, the strip and the prompt read in player names (`UI/PlayerText.RawIdIn`), and
   no two badges overlap.
 - `hover` (Sandbox, the same street): the real pointer on a golem's cell, or the cell above its
-  feet, lights its source and target tiles with arrows at z −1; its card is Core's text, a stuck
+  feet, lights its source and target tiles with arrows at z −1 and shows its facing arrow, which
+  no unhovered golem draws; its card is Core's text, a stuck
   golem's names the tile, the good and the fix, and its badge hides under the card; a straining
   golem's card says "nearly full"; nothing is hovered over the build menu or the Workbench; a
   carried golem's tiles follow its landing while another is hovered. A card names the golem

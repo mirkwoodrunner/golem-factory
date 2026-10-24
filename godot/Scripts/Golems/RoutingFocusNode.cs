@@ -9,8 +9,8 @@ namespace GolemFactory.Nodes
     /// Shows where the nearest golem takes from and gives to: Unity's RoutingFocusController.
     ///
     /// <para>
-    /// Every golem draws its facing arrow all the time; only the ONE nearest the player (within
-    /// 3.5 cells) also lights its source tile (teal) and target tile (gold) on the floor, picked
+    /// Only the ONE golem nearest the player (within 3.5 cells) lights its source tile (teal)
+    /// and target tile (gold) on the floor, each with an arrow along its facing, picked
     /// by Core's <see cref="RoutingFocus"/>. That is the moment the player is about to carry,
     /// turn or program it, which is when routing matters, and showing every golem's tiles at
     /// once would carpet the floor.

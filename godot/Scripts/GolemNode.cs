@@ -189,6 +189,9 @@ namespace GolemFactory.Nodes
 
         public bool TilesVisible => _sourceTile != null && _sourceTile.Visible;
 
+        /// <summary>Whether the facing arrow over the golem is drawn (only while hovered) -- for a scenario.</summary>
+        public bool FacingArrowVisible => _arrow != null && _arrow.Visible;
+
         /// <summary>The source tile's arrow, as drawn -- for a scenario.</summary>
         public bool TileArrowsVisible => TilesVisible && _sourceArrow.Visible && _targetArrow.Visible;
         public int TileZ => _sourceTile.ZIndex;
@@ -387,6 +390,8 @@ namespace GolemFactory.Nodes
             ApplyFrame(carried);
 
             Vector2 step = GridConversions.FacingStep(Entity.Facing);
+            // Only while hovered: drawn on every golem, it covered the art (the user, 2026-10-24).
+            _arrow.Visible = Hovered;
             _arrow.Rotation = GridConversions.FacingToRotation(Entity.Facing);
             _arrow.Position = step * 0.42f + new Vector2(0f, -0.15f * GridConversions.CellPixels);
 

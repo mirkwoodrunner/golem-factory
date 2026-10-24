@@ -10,7 +10,7 @@ namespace GolemFactory.Nodes.Scenarios
     /// Mouse hover over golems (docs/onboarding-feedback-design.md §8, `hover`), with the real
     /// pointer warped onto the street <see cref="StreetFixture"/> builds: the golem under the
     /// pointer (or the cell above its feet) lights its source and target tiles with arrows at z
-    /// −1, and after a moment its card names what it is doing -- for a stuck one, the tile, the
+    /// −1 and shows its facing arrow, which no other golem draws, and after a moment its card names what it is doing -- for a stuck one, the tile, the
     /// good and the fix -- while its badge steps aside. Nothing is hovered over the build menu,
     /// over a full screen, or with the wrecking bar up. A waiting golem's card names the golem
     /// that feeds it, and says "when its trigger fires" while that feeder sleeps (§17).
@@ -183,9 +183,17 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 return $"hovered {_hover.Hovered?.GolemId ?? "nothing"} (pointer cell {World.Inspector.PointerCell?.ToString() ?? "none"}, control {Viewport.GuiGetHoveredControl()?.Name})";
             }
-            if (!node.TilesVisible || !node.TileArrowsVisible)
+            if (!node.TilesVisible || !node.TileArrowsVisible || !node.FacingArrowVisible)
             {
                 return "its tiles or arrows are hidden";
+            }
+            // The facing arrow is the hovered golem's alone: on every golem it covered the art.
+            foreach (Node other in Tree.GetNodesInGroup(GolemNodeGroup.Name))
+            {
+                if (other != node && other is GolemNode g && g.FacingArrowVisible)
+                {
+                    return "an unhovered golem draws its facing arrow";
+                }
             }
             if (node.TileZ != -1)
             {

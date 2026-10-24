@@ -296,8 +296,9 @@ Four facings, `Facing.North`, `East`, `South`, `West` (`Core/World/Facing`). Eac
   the upper left (§2.2), then checked (`check_art.py` check 14) and shown on the review sheet
   like every other frame.
 
-The facing arrow stays: it is a state tool, and it says which tile is in front even where a
-body's front and back look alike.
+The facing arrow stays, but only on the golem under the pointer (the user, 2026-10-24: drawn
+on every golem, it covered the art). It is a state tool, and it says which tile is in front even
+where a body's front and back look alike; the nearest golem's floor tiles carry the same arrow.
 
 ### 4.3 File names
 
