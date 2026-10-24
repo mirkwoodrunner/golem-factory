@@ -1,0 +1,18 @@
+{
+  "stem": "chassis_mainspring_overclocker",
+  "title": "S1 Mainspring Overclocker (creature)",
+  "draft": "scripts/overclocker_draft.py",
+  "ramps": ["outline", "brass", "iron", "steam", "aether"],
+  "rigid": ["legs", "far_leg", "tails", "body", "key", "head"],
+  "layers": {
+    "south": ["key", "tails", "legs", "body", "head", "arms", "forearms", "staff", "hands"],
+    "north": ["staff", "hands", "forearms", "legs", "body", "arms", "tails", "head", "key"],
+    "east": ["far_arm", "far_leg", "key", "tails", "legs", "body", "head", "arms", "forearms", "staff", "hands"],
+    "west": ["far_arm", "far_leg", "key", "tails", "legs", "body", "head", "arms", "forearms", "staff", "hands"]
+  },
+  "prompts": {
+    "south": "front view of a cute tall thin clockwork butler golem creature, small oval brass head with a tall iron top hat, one teal glass monocle eye and a little moustache, white collar and bow tie, narrow brass waistcoat body with a round white clock face on its chest, iron tailcoat tails, brass wind-up key on its back, thin iron arms and legs, holding a tall iron staff topped with a brass tuning fork, a white towel over its other arm",
+    "north": "back view of a cute tall thin clockwork butler golem creature, small brass head seen from behind with a tall iron top hat, iron tailcoat, a large brass wind-up key sticking out of its back, thin iron arms and legs",
+    "east": "side view facing right of a cute tall thin clockwork butler golem creature, small brass head with a tall iron top hat, a teal glass monocle eye and a little moustache, white collar and bow tie, narrow brass waistcoat body, iron tailcoat tails, a brass wind-up key sticking out of its back, thin iron legs, holding a tall iron staff topped with a brass tuning fork in front"
+  }
+}
