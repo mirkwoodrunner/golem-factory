@@ -113,3 +113,7 @@ If an image-generation MCP server is configured in the user's global Claude conf
   arms drawn fresh per frame with the flyball `governor`, and the caged mainspring (`cage`) over
   everything from the north. Its first draft overlapped today's Hauler at 0.55 and the draft
   step refused it; a slimmer body and a hunched head got it to 0.44.
+  The Aether Hauler's 28 (`public/images/S1/aether_hauler/`, `scripts/hauler_draft.py`,
+  approved 2026-10-25) likewise: `treads` for legs, the `crate` rigid (it heaves up and back),
+  the `crystals` drawn fresh per frame so they jump. From the north the crate is over the arms
+  and hands, which hold its near corners.

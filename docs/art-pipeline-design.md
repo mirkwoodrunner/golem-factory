@@ -10,8 +10,9 @@ all, and when the phase is done. **What the art looks like** is `docs/art-style-
 **Next:** S1, the golems (§2, §4): the Brass Presser's 28 frames are in (8f09b0e, approved
 2026-10-23 at its third review round, `public/images/S1/brass_presser/review.json`), and the
 Clockwork Scavenger's (approved 2026-10-24 at its second round, made end to end by `golem_set.py`),
-and the Mainspring Overclocker's (approved 2026-10-24, redrawn as the Watchmaker at the user's call).
-The other two chassis wait for the user's go; make each the Presser's way (§3.2). Done on 2026-10-23: the
+the Mainspring Overclocker's (approved 2026-10-24, redrawn as the Watchmaker at the user's call),
+and the Aether Hauler's (approved 2026-10-25, on treads with a crate of Aether crystals).
+The Zeppelin waits for the user's go; make it the Presser's way (§3.2). Done on 2026-10-23: the
 cleanup commit (§3.1), the `verify_art.py` fix (§5.5), the tooling (§5), Core's `GolemFrames`
 (§7.4) and the `art` scenario's first part (§7.1); ControlNet and IP-Adapter are installed (§1.4).
 

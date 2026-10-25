@@ -1,0 +1,120 @@
+{
+  "set": "S1 Aether Hauler (creature)",
+  "pages": [
+    "review-1.png"
+  ],
+  "frames": {
+    "1": {
+      "file": "chassis_aether_hauler.png",
+      "page": 1
+    },
+    "2": {
+      "file": "chassis_aether_hauler_idle_1_south.png",
+      "page": 1
+    },
+    "3": {
+      "file": "chassis_aether_hauler_work_0_south.png",
+      "page": 1
+    },
+    "4": {
+      "file": "chassis_aether_hauler_work_1_south.png",
+      "page": 1
+    },
+    "5": {
+      "file": "chassis_aether_hauler_work_2_south.png",
+      "page": 1
+    },
+    "6": {
+      "file": "chassis_aether_hauler_stall_south.png",
+      "page": 1
+    },
+    "7": {
+      "file": "chassis_aether_hauler_carry_south.png",
+      "page": 1
+    },
+    "8": {
+      "file": "chassis_aether_hauler_base_north.png",
+      "page": 1
+    },
+    "9": {
+      "file": "chassis_aether_hauler_idle_1_north.png",
+      "page": 1
+    },
+    "10": {
+      "file": "chassis_aether_hauler_work_0_north.png",
+      "page": 1
+    },
+    "11": {
+      "file": "chassis_aether_hauler_work_1_north.png",
+      "page": 1
+    },
+    "12": {
+      "file": "chassis_aether_hauler_work_2_north.png",
+      "page": 1
+    },
+    "13": {
+      "file": "chassis_aether_hauler_stall_north.png",
+      "page": 1
+    },
+    "14": {
+      "file": "chassis_aether_hauler_carry_north.png",
+      "page": 1
+    },
+    "15": {
+      "file": "chassis_aether_hauler_base_east.png",
+      "page": 1
+    },
+    "16": {
+      "file": "chassis_aether_hauler_idle_1_east.png",
+      "page": 1
+    },
+    "17": {
+      "file": "chassis_aether_hauler_work_0_east.png",
+      "page": 1
+    },
+    "18": {
+      "file": "chassis_aether_hauler_work_1_east.png",
+      "page": 1
+    },
+    "19": {
+      "file": "chassis_aether_hauler_work_2_east.png",
+      "page": 1
+    },
+    "20": {
+      "file": "chassis_aether_hauler_stall_east.png",
+      "page": 1
+    },
+    "21": {
+      "file": "chassis_aether_hauler_carry_east.png",
+      "page": 1
+    },
+    "22": {
+      "file": "chassis_aether_hauler_base_west.png",
+      "page": 1
+    },
+    "23": {
+      "file": "chassis_aether_hauler_idle_1_west.png",
+      "page": 1
+    },
+    "24": {
+      "file": "chassis_aether_hauler_work_0_west.png",
+      "page": 1
+    },
+    "25": {
+      "file": "chassis_aether_hauler_work_1_west.png",
+      "page": 1
+    },
+    "26": {
+      "file": "chassis_aether_hauler_work_2_west.png",
+      "page": 1
+    },
+    "27": {
+      "file": "chassis_aether_hauler_stall_west.png",
+      "page": 1
+    },
+    "28": {
+      "file": "chassis_aether_hauler_carry_west.png",
+      "page": 1
+    }
+  }
+}

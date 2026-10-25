@@ -10,6 +10,8 @@
     "east": ["crystals", "crate", "treads", "body", "head", "arms", "forearms", "hands"],
     "west": ["crystals", "crate", "treads", "body", "head", "arms", "forearms", "hands"]
   },
+  "picks": {"south": "d0.35_s5000", "north": "d0.35_s5002", "east": "d0.35_s5002"},
+  "approved": "2026-10-25",
   "prompts": {
     "south": "front view of a cute stocky armoured hauler golem creature on two iron caterpillar treads, cream painted riveted armour hull with a copper band, small round cream helmet head with a teal headlamp and two little teal eyes under a copper brim, short sturdy iron arms with brass mitts holding up a big wooden mahogany crate on its back, glowing teal aether crystals sticking out of the crate",
     "north": "back view of a cute stocky armoured hauler golem creature on two iron caterpillar treads, a big wooden mahogany crate with brass corners and iron bands on its back, full of glowing teal aether crystals, a brass plaque on the crate, brass mitts gripping the crate's corners",

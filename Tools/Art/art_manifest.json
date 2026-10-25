@@ -820,12 +820,21 @@
     "kind": "standing",
     "size": [
       64,
-      86
+      96
     ],
     "pivot": "bottom-center",
-    "footRow": 85,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
     "readers": [
       "data/chassis.json chassisSprite",
       "GolemFrames.Resolve",
@@ -834,7 +843,8 @@
     ],
     "chassis": "chassis_aether_hauler",
     "state": "base",
-    "facing": "south"
+    "facing": "south",
+    "source": "public/images/S1/aether_hauler/"
   },
   "chassis_brass_presser.png": {
     "set": "S1",
@@ -4601,5 +4611,822 @@
     "facing": "west",
     "source": "public/images/S1/mainspring_overclocker/",
     "mirroredFrom": "chassis_mainspring_overclocker_carry_east.png"
+  },
+  "chassis_aether_hauler_idle_1_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "idle_1",
+    "facing": "south",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_0_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_0",
+    "facing": "south",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_1_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_1",
+    "facing": "south",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_2_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_2",
+    "facing": "south",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_stall_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "stall",
+    "facing": "south",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_carry_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "carry",
+    "facing": "south",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_base_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "base",
+    "facing": "north",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_idle_1_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "idle_1",
+    "facing": "north",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_0_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_0",
+    "facing": "north",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_1_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_1",
+    "facing": "north",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_2_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_2",
+    "facing": "north",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_stall_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "stall",
+    "facing": "north",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_carry_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "carry",
+    "facing": "north",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_base_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "base",
+    "facing": "east",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_idle_1_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "idle_1",
+    "facing": "east",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_0_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_0",
+    "facing": "east",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_1_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_1",
+    "facing": "east",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_2_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_2",
+    "facing": "east",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_stall_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "stall",
+    "facing": "east",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_carry_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "carry",
+    "facing": "east",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_base_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "base",
+    "facing": "west",
+    "source": "public/images/S1/aether_hauler/",
+    "mirroredFrom": "chassis_aether_hauler_base_east.png"
+  },
+  "chassis_aether_hauler_idle_1_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "idle_1",
+    "facing": "west",
+    "source": "public/images/S1/aether_hauler/",
+    "mirroredFrom": "chassis_aether_hauler_idle_1_east.png"
+  },
+  "chassis_aether_hauler_work_0_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_0",
+    "facing": "west",
+    "source": "public/images/S1/aether_hauler/",
+    "mirroredFrom": "chassis_aether_hauler_work_0_east.png"
+  },
+  "chassis_aether_hauler_work_1_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_1",
+    "facing": "west",
+    "source": "public/images/S1/aether_hauler/",
+    "mirroredFrom": "chassis_aether_hauler_work_1_east.png"
+  },
+  "chassis_aether_hauler_work_2_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_2",
+    "facing": "west",
+    "source": "public/images/S1/aether_hauler/",
+    "mirroredFrom": "chassis_aether_hauler_work_2_east.png"
+  },
+  "chassis_aether_hauler_stall_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "stall",
+    "facing": "west",
+    "source": "public/images/S1/aether_hauler/",
+    "mirroredFrom": "chassis_aether_hauler_stall_east.png"
+  },
+  "chassis_aether_hauler_carry_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "carry",
+    "facing": "west",
+    "source": "public/images/S1/aether_hauler/",
+    "mirroredFrom": "chassis_aether_hauler_carry_east.png"
   }
 }

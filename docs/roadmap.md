@@ -65,10 +65,10 @@ call): built, reviewed, critiqued and tested. Done:
   their prices (7a79046). 1925 Core tests pass.
 
 **Resume here:**
-1. **Phase 4 (Art), on branch `phase4/art`: the Brass Presser, the Clockwork Scavenger and the
-   Mainspring Overclocker are in the game** (the Scavenger and the Overclocker approved
-   2026-10-24, each at its first rendered round). The other two chassis (Hauler, Zeppelin) wait
-   for the user's go. When they say go:
+1. **Phase 4 (Art), on branch `phase4/art`: the Brass Presser, the Clockwork Scavenger, the
+   Mainspring Overclocker and the Aether Hauler are in the game** (the Scavenger and the
+   Overclocker approved 2026-10-24, the Hauler 2026-10-25). The Zeppelin, the last chassis,
+   waits for the user's go. When they say go:
    - **The user's test of the Presser first.** Ask what they saw. Nothing has looked at a tinted
      Presser on screen yet (stuck red, waiting grey, out of steam blue; `check_art.py` measures
      the tints as readable, but `moods`' street uses Scavengers). Add a tinted Presser to a
@@ -101,13 +101,20 @@ call): built, reviewed, critiqued and tested. Done:
      state and the mainspring caged on its back; the roster's speed aura stays cut. Draw detail
      in: the first, plainer draft was "lacking". Known soft spots the user accepted: from the
      side the near arm crosses the body, and the hip arm hangs.
+   - **Rules from the Hauler's review:** what a hand holds on the golem's own side is hidden
+     with it from the north (its hands hold the crate's near corners, so the crate covers them
+     from behind); only a re-render of that facing fixes it, since the old hands are in its
+     render. A render can be redone for one facing: move that facing's `raw/base_<facing>/`
+     aside and `run` again. The Hauler is wide and low on treads, in cream armour (red is the
+     player's-action colour); its front outline overlaps the Scavenger at 0.47 and today's
+     Zeppelin at 0.46, so **the Zeppelin's redraw must differ clearly from all four.**
    - Then the Artificer (S1b), floor and walls (S2), lighting (L), buildings, the Workbench,
      goods and the HUD, each with its own review sheet (`art-pipeline-design.md` §3).
    - Before Phase 4's test run: fix the windowed `hover` flake (`open-items.md` §4).
    Done so far: the specs and the user's thirteen calls (§9), the cleanup, `verify_art.py`'s
    gap, the `Tools/Art/` tooling, Core's `GolemFrames`, the `art` scenario's golem gallery,
    ControlNet and IP-Adapter in ComfyUI (§1.4), the Presser (8f09b0e), `golem_set.py` (77042e9),
-   the Scavenger (3e7e413) and the Overclocker.
+   the Scavenger (3e7e413), the Overclocker (26241b6) and the Hauler.
 2. **The human playtests, still to run:** `testscript/phase-2-playtest.md`, then
    `testscript/phase-1-playtest.md`, then `testscript/full-playthrough.md`. Run the game with the
    **mono** Godot build (a grey screen and "No loader found for resource: …cs" means the
