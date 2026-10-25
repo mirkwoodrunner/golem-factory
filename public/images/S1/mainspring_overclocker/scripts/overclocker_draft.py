@@ -246,6 +246,8 @@ def draw_staff(cv, grip, lean, part="staff"):
     top = (grip[0] + ux * 24, grip[1] + uy * 24)
     butt = (grip[0] - ux * 24, grip[1] - uy * 24)
     cv.layer(part, "iron", capsule(butt, top, 1.4), [1, 2, 3, 4])
+    for t in (-14, 12):
+        cv.layer(part, "brass", ellipse(grip[0] + ux * t, grip[1] + uy * t, 1.9, 1.9), [1, 2, 3])
     for side in (-1, 1):
         root = (top[0] + vx * 4 * side, top[1] + vy * 4 * side)
         tip = (root[0] + ux * 11, root[1] + uy * 11)
@@ -254,17 +256,33 @@ def draw_staff(cv, grip, lean, part="staff"):
     cv.layer(part, "brass", ellipse(top[0] - ux * 1.5, top[1] - uy * 1.5, 2.2, 2.2), [1, 2, 3])
 
 
-def draw_hand(cv, at, part="hands"):
+def draw_hand(cv, at, elbow=None, part="hands"):
+    """A brass hand; with its elbow given, a white butler's cuff on the wrist before it."""
+    if elbow is not None:
+        dx, dy = at[0] - elbow[0], at[1] - elbow[1]
+        n = math.hypot(dx, dy) or 1
+        cv.layer(part, "steam", ellipse(at[0] - dx / n * 3.2, at[1] - dy / n * 3.2, 2.5, 2.5), [1, 2, 3])
     cv.layer(part, "brass", ellipse(at[0], at[1], 2.8, 2.8), [0, 1, 2, 3])
 
 
-def draw_head(cv, p, o, back=False):
+def draw_elbow(cv, at, part="arms"):
+    cv.layer(part, "brass", ellipse(at[0], at[1], 2.3, 2.3), [0, 1, 2])
+    cv.paint(part, "iron", 1, {(round(at[0]), round(at[1]))})
+
+
+def draw_head(cv, p, o, back=False, ears=(24.5, 39.5)):
     """A small brass oval on an iron neck, under an iron top hat with a brass band; from the
-    front and side a teal monocle and a moustache."""
+    front and side a teal monocle and a moustache. A seam at the jaw, a gear for each ear it shows,
+    a gear on the hat band."""
     cv.layer("head", "iron", shift(rect(30, 32, 34, 37), 0, o), [1, 2, 3, 4])
     cv.layer("head", "brass", shift(ellipse(32, 25, 7.5, 8.5), 0, o), [0, 1, 2, 3])
     cv.layer("head", "iron", shift(rect(23, 15, 41, 17) | rrect(26, 3, 38, 16, 1), 0, o), [0, 1, 2, 3, 4])
     cv.paint("head", "brass", 2, shift(rect(26, 12, 38, 13), 0, o))
+    cv.paint("head", "brass", 3, shift(rect(31, 12, 33, 13), 0, o))
+    cv.paint("head", "brass", 0, shift(rect(27, 31, 37, 31) & ellipse(32, 25, 7.5, 8.5), 0, o))
+    for cx in ears:
+        cv.layer("head", "brass", shift(ellipse(cx, 25, 2.3, 2.3), 0, o), [0, 1, 2, 3])
+        cv.paint("head", "iron", 0, shift({(round(cx), 25)}, 0, o))
     if back:
         return
     lo, mid, hi = eye_tones(p.get("eye"))
@@ -272,6 +290,7 @@ def draw_head(cv, p, o, back=False):
     cv.layer("head", "aether", shift(ellipse(35.5, 23.5, 2.6, 2.6), 0, o), sorted({lo, mid, hi}))
     cv.paint("head", "aether" if p.get("eye") != "bright" else "steam", hi if p.get("eye") != "bright" else 3,
              shift(rect(34, 22, 34, 22), 0, o))
+    cv.paint("head", "brass", 3, shift({(38, 27), (38, 28), (39, 29), (39, 30)}, 0, o))
 
 
 def draw_front(state, back=False):
@@ -287,16 +306,21 @@ def draw_front(state, back=False):
         cv.layer("legs", "iron", capsule((x, 64), knee, 2.0) | capsule(knee, (x, 90 - lift), 1.8), [1, 2, 3, 4])
         cv.layer("legs", "brass", ellipse(knee[0], knee[1], 2.6, 2.6), [0, 1, 2, 3])
         cv.layer("legs", "iron", rrect(x - 4, 90 - lift, x + 3, 95 - lift, 2), [0, 1, 2, 3])
+        cv.layer("legs", "steam", rrect(x - 3, 86 - lift, x + 2, 91 - lift, 1), [1, 2, 3])
     # The coat-tails: iron, from the waist to the knees, either side; from behind, the coat's back.
     tails = capsule((28, 52), (26, 74), 2.6) | capsule((36, 52), (38, 74), 2.6)
     if back:
         tails |= rrect(26, 44, 38, 70, 3)
     cv.layer("tails", "iron", shift(tails, 0, bd), [0, 1, 2, 3, 4])
+    if back:
+        cv.paint("tails", "iron", 0, shift(rect(32, 56, 32, 70) | rect(27, 55, 37, 55), 0, bd))
+        cv.dots("tails", "brass", 2, [(29, 57 + bd), (34, 57 + bd)], 2)
     # The wind-up key in its back: a brass bow either side of the body, an iron hub between.
     key = ellipse(17, 50, 4.5, 5.5) | ellipse(47, 50, 4.5, 5.5) | rect(20, 48, 44, 52)
     cv.layer("key", "brass", shift(key, 0, bd), [0, 1, 2, 3])
     for cx in (17, 47):
         cv.paint("key", "iron", 0, shift(ellipse(cx, 50, 1.6, 2.5), 0, bd))
+        cv.paint("key", "brass", 3, shift(rect(cx - 1, 45, cx, 45), 0, bd))
     if back:
         cv.layer("key", "iron", shift(ellipse(32, 50, 3.6, 3.6), 0, bd), [1, 2, 3, 4])
     # Body: a tall narrow brass waistcoat, shoulder caps, a clock face on the chest, buttons,
@@ -308,8 +332,18 @@ def draw_front(state, back=False):
         cv.layer("body", "steam", shift(ellipse(32, 50, 4.6, 4.6), 0, bd), [1, 2, 3])
         cv.paint("body", "iron", 0, shift(rect(32, 47, 32, 50) | rect(33, 50, 34, 50), 0, bd))
         cv.dots("body", "iron", 1, [(31, 58 + bd), (31, 62 + bd)], 2)
+        cv.layer("body", "brass", shift(capsule((28, 40), (29, 45), 1.1) | capsule((36, 40), (35, 45), 1.1), 0, bd), [0, 1])
+        cv.paint("body", "iron", 1, shift({(32, 46), (36, 50), (32, 54), (28, 50)}, 0, bd))
+        cv.paint("body", "brass", 3, shift({(34, 56), (35, 57), (36, 57), (37, 58)}, 0, bd))
+        cv.paint("body", "brass", 0, shift(rect(34, 59, 37, 59) | rect(26, 64, 38, 64), 0, bd))
+        cv.dots("body", "iron", 1, [(25, 42 + bd), (38, 42 + bd)], 1)
         cv.layer("body", "steam", shift(rect(28, 36, 36, 39), 0, bd), [1, 2, 3])
         cv.layer("body", "iron", shift(ellipse(29.5, 38, 2.2, 1.6) | ellipse(34.5, 38, 2.2, 1.6), 0, bd), [0, 1, 2])
+    else:
+        # From behind: the collar and the waistcoat's back seam.
+        cv.paint("body", "iron", 1, shift(rect(32, 39, 32, 44), 0, bd))
+        cv.layer("body", "steam", shift(rect(28, 36, 36, 38), 0, bd), [1, 2])
+        cv.dots("body", "iron", 1, [(25, 42 + bd), (38, 42 + bd)], 1)
     draw_head(cv, p, o, back)
     if not back:
         # The right eye, small, and a moustache.
@@ -323,11 +357,14 @@ def draw_front(state, back=False):
     cv.layer("forearms", "iron", capsule(p["elbow"], p["grip"], 2.0), [1, 2, 3, 4])
     cv.layer("arms", "iron", capsule(shoulders[1], p["hand_elbow"], 2.2), [1, 2, 3, 4])
     cv.layer("forearms", "iron", capsule(p["hand_elbow"], p["hand"], 2.0), [1, 2, 3, 4])
+    draw_elbow(cv, p["elbow"])
+    draw_elbow(cv, p["hand_elbow"])
     ex, ey = p["hand_elbow"]
     cv.layer("hands", "steam", rrect(ex - 3, ey + 1, ex + 2, ey + 11, 1), [1, 2, 3])
-    draw_hand(cv, p["hand"])
+    cv.paint("hands", "steam", 1, rect(ex - 2, ey + 9, ex + 1, ey + 9))
+    draw_hand(cv, p["hand"], p["hand_elbow"])
     draw_staff(cv, p["grip"], p["lean"])
-    draw_hand(cv, p["grip"])
+    draw_hand(cv, p["grip"], p["elbow"])
     return cv
 
 
@@ -350,8 +387,11 @@ def draw_side(state, mirror=False):
     cv.layer("legs", "iron", capsule((33, 64), knee, 2.3) | capsule(knee, (34, 89 - lift), 2.1), [1, 2, 3, 4])
     cv.layer("legs", "brass", ellipse(knee[0], knee[1], 2.6, 2.6), [0, 1, 2, 3])
     cv.layer("legs", "iron", rrect(30, 89 - lift, 41, 95 - lift, 2), [0, 1, 2, 3])
+    cv.layer("legs", "steam", rrect(31, 85 - lift, 37, 90 - lift, 1), [1, 2, 3])
     # The coat-tails behind.
     cv.layer("tails", "iron", shift(capsule((26, 50), (19, 78), 3.4), 0, bd), [0, 1, 2, 3, 4])
+    cv.paint("tails", "iron", 0, shift({(23, 60), (22, 64), (21, 68), (20, 72)}, 0, bd))
+    cv.dots("tails", "brass", 2, [(24, 54 + bd)], 2)
     # The key: a shaft out of its back, the bow face on.
     cv.layer("key", "iron", shift(capsule((25, 49), (16, 49), 1.5), 0, bd), [1, 2, 3])
     cv.layer("key", "brass", shift(ellipse(13, 43, 3.5, 5) | ellipse(13, 55, 3.5, 5) | rect(11, 47, 15, 51), 0, bd), [0, 1, 2, 3])
@@ -362,13 +402,18 @@ def draw_side(state, mirror=False):
     cv.dots("body", "iron", 1, [(37, 56 + bd), (37, 61 + bd)], 2)
     cv.layer("body", "steam", shift(rect(32, 36, 37, 39), 0, bd), [1, 2, 3])
     cv.layer("body", "iron", shift(ellipse(39, 38, 1.8, 1.8), 0, bd), [0, 1, 2])
-    draw_head(cv, p, o)
+    cv.layer("body", "brass", shift(capsule((34, 40), (37, 47), 1.1), 0, bd), [0, 1])
+    cv.paint("body", "brass", 3, shift({(36, 55), (35, 56), (34, 57), (33, 58)}, 0, bd))
+    cv.paint("body", "brass", 0, shift(rect(31, 59, 35, 59) | rect(26, 64, 38, 64), 0, bd))
+    cv.dots("body", "iron", 1, [(28, 42 + bd)], 1)
+    draw_head(cv, p, o, ears=(29.5,))
     cv.layer("head", "iron", shift(capsule((35, 29), (40, 29), 1.2), 0, o), [0, 1])
     # The near arm and the staff in front.
     cv.layer("arms", "iron", capsule((32, 45 + bd), p["elbow"], 2.2), [1, 2, 3, 4])
     cv.layer("forearms", "iron", capsule(p["elbow"], p["grip"], 2.0), [1, 2, 3, 4])
+    draw_elbow(cv, p["elbow"])
     draw_staff(cv, p["grip"], p["lean"])
-    draw_hand(cv, p["grip"])
+    draw_hand(cv, p["grip"], p["elbow"])
     return cv
 
 
