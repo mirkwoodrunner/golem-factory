@@ -1,0 +1,18 @@
+{
+  "stem": "chassis_aether_hauler",
+  "title": "S1 Aether Hauler (creature)",
+  "draft": "scripts/hauler_draft.py",
+  "ramps": ["outline", "bone", "copper", "iron", "brass", "mahogany", "aether", "steam"],
+  "rigid": ["treads", "body", "crate", "head"],
+  "layers": {
+    "south": ["crystals", "crate", "treads", "body", "head", "arms", "forearms", "hands"],
+    "north": ["treads", "body", "head", "forearms", "crystals", "crate", "arms", "hands"],
+    "east": ["crystals", "crate", "treads", "body", "head", "arms", "forearms", "hands"],
+    "west": ["crystals", "crate", "treads", "body", "head", "arms", "forearms", "hands"]
+  },
+  "prompts": {
+    "south": "front view of a cute stocky armoured hauler golem creature on two iron caterpillar treads, cream painted riveted armour hull with a copper band, small round cream helmet head with a teal headlamp and two little teal eyes under a copper brim, short sturdy iron arms with brass mitts holding up a big wooden mahogany crate on its back, glowing teal aether crystals sticking out of the crate",
+    "north": "back view of a cute stocky armoured hauler golem creature on two iron caterpillar treads, a big wooden mahogany crate with brass corners and iron bands on its back, full of glowing teal aether crystals, a brass plaque on the crate, brass mitts gripping the crate's corners",
+    "east": "side view facing right of a cute stocky armoured hauler golem creature on a long iron caterpillar tread with brass wheels, cream painted armour hull, small round cream helmet head leaning forward with a teal headlamp under a copper brim, a short iron arm holding a big wooden mahogany crate of glowing teal aether crystals on its back"
+  }
+}
