@@ -2,17 +2,17 @@
   "stem": "chassis_mainspring_overclocker",
   "title": "S1 Mainspring Overclocker (creature)",
   "draft": "scripts/overclocker_draft.py",
-  "ramps": ["outline", "brass", "iron", "steam", "aether"],
-  "rigid": ["legs", "far_leg", "tails", "body", "key", "head"],
+  "ramps": ["outline", "brass", "iron", "copper", "steam", "aether", "fire"],
+  "rigid": ["legs", "far_leg", "body", "apron", "cage", "head"],
   "layers": {
-    "south": ["key", "tails", "legs", "body", "head", "arms", "forearms", "staff", "hands"],
-    "north": ["staff", "hands", "forearms", "legs", "body", "arms", "tails", "head", "key"],
-    "east": ["far_arm", "far_leg", "key", "tails", "legs", "body", "head", "arms", "forearms", "staff", "hands"],
-    "west": ["far_arm", "far_leg", "key", "tails", "legs", "body", "head", "arms", "forearms", "staff", "hands"]
+    "south": ["cage", "legs", "body", "apron", "head", "governor", "arms", "forearms", "tools", "hands"],
+    "north": ["tools", "hands", "forearms", "legs", "body", "apron", "arms", "cage", "head", "governor"],
+    "east": ["far_arm", "far_leg", "cage", "legs", "body", "apron", "head", "governor", "arms", "forearms", "tools", "hands"],
+    "west": ["far_arm", "far_leg", "cage", "legs", "body", "apron", "head", "governor", "arms", "forearms", "tools", "hands"]
   },
   "prompts": {
-    "south": "front view of a cute tall thin clockwork butler golem creature, small oval brass head with a tall iron top hat, one teal glass monocle eye and a little moustache, white collar and bow tie, narrow brass waistcoat body with a round white clock face on its chest, iron tailcoat tails, brass wind-up key on its back, thin iron arms and legs, holding a tall iron staff topped with a brass tuning fork, a white towel over its other arm",
-    "north": "back view of a cute tall thin clockwork butler golem creature, small brass head seen from behind with a tall iron top hat, iron tailcoat, a large brass wind-up key sticking out of its back, thin iron arms and legs",
-    "east": "side view facing right of a cute tall thin clockwork butler golem creature, small brass head with a tall iron top hat, a teal glass monocle eye and a little moustache, white collar and bow tie, narrow brass waistcoat body, iron tailcoat tails, a brass wind-up key sticking out of its back, thin iron legs, holding a tall iron staff topped with a brass tuning fork in front"
+    "south": "front view of a cute hunched brass clockmaker golem creature, round brass dome head with a teal glass jeweller's loupe over one eye and a spinning flyball governor with two brass balls on top, a round pressure gauge on its chest, copper leather work apron, gear-shaped shoulders, three thin iron arms holding tweezers, a small hammer and a screwdriver, short iron legs with brass knees",
+    "north": "back view of a cute hunched brass clockmaker golem creature, round brass dome head seen from behind with a flyball governor on top, a big coiled brass mainspring in a round iron cage on its back, gear-shaped shoulders, three thin iron arms, short iron legs with brass knees",
+    "east": "side view facing right of a cute hunched brass clockmaker golem creature, brass dome head leaning forward with a teal glass jeweller's loupe tube on its eye and a flyball governor on top, copper leather work apron, an iron mainspring drum on its back, thin iron arm holding tweezers in front, short iron legs"
   }
 }

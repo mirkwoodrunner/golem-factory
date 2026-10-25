@@ -6,11 +6,13 @@ draft of every frame in the three drawn facings, with a part map, so that
   (Tools/Art/golem_set.py's compose step),
   so its surface texture never changes between frames.
 
-A thin clockwork butler (digital-design.md's roster): a tall narrow brass body in a waistcoat
-with a clock face on its chest, iron coat-tails, a white collar and bow tie, a small brass head
-under an iron top hat with a teal monocle and a moustache, a brass wind-up key in its back, thin
-iron legs and arms. One hand holds a tuning-fork staff, which it strikes on the floor (its quick
-stamp, the harmonic wave); a towel hangs over the other arm.
+The Watchmaker (the user's call, 2026-10-24): what the Overclocker does, not the roster's cut
+speed aura (progression-design.md §6). It is the late game's precision assembler, the one chassis
+that runs the 3-input recipes and Repeat, and it runs hot. So: a hunched brass clockmaker with a
+jeweller's loupe for its teal eye, a flyball governor spinning on its head, a pressure gauge in
+the red on its chest, a copper work apron, its mainspring coiled in a cage on its back, and three
+thin arms, one per input, holding tweezers, a hammer and a screwdriver. Its work stroke brings
+all three down together; the governor's balls fly out as it speeds up and fall when it stalls.
 Copied from the Clockwork Scavenger's scavenger_draft.py (art-pipeline-design.md §3.2); the
 shapes and poses are the Overclocker's, the drawing rules the same.
 
@@ -33,7 +35,7 @@ from golem_set import layer_rank  # noqa: E402  (the per-facing layering rule)
 PALETTE = os.path.normpath(os.path.join(HERE, "..", "..", "..", "..", "..", "Tools", "Art", "palette.json"))
 RAMPS = {k: [tuple(int(c[i:i + 2], 16) for i in (1, 3, 5)) for c in v["colours"]]
          for k, v in json.load(open(PALETTE))["ramps"].items()}
-# The draw order per facing is the chassis' own (chassis.json "layers"): the staff is in front of
+# The draw order per facing is the chassis' own (chassis.json "layers"): the tools are in front of
 # the body from the south and hidden behind it from the north.
 LAYERS = json.load(open(os.path.join(HERE, "..", "chassis.json")))["layers"]
 W, H = 64, 96
@@ -41,8 +43,8 @@ KEY = (40, 190, 70)
 STATES = ["base", "idle_1", "work_0", "work_1", "work_2", "stall", "carry"]
 FACINGS = ["south", "north", "east", "west"]
 # Parts that move rigidly between frames: golem_set.py's compose copies the cleaned base's pixels for them,
-# shifted by the frame's offset. Arms, hands and the staff change shape, so they are always the draft's.
-RIGID = ["legs", "far_leg", "tails", "body", "key", "head"]
+# shifted by the frame's offset. Arms, tools and the governor change shape, so they are always the draft's.
+RIGID = ["legs", "far_leg", "body", "apron", "cage", "head"]
 
 
 # --- shapes ------------------------------------------------------------------------------------
@@ -194,103 +196,124 @@ class Canvas:
 
 # --- the poses ---------------------------------------------------------------------------------
 
-# Per frame: the staff hand (grip), its elbow and the staff's lean (radians; positive tilts its
-# top to the screen's left); the towel hand and elbow; the head's and body's drop; a lifted leg;
-# the eye. The work stroke: the staff raised (work_0), struck on the floor (work_1), lifted
-# back (work_2); stalled it droops outward, carried it is held upright and close (across the
-# body, it hid the clock face and its fork crossed the face). South and north share it; east
-# has its own (profile).
+# Per frame, for each of the three arms (tweezers, hammer, screwdriver): the hand, its elbow and
+# which way the tool points; the governor's spread (gov: how far its balls fly out, 0 hanging to
+# 1 flat out); the head's and body's drop; a lifted leg; the eye. The work stroke: the tools
+# raised (work_0), brought down together on the piece in front (work_1), lifted (work_2).
 FRONT = {
-    "base":   dict(grip=(15, 62), elbow=(17, 54), lean=0.0, hand=(37, 62), hand_elbow=(46, 55)),
-    "work_0": dict(grip=(13, 46), elbow=(12, 53), lean=0.3, hand=(37, 61), hand_elbow=(46, 54)),
-    "work_1": dict(grip=(16, 70), elbow=(16, 58), lean=0.0, hand=(37, 64), hand_elbow=(46, 57),
-                   body=2, head=1),
-    "work_2": dict(grip=(15, 64), elbow=(16, 55), lean=0.1, hand=(37, 63), hand_elbow=(46, 56), body=1),
-    "stall":  dict(grip=(16, 72), elbow=(18, 60), lean=0.25, hand=(44, 72), hand_elbow=(45, 60),
-                   head=3, body=2, eye="dim"),
-    "carry":  dict(grip=(19, 58), elbow=(16, 54), lean=-0.05, hand=(37, 62), hand_elbow=(46, 55), step=True),
+    "base":   dict(tw=((11, 62), (10, 53), (0.2, 1)), hm=((53, 61), (55, 52), (0, -1)),
+                   sd=((47, 74), (49, 67), (0, 1)), gov=0.25),
+    "work_0": dict(tw=((10, 43), (8, 51), (0.4, -1)), hm=((54, 38), (56, 47), (0.2, -1)),
+                   sd=((51, 58), (52, 64), (0.3, -1)), gov=0.7, head=-1),
+    "work_1": dict(tw=((24, 70), (14, 60), (0.6, 1)), hm=((41, 66), (51, 58), (-0.7, 0.8)),
+                   sd=((35, 77), (44, 71), (-0.2, 1)), gov=1.0, body=2, head=2),
+    "work_2": dict(tw=((15, 60), (10, 54), (0.3, 1)), hm=((50, 55), (55, 50), (-0.2, -1)),
+                   sd=((45, 71), (49, 66), (-0.1, 1)), gov=0.6, body=1),
+    "stall":  dict(tw=((14, 74), (13, 62), (0, 1)), hm=((50, 74), (52, 62), (0, 1)),
+                   sd=((45, 80), (48, 72), (0, 1)), gov=-0.4, head=4, body=2, eye="dim"),
+    "carry":  dict(tw=((19, 58), (11, 55), (0.5, 0.6)), hm=((45, 56), (53, 54), (-0.5, -0.6)),
+                   sd=((40, 66), (47, 64), (-0.4, 1)), gov=0.25, step=True),
 }
 SIDE = {
-    "base":   dict(grip=(44, 62), elbow=(38, 56), lean=0.0, hand=(36, 62), hand_elbow=(29, 56)),
-    "work_0": dict(grip=(44, 47), elbow=(40, 55), lean=-0.25, hand=(36, 61), hand_elbow=(29, 55)),
-    "work_1": dict(grip=(48, 71), elbow=(41, 60), lean=-0.15, hand=(36, 64), hand_elbow=(29, 58),
-                   body=2, head=1),
-    "work_2": dict(grip=(45, 64), elbow=(39, 57), lean=-0.05, hand=(36, 63), hand_elbow=(29, 57), body=1),
-    "stall":  dict(grip=(45, 72), elbow=(39, 61), lean=-0.3, hand=(34, 70), hand_elbow=(29, 60),
-                   head=3, body=2, eye="dim"),
-    "carry":  dict(grip=(43, 56), elbow=(38, 54), lean=0.05, hand=(36, 62), hand_elbow=(29, 56), step=True),
+    "base":   dict(tw=((44, 64), (38, 57), (0.5, 1)), hm=((40, 60), (33, 55), (0.3, -1)),
+                   sd=((40, 72), (34, 67), (0.4, 1)), gov=0.25),
+    "work_0": dict(tw=((44, 46), (40, 53), (0.5, -1)), hm=((41, 40), (36, 48), (0.3, -1)),
+                   sd=((43, 58), (36, 62), (0.5, -1)), gov=0.7, head=-1),
+    "work_1": dict(tw=((50, 72), (42, 62), (0.4, 1)), hm=((48, 66), (39, 59), (0.8, 0.6)),
+                   sd=((47, 76), (39, 70), (0.3, 1)), gov=1.0, body=2, head=2),
+    "work_2": dict(tw=((46, 61), (39, 56), (0.5, 1)), hm=((43, 54), (36, 52), (0.4, -0.6)),
+                   sd=((43, 70), (36, 66), (0.4, 1)), gov=0.6, body=1),
+    "stall":  dict(tw=((42, 75), (38, 64), (0.1, 1)), hm=((38, 74), (33, 64), (0, 1)),
+                   sd=((37, 80), (33, 72), (0, 1)), gov=-0.4, head=4, body=2, eye="dim"),
+    "carry":  dict(tw=((42, 58), (37, 56), (0.6, -0.4)), hm=((39, 56), (33, 54), (0.6, -0.4)),
+                   sd=((39, 66), (34, 63), (0.6, 0.2)), gov=0.25, step=True),
 }
-# North: the golem faces away, so the staff is in front of it, further up the floor: drawn a
-# little higher than from the south and behind its body (chassis.json "layers"). The whole view
-# is drawn mirrored (draw_front), so the staff stays in the golem's own right hand (the
-# Scavenger's review).
+# North: the golem faces away, so its tools and the piece it works are in front of it, further
+# up the floor: drawn a little higher than from the south and behind its body (chassis.json
+# "layers"). The whole view is drawn mirrored (draw_front), so each tool stays in its own hand.
 BACK = {}
 for state, p in FRONT.items():
     q = dict(p)
-    q["grip"] = (p["grip"][0], p["grip"][1] - 6)
-    q["elbow"] = (p["elbow"][0], p["elbow"][1] - 3)
+    for arm in ("tw", "hm", "sd"):
+        (hx, hy), (ex, ey), point = p[arm]
+        q[arm] = ((hx, hy - 6), (ex, ey - 3), point)
     BACK[state] = q
 for table in (FRONT, SIDE, BACK):
     table["idle_1"] = dict(table["base"], eye="bright")
+
+
+# The head sits this far down into its shoulders: a hunched craftsman. On a neck it read as a
+# lollipop.
+HUNCH = 5
 
 
 def eye_tones(mode):
     return {"dim": (0, 0, 1), "bright": (1, 2, 2)}.get(mode, (0, 1, 2))
 
 
-def draw_staff(cv, grip, lean, part="staff"):
-    """An iron staff through the hand, its butt below, a brass tuning fork on top: a cross bar
-    and two tines along the staff."""
-    ux, uy = -math.sin(lean), -math.cos(lean)  # up the staff
-    vx, vy = math.cos(lean), -math.sin(lean)   # across it
-    top = (grip[0] + ux * 24, grip[1] + uy * 24)
-    butt = (grip[0] - ux * 24, grip[1] - uy * 24)
-    cv.layer(part, "iron", capsule(butt, top, 1.4), [1, 2, 3, 4])
-    for t in (-14, 12):
-        cv.layer(part, "brass", ellipse(grip[0] + ux * t, grip[1] + uy * t, 1.9, 1.9), [1, 2, 3])
+def unit(v):
+    n = math.hypot(v[0], v[1]) or 1
+    return v[0] / n, v[1] / n
+
+
+def draw_tool(cv, kind, hand, point, part="tools"):
+    """Tweezers (two brass prongs), a hammer (iron head, brass face) or a screwdriver (brass
+    grip, iron shaft), held in the hand and pointing along `point`."""
+    ux, uy = unit(point)
+    vx, vy = -uy, ux
+    x, y = hand
+    if kind == "tw":
+        for side in (-1, 1):
+            root = (x + vx * 1.2 * side, y + vy * 1.2 * side)
+            tip = (x + ux * 8 + vx * 0.4 * side, y + uy * 8 + vy * 0.4 * side)
+            cv.layer(part, "brass", capsule(root, tip, 0.9), [1, 2, 3])
+    elif kind == "hm":
+        end = (x + ux * 7, y + uy * 7)
+        cv.layer(part, "iron", capsule(hand, end, 1.1), [1, 2, 3])
+        cv.layer(part, "iron", capsule((end[0] - vx * 3.5, end[1] - vy * 3.5), (end[0] + vx * 3.5, end[1] + vy * 3.5), 2.0), [0, 1, 2, 3, 4])
+        cv.layer(part, "brass", ellipse(end[0] + vx * 3.5, end[1] + vy * 3.5, 1.6, 1.6), [1, 2, 3])
+    else:
+        mid = (x + ux * 3, y + uy * 3)
+        cv.layer(part, "brass", capsule(hand, mid, 1.6), [0, 1, 2])
+        cv.layer(part, "iron", capsule(mid, (x + ux * 9, y + uy * 9), 0.8), [2, 3, 4])
+
+
+def draw_arm(cv, kind, shoulder, arm, upper="arms", fore="forearms", hands="hands", tools="tools", dark=False):
+    (hand, elbow, point) = arm
+    tones = [0, 1, 2] if dark else [1, 2, 3, 4]
+    cv.layer(upper, "iron", capsule(shoulder, elbow, 1.8), tones)
+    cv.layer(fore, "iron", capsule(elbow, hand, 1.8), tones)
+    cv.layer(upper, "brass", ellipse(elbow[0], elbow[1], 2.2, 2.2), [0, 1, 2])
+    draw_tool(cv, kind, hand, point, tools)
+    cv.layer(hands, "brass", ellipse(hand[0], hand[1], 2.6, 2.6), [0, 1, 2] if dark else [0, 1, 2, 3])
+
+
+def draw_governor(cv, top, spread, part="governor"):
+    """A flyball governor: an iron spindle up from the head, a brass collar on top, two arms
+    hanging from it to brass balls that fly out as it spins faster (spread 1) and droop when it
+    stops (spread below 0), and links from the balls down to a sliding collar: the diamond that
+    says governor (without them it read as an arrowhead)."""
+    x, y = top
+    cv.layer(part, "iron", capsule((x, y), (x, y - 19), 1.0), [1, 2, 3])
+    cv.layer(part, "brass", ellipse(x, y - 19, 1.8, 1.8), [1, 2, 3])
+    angle = 0.35 + 1.05 * spread  # from the spindle, in radians
     for side in (-1, 1):
-        root = (top[0] + vx * 4 * side, top[1] + vy * 4 * side)
-        tip = (root[0] + ux * 11, root[1] + uy * 11)
-        cv.layer(part, "brass", capsule(root, tip, 1.5), [0, 1, 2, 3])
-    cv.layer(part, "brass", capsule((top[0] - vx * 4, top[1] - vy * 4), (top[0] + vx * 4, top[1] + vy * 4), 1.7), [0, 1, 2, 3])
-    cv.layer(part, "brass", ellipse(top[0] - ux * 1.5, top[1] - uy * 1.5, 2.2, 2.2), [1, 2, 3])
+        ball = (x + side * math.sin(angle) * 10, y - 19 + math.cos(angle) * 10)
+        cv.layer(part, "iron", capsule((x, y - 19), ball, 1.2), [1, 2, 3])
+        cv.layer(part, "iron", capsule(ball, (x, y - 7), 0.9), [1, 2, 3])
+        cv.layer(part, "brass", ellipse(ball[0], ball[1], 3.0, 3.0), [0, 1, 2, 3])
+    cv.layer(part, "brass", rect(x - 2, y - 7, x + 2, y - 6), [0, 1, 2])
 
 
-def draw_hand(cv, at, elbow=None, part="hands"):
-    """A brass hand; with its elbow given, a white butler's cuff on the wrist before it."""
-    if elbow is not None:
-        dx, dy = at[0] - elbow[0], at[1] - elbow[1]
-        n = math.hypot(dx, dy) or 1
-        cv.layer(part, "steam", ellipse(at[0] - dx / n * 3.2, at[1] - dy / n * 3.2, 2.5, 2.5), [1, 2, 3])
-    cv.layer(part, "brass", ellipse(at[0], at[1], 2.8, 2.8), [0, 1, 2, 3])
-
-
-def draw_elbow(cv, at, part="arms"):
-    cv.layer(part, "brass", ellipse(at[0], at[1], 2.3, 2.3), [0, 1, 2])
-    cv.paint(part, "iron", 1, {(round(at[0]), round(at[1]))})
-
-
-def draw_head(cv, p, o, back=False, ears=(24.5, 39.5)):
-    """A small brass oval on an iron neck, under an iron top hat with a brass band; from the
-    front and side a teal monocle and a moustache. A seam at the jaw, a gear for each ear it shows,
-    a gear on the hat band."""
-    cv.layer("head", "iron", shift(rect(30, 32, 34, 37), 0, o), [1, 2, 3, 4])
-    cv.layer("head", "brass", shift(ellipse(32, 25, 7.5, 8.5), 0, o), [0, 1, 2, 3])
-    cv.layer("head", "iron", shift(rect(23, 15, 41, 17) | rrect(26, 3, 38, 16, 1), 0, o), [0, 1, 2, 3, 4])
-    cv.paint("head", "brass", 2, shift(rect(26, 12, 38, 13), 0, o))
-    cv.paint("head", "brass", 3, shift(rect(31, 12, 33, 13), 0, o))
-    cv.paint("head", "brass", 0, shift(rect(27, 31, 37, 31) & ellipse(32, 25, 7.5, 8.5), 0, o))
-    for cx in ears:
-        cv.layer("head", "brass", shift(ellipse(cx, 25, 2.3, 2.3), 0, o), [0, 1, 2, 3])
-        cv.paint("head", "iron", 0, shift({(round(cx), 25)}, 0, o))
-    if back:
-        return
-    lo, mid, hi = eye_tones(p.get("eye"))
-    cv.layer("head", "iron", shift(ellipse(35.5, 23.5, 3.8, 3.8), 0, o), [0, 1, 2])
-    cv.layer("head", "aether", shift(ellipse(35.5, 23.5, 2.6, 2.6), 0, o), sorted({lo, mid, hi}))
-    cv.paint("head", "aether" if p.get("eye") != "bright" else "steam", hi if p.get("eye") != "bright" else 3,
-             shift(rect(34, 22, 34, 22), 0, o))
-    cv.paint("head", "brass", 3, shift({(38, 27), (38, 28), (39, 29), (39, 30)}, 0, o))
+def spiral(cx, cy, r0, r1, turns, squash=1.0):
+    out = set()
+    steps = int(turns * 80)
+    for i in range(steps + 1):
+        t = i / steps
+        a = t * turns * 2 * math.pi
+        r = r0 + (r1 - r0) * t
+        out.add((round(cx + r * math.cos(a)), round(cy + r * math.sin(a) * squash)))
+    return out
 
 
 def draw_front(state, back=False):
@@ -299,72 +322,61 @@ def draw_front(state, back=False):
     # mirrored, then shaded from the upper left as ever.
     cv = Canvas("north" if back else "south", mirror=back)
     hd, bd = p.get("head", 0), p.get("body", 0)
-    o = hd + bd
-    # Legs: thin iron, brass knees, polished iron shoes. Carried, its right leg lifts.
-    for x, lift in ((28, 5 if p.get("step") else 0), (36, 0)):
-        knee = (x, 78 - lift)
-        cv.layer("legs", "iron", capsule((x, 64), knee, 2.0) | capsule(knee, (x, 90 - lift), 1.8), [1, 2, 3, 4])
-        cv.layer("legs", "brass", ellipse(knee[0], knee[1], 2.6, 2.6), [0, 1, 2, 3])
-        cv.layer("legs", "iron", rrect(x - 4, 90 - lift, x + 3, 95 - lift, 2), [0, 1, 2, 3])
-        cv.layer("legs", "steam", rrect(x - 3, 86 - lift, x + 2, 91 - lift, 1), [1, 2, 3])
-    # The coat-tails: iron, from the waist to the knees, either side; from behind, the coat's back.
-    tails = capsule((28, 52), (26, 74), 2.6) | capsule((36, 52), (38, 74), 2.6)
+    o = hd + bd + HUNCH
+    # Legs: short, a little bowed, brass knees, broad iron feet. Carried, its right leg lifts.
+    for hip, knee, foot, lift in (((26, 70), (23, 81), (25, 91), 5 if p.get("step") else 0),
+                                  ((38, 70), (41, 81), (39, 91), 0)):
+        k, f = (knee[0], knee[1] - lift), (foot[0], foot[1] - lift)
+        cv.layer("legs", "iron", capsule(hip, k, 2.0) | capsule(k, f, 1.8), [1, 2, 3, 4])
+        cv.layer("legs", "brass", ellipse(k[0], k[1], 2.5, 2.5), [0, 1, 2, 3])
+        cv.layer("legs", "iron", rrect(f[0] - 4, f[1] + 1, f[0] + 3, f[1] + 4, 2), [0, 1, 2, 3])
+    # The mainspring in its cage: from behind, the whole back; from the front, hidden.
     if back:
-        tails |= rrect(26, 44, 38, 70, 3)
-    cv.layer("tails", "iron", shift(tails, 0, bd), [0, 1, 2, 3, 4])
-    if back:
-        cv.paint("tails", "iron", 0, shift(rect(32, 56, 32, 70) | rect(27, 55, 37, 55), 0, bd))
-        cv.dots("tails", "brass", 2, [(29, 57 + bd), (34, 57 + bd)], 2)
-    # The wind-up key in its back: a brass bow either side of the body, an iron hub between.
-    key = ellipse(17, 50, 4.5, 5.5) | ellipse(47, 50, 4.5, 5.5) | rect(20, 48, 44, 52)
-    cv.layer("key", "brass", shift(key, 0, bd), [0, 1, 2, 3])
-    for cx in (17, 47):
-        cv.paint("key", "iron", 0, shift(ellipse(cx, 50, 1.6, 2.5), 0, bd))
-        cv.paint("key", "brass", 3, shift(rect(cx - 1, 45, cx, 45), 0, bd))
-    if back:
-        cv.layer("key", "iron", shift(ellipse(32, 50, 3.6, 3.6), 0, bd), [1, 2, 3, 4])
-    # Body: a tall narrow brass waistcoat, shoulder caps, a clock face on the chest, buttons,
-    # the collar and bow tie.
-    cv.layer("body", "brass", shift(rrect(26, 38, 38, 66, 4), 0, bd), [0, 1, 2, 3])
-    cv.layer("body", "brass", shift(ellipse(25, 43, 3.2, 3.2) | ellipse(39, 43, 3.2, 3.2), 0, bd), [1, 2, 3])
+        cv.layer("cage", "iron", shift(ellipse(32, 55, 11, 11), 0, bd), [0, 1, 2, 3])
+        cv.layer("cage", "steam", shift(ellipse(32, 55, 8.6, 8.6), 0, bd), [0, 1])
+        cv.paint("cage", "brass", 2, shift(spiral(32, 55, 1.5, 8, 3.2), 0, bd))
+        cv.paint("cage", "iron", 1, shift(rect(32, 44, 32, 66) | rect(21, 55, 43, 55), 0, bd))
+        cv.layer("cage", "brass", shift(ellipse(32, 55, 2, 2), 0, bd), [1, 2, 3])
+    # Body: a hunched brass barrel, gear shoulders, a copper apron; on the chest, a pressure
+    # gauge with its needle in the red.
+    cv.layer("body", "brass", shift(ellipse(32, 57, 10, 12.5), 0, bd), [0, 1, 2, 3])
+    for sx in (19, 45):
+        cv.layer("body", "brass", shift(ellipse(sx, 47, 5, 5), 0, bd), [0, 1, 2, 3])
+        cv.paint("body", "iron", 1, shift(ellipse(sx, 47, 1.6, 1.6), 0, bd))
+        cv.dots("body", "brass", 0, [(sx - 1, 41 + bd), (sx + 4, 46 + bd), (sx - 1, 51 + bd), (sx - 6, 46 + bd)], 2)
     if not back:
-        cv.layer("body", "iron", shift(ellipse(32, 50, 6.2, 6.2), 0, bd), [1, 2, 3])
-        cv.layer("body", "steam", shift(ellipse(32, 50, 4.6, 4.6), 0, bd), [1, 2, 3])
-        cv.paint("body", "iron", 0, shift(rect(32, 47, 32, 50) | rect(33, 50, 34, 50), 0, bd))
-        cv.dots("body", "iron", 1, [(31, 58 + bd), (31, 62 + bd)], 2)
-        cv.layer("body", "brass", shift(capsule((28, 40), (29, 45), 1.1) | capsule((36, 40), (35, 45), 1.1), 0, bd), [0, 1])
-        cv.paint("body", "iron", 1, shift({(32, 46), (36, 50), (32, 54), (28, 50)}, 0, bd))
-        cv.paint("body", "brass", 3, shift({(34, 56), (35, 57), (36, 57), (37, 58)}, 0, bd))
-        cv.paint("body", "brass", 0, shift(rect(34, 59, 37, 59) | rect(26, 64, 38, 64), 0, bd))
-        cv.dots("body", "iron", 1, [(25, 42 + bd), (38, 42 + bd)], 1)
-        cv.layer("body", "steam", shift(rect(28, 36, 36, 39), 0, bd), [1, 2, 3])
-        cv.layer("body", "iron", shift(ellipse(29.5, 38, 2.2, 1.6) | ellipse(34.5, 38, 2.2, 1.6), 0, bd), [0, 1, 2])
+        cv.layer("apron", "copper", shift(rrect(24, 58, 40, 72, 3) & ellipse(32, 60, 10, 13), 0, bd), [0, 1, 2])
+        cv.paint("apron", "copper", 0, shift(rect(26, 65, 38, 65) | rect(32, 65, 32, 72), 0, bd))
+        cv.paint("apron", "brass", 2, shift({(25, 59), (39, 59)}, 0, bd))
+        # Below the hunched head, so the head never hides it.
+        cv.layer("body", "iron", shift(ellipse(32, 54, 5.4, 4.6), 0, bd), [1, 2, 3])
+        cv.layer("body", "steam", shift(ellipse(32, 54, 4.0, 3.3), 0, bd), [1, 2, 3])
+        cv.paint("body", "fire", 1, shift({(35, 52), (36, 53), (36, 54)}, 0, bd))
+        cv.paint("body", "fire", 0, shift({(32, 55), (33, 54), (34, 53), (35, 53)}, 0, bd))
+        cv.dots("body", "iron", 1, [(25, 52 + bd), (38, 52 + bd)], 1)
     else:
-        # From behind: the collar and the waistcoat's back seam.
-        cv.paint("body", "iron", 1, shift(rect(32, 39, 32, 44), 0, bd))
-        cv.layer("body", "steam", shift(rect(28, 36, 36, 38), 0, bd), [1, 2])
-        cv.dots("body", "iron", 1, [(25, 42 + bd), (38, 42 + bd)], 1)
-    draw_head(cv, p, o, back)
+        cv.layer("apron", "copper", shift(rect(30, 42, 34, 46), 0, bd), [0, 1, 2])
+    # Head: a brass dome, hunched low and forward, a neck collar; from the front the loupe on its
+    # right eye (the teal lens) on a hinged arm, a small left eye, a grille for a mouth.
+    cv.layer("head", "iron", shift(rect(28, 38, 36, 42), 0, o), [1, 2, 3, 4])
+    cv.layer("head", "brass", shift(ellipse(32, 31, 8.5, 8), 0, o), [0, 1, 2, 3])
+    cv.paint("head", "brass", 0, shift(rect(24, 31, 40, 31) & ellipse(32, 31, 8.5, 8), 0, o))
+    cv.dots("head", "iron", 1, [(26, 26 + o), (37, 26 + o)], 1)
     if not back:
-        # The right eye, small, and a moustache.
         lo, mid, hi = eye_tones(p.get("eye"))
-        cv.paint("head", "aether", mid, shift(rect(27, 23, 29, 24), 0, o))
-        cv.layer("head", "iron", shift(capsule((28, 29), (36, 29), 1.2), 0, o), [0, 1])
-    # Arms: thin iron. The golem's right hand (screen left) holds the staff; the left is folded
-    # at its waist with a towel over the forearm.
-    shoulders = [(25, 44 + bd), (39, 44 + bd)]
-    cv.layer("arms", "iron", capsule(shoulders[0], p["elbow"], 2.2), [1, 2, 3, 4])
-    cv.layer("forearms", "iron", capsule(p["elbow"], p["grip"], 2.0), [1, 2, 3, 4])
-    cv.layer("arms", "iron", capsule(shoulders[1], p["hand_elbow"], 2.2), [1, 2, 3, 4])
-    cv.layer("forearms", "iron", capsule(p["hand_elbow"], p["hand"], 2.0), [1, 2, 3, 4])
-    draw_elbow(cv, p["elbow"])
-    draw_elbow(cv, p["hand_elbow"])
-    ex, ey = p["hand_elbow"]
-    cv.layer("hands", "steam", rrect(ex - 3, ey + 1, ex + 2, ey + 11, 1), [1, 2, 3])
-    cv.paint("hands", "steam", 1, rect(ex - 2, ey + 9, ex + 1, ey + 9))
-    draw_hand(cv, p["hand"], p["hand_elbow"])
-    draw_staff(cv, p["grip"], p["lean"])
-    draw_hand(cv, p["grip"], p["elbow"])
+        cv.layer("head", "iron", shift(capsule((24, 25), (26, 30), 0.9), 0, o), [1, 2])
+        cv.layer("head", "iron", shift(ellipse(27, 32, 4.6, 4.6), 0, o), [0, 1, 2, 3])
+        cv.layer("head", "aether", shift(ellipse(27, 32, 3.3, 3.3), 0, o), sorted({lo, mid, hi}))
+        cv.paint("head", "aether" if p.get("eye") != "bright" else "steam", hi if p.get("eye") != "bright" else 3,
+                 shift(rect(26, 31, 26, 31), 0, o))
+        cv.paint("head", "aether", mid, shift(rect(36, 31, 37, 32), 0, o))
+        cv.layer("head", "iron", shift(rrect(29, 36, 35, 38, 1), 0, o), [0, 1])
+    draw_governor(cv, (32, 23 + o), p["gov"])
+    # Three arms: tweezers on its right shoulder (screen left), the hammer on its left, the
+    # screwdriver from its left hip.
+    draw_arm(cv, "tw", (19, 47 + bd), p["tw"])
+    draw_arm(cv, "hm", (45, 47 + bd), p["hm"])
+    draw_arm(cv, "sd", (41, 64 + bd), p["sd"])
     return cv
 
 
@@ -374,46 +386,47 @@ def draw_side(state, mirror=False):
     p = SIDE[state]
     cv = Canvas("west" if mirror else "east", mirror)
     hd, bd = p.get("head", 0), p.get("body", 0)
-    o = hd + bd
+    o = hd + bd + HUNCH
     lift = 5 if p.get("step") else 0
-    # The far arm (darker) with the towel, behind everything.
-    cv.layer("far_arm", "iron", capsule((30, 45 + bd), p["hand_elbow"], 2.0) | capsule(p["hand_elbow"], p["hand"], 1.9), [0, 1, 2])
-    ex, ey = p["hand_elbow"]
-    cv.layer("far_arm", "steam", rrect(ex - 2, ey + 1, ex + 2, ey + 10, 1), [0, 1, 2])
-    # Legs: the far leg (darker) a step back, the near leg; shoes pointing forward.
-    cv.layer("far_leg", "iron", capsule((30, 64), (29, 78), 2.1) | capsule((29, 78), (28, 89), 2.0), [0, 1, 2])
-    cv.layer("far_leg", "iron", rrect(24, 89, 34, 95, 2), [0, 1, 2])
-    knee = (34, 78 - lift)
-    cv.layer("legs", "iron", capsule((33, 64), knee, 2.3) | capsule(knee, (34, 89 - lift), 2.1), [1, 2, 3, 4])
-    cv.layer("legs", "brass", ellipse(knee[0], knee[1], 2.6, 2.6), [0, 1, 2, 3])
-    cv.layer("legs", "iron", rrect(30, 89 - lift, 41, 95 - lift, 2), [0, 1, 2, 3])
-    cv.layer("legs", "steam", rrect(31, 85 - lift, 37, 90 - lift, 1), [1, 2, 3])
-    # The coat-tails behind.
-    cv.layer("tails", "iron", shift(capsule((26, 50), (19, 78), 3.4), 0, bd), [0, 1, 2, 3, 4])
-    cv.paint("tails", "iron", 0, shift({(23, 60), (22, 64), (21, 68), (20, 72)}, 0, bd))
-    cv.dots("tails", "brass", 2, [(24, 54 + bd)], 2)
-    # The key: a shaft out of its back, the bow face on.
-    cv.layer("key", "iron", shift(capsule((25, 49), (16, 49), 1.5), 0, bd), [1, 2, 3])
-    cv.layer("key", "brass", shift(ellipse(13, 43, 3.5, 5) | ellipse(13, 55, 3.5, 5) | rect(11, 47, 15, 51), 0, bd), [0, 1, 2, 3])
-    for cy in (43, 55):
-        cv.paint("key", "iron", 0, shift(ellipse(13, cy, 1.3, 2.3), 0, bd))
-    # Body in profile: the waistcoat, buttons down the front, the collar and the bow tie.
-    cv.layer("body", "brass", shift(rrect(25, 38, 39, 66, 4), 0, bd), [0, 1, 2, 3])
-    cv.dots("body", "iron", 1, [(37, 56 + bd), (37, 61 + bd)], 2)
-    cv.layer("body", "steam", shift(rect(32, 36, 37, 39), 0, bd), [1, 2, 3])
-    cv.layer("body", "iron", shift(ellipse(39, 38, 1.8, 1.8), 0, bd), [0, 1, 2])
-    cv.layer("body", "brass", shift(capsule((34, 40), (37, 47), 1.1), 0, bd), [0, 1])
-    cv.paint("body", "brass", 3, shift({(36, 55), (35, 56), (34, 57), (33, 58)}, 0, bd))
-    cv.paint("body", "brass", 0, shift(rect(31, 59, 35, 59) | rect(26, 64, 38, 64), 0, bd))
-    cv.dots("body", "iron", 1, [(28, 42 + bd)], 1)
-    draw_head(cv, p, o, ears=(29.5,))
-    cv.layer("head", "iron", shift(capsule((35, 29), (40, 29), 1.2), 0, o), [0, 1])
-    # The near arm and the staff in front.
-    cv.layer("arms", "iron", capsule((32, 45 + bd), p["elbow"], 2.2), [1, 2, 3, 4])
-    cv.layer("forearms", "iron", capsule(p["elbow"], p["grip"], 2.0), [1, 2, 3, 4])
-    draw_elbow(cv, p["elbow"])
-    draw_staff(cv, p["grip"], p["lean"])
-    draw_hand(cv, p["grip"], p["elbow"])
+    # The far arms (darker): the hammer from the far shoulder, the screwdriver from the far hip.
+    draw_arm(cv, "hm", (29, 47 + bd), p["hm"], "far_arm", "far_arm", "far_arm", "far_arm", dark=True)
+    draw_arm(cv, "sd", (31, 64 + bd), p["sd"], "far_arm", "far_arm", "far_arm", "far_arm", dark=True)
+    # Legs: the far leg (darker), the near leg; feet forward.
+    cv.layer("far_leg", "iron", capsule((28, 70), (26, 81), 2.0) | capsule((26, 81), (28, 91), 1.8), [0, 1, 2])
+    cv.layer("far_leg", "iron", rrect(23, 91, 33, 95, 2), [0, 1, 2])
+    k, f = (35, 81 - lift), (33, 91 - lift)
+    cv.layer("legs", "iron", capsule((31, 70), k, 2.0) | capsule(k, f, 1.8), [1, 2, 3, 4])
+    cv.layer("legs", "brass", ellipse(k[0], k[1], 2.5, 2.5), [0, 1, 2, 3])
+    cv.layer("legs", "iron", rrect(29, 91 - lift, 40, 95 - lift, 2), [0, 1, 2, 3])
+    # The mainspring's cage on its back: a drum, its coil's edge in brass bands.
+    cv.layer("cage", "iron", shift(rrect(13, 43, 21, 66, 3), 0, bd), [0, 1, 2, 3, 4])
+    for y in (47, 51, 55, 59, 63):
+        cv.paint("cage", "brass", 2, shift(rect(15, y, 19, y), 0, bd))
+    # Body: the barrel side on, hunched forward; the apron hanging in front; the gauge's rim.
+    cv.layer("body", "brass", shift(ellipse(30, 57, 10.5, 12.5), 0, bd), [0, 1, 2, 3])
+    cv.layer("body", "brass", shift(ellipse(30, 47, 5, 5), 0, bd), [0, 1, 2, 3])
+    cv.paint("body", "iron", 1, shift(ellipse(30, 47, 1.6, 1.6), 0, bd))
+    cv.layer("apron", "copper", shift(rrect(34, 58, 42, 72, 3), 0, bd), [0, 1, 2])
+    cv.paint("apron", "copper", 0, shift(rect(36, 64, 42, 64), 0, bd))
+    cv.layer("body", "iron", shift(rrect(39, 44, 43, 52, 1), 0, bd), [1, 2, 3])
+    cv.paint("body", "fire", 1, shift({(42, 46), (42, 47)}, 0, bd))
+    # Head: the dome forward of the body; the loupe's tube out in front with the lens at its end,
+    # an iron rim round it so the outline lands on the rim, not the lens (the Scavenger's west
+    # light check).
+    cv.layer("head", "iron", shift(rect(32, 38, 38, 42), 0, o), [1, 2, 3, 4])
+    cv.layer("head", "brass", shift(ellipse(37, 31, 8.5, 8.5), 0, o), [0, 1, 2, 3])
+    cv.paint("head", "brass", 0, shift(rect(29, 31, 45, 31) & ellipse(37, 31, 8.5, 8.5), 0, o))
+    cv.dots("head", "iron", 1, [(33, 26 + o)], 1)
+    lo, mid, hi = eye_tones(p.get("eye"))
+    cv.layer("head", "iron", shift(capsule((39, 24), (43, 28), 0.9), 0, o), [1, 2])
+    cv.layer("head", "iron", shift(rrect(42, 27, 51, 37, 2), 0, o), [0, 1, 2, 3])
+    cv.layer("head", "aether", shift(rect(47, 29, 49, 35), 0, o), sorted({lo, mid, hi}))
+    cv.paint("head", "aether" if p.get("eye") != "bright" else "steam", hi if p.get("eye") != "bright" else 3,
+             shift(rect(47, 30, 47, 30), 0, o))
+    cv.layer("head", "iron", shift(rrect(40, 36, 44, 38, 1), 0, o), [0, 1])
+    draw_governor(cv, (36, 23 + o), p["gov"])
+    # The near arm: the tweezers.
+    draw_arm(cv, "tw", (31, 47 + bd), p["tw"])
     return cv
 
 
@@ -428,7 +441,7 @@ def offsets(facing, state):
     table = SIDE if facing in ("east", "west") else (BACK if facing == "north" else FRONT)
     p = table[state]
     bd, hd = p.get("body", 0), p.get("head", 0)
-    out = {"body": [0, bd], "tails": [0, bd], "key": [0, bd], "head": [0, hd + bd],
+    out = {"body": [0, bd], "apron": [0, bd], "cage": [0, bd], "head": [0, hd + bd],
            "legs": [0, 0], "far_leg": [0, 0]}
     if p.get("step"):
         out["legs"] = None  # one leg lifts, not both: the draft's legs are used
