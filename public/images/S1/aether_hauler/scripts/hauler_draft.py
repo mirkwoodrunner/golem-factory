@@ -35,7 +35,8 @@ PALETTE = os.path.normpath(os.path.join(HERE, "..", "..", "..", "..", "..", "Too
 RAMPS = {k: [tuple(int(c[i:i + 2], 16) for i in (1, 3, 5)) for c in v["colours"]]
          for k, v in json.load(open(PALETTE))["ramps"].items()}
 # The draw order per facing is the chassis' own (chassis.json "layers"): the crate is behind the
-# golem from the south and covers its back from the north.
+# golem from the south and covers its back from the north, and the hands holding its near corners
+# with it (the user's review: from behind, they showed through the crate).
 LAYERS = json.load(open(os.path.join(HERE, "..", "chassis.json")))["layers"]
 W, H = 64, 96
 KEY = (40, 190, 70)

@@ -6,7 +6,7 @@
   "rigid": ["treads", "body", "crate", "head"],
   "layers": {
     "south": ["crystals", "crate", "treads", "body", "head", "arms", "forearms", "hands"],
-    "north": ["treads", "body", "head", "forearms", "crystals", "crate", "arms", "hands"],
+    "north": ["treads", "body", "head", "arms", "forearms", "hands", "crystals", "crate"],
     "east": ["crystals", "crate", "treads", "body", "head", "arms", "forearms", "hands"],
     "west": ["crystals", "crate", "treads", "body", "head", "arms", "forearms", "hands"]
   },
