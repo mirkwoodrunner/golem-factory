@@ -108,3 +108,8 @@ If an image-generation MCP server is configured in the user's global Claude conf
   sets its own `layers` (the back-worn bucket over the head from the north) and `rigid` parts
   (a tripod: `legs` and `far_leg`); its north view is the south mirrored, so the claw arm stays
   on its own side.
+  The Mainspring Overclocker's 28 (`public/images/S1/mainspring_overclocker/`,
+  `scripts/overclocker_draft.py`, approved 2026-10-24) likewise: the Watchmaker, three tool
+  arms drawn fresh per frame with the flyball `governor`, and the caged mainspring (`cage`) over
+  everything from the north. Its first draft overlapped today's Hauler at 0.55 and the draft
+  step refused it; a slimmer body and a hunched head got it to 0.44.

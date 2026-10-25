@@ -65,9 +65,10 @@ call): built, reviewed, critiqued and tested. Done:
   their prices (7a79046). 1925 Core tests pass.
 
 **Resume here:**
-1. **Phase 4 (Art), on branch `phase4/art`: the Brass Presser and the Clockwork Scavenger are
-   in the game** (the Scavenger approved 2026-10-24 at its second review round). The other three
-   chassis (Overclocker, Hauler, Zeppelin) wait for the user's go. When they say go:
+1. **Phase 4 (Art), on branch `phase4/art`: the Brass Presser, the Clockwork Scavenger and the
+   Mainspring Overclocker are in the game** (the Scavenger and the Overclocker approved
+   2026-10-24, each at its first rendered round). The other two chassis (Hauler, Zeppelin) wait
+   for the user's go. When they say go:
    - **The user's test of the Presser first.** Ask what they saw. Nothing has looked at a tinted
      Presser on screen yet (stuck red, waiting grey, out of steam blue; `check_art.py` measures
      the tints as readable, but `moods`' street uses Scavengers). Add a tinted Presser to a
@@ -94,13 +95,19 @@ call): built, reviewed, critiqued and tested. Done:
    - **Rules from the Scavenger's review:** from the north, what's worn on the back (its scrap
      bucket) is drawn over the head and upper arms; the north view is the south mirrored and
      re-lit, so a one-handed tool stays on the golem's own side.
+   - **Rules from the Overclocker's review:** a chassis' look follows its function, not the
+     others' style (the user's call): the Overclocker is the Watchmaker, the precision assembler
+     with three tool arms for the 3-input recipes, a loupe, a flyball governor that shows its
+     state and the mainspring caged on its back; the roster's speed aura stays cut. Draw detail
+     in: the first, plainer draft was "lacking". Known soft spots the user accepted: from the
+     side the near arm crosses the body, and the hip arm hangs.
    - Then the Artificer (S1b), floor and walls (S2), lighting (L), buildings, the Workbench,
      goods and the HUD, each with its own review sheet (`art-pipeline-design.md` §3).
    - Before Phase 4's test run: fix the windowed `hover` flake (`open-items.md` §4).
    Done so far: the specs and the user's thirteen calls (§9), the cleanup, `verify_art.py`'s
    gap, the `Tools/Art/` tooling, Core's `GolemFrames`, the `art` scenario's golem gallery,
-   ControlNet and IP-Adapter in ComfyUI (§1.4), the Presser (8f09b0e), `golem_set.py` (77042e9)
-   and the Scavenger.
+   ControlNet and IP-Adapter in ComfyUI (§1.4), the Presser (8f09b0e), `golem_set.py` (77042e9),
+   the Scavenger (3e7e413) and the Overclocker.
 2. **The human playtests, still to run:** `testscript/phase-2-playtest.md`, then
    `testscript/phase-1-playtest.md`, then `testscript/full-playthrough.md`. Run the game with the
    **mono** Godot build (a grey screen and "No loader found for resource: …cs" means the

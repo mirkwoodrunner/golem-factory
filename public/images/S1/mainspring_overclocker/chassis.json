@@ -10,6 +10,8 @@
     "east": ["far_arm", "far_leg", "cage", "legs", "body", "apron", "head", "governor", "arms", "forearms", "tools", "hands"],
     "west": ["far_arm", "far_leg", "cage", "legs", "body", "apron", "head", "governor", "arms", "forearms", "tools", "hands"]
   },
+  "picks": {"south": "d0.35_s5000", "north": "d0.55_s5001", "east": "d0.55_s5000"},
+  "approved": "2026-10-24",
   "prompts": {
     "south": "front view of a cute hunched brass clockmaker golem creature, round brass dome head with a teal glass jeweller's loupe over one eye and a spinning flyball governor with two brass balls on top, a round pressure gauge on its chest, copper leather work apron, gear-shaped shoulders, three thin iron arms holding tweezers, a small hammer and a screwdriver, short iron legs with brass knees",
     "north": "back view of a cute hunched brass clockmaker golem creature, round brass dome head seen from behind with a flyball governor on top, a big coiled brass mainspring in a round iron cage on its back, gear-shaped shoulders, three thin iron arms, short iron legs with brass knees",
