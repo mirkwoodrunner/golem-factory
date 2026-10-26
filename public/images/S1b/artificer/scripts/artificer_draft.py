@@ -273,8 +273,14 @@ def draw_leg(cv, part, leg, dark):
              [0, 1, 2] if dark else [0, 1, 2, 3])
 
 
-def draw_arm(cv, part, shoulder, arm, dark):
+def draw_arm(cv, part, shoulder, arm, dark, sleeve=True):
     elbow, hand = arm
+    if not sleeve:
+        # From the front and the back the sleeve is part of the shirt (draw_front); the bare
+        # arm comes out from under its hem.
+        cv.layer(part, "skin", capsule(shoulder, elbow, 2.6) | capsule(elbow, hand, 2.6)
+                 | ellipse(hand[0], hand[1], 3.2, 3.2), [1, 2, 3, 3])
+        return
     # A puffed short sleeve, then the bare arm from above the elbow, and the hand. Skin is
     # mostly today's light tone; its shadow edge steps down, so mirrored to walk left the arm
     # still darkens away from the light (check 14).
@@ -333,13 +339,13 @@ def draw_side(state, mirror=False):
 # (the ankle rises); the hands swing against the feet, the forward one lower.
 FRONT = {
     "walk_0": dict(bd=0, l=((28, 71), (28, 81), (28, 87)), r=((36, 71), (36, 81), (36, 87)),
-                   la=((20, 57), (20, 65)), ra=((44, 57), (44, 65))),
+                   la=((21, 57), (21, 65)), ra=((43, 57), (43, 65))),
     "walk_1": dict(bd=1, l=((28, 71), (27, 81), (27, 87)), r=((36, 71), (36, 80), (37, 84)),
-                   la=((20, 56), (21, 63)), ra=((44, 57), (43, 67))),
+                   la=((21, 56), (22, 63)), ra=((43, 57), (42, 67))),
     "walk_2": dict(bd=0, l=((28, 71), (28, 81), (28, 87)), r=((36, 71), (36, 81), (36, 86)),
-                   la=((20, 57), (20, 65)), ra=((44, 57), (44, 65))),
+                   la=((21, 57), (21, 65)), ra=((43, 57), (43, 65))),
     "walk_3": dict(bd=1, l=((28, 71), (28, 80), (27, 84)), r=((36, 71), (37, 81), (37, 87)),
-                   la=((20, 57), (21, 67)), ra=((44, 56), (43, 63))),
+                   la=((21, 57), (22, 67)), ra=((43, 56), (42, 63))),
 }
 
 
@@ -361,7 +367,10 @@ def draw_front(state, back=False):
     # From behind the feet swap sides with the hands: the character's left is the viewer's left.
     draw_leg_front(cv, p["l"], bd)
     draw_leg_front(cv, p["r"], bd)
-    shirt = ellipse(32, 50, 11, 6) | rrect(22, 46, 42, 70, 4)
+    # The shirt: a narrow torso, shoulders sloping from the neck, and the short puffed sleeves
+    # as part of it, so they shade with the shirt rather than sitting on it as separate pads.
+    shirt = (ellipse(32, 48, 8, 4) | rrect(24, 47, 40, 70, 4)
+             | ellipse(22, 51, 3.4, 4) | ellipse(42, 51, 3.4, 4))
     if back:
         # The back: the sage shirt, the apron's straps crossed over it, the trouser seat under
         # the belt, the belt with its tie and a pouch on each hip.
@@ -396,8 +405,8 @@ def draw_front(state, back=False):
         cv.paint("body", "brass", 0, b({(32, 70)}))
         cv.layer("body", "leather", b(capsule((26, 46), (28, 43), 0.8) | capsule((38, 46), (36, 43), 0.8)), [0, 1])
         cv.layer("body", "leather", b(rect(20, 59, 22, 62) | rect(42, 59, 44, 62)), [0, 1, 2])
-    draw_arm(cv, "arms", (22, 47 + bd), shift_arm(p["la"], bd), dark=False)
-    draw_arm(cv, "arms", (42, 47 + bd), shift_arm(p["ra"], bd), dark=False)
+    draw_arm(cv, "arms", (22, 54 + bd), shift_arm(p["la"], bd), dark=False, sleeve=False)
+    draw_arm(cv, "arms", (42, 54 + bd), shift_arm(p["ra"], bd), dark=False, sleeve=False)
     trace_head(cv, "artificer_walk_up_0" if back else "artificer_walk_down_0", 43, dy=bd)
     return cv
 
