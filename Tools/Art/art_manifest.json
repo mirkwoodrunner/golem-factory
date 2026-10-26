@@ -451,14 +451,26 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "down",
-    "frame": 0
+    "frame": 0,
+    "source": "public/images/S1b/artificer/"
   },
   "artificer_walk_down_1.png": {
     "set": "S1b",
@@ -469,14 +481,26 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "down",
-    "frame": 1
+    "frame": 1,
+    "source": "public/images/S1b/artificer/"
   },
   "artificer_walk_down_2.png": {
     "set": "S1b",
@@ -487,14 +511,26 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "down",
-    "frame": 2
+    "frame": 2,
+    "source": "public/images/S1b/artificer/"
   },
   "artificer_walk_down_3.png": {
     "set": "S1b",
@@ -505,14 +541,26 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "down",
-    "frame": 3
+    "frame": 3,
+    "source": "public/images/S1b/artificer/"
   },
   "artificer_walk_left_0.png": {
     "set": "S1b",
@@ -523,14 +571,27 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "left",
-    "frame": 0
+    "frame": 0,
+    "source": "public/images/S1b/artificer/",
+    "mirroredFrom": "artificer_walk_right_0.png"
   },
   "artificer_walk_left_1.png": {
     "set": "S1b",
@@ -541,14 +602,27 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "left",
-    "frame": 1
+    "frame": 1,
+    "source": "public/images/S1b/artificer/",
+    "mirroredFrom": "artificer_walk_right_1.png"
   },
   "artificer_walk_left_2.png": {
     "set": "S1b",
@@ -559,14 +633,27 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "left",
-    "frame": 2
+    "frame": 2,
+    "source": "public/images/S1b/artificer/",
+    "mirroredFrom": "artificer_walk_right_2.png"
   },
   "artificer_walk_left_3.png": {
     "set": "S1b",
@@ -577,14 +664,27 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "left",
-    "frame": 3
+    "frame": 3,
+    "source": "public/images/S1b/artificer/",
+    "mirroredFrom": "artificer_walk_right_3.png"
   },
   "artificer_walk_right_0.png": {
     "set": "S1b",
@@ -595,14 +695,26 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "right",
-    "frame": 0
+    "frame": 0,
+    "source": "public/images/S1b/artificer/"
   },
   "artificer_walk_right_1.png": {
     "set": "S1b",
@@ -613,14 +725,26 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "right",
-    "frame": 1
+    "frame": 1,
+    "source": "public/images/S1b/artificer/"
   },
   "artificer_walk_right_2.png": {
     "set": "S1b",
@@ -631,14 +755,26 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "right",
-    "frame": 2
+    "frame": 2,
+    "source": "public/images/S1b/artificer/"
   },
   "artificer_walk_right_3.png": {
     "set": "S1b",
@@ -649,14 +785,26 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "right",
-    "frame": 3
+    "frame": 3,
+    "source": "public/images/S1b/artificer/"
   },
   "artificer_walk_up_0.png": {
     "set": "S1b",
@@ -667,14 +815,26 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "up",
-    "frame": 0
+    "frame": 0,
+    "source": "public/images/S1b/artificer/"
   },
   "artificer_walk_up_1.png": {
     "set": "S1b",
@@ -685,14 +845,26 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "up",
-    "frame": 1
+    "frame": 1,
+    "source": "public/images/S1b/artificer/"
   },
   "artificer_walk_up_2.png": {
     "set": "S1b",
@@ -703,14 +875,26 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "up",
-    "frame": 2
+    "frame": 2,
+    "source": "public/images/S1b/artificer/"
   },
   "artificer_walk_up_3.png": {
     "set": "S1b",
@@ -721,14 +905,26 @@
     ],
     "pivot": "bottom-center",
     "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "skin",
+      "hair",
+      "leather",
+      "cloth",
+      "slate",
+      "brass",
+      "iron",
+      "bone",
+      "mahogany"
+    ],
     "readers": [
       "PlayerNode",
       "ArtificerWalkAnimation"
     ],
     "direction": "up",
-    "frame": 3
+    "frame": 3,
+    "source": "public/images/S1b/artificer/"
   },
   "belt_splitter.png": {
     "set": "S3",

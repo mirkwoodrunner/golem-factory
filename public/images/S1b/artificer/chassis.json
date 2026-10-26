@@ -13,6 +13,7 @@
   "textured": ["leather", "cloth", "brass", "iron"],
   "scenarios": ["art", "world"],
   "picks": {"east": "d0.45_s5002"},
+  "approved": "2026-10-26",
   "negative": "3d render, realistic, photo, blurry, text, watermark, black outline, blue, noise, grime, robot, golem, armor, knight",
   "prompts": {
     "south": "front view of a cute young artificer walking toward the viewer, goggles pushed up on messy plum-brown hair, green eyes, a sage green shirt with puffed sleeves, an oxblood leather work apron with a bib pocket, a screwdriver and a big pocket with a brass gear, slate grey trousers, brown leather boots",
