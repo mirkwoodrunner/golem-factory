@@ -1,0 +1,19 @@
+{
+  "kind": "artificer",
+  "stem": "artificer",
+  "title": "S1b Artificer (walk)",
+  "draft": "scripts/artificer_draft.py",
+  "size": [64, 93],
+  "states": ["walk_0", "walk_1", "walk_2", "walk_3"],
+  "drawn": ["east"],
+  "frameName": "artificer_walk_{facing}_{index}",
+  "facingNames": {"south": "down", "north": "up", "east": "right", "west": "left"},
+  "ramps": ["outline", "skin", "hair", "leather", "cloth", "slate", "brass", "iron", "bone", "mahogany"],
+  "rigid": ["body"],
+  "textured": ["leather", "cloth", "brass", "iron"],
+  "scenarios": ["art", "world"],
+  "negative": "3d render, realistic, photo, blurry, text, watermark, black outline, blue, noise, grime, robot, golem, armor, knight",
+  "prompts": {
+    "east": "side view facing right of a cute young artificer walking, goggles pushed up on messy plum-brown hair, a sage green shirt with puffed sleeves, an oxblood leather work apron with a belt, a brass buckle and a pocket with a brass gear, a screwdriver in the bib pocket, slate grey trousers, brown leather boots"
+  }
+}

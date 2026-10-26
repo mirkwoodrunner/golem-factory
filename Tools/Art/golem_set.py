@@ -7,7 +7,11 @@
     python Tools/Art/golem_set.py <set dir> verify     # recompose from the kept renders; must equal godot/art/
 
 <set dir> is public/images/S1/<chassis>/ and holds chassis.json (what is the chassis' own: its
-stem, review title, draft script, ramps, parts, prompts, render settings, picks, approval). The steps:
+stem, review title, draft script, ramps, parts, prompts, render settings, picks, approval). The
+Artificer's set (public/images/S1b/artificer/) is made the same way: its chassis.json has
+"kind": "artificer" and names its own canvas ("size"), frames ("states", the first is the base),
+drawn facings ("drawn"), file names ("frameName", "facingNames") and install scenarios; a golem
+set leaves them out. The steps:
 
 1. draft    the chassis' draft script writes draft_<facing>_<state>.png, its _8x on the key,
             and parts_<facing>_<state>.json, into <source>/drafts/.
@@ -113,6 +117,7 @@ DEFAULTS = {
     "picks": {},
 }
 REQUIRED = ("stem", "title", "draft", "ramps", "prompts")
+KINDS = ("chassis", "artificer")
 DETAIL_STEP = 0.035
 
 
@@ -128,7 +133,16 @@ class GolemSet:
         missing = [k for k in REQUIRED if k not in config]
         if missing:
             raise SetError(f"chassis.json lacks {', '.join(missing)}")
-        absent = [f for f in DRAWN if f not in config["prompts"]]
+        self.kind = config.get("kind", "chassis")
+        if self.kind not in KINDS:
+            raise SetError(f"chassis.json's kind is {self.kind}, not one of {', '.join(KINDS)}")
+        # A golem's canvas, frames and facings are check_art's; the Artificer's set names its own.
+        self.size = tuple(config.get("size", (W, H)))
+        self.states = list(config.get("states", STATES))
+        self.base = self.states[0]
+        self.drawn = [f for f in DRAWN if f in config.get("drawn", DRAWN)]
+        self.facings = [f for f in FACINGS if f in self.drawn or (f == "west" and "east" in self.drawn)]
+        absent = [f for f in self.drawn if f not in config["prompts"]]
         if absent:
             raise SetError(f"chassis.json's prompts lack {', '.join(absent)}")
         self.config = {**copy.deepcopy(DEFAULTS), **config}
@@ -162,11 +176,17 @@ class GolemSet:
         return self.dir("source", "drafts")
 
     def name(self, state, facing):
-        return check_art.frame_name(self.stem, state, facing)
+        template = self.config.get("frameName")
+        if template is None:
+            return check_art.frame_name(self.stem, state, facing)
+        # e.g. "artificer_walk_{facing}_{index}" with facingNames {"east": "right", ...}
+        return template.format(stem=self.stem, state=state, index=self.states.index(state),
+                               facing=self.config.get("facingNames", {}).get(facing, facing)) + ".png"
 
     def frames(self):
-        """All 28 in review order: south, north, east, west; base, idle_1, ... carry."""
-        return [self.name(s, f) for f in FACINGS for s in STATES]
+        """Every frame in review order: south, north, east, west; then the states in order
+        (a golem's 28: base, idle_1, ... carry)."""
+        return [self.name(s, f) for f in self.facings for s in self.states]
 
     def candidates(self, facing):
         frame = f"base_{facing}"
@@ -189,13 +209,14 @@ def step_draft(gs, log=print):
     result = subprocess.run([sys.executable, script, gs.drafts], capture_output=True, text=True)
     if result.returncode != 0:
         raise SetError(f"{gs.draft} failed:\n{result.stderr[-2000:]}")
-    missing = [f"draft_{f}_{s}" for f in FACINGS for s in STATES
+    missing = [f"draft_{f}_{s}" for f in gs.facings for s in gs.states
                if not os.path.exists(os.path.join(gs.drafts, f"draft_{f}_{s}.png"))
                or not os.path.exists(os.path.join(gs.drafts, f"parts_{f}_{s}.json"))]
     if missing:
         raise SetError(f"{gs.draft} didn't write {', '.join(missing[:4])}{' ...' if len(missing) > 4 else ''}")
-    log(f"draft: 28 frames in {gs.drafts}")
-    check_draft_silhouette(gs, log)
+    log(f"draft: {len(gs.frames())} frames in {gs.drafts}")
+    if gs.kind == "chassis":
+        check_draft_silhouette(gs, log)
 
 
 SILHOUETTE_MARGIN = 0.02
@@ -238,9 +259,9 @@ def prepare_render(gs):
     os.makedirs(source, exist_ok=True)
     with open(poses, "w", encoding="utf-8", newline="\n") as handle:
         json.dump({"base": {"parts": []}}, handle)
-    for facing in DRAWN:
+    for facing in gs.drawn:
         out = os.path.join(source, f"guide_{facing}")
-        if pose_guide.main([os.path.join(gs.drafts, f"draft_{facing}_base.png"), "--poses", poses,
+        if pose_guide.main([os.path.join(gs.drafts, f"draft_{facing}_{gs.base}.png"), "--poses", poses,
                             "--frame", "base", "--out", out]) != 0:
             raise SetError(f"pose_guide failed for {facing}")
     cart = m.load(os.path.join(ART, gs.reference))
@@ -297,7 +318,7 @@ class Comfy:
 def render_args(gs, facing):
     source = gs.dir("source")
     prompt = gs.promptPrefix + gs.prompts[facing] + gs.promptSuffix
-    return ["--init", os.path.join(gs.drafts, f"draft_{facing}_base_8x.png"),
+    return ["--init", os.path.join(gs.drafts, f"draft_{facing}_{gs.base}_8x.png"),
             "--guide", os.path.join(source, f"guide_{facing}", "guide.png"),
             "--out", gs.dir("raw", f"base_{facing}"),
             "--prompt", prompt, "--negative", gs.negative,
@@ -312,7 +333,7 @@ def render_args(gs, facing):
 
 def step_render(gs, force=False, dry_run=False, log=print):
     prepare_render(gs)
-    todo = [f for f in DRAWN if force or not all(os.path.exists(p) for _, p in gs.candidates(f))]
+    todo = [f for f in gs.drawn if force or not all(os.path.exists(p) for _, p in gs.candidates(f))]
     if not todo:
         log("render: every candidate is on disk (--force to render again)")
         return
@@ -337,37 +358,40 @@ def clean(gs, path):
 
 
 def score(gs, facing, cleaned, others, ctx, draft):
-    """check_art's measures on the base frame composed from one cleaned candidate."""
-    image, taken = compose_frame(gs, cleaned, facing, "base")
+    """check_art's measures on the base frame composed from one cleaned candidate. The silhouette
+    and the mood tints are a golem's (checks 8-10); the Artificer has neither."""
+    image, taken = compose_frame(gs, cleaned, facing, gs.base)
     lit = m.mean_lab(image)
-    tints = {k: m.mean_lab(image, ctx.tints[k]) for k in check_art.MOOD_TINTS_CHECKED}
+    golem = gs.kind == "chassis"
+    tints = {k: m.mean_lab(image, ctx.tints[k]) for k in check_art.MOOD_TINTS_CHECKED} if golem else None
     s = {
         "feet": m.lowest_opaque_row(cleaned),
-        "silhouette": max((m.iou(m.foot_mask(image), o) for o in others), default=0.0) if facing == "south" else None,
+        "silhouette": (max((m.iou(m.foot_mask(image), o) for o in others), default=0.0)
+                       if golem and facing == "south" else None),
         "lightness": lit[0],
-        "stalledShift": m.lab_distance(lit, tints["Stalled"]),
-        "tintsApart": min(m.lab_distance(tints[a], tints[b]) for a, b in combinations(tints, 2)),
+        "stalledShift": m.lab_distance(lit, tints["Stalled"]) if golem else None,
+        "tintsApart": min(m.lab_distance(tints[a], tints[b]) for a, b in combinations(tints, 2)) if golem else None,
         "edgeLight": m.edge_light_score(image, ctx.palette.outline()),
         "texture": sum(1 for x, y, p in m.opaque_pixels(image) if p != draft.getpixel((x, y))),
         "taken": taken,
     }
-    s["fails"] = failures(s)
+    s["fails"] = failures(s, gs.size[1])
     return s, image
 
 
-def failures(s):
+def failures(s, height=H):
     """What keeps a candidate from being picked: check_art's bounds (§5.1), the feet on the
-    bottom row, and a render that changed nothing."""
+    bottom row, and a render that changed nothing. A measure that is None doesn't apply."""
     out = []
-    if s["feet"] != H - 1:
+    if s["feet"] != height - 1:
         out.append(f"feet on row {s['feet']}")
     if s["silhouette"] is not None and s["silhouette"] > check_art.SILHOUETTE_MAX_IOU:
         out.append(f"silhouette {s['silhouette']:.2f}")
     if s["lightness"] < check_art.BODY_MIN_LIGHTNESS:
         out.append(f"lightness {s['lightness']:.2f}")
-    if s["stalledShift"] < check_art.STALLED_MIN_SHIFT:
+    if s["stalledShift"] is not None and s["stalledShift"] < check_art.STALLED_MIN_SHIFT:
         out.append(f"stalled shift {s['stalledShift']:.3f}")
-    if s["tintsApart"] < check_art.STOPPED_TINTS_MIN_APART:
+    if s["tintsApart"] is not None and s["tintsApart"] < check_art.STOPPED_TINTS_MIN_APART:
         out.append(f"tints apart {s['tintsApart']:.3f}")
     if s["edgeLight"] < check_art.EDGE_LIGHT_MIN:
         out.append(f"edge light {s['edgeLight']:+.3f}")
@@ -389,7 +413,7 @@ def contact_sheet(draft, composed, scored, auto, override=None, z=3):
     candidates that all pass is taste (the Presser's three were picked by eye), so the pick
     step shows them and chassis.json's "picks" records a choice."""
     order = sorted(composed, key=lambda k: (bool(scored[k]["fails"]), -scored[k]["taken"], -scored[k]["edgeLight"]))
-    cw, ch, label = W * z, H * z, 30
+    cw, ch, label = draft.width * z, draft.height * z, 30
     sheet = Image.new("RGBA", ((len(order) + 1) * (cw + 6) + 6, ch + label + 12), (60, 45, 35, 255))
     draw = ImageDraw.Draw(sheet)
     font = ImageFont.load_default()
@@ -411,8 +435,8 @@ def step_pick(gs, log=print):
     others = [m.foot_mask(m.load(os.path.join(ART, s + ".png"))) for s in ctx.chassis_stems if s != gs.stem]
     report = {}
     os.makedirs(gs.dir("clean"), exist_ok=True)
-    for facing in DRAWN:
-        draft = m.load(os.path.join(gs.drafts, f"draft_{facing}_base.png"))
+    for facing in gs.drawn:
+        draft = m.load(os.path.join(gs.drafts, f"draft_{facing}_{gs.base}.png"))
         scored, cleaned, composed = {}, {}, {}
         for label, path in gs.candidates(facing):
             if not os.path.exists(path):
@@ -499,9 +523,9 @@ def compose_frame(gs, clean_image, facing, state):
     outline = palette.outline()
     rigid, textured = set(gs.rigid), set(gs.textured)
     draft = m.load(os.path.join(gs.drafts, f"draft_{facing}_{state}.png"))
-    base_draft = m.load(os.path.join(gs.drafts, f"draft_{facing}_base.png"))
+    base_draft = m.load(os.path.join(gs.drafts, f"draft_{facing}_{gs.base}.png"))
     parts, offsets = load_parts(os.path.join(gs.drafts, f"parts_{facing}_{state}.json"))
-    base_parts, _ = load_parts(os.path.join(gs.drafts, f"parts_{facing}_base.json"))
+    base_parts, _ = load_parts(os.path.join(gs.drafts, f"parts_{facing}_{gs.base}.json"))
     dp, bp, cp = draft.load(), base_draft.load(), clean_image.load()
     detail = detail_map(clean_image, base_parts, outline)
     w, h = draft.size
@@ -552,7 +576,7 @@ def step_compose(gs, out_dir=None, log=print):
         raise SetError("compose writes to the set's folder; install copies into godot/art/")
     os.makedirs(out_dir, exist_ok=True)
     total = 0
-    for facing in FACINGS:
+    for facing in gs.facings:
         # West's texture is east's, mirrored with it (the draft draws west as east mirrored).
         source = "east" if facing == "west" else facing
         path = gs.dir("clean", f"clean_{source}.png")
@@ -561,29 +585,29 @@ def step_compose(gs, out_dir=None, log=print):
         cleaned = m.load(path)
         if facing == "west":
             cleaned = cleaned.transpose(Image.FLIP_LEFT_RIGHT)
-        for state in STATES:
+        for state in gs.states:
             image, taken = compose_frame(gs, cleaned, facing, state)
             image.save(os.path.join(out_dir, gs.name(state, facing)))
             total += taken
-    log(f"compose: 28 frames in {out_dir} ({total} pixels of render texture)")
+    log(f"compose: {len(gs.frames())} frames in {out_dir} ({total} pixels of render texture)")
     return out_dir
 
 
 # --- 5. check ----------------------------------------------------------------------------------
 
 def manifest_entries(gs, manifest):
-    """The 28 frames' manifest entries: the south base's entry, as replaced (owner comfyui, the
-    set's ramps), per frame; west names the east frame it mirrors."""
+    """The frames' manifest entries: for a golem, the south base's entry, as replaced (owner
+    comfyui, the set's ramps), per frame; west names the east frame it mirrors. The Artificer's
+    frames keep their own entries (direction, frame, readers), as replaced."""
+    if gs.kind == "artificer":
+        return artificer_entries(gs, manifest)
     base = manifest.get(gs.name("base", "south"))
     if base is None:
         raise SetError(f"art_manifest.json has no {gs.name('base', 'south')}")
-    try:
-        rel = os.path.relpath(gs.root, REPO).replace(os.sep, "/") + "/"
-    except ValueError:  # another drive: only a test's scratch set
-        rel = gs.root.replace(os.sep, "/") + "/"
+    rel = set_source(gs)
     out = {}
-    for facing in FACINGS:
-        for state in STATES:
+    for facing in gs.facings:
+        for state in gs.states:
             name = gs.name(state, facing)
             e = copy.deepcopy(manifest.get(name, base))
             e.update({"set": base.get("set", "S1"), "kind": "standing", "size": [W, H], "pivot": "bottom-center",
@@ -591,6 +615,31 @@ def manifest_entries(gs, manifest):
                       "state": state, "facing": facing, "source": rel})
             if (state, facing) != ("base", "south"):
                 e["readers"] = ["GolemFrames.FileName", "GolemFrames.Resolve", "GolemNode"]
+            if facing == "west":
+                e["mirroredFrom"] = gs.name(state, "east")
+            else:
+                e.pop("mirroredFrom", None)
+            out[name] = e
+    return out
+
+
+def set_source(gs):
+    try:
+        return os.path.relpath(gs.root, REPO).replace(os.sep, "/") + "/"
+    except ValueError:  # another drive: only a test's scratch set
+        return gs.root.replace(os.sep, "/") + "/"
+
+
+def artificer_entries(gs, manifest):
+    out = {}
+    for facing in gs.facings:
+        for state in gs.states:
+            name = gs.name(state, facing)
+            if name not in manifest:
+                raise SetError(f"art_manifest.json has no {name}")
+            e = copy.deepcopy(manifest[name])
+            e.update({"size": list(gs.size), "footRow": gs.size[1] - 1, "owner": "comfyui",
+                      "palette": list(gs.ramps), "source": set_source(gs)})
             if facing == "west":
                 e["mirroredFrom"] = gs.name(state, "east")
             else:
@@ -628,10 +677,11 @@ def step_check(gs, frames_dir=None, log=print):
 # --- 6. review ---------------------------------------------------------------------------------
 
 def grid(gs, frames_dir, out):
-    """Every frame at 4x on the floor, 4 facing rows x 7 state columns, numbered as review.json
-    numbers them, with today's south base beside each row."""
+    """Every frame at 4x on the floor, a row per facing and a column per state, numbered as
+    review.json numbers them, with today's sprite beside each row (a golem's south base; the
+    Artificer's own base frame of that facing)."""
     z = 4
-    cell_size = (W * z, H * z)
+    cell_size = (gs.size[0] * z, gs.size[1] * z)
     pad, label = 8, 18
     bg, ink, dim = (24, 20, 18), (230, 220, 200), (150, 140, 125)
     floor = Image.open(os.path.join(ART, "floor_tile.png")).convert("RGBA").resize((64 * z, 64 * z), Image.NEAREST)
@@ -646,17 +696,22 @@ def grid(gs, frames_dir, out):
         return img
 
     font = ImageFont.load_default()
-    cols = 1 + len(STATES)
-    sheet = Image.new("RGBA", (pad + cols * (cell_size[0] + pad), 30 + len(FACINGS) * (cell_size[1] + label + pad)), bg + (255,))
+    cols = 1 + len(gs.states)
+    sheet = Image.new("RGBA", (pad + cols * (cell_size[0] + pad), 30 + len(gs.facings) * (cell_size[1] + label + pad)), bg + (255,))
     draw = ImageDraw.Draw(sheet)
     draw.text((pad, 8), f"{gs.title} - #numbers are review.json's; left column: today's sprite", fill=ink, font=font)
-    today = cell(os.path.join(ART, gs.name("base", "south")))
     number = 1
-    for r, facing in enumerate(FACINGS):
+    for r, facing in enumerate(gs.facings):
         y = 30 + r * (cell_size[1] + label + pad)
-        sheet.alpha_composite(today, (pad, y))
-        draw.text((pad, y + cell_size[1] + 2), "today" if facing == "south" else f"today ({facing}: none drawn)", fill=dim, font=font)
-        for c, state in enumerate(STATES):
+        own = os.path.join(ART, gs.name(gs.base, facing))
+        if gs.kind == "artificer" and os.path.exists(own):
+            sheet.alpha_composite(cell(own), (pad, y))
+            caption = "today"
+        else:
+            sheet.alpha_composite(cell(os.path.join(ART, gs.name(gs.base, "south"))), (pad, y))
+            caption = "today" if facing == "south" else f"today ({facing}: none drawn)"
+        draw.text((pad, y + cell_size[1] + 2), caption, fill=dim, font=font)
+        for c, state in enumerate(gs.states):
             x = pad + (c + 1) * (cell_size[0] + pad)
             sheet.alpha_composite(cell(os.path.join(frames_dir, gs.name(state, facing))), (x, y))
             draw.text((x, y + cell_size[1] + 2), f"#{number}  {state} {facing}", fill=ink, font=font)
@@ -744,11 +799,11 @@ def step_install(gs, log=print):
     with open(check_art.MANIFEST_PATH, "w", encoding="utf-8", newline="\n") as handle:
         json.dump(manifest, handle, indent=2)
         handle.write("\n")
-    log(f"install: 28 frames into {ART}, their manifest entries written")
+    log(f"install: {len(gs.frames())} frames into {ART}, their manifest entries written")
     import_project(GODOT, gs.frames())
     log("install: imported")
     failed = []
-    for name in ("art", "golems", "golem-motion"):
+    for name in gs.config.get("scenarios", ["art", "golems", "golem-motion"]):
         ok, line = scenario(GODOT, name)
         log(f"install: {line}")
         if not ok:
@@ -776,7 +831,7 @@ def step_verify(gs, log=print):
                 drifted.append(n)
         for n in drifted:
             log(f"verify: DRIFT {n}")
-        log(f"verify: {28 - len(drifted)} of 28 reproduce")
+        log(f"verify: {len(gs.frames()) - len(drifted)} of {len(gs.frames())} reproduce")
         return len(drifted)
     finally:
         shutil.rmtree(scratch, ignore_errors=True)

@@ -8,7 +8,9 @@ golems' way (Tools/Art/golem_set.py, art-pipeline-design.md §3.2), so that
 The character is today's (the user's call, 2026-10-25): goggles pushed up on messy plum-brown
 hair, green eyes, a sage shirt, an oxblood leather apron with a brass gear on its pocket, slate
 trousers and leather boots. The head is traced pixel for pixel from today's frame 0 of each
-direction (source/today/), recoloured into the palette; the body, arms and legs are drawn here,
+direction (source/today/, copies of godot/art/'s artificer_walk_*.png as of commit 906d389;
+PNGs under public/images/ are ignored, so restore them with `git show 906d389:godot/art/<name>`),
+recoloured into the palette; the body, arms and legs are drawn here,
 so the walk is a real four-frame step and nothing flickers between frames.
 
 Frame 0 is standing (ArtificerWalkAnimation.StandingFrameIndex) and the first step of the
@@ -44,7 +46,7 @@ LAYERS = {
 W, H = 64, 93
 KEY = (40, 190, 70)
 STATES = ["walk_0", "walk_1", "walk_2", "walk_3"]
-FACINGS = ["east"]   # the pilot: walking right only
+FACINGS = ["east", "west"]   # the pilot: walking right (left is right mirrored)
 RIGID = ["head", "body"]
 
 # --- shapes ------------------------------------------------------------------------------------
@@ -271,10 +273,11 @@ def draw_leg(cv, part, leg, dark):
 def draw_arm(cv, part, shoulder, arm, dark):
     elbow, hand = arm
     # A puffed short sleeve, then the bare arm from above the elbow, and the hand. Skin is
-    # mostly today's light tone, shaded by one step.
+    # mostly today's light tone; its shadow edge steps down, so mirrored to walk left the arm
+    # still darkens away from the light (check 14).
     cuff = (shoulder[0] + (elbow[0] - shoulder[0]) * 0.7, shoulder[1] + (elbow[1] - shoulder[1]) * 0.7)
     cv.layer(part, "skin", capsule(cuff, elbow, 2.8) | capsule(elbow, hand, 2.6) | ellipse(hand[0], hand[1], 3.2, 3.2),
-             [1, 2, 2] if dark else [2, 3, 3])
+             [1, 2, 2] if dark else [1, 2, 3, 3])
     cv.layer(part, "cloth", ellipse(shoulder[0], shoulder[1] + 3, 5.2, 6) | capsule(shoulder, cuff, 4.2),
              [0, 1, 2] if dark else [0, 1, 2, 3])
 
@@ -303,12 +306,15 @@ def draw_side(state, mirror=False):
     cv.layer("body", "cloth", b(shirt), [0, 1, 2, 3])
     apron = ellipse(41, 54, 6, 9) | rrect(35, 45, 45, 62, 3) | rrect(30, 60, 47, 77, 4)
     cv.layer("body", "leather", b(apron), [0, 1, 2, 3, 4])
-    cv.paint("body", "leather", 0, b(rect(29, 61, 47, 62)) & b(apron))
+    # The belt and seam lines stop short of the apron's front edge: mirrored to walk left, that
+    # edge is the lit one, and a dark line there reads as shadow on the light side (check 14).
+    front = {(x, y) for x, y in apron if (x + 1, y) not in apron}
+    cv.paint("body", "leather", 0, b((rect(29, 61, 47, 62) & apron) - front))
     cv.layer("body", "brass", b(rect(42, 60, 44, 63)), [1, 2, 3])
     cv.layer("body", "iron", b(rect(40, 45, 41, 50)), [2, 3, 4])
     cv.layer("body", "leather", b(rrect(37, 48, 44, 55, 1)), [1, 2, 3])
-    cv.layer("body", "leather", b(rrect(35, 65, 46, 74, 2)), [1, 2, 3])
-    cv.paint("body", "leather", 0, b(rect(35, 65, 46, 65)))
+    cv.layer("body", "leather", b(rrect(35, 65, 45, 74, 2)), [1, 2, 3])
+    cv.paint("body", "leather", 0, b(rect(35, 65, 45, 65)))
     cv.layer("body", "brass", b(ellipse(41, 70, 2.8, 2.8)), [1, 2, 3])
     cv.paint("body", "brass", 0, b({(41, 70)}))
     cv.layer("body", "leather", b(rrect(26, 63, 32, 71, 2)), [0, 1, 2, 3])
