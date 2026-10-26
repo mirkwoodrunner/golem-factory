@@ -67,7 +67,8 @@ call): built, reviewed, critiqued and tested. Done:
 **Resume here:**
 1. **Phase 4 (Art), on branch `phase4/art`: all five S1 chassis are in the game** (the Brass
    Presser, the Clockwork Scavenger, the Mainspring Overclocker, the Aether Hauler and the
-   Zeppelin Freight Loader; the Hauler and the Zeppelin approved 2026-10-25). Next, at the
+   Zeppelin Freight Loader; the Hauler and the Zeppelin approved 2026-10-25), and so is the
+   Artificer's new walk (S1b, approved 2026-10-26). Next, at the
    user's go:
    - **The user's test of the Presser first.** Ask what they saw. Nothing has looked at a tinted
      Presser on screen yet (stuck red, waiting grey, out of steam blue; `check_art.py` measures
@@ -117,13 +118,26 @@ call): built, reviewed, critiqued and tested. Done:
      needs north rendered again. The Zeppelin is an iron behemoth hugging a roped bundle under a
      tethered blimp, which drifts off its middle (centred, it overlapped the Overclocker at
      0.505); the greyest of the five, with brass and copper trim.
-   - Then the Artificer (S1b), floor and walls (S2), lighting (L), buildings, the Workbench,
-     goods and the HUD, each with its own review sheet (`art-pipeline-design.md` §3).
+   - **The Artificer's walk (S1b) is installed** (2511da8): `golem_set.py` with
+     `"kind": "artificer"`, today's head traced into every frame, left mirrored from right.
+     Rules from its review: from the front and back the sleeves are part of the shirt (drawn
+     as separate ovals they read as pads laid on top) and as long as from the side; there is a
+     neck under the traced chin; from behind the arms tuck under the body; an arm swinging
+     back moves from the shoulder with the elbow slightly bent, never straight or bent
+     backwards. Check 14 now passes a mirror on edge light or edge tone (§9, decision 14).
+   - **Next: the Artificer cranking at the hand-crank bench** (agreed with the user): four
+     frames per direction, shown while [E] is held at a `HandCrankBench` (`IsCranking`), since
+     the Workbench screen covers the world. A working state in `PlayerWalker` timed by the
+     clock and facing the bench, `PlayerNode` loading 32 frames, check_art, the manifest and
+     the `art` scenario, a §9 entry; drafts in `artificer_draft.py`, then a render.
+   - Then floor and walls (S2), lighting (L), buildings, the Workbench, goods and the HUD, each
+     with its own review sheet (`art-pipeline-design.md` §3).
    - Before Phase 4's test run: fix the windowed `hover` flake (`open-items.md` §4).
    Done so far: the specs and the user's thirteen calls (§9), the cleanup, `verify_art.py`'s
    gap, the `Tools/Art/` tooling, Core's `GolemFrames`, the `art` scenario's golem gallery,
    ControlNet and IP-Adapter in ComfyUI (§1.4), the Presser (8f09b0e), `golem_set.py` (77042e9),
-   the Scavenger (3e7e413), the Overclocker (26241b6) and the Hauler.
+   the Scavenger (3e7e413), the Overclocker (26241b6), the Hauler, the Zeppelin (204a2b5) and
+   the Artificer's walk (2511da8).
 2. **The human playtests, still to run:** `testscript/phase-2-playtest.md`, then
    `testscript/phase-1-playtest.md`, then `testscript/full-playthrough.md`. Run the game with the
    **mono** Godot build (a grey screen and "No loader found for resource: …cs" means the
