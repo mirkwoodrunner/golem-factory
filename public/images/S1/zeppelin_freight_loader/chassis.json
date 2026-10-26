@@ -4,6 +4,7 @@
   "draft": "scripts/zeppelin_draft.py",
   "ramps": ["outline", "iron", "brass", "copper", "bone", "mahogany", "aether", "steam"],
   "rigid": ["legs", "far_leg", "body", "head", "balloon"],
+  "picks": {"north": "d0.35_s5001"},
   "layers": {
     "south": ["balloon", "ropes", "legs", "body", "head", "arms", "cargo", "forearms", "hands"],
     "north": ["cargo", "legs", "arms", "forearms", "hands", "body", "head", "ropes", "balloon"],
