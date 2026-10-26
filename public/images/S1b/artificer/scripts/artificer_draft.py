@@ -38,15 +38,18 @@ RAMPS = {k: [tuple(int(c[i:i + 2], 16) for i in (1, 3, 5)) for c in v["colours"]
          for k, v in json.load(open(PALETTE))["ramps"].items()}
 TODAY = os.path.join(HERE, "..", "source", "today")
 # Back to front, per facing. From the side the far arm and leg are behind the body, the apron
-# over the tops of the legs, the near arm over everything but the head.
+# over the tops of the legs, the near arm over everything but the head. From the front and the
+# back the arms hang beside the body, over its edges.
 LAYERS = {
+    "south": ["legs", "body", "arms", "head"],
+    "north": ["legs", "body", "arms", "head"],
     "east": ["far_arm", "far_leg", "legs", "body", "arms", "head"],
     "west": ["far_arm", "far_leg", "legs", "body", "arms", "head"],
 }
 W, H = 64, 93
 KEY = (40, 190, 70)
 STATES = ["walk_0", "walk_1", "walk_2", "walk_3"]
-FACINGS = ["east", "west"]   # the pilot: walking right (left is right mirrored)
+FACINGS = ["south", "north", "east", "west"]   # west is east mirrored
 RIGID = ["head", "body"]
 
 # --- shapes ------------------------------------------------------------------------------------
@@ -325,13 +328,89 @@ def draw_side(state, mirror=False):
     return cv
 
 
+# From the front and the back, per frame: the body's drop, each leg's hip, knee and ankle (l on
+# the viewer's left, r on the right), each arm's elbow and hand. A stepping foot lifts its heel
+# (the ankle rises); the hands swing against the feet, the forward one lower.
+FRONT = {
+    "walk_0": dict(bd=0, l=((28, 71), (28, 81), (28, 87)), r=((36, 71), (36, 81), (36, 87)),
+                   la=((20, 57), (20, 65)), ra=((44, 57), (44, 65))),
+    "walk_1": dict(bd=1, l=((28, 71), (27, 81), (27, 87)), r=((36, 71), (36, 80), (37, 84)),
+                   la=((20, 56), (21, 63)), ra=((44, 57), (43, 67))),
+    "walk_2": dict(bd=0, l=((28, 71), (28, 81), (28, 87)), r=((36, 71), (36, 81), (36, 86)),
+                   la=((20, 57), (20, 65)), ra=((44, 57), (44, 65))),
+    "walk_3": dict(bd=1, l=((28, 71), (28, 80), (27, 84)), r=((36, 71), (37, 81), (37, 87)),
+                   la=((20, 57), (21, 67)), ra=((44, 56), (43, 63))),
+}
+
+
+def draw_leg_front(cv, leg, bd):
+    hip, knee, ankle = leg
+    hip, knee = (hip[0], hip[1] + bd), (knee[0], knee[1] + bd // 2)
+    cv.layer("legs", "slate", capsule(hip, knee, 3.6) | capsule(knee, ankle, 3.2), [0, 1, 2, 3])
+    x, y = ankle
+    boot = rrect(x - 3, y - 2, x + 3, y + 5, 2)
+    cv.layer("legs", "leather", {(bx, by) for bx, by in boot if by <= 92}, [0, 1, 2, 3])
+
+
+def draw_front(state, back=False):
+    """Walking down (the south) or up (the north, from behind)."""
+    p = FRONT[state]
+    cv = Canvas("north" if back else "south")
+    bd = p["bd"]
+    b = lambda pts: shift(pts, 0, bd)
+    # From behind the feet swap sides with the hands: the character's left is the viewer's left.
+    draw_leg_front(cv, p["l"], bd)
+    draw_leg_front(cv, p["r"], bd)
+    shirt = ellipse(32, 50, 11, 6) | rrect(22, 46, 42, 70, 4)
+    if back:
+        # The back: the sage shirt, the apron's straps crossed over it, the trouser seat under
+        # the belt, the belt with its tie and a pouch on each hip.
+        cv.layer("body", "slate", b(rrect(23, 62, 41, 76, 3)), [0, 1, 2, 3])
+        cv.layer("body", "cloth", b(shirt - rect(22, 63, 42, 80)), [0, 1, 2, 3])
+        cv.layer("body", "leather", b(capsule((25, 46), (38, 61), 1.1)), [0, 1, 2])
+        cv.layer("body", "leather", b(capsule((39, 46), (26, 61), 1.1)), [0, 1, 2])
+        cv.layer("body", "leather", b(rrect(22, 60, 42, 63, 1)), [0, 1, 2, 3])
+        cv.layer("body", "leather", b(rrect(29, 59, 35, 65, 2)), [1, 2, 3])
+        cv.paint("body", "leather", 0, b({(32, 61), (32, 62), (32, 63)}))
+        for x0 in (20, 37):
+            cv.layer("body", "leather", b(rrect(x0, 62, x0 + 7, 71, 2)), [0, 1, 2, 3])
+            cv.paint("body", "leather", 0, b(rect(x0 + 1, 64, x0 + 6, 64)))
+            cv.layer("body", "brass", b(rect(x0 + 3, 65, x0 + 4, 66)), [1, 2, 3])
+    else:
+        # The front: the sage shirt, the oxblood apron (its bib, and the skirt down over the
+        # thighs), the belt line, the bib pocket with a screwdriver, the big pocket with its
+        # brass gear, the neck straps, the apron's ties at the waist.
+        cv.layer("body", "cloth", b(shirt), [0, 1, 2, 3])
+        # The skirt flares from the waist to just above the knees.
+        skirt = {(x, y) for y in range(58, 79) for x in range(64)
+                 if abs(x - 32) <= 9 + (y - 58) * 3 // 20 and not (y >= 77 and abs(x - 32) > 9 + (y - 58) * 3 // 20 - (y - 76))}
+        apron = rrect(25, 46, 39, 62, 2) | skirt
+        cv.layer("body", "leather", b(apron), [0, 1, 2, 3, 4])
+        edges = {(x, y) for x, y in apron if (x - 1, y) not in apron or (x + 1, y) not in apron}
+        cv.paint("body", "leather", 0, b((rect(22, 60, 42, 61) & apron) - edges))
+        cv.layer("body", "leather", b(rrect(27, 49, 35, 56, 1)), [1, 2, 3])
+        cv.layer("body", "iron", b(rect(33, 46, 34, 51)), [2, 3, 4])
+        cv.layer("body", "leather", b(rrect(27, 65, 37, 73, 2)), [2, 3, 4])
+        cv.paint("body", "leather", 1, b(rect(28, 65, 36, 65)))
+        cv.layer("body", "brass", b(ellipse(32, 70, 2.8, 2.8)), [1, 2, 3])
+        cv.paint("body", "brass", 0, b({(32, 70)}))
+        cv.layer("body", "leather", b(capsule((26, 46), (28, 43), 0.8) | capsule((38, 46), (36, 43), 0.8)), [0, 1])
+        cv.layer("body", "leather", b(rect(20, 59, 22, 62) | rect(42, 59, 44, 62)), [0, 1, 2])
+    draw_arm(cv, "arms", (22, 47 + bd), shift_arm(p["la"], bd), dark=False)
+    draw_arm(cv, "arms", (42, 47 + bd), shift_arm(p["ra"], bd), dark=False)
+    trace_head(cv, "artificer_walk_up_0" if back else "artificer_walk_down_0", 43, dy=bd)
+    return cv
+
+
 def draw(facing, state):
+    if facing in ("south", "north"):
+        return draw_front(state, back=(facing == "north"))
     return draw_side(state, mirror=(facing == "west"))
 
 
 def offsets(facing, state):
     """How far each rigid part moved from frame 0, for golem_set.py's compose."""
-    bd = SIDE[state]["bd"]
+    bd = (FRONT if facing in ("south", "north") else SIDE)[state]["bd"]
     return {"body": [0, bd], "head": [0, bd]}
 
 
