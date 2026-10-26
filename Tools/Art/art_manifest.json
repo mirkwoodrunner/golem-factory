@@ -1730,12 +1730,21 @@
     "kind": "standing",
     "size": [
       64,
-      93
+      96
     ],
     "pivot": "bottom-center",
-    "footRow": 92,
-    "owner": "retrodiffusion",
-    "palette": "legacy",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
     "readers": [
       "data/chassis.json chassisSprite",
       "GolemFrames.Resolve",
@@ -1744,7 +1753,8 @@
     ],
     "chassis": "chassis_zeppelin_freight_loader",
     "state": "base",
-    "facing": "south"
+    "facing": "south",
+    "source": "public/images/S1/zeppelin_freight_loader/"
   },
   "clock_tower_site.png": {
     "set": "reference",
@@ -5428,5 +5438,822 @@
     "facing": "west",
     "source": "public/images/S1/aether_hauler/",
     "mirroredFrom": "chassis_aether_hauler_carry_east.png"
+  },
+  "chassis_zeppelin_freight_loader_idle_1_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "idle_1",
+    "facing": "south",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_0_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_0",
+    "facing": "south",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_1_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_1",
+    "facing": "south",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_2_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_2",
+    "facing": "south",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_stall_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "stall",
+    "facing": "south",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_carry_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "carry",
+    "facing": "south",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_base_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "base",
+    "facing": "north",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_idle_1_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "idle_1",
+    "facing": "north",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_0_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_0",
+    "facing": "north",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_1_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_1",
+    "facing": "north",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_2_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_2",
+    "facing": "north",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_stall_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "stall",
+    "facing": "north",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_carry_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "carry",
+    "facing": "north",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_base_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "base",
+    "facing": "east",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_idle_1_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "idle_1",
+    "facing": "east",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_0_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_0",
+    "facing": "east",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_1_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_1",
+    "facing": "east",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_2_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_2",
+    "facing": "east",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_stall_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "stall",
+    "facing": "east",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_carry_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "carry",
+    "facing": "east",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_base_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "base",
+    "facing": "west",
+    "source": "public/images/S1/zeppelin_freight_loader/",
+    "mirroredFrom": "chassis_zeppelin_freight_loader_base_east.png"
+  },
+  "chassis_zeppelin_freight_loader_idle_1_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "idle_1",
+    "facing": "west",
+    "source": "public/images/S1/zeppelin_freight_loader/",
+    "mirroredFrom": "chassis_zeppelin_freight_loader_idle_1_east.png"
+  },
+  "chassis_zeppelin_freight_loader_work_0_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_0",
+    "facing": "west",
+    "source": "public/images/S1/zeppelin_freight_loader/",
+    "mirroredFrom": "chassis_zeppelin_freight_loader_work_0_east.png"
+  },
+  "chassis_zeppelin_freight_loader_work_1_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_1",
+    "facing": "west",
+    "source": "public/images/S1/zeppelin_freight_loader/",
+    "mirroredFrom": "chassis_zeppelin_freight_loader_work_1_east.png"
+  },
+  "chassis_zeppelin_freight_loader_work_2_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_2",
+    "facing": "west",
+    "source": "public/images/S1/zeppelin_freight_loader/",
+    "mirroredFrom": "chassis_zeppelin_freight_loader_work_2_east.png"
+  },
+  "chassis_zeppelin_freight_loader_stall_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "stall",
+    "facing": "west",
+    "source": "public/images/S1/zeppelin_freight_loader/",
+    "mirroredFrom": "chassis_zeppelin_freight_loader_stall_east.png"
+  },
+  "chassis_zeppelin_freight_loader_carry_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "carry",
+    "facing": "west",
+    "source": "public/images/S1/zeppelin_freight_loader/",
+    "mirroredFrom": "chassis_zeppelin_freight_loader_carry_east.png"
   }
 }

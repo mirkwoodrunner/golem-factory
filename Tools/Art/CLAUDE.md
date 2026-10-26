@@ -117,3 +117,8 @@ If an image-generation MCP server is configured in the user's global Claude conf
   approved 2026-10-25) likewise: `treads` for legs, the `crate` rigid (it heaves up and back),
   the `crystals` drawn fresh per frame so they jump. From the north the crate is over the arms
   and hands, which hold its near corners.
+  The Zeppelin Freight Loader's 28 (`public/images/S1/zeppelin_freight_loader/`,
+  `scripts/zeppelin_draft.py`, approved 2026-10-25) likewise: the tethered `balloon` rigid (it
+  sags in the stall), the `ropes` and the `cargo` bundle drawn fresh per frame. From the north
+  the arms are under the body (the shoulders cover their roots), and fists that hold the bundle
+  in front are clipped by the body and legs in the draft; raised or hanging ones show.

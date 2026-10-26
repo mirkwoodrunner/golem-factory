@@ -65,17 +65,17 @@ call): built, reviewed, critiqued and tested. Done:
   their prices (7a79046). 1925 Core tests pass.
 
 **Resume here:**
-1. **Phase 4 (Art), on branch `phase4/art`: the Brass Presser, the Clockwork Scavenger, the
-   Mainspring Overclocker and the Aether Hauler are in the game** (the Scavenger and the
-   Overclocker approved 2026-10-24, the Hauler 2026-10-25). The Zeppelin, the last chassis,
-   waits for the user's go. When they say go:
+1. **Phase 4 (Art), on branch `phase4/art`: all five S1 chassis are in the game** (the Brass
+   Presser, the Clockwork Scavenger, the Mainspring Overclocker, the Aether Hauler and the
+   Zeppelin Freight Loader; the Hauler and the Zeppelin approved 2026-10-25). Next, at the
+   user's go:
    - **The user's test of the Presser first.** Ask what they saw. Nothing has looked at a tinted
      Presser on screen yet (stuck red, waiting grey, out of steam blue; `check_art.py` measures
      the tints as readable, but `moods`' street uses Scavengers). Add a tinted Presser to a
      scenario's captures, and fold any of the user's notes into the Presser before moving on.
-   - **Then the next chassis**, the way the Presser and Scavenger were made: `art-pipeline-design.md` §3.2, "The Presser, the template".
-     Each chassis goes to its review sheet and a compact numbered grid, the user marks frames,
-     and nothing enters `godot/art/` until they approve.
+   - **How a chassis was made** (for a redo): `art-pipeline-design.md` §3.2, "The Presser, the
+     template". Each chassis goes to its review sheet and a compact numbered grid, the user
+     marks frames, and nothing enters `godot/art/` until they approve.
      **How (the user's call, 2026-10-24, to save usage):** the lead writes the chassis' draft
      script and `chassis.json` (copy the Presser's), then a helper agent on Sonnet runs
      `Tools/Art/golem_set.py <set> run` per `Tools/Art/golem-helper.md` and reports. The lead
@@ -107,7 +107,16 @@ call): built, reviewed, critiqued and tested. Done:
      render. A render can be redone for one facing: move that facing's `raw/base_<facing>/`
      aside and `run` again. The Hauler is wide and low on treads, in cream armour (red is the
      player's-action colour); its front outline overlaps the Scavenger at 0.47 and today's
-     Zeppelin at 0.46, so **the Zeppelin's redraw must differ clearly from all four.**
+     Zeppelin at 0.46, so the Zeppelin's redraw had to differ clearly from all four.
+   - **Rules from the Zeppelin's review:** the north view is the toughest; compare it with the
+     south pose by pose. One layer order per facing can't be right for every pose, so a fist
+     that holds something in front is clipped by the body and legs in the draft, and a raised
+     or hanging fist shows. Overlaps flip from behind: the arms come out over the shoulders
+     from the front, so from the north the shoulders cover the arms' roots. Arms are the
+     draft's in every frame (a recompose fixes them), but a change to the north base draft
+     needs north rendered again. The Zeppelin is an iron behemoth hugging a roped bundle under a
+     tethered blimp, which drifts off its middle (centred, it overlapped the Overclocker at
+     0.505); the greyest of the five, with brass and copper trim.
    - Then the Artificer (S1b), floor and walls (S2), lighting (L), buildings, the Workbench,
      goods and the HUD, each with its own review sheet (`art-pipeline-design.md` §3).
    - Before Phase 4's test run: fix the windowed `hover` flake (`open-items.md` §4).
