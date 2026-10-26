@@ -320,7 +320,7 @@ def draw_side(state, mirror=False):
     cv.layer("body", "leather", b(rrect(26, 63, 32, 71, 2)), [0, 1, 2, 3])
     cv.layer("body", "leather", b(capsule((30, 43), (37, 47), 0.9)), [0, 1])
     # Today's head, traced, bobbing with the body.
-    trace_head(cv, "artificer_walk_right_0", 42, dy=bd)
+    trace_head(cv, "artificer_walk_right_0", 43, dy=bd)
     draw_arm(cv, "arms", (32, 48 + bd), shift_arm(p["na"], bd), dark=False)
     return cv
 
