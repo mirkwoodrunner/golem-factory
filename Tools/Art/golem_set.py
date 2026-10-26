@@ -358,8 +358,9 @@ def clean(gs, path):
 
 
 def score(gs, facing, cleaned, others, ctx, draft):
-    """check_art's measures on the base frame composed from one cleaned candidate. The silhouette
-    and the mood tints are a golem's (checks 8-10); the Artificer has neither."""
+    """check_art's measures on the base frame composed from one cleaned candidate. The silhouette,
+    the lightness and the mood tints are a golem's (checks 8-10); the Artificer has none of them
+    (from behind it is mostly dark hair, as today's frame is)."""
     image, taken = compose_frame(gs, cleaned, facing, gs.base)
     lit = m.mean_lab(image)
     golem = gs.kind == "chassis"
@@ -375,11 +376,11 @@ def score(gs, facing, cleaned, others, ctx, draft):
         "texture": sum(1 for x, y, p in m.opaque_pixels(image) if p != draft.getpixel((x, y))),
         "taken": taken,
     }
-    s["fails"] = failures(s, gs.size[1])
+    s["fails"] = failures(s, gs.size[1], golem)
     return s, image
 
 
-def failures(s, height=H):
+def failures(s, height=H, golem=True):
     """What keeps a candidate from being picked: check_art's bounds (§5.1), the feet on the
     bottom row, and a render that changed nothing. A measure that is None doesn't apply."""
     out = []
@@ -387,7 +388,7 @@ def failures(s, height=H):
         out.append(f"feet on row {s['feet']}")
     if s["silhouette"] is not None and s["silhouette"] > check_art.SILHOUETTE_MAX_IOU:
         out.append(f"silhouette {s['silhouette']:.2f}")
-    if s["lightness"] < check_art.BODY_MIN_LIGHTNESS:
+    if golem and s["lightness"] < check_art.BODY_MIN_LIGHTNESS:
         out.append(f"lightness {s['lightness']:.2f}")
     if s["stalledShift"] is not None and s["stalledShift"] < check_art.STALLED_MIN_SHIFT:
         out.append(f"stalled shift {s['stalledShift']:.3f}")
