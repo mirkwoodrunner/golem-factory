@@ -245,15 +245,17 @@ def draw_cargo(cv, at, w=11, h=7):
     cv.layer("cargo", "bone", ellipse(x, y - h - 1, 2.2, 1.8), [1, 2])
 
 
-def draw_arm(cv, shoulder, arm, dark=False, part=None):
-    """A behemoth's arm: a thick iron upper arm, a heavier forearm, a big brass fist."""
+def draw_arm(cv, shoulder, arm, dark=False, part=None, hidden=frozenset()):
+    """A behemoth's arm: a thick iron upper arm, a heavier forearm, a big brass fist. From behind,
+    what lies in hidden (the body and legs, when the fists hold the bundle in front of them) is
+    not drawn."""
     hand, elbow = arm
     tones = [0, 1, 2] if dark else [1, 2, 3, 4]
     upper, fore, hands = (part, part, part) if part else ("arms", "forearms", "hands")
     cv.layer(upper, "iron", capsule(shoulder, elbow, 3.4), tones)
-    cv.layer(fore, "iron", capsule(elbow, hand, 4.0), tones)
+    cv.layer(fore, "iron", capsule(elbow, hand, 4.0) - hidden, tones)
     cv.layer(fore, "copper", ellipse(elbow[0], elbow[1], 3.0, 3.0), [0, 1] if dark else [0, 1, 2])
-    cv.layer(hands, "brass", ellipse(hand[0], hand[1], 4.2, 4.0), [0, 1, 2] if dark else [0, 1, 2, 3])
+    cv.layer(hands, "brass", ellipse(hand[0], hand[1], 4.2, 4.0) - hidden, [0, 1, 2] if dark else [0, 1, 2, 3])
 
 
 # Nose-on, the blimp drifts to its right on its ropes, off the golem's middle: centred, the
@@ -292,7 +294,9 @@ def draw_front(state, back=False):
     hd, bd, ld = p.get("head", 0), p.get("body", 0), p.get("bal", 0)
     o = hd + bd
     # Legs: short and thick, brass knee plates, broad feet.
+    legs = set()
     for hip, foot in (((24, 76), (22, 90)), ((40, 76), (42, 90))):
+        legs |= capsule(hip, foot, 4.6) | rrect(foot[0] - 7, 89, foot[0] + 6, 95, 2)
         cv.layer("legs", "iron", capsule(hip, foot, 4.6), [1, 2, 3, 4])
         cv.layer("legs", "brass", ellipse(foot[0] + (hip[0] - foot[0]) * 0.4, 83, 3.4, 3.0), [0, 1, 2, 3])
         cv.layer("legs", "iron", rrect(foot[0] - 7, 89, foot[0] + 6, 95, 2), [0, 1, 2, 3])
@@ -326,9 +330,14 @@ def draw_front(state, back=False):
         cv.layer("head", "aether", shift(rect(27, 42, 29, 43) | rect(35, 42, 37, 43), 0, o), [mid, hi])
         cv.layer("head", "iron", shift(rrect(28, 45, 36, 48, 1), 0, o), [0, 1])
         cv.paint("head", "iron", 0, shift({(30, 46), (32, 46), (34, 46)}, 0, o))
-    # Arms round the bundle, the bundle in front of its belly.
-    draw_arm(cv, (14, 48 + bd), (p["l"][0], p["l"][1]))
-    draw_arm(cv, (50, 48 + bd), (p["r"][0], p["r"][1]))
+    # Arms round the bundle, the bundle in front of its belly. From behind, the fists that hold it
+    # there are hidden by the body and legs; raised (the launch) or hanging (the stall), they show.
+    hidden = frozenset()
+    if back and p["cargo"] is not None and state not in ("work_1", "stall"):
+        shoulders = ellipse(14, 46, 8, 7) | ellipse(50, 46, 8, 7)
+        hidden = frozenset(shift(chest | shoulders, 0, bd) | legs)
+    draw_arm(cv, (14, 48 + bd), (p["l"][0], p["l"][1]), hidden=hidden)
+    draw_arm(cv, (50, 48 + bd), (p["r"][0], p["r"][1]), hidden=hidden)
     draw_cargo(cv, p["cargo"])
     return cv
 
