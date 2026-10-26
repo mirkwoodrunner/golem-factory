@@ -42,7 +42,7 @@ TODAY = os.path.join(HERE, "..", "source", "today")
 # back the arms hang beside the body, over its edges.
 LAYERS = {
     "south": ["legs", "body", "arms", "head"],
-    "north": ["legs", "body", "arms", "head"],
+    "north": ["arms", "legs", "body", "head"],   # from behind the body hides the arms' inner edge
     "east": ["far_arm", "far_leg", "legs", "body", "arms", "head"],
     "west": ["far_arm", "far_leg", "legs", "body", "arms", "head"],
 }
@@ -371,6 +371,9 @@ def draw_front(state, back=False):
     # as part of it, so they shade with the shirt rather than sitting on it as separate pads.
     shirt = (ellipse(32, 48, 8, 4) | rrect(24, 47, 40, 70, 4)
              | ellipse(22, 51, 3.4, 4) | ellipse(42, 51, 3.4, 4))
+    # The neck, from under the chin (or the hair) into the collar, shaded under the head.
+    cv.layer("body", "skin", b(rect(30, 42, 35, 47)), [1, 2, 2, 3])
+    cv.paint("body", "skin", 1, b(rect(30, 42, 35, 43)))
     if back:
         # The back: the sage shirt, the apron's straps crossed over it, the trouser seat under
         # the belt, the belt with its tie and a pouch on each hip.
@@ -379,12 +382,13 @@ def draw_front(state, back=False):
         cv.layer("body", "leather", b(capsule((25, 46), (38, 61), 1.1)), [0, 1, 2])
         cv.layer("body", "leather", b(capsule((39, 46), (26, 61), 1.1)), [0, 1, 2])
         cv.layer("body", "leather", b(rrect(22, 60, 42, 63, 1)), [0, 1, 2, 3])
-        cv.layer("body", "leather", b(rrect(29, 59, 35, 65, 2)), [1, 2, 3])
-        cv.paint("body", "leather", 0, b({(32, 61), (32, 62), (32, 63)}))
-        for x0 in (20, 37):
-            cv.layer("body", "leather", b(rrect(x0, 62, x0 + 7, 71, 2)), [0, 1, 2, 3])
-            cv.paint("body", "leather", 0, b(rect(x0 + 1, 64, x0 + 6, 64)))
-            cv.layer("body", "brass", b(rect(x0 + 3, 65, x0 + 4, 66)), [1, 2, 3])
+        cv.layer("body", "leather", b(rrect(30, 59, 34, 64, 2)), [1, 2, 3])
+        cv.paint("body", "leather", 0, b({(32, 61), (32, 62)}))
+        # The pouches sit on the back of the hips, inside the hanging hands.
+        for x0 in (24, 35):
+            cv.layer("body", "leather", b(rrect(x0, 62, x0 + 5, 70, 2)), [0, 1, 2, 3])
+            cv.paint("body", "leather", 0, b(rect(x0 + 1, 64, x0 + 4, 64)))
+            cv.layer("body", "brass", b(rect(x0 + 2, 65, x0 + 3, 66)), [1, 2, 3])
     else:
         # The front: the sage shirt, the oxblood apron (its bib, and the skirt down over the
         # thighs), the belt line, the bib pocket with a screwdriver, the big pocket with its
@@ -405,8 +409,12 @@ def draw_front(state, back=False):
         cv.paint("body", "brass", 0, b({(32, 70)}))
         cv.layer("body", "leather", b(capsule((26, 46), (28, 43), 0.8) | capsule((38, 46), (36, 43), 0.8)), [0, 1])
         cv.layer("body", "leather", b(rect(20, 59, 22, 62) | rect(42, 59, 44, 62)), [0, 1, 2])
-    draw_arm(cv, "arms", (22, 54 + bd), shift_arm(p["la"], bd), dark=False, sleeve=False)
-    draw_arm(cv, "arms", (42, 54 + bd), shift_arm(p["ra"], bd), dark=False, sleeve=False)
+    # From behind the arms sit a pixel further in, so the body hides their inner edge.
+    tuck = 1 if back else 0
+    la = tuple((x + tuck, y) for x, y in shift_arm(p["la"], bd))
+    ra = tuple((x - tuck, y) for x, y in shift_arm(p["ra"], bd))
+    draw_arm(cv, "arms", (22 + tuck, 54 + bd), la, dark=False, sleeve=False)
+    draw_arm(cv, "arms", (42 - tuck, 54 + bd), ra, dark=False, sleeve=False)
     trace_head(cv, "artificer_walk_up_0" if back else "artificer_walk_down_0", 43, dy=bd)
     return cv
 
