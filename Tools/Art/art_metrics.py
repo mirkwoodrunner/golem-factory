@@ -176,6 +176,39 @@ def edge_light_score(image, outline=None, threshold=OPAQUE, min_span=3):
     return total / rows if rows else 0.0
 
 
+def edge_tone_score(image, palette, threshold=OPAQUE, min_span=3):
+    """art-style-bible.md §5.1, for a mirrored frame against its source: like
+    edge_light_score, but each edge pixel counts as its tone's place in its own ramp (0 the
+    darkest, 1 the lightest), not its lightness. A mirror can put a different material on the
+    lit edge (the apron rather than the shirt); this asks only whether each material is lit on
+    the left. Rows whose edge pixels are in no ramp are skipped."""
+    w, h = image.size
+    px = image.load()
+    outline = palette.outline()
+    names = [n for n in palette.ramps if n != "outline"]
+    total, rows = 0.0, 0
+    for y in range(h):
+        xs = [x for x in range(w) if px[x, y][3] >= threshold]
+        if len(xs) < min_span:
+            continue
+        left, right = xs[0], xs[-1]
+        lx = _inside(px, y, left, right, 1, outline, threshold)
+        rx = _inside(px, y, right, left, -1, outline, threshold)
+        if lx is None or rx is None or lx >= rx:
+            continue
+        a, b = palette.classify(px[lx, y], names), palette.classify(px[rx, y], names)
+        if a is None or b is None:
+            continue
+        total += _place(palette, a) - _place(palette, b)
+        rows += 1
+    return total / rows if rows else 0.0
+
+
+def _place(palette, ramp_tone):
+    ramp, tone = ramp_tone
+    return tone / max(1, len(palette.ramps[ramp]) - 1)
+
+
 def _inside(px, y, start, stop, step, outline, threshold):
     if outline is None:
         x = start + step

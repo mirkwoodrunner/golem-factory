@@ -380,8 +380,13 @@ The Artificer keeps its 16 names, `artificer_walk_{down,left,right,up}_{0..3}.pn
   *edge-light score*: over the rows of a sprite, the mean OKLab lightness of the first
   non-outline pixel inside each row's left silhouette edge, minus that of the last one inside
   the right edge. Every frame of a standing sprite scores at least **+0.02**; a mirrored frame
-  scores at least **0.8 ×** its source's score. A plain flip of a correctly lit frame scores
-  about minus its source, so it fails.
+  keeps at least **0.8 ×** its source's score on the edge-light score *or* on the *edge-tone
+  score*, the same measure with each edge pixel counted as its tone's place in its own ramp (0
+  darkest, 1 lightest) rather than its lightness. The tone score is for a mirror that puts a
+  darker material on the lit edge: the Artificer walking left shows the apron there, not the
+  shirt, so its lightness drops while every material is still lit from the left (user decision,
+  2026-10-26). A plain flip of a correctly lit frame scores about minus its source on both, so
+  it fails.
 - **A golem is light enough for its tint to read.** The mood tint multiplies the body, so a dark
   body barely changes. Check, on every frame: the body's mean OKLab lightness is at least
   **0.40**, and the Stalled tint moves its mean colour at least **0.10** in OKLab. Measured

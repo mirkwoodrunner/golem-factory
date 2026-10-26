@@ -112,15 +112,16 @@ def main(argv):
         print(f"refused: {error}", file=sys.stderr)
         return 2
     outline = palette.outline()
-    before = m.edge_light_score(source, outline)
-    after = m.edge_light_score(result, outline)
-    print(f"edge-light: source {before:+.3f}, mirrored {after:+.3f}; {untouched} pixels in no ramp, left alone")
+    before, after = m.edge_light_score(source, outline), m.edge_light_score(result, outline)
+    before_tone, after_tone = m.edge_tone_score(source, palette), m.edge_tone_score(result, palette)
+    print(f"edge-light: source {before:+.3f}, mirrored {after:+.3f}; edge-tone: source {before_tone:+.3f}, "
+          f"mirrored {after_tone:+.3f}; {untouched} pixels in no ramp, left alone")
     os.makedirs(os.path.dirname(os.path.abspath(args.west)), exist_ok=True)
     result.save(args.west)
     print(f"wrote {args.west}")
-    if after < MIN_SCORE or after < MIN_RATIO * before:
+    if after < MIN_SCORE or (after < MIN_RATIO * before and after_tone < MIN_RATIO * before_tone):
         print(f"failed: the mirror scores {after:+.3f}; it needs at least {MIN_SCORE:+.2f} and "
-              f"{MIN_RATIO} x the source", file=sys.stderr)
+              f"{MIN_RATIO} x the source's edge light or edge tone", file=sys.stderr)
         return 1
     return 0
 

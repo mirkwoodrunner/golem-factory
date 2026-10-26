@@ -615,7 +615,8 @@ Checks:
     of a chassis is `bible`, all 28 must be.
 14. **Light from the upper left** (every `bible` standing sprite): the edge-light score
     (`art-style-bible.md` §5.1) is ≥ +0.02; and a frame with `mirroredFrom` scores ≥ 0.8 × its
-    source's, has the plain flip's alpha mask exactly, and has every pixel in the same ramp as
+    source's on the edge-light or the edge-tone score (`art_metrics.edge_tone_score`), has the
+    plain flip's alpha mask exactly, and has every pixel in the same ramp as
     the plain flip's (re-shading changes tone, never material or shape).
 15. **Hand-replaced bookkeeping:** an entry with `owner: hand-replaced` appears in
     `verify_art.py`'s `KNOWN_HAND_REPLACED` and in `CLAUDE.md`; a `KNOWN_HAND_REPLACED` name has
@@ -754,9 +755,9 @@ python Tools/Art/reshade_mirror.py <east.png> <west.png> --ramps <set's ramps> [
 4. **Re-shade the outline.** In each row, swap the tones of the leftmost and rightmost outline
    pixels of each silhouette span, so a selective outline's stepped-up tone is back on the lit
    side (`art-style-bible.md` §2.1).
-5. **Measure.** Prints the source's and the result's edge-light scores (`art_metrics`) and the
-   count of untouched pixels, and exits 1 if the result scores under 0.8 × the source or under
-   +0.02.
+5. **Measure.** Prints the source's and the result's edge-light and edge-tone scores
+   (`art_metrics`) and the count of untouched pixels, and exits 1 if the result's edge light is
+   under +0.02, or under 0.8 × the source on both scores.
 
 What it keeps on purpose: an asymmetric detail (a lamp on one shoulder) stays on the mirrored
 side, as a mirrored body would carry it. What it can't fix, a shading that isn't a left-to-right
@@ -1096,3 +1097,11 @@ Each records the decision and, where it differs, what this document first recomm
     worn or wielded, never the whole body (`art-style-bible.md` invariant 17, §5.1). The same
     review asked for true side profiles, a clean back view, texture that holds still across
     frames, and more detail where the light check allows.
+14. **The mirror's light check reads tones as well as lightness** (the user, 2026-10-26, at the
+    Artificer's walk review). Walking right, the Artificer's lit edge is the pale shirt; mirrored
+    to walk left, it is the darker leather apron, so `artificer_walk_left_1` scored 0.69 × its
+    source's edge light, under the 0.8 bound, while every material was lit from the left. A
+    mirrored frame now passes on the edge-light score or on the edge-tone score, which counts each
+    edge pixel as its tone's place in its own ramp (`art-style-bible.md` §5.1; check 14,
+    `reshade_mirror.py` step 5). Tone alone was tried first and failed four golem mirrors that
+    pass on lightness, so either measure holding is enough; a plain flip still fails both.

@@ -60,6 +60,29 @@ class EdgeLightTests(unittest.TestCase):
         self.assertGreater(m.edge_light_score(_sprites.lit_body(lit_from="left")), 0.02)
 
 
+class EdgeToneTests(unittest.TestCase):
+    def test_a_left_lit_gradient_scores_positive_and_a_right_lit_one_negative(self):
+        palette = m.Palette.load()
+        left = m.edge_tone_score(_sprites.lit_body(lit_from="left"), palette)
+        right = m.edge_tone_score(_sprites.lit_body(lit_from="right"), palette)
+        self.assertGreater(left, 0.5)
+        self.assertAlmostEqual(left, -right, places=6)
+
+    def test_a_darker_material_on_the_lit_edge_still_scores_lit(self):
+        # Mahogany's lightest tone on the left, brass's darkest on the right: the lit edge is
+        # the darker pixel, but each material sits at its own lit or shaded end.
+        palette = m.Palette.load()
+        image = Image.new("RGBA", (8, 4), (0, 0, 0, 0))
+        px = image.load()
+        for y in range(4):
+            px[1, y] = palette.ramps["mahogany"][-1] + (255,)
+            for x in range(2, 6):
+                px[x, y] = palette.ramps["brass"][1] + (255,)
+            px[6, y] = palette.ramps["brass"][0] + (255,)
+        self.assertLess(m.edge_light_score(image, set()), 0)
+        self.assertGreater(m.edge_tone_score(image, palette), 0.9)
+
+
 class ReducePhaseTests(unittest.TestCase):
     def test_each_phase_drops_a_different_column_in_four(self):
         image = Image.new("RGBA", (32, 32))

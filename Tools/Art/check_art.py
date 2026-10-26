@@ -501,9 +501,14 @@ class Checker:
             if self.image(source) is None:
                 self.report.add("FAIL", 14, rel, f"mirrored from {source}, which isn't there")
                 continue
+            # Either the lightness or the tone places hold: a mirror may put a darker material on
+            # the lit edge (lightness drops, tones hold); a plain flip fails both.
             src_score = m.edge_light_score(self.image(source), outline)
-            if score < MIRROR_MIN_RATIO * src_score:
-                self.report.add("FAIL", 14, rel, f"scores {score:+.3f}, under {MIRROR_MIN_RATIO} x its source's {src_score:+.3f}")
+            tone = m.edge_tone_score(image, self.ctx.palette)
+            src_tone = m.edge_tone_score(self.image(source), self.ctx.palette)
+            if score < MIRROR_MIN_RATIO * src_score and tone < MIRROR_MIN_RATIO * src_tone:
+                self.report.add("FAIL", 14, rel, f"edge-light {score:+.3f} and edge-tone {tone:+.3f}, under "
+                                                 f"{MIRROR_MIN_RATIO} x its source's {src_score:+.3f} and {src_tone:+.3f}")
             flip = self.image(source).transpose(Image.FLIP_LEFT_RIGHT)
             if m.xy_mask(flip) != m.xy_mask(image):
                 self.report.add("FAIL", 14, rel, "its alpha mask isn't the plain flip's: re-shading changed the shape")
