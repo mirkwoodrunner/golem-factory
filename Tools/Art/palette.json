@@ -11,7 +11,12 @@
     "malachite":{ "colours": ["#3e704a", "#567a56", "#609e68", "#96c896"], "note": "copper ore only (invariant 6)" },
     "aether":   { "colours": ["#296b6a", "#326f69", "#5ed6c8"], "note": "teal, and the golems' eyes" },
     "steam":    { "colours": ["#6e584e", "#b0a096", "#ded6cc", "#faf6ee"], "note": "puffs, vapour" },
-    "fire":     { "colours": ["#7a2e14", "#c4561f", "#f0a040", "#ffe08a"], "note": "fireboxes, the hearth, the Overclocker's glow; confirmed on the first chassis" }
+    "fire":     { "colours": ["#7a2e14", "#c4561f", "#f0a040", "#ffe08a"], "note": "fireboxes, the hearth, the Overclocker's glow; confirmed on the first chassis" },
+    "skin":     { "colours": ["#8e5641", "#b46055", "#cc846d", "#f6ae8e"], "note": "the Artificer's face and hands (S1b), today's tones" },
+    "hair":     { "colours": ["#2d1323", "#441e33", "#532937", "#623842", "#7a4a55"], "note": "the Artificer's plum-brown hair (S1b)" },
+    "leather":  { "colours": ["#331a1c", "#4d1a17", "#612d24", "#7e3a31", "#9a5040"], "note": "the Artificer's oxblood apron, strap and boots (S1b); under the reserved red's saturation" },
+    "cloth":    { "colours": ["#3e4236", "#505548", "#7a8264", "#a3ab88"], "note": "the Artificer's sage shirt, eyes and goggle lenses (S1b); not malachite (invariant 6)" },
+    "slate":    { "colours": ["#1f1a2a", "#241e30", "#312b3a", "#45405a"], "note": "the Artificer's trousers (S1b); off the reserved steel blue's hue" }
   },
   "reserved": {
     "red":       { "hue": [345, 15], "saturationAbove": 0.55, "lightnessAbove": 0.35, "maxFraction": 0.05 },

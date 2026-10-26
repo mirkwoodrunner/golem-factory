@@ -134,6 +134,11 @@ Each ramp runs dark to light. Four tones is the usual material; the outline sits
 | **Aether** (teal, and the golems' eyes) | `#296b6a` `#326f69` `#5ed6c8` | Aether cart (measured); `#5ed6c8` is `TEAL_GLOW` |
 | **Steam** (puffs, vapour) | `#6e584e` `#b0a096` `#ded6cc` `#faf6ee` | `fx_steam_puff.png` (measured) |
 | **Fire** (fireboxes, the hearth, the Overclocker's glow) | `#7a2e14` `#c4561f` `#f0a040` `#ffe08a` | Approved; it matches `GolemNode.GlowTint`'s forge orange; confirmed on the first chassis |
+| **Skin** (the Artificer's face and hands) | `#8e5641` `#b46055` `#cc846d` `#f6ae8e` | Today's Artificer frames (measured); S1b keeps the character (the user's call, 2026-10-25) |
+| **Hair** (the Artificer's plum-brown hair) | `#2d1323` `#441e33` `#532937` `#623842` `#7a4a55` | Today's Artificer frames (measured) |
+| **Leather** (the Artificer's oxblood apron, strap and boots) | `#331a1c` `#4d1a17` `#612d24` `#7e3a31` `#9a5040` | Today's Artificer frames (measured); every tone under the reserved red's saturation |
+| **Cloth** (the Artificer's sage shirt, eyes, goggle lenses) | `#3e4236` `#505548` `#7a8264` `#a3ab88` | Today's Artificer frames (measured); a grey sage, kept apart from malachite (invariant 6) |
+| **Slate** (the Artificer's trousers) | `#1f1a2a` `#241e30` `#312b3a` `#45405a` | Today's Artificer frames (measured); off the reserved steel blue's hue |
 
 What stays out:
 
