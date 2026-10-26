@@ -273,13 +273,13 @@ def draw_leg(cv, part, leg, dark):
              [0, 1, 2] if dark else [0, 1, 2, 3])
 
 
-def draw_arm(cv, part, shoulder, arm, dark, sleeve=True):
+def draw_arm(cv, part, shoulder, arm, dark, sleeve=True, hem=()):
     elbow, hand = arm
     if not sleeve:
         # From the front and the back the sleeve is part of the shirt (draw_front); the bare
-        # arm comes out from under its hem.
-        cv.layer(part, "skin", capsule(shoulder, elbow, 2.6) | capsule(elbow, hand, 2.6)
-                 | ellipse(hand[0], hand[1], 3.2, 3.2), [1, 2, 3, 3])
+        # arm comes out from under its hem, never over the sleeve (`hem`: the sleeve's pixels).
+        cv.layer(part, "skin", (capsule(shoulder, elbow, 2.6) | capsule(elbow, hand, 2.6)
+                                | ellipse(hand[0], hand[1], 3.2, 3.2)) - set(hem), [1, 2, 3, 3])
         return
     # A puffed short sleeve, then the bare arm from above the elbow, and the hand. Skin is
     # mostly today's light tone; its shadow edge steps down, so mirrored to walk left the arm
@@ -369,8 +369,9 @@ def draw_front(state, back=False):
     draw_leg_front(cv, p["r"], bd)
     # The shirt: a narrow torso, shoulders sloping from the neck, and the short puffed sleeves
     # as part of it, so they shade with the shirt rather than sitting on it as separate pads.
-    shirt = (ellipse(32, 48, 8, 4) | rrect(24, 47, 40, 70, 4)
-             | ellipse(22, 51, 3.4, 4) | ellipse(42, 51, 3.4, 4))
+    # The sleeves are as long as from the side: from the shoulder to just above the elbow.
+    sleeves = ellipse(22, 52, 3.6, 5.6) | ellipse(42, 52, 3.6, 5.6)
+    shirt = ellipse(32, 48, 8, 4) | rrect(24, 47, 40, 70, 4) | sleeves
     # The neck, from under the chin (or the hair) into the collar, shaded under the head.
     cv.layer("body", "skin", b(rect(30, 42, 35, 47)), [1, 2, 2, 3])
     cv.paint("body", "skin", 1, b(rect(30, 42, 35, 43)))
@@ -413,8 +414,8 @@ def draw_front(state, back=False):
     tuck = 1 if back else 0
     la = tuple((x + tuck, y) for x, y in shift_arm(p["la"], bd))
     ra = tuple((x - tuck, y) for x, y in shift_arm(p["ra"], bd))
-    draw_arm(cv, "arms", (22 + tuck, 54 + bd), la, dark=False, sleeve=False)
-    draw_arm(cv, "arms", (42 - tuck, 54 + bd), ra, dark=False, sleeve=False)
+    draw_arm(cv, "arms", (22 + tuck, 55 + bd), la, dark=False, sleeve=False, hem=b(sleeves))
+    draw_arm(cv, "arms", (42 - tuck, 55 + bd), ra, dark=False, sleeve=False, hem=b(sleeves))
     trace_head(cv, "artificer_walk_up_0" if back else "artificer_walk_down_0", 43, dy=bd)
     return cv
 
