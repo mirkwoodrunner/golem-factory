@@ -1105,3 +1105,9 @@ Each records the decision and, where it differs, what this document first recomm
     edge pixel as its tone's place in its own ramp (`art-style-bible.md` §5.1; check 14,
     `reshade_mirror.py` step 5). Tone alone was tried first and failed four golem mirrors that
     pass on lightness, so either measure holding is enough; a plain flip still fails both.
+15. **The Artificer keeps today's sprite** (the user, 2026-10-26). A redraw through
+    `golem_set.py` (today's head traced in, the body drafted and redrawn in ComfyUI) went
+    through five review rounds and was installed (2511da8), then the user judged it "worse
+    overall" than the original, and the original 16 frames were restored. Adjustments to the
+    Artificer, and its cranking frames, are planned with the user and made from today's own
+    pixels, keeping the original's charm. *First recommended:* the redraw (S1b in §3).

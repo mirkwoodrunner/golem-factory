@@ -122,9 +122,9 @@ If an image-generation MCP server is configured in the user's global Claude conf
   sags in the stall), the `ropes` and the `cargo` bundle drawn fresh per frame. From the north
   the arms are under the body (the shoulders cover their roots), and fists that hold the bundle
   in front are clipped by the body and legs in the draft; raised or hanging ones show.
-- **The Artificer (S1b) is made with `golem_set.py` too**, from `public/images/S1b/artificer/`
-  (`scripts/artificer_draft.py`): its `chassis.json` has `"kind": "artificer"` and names its
-  64×93 canvas, the `walk_0`–`walk_3` states, the drawn facings and the `artificer_walk_*` file
-  names; the silhouette and mood-tint measures are skipped. The head is traced from today's frames
-  (`source/today/`, gitignored: restore with `git show 906d389:godot/art/<name>`) and drawn in
-  every frame; only the body is rigid.
+- **The Artificer's 16 walk frames in `godot/art/` are today's originals**, not a redraw. A
+  `golem_set.py` redraw (`public/images/S1b/artificer/`, `"kind": "artificer"`, today's head
+  traced in) was installed and then rejected by the user on 2026-10-26 as worse overall
+  (`art-pipeline-design.md` §9, decision 15). Don't install that set. Changes to the Artificer
+  edit today's own pixels (`source/today/`, gitignored: restore with
+  `git show 906d389:godot/art/<name>`).

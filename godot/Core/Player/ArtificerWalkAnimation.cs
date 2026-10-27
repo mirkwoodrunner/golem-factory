@@ -4,10 +4,10 @@ namespace GolemFactory.Player
 {
     // Which of the four independently-drawn walk rows is showing.
     //
-    // Left and Right each get their own row -- never derive one with flipX. Since Phase 4's
-    // S1b set the left frames are the right ones mirrored, but re-shaded so the light still
-    // comes from the upper left (art-style-bible.md invariant 15); a plain flipX would put the
-    // highlights on the wrong side.
+    // These are NOT interchangeable by mirroring: docs/open-items.md records that the two
+    // profile rows are drawn separately (apron detail and hair differ), and a pixel diff of
+    // the source frames puts left against a mirrored right at ~38% of the sprite. Left and
+    // Right are distinct art, so both get their own row -- never derive one with flipX.
     //
     // Serialized nowhere today, but the values are explicit so a future save file can hold
     // one without the ordering becoming a silent trap.
