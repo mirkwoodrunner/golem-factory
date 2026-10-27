@@ -339,13 +339,13 @@ def draw_side(state, mirror=False):
 # (the ankle rises); the hands swing against the feet, the forward one lower.
 FRONT = {
     "walk_0": dict(bd=0, l=((28, 71), (28, 81), (28, 87)), r=((36, 71), (36, 81), (36, 87)),
-                   la=((21, 57), (21, 65)), ra=((43, 57), (43, 65))),
+                   la=((20, 61), (20, 70)), ra=((44, 61), (44, 70))),
     "walk_1": dict(bd=1, l=((28, 71), (27, 81), (27, 87)), r=((36, 71), (36, 80), (37, 84)),
-                   la=((21, 56), (22, 63)), ra=((43, 57), (42, 67))),
+                   la=((20, 60), (20, 67)), ra=((44, 61), (43, 71))),
     "walk_2": dict(bd=0, l=((28, 71), (28, 81), (28, 87)), r=((36, 71), (36, 81), (36, 86)),
-                   la=((21, 57), (21, 65)), ra=((43, 57), (43, 65))),
+                   la=((20, 61), (20, 70)), ra=((44, 61), (44, 70))),
     "walk_3": dict(bd=1, l=((28, 71), (28, 80), (27, 84)), r=((36, 71), (37, 81), (37, 87)),
-                   la=((21, 57), (22, 67)), ra=((43, 56), (42, 63))),
+                   la=((20, 61), (21, 71)), ra=((44, 60), (44, 67))),
 }
 
 
@@ -410,12 +410,10 @@ def draw_front(state, back=False):
         cv.paint("body", "brass", 0, b({(32, 70)}))
         cv.layer("body", "leather", b(capsule((26, 46), (28, 43), 0.8) | capsule((38, 46), (36, 43), 0.8)), [0, 1])
         cv.layer("body", "leather", b(rect(20, 59, 22, 62) | rect(42, 59, 44, 62)), [0, 1, 2])
-    # From behind the arms sit a pixel further in, so the body hides their inner edge.
-    tuck = 1 if back else 0
-    la = tuple((x + tuck, y) for x, y in shift_arm(p["la"], bd))
-    ra = tuple((x - tuck, y) for x, y in shift_arm(p["ra"], bd))
-    draw_arm(cv, "arms", (22 + tuck, 55 + bd), la, dark=False, sleeve=False, hem=b(sleeves))
-    draw_arm(cv, "arms", (42 - tuck, 55 + bd), ra, dark=False, sleeve=False, hem=b(sleeves))
+    # The arms hang to the hips, as long as from the side; from behind they are under the body
+    # (LAYERS), which hides only their inner edge.
+    draw_arm(cv, "arms", (22, 55 + bd), shift_arm(p["la"], bd), dark=False, sleeve=False, hem=b(sleeves))
+    draw_arm(cv, "arms", (42, 55 + bd), shift_arm(p["ra"], bd), dark=False, sleeve=False, hem=b(sleeves))
     trace_head(cv, "artificer_walk_up_0" if back else "artificer_walk_down_0", 43, dy=bd)
     return cv
 
