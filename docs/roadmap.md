@@ -131,7 +131,8 @@ call): built, reviewed, critiqued and tested. Done:
    - **Adjusting today's sprite, from its own pixels** (planned with the user 2026-10-27):
      (1) stray pixels cleaned, done (`scripts/clean_today.py`, approved 2026-10-27);
      (2) side-view faces made the same in every frame, done (`scripts/side_heads.py`:
-     walking right's frame 2 head, mirrored for walking left; approved 2026-10-27); (3) more contrast
+     walking right's frame 2 head, mirrored for walking left, its eye redrawn to match the
+     front's by `scripts/side_eye.py`; approved 2026-10-27); (3) more contrast
      in-game; (4) a smoother walk (frames 0 and 2 are nearly alike; more swing). Then the cranking frames at the
      hand-crank bench (agreed with the user): four per direction, shown while [E] is held at a
      `HandCrankBench` (`IsCranking`), since the Workbench screen covers the world; made by

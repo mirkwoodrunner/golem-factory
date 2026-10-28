@@ -132,5 +132,7 @@ If an image-generation MCP server is configured in the user's global Claude conf
   `source/today/` into `godot/art/` to reproduce them. The side views then share one head
   (`scripts/side_heads.py <in> <out> right=2 left=mirror:2`, approved 2026-10-27): walking
   right's frame 2 head in all four right frames, and mirrored into all four left frames, so
-  the face no longer changes frame to frame. The mirrored head is lit from the right, so
+  the face no longer changes frame to frame. Before that, `scripts/side_eye.py` redraws that
+  head's eye to match the front view's (a 3-pixel iris with the white behind it; approved
+  2026-10-27), so the order is clean_today, side_eye on right frame 2, side_heads. The mirrored head is lit from the right, so
   `artificer_walk_left_0`/`_2` now warn on check 14 like the other 14 frames.
