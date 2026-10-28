@@ -114,11 +114,19 @@ namespace GolemFactory.Nodes
         private readonly PlaceableSteamPipe _pipe;
         private readonly PlaceableClockTower _tower;
         private readonly HandCrankBench _bench;
+        private readonly PlaceableBoiler _boiler;
         private Sprite2D _sprite;
+        private PointLight2D _glow;
+
+        // Where steam_boiler.png's firebox is, in the picture's own pixels.
+        private static readonly Vector2 BoilerFireboxPixel = new Vector2(31f, 76f);
         private readonly Dictionary<string, Texture2D> _itemTextures = new Dictionary<string, Texture2D>();
         private Texture2D _fallbackItem;
 
         public PlaceableBuilding Building => _building;
+
+        /// <summary>A boiler's firebox glow (LightingRules.BoilerGlow); null on anything else.</summary>
+        public PointLight2D Glow => _glow;
 
         /// <summary>The sprite currently drawn (a belt's lane, a pipe's piece, or the building).</summary>
         public string SpriteName { get; private set; }
@@ -134,6 +142,7 @@ namespace GolemFactory.Nodes
             _pipe = building.GetPart<PlaceableSteamPipe>();
             _tower = building.IsFixture ? building.GetPart<PlaceableClockTower>() : null;
             _bench = building.GetPart<HandCrankBench>();
+            _boiler = building.GetPart<PlaceableBoiler>();
             Name = $"{building.name}_{building.Cell.x}_{building.Cell.y}";
             // The tower's FEET are its footprint's south edge, and a standing sprite's feet go on
             // its node's origin (y-sort compares origins): so the node moves there, not the picture.
@@ -160,6 +169,28 @@ namespace GolemFactory.Nodes
                 _sprite.ZIndex = -1;
             }
             RefreshShape();
+
+            if (_boiler != null)
+            {
+                _glow = new PointLight2D
+                {
+                    Name = "BoilerGlow",
+                    Texture = LightTexture.Banded(),
+                    TextureScale = LightTexture.ScaleFor(LightingRules.BoilerGlowRadiusCells),
+                    Color = Ugui.ToGodot(LightingRules.BoilerGlowColor),
+                    Position = _sprite.Position + _sprite.Offset + BoilerFireboxPixel,
+                };
+                AddChild(_glow);
+                RefreshGlow();
+            }
+        }
+
+        private void RefreshGlow()
+        {
+            SteamBoiler boiler = _boiler.Boiler;
+            float energy = boiler == null ? 0f : LightingRules.BoilerGlow(boiler.CokeStock, boiler.WorkingGolemCount);
+            _glow.Energy = energy;
+            _glow.Enabled = energy > 0f;
         }
 
         public void RefreshShape()
@@ -269,6 +300,10 @@ namespace GolemFactory.Nodes
             {
                 // The wheel turns while the bench makes progress (HandCrankBench.SpriteFor).
                 SetSprite(_bench.SpriteFor(_entry?.Sprite ?? "ghost_placeholder"), centred: false);
+            }
+            if (_glow != null)
+            {
+                RefreshGlow();
             }
             if (_belt?.Segment != null)
             {

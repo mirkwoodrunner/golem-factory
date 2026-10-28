@@ -123,9 +123,9 @@ namespace GolemFactory.Nodes
         private const float ShakeFrequency = 45f;
         private const float ShakeDuration = 0.35f;
 
-        // GolemFacingIndicator's tints.
-        private static readonly Color SourceTint = new Color(0.37f, 0.90f, 0.84f, 0.72f);
-        private static readonly Color TargetTint = new Color(1f, 0.90f, 0.66f, 0.80f);
+        // GolemFacingIndicator's tints; the tiles' own live in Core, where LightingRulesTests reads them.
+        private static readonly Color SourceTint = Ugui.ToGodot(GolemTileOverlay.SourceTint);
+        private static readonly Color TargetTint = Ugui.ToGodot(GolemTileOverlay.TargetTint);
         private static readonly Color ArrowTint = new Color(1f, 0.80f, 0.42f, 0.95f);
 
         // GolemStallIndicator: 1.75 cells above the feet.

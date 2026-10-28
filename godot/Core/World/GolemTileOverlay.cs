@@ -11,6 +11,12 @@ namespace GolemFactory.World
     /// </summary>
     public static class GolemTileOverlay
     {
+        /// <summary>The source tile's teal (GolemFacingIndicator's), alpha included. LightingRulesTests reads it over the lit floor.</summary>
+        public static readonly Color SourceTint = new Color(0.37f, 0.90f, 0.84f, 0.72f);
+
+        /// <summary>The target tile's gold, alpha included.</summary>
+        public static readonly Color TargetTint = new Color(1f, 0.90f, 0.66f, 0.80f);
+
         public readonly struct Decision
         {
             public bool Show { get; }

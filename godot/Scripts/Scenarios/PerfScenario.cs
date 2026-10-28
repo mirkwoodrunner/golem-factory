@@ -16,14 +16,16 @@ namespace GolemFactory.Nodes.Scenarios
     /// <summary>
     /// The endgame profile (docs/performance-report-template.md §4): Core's
     /// <see cref="EndgameLoad"/> builds about 96 golems, 500 belt items and 12 boilers into the
-    /// Sandbox, and the scenario times five phases of 1,200 frames, each after a 120-frame
+    /// Sandbox, and the scenario times six phases of 1,200 frames, each after a 120-frame
     /// warm-up: <c>flowing-1x</c>, <c>flowing-4x</c>, <c>starved</c> (every crate emptied),
-    /// <c>hover</c> (starved, the pointer on a waiting golem) and <c>no-draw</c> (flowing, the
-    /// world's drawing hidden). Frame time is wall time between this node's frames; Core's
+    /// <c>hover</c> (starved, the pointer on a waiting golem), <c>unlit</c> (flowing, the room's
+    /// tint and every light off) and <c>no-draw</c> (flowing, the world's drawing hidden). Frame time is wall time between this node's frames; Core's
     /// sections come from <see cref="SandboxWorld.Perf"/>; the renderer's from Godot's monitors.
     ///
     /// <para>
-    /// Windowed, every phase but <c>no-draw</c> must hold p95 ≤ 16.6 ms and max ≤ 33.3 ms.
+    /// Windowed, every phase but <c>no-draw</c> must hold p95 ≤ 16.6 ms and max ≤ 33.3 ms, and
+    /// the lighting (<c>flowing-1x</c>'s render CPU p95 less <c>unlit</c>'s) at most 1.0 ms
+    /// (art-pipeline-design.md §6.3).
     /// Headless there is no renderer, so it judges only Core's share: p95 ≤ 6 ms. One line per
     /// phase is printed, and a filled copy of the report's tables goes to
     /// <c>user://perf-report.md</c>. Nothing touches the player's save.
@@ -33,6 +35,7 @@ namespace GolemFactory.Nodes.Scenarios
     {
         public const int WarmupFrames = 120;
         public const int MeasureFrames = 1200;
+        public const double LightingRenderBudget = 1.0;
         private const int StarveFramesMax = 1200;
 
         private const double FrameP95Budget = 16.6, FrameMaxBudget = 33.3, CoreP95Budget = 6.0;
@@ -101,7 +104,8 @@ namespace GolemFactory.Nodes.Scenarios
             _phases.Add(new Phase { Name = "flowing-4x", Enter = () => Flowing(ClockReadout.SpeedPresets.Max()) });
             _phases.Add(new Phase { Name = "starved", Enter = Starve });
             _phases.Add(new Phase { Name = "hover", Enter = HoverAWaitingGolem });
-            _phases.Add(new Phase { Name = "no-draw", Enter = () => { Flowing(1f); DrawWorld(false); } });
+            _phases.Add(new Phase { Name = "unlit", Enter = () => { Flowing(1f); Light(false); } });
+            _phases.Add(new Phase { Name = "no-draw", Enter = () => { Flowing(1f); Light(true); DrawWorld(false); } });
         }
 
         // --- Phases -------------------------------------------------------------------------
@@ -144,6 +148,27 @@ namespace GolemFactory.Nodes.Scenarios
             }
             CoreVector2Int cell = _hovered.Cell;
             _pointer = () => _viewport.GetCanvasTransform() * GridConversions.CellToWorld(cell);
+        }
+
+        /// <summary>
+        /// The room's tint and every light, on or off. Hidden rather than disabled: a boiler's
+        /// glow sets its own Enabled each frame from its fuel.
+        /// </summary>
+        private void Light(bool on)
+        {
+            foreach (Node node in _tree.Root.FindChildren("*", nameof(CanvasModulate), true, false)
+                         .Concat(_tree.Root.FindChildren("*", nameof(PointLight2D), true, false)))
+            {
+                switch (node)
+                {
+                    case CanvasModulate tint:
+                        tint.Visible = on;
+                        break;
+                    case CanvasItem light:
+                        light.Visible = on;
+                        break;
+                }
+            }
         }
 
         private void DrawWorld(bool visible)
@@ -323,6 +348,8 @@ namespace GolemFactory.Nodes.Scenarios
 
         // --- Verdict and report ----------------------------------------------------------------
 
+        private Phase P(string name) => _phases.First(p => p.Name == name);
+
         private ScenarioResult Verdict()
         {
             var failures = new List<string>();
@@ -347,6 +374,14 @@ namespace GolemFactory.Nodes.Scenarios
                     }
                 }
             }
+            if (!_headless)
+            {
+                double lighting = P("flowing-1x").RenderCpu.P95 - P("unlit").RenderCpu.P95;
+                if (lighting > LightingRenderBudget)
+                {
+                    failures.Add(FormattableString.Invariant($"lighting render CPU p95 +{lighting:F2} ms > {LightingRenderBudget}"));
+                }
+            }
             WriteReport(failures);
             string summary = string.Join("; ", _phases.Select(p => FormattableString.Invariant(
                 $"{p.Name} p95 {p.FrameMs.P95:F1} max {p.FrameMs.Max:F1} core {p.CoreMs.P95:F2}")));
@@ -358,7 +393,6 @@ namespace GolemFactory.Nodes.Scenarios
         private void WriteReport(List<string> failures)
         {
             var md = new StringBuilder();
-            Phase P(string name) => _phases.First(p => p.Name == name);
             string F(double v) => v.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
 
             md.AppendLine("# Perf run").AppendLine();
@@ -400,6 +434,9 @@ namespace GolemFactory.Nodes.Scenarios
             md.AppendLine($"| `flowing-1x` | {F(a.RenderCpu.P95)} | {F(a.RenderGpu.P95)} | {a.Draws:F0} | {a.Objects:F0} | {a.Nodes:F0} |");
             md.AppendLine($"| `no-draw` | {F(b.RenderCpu.P95)} | {F(b.RenderGpu.P95)} | {b.Draws:F0} | {b.Objects:F0} | {b.Nodes:F0} |");
             md.AppendLine($"| Difference (world drawing) | {F(a.RenderCpu.P95 - b.RenderCpu.P95)} | {F(a.RenderGpu.P95 - b.RenderGpu.P95)} | {a.Draws - b.Draws:F0} | {a.Objects - b.Objects:F0} | |");
+            Phase u = P("unlit");
+            md.AppendLine($"| `unlit` | {F(u.RenderCpu.P95)} | {F(u.RenderGpu.P95)} | {u.Draws:F0} | {u.Objects:F0} | {u.Nodes:F0} |");
+            md.AppendLine($"| Difference (lighting, ≤ {LightingRenderBudget:F1} CPU) | {F(a.RenderCpu.P95 - u.RenderCpu.P95)} | {F(a.RenderGpu.P95 - u.RenderGpu.P95)} | {a.Draws - u.Draws:F0} | {a.Objects - u.Objects:F0} | |");
 
             md.AppendLine().AppendLine("### Lines").AppendLine().AppendLine("```");
             foreach (Phase p in _phases)

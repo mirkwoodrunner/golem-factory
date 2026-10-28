@@ -849,6 +849,12 @@ Three things the roadmap asks for: sconces that light the floor, a warm room tin
 glows. All of it in the GL Compatibility renderer, with no normal maps (an AI redraw can't be
 given consistent ones) and no light occluders (cost).
 
+**Built on 2026-10-28, awaiting the user's look** (§6.5 says what changed from this plan):
+`Core/World/LightingRules`, `LightingRulesTests`, the warm ambient, banded pools
+(`Scripts/World/LightTexture`), a glow on every boiler, the `world` and `golems` checks, and
+`perf`'s `unlit` phase. Measured windowed at the endgame load: the lighting costs **0.27 ms**
+of render CPU p95 (budget 1.0), 16 draw calls.
+
 **Decided** (decision 8): **start subtle** (a warm ambient averaging about 0.88, today's sconce
 energy, banded pools), with **every value in Core's `LightingRules`**, and let the playtest's
 `light` question tune it. The floor is never darker than the mood tints and the tile overlays
@@ -917,6 +923,24 @@ banded texture's size, then boiler glows altogether (the hot pipes stay, as they
 - The `perf` scenario (§7.3): an `unlit` phase measures the lighting's cost.
 - The playtest's `light` question ("Is the room too dark?") answers whether the strength is
   right; a change it asks for goes into `LightingRules` and must pass the tests above.
+
+### 6.5 As built, and where it differs
+
+- **The values are the plan's:** ambient (0.94, 0.88, 0.80); sconces (1, 0.72, 0.42), energy
+  1.1, radius 5.5 cells, five bands stepping 1, 0.8 … 0.2 then nothing; boiler glow the fire
+  ramp's #f0a040, radius 1.5 cells, energy 0.35 lit plus 0.08 per golem it keeps working (up to
+  8, a boiler's share), and off with no Coke. The firebox's pixel is `BuildingView`'s
+  `BoilerFireboxPixel`.
+- **The Waiting badge is held to "no worse", not 0.15.** Its plate is the quiet grey on
+  purpose, and over the lightest plank it was 0.05 apart under the old grey too; its white
+  caption carries it. Stalled and Starved pass 0.15 (lowest 0.16).
+- **The source and target tile tints moved to Core** (`GolemTileOverlay.SourceTint` and
+  `TargetTint`), so the test reads the colours the game draws.
+- **No unshaded flame.** `CanvasModulate` tints unshaded items too, so the material would not
+  keep it bright; the flame sits inside its own lamp's pool, which lights it above the ambient.
+- **No hot pipes yet.** `LightingRules.PipeHot` is in and tested; the five hot pictures come
+  with the buildings (S3), and `BuildingsLayer` swaps to them then.
+- **`check_art.py` check 10** now multiplies by the new ambient (it reads `LightingRules.cs`).
 
 ## 7. Scenarios and tests
 

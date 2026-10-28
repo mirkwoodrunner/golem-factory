@@ -9,6 +9,7 @@ using GolemFactory.Economy;
 using GolemFactory.Events;
 using GolemFactory.Golems;
 using GolemFactory.PunchCards;
+using GolemFactory.Steam;
 using GolemFactory.World;
 using CoreVector2Int = GolemFactory.Compat.Vector2Int;
 
@@ -49,6 +50,9 @@ namespace GolemFactory.Nodes.Scenarios
         private const double RunSeconds = 30.0;
 
         private SandboxWorld _world;
+        private readonly List<PlaceableBoiler> _boilers = new List<PlaceableBoiler>();
+        private string _glowFuelled;
+        private bool _drained;
         private ConstructionPanelNode _panel;
         private string _failure;
         private double _elapsed;
@@ -103,6 +107,15 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 return null;
             }
+            if (!_drained)
+            {
+                // Every fuelled boiler glows by LightingRules; then one runs dry, and a frame later
+                // it must be dark (art-pipeline-design.md §6.4).
+                _glowFuelled = CheckGlows();
+                _boilers[_boilers.Count - 1].Boiler.SetCoke(0);
+                _drained = true;
+                return null;
+            }
             EventBus.GolemCompleted -= OnCompleted;
             return Verdict();
         }
@@ -129,7 +142,8 @@ namespace GolemFactory.Nodes.Scenarios
             }
             PlaceableBoiler b2 = Place<PlaceableBoiler>("BoilerPrefab", -9, -15);
             PlaceableBoiler b3 = Place<PlaceableBoiler>("BoilerPrefab", -5, -15);
-            foreach (PlaceableBoiler boiler in new[] { b1, b2, b3 })
+            _boilers.AddRange(new[] { b1, b2, b3 });
+            foreach (PlaceableBoiler boiler in _boilers)
             {
                 Deposit(ItemType.Coke, 100);
                 if (!_world.Interactor.TryRefuelBoiler(boiler))
@@ -222,6 +236,28 @@ namespace GolemFactory.Nodes.Scenarios
             _cycles[golem.GolemId] = 0;
         }
 
+        /// <summary>Each boiler's glow is on exactly while it has Coke, at LightingRules' energy; null when so.</summary>
+        private string CheckGlows()
+        {
+            var layer = _tree.GetFirstNodeInGroup(BuildingsLayer.GroupName) as BuildingsLayer;
+            foreach (PlaceableBoiler boiler in _boilers)
+            {
+                PlaceableBuilding building = _world.Build.Buildings.Single(b => b.GetPart<PlaceableBoiler>() == boiler);
+                if (layer == null || !layer.TryGetView(building, out BuildingView view) || view.Glow == null)
+                {
+                    return $"the boiler at {building.Cell} has no glow";
+                }
+                SteamBoiler steam = boiler.Boiler;
+                float want = LightingRules.BoilerGlow(steam.CokeStock, steam.WorkingGolemCount);
+                if (view.Glow.Enabled != want > 0f || Mathf.Abs(view.Glow.Energy - want) > 0.001f)
+                {
+                    return $"the boiler at {building.Cell} ({steam.CokeStock} Coke, {steam.WorkingGolemCount} working) " +
+                           $"glows {view.Glow.Enabled}/{view.Glow.Energy:F2}, the rules say {want:F2}";
+                }
+            }
+            return null;
+        }
+
         private T Place<T>(string key, int x, int y) where T : class => PlaceAt(key, x, y, Facing.North).GetPart<T>();
 
         private PlaceableBuilding PlaceAt(string key, int x, int y, Facing facing)
@@ -288,6 +324,16 @@ namespace GolemFactory.Nodes.Scenarios
             if (_world.Buffers.GetQuantity("IronPlateBuffer", ItemType.IronPlate) < 1)
             {
                 problems.Add("G5 refined no Iron Plate");
+            }
+
+            if (_glowFuelled != null)
+            {
+                problems.Add(_glowFuelled);
+            }
+            string glowDry = CheckGlows();
+            if (glowDry != null)
+            {
+                problems.Add("after one boiler ran dry: " + glowDry);
             }
 
             GolemEntity g7 = _golems["G7"];

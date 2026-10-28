@@ -145,8 +145,11 @@ call): built, reviewed, critiqued and tested. Done:
    - **Floor and walls (S2) closed, nothing replaced** (2026-10-28, §9 decision 18): a
      ComfyUI pilot (`Tools/Art/env_set.py`, `public/images/S2/set.json`) drew objects into the
      floor tile at every strength, and the wall and crate redraws lost their detail at the
-     game's half-size view. Today's floor, walls and props stay. **Next: lighting (L)**
-     (`art-pipeline-design.md` §6).
+     game's half-size view. Today's floor, walls and props stay.
+   - **Lighting (L) built** (2026-10-28, `art-pipeline-design.md` §6.5), awaiting the user's
+     look: a warm ambient, banded sconce pools and boiler glows, every value in
+     `Core/World/LightingRules`; it costs 0.27 ms of render CPU at the endgame load (budget 1.0).
+     The hot pipe pictures come with S3.
    - Then buildings, the Workbench, goods and the HUD, each
      with its own review sheet (`art-pipeline-design.md` §3).
    - Before Phase 4's test run: fix the windowed `hover` flake (`open-items.md` §4).

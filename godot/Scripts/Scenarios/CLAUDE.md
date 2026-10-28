@@ -4,7 +4,8 @@ Paths here are relative to `godot/` unless they say otherwise.
 # Scenarios
 
 Current scenarios:
-- `world` (Sandbox): the shell matches `SandboxLayout`, all nine stalls publish endpoints, and
+- `world` (Sandbox): the shell matches `SandboxLayout`, its tint and seven sconces are
+  `LightingRules`', all nine stalls publish endpoints, and
   the player walks down the street and through the town square to its far kerb and back,
   with the camera following.
 - `build` (Sandbox): every placeable placed through the real build menu and cursor with
@@ -15,7 +16,8 @@ Current scenarios:
   Artificer's crank frame facing it and the bench's turning wheel; letting go stands.
 - `golems` (Sandbox): every chassis built, and every `AppendageActionType` run on real steam:
   extract, haul, push, load, assemble plus repeat, refine, and freight. A golem out of steam
-  must stall and wear its badge. Each golem draws its own chassis's frame for what it is doing,
+  must stall and wear its badge. Each boiler glows by `LightingRules.BoilerGlow`, and one
+  run dry goes dark a frame later. Each golem draws its own chassis's frame for what it is doing,
   in its facing (`GolemFrames.Resolve`; the south base while a chassis has no frames).
 - `golem-motion` (Sandbox): every chassis at its signature verb on steam, side by side on the
   street and zoomed in, with stocks fed and drained so none stops. Each body must make its
@@ -85,10 +87,11 @@ Current scenarios:
   `critique-hover-feeder`); once S wakes, "brings it" without the clause.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
 - `perf` (Sandbox): the endgame profile (`docs/performance-report-template.md` §4). Core's
-  `Diagnostics/EndgameLoad` builds 96 golems, 500 belt items and 12 boilers; five phases of
-  1,200 frames (flowing at 1× and 4×, starved, hover, world drawing hidden) are timed with
+  `Diagnostics/EndgameLoad` builds 96 golems, 500 belt items and 12 boilers; six phases of
+  1,200 frames (flowing at 1× and 4×, starved, hover, unlit, world drawing hidden) are timed with
   `SandboxWorld.Perf` (Core's sections) and `NodePerf` (the nodes'). Windowed it must hold frame
-  p95 ≤ 16.6 ms and max ≤ 33.3 ms; headless, Core's share p95 ≤ 6 ms. One `[perf]` line a
+  p95 ≤ 16.6 ms and max ≤ 33.3 ms, and the lighting (flowing-1x less unlit render CPU p95)
+  ≤ 1.0 ms; headless, Core's share p95 ≤ 6 ms. One `[perf]` line a
   phase, and the report's tables in `user://perf-report.md`. About a minute headless. The last
   filled-in report is `docs/performance-report-phase3.md`.
 - `art` (Sandbox): the art against `Tools/Art/art_manifest.json` (`docs/art-pipeline-design.md`
