@@ -129,4 +129,8 @@ If an image-generation MCP server is configured in the user's global Claude conf
   edit today's own pixels (`source/today/`, gitignored: restore with
   `git show 906d389:godot/art/<name>`). The shipped frames have had their stray shirt-green
   specks cleaned (`scripts/clean_today.py`, approved 2026-10-27; 221 pixels); rerun it from
-  `source/today/` into `godot/art/` to reproduce them.
+  `source/today/` into `godot/art/` to reproduce them. The side views then share one head
+  (`scripts/side_heads.py <in> <out> right=2 left=mirror:2`, approved 2026-10-27): walking
+  right's frame 2 head in all four right frames, and mirrored into all four left frames, so
+  the face no longer changes frame to frame. The mirrored head is lit from the right, so
+  `artificer_walk_left_0`/`_2` now warn on check 14 like the other 14 frames.
