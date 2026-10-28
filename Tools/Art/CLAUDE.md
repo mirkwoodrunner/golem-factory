@@ -127,4 +127,6 @@ If an image-generation MCP server is configured in the user's global Claude conf
   traced in) was installed and then rejected by the user on 2026-10-26 as worse overall
   (`art-pipeline-design.md` §9, decision 15). Don't install that set. Changes to the Artificer
   edit today's own pixels (`source/today/`, gitignored: restore with
-  `git show 906d389:godot/art/<name>`).
+  `git show 906d389:godot/art/<name>`). The shipped frames have had their stray shirt-green
+  specks cleaned (`scripts/clean_today.py`, approved 2026-10-27; 221 pixels); rerun it from
+  `source/today/` into `godot/art/` to reproduce them.
