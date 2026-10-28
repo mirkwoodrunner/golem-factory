@@ -11,7 +11,8 @@ Current scenarios:
   synthetic mouse and key events, then drag runs, Escape, and a demolition that restores the
   pack exactly.
 - `interact` (Sandbox): the player's `[E]`, hold-`[E]`, and `[G]` at a stall, an empty stall,
-  the bench and the station, using real key and mouse events.
+  the bench and the station, using real key and mouse events. Cranking the bench shows the
+  Artificer's crank frame facing it and the bench's turning wheel; letting go stands.
 - `golems` (Sandbox): every chassis built, and every `AppendageActionType` run on real steam:
   extract, haul, push, load, assemble plus repeat, refine, and freight. A golem out of steam
   must stall and wear its badge. Each golem draws its own chassis's frame for what it is doing,

@@ -137,4 +137,8 @@ If an image-generation MCP server is configured in the user's global Claude conf
      stands off the wooden floor at in-game size.
   5. `walk_feet.py`: copies each frame 0 to `artificer_stand_<facing>.png` (the standing pose),
      then lifts a foot 3 px in the front and back walks' frames 0 and 2 (passing poses).
-  With a one-colour outline the edge-light score is 0, so all 20 warn on check 14; expected.
+  6. `crank_frames.py`: `artificer_crank_<facing>_<0..3>.png`, the standing pose's upper body
+     rocking a 2 px loop with a 1 px nod, and `hand_crank_bench_turn_<0..3>.png`, two brass
+     glints round the wheel's rim. Nothing is drawn: a drawn cranking arm (by script, or the
+     sprite's own arm rotated) never sat in the figure and the user rejected it (decision 17).
+  With a one-colour outline the edge-light score is 0, so all 36 warn on check 14; expected.

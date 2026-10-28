@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using GolemFactory.Player;
 
@@ -285,8 +286,6 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(17, ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Left));
             Assert.AreEqual(18, ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Right));
             Assert.AreEqual(19, ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Up));
-            Assert.AreEqual(ArtificerWalkAnimation.SpriteCount - 1,
-                ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Up));
         }
 
         [Test]
@@ -300,6 +299,37 @@ namespace GolemFactory.Tests.EditMode
                     ArtificerWalkAnimation.ComputeStandingSpriteIndex(facing),
                     ArtificerWalkAnimation.DirectionCount * ArtificerWalkAnimation.FramesPerDirection);
             }
+        }
+
+        // --- ComputeCrankSpriteIndex: four cranking frames a direction, after the standing poses ---
+
+        [Test]
+        public void ComputeCrankSpriteIndex_CoversTheLastSixteenSpritesOnce()
+        {
+            var seen = new HashSet<int>();
+            foreach (ArtificerFacing facing in new[]
+                     { ArtificerFacing.Down, ArtificerFacing.Left, ArtificerFacing.Right, ArtificerFacing.Up })
+            {
+                for (int frame = 0; frame < ArtificerWalkAnimation.CrankFramesPerDirection; frame++)
+                {
+                    int index = ArtificerWalkAnimation.ComputeCrankSpriteIndex(facing, frame);
+                    Assert.GreaterOrEqual(index, 20);
+                    Assert.Less(index, ArtificerWalkAnimation.SpriteCount);
+                    Assert.IsTrue(seen.Add(index), "sprite index {0} was produced twice", index);
+                }
+            }
+
+            Assert.AreEqual(16, seen.Count);
+            Assert.AreEqual(36, ArtificerWalkAnimation.SpriteCount);
+        }
+
+        [Test]
+        public void ComputeCrankSpriteIndex_WrapsAndFallsBackToDown()
+        {
+            Assert.AreEqual(20, ArtificerWalkAnimation.ComputeCrankSpriteIndex(ArtificerFacing.Down, 0));
+            Assert.AreEqual(29, ArtificerWalkAnimation.ComputeCrankSpriteIndex(ArtificerFacing.Right, 5));
+            Assert.AreEqual(35, ArtificerWalkAnimation.ComputeCrankSpriteIndex(ArtificerFacing.Up, -1));
+            Assert.AreEqual(21, ArtificerWalkAnimation.ComputeCrankSpriteIndex((ArtificerFacing)99, 1));
         }
 
         [Test]

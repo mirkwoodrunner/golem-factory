@@ -63,6 +63,9 @@ namespace GolemFactory.Nodes
         // press then reached the world too, and closing a crate screen collected the crate.
         private bool _screenWasOpen;
 
+        /// <summary>The Artificer's sprite showing (<see cref="PlayerWalker.SpriteIndex"/>), for the scenarios.</summary>
+        public int SpriteIndex => _walker.SpriteIndex;
+
         /// <summary>The interactable [E] would use right now, or null.</summary>
         public IInteractable Focus { get; private set; }
 
@@ -80,6 +83,11 @@ namespace GolemFactory.Nodes
                 }
                 _frames[ArtificerWalkAnimation.ComputeStandingSpriteIndex((ArtificerFacing)row)] =
                     GD.Load<Texture2D>($"res://art/artificer_stand_{rows[row]}.png");
+                for (int frame = 0; frame < ArtificerWalkAnimation.CrankFramesPerDirection; frame++)
+                {
+                    _frames[ArtificerWalkAnimation.ComputeCrankSpriteIndex((ArtificerFacing)row, frame)] =
+                        GD.Load<Texture2D>($"res://art/artificer_crank_{rows[row]}_{frame}.png");
+                }
             }
 
             _sprite = new Sprite2D { Texture = _frames[ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Down)] };
@@ -134,6 +142,12 @@ namespace GolemFactory.Nodes
                 _screenWasOpen = openNow;
                 _interactor.SetInteractHeld(!screenOpen && Input.IsActionPressed(Interact));
                 _interactor.Poll();
+                // Turning a crank: face the bench and show its turn frame (walking wins).
+                if (_interactor.TryGetCrank(out CoreVector3 benchAt, out int turnFrame))
+                {
+                    _walker.ShowCrank(benchAt, turnFrame);
+                    _sprite.Texture = _frames[_walker.SpriteIndex];
+                }
                 bool pressed = !screenOpen && Input.IsActionJustPressed(Interact);
                 if (pressed)
                 {

@@ -98,6 +98,36 @@ namespace GolemFactory.Tests.Player
         }
 
         [Test]
+        public void Cranking_FacesTheBenchAndShowsItsTurnFrame()
+        {
+            PlayerWalker walker = Build();
+            walker.MoveBy(Vector2.zero, 0.1f);
+
+            // The bench a cell north of him: he turns to face it.
+            walker.ShowCrank(new Vector3(0f, 1f, 0f), 2);
+
+            Assert.AreEqual(ArtificerFacing.Up, walker.Facing);
+            Assert.AreEqual(ArtificerWalkAnimation.ComputeCrankSpriteIndex(ArtificerFacing.Up, 2), walker.SpriteIndex);
+
+            walker.MoveBy(Vector2.zero, 0.1f);
+            walker.ShowCrank(new Vector3(-1f, 0.5f, 0f), 3);
+            Assert.AreEqual(ArtificerFacing.Left, walker.Facing, "a bench more to the side than above is faced side-on");
+        }
+
+        [Test]
+        public void Cranking_WhileWalking_ShowsTheWalk()
+        {
+            PlayerWalker walker = Build();
+            walker.MoveBy(Vector2.right, 0.1f);
+            int walking = walker.SpriteIndex;
+
+            walker.ShowCrank(new Vector3(0f, 1f, 0f), 1);
+
+            Assert.AreEqual(ArtificerFacing.Right, walker.Facing);
+            Assert.AreEqual(walking, walker.SpriteIndex, "walking wins over the crank");
+        }
+
+        [Test]
         public void BlockedByFloorBounds_DoesNotAnimate()
         {
             // Input held, displacement zero. This is the skate the design is built to prevent, and

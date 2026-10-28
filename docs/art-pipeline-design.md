@@ -373,6 +373,7 @@ brass highlight and the fire ramp (decision 1).
 |---|---|---|---|---|
 | `artificer_walk_{down,left,right,up}_{0..3}.png` (16) | 64 × 93 each | RetroDiffusion concept sheet, sliced by `slice_artificer_walk.py`; adjusted by `public/images/S1b/artificer/scripts/` (decision 16) | 4 × 4 | `PlayerNode` builds the names; `ArtificerWalkAnimation` (4 directions, 4 frames, stride 0.45 cells) |
 | `artificer_stand_{down,left,right,up}.png` (4) | 64 × 93 each | each walk's frame 0 before its foot was lifted (`walk_feet.py`) | 1 a direction | `PlayerNode`; `ComputeStandingSpriteIndex` |
+| `artificer_crank_{down,left,right,up}_{0..3}.png` (16) | 64 × 93 each | the standing pose, rocked (`crank_frames.py`, decision 17) | 4 a direction | `PlayerNode`; `ComputeCrankSpriteIndex`, frame = `HandCrankBench.TurnFrame` |
 
 Frame 0 of each direction is that direction's base; frames 1–3 are pose guides from it (§2,
 step 3). A mirrored walk cycle swaps the leading leg, which reads as walking the other way.
@@ -409,6 +410,7 @@ The lamp wall's painted sconce sits where `ShellNode` puts the light
 | `slag_heap.png` | 68 × 44 | Gen building | `placeables.json` |
 | `steam_boiler.png` | 71 × 114 | authored | `placeables.json`; gets a glow (§6) |
 | `hand_crank_bench.png` | 94 × 82 | authored | `placeables.json` |
+| `hand_crank_bench_turn_{0..3}.png` (4) | 94 × 82 each | `hand_crank_bench.png` with rim glints (`crank_frames.py`, decision 17) | `HandCrankBench.SpriteFor`, while it turns |
 | `belt_tile.png`, `belt_tile_corner_left.png`, `belt_tile_corner_right.png`, `belt_splitter.png` | 64 × 64 | Gen topdown | `placeables.json` shape sprites, `BeltRun`, `BuildingsLayer` (centred, rotated) |
 | `steam_pipe.png`, `_corner`, `_cross`, `_end`, `_tee` | 64 × 64 | Gen building | `BuildingsLayer` (centred, rotated); hot variants added by §6 |
 | `stall_*.png` (5), `clock_tower_*.png` (6) | 96 × 120, 192 × 640 | hand-replaced | Done; not in this set |
@@ -1122,3 +1124,12 @@ Each records the decision and, where it differs, what this document first recomm
     foot would mean drawing new legs. The scripts are in `public/images/S1b/artificer/scripts/`;
     `Tools/Art/CLAUDE.md` gives their order. *First recommended:* as done, the outline
     over the boost.
+17. **Cranking moves the Artificer's own pixels, and the bench's wheel glints** (the user,
+    2026-10-27). While [E] turns a Hand-Crank Bench he faces it and his standing pose rocks
+    (upper body round a 2 px loop, the head nodding a pixel more); the bench's brass rim
+    carries two glints round 45 degrees a frame. Both advance one frame per simulation tick
+    that made progress (`HandCrankBench.TurnFrame`), so they turn with the work at any speed
+    and stop when it stops; an unaffordable recipe stands still (the user's call). Walking
+    while [E] is held shows the walk. *First recommended:* drawn cranking arms; a scripted
+    arm looked "like a noodle floating on top of the sprite" (the user), the sprite's own arm
+    rotated fell apart, and turning the wheel's pixels dragged the tabletop into its spokes.

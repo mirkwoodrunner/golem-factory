@@ -28,6 +28,10 @@ namespace GolemFactory.Buildings
         private readonly List<RecipeDefinition> _crankable = new List<RecipeDefinition>();
         private int _selectedIndex;
         private int _progressTicks;
+        private int _turnFrame;
+
+        /// <summary>Frames in a turn of the crank: the wheel's and the Artificer's.</summary>
+        public const int TurnFrames = 4;
 
         /// <summary>Set by the interactor while the player holds [E] at this bench.</summary>
         public bool IsCranking { get; set; }
@@ -39,6 +43,24 @@ namespace GolemFactory.Buildings
 
         public int SelectedIndex => _selectedIndex;
         public int ProgressTicks => _progressTicks;
+
+        /// <summary>
+        /// Whether the crank is turning right now: held, with a recipe it can afford. Holding
+        /// [E] at a recipe it can't afford makes no progress (see <see cref="Tick"/>), so it
+        /// doesn't turn either -- the still wheel is the player's cue that something is missing.
+        /// </summary>
+        public bool IsTurning => IsCranking && SelectedRecipe != null && CanAffordSelected();
+
+        /// <summary>
+        /// Which of the <see cref="TurnFrames"/> turning pictures shows: one step per SIMULATION
+        /// tick that made progress, so the wheel and the Artificer turn with the work at any game
+        /// speed and stop when it stops (paused, or out of goods).
+        /// </summary>
+        public int TurnFrame => _turnFrame;
+
+        /// <summary>The bench's picture: <paramref name="baseSprite"/>, or its turning frame.</summary>
+        public string SpriteFor(string baseSprite) =>
+            IsTurning ? $"{baseSprite}_turn_{_turnFrame}" : baseSprite;
 
         public int RequiredTicks =>
             SelectedRecipe == null ? 0 : HandCrankRules.CrankTicks(SelectedRecipe.durationTicks);
@@ -121,6 +143,8 @@ namespace GolemFactory.Buildings
             {
                 return;
             }
+
+            _turnFrame = (_turnFrame + 1) % TurnFrames;
 
             if (_progressTicks < RequiredTicks)
             {

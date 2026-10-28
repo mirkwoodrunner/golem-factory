@@ -58,7 +58,7 @@ FACINGS = ("north", "east", "south", "west")
 # GolemFrames.FileName's states (art-style-bible.md §4.3): 7 files a facing.
 FRAME_STATES = ("base", "idle_1", "work_0", "work_1", "work_2", "stall", "carry")
 FRAME_FILES_PER_CHASSIS = len(FRAME_STATES) * len(FACINGS)
-ARTIFICER_FRAMES = 20         # 16 walk frames and 4 standing poses (artificer_stand_*)
+ARTIFICER_FRAMES = 36         # 16 walk frames, 4 standing poses, 16 cranking frames
 MOOD_TINTS_CHECKED = ("Stalled", "Starved", "Waiting")
 
 LEGACY = "legacy"

@@ -785,6 +785,26 @@ namespace GolemFactory.Player
             }
         }
 
+        /// <summary>
+        /// The bench the player is turning right now (<see cref="HandCrankBench.IsTurning"/>), for
+        /// the Artificer's cranking frames: where it stands and its turn frame. False when no
+        /// bench is turning, including [E] held at a recipe it can't afford.
+        /// </summary>
+        public bool TryGetCrank(out Vector3 benchAt, out int turnFrame)
+        {
+            HandCrankBench bench = NearestBench;
+            if (bench == null || !bench.IsTurning)
+            {
+                benchAt = default;
+                turnFrame = 0;
+                return false;
+            }
+
+            benchAt = BenchPosition(bench);
+            turnFrame = bench.TurnFrame;
+            return true;
+        }
+
         private Vector3 BenchPosition(HandCrankBench bench)
         {
             for (int i = 0; i < _benches.Length; i++)

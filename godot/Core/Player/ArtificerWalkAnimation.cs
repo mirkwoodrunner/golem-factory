@@ -38,9 +38,14 @@ namespace GolemFactory.Player
         // rather than "hold the last walking frame", which would freeze him mid-stride.
         public const int StandingFrameIndex = 0;
 
-        // Every sprite the Artificer has: four walk frames a direction, then one standing pose a
-        // direction (artificer_stand_<row>.png), in ArtificerFacing's order.
-        public const int SpriteCount = DirectionCount * (FramesPerDirection + 1);
+        // Frames a direction while cranking a HandCrankBench (artificer_crank_<row>_<n>.png), one
+        // per HandCrankBench.TurnFrames.
+        public const int CrankFramesPerDirection = 4;
+
+        // Every sprite the Artificer has, in ArtificerFacing's order within each block: four walk
+        // frames a direction, then one standing pose a direction (artificer_stand_<row>.png), then
+        // four cranking frames a direction.
+        public const int SpriteCount = DirectionCount * (FramesPerDirection + 1 + CrankFramesPerDirection);
 
         // World units of travel per frame step. At the authored PPU of 64 the Artificer is one
         // world unit wide, so this is a stride of just under half his own width: about nine frames
@@ -161,6 +166,25 @@ namespace GolemFactory.Player
             }
 
             return (DirectionCount * FramesPerDirection) + row;
+        }
+
+        // A cranking frame's index, after the standing poses. The frame wraps like a walk frame,
+        // and an out-of-range facing cranks facing down.
+        public static int ComputeCrankSpriteIndex(ArtificerFacing facing, int frameIndex)
+        {
+            int row = (int)facing;
+            if (row < 0 || row >= DirectionCount)
+            {
+                row = (int)ArtificerFacing.Down;
+            }
+
+            int frame = frameIndex % CrankFramesPerDirection;
+            if (frame < 0)
+            {
+                frame += CrankFramesPerDirection;
+            }
+
+            return (DirectionCount * (FramesPerDirection + 1)) + (row * CrankFramesPerDirection) + frame;
         }
     }
 }

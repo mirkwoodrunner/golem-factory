@@ -6327,5 +6327,361 @@
     ],
     "direction": "up",
     "frame": "stand"
+  },
+  "artificer_crank_down_0.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "down",
+    "frame": "crank_0"
+  },
+  "artificer_crank_down_1.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "down",
+    "frame": "crank_1"
+  },
+  "artificer_crank_down_2.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "down",
+    "frame": "crank_2"
+  },
+  "artificer_crank_down_3.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "down",
+    "frame": "crank_3"
+  },
+  "artificer_crank_left_0.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "left",
+    "frame": "crank_0"
+  },
+  "artificer_crank_left_1.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "left",
+    "frame": "crank_1"
+  },
+  "artificer_crank_left_2.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "left",
+    "frame": "crank_2"
+  },
+  "artificer_crank_left_3.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "left",
+    "frame": "crank_3"
+  },
+  "artificer_crank_right_0.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "right",
+    "frame": "crank_0"
+  },
+  "artificer_crank_right_1.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "right",
+    "frame": "crank_1"
+  },
+  "artificer_crank_right_2.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "right",
+    "frame": "crank_2"
+  },
+  "artificer_crank_right_3.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "right",
+    "frame": "crank_3"
+  },
+  "artificer_crank_up_0.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "up",
+    "frame": "crank_0"
+  },
+  "artificer_crank_up_1.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "up",
+    "frame": "crank_1"
+  },
+  "artificer_crank_up_2.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "up",
+    "frame": "crank_2"
+  },
+  "artificer_crank_up_3.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "up",
+    "frame": "crank_3"
+  },
+  "hand_crank_bench_turn_0.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      94,
+      82
+    ],
+    "pivot": "bottom-center",
+    "footRow": 81,
+    "owner": "authored",
+    "palette": "legacy",
+    "readers": [
+      "HandCrankBench.SpriteFor",
+      "BuildingsLayer",
+      "SandboxNode"
+    ]
+  },
+  "hand_crank_bench_turn_1.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      94,
+      82
+    ],
+    "pivot": "bottom-center",
+    "footRow": 81,
+    "owner": "authored",
+    "palette": "legacy",
+    "readers": [
+      "HandCrankBench.SpriteFor",
+      "BuildingsLayer",
+      "SandboxNode"
+    ]
+  },
+  "hand_crank_bench_turn_2.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      94,
+      82
+    ],
+    "pivot": "bottom-center",
+    "footRow": 81,
+    "owner": "authored",
+    "palette": "legacy",
+    "readers": [
+      "HandCrankBench.SpriteFor",
+      "BuildingsLayer",
+      "SandboxNode"
+    ]
+  },
+  "hand_crank_bench_turn_3.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      94,
+      82
+    ],
+    "pivot": "bottom-center",
+    "footRow": 81,
+    "owner": "authored",
+    "palette": "legacy",
+    "readers": [
+      "HandCrankBench.SpriteFor",
+      "BuildingsLayer",
+      "SandboxNode"
+    ]
   }
 }

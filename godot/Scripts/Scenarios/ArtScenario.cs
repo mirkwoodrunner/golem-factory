@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using Godot;
+using GolemFactory.Buildings;
 using GolemFactory.ClockTower;
 using GolemFactory.Diagnostics;
 using GolemFactory.Economy;
@@ -160,6 +161,14 @@ namespace GolemFactory.Nodes.Scenarios
                     names.Add($"artificer_walk_{row}_{frame}.png");
                 }
                 names.Add($"artificer_stand_{row}.png");
+                for (int frame = 0; frame < ArtificerWalkAnimation.CrankFramesPerDirection; frame++)
+                {
+                    names.Add($"artificer_crank_{row}_{frame}.png");
+                }
+            }
+            for (int frame = 0; frame < HandCrankBench.TurnFrames; frame++)
+            {
+                names.Add("hand_crank_bench_turn_" + frame + ".png"); // HandCrankBench.SpriteFor
             }
             names.Add(GolemFrames.FallbackSprite);
             List<string> missing = names.Distinct().Where(n => !ResourceLoader.Exists("res://art/" + n)).ToList();

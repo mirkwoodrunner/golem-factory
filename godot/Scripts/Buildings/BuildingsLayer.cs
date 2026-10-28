@@ -113,6 +113,7 @@ namespace GolemFactory.Nodes
         private readonly PlaceableBelt _belt;
         private readonly PlaceableSteamPipe _pipe;
         private readonly PlaceableClockTower _tower;
+        private readonly HandCrankBench _bench;
         private Sprite2D _sprite;
         private readonly Dictionary<string, Texture2D> _itemTextures = new Dictionary<string, Texture2D>();
         private Texture2D _fallbackItem;
@@ -132,6 +133,7 @@ namespace GolemFactory.Nodes
             _belt = building.GetPart<PlaceableBelt>();
             _pipe = building.GetPart<PlaceableSteamPipe>();
             _tower = building.IsFixture ? building.GetPart<PlaceableClockTower>() : null;
+            _bench = building.GetPart<HandCrankBench>();
             Name = $"{building.name}_{building.Cell.x}_{building.Cell.y}";
             // The tower's FEET are its footprint's south edge, and a standing sprite's feet go on
             // its node's origin (y-sort compares origins): so the node moves there, not the picture.
@@ -262,6 +264,11 @@ namespace GolemFactory.Nodes
             if (_tower != null)
             {
                 RefreshTower(); // a stage completing, or the rope coming down, changes the picture
+            }
+            if (_bench != null)
+            {
+                // The wheel turns while the bench makes progress (HandCrankBench.SpriteFor).
+                SetSprite(_bench.SpriteFor(_entry?.Sprite ?? "ghost_placeholder"), centred: false);
             }
             if (_belt?.Segment != null)
             {

@@ -4,6 +4,7 @@ using System.Linq;
 using Godot;
 using GolemFactory.Buildings;
 using GolemFactory.Economy;
+using GolemFactory.Player;
 using GolemFactory.PunchCards;
 using GolemFactory.World;
 using CoreVector3 = GolemFactory.Compat.Vector3;
@@ -171,12 +172,35 @@ namespace GolemFactory.Nodes.Scenarios
             });
             Do("hold E", () => { Press(Key.E, true); return null; });
             Do("the handle turns", () => _world.StarterBench.IsCranking ? null : "holding E did not crank");
+            Do("he cranks, facing the bench, and its wheel turns", () =>
+            {
+                if (!_world.StarterBench.IsTurning)
+                {
+                    return "held, but the bench makes no progress (nothing to feed it?)";
+                }
+                int first = ArtificerWalkAnimation.ComputeCrankSpriteIndex(ArtificerFacing.Up, 0);
+                if (_player.SpriteIndex < first || _player.SpriteIndex >= first + ArtificerWalkAnimation.CrankFramesPerDirection)
+                {
+                    return $"sprite {_player.SpriteIndex}, not a crank frame facing up (from {first})";
+                }
+                var view = _player.GetTree().Root.FindChild("StarterHandCrankBench", true, false) as StarterBenchView;
+                if (view == null || !view.Shown.StartsWith("hand_crank_bench_turn_"))
+                {
+                    return $"the bench shows '{view?.Shown}', not a turning frame";
+                }
+                _log.Add($"cranking: sprite {_player.SpriteIndex}, bench '{view.Shown}'");
+                return null;
+            });
             Do("let go", () => { Press(Key.E, false); return null; });
             Do("the handle stops", () =>
             {
                 if (_world.StarterBench.IsCranking)
                 {
                     return "still cranking after release";
+                }
+                if (_player.SpriteIndex != ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Up))
+                {
+                    return $"sprite {_player.SpriteIndex} after letting go, not standing facing the bench";
                 }
                 _log.Add("bench: panel '" + _crank.Text.Split('\n')[0] + "', hold E cranks");
                 return null;

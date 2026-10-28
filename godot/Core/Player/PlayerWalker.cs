@@ -45,6 +45,9 @@ namespace GolemFactory.Player
         /// </summary>
         public int SpriteIndex { get; private set; }
 
+        /// <summary>Whether the last <see cref="MoveBy"/> covered ground.</summary>
+        public bool IsWalking { get; private set; }
+
         public bool HasFloorBounds => _bounded;
 
         /// <summary>Clamp every move to the world. <paramref name="northExtent"/> follows Floor Expansion.</summary>
@@ -76,10 +79,27 @@ namespace GolemFactory.Player
             float moved = (next - before).magnitude;
             Facing = ArtificerWalkAnimation.ComputeFacing(input.x, input.y, Facing);
             _distanceTravelled = ArtificerWalkAnimation.AdvanceDistance(_distanceTravelled, moved, StrideLength);
-            SpriteIndex = ArtificerWalkAnimation.IsWalking(moved)
+            IsWalking = ArtificerWalkAnimation.IsWalking(moved);
+            SpriteIndex = IsWalking
                 ? ArtificerWalkAnimation.ComputeSpriteIndex(
                     Facing, ArtificerWalkAnimation.ComputeFrameIndex(_distanceTravelled, StrideLength))
                 : ArtificerWalkAnimation.ComputeStandingSpriteIndex(Facing);
+        }
+
+        /// <summary>
+        /// After this frame's <see cref="MoveBy"/>: the player is turning a bench's crank, so he
+        /// faces the bench (at <paramref name="benchAt"/>) and shows its turn frame. Walking wins:
+        /// a frame that covered ground keeps its walk frame, and nothing changes.
+        /// </summary>
+        public void ShowCrank(Compat.Vector3 benchAt, int turnFrame)
+        {
+            if (IsWalking)
+            {
+                return;
+            }
+
+            Facing = ArtificerWalkAnimation.ComputeFacing(benchAt.x - Position.x, benchAt.y - Position.y, Facing);
+            SpriteIndex = ArtificerWalkAnimation.ComputeCrankSpriteIndex(Facing, turnFrame);
         }
     }
 }
