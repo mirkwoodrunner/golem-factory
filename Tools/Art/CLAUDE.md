@@ -31,7 +31,14 @@ python Tools/Art/check_art.py --write          # refresh the manifest's size and
 python -m unittest discover Tools/Art/tests    # the tools' own tests (no ComfyUI, no godot/art/ writes)
 python Tools/Art/golem_set.py <set> run        # a golem chassis' 28 frames: draft → … → review grid
 python Tools/Art/golem_set.py <set> install    # only after the user approves ("approved" in chassis.json)
+python Tools/Art/env_set.py <set dir> run      # floor, walls, props from today's art (the user runs it)
+python Tools/Art/env_set.py <set dir> pick     # then review; install only once set.json is "approved"
 ```
+
+- **Floor, walls and props are made with `env_set.py`** from `public/images/S2/set.json`: each
+  file's kind (`tile` seamless both ways, `strip` seamless sideways, `sprite` keyed), prompt and
+  ramps. A tile or strip gets a second pass that rolls it by half and redraws only the seam
+  (`comfy_redraw.py --mask`), so it still tiles. The user runs `run`, as with `golem_set.py`.
 
 - **A golem chassis is made with `golem_set.py`** (art-pipeline-design.md §5.10): its own
   settings in `public/images/S1/<chassis>/chassis.json`, its draft script beside it. It starts

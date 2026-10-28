@@ -1,0 +1,21 @@
+{
+  "set": "S2",
+  "note": "Pilot: one floor tile, the north wall and a crate, to settle the look before the other 19 files.",
+  "files": {
+    "floor_tile": {
+      "kind": "tile",
+      "prompt": "dark wooden floorboards seen from directly above, long horizontal planks, worn dark oak, a few nail heads",
+      "ramps": ["floor"]
+    },
+    "wall_segment_nw": {
+      "kind": "strip",
+      "prompt": "the back wall of a workshop seen from the front, dark red-brown brick above a wooden wainscot panel and skirting",
+      "ramps": ["mahogany", "outline", "floor"]
+    },
+    "prop_crate": {
+      "kind": "sprite",
+      "prompt": "a wooden storage crate with brass corner brackets, seen from the front and slightly above, plain green background",
+      "ramps": ["mahogany", "outline", "brass"]
+    }
+  }
+}

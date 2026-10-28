@@ -142,7 +142,11 @@ call): built, reviewed, critiqued and tested. Done:
      tried and rejected ("like a noodle floating on top of the sprite"): for any later
      figure, an arm drawn or rotated by script doesn't sit in an AI-rendered sprite; move
      the sprite's own pixels whole, or regenerate.
-   - Then floor and walls (S2), lighting (L), buildings, the Workbench, goods and the HUD, each
+   - **Floor and walls (S2) started** (2026-10-27): `Tools/Art/env_set.py` redraws them from
+     today's art (`comfy_redraw.py --mask` keeps tiles seamless). A pilot of three files
+     (`floor_tile`, `wall_segment_nw`, `prop_crate`, `public/images/S2/set.json`) settles the
+     look with the user before the other 19 are added.
+   - Then lighting (L), buildings, the Workbench, goods and the HUD, each
      with its own review sheet (`art-pipeline-design.md` §3).
    - Before Phase 4's test run: fix the windowed `hover` flake (`open-items.md` §4).
    Done so far: the specs and the user's thirteen calls (§9), the cleanup, `verify_art.py`'s

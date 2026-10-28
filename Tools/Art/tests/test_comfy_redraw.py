@@ -47,6 +47,16 @@ class WorkflowTests(unittest.TestCase):
         self.assertNotIn("IPAdapterAdvanced", classes(wf))
         check_graph(self, wf)
 
+    def test_a_mask_redraws_only_part_of_the_init(self):
+        wf = c.build_workflow("init.png", denoise=0.55, mask_image="mask.png")
+        self.assertEqual("SetLatentNoiseMask", wf["52"]["class_type"])
+        self.assertEqual(["41", 0], wf["52"]["inputs"]["samples"])
+        self.assertEqual("red", wf["51"]["inputs"]["channel"])
+        self.assertEqual(["52", 0], wf["8"]["inputs"]["latent_image"])
+        check_graph(self, wf)
+        with self.assertRaises(c.RedrawError):
+            c.build_workflow(txt2img=True, mask_image="mask.png")
+
     def test_txt2img_starts_from_an_empty_latent_at_full_denoise(self):
         wf = c.build_workflow(txt2img=True, width=512, height=768, denoise=0.5)
         self.assertIn("EmptyLatentImage", classes(wf))

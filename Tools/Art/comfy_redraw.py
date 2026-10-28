@@ -10,6 +10,7 @@ that needed it is done.
         [--reference <cleaned_south_base_8x.png> --ipadapter-model ip-adapter-plus_sdxl_vit-h.safetensors
          --clip-vision CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors --ipadapter-weight 0.7]
         [--txt2img --width 512 --height 768]
+        [--mask <mask_8x.png>]
     python Tools/Art/comfy_redraw.py ... --dry-run     # print the workflow, queue nothing
 
 The base workflow: LoadImage of --init, VAEEncode, KSampler (LCM, 8 steps, cfg 1.5,
@@ -22,6 +23,10 @@ CannyEdgePreprocessor on it first), ControlNetLoader of --control-model, and
 ControlNetApplyAdvanced on both the positive and the negative conditioning at
 --control-strength, from 0 to --control-end of the steps, with the VAE (this ComfyUI's
 ControlNetApplyAdvanced takes one).
+
+--mask redraws only part of --init: white is redrawn, black kept (SetLatentNoiseMask on the
+encoded init, core nodes only). env_set.py uses it to make a tile seamless: the tile rolled by
+half, so its old edges meet in a cross in the middle, and only that cross redrawn.
 
 --reference adds IP-Adapter (ComfyUI_IPAdapter_plus): IPAdapterModelLoader of
 --ipadapter-model, CLIPVisionLoader of --clip-vision, and IPAdapterAdvanced on the model at
@@ -77,7 +82,7 @@ def build_workflow(init_image=None, prompt=DEFAULT_PROMPT, negative=DEFAULT_NEGA
                    guide_image=None, control_model=None, control_strength=0.8, control_end=0.8,
                    guide_preprocess="none",
                    reference_image=None, ipadapter_model=None, clip_vision=None, ipadapter_weight=0.7,
-                   ipadapter_weight_type="style transfer",
+                   ipadapter_weight_type="style transfer", mask_image=None,
                    checkpoint=CHECKPOINT, vae=VAE, prefix="redraw"):
     """The API-format workflow for one candidate. Image arguments are names the server knows
     (as /upload/image returned them); width and height are the render size (the empty latent's
@@ -89,6 +94,8 @@ def build_workflow(init_image=None, prompt=DEFAULT_PROMPT, negative=DEFAULT_NEGA
         raise RedrawError("--reference needs --ipadapter-model and --clip-vision")
     if not txt2img and not init_image:
         raise RedrawError("image to image needs --init (or pass --txt2img)")
+    if mask_image and txt2img:
+        raise RedrawError("--mask redraws part of --init; it can't go with --txt2img")
 
     wf = {
         "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": checkpoint}},
@@ -111,6 +118,11 @@ def build_workflow(init_image=None, prompt=DEFAULT_PROMPT, negative=DEFAULT_NEGA
         wf["40"] = {"class_type": "LoadImage", "inputs": {"image": init_image}}
         wf["41"] = {"class_type": "VAEEncode", "inputs": {"pixels": ["40", 0], "vae": ["2", 0]}}
         latent = ["41", 0]
+        if mask_image:
+            wf["50"] = {"class_type": "LoadImage", "inputs": {"image": mask_image}}
+            wf["51"] = {"class_type": "ImageToMask", "inputs": {"image": ["50", 0], "channel": "red"}}
+            wf["52"] = {"class_type": "SetLatentNoiseMask", "inputs": {"samples": latent, "mask": ["51", 0]}}
+            latent = ["52", 0]
 
     if reference_image:
         wf["20"] = {"class_type": "IPAdapterModelLoader", "inputs": {"ipadapter_file": ipadapter_model}}
@@ -254,6 +266,7 @@ def main(argv):
     parser.add_argument("--ipadapter-weight", type=float, default=0.7)
     parser.add_argument("--ipadapter-weight-type", default="style transfer")
     parser.add_argument("--txt2img", action="store_true")
+    parser.add_argument("--mask")
     parser.add_argument("--width", type=int, default=512)
     parser.add_argument("--height", type=int, default=768)
     parser.add_argument("--url", default=URL)
@@ -268,24 +281,28 @@ def main(argv):
             raise RedrawError("--reference needs --ipadapter-model and --clip-vision")
         size = (args.width, args.height) if args.txt2img or not args.init else png_size(args.init)
         check_sizes(size, args.guide, args.reference)
+        if args.mask and png_size(args.mask) != size:
+            raise RedrawError(f"the mask is {png_size(args.mask)}, the render {size}")
         denoise = [float(d) for d in args.denoise.split(",") if d.strip()]
         plan = candidates(denoise, args.seeds, args.seed_base, args.txt2img)
         frame = os.path.basename(os.path.normpath(args.out))
         names = {}
         if not args.dry_run:
-            for key, path in (("init", None if args.txt2img else args.init), ("guide", args.guide), ("reference", args.reference)):
+            for key, path in (("init", None if args.txt2img else args.init), ("guide", args.guide),
+                              ("reference", args.reference), ("mask", args.mask)):
                 if path:
                     names[key] = upload(args.url, path, key)
         else:
             names = {k: os.path.basename(p) for k, p in (("init", args.init), ("guide", args.guide),
-                                                          ("reference", args.reference)) if p}
+                                                          ("reference", args.reference), ("mask", args.mask)) if p}
         os.makedirs(args.out, exist_ok=True)
         for d, seed in plan:
             wf = build_workflow(names.get("init"), args.prompt, args.negative, d, seed, args.txt2img,
                                 size[0], size[1], names.get("guide"), args.control_model,
                                 args.control_strength, args.control_end, args.guide_preprocess,
                                 names.get("reference"), args.ipadapter_model, args.clip_vision,
-                                args.ipadapter_weight, args.ipadapter_weight_type, prefix=f"redraw-{frame}")
+                                args.ipadapter_weight, args.ipadapter_weight_type, names.get("mask"),
+                                prefix=f"redraw-{frame}")
             target = os.path.join(args.out, f"{frame}_d{d:.2f}_s{seed}.png")
             if args.dry_run:
                 print(json.dumps(wf, indent=2))
