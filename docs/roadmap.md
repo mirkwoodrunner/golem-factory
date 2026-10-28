@@ -135,12 +135,21 @@ call): built, reviewed, critiqued and tested. Done:
      front's by `scripts/side_eye.py`; approved 2026-10-27); (3) more contrast
      in-game, done as a darker two-pixel outline (`scripts/outline.py`, approved 2026-10-27; a
      value and colour boost was offered and set aside for now); (4) a smoother walk, done (front and back passing poses with a foot lifted, a separate
-     standing pose a direction, stride 0.35 to 0.45; §9 decision 16). Then the cranking frames at the
-     hand-crank bench (agreed with the user): four per direction, shown while [E] is held at a
-     `HandCrankBench` (`IsCranking`), since the Workbench screen covers the world; made by
-     editing today's frames (the arms moved), not redrawn. In code: a working state in
-     `PlayerWalker` timed by the clock and facing the bench, `PlayerNode` loading 16 more sprites,
-     check_art, the manifest, the `art` scenario and a §9 entry.
+     standing pose a direction, stride 0.35 to 0.45; §9 decision 16). 
+   - **Next: the Artificer cranking at the hand-crank bench** (planned with the user
+     2026-10-27). Four frames in each of the four directions, made from today's frames by
+     moving the arms, the hand going round a small circle; draft one direction (right) and
+     get it approved before the other three. While cranking he faces the bench (Core picks
+     the facing from the bench's position). The frame is the bench's count of ticks that made
+     progress, modulo 4, so the crank turns with the work at any game speed and stops when it
+     stops: holding [E] at an unaffordable recipe stands still (the user's call). Walking
+     while [E] is held shows the walk; the cranking rules don't change. The bench's own
+     wheel turns too (the user's call): 3-4 frames of `hand_crank_bench.png`'s brass wheel,
+     shown only while it makes progress. In code: a progress-tick count on `HandCrankBench`,
+     a crank state in `PlayerWalker`, `ComputeCrankSpriteIndex` (sprites 20-35, 36 in all),
+     `PlayerNode` and `BuildingView` loading the frames, the `interact` scenario checking a
+     crank frame shows, tests, the manifest, check_art, the `art` scenario, a §9 entry and
+     a sixth script in `Tools/Art/CLAUDE.md`'s rebuild order.
    - Then floor and walls (S2), lighting (L), buildings, the Workbench, goods and the HUD, each
      with its own review sheet (`art-pipeline-design.md` §3).
    - Before Phase 4's test run: fix the windowed `hover` flake (`open-items.md` §4).
