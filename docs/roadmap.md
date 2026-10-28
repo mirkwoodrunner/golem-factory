@@ -133,7 +133,8 @@ call): built, reviewed, critiqued and tested. Done:
      (2) side-view faces made the same in every frame, done (`scripts/side_heads.py`:
      walking right's frame 2 head, mirrored for walking left, its eye redrawn to match the
      front's by `scripts/side_eye.py`; approved 2026-10-27); (3) more contrast
-     in-game; (4) a smoother walk (frames 0 and 2 are nearly alike; more swing). Then the cranking frames at the
+     in-game, done as a darker two-pixel outline (`scripts/outline.py`, approved 2026-10-27; a
+     value and colour boost was offered and set aside for now); (4) a smoother walk (frames 0 and 2 are nearly alike; more swing). Then the cranking frames at the
      hand-crank bench (agreed with the user): four per direction, shown while [E] is held at a
      `HandCrankBench` (`IsCranking`), since the Workbench screen covers the world; made by
      editing today's frames (the arms moved), not redrawn. In code: a working state in
