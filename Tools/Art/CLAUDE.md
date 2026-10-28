@@ -39,6 +39,8 @@ python Tools/Art/env_set.py <set dir> pick     # then review; install only once 
   file's kind (`tile` seamless both ways, `strip` seamless sideways, `sprite` keyed), prompt and
   ramps. A tile or strip gets a second pass that rolls it by half and redraws only the seam
   (`comfy_redraw.py --mask`), so it still tiles. The user runs `run`, as with `golem_set.py`.
+  A file may set its own `denoise`, `seeds`, `seedBase`, `seamDenoise` and `negativeExtra`: the
+  floor and wall drew objects into the tile at 0.35 and up, so they run at 0.15-0.3.
 
 - **A golem chassis is made with `golem_set.py`** (art-pipeline-design.md §5.10): its own
   settings in `public/images/S1/<chassis>/chassis.json`, its draft script beside it. It starts

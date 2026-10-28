@@ -50,6 +50,8 @@ DEFAULTS = {
     "picks": {},
     "approved": False,
 }
+# What a file's own entry in set.json may override; its "negativeExtra" is added to the negative.
+PER_FILE = ("denoise", "seeds", "seedBase", "seamDenoise")
 
 
 class EnvSet:
@@ -68,6 +70,14 @@ class EnvSet:
         except KeyError:
             raise AttributeError(key)
 
+    def setting(self, name, key):
+        """A file's own value for a PER_FILE key, else the set's."""
+        return self.files[name].get(key, self.config[key])
+
+    def negative_for(self, name):
+        extra = self.files[name].get("negativeExtra")
+        return self.negative + ", " + extra if extra else self.negative
+
     def dir(self, *parts):
         path = os.path.join(self.root, *parts)
         os.makedirs(os.path.dirname(path) if os.path.splitext(path)[1] else path, exist_ok=True)
@@ -79,10 +89,12 @@ class EnvSet:
     def candidates(self, name):
         """[(label, raw path)] in sheet order: every denoise over every seed, the seamed one for a tile."""
         out = []
-        for d, seed in comfy_redraw.candidates(self.denoise, self.seeds, self.seedBase):
+        seam = self.setting(name, "seamDenoise")
+        for d, seed in comfy_redraw.candidates(self.setting(name, "denoise"), self.setting(name, "seeds"),
+                                               self.setting(name, "seedBase")):
             raw = os.path.join(self.root, "raw", name, f"{name}_d{d:.2f}_s{seed}.png")
             if self.files[name]["kind"] in ("tile", "strip"):
-                raw = os.path.join(self.root, "raw", name + "_seam", f"{os.path.basename(raw)[:-4]}_seam_d{self.seamDenoise:.2f}_s{seed}.png")
+                raw = os.path.join(self.root, "raw", name + "_seam", f"{os.path.basename(raw)[:-4]}_seam_d{seam:.2f}_s{seed}.png")
             out.append((f"d{d:.2f} s{seed}", raw))
         return out
 
@@ -146,7 +158,7 @@ def step_source(es, log=print):
 def redraw(es, name, init, out, denoise, seeds, seed_base, mask=None):
     spec = es.files[name]
     args = ["--init", init, "--out", out, "--prompt", es.promptPrefix + spec["prompt"] + es.promptSuffix,
-            "--negative", es.negative, "--denoise", ",".join(str(d) for d in denoise),
+            "--negative", es.negative_for(name), "--denoise", ",".join(str(d) for d in denoise),
             "--seeds", str(seeds), "--seed-base", str(seed_base)]
     if mask:
         args += ["--mask", mask]
@@ -163,20 +175,21 @@ def step_run(es, only=None, log=print):
         for name in names:
             spec = es.files[name]
             raw_dir = es.dir("raw", name)
+            denoise, seeds, seed_base, seam = (es.setting(name, k) for k in PER_FILE)
             redraw(es, name, os.path.join(es.root, "source", f"{name}_8x.png"), raw_dir,
-                   es.denoise, es.seeds, es.seedBase)
+                   denoise, seeds, seed_base)
             if spec["kind"] not in ("tile", "strip"):
                 continue
             # The second pass, per candidate: roll it, then redraw only the seam.
             mask = os.path.join(es.root, "source", f"{name}_seam_mask.png")
-            for d, seed in comfy_redraw.candidates(es.denoise, es.seeds, es.seedBase):
+            for d, seed in comfy_redraw.candidates(denoise, seeds, seed_base):
                 stem = f"{name}_d{d:.2f}_s{seed}"
                 rolled = es.dir("raw", name + "_seam", "rolled", stem + ".png")
                 roll(Image.open(os.path.join(raw_dir, stem + ".png")).convert("RGB"), spec["kind"]).save(rolled)
                 out = es.dir("raw", name + "_seam", stem)
-                redraw(es, name, rolled, out, [es.seamDenoise], 1, seed, mask)
-                made = os.path.join(out, f"{stem}_d{es.seamDenoise:.2f}_s{seed}.png")
-                shutil.move(made, os.path.join(es.root, "raw", name + "_seam", f"{stem}_seam_d{es.seamDenoise:.2f}_s{seed}.png"))
+                redraw(es, name, rolled, out, [seam], 1, seed, mask)
+                made = os.path.join(out, f"{stem}_d{seam:.2f}_s{seed}.png")
+                shutil.move(made, os.path.join(es.root, "raw", name + "_seam", f"{stem}_seam_d{seam:.2f}_s{seed}.png"))
                 shutil.rmtree(out, ignore_errors=True)
             log(f"run: {name} done")
     log(f"run: {len(names)} files in {(time.time() - started) / 60:.1f} min")

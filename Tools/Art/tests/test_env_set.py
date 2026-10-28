@@ -58,6 +58,20 @@ class SetTests(unittest.TestCase):
         self.assertIn(os.path.join("raw", "prop_crate", "prop_crate_d"), es.candidates("prop_crate")[0][1])
         self.assertEqual(len(es.denoise) * es.seeds, len(es.candidates("prop_crate")))
 
+    def test_a_files_own_denoise_and_negative_override_the_sets(self):
+        root = self.write({"files": {"floor_tile": {"kind": "tile", "prompt": "p", "ramps": [],
+                                                    "denoise": [0.15, 0.22], "seamDenoise": 0.4,
+                                                    "negativeExtra": "gears"},
+                                     "prop_crate": {"kind": "sprite", "prompt": "p", "ramps": []}}})
+        es = e.EnvSet(root)
+        floor = es.candidates("floor_tile")
+        self.assertEqual(2 * es.seeds, len(floor))
+        self.assertIn("floor_tile_d0.15_s", floor[0][1])
+        self.assertTrue(floor[0][1].endswith(f"_seam_d0.40_s{es.seedBase}.png"))
+        self.assertTrue(es.negative_for("floor_tile").endswith(", gears"))
+        self.assertEqual(es.negative, es.negative_for("prop_crate"))
+        self.assertEqual(len(es.denoise) * es.seeds, len(es.candidates("prop_crate")))
+
     def test_an_unknown_kind_is_refused(self):
         root = self.write({"files": {"x": {"kind": "blob", "prompt": "p", "ramps": []}}})
         with self.assertRaises(e.SetError):
