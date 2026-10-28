@@ -7,7 +7,10 @@
     python Tools/Art/env_set.py <set dir> review            # today's room beside the picks' room
     python Tools/Art/env_set.py <set dir> install           # only once set.json says "approved"
 
-`<set dir>/set.json` names each file, its kind, prompt and ramps; `picks` records the chosen
+`<set dir>/set.json` names each file, its kind, prompt and ramps, and may name a `reference`
+(a file in godot/art/) whose style IP-Adapter carries into the redraw, for the set or per file;
+`review: "row"` lays the set's sprites out in a row on the floor instead of the room corner.
+`picks` records the chosen
 candidate per file (by its number on the file's sheet) and `approved` the user's pass. Working
 images stay in the set dir (gitignored); only `install` writes into godot/art/.
 
@@ -47,11 +50,19 @@ DEFAULTS = {
     "seedBase": 515151,
     "seamDenoise": 0.6,
     "seamWidth": 6,          # 1x pixels either side of the seam that the second pass redraws
+    "reference": None,       # a godot/art/ name: IP-Adapter carries its style into every redraw
+    "ipadapterModel": "ip-adapter-plus_sdxl_vit-h.safetensors",
+    "clipVision": "CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors",
+    "ipadapterWeight": 0.5,
+    "review": "room",
     "picks": {},
     "approved": False,
 }
 # What a file's own entry in set.json may override; its "negativeExtra" is added to the negative.
 PER_FILE = ("denoise", "seeds", "seedBase", "seamDenoise")
+PER_FILE_REFERENCE = ("reference", "ipadapterWeight")
+# The game's view at 1280x720 and the default zoom: half a viewport is 10 cells of 64 px.
+PLAY_SCALE = 360 / 640
 
 
 class EnvSet:
@@ -71,7 +82,7 @@ class EnvSet:
             raise AttributeError(key)
 
     def setting(self, name, key):
-        """A file's own value for a PER_FILE key, else the set's."""
+        """A file's own value for a PER_FILE or PER_FILE_REFERENCE key, else the set's."""
         return self.files[name].get(key, self.config[key])
 
     def negative_for(self, name):
@@ -144,9 +155,26 @@ def roll(image, kind):
     return out
 
 
+def reference_image(es, name, init_size):
+    """The file's reference on the key colour, at the largest whole scale up to 4x that fits
+    inside its render (comfy_redraw refuses a larger one); None when it has none."""
+    ref_name = es.setting(name, "reference")
+    if not ref_name:
+        return None
+    ref = m.load(os.path.join(ART, ref_name if ref_name.endswith(".png") else ref_name + ".png"))
+    scale = max(1, min(4, init_size[0] // ref.width, init_size[1] // ref.height))
+    ground = Image.new("RGBA", ref.size, KEY + (255,))
+    ground.alpha_composite(ref)
+    return ground.resize((ref.width * scale, ref.height * scale), Image.NEAREST).convert("RGB")
+
+
 def step_source(es, log=print):
     for name, spec in es.files.items():
-        init_image(es, name).save(es.dir("source", f"{name}_8x.png"))
+        init = init_image(es, name)
+        init.save(es.dir("source", f"{name}_8x.png"))
+        ref = reference_image(es, name, init.size)
+        if ref is not None:
+            ref.save(es.dir("source", f"{name}_ref.png"))
         if spec["kind"] in ("tile", "strip"):
             size = (es.today(name).width * SCALE, es.today(name).height * SCALE)
             seam_mask(size, spec["kind"], es.seamWidth * SCALE).save(es.dir("source", f"{name}_seam_mask.png"))
@@ -162,6 +190,10 @@ def redraw(es, name, init, out, denoise, seeds, seed_base, mask=None):
             "--seeds", str(seeds), "--seed-base", str(seed_base)]
     if mask:
         args += ["--mask", mask]
+    if es.setting(name, "reference"):
+        args += ["--reference", os.path.join(es.root, "source", f"{name}_ref.png"),
+                 "--ipadapter-model", es.ipadapterModel, "--clip-vision", es.clipVision,
+                 "--ipadapter-weight", str(es.setting(name, "ipadapterWeight"))]
     if comfy_redraw.main(args) != 0:
         raise SetError(f"comfy_redraw failed for {name}")
 
@@ -292,17 +324,49 @@ def room(get, width=8, depth=5):
     return out
 
 
+def row(get, names):
+    """The set's sprites side by side on the floor, feet on one line."""
+    floor = get("floor_tile")
+    sprites = [get(n) for n in names]
+    height = max(s.height for s in sprites) + 24
+    width = sum(s.width + 16 for s in sprites) + 16
+    out = Image.new("RGBA", (width, height))
+    for x in range(0, width, floor.width):
+        for y in range(0, height, floor.height):
+            out.alpha_composite(floor, (x, y))
+    x = 16
+    for s in sprites:
+        out.alpha_composite(s, (x, height - 12 - s.height))
+        x += s.width + 16
+    return out
+
+
+def at_play_size(image):
+    """As the game draws it at 1280x720 and the default zoom (nearest, like the renderer)."""
+    return image.resize((max(1, round(image.width * PLAY_SCALE)), max(1, round(image.height * PLAY_SCALE))),
+                        Image.NEAREST)
+
+
 def step_review(es, log=print):
-    before = room(es.today)
-    after = room(lambda n: picked(es, n) if n in es.files else es.today(n))
+    if es.review == "row":
+        names = [n for n, spec in es.files.items() if spec["kind"] == "sprite"]
+        before, after = row(es.today, names), row(lambda n: picked(es, n) if n in es.files else es.today(n), names)
+    else:
+        before = room(es.today)
+        after = room(lambda n: picked(es, n) if n in es.files else es.today(n))
     z = 2
-    out = Image.new("RGBA", (before.width * z * 2 + 24, before.height * z + 30), (52, 48, 56, 255))
+    small_b, small_a = at_play_size(before), at_play_size(after)
+    out = Image.new("RGBA", (before.width * z * 2 + 24, (before.height + small_b.height) * z + 66), (52, 48, 56, 255))
     draw = ImageDraw.Draw(out)
     out.alpha_composite(before.resize((before.width * z, before.height * z), Image.NEAREST), (0, 30))
     out.alpha_composite(after.resize((after.width * z, after.height * z), Image.NEAREST), (before.width * z + 24, 30))
     draw.text((4, 8), "today", fill=(255, 230, 120, 255))
     draw.text((before.width * z + 28, 8), "picks: " + ", ".join(f"{n} #{es.picks.get(n)}" for n in es.files),
               fill=(255, 230, 120, 255))
+    y = before.height * z + 60
+    draw.text((4, y - 22), "at play size (1280x720, default zoom), shown 2x", fill=(255, 230, 120, 255))
+    out.alpha_composite(small_b.resize((small_b.width * z, small_b.height * z), Image.NEAREST), (0, y))
+    out.alpha_composite(small_a.resize((small_a.width * z, small_a.height * z), Image.NEAREST), (before.width * z + 24, y))
     path = es.dir("review.png")
     out.save(path)
     log(f"review: {path}")

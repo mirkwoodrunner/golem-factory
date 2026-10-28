@@ -44,6 +44,8 @@ python Tools/Art/env_set.py <set dir> pick     # then review; install only once 
   **S2 was closed with nothing installed** (art-pipeline-design.md §9, decision 18): at the
   game's half-size view a redraw's texture vanishes, and a tile repeats whatever it adds. Weigh
   that before redrawing any small or repeating environment sprite.
+  A set may name a `reference` (IP-Adapter, as the golem sets use the cart): S3's buildings are
+  redrawn toward `steam_boiler`. `review` also draws both sides at play size (1280x720, default zoom).
 
 - **A golem chassis is made with `golem_set.py`** (art-pipeline-design.md §5.10): its own
   settings in `public/images/S1/<chassis>/chassis.json`, its draft script beside it. It starts

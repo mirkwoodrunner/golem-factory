@@ -72,6 +72,21 @@ class SetTests(unittest.TestCase):
         self.assertEqual(es.negative, es.negative_for("prop_crate"))
         self.assertEqual(len(es.denoise) * es.seeds, len(es.candidates("prop_crate")))
 
+    def test_a_reference_fits_inside_the_render_at_a_whole_scale(self):
+        root = self.write({"reference": "steam_boiler", "files": {
+            "slag_heap": {"kind": "sprite", "prompt": "p", "ramps": []},
+            "x": {"kind": "sprite", "prompt": "p", "ramps": [], "reference": None}}})
+        es = e.EnvSet(root)
+        init = (68 * 8, 44 * 8)
+        ref = e.reference_image(es, "slag_heap", init)
+        self.assertLessEqual(ref.width, init[0])
+        self.assertLessEqual(ref.height, init[1])
+        self.assertEqual(0, ref.height % 114, "a whole multiple of the boiler's 114 rows")
+        self.assertIsNone(e.reference_image(es, "x", init), "a file can opt out")
+
+    def test_the_play_size_view_is_the_default_zoom_at_720p(self):
+        self.assertEqual((36, 54), e.at_play_size(Image.new("RGBA", (64, 96))).size)
+
     def test_an_unknown_kind_is_refused(self):
         root = self.write({"files": {"x": {"kind": "blob", "prompt": "p", "ramps": []}}})
         with self.assertRaises(e.SetError):
