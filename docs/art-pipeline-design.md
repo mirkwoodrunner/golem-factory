@@ -849,7 +849,7 @@ Three things the roadmap asks for: sconces that light the floor, a warm room tin
 glows. All of it in the GL Compatibility renderer, with no normal maps (an AI redraw can't be
 given consistent ones) and no light occluders (cost).
 
-**Built on 2026-10-28, awaiting the user's look** (§6.5 says what changed from this plan):
+**Built and approved by the user on 2026-10-28** ("It looks good") (§6.5 says what changed from this plan):
 `Core/World/LightingRules`, `LightingRulesTests`, the warm ambient, banded pools
 (`Scripts/World/LightTexture`), a glow on every boiler, the `world` and `golems` checks, and
 `perf`'s `unlit` phase. Measured windowed at the endgame load: the lighting costs **0.27 ms**
