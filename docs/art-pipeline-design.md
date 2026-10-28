@@ -246,7 +246,7 @@ Workbench; goods; the HUD.
 | — | **Cleanup** (§3.1) | Delete the 26 unused files | Before S1, so nothing unused is redrawn or listed |
 | S1 | **Golems** | 5 chassis × 28 frame files (140), the fallback `golem_generic_copper` | Most watched, weakest today, and the moods depend on them |
 | S1b | **The Artificer** | 16 walk frames | Always on screen, and the other RetroDiffusion art (decision 5) |
-| S2 | **Floor and walls** | Floor and street tiles, edges, walls, posts, props, `ground_shadow` | The ground everything is judged against; the lighting is tuned on it |
+| S2 | **Floor and walls** | Floor and street tiles, edges, walls, posts, props, `ground_shadow` | **Closed, nothing replaced** (decision 18): today's art stays |
 | L | **Lighting** (§6) | No art files; `LightingRules`, `ShellNode`, boiler glow, hot pipe variants | Right after S2, so later sets are reviewed under the final light |
 | S3 | **Buildings** | Depot, station, Post, mast, recycler, slag heap, boiler, bench, belt tiles, pipe pieces (+ hot variants) | Carts and tower are done |
 | S4 | **The Workbench** | Lever housing, display face, card faces, panels | The core verb's screen |
@@ -397,6 +397,10 @@ step 3). A mirrored walk cycle swaps the leading leg, which reads as walking the
 
 The lamp wall's painted sconce sits where `ShellNode` puts the light
 (`LampLightInsetCells` −0.25 below the wall's anchor); a redraw keeps the flame in the same column.
+
+**Closed on 2026-10-28 with every file above unchanged** (decision 18). The pilot's renders and
+picks stay in `public/images/S2/` (`set.json` records them), and `Tools/Art/env_set.py` stays for
+any later environment redraw.
 
 ### S3 Buildings
 
@@ -1133,3 +1137,17 @@ Each records the decision and, where it differs, what this document first recomm
     while [E] is held shows the walk. *First recommended:* drawn cranking arms; a scripted
     arm looked "like a noodle floating on top of the sprite" (the user), the sprite's own arm
     rotated fell apart, and turning the wheel's pixels dragged the tabletop into its spokes.
+18. **S2 is closed with today's floor, walls and props unchanged** (the user, 2026-10-28). A
+    pilot of three files (`floor_tile`, `wall_segment_nw`, `prop_crate`) was redrawn in
+    ComfyUI from today's art by `env_set.py`, nine candidates each, then the floor and wall
+    again lighter (denoise 0.15-0.3, objects in the negative prompt). The floor never worked:
+    even at 0.15 the model drew marks, brackets or machines into the boards, and a 64 px tile
+    repeats each one across the room. The wall at 0.15 (#3) was clean, and crate #3 (0.35) was
+    the user's pick, but in the game, drawn at about half size, the redraw's detail vanished:
+    the crate read paler and flatter than today's, with its dark corner fittings mostly lost,
+    and the wall would differ little. So nothing was installed and the other 19 files were not
+    started; the effort goes to lighting (L) next. A wall redraw would also have to remake
+    `wall_segment_nw_lamp` (today's sconce laid on the new wall, which joins cleanly). If the
+    props should stand out more later, pixel edits to today's sprites (outlines, top-edge
+    highlights) show at play size where a redraw's texture doesn't. *First recommended:* the
+    pilot, then the other 19 files the same way.

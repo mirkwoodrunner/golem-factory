@@ -41,6 +41,9 @@ python Tools/Art/env_set.py <set dir> pick     # then review; install only once 
   (`comfy_redraw.py --mask`), so it still tiles. The user runs `run`, as with `golem_set.py`.
   A file may set its own `denoise`, `seeds`, `seedBase`, `seamDenoise` and `negativeExtra`: the
   floor and wall drew objects into the tile at 0.35 and up, so they run at 0.15-0.3.
+  **S2 was closed with nothing installed** (art-pipeline-design.md §9, decision 18): at the
+  game's half-size view a redraw's texture vanishes, and a tile repeats whatever it adds. Weigh
+  that before redrawing any small or repeating environment sprite.
 
 - **A golem chassis is made with `golem_set.py`** (art-pipeline-design.md §5.10): its own
   settings in `public/images/S1/<chassis>/chassis.json`, its draft script beside it. It starts
