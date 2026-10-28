@@ -275,5 +275,37 @@ namespace GolemFactory.Tests.EditMode
         {
             Assert.AreEqual(0, ArtificerWalkAnimation.ComputeSpriteIndex((ArtificerFacing)99, 0));
         }
+
+        // --- ComputeStandingSpriteIndex: the four standing poses after the walk frames ---------
+
+        [Test]
+        public void ComputeStandingSpriteIndex_FollowsTheWalkFramesInFacingOrder()
+        {
+            Assert.AreEqual(16, ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Down));
+            Assert.AreEqual(17, ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Left));
+            Assert.AreEqual(18, ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Right));
+            Assert.AreEqual(19, ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Up));
+            Assert.AreEqual(ArtificerWalkAnimation.SpriteCount - 1,
+                ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Up));
+        }
+
+        [Test]
+        public void ComputeStandingSpriteIndex_NeverAWalkFrame()
+        {
+            // Frames 0 and 2 of the front and back walks lift a foot; standing on one would show it.
+            foreach (ArtificerFacing facing in new[]
+                     { ArtificerFacing.Down, ArtificerFacing.Left, ArtificerFacing.Right, ArtificerFacing.Up })
+            {
+                Assert.GreaterOrEqual(
+                    ArtificerWalkAnimation.ComputeStandingSpriteIndex(facing),
+                    ArtificerWalkAnimation.DirectionCount * ArtificerWalkAnimation.FramesPerDirection);
+            }
+        }
+
+        [Test]
+        public void ComputeStandingSpriteIndex_UnknownFacing_StandsFacingDown()
+        {
+            Assert.AreEqual(16, ArtificerWalkAnimation.ComputeStandingSpriteIndex((ArtificerFacing)99));
+        }
     }
 }

@@ -10,7 +10,7 @@ namespace GolemFactory.Tests.Player
     /// Ported from Unity's PlayMode ArtificerWalkAnimatorTests onto <see cref="PlayerWalker"/>.
     /// Unity's tests named the sprite on the renderer; here they name the frame INDEX the walker
     /// picks, which is the same thing one step earlier -- PlayerNode draws frame[SpriteIndex].
-    /// UnwiredFrames_LeaveTheSpriteAlone is retired: the Godot node loads its sixteen frames from
+    /// UnwiredFrames_LeaveTheSpriteAlone is retired: the Godot node loads its twenty sprites from
     /// res://art at startup, so there is no half-wired frame array to guard against.
     /// </summary>
     public class ArtificerWalkAnimatorTests
@@ -24,7 +24,7 @@ namespace GolemFactory.Tests.Player
             walker.MoveBy(Vector2.zero, 0.1f);
 
             Assert.AreEqual(
-                ArtificerWalkAnimation.ComputeSpriteIndex(ArtificerFacing.Down, ArtificerWalkAnimation.StandingFrameIndex),
+                ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Down),
                 walker.SpriteIndex);
         }
 
@@ -92,7 +92,7 @@ namespace GolemFactory.Tests.Player
             walker.MoveBy(Vector2.zero, 0.1f);
 
             Assert.AreEqual(
-                ArtificerWalkAnimation.ComputeSpriteIndex(ArtificerFacing.Right, ArtificerWalkAnimation.StandingFrameIndex),
+                ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Right),
                 walker.SpriteIndex,
                 "stopping should stand, still facing the way he was walking");
         }
@@ -114,7 +114,7 @@ namespace GolemFactory.Tests.Player
                 walker.MoveBy(Vector2.right, 0.1f);
 
                 Assert.AreEqual(
-                    ArtificerWalkAnimation.ComputeSpriteIndex(ArtificerFacing.Right, ArtificerWalkAnimation.StandingFrameIndex),
+                    ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Right),
                     walker.SpriteIndex,
                     "pressing into a bound must face him at it without walking him on the spot");
             }

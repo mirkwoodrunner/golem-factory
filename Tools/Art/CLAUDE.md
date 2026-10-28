@@ -122,19 +122,19 @@ If an image-generation MCP server is configured in the user's global Claude conf
   sags in the stall), the `ropes` and the `cargo` bundle drawn fresh per frame. From the north
   the arms are under the body (the shoulders cover their roots), and fists that hold the bundle
   in front are clipped by the body and legs in the draft; raised or hanging ones show.
-- **The Artificer's 16 walk frames in `godot/art/` are today's originals**, not a redraw. A
-  `golem_set.py` redraw (`public/images/S1b/artificer/`, `"kind": "artificer"`, today's head
-  traced in) was installed and then rejected by the user on 2026-10-26 as worse overall
-  (`art-pipeline-design.md` §9, decision 15). Don't install that set. Changes to the Artificer
-  edit today's own pixels (`source/today/`, gitignored: restore with
-  `git show 906d389:godot/art/<name>`). The shipped frames have had their stray shirt-green
-  specks cleaned (`scripts/clean_today.py`, approved 2026-10-27; 221 pixels); rerun it from
-  `source/today/` into `godot/art/` to reproduce them. The side views then share one head
-  (`scripts/side_heads.py <in> <out> right=2 left=mirror:2`, approved 2026-10-27): walking
-  right's frame 2 head in all four right frames, and mirrored into all four left frames, so
-  the face no longer changes frame to frame. Before that, `scripts/side_eye.py` redraws that
-  head's eye to match the front view's (a 3-pixel iris with the white behind it; approved
-  2026-10-27). Last, `scripts/outline.py` paints the silhouette's outer two pixels a near-black
-  plum (1c1422) so the figure stands off the wooden floor at in-game size (approved
-  2026-10-27). The order is clean_today, side_eye on right frame 2, side_heads, outline. With a
-  one-colour outline the edge-light score is 0, so all 16 frames warn on check 14; expected.
+- **The Artificer's 20 sprites in `godot/art/` are today's originals, adjusted**, not a redraw.
+  A `golem_set.py` redraw (`public/images/S1b/artificer/`, `"kind": "artificer"`) was installed
+  and then rejected by the user on 2026-10-26 as worse overall (`art-pipeline-design.md` §9,
+  decision 15). Don't install that set. Changes edit today's own pixels (`source/today/`,
+  gitignored: restore with `git show 906d389:godot/art/<name>`), each approved by the user on
+  2026-10-27 (decision 16). To rebuild, run these scripts from `scripts/` in order, each from
+  the last one's output:
+  1. `clean_today.py`: recolours the stray shirt-green specks (221 pixels).
+  2. `side_eye.py` on `artificer_walk_right_2.png`: the profile eye redrawn to match the front's.
+  3. `side_heads.py <in> <out> right=2 left=mirror:2`: that head in all four right frames and,
+     mirrored, all four left frames, so the face no longer changes frame to frame.
+  4. `outline.py`: the silhouette's outer two pixels near-black plum (1c1422), so the figure
+     stands off the wooden floor at in-game size.
+  5. `walk_feet.py`: copies each frame 0 to `artificer_stand_<facing>.png` (the standing pose),
+     then lifts a foot 3 px in the front and back walks' frames 0 and 2 (passing poses).
+  With a one-colour outline the edge-light score is 0, so all 20 warn on check 14; expected.

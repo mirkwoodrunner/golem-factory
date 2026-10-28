@@ -53,7 +53,7 @@ namespace GolemFactory.Nodes
 
         private static readonly GridCoordinateConverter UnitConverter = new GridCoordinateConverter(new CoreVector2(1f, 1f));
 
-        private readonly Texture2D[] _frames = new Texture2D[ArtificerWalkAnimation.DirectionCount * ArtificerWalkAnimation.FramesPerDirection];
+        private readonly Texture2D[] _frames = new Texture2D[ArtificerWalkAnimation.SpriteCount];
         private Sprite2D _sprite;
         private PlayerWalker _walker;
         private PlayerInteractor _interactor;
@@ -78,9 +78,11 @@ namespace GolemFactory.Nodes
                     _frames[ArtificerWalkAnimation.ComputeSpriteIndex((ArtificerFacing)row, frame)] =
                         GD.Load<Texture2D>($"res://art/artificer_walk_{rows[row]}_{frame}.png");
                 }
+                _frames[ArtificerWalkAnimation.ComputeStandingSpriteIndex((ArtificerFacing)row)] =
+                    GD.Load<Texture2D>($"res://art/artificer_stand_{rows[row]}.png");
             }
 
-            _sprite = new Sprite2D { Texture = _frames[0] };
+            _sprite = new Sprite2D { Texture = _frames[ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Down)] };
             GridConversions.StandOnCell(_sprite);
             AddChild(_sprite);
             if (OwnCamera)

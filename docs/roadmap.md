@@ -134,11 +134,12 @@ call): built, reviewed, critiqued and tested. Done:
      walking right's frame 2 head, mirrored for walking left, its eye redrawn to match the
      front's by `scripts/side_eye.py`; approved 2026-10-27); (3) more contrast
      in-game, done as a darker two-pixel outline (`scripts/outline.py`, approved 2026-10-27; a
-     value and colour boost was offered and set aside for now); (4) a smoother walk (frames 0 and 2 are nearly alike; more swing). Then the cranking frames at the
+     value and colour boost was offered and set aside for now); (4) a smoother walk, done (front and back passing poses with a foot lifted, a separate
+     standing pose a direction, stride 0.35 to 0.45; §9 decision 16). Then the cranking frames at the
      hand-crank bench (agreed with the user): four per direction, shown while [E] is held at a
      `HandCrankBench` (`IsCranking`), since the Workbench screen covers the world; made by
      editing today's frames (the arms moved), not redrawn. In code: a working state in
-     `PlayerWalker` timed by the clock and facing the bench, `PlayerNode` loading 32 frames,
+     `PlayerWalker` timed by the clock and facing the bench, `PlayerNode` loading 16 more sprites,
      check_art, the manifest, the `art` scenario and a §9 entry.
    - Then floor and walls (S2), lighting (L), buildings, the Workbench, goods and the HUD, each
      with its own review sheet (`art-pipeline-design.md` §3).

@@ -159,6 +159,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     names.Add($"artificer_walk_{row}_{frame}.png");
                 }
+                names.Add($"artificer_stand_{row}.png");
             }
             names.Add(GolemFrames.FallbackSprite);
             List<string> missing = names.Distinct().Where(n => !ResourceLoader.Exists("res://art/" + n)).ToList();

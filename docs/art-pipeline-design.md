@@ -371,8 +371,8 @@ brass highlight and the fire ramp (decision 1).
 
 | File | Size | Owner | Frames | Reads |
 |---|---|---|---|---|
-| `artificer_walk_{down,up,right}_{0..3}.png` (12) | 64 × 93 each | RetroDiffusion concept sheet, sliced by `slice_artificer_walk.py`; redrawn through ComfyUI | 3 × 4 drawn | `PlayerNode` builds the names; `ArtificerWalkAnimation` (4 directions, 4 frames, stride 0.35 cells) |
-| `artificer_walk_left_{0..3}.png` (4) | 64 × 93 each | the same; then made by `reshade_mirror.py` from `right` | 4 mirrored | same |
+| `artificer_walk_{down,left,right,up}_{0..3}.png` (16) | 64 × 93 each | RetroDiffusion concept sheet, sliced by `slice_artificer_walk.py`; adjusted by `public/images/S1b/artificer/scripts/` (decision 16) | 4 × 4 | `PlayerNode` builds the names; `ArtificerWalkAnimation` (4 directions, 4 frames, stride 0.45 cells) |
+| `artificer_stand_{down,left,right,up}.png` (4) | 64 × 93 each | each walk's frame 0 before its foot was lifted (`walk_feet.py`) | 1 a direction | `PlayerNode`; `ComputeStandingSpriteIndex` |
 
 Frame 0 of each direction is that direction's base; frames 1–3 are pose guides from it (§2,
 step 3). A mirrored walk cycle swaps the leading leg, which reads as walking the other way.
@@ -1111,3 +1111,14 @@ Each records the decision and, where it differs, what this document first recomm
     overall" than the original, and the original 16 frames were restored. Adjustments to the
     Artificer, and its cranking frames, are planned with the user and made from today's own
     pixels, keeping the original's charm. *First recommended:* the redraw (S1b in §3).
+16. **The Artificer's adjustments, from its own pixels** (the user, 2026-10-27, each shown and
+    approved): stray shirt-green specks cleaned; the side views share one head (walking
+    right's frame 2, mirrored for walking left), its eye redrawn to match the front's; a
+    near-black plum outline two pixels thick, chosen over a value-and-colour boost; the
+    front and back walks' frames 0 and 2 made passing poses (a foot lifted 3 px), with a
+    separate standing pose per direction so standing never shows a lifted foot; and the
+    stride raised from 0.35 to 0.45 cells, about nine frames a second instead of eleven. The
+    side walks keep standing in-between frames: their legs are one block there, and lifting a
+    foot would mean drawing new legs. The scripts are in `public/images/S1b/artificer/scripts/`;
+    `Tools/Art/CLAUDE.md` gives their order. *First recommended:* as done, the outline
+    over the boost.

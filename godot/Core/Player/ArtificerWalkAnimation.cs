@@ -32,14 +32,21 @@ namespace GolemFactory.Player
         public const int DirectionCount = 4;
         public const int FramesPerDirection = 4;
 
-        // Shown whenever the Artificer isn't moving. Deliberately a named constant rather than
-        // "hold the last walking frame", which leaves him frozen mid-stride on every stop.
+        // The walk frame a cycle starts on, and what ComputeFrameIndex falls back to on bad input.
+        // Standing still does NOT show it: frames 0 and 2 of the front and back walks are passing
+        // poses with a foot lifted, so a stop shows the standing pose (ComputeStandingSpriteIndex)
+        // rather than "hold the last walking frame", which would freeze him mid-stride.
         public const int StandingFrameIndex = 0;
 
+        // Every sprite the Artificer has: four walk frames a direction, then one standing pose a
+        // direction (artificer_stand_<row>.png), in ArtificerFacing's order.
+        public const int SpriteCount = DirectionCount * (FramesPerDirection + 1);
+
         // World units of travel per frame step. At the authored PPU of 64 the Artificer is one
-        // world unit wide, so this is a stride of just over a third of his own width -- fast
-        // enough to read as walking at the 4 u/s default move speed without buzzing.
-        public const float DefaultStrideLength = 0.35f;
+        // world unit wide, so this is a stride of just under half his own width: about nine frames
+        // a second at the 4 u/s default move speed. It was 0.35 (eleven a second), which the user
+        // and the art review found read as a shuffle (2026-10-27).
+        public const float DefaultStrideLength = 0.45f;
 
         // Below this much movement in a frame he counts as standing. Not a tuning knob -- it only
         // has to sit above float noise in a transform subtraction and below the ~0.067 units a
@@ -141,6 +148,19 @@ namespace GolemFactory.Player
             }
 
             return (row * FramesPerDirection) + frame;
+        }
+
+        // The standing pose's index, after the sixteen walk frames. An out-of-range facing stands
+        // facing down, as ComputeSpriteIndex walks down.
+        public static int ComputeStandingSpriteIndex(ArtificerFacing facing)
+        {
+            int row = (int)facing;
+            if (row < 0 || row >= DirectionCount)
+            {
+                row = (int)ArtificerFacing.Down;
+            }
+
+            return (DirectionCount * FramesPerDirection) + row;
         }
     }
 }

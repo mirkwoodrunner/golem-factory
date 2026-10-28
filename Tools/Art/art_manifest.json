@@ -6255,5 +6255,77 @@
     "facing": "west",
     "source": "public/images/S1/zeppelin_freight_loader/",
     "mirroredFrom": "chassis_zeppelin_freight_loader_carry_east.png"
+  },
+  "artificer_stand_down.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "down",
+    "frame": "stand"
+  },
+  "artificer_stand_left.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "left",
+    "frame": "stand"
+  },
+  "artificer_stand_right.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "right",
+    "frame": "stand"
+  },
+  "artificer_stand_up.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "up",
+    "frame": "stand"
   }
 }
