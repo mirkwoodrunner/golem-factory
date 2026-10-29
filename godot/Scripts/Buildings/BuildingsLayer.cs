@@ -118,6 +118,9 @@ namespace GolemFactory.Nodes
         private Sprite2D _sprite;
         private PointLight2D _glow;
 
+        /// <summary>A pipe piece's picture while it carries steam (LightingRules.PipeHot).</summary>
+        public static string HotPipe(string name) => name + "_hot";
+
         // Where steam_boiler.png's firebox is, in the picture's own pixels.
         private static readonly Vector2 BoilerFireboxPixel = new Vector2(31f, 76f);
         private readonly Dictionary<string, Texture2D> _itemTextures = new Dictionary<string, Texture2D>();
@@ -225,7 +228,8 @@ namespace GolemFactory.Nodes
 
             if (_pipe != null)
             {
-                // Five pieces cover all sixteen neighbour masks, each authored East.
+                // Five pieces cover all sixteen neighbour masks, each authored East; each has a
+                // hot picture, worn while a fuelled boiler feeds it (LightingRules.PipeHot).
                 string role = _pipe.Shape switch
                 {
                     PipeShape.Straight => "straight",
@@ -234,7 +238,8 @@ namespace GolemFactory.Nodes
                     PipeShape.Cross => "cross",
                     _ => "end",
                 };
-                SetSprite(Shape(role, "steam_pipe"), centred: true);
+                string piece = Shape(role, "steam_pipe");
+                SetSprite(PipeIsHot() ? HotPipe(piece) : piece, centred: true);
                 _sprite.Rotation = GridConversions.FacingToRotation(_pipe.ShapeOrientation);
                 return;
             }
@@ -265,6 +270,13 @@ namespace GolemFactory.Nodes
             _sprite.Texture = GD.Load<Texture2D>("res://art/" + name + ".png");
             _sprite.Centered = false;
             _sprite.Offset = new Vector2(-ClockTowerArt.CanvasWidth / 2f, -ClockTowerArt.CanvasHeight);
+        }
+
+        private bool PipeIsHot()
+        {
+            SandboxWorld sandbox = _world.Sandbox;
+            return sandbox != null && _pipe.IsRegistered
+                && LightingRules.PipeHot(sandbox.Steam.CarriesSteam(_pipe.Cell, sandbox.Clock.CurrentTick));
         }
 
         private string Shape(string role, string fallback) =>
@@ -304,6 +316,10 @@ namespace GolemFactory.Nodes
             if (_glow != null)
             {
                 RefreshGlow();
+            }
+            if (_pipe != null)
+            {
+                RefreshShape(); // hot or cold follows the boilers' Coke, which no shape change reports
             }
             if (_belt?.Segment != null)
             {

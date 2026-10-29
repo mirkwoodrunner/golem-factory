@@ -17,7 +17,8 @@ Current scenarios:
 - `golems` (Sandbox): every chassis built, and every `AppendageActionType` run on real steam:
   extract, haul, push, load, assemble plus repeat, refine, and freight. A golem out of steam
   must stall and wear its badge. Each boiler glows by `LightingRules.BoilerGlow`, and one
-  run dry goes dark a frame later. Each golem draws its own chassis's frame for what it is doing,
+  run dry goes dark a frame later; every pipe wears its `_hot` picture exactly while it carries
+  steam (`LightingRules.PipeHot`), so that boiler's run goes cold and a loose pipe never warms. Each golem draws its own chassis's frame for what it is doing,
   in its facing (`GolemFrames.Resolve`; the south base while a chassis has no frames).
 - `golem-motion` (Sandbox): every chassis at its signature verb on steam, side by side on the
   street and zoomed in, with stocks fed and drained so none stops. Each body must make its

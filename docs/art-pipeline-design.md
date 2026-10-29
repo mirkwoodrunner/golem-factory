@@ -416,7 +416,7 @@ any later environment redraw.
 | `hand_crank_bench.png` | 94 × 82 | authored | `placeables.json` |
 | `hand_crank_bench_turn_{0..3}.png` (4) | 94 × 82 each | `hand_crank_bench.png` with rim glints (`crank_frames.py`, decision 17) | `HandCrankBench.SpriteFor`, while it turns |
 | `belt_tile.png`, `belt_tile_corner_left.png`, `belt_tile_corner_right.png`, `belt_splitter.png` | 64 × 64 | Gen topdown | `placeables.json` shape sprites, `BeltRun`, `BuildingsLayer` (centred, rotated) |
-| `steam_pipe.png`, `_corner`, `_cross`, `_end`, `_tee` | 64 × 64 | Gen building | `BuildingsLayer` (centred, rotated); hot variants added by §6 |
+| `steam_pipe.png`, `_corner`, `_cross`, `_end`, `_tee` | 64 × 64 | Gen building | `BuildingsLayer` (centred, rotated); each has a `_hot` twin (§6.5) |
 | `stall_*.png` (5), `clock_tower_*.png` (6) | 96 × 120, 192 × 640 | hand-replaced | Done; not in this set |
 | `ghost_placeholder.png` | 64 × 64 | authored | `BuildingsLayer` fallback, `fallbackItemSprite` |
 
@@ -941,8 +941,15 @@ banded texture's size, then boiler glows altogether (the hot pipes stay, as they
   `TargetTint`), so the test reads the colours the game draws.
 - **No unshaded flame.** `CanvasModulate` tints unshaded items too, so the material would not
   keep it bright; the flame sits inside its own lamp's pool, which lights it above the ambient.
-- **No hot pipes yet.** `LightingRules.PipeHot` is in and tested; the five hot pictures come
-  with the buildings (S3), and `BuildingsLayer` swaps to them then.
+- **The hot pipes** (2026-10-29, approved by the user): `steam_pipe*_hot.png`, five pictures
+  `generate_building_art.py` draws from the cold pieces' geometry with `hot=True`: the brass
+  pushed toward the fire ramp, a two-pixel highlight (#ffe08a over #f0a040) along the bore,
+  glowing collars, rivets and hub seams, and the end piece's gauge needle swung over. Fire ramp
+  only, no red. `BuildingView` swaps a pipe to `HotPipe(piece)` by `PipeHot` every frame (Coke
+  running out reports no shape change); the `golems` scenario drains a spare boiler and checks
+  its run goes cold while every pipe matches the rule, and a loose pipe stays cold. **No
+  unshaded material**: as with the flame, `CanvasModulate` would tint it anyway, so the pixels
+  carry the glow.
 - **A pipe is hot only while a fuelled boiler feeds it** (the user's call, at the S3 hot-pipe
   review). The plan read "where steam reaches", the guide's answer, which ignores Coke; a dark
   boiler beside glowing pipes said the opposite of its firebox. `SteamNetwork.CarriesSteam`

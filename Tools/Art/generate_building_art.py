@@ -136,6 +136,14 @@ PIPE_HALF = 11          # half the bore's width, so the run is 22px across
 PIPE_COLLAR = 16        # half-width of the flange collar at a tile edge
 PIPE_CENTRE = 31.5      # the axis, in the middle of a 64px tile
 
+# A pipe steam reaches (LightingRules.PipeHot) wears its hot variant: the same geometry, the
+# brass a step brighter, the specular line and rivets in the fire ramp's lightest tone, and a
+# glowing seam down each collar and round each hub. No light per pipe (art-pipeline-design.md
+# §6.2): the pixels carry it. Orange and yellow, never red, which means the player must act.
+HOT_BRASS = (214, 146, 58, 255)   # brass pushed toward the fire ramp
+HOT_GLOW = (255, 224, 138, 255)   # palette fire #ffe08a
+HOT_SEAM = (240, 160, 64, 255)    # palette fire #f0a040
+
 
 def save_tile(image: Image.Image, name: str) -> None:
     """Writes a 64x64 tile UNTRIMMED, unlike save() above.
@@ -154,7 +162,7 @@ def save_tile(image: Image.Image, name: str) -> None:
     print(f"wrote {path} ({image.width}x{image.height})")
 
 
-def _pipe_arm(draw, image, side: str) -> None:
+def _pipe_arm(draw, image, side: str, hot: bool = False) -> None:
     """One run of pipe from the tile's centre out to the named edge, with its end flange.
 
     `side` is in SCREEN terms ("n" is up), and PIL's y grows downward, so north is the low rows.
@@ -163,24 +171,34 @@ def _pipe_arm(draw, image, side: str) -> None:
     rather than as a seam in a texture.
     """
     lo, hi = int(PIPE_CENTRE - PIPE_HALF), int(PIPE_CENTRE + PIPE_HALF)
+    body = HOT_BRASS if hot else BRASS
+    specular = HOT_GLOW if hot else _shade(BRASS_LIGHT, 0.10)
+    rivet = HOT_GLOW if hot else None
     if side in ("e", "w"):
         x0, x1 = (int(PIPE_CENTRE), PIPE_TILE - 1) if side == "e" else (0, int(PIPE_CENTRE))
-        draw.rectangle([x0, lo, x1, hi], fill=BRASS)
+        draw.rectangle([x0, lo, x1, hi], fill=body)
         # A cylinder needs a specular line and a shadow line, or it is a plank. Both run ALONG
         # the axis, which is the one direction that survives the runtime quarter turns: rotate a
         # lengthwise highlight and it is still lengthwise. A baked top-light would not be.
-        draw.line([(x0, lo + 3), (x1, lo + 3)], fill=_shade(BRASS_LIGHT, 0.10))
+        draw.line([(x0, lo + 3), (x1, lo + 3)], fill=specular)
+        if hot:
+            draw.line([(x0, lo + 4), (x1, lo + 4)], fill=HOT_SEAM)
         draw.line([(x0, hi - 2), (x1, hi - 2)], fill=BRASS_DARK)
         draw.line([(x0, lo), (x1, lo)], fill=OUTLINE)
         draw.line([(x0, hi), (x1, hi)], fill=OUTLINE)
         fx = PIPE_TILE - 8 if side == "e" else 3
         draw.rectangle([fx, int(PIPE_CENTRE - PIPE_COLLAR), fx + 4,
                         int(PIPE_CENTRE + PIPE_COLLAR)], fill=BRASS_DARK, outline=OUTLINE)
-        _rivets(draw, (fx + 1,), (int(PIPE_CENTRE) - 12, int(PIPE_CENTRE) + 9))
+        if hot:
+            draw.rectangle([fx + 1, int(PIPE_CENTRE - PIPE_COLLAR) + 1,
+                            fx + 3, int(PIPE_CENTRE + PIPE_COLLAR) - 1], fill=HOT_SEAM)
+        _rivets(draw, (fx + 1,), (int(PIPE_CENTRE) - 12, int(PIPE_CENTRE) + 9), rivet)
     else:
         y0, y1 = (0, int(PIPE_CENTRE)) if side == "n" else (int(PIPE_CENTRE), PIPE_TILE - 1)
-        draw.rectangle([lo, y0, hi, y1], fill=BRASS)
-        draw.line([(lo + 3, y0), (lo + 3, y1)], fill=_shade(BRASS_LIGHT, 0.10))
+        draw.rectangle([lo, y0, hi, y1], fill=body)
+        draw.line([(lo + 3, y0), (lo + 3, y1)], fill=specular)
+        if hot:
+            draw.line([(lo + 4, y0), (lo + 4, y1)], fill=HOT_SEAM)
         draw.line([(hi - 2, y0), (hi - 2, y1)], fill=BRASS_DARK)
         draw.line([(lo, y0), (lo, y1)], fill=OUTLINE)
         draw.line([(hi, y0), (hi, y1)], fill=OUTLINE)
@@ -188,10 +206,13 @@ def _pipe_arm(draw, image, side: str) -> None:
         draw.rectangle([int(PIPE_CENTRE - PIPE_COLLAR), fy,
                         int(PIPE_CENTRE + PIPE_COLLAR), fy + 4],
                        fill=BRASS_DARK, outline=OUTLINE)
-        _rivets(draw, (int(PIPE_CENTRE) - 12, int(PIPE_CENTRE) + 9), (fy + 1,))
+        if hot:
+            draw.rectangle([int(PIPE_CENTRE - PIPE_COLLAR) + 1, fy + 1,
+                            int(PIPE_CENTRE + PIPE_COLLAR) - 1, fy + 3], fill=HOT_SEAM)
+        _rivets(draw, (int(PIPE_CENTRE) - 12, int(PIPE_CENTRE) + 9), (fy + 1,), rivet)
 
 
-def _pipe_hub(draw, image) -> None:
+def _pipe_hub(draw, image, hot: bool = False) -> None:
     """The junction casting the arms meet in.
 
     Only drawn where more than two arms meet or where they meet at an angle -- a straight run
@@ -201,12 +222,18 @@ def _pipe_hub(draw, image) -> None:
     # Flat, not speckled. The speckle _panel offers is what stops a large building face reading
     # as a flat rectangle; on a 26px casting it just reads as grit, and a casting a shade darker
     # than the bore already separates the junction from the runs meeting in it.
-    _panel(draw, (lo, lo, hi, hi), _shade(BRASS, -0.13), BRASS_LIGHT, BRASS_DARK, 0.0, 71, image)
-    _rivets(draw, (lo + 3, hi - 3), (lo + 3, hi - 5))
+    _panel(draw, (lo, lo, hi, hi), _shade(HOT_BRASS if hot else BRASS, -0.13), BRASS_LIGHT, BRASS_DARK,
+           0.0, 71, image)
+    if hot:
+        # The seam where the casting meets its cover, a ring two pixels inside the outline.
+        draw.rectangle([lo + 2, lo + 2, hi - 2, hi - 2], outline=HOT_SEAM)
+        draw.rectangle([lo + 3, lo + 3, hi - 3, hi - 3], outline=HOT_GLOW)
+    _rivets(draw, (lo + 3, hi - 3), (lo + 3, hi - 5), HOT_GLOW if hot else None)
 
 
-def make_steam_pipe_piece(sides: str) -> Image.Image:
-    """One pipe tile, open on the given SCREEN sides ("e", "ew", "ne", "nes", "nesw").
+def make_steam_pipe_piece(sides: str, hot: bool = False) -> Image.Image:
+    """One pipe tile, open on the given SCREEN sides ("e", "ew", "ne", "nes", "nesw"); `hot`
+    draws its variant for a pipe steam reaches.
 
     THE FIVE PIECES AND WHY THEY ARE FIVE. Steam/PipeShapeRules picks one of these from a cell's
     four neighbours and then rotates it, so the set only has to cover the shapes a quarter turn
@@ -219,10 +246,10 @@ def make_steam_pipe_piece(sides: str) -> Image.Image:
     draw = ImageDraw.Draw(image)
 
     for side in sides:
-        _pipe_arm(draw, image, side)
+        _pipe_arm(draw, image, side, hot)
 
     if sides not in ("ew", "ns"):
-        _pipe_hub(draw, image)
+        _pipe_hub(draw, image, hot)
 
     if sides == "e":
         # The capped end, and the one place the pressure gauge survives the move to tiles. It was
@@ -230,11 +257,12 @@ def make_steam_pipe_piece(sides: str) -> Image.Image:
         # dial every 64 pixels. A terminus is exactly where a gauge belongs, and it doubles as the
         # readable difference between "the run stops here" and "the run continues off-screen".
         _panel(draw, (10, 14, 20, 49), BRASS_DARK, BRASS, _shade(BRASS_DARK, -0.3), 0.0, 5, image)
-        _rivets(draw, (13, 17), (18, 42))
+        _rivets(draw, (13, 17), (18, 42), HOT_GLOW if hot else None)
         draw.ellipse([25, 20, 41, 36], fill=IRON, outline=OUTLINE)
         draw.ellipse([27, 22, 39, 34], fill=_shade(IRON, -0.25))
-        draw.ellipse([28, 23, 38, 33], fill=BRASS_LIGHT)
-        draw.line([(33, 28), (36, 24)], fill=OUTLINE)
+        draw.ellipse([28, 23, 38, 33], fill=HOT_GLOW if hot else BRASS_LIGHT)
+        # Under pressure the needle swings over to the right; cold, it rests up and left of it.
+        draw.line([(33, 28), (37, 30)] if hot else [(33, 28), (36, 24)], fill=OUTLINE)
         draw.point([(30, 24)], fill=(255, 246, 226, 255))
 
     return image
@@ -550,6 +578,9 @@ def main() -> None:
     save_tile(make_steam_pipe_piece("ne"), "steam_pipe_corner.png")
     save_tile(make_steam_pipe_piece("nes"), "steam_pipe_tee.png")
     save_tile(make_steam_pipe_piece("nesw"), "steam_pipe_cross.png")
+    for sides, name in (("ew", "steam_pipe"), ("e", "steam_pipe_end"), ("ne", "steam_pipe_corner"),
+                        ("nes", "steam_pipe_tee"), ("nesw", "steam_pipe_cross")):
+        save_tile(make_steam_pipe_piece(sides, hot=True), name + "_hot.png")
     save(make_depot(), "depot.png")
     save(make_pneumatic_post(), "pneumatic_post.png")
     save(make_construction_station(), "golem_construction_station.png")

@@ -149,7 +149,9 @@ call): built, reviewed, critiqued and tested. Done:
    - **Lighting (L) done** (2026-10-28, `art-pipeline-design.md` §6.5), approved by the user:
      a warm ambient, banded sconce pools and boiler glows, every value in
      `Core/World/LightingRules`; it costs 0.27 ms of render CPU at the endgame load (budget 1.0).
-     The hot pipe pictures come with S3. **Next: buildings (S3)**.
+     The hot pipes landed 2026-10-29 (approved): a pipe glows while a fuelled boiler feeds it,
+     and goes cold with a dry boiler's firebox. **Next: buildings (S3)**; its render is set up
+     (`public/images/S3/set.json`) and waits on the user's `env_set.py ... run`.
    - Then the Workbench, goods and the HUD, each
      with its own review sheet (`art-pipeline-design.md` §3).
    - Before Phase 4's test run: fix the windowed `hover` flake (`open-items.md` §4).

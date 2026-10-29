@@ -148,6 +148,8 @@ namespace GolemFactory.Nodes.Scenarios
                     names.Add(m.Groups[1].Value);
                 }
             }
+            names.AddRange(names.Where(n => n.StartsWith("steam_pipe")).ToList()
+                .Select(n => BuildingView.HotPipe(n.Substring(0, n.Length - ".png".Length)) + ".png"));
             names.AddRange(ItemTiers.CanonicalOrder.Select(g => ItemIcons.PathFor(g).Substring("res://art/".Length)));
             names.Add(ClockTowerArt.Site + ".png");
             for (int stage = 0; stage <= ClockTowerArt.FinalPicture; stage++)

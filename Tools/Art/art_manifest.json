@@ -2911,6 +2911,81 @@
       "BuildingsLayer"
     ]
   },
+  "steam_pipe_hot.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "BuildingsLayer"
+    ]
+  },
+  "steam_pipe_corner_hot.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "BuildingsLayer"
+    ]
+  },
+  "steam_pipe_cross_hot.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "BuildingsLayer"
+    ]
+  },
+  "steam_pipe_end_hot.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "BuildingsLayer"
+    ]
+  },
+  "steam_pipe_tee_hot.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "BuildingsLayer"
+    ]
+  },
   "street_cobble.png": {
     "set": "S2",
     "kind": "floor",

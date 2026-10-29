@@ -52,6 +52,9 @@ namespace GolemFactory.Nodes.Scenarios
         private SandboxWorld _world;
         private readonly List<PlaceableBoiler> _boilers = new List<PlaceableBoiler>();
         private string _glowFuelled;
+        private string _pipesFuelled;
+        private readonly List<PlaceableBuilding> _sparePipes = new List<PlaceableBuilding>();
+        private PlaceableBuilding _loosePipe;
         private bool _drained;
         private ConstructionPanelNode _panel;
         private string _failure;
@@ -112,6 +115,7 @@ namespace GolemFactory.Nodes.Scenarios
                 // Every fuelled boiler glows by LightingRules; then one runs dry, and a frame later
                 // it must be dark (art-pipeline-design.md §6.4).
                 _glowFuelled = CheckGlows();
+                _pipesFuelled = CheckPipes(expectSpareHot: true);
                 _boilers[_boilers.Count - 1].Boiler.SetCoke(0);
                 _drained = true;
                 return null;
@@ -142,7 +146,17 @@ namespace GolemFactory.Nodes.Scenarios
             }
             PlaceableBoiler b2 = Place<PlaceableBoiler>("BoilerPrefab", -9, -15);
             PlaceableBoiler b3 = Place<PlaceableBoiler>("BoilerPrefab", -5, -15);
-            _boilers.AddRange(new[] { b1, b2, b3 });
+            // A spare boiler with its own short run, the one drained at the end: its pipes must go
+            // cold with its firebox (LightingRules.PipeHot). And one pipe joined to nothing.
+            PlaceableBoiler b4 = Place<PlaceableBoiler>("BoilerPrefab", 4, -6);
+            _sparePipes.Add(PlaceAt("SteamPipePrefab", 5, -6, Facing.North));
+            _sparePipes.Add(PlaceAt("SteamPipePrefab", 6, -6, Facing.North));
+            _loosePipe = PlaceAt("SteamPipePrefab", 4, -9, Facing.North);
+            if (b4 == null || _sparePipes.Contains(null) || _loosePipe == null)
+            {
+                throw new InvalidOperationException("the spare boiler, its run or the loose pipe did not place");
+            }
+            _boilers.AddRange(new[] { b1, b2, b3, b4 });
             foreach (PlaceableBoiler boiler in _boilers)
             {
                 Deposit(ItemType.Coke, 100);
@@ -258,6 +272,39 @@ namespace GolemFactory.Nodes.Scenarios
             return null;
         }
 
+        /// <summary>
+        /// Every pipe wears its hot picture exactly while it carries steam (LightingRules.PipeHot);
+        /// the spare boiler's run is hot or cold as expected, and the loose pipe cold. Null when so.
+        /// </summary>
+        private string CheckPipes(bool expectSpareHot)
+        {
+            var layer = _tree.GetFirstNodeInGroup(BuildingsLayer.GroupName) as BuildingsLayer;
+            long tick = _world.Clock.CurrentTick;
+            foreach (PlaceableBuilding building in _world.Build.Buildings.Where(b => !b.IsRemoved))
+            {
+                PlaceableSteamPipe pipe = building.GetPart<PlaceableSteamPipe>();
+                if (pipe == null)
+                {
+                    continue;
+                }
+                if (layer == null || !layer.TryGetView(building, out BuildingView view))
+                {
+                    return $"the pipe at {building.Cell} has no view";
+                }
+                bool hot = LightingRules.PipeHot(_world.Steam.CarriesSteam(pipe.Cell, tick));
+                if (view.SpriteName.EndsWith("_hot") != hot)
+                {
+                    return $"the pipe at {building.Cell} wears {view.SpriteName}, the rules say {(hot ? "hot" : "cold")}";
+                }
+                bool spare = _sparePipes.Contains(building);
+                if ((spare && hot != expectSpareHot) || (building == _loosePipe && hot))
+                {
+                    return $"the pipe at {building.Cell} is {(hot ? "hot" : "cold")}";
+                }
+            }
+            return null;
+        }
+
         private T Place<T>(string key, int x, int y) where T : class => PlaceAt(key, x, y, Facing.North).GetPart<T>();
 
         private PlaceableBuilding PlaceAt(string key, int x, int y, Facing facing)
@@ -334,6 +381,15 @@ namespace GolemFactory.Nodes.Scenarios
             if (glowDry != null)
             {
                 problems.Add("after one boiler ran dry: " + glowDry);
+            }
+            if (_pipesFuelled != null)
+            {
+                problems.Add(_pipesFuelled);
+            }
+            string pipesDry = CheckPipes(expectSpareHot: false);
+            if (pipesDry != null)
+            {
+                problems.Add("after one boiler ran dry: " + pipesDry);
             }
 
             GolemEntity g7 = _golems["G7"];
