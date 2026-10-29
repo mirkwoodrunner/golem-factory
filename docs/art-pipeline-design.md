@@ -872,8 +872,10 @@ can read on, and a test says so.
 - `BoilerGlow(fuelLeft, load)`: off with no fuel; on, energy rising with the boiler's load, so a
   busy boiler glows brighter. A boiler that goes out goes dark at once, which reads as the
   Starved blue's cause.
-- `PipeHot(reached)`: whether a pipe piece shows its hot variant: the same answer the guide reads
-  for "steam reaches here".
+- `PipeHot(carries)`: whether a pipe piece shows its hot variant: exactly when it carries steam
+  (`SteamNetwork.CarriesSteam`), joined to a boiler that has Coke. Not the guide's "steam reaches
+  here", which ignores Coke: a boiler run dry goes dark and its pipes go cold with it (the
+  user's call, Â§6.5).
 - `FloorReadable`: the floor and overlay numbers `LightingRulesTests` checks (§6.4), kept here so
   a retune moves them together.
 
@@ -914,8 +916,9 @@ banded texture's size, then boiler glows altogether (the hot pipes stay, as they
     less 0.03; the source and target tile tints (`GolemTileOverlay`'s teal and gold, at their
     alpha) composited over each of them differ from the floor by at least 0.10 in OKLab; and the
     Stalled, Starved and Waiting badge colours over each differ from it by at least 0.15;
-  - a boiler with no fuel has no glow; glow rises with load; a pipe is hot exactly where steam
-    reaches.
+  - a boiler with no fuel has no glow; glow rises with load; a pipe is hot exactly when it
+    carries steam (`SteamNetworkTests`: a dry boiler's pipes go cold, a pipe two boilers share
+    stays hot while either has Coke).
 - `check_art.py` check 10 multiplies the golem tint check by `LightingRules.Ambient`, so a
   darker room fails the golems before it ships.
 - The `world` scenario: the `CanvasModulate` colour is `LightingRules.Ambient`; still seven
@@ -940,6 +943,10 @@ banded texture's size, then boiler glows altogether (the hot pipes stay, as they
   keep it bright; the flame sits inside its own lamp's pool, which lights it above the ambient.
 - **No hot pipes yet.** `LightingRules.PipeHot` is in and tested; the five hot pictures come
   with the buildings (S3), and `BuildingsLayer` swaps to them then.
+- **A pipe is hot only while a fuelled boiler feeds it** (the user's call, at the S3 hot-pipe
+  review). The plan read "where steam reaches", the guide's answer, which ignores Coke; a dark
+  boiler beside glowing pipes said the opposite of its firebox. `SteamNetwork.CarriesSteam`
+  answers it.
 - **`check_art.py` check 10** now multiplies by the new ambient (it reads `LightingRules.cs`).
 
 ## 7. Scenarios and tests

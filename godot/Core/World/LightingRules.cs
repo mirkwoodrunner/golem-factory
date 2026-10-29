@@ -80,10 +80,12 @@ namespace GolemFactory.World
         }
 
         /// <summary>
-        /// Whether a pipe piece shows its hot variant: exactly where steam reaches, the answer the
-        /// guide reads for "steam reaches here". The hot pictures are drawn with the buildings (S3).
+        /// Whether a pipe piece shows its hot variant: exactly when it carries steam
+        /// (<c>SteamNetwork.CarriesSteam</c>), joined to a boiler that has Coke. Not the guide's
+        /// "steam reaches here", which ignores Coke: a boiler run dry goes dark, and its pipes
+        /// go cold with it (the user's call). The hot pictures are drawn with the buildings (S3).
         /// </summary>
-        public static bool PipeHot(bool steamReaches) => steamReaches;
+        public static bool PipeHot(bool carriesSteam) => carriesSteam;
 
         // --- What LightingRulesTests holds a retune to (§6.4) ------------------------------------
 

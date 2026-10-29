@@ -115,6 +115,42 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsFalse(_network.IsPowered("G", 2));
         }
 
+        [Test]
+        public void APipeCarriesSteamOnlyWhileABoilerWithCokeFeedsIt()
+        {
+            // LightingRules.PipeHot: a boiler run dry goes dark, and its pipes go cold with it,
+            // though the guide's Reaches still says steam would reach them.
+            SteamBoiler boiler = _network.RegisterBoiler("B", C(0, 0), 100);
+            _network.AddPipe(C(1, 0));
+            _network.AddPipe(C(2, 0));
+            _network.AddPipe(C(5, 0));
+
+            Assert.IsTrue(_network.CarriesSteam(C(1, 0), 1));
+            Assert.IsTrue(_network.CarriesSteam(C(2, 0), 1), "the whole joined run");
+            Assert.IsFalse(_network.CarriesSteam(C(5, 0), 1), "a pipe not joined to a boiler");
+            Assert.IsFalse(_network.CarriesSteam(C(0, 1), 1), "a cell with no pipe");
+
+            boiler.SetCoke(0);
+            Assert.IsFalse(_network.CarriesSteam(C(2, 0), 2), "a dry boiler feeds nothing");
+            Assert.IsTrue(_network.Reaches(C(2, 0), 2), "while the guide's reach ignores Coke");
+
+            boiler.SetCoke(5);
+            Assert.IsTrue(_network.CarriesSteam(C(2, 0), 3), "refuelled, hot again");
+        }
+
+        [Test]
+        public void APipeSharedByTwoBoilers_StaysHotWhileEitherHasCoke()
+        {
+            SteamBoiler west = _network.RegisterBoiler("W", C(0, 0), 100);
+            _network.RegisterBoiler("E", C(3, 0), 100);
+            _network.AddPipe(C(1, 0));
+            _network.AddPipe(C(2, 0));
+
+            west.SetCoke(0);
+
+            Assert.IsTrue(_network.CarriesSteam(C(1, 0), 1));
+        }
+
         // --- Determinism decision 1: WHICH 8 --------------------------------------------------
 
         [Test]

@@ -159,7 +159,7 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void APipeIsHotExactlyWhereSteamReaches()
+        public void APipeIsHotExactlyWhenItCarriesSteam()
         {
             Assert.IsTrue(LightingRules.PipeHot(true));
             Assert.IsFalse(LightingRules.PipeHot(false));

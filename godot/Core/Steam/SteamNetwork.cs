@@ -341,6 +341,27 @@ namespace GolemFactory.Steam
         }
 
         /// <summary>
+        /// Whether the pipe on <paramref name="pipeCell"/> carries steam: it is joined to a
+        /// boiler that has Coke. Unlike <see cref="Reaches"/>, a boiler run dry feeds nothing, so
+        /// its pipes go cold with its firebox (LightingRules.PipeHot, the user's call).
+        /// </summary>
+        public bool CarriesSteam(Vector2Int pipeCell, long tick)
+        {
+            Evaluate(tick);
+            for (int b = 0; b < _boilerOrder.Count; b++)
+            {
+                SteamBoiler boiler = _boilerOrder[b];
+                if (boiler.CokeStock > 0
+                    && _pipesByBoiler.TryGetValue(boiler.BoilerId, out HashSet<Vector2Int> pipes)
+                    && pipes.Contains(pipeCell))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Whether the boiler standing on <paramref name="boilerCell"/> reaches
         /// <paramref name="cell"/>, regardless of Coke. A boiler's own neighbours are powered by
         /// that boiler alone: steam never passes through a second boiler, or a golem, to reach
