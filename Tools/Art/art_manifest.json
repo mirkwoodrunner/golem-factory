@@ -1873,7 +1873,7 @@
     ],
     "pivot": "bottom-center",
     "footRow": 68,
-    "owner": "generated:generate_building_art.py",
+    "owner": "hand-replaced",
     "palette": "legacy",
     "readers": [
       "data/placeables.json",
@@ -2018,7 +2018,7 @@
     ],
     "pivot": "bottom-center",
     "footRow": 117,
-    "owner": "generated:generate_building_art.py",
+    "owner": "hand-replaced",
     "palette": "legacy",
     "readers": [
       "data/placeables.json",
@@ -2067,7 +2067,7 @@
     ],
     "pivot": "bottom-center",
     "footRow": 95,
-    "owner": "generated:generate_building_art.py",
+    "owner": "hand-replaced",
     "palette": "legacy",
     "readers": [
       "data/placeables.json",
@@ -2535,7 +2535,7 @@
     ],
     "pivot": "bottom-center",
     "footRow": 91,
-    "owner": "generated:generate_building_art.py",
+    "owner": "hand-replaced",
     "palette": "legacy",
     "readers": [
       "data/placeables.json",

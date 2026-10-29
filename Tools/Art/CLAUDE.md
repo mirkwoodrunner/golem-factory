@@ -106,6 +106,13 @@ If an image-generation MCP server is configured in the user's global Claude conf
   lists them as hand-replaced. **Copper ore is green**, as malachite, on the cart and on the
   `item_copper_ore` good alike. The good is still generated (`generate_placeholder_art.py`),
   so a change to one has to be matched in the other.
+- **And a third: four buildings (S3)** (`depot`, `golem_construction_station`, `pneumatic_post`,
+  `freight_mast`), approved 2026-10-29. ComfyUI redrew `generate_building_art.py`'s pictures
+  toward the authored `steam_boiler` (IP-Adapter, strength 0.35 or 0.50), through `env_set.py`
+  and `public/images/S3/set.json`. Same canvases and foot rows, so `SpritePivots` is unchanged.
+  The generator skips them (`HAND_REPLACED`) and `verify_art.py` lists them as hand-replaced.
+  The recycler and slag heap stayed generated: their redraws were muddy at play size. The
+  pipes are still generated, cold and hot.
 - **And the golems, set by set (S1).** The Brass Presser's 28 frames (`chassis_brass_presser.png`
   and its 27 `chassis_brass_presser_<state>_<facing>.png`) are a creature redraw (style bible
   invariant 17), approved at its third review round on 2026-10-23. No generator ever owned them,

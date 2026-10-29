@@ -107,6 +107,14 @@ class SetTests(unittest.TestCase):
         with self.assertRaises(e.SetError):
             e.step_install(e.EnvSet(root), log=lambda *_: None)
 
+    def test_install_leaves_a_file_picked_0_alone(self):
+        # "x" has no file in godot/art/, so install would fail had it touched it.
+        root = self.write({"files": {"x": {"kind": "sprite", "prompt": "p", "ramps": []}},
+                           "picks": {"x": 0}, "approved": True})
+        lines = []
+        e.step_install(e.EnvSet(root), log=lines.append)
+        self.assertEqual(["install: x kept as it is"], lines)
+
 
 if __name__ == "__main__":
     unittest.main()

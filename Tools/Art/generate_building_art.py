@@ -37,8 +37,10 @@ OUT_DIR = art_dir()
 # Files a Phase 4 set has replaced (art-pipeline-design.md §2, step 13). Writing them into
 # godot/art/ would quietly put this script's pictures back, so they are skipped there;
 # --out-root <dir> still renders the originals, which verify_art.py compares and reports as
-# hand-replaced. Each name here is also in verify_art.py's KNOWN_HAND_REPLACED. None yet.
-HAND_REPLACED = set()
+# hand-replaced. Each name here is also in verify_art.py's KNOWN_HAND_REPLACED. S3's four
+# (2026-10-29) are ComfyUI redraws of this script's pictures, made by env_set.py from
+# public/images/S3/set.json; the recycler and slag heap kept this script's.
+HAND_REPLACED = {"depot.png", "golem_construction_station.png", "pneumatic_post.png", "freight_mast.png"}
 
 TRANSPARENT = (0, 0, 0, 0)
 OUTLINE = (28, 18, 22, 255)

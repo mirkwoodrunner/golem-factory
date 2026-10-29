@@ -46,6 +46,9 @@ KNOWN_HAND_REPLACED = {
     # generate_topdown_environment.py's stalls; that script skips them (HAND_REPLACED).
     "stall_scrap.png", "stall_coal.png", "stall_copper_ore.png", "stall_zinc_ore.png",
     "stall_aether.png",
+    # S3's four buildings: ComfyUI redraws (env_set.py, public/images/S3/set.json) of
+    # generate_building_art.py's, which skips them (HAND_REPLACED).
+    "depot.png", "golem_construction_station.png", "pneumatic_post.png", "freight_mast.png",
 }
 
 

@@ -150,9 +150,11 @@ call): built, reviewed, critiqued and tested. Done:
      a warm ambient, banded sconce pools and boiler glows, every value in
      `Core/World/LightingRules`; it costs 0.27 ms of render CPU at the endgame load (budget 1.0).
      The hot pipes landed 2026-10-29 (approved): a pipe glows while a fuelled boiler feeds it,
-     and goes cold with a dry boiler's firebox. **Next: buildings (S3)**; its render is set up
-     (`public/images/S3/set.json`) and waits on the user's `env_set.py ... run`.
-   - Then the Workbench, goods and the HUD, each
+     and goes cold with a dry boiler's firebox.
+   - **Buildings (S3) done** (2026-10-29, §9 decision 19): the depot, station, Post and mast
+     redrawn in ComfyUI toward the boiler's look; the recycler and slag heap kept (muddy at play
+     size), as were the boiler, bench, belts and pipes. **Next: the Workbench (S4)**.
+   - Then goods and the HUD, each
      with its own review sheet (`art-pipeline-design.md` §3).
    - Before Phase 4's test run: fix the windowed `hover` flake (`open-items.md` §4).
    Done so far: the specs and the user's thirteen calls (§9), the cleanup, `verify_art.py`'s

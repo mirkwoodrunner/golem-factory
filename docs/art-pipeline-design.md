@@ -248,7 +248,7 @@ Workbench; goods; the HUD.
 | S1b | **The Artificer** | 16 walk frames | Always on screen, and the other RetroDiffusion art (decision 5) |
 | S2 | **Floor and walls** | Floor and street tiles, edges, walls, posts, props, `ground_shadow` | **Closed, nothing replaced** (decision 18): today's art stays |
 | L | **Lighting** (§6) | No art files; `LightingRules`, `ShellNode`, boiler glow, hot pipe variants | Right after S2, so later sets are reviewed under the final light |
-| S3 | **Buildings** | Depot, station, Post, mast, recycler, slag heap, boiler, bench, belt tiles, pipe pieces (+ hot variants) | Carts and tower are done |
+| S3 | **Buildings** | Depot, station, Post, mast, recycler, slag heap, boiler, bench, belt tiles, pipe pieces (+ hot variants) | **Done** (decision 19): four redrawn, the rest kept; hot pipes added |
 | S4 | **The Workbench** | Lever housing, display face, card faces, panels | The core verb's screen |
 | S5 | **Goods** | 24 `item_*` | Small, generator-owned, cheap; copper ore stays green |
 | S6 | **The HUD** | The seven Steampunk pieces in use, redrawn under new names; the tech tree chrome | Last: mostly flat style boxes today. The pack leaves the tree here |
@@ -406,12 +406,12 @@ any later environment redraw.
 
 | File | Size | Owner | Reads |
 |---|---|---|---|
-| `depot.png` | 62 × 69 | Gen building | `placeables.json`, `DepotNode`, `StandOnCell` |
-| `golem_construction_station.png` | 78 × 96 | Gen building | `placeables.json`, `ConstructionStationNode` |
-| `pneumatic_post.png` | 62 × 92 | Gen building | `placeables.json` |
-| `freight_mast.png` | 52 × 118 | Gen building | `placeables.json` |
-| `scrap_recycler.png` | 62 × 56 | Gen building | `placeables.json` |
-| `slag_heap.png` | 68 × 44 | Gen building | `placeables.json` |
+| `depot.png` | 62 × 69 | hand-replaced (S3 #2) | `placeables.json`, `DepotNode`, `StandOnCell` |
+| `golem_construction_station.png` | 78 × 96 | hand-replaced (S3 #3) | `placeables.json`, `ConstructionStationNode` |
+| `pneumatic_post.png` | 62 × 92 | hand-replaced (S3 #1) | `placeables.json` |
+| `freight_mast.png` | 52 × 118 | hand-replaced (S3 #6) | `placeables.json` |
+| `scrap_recycler.png` | 62 × 56 | Gen building (kept, decision 19) | `placeables.json` |
+| `slag_heap.png` | 68 × 44 | Gen building (kept, decision 19) | `placeables.json` |
 | `steam_boiler.png` | 71 × 114 | authored | `placeables.json`; gets a glow (§6) |
 | `hand_crank_bench.png` | 94 × 82 | authored | `placeables.json` |
 | `hand_crank_bench_turn_{0..3}.png` (4) | 94 × 82 each | `hand_crank_bench.png` with rim glints (`crank_frames.py`, decision 17) | `HandCrankBench.SpriteFor`, while it turns |
@@ -1189,3 +1189,13 @@ Each records the decision and, where it differs, what this document first recomm
     props should stand out more later, pixel edits to today's sprites (outlines, top-edge
     highlights) show at play size where a redraw's texture doesn't. *First recommended:* the
     pilot, then the other 19 files the same way.
+19. **S3: four buildings redrawn, the rest kept** (the user, 2026-10-29). `env_set.py` redrew
+    the six generated buildings from today's pictures toward the authored `steam_boiler`
+    (IP-Adapter weight 0.5), nine candidates each at denoise 0.35, 0.50 and 0.65. At 0.65 the
+    key colour bled in and shapes changed (the mast lost its ladder); 0.35 kept each silhouette
+    and added brick, stone and brass texture. Installed: depot #2, station #3, Pneumatic Post #1
+    (0.35) and Freight Mast #6 (0.50), same canvases and foot rows, owner `hand-replaced`. The
+    recycler and slag heap keep the generator's: their redraws went muddy at play size, where
+    today's plain shapes read better. The boiler, bench, belts and pipes were never redrawn;
+    the five hot pipes are generated (§6.5). Picks were by eye: the palette-fit auto pick chose
+    the ladderless mast. *First recommended:* exactly this.

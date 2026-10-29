@@ -11,7 +11,8 @@
 (a file in godot/art/) whose style IP-Adapter carries into the redraw, for the set or per file;
 `review: "row"` lays the set's sprites out in a row on the floor instead of the room corner.
 `picks` records the chosen
-candidate per file (by its number on the file's sheet) and `approved` the user's pass. Working
+candidate per file (by its number on the file's sheet; 0 keeps today's file, which `install`
+then leaves alone) and `approved` the user's pass. Working
 images stay in the set dir (gitignored); only `install` writes into godot/art/.
 
 Kinds:
@@ -380,6 +381,9 @@ def step_install(es, log=print):
     for name in es.files:
         if name not in es.picks:
             raise SetError(f"{name} has no pick")
+        if es.picks[name] == 0:
+            log(f"install: {name} kept as it is")
+            continue
         image = picked(es, name)
         if image.size != es.today(name).size:
             raise SetError(f"{name}: {image.size}, today's is {es.today(name).size}")
