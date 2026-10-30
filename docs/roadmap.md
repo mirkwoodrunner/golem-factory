@@ -153,7 +153,9 @@ call): built, reviewed, critiqued and tested. Done:
      and goes cold with a dry boiler's firebox.
    - **Buildings (S3) done** (2026-10-29, §9 decision 19): the depot, station, Post and mast
      redrawn in ComfyUI toward the boiler's look; the recycler and slag heap kept (muddy at play
-     size), as were the boiler, bench, belts and pipes. **Next: the Workbench (S4)**.
+     size), as were the boiler, bench, belts and pipes.
+   - **The Workbench (S4) done** (2026-10-30, §9 decision 20): the lever housing, display face
+     and card faces script-drawn by the generator. **Next: goods (S5)**.
    - Then goods and the HUD, each
      with its own review sheet (`art-pipeline-design.md` §3).
    - Before Phase 4's test run: fix the windowed `hover` flake (`open-items.md` §4).

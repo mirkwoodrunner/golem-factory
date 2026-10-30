@@ -425,21 +425,22 @@ any later environment redraw.
 | File | Size | 9-slice margin | Owner | Reads |
 |---|---|---|---|---|
 | `UI/Workbench/wb_panel_mahogany.png` | 48 × 48 | 12, tiled | Gen workbench_ui | `WorkbenchScreen` backdrop, viewport, vault |
-| `wb_panel_iron.png` | 48 × 48 | 12 | Gen | rack, bottom bar, **the lever housing** (a `TextureButton`), status plate |
-| `wb_panel_blueprint.png` | 48 × 48 | 12, tiled | Gen | **the display face** (chassis pane) |
+| `wb_panel_iron.png` | 48 × 48 | 12 | Gen | rack, bottom bar, status plate |
+| `wb_lever_housing.png` | 238 × 118 | 12 (drawn 1:1) | Gen (S4, decision 20) | **the lever housing**: the ENGAGE GEARS `TextureButton` |
+| `wb_panel_blueprint.png` | 48 × 48 | 12, tiled | Gen (S4: brass bezel) | **the display face** (chassis pane) |
 | `wb_plate_brass.png` | 32 × 32 | 10 | Gen | header bar, title plate |
 | `wb_slot_socket.png` | 32 × 32 | 10 | Gen | sockets (tinted by `WorkbenchDragVisuals`) |
-| `wb_card_face.png` | 32 × 32 | 10 | Gen | **the card faces**, tinted per card kind |
+| `wb_card_face.png` | 32 × 32 | 10, tiled | Gen (S4: punched card) | **the card faces**, tinted per card kind |
 | `wb_tape.png` | 32 × 64 | 0 | Gen | diagnostic tape |
 | `wb_lever_track.png` | 40 × 120 | — | Gen | lever |
 | `wb_lever_handle.png` | 34 × 30 | — | Gen | lever handle (moves) |
 | `wb_gauge_needle.png` | 16 × 16 | — | Gen | dial pip |
 
-The three named pieces (lever housing, display face, card faces) are today 9-slices of generic
-panels. Drawing them as pictures, a housing with the lever in it, a framed display, a card with a
-punched edge, means new files (`wb_lever_housing.png`, `wb_display_face.png`, card frames per
-kind) and a change to `WorkbenchScreen`'s `Ugui` numbers. That is a code change inside the set,
-with the `workbench` scenario as its check (the hint's frames must still sit on the controls).
+**Done (decision 20).** The three named pieces are drawn by `generate_workbench_ui_art.py`, not
+ComfyUI: a new `wb_lever_housing.png` (a dark enamel nameplate behind ENGAGE GEARS, starting
+below the status plate's overlap at row 18), a brass bezel on `wb_panel_blueprint.png`, and a
+punched card on `wb_card_face.png` (tiled, so the holes repeat). No layout numbers moved except
+the ENGAGE GEARS and PATENT labels, recentred in their boxes.
 The Workbench's Steampunk pieces (its gear, close, chassis and patent buttons) are redrawn in
 S6 with the rest of the pack.
 
@@ -1199,3 +1200,11 @@ Each records the decision and, where it differs, what this document first recomm
     today's plain shapes read better. The boiler, bench, belts and pipes were never redrawn;
     the five hot pipes are generated (§6.5). Picks were by eye: the palette-fit auto pick chose
     the ladderless mast. *First recommended:* exactly this.
+20. **S4: the Workbench's three pieces script-drawn** (the user, 2026-10-30). UI chrome is small
+    and repeating, where S2 and S3 showed a redraw goes muddy, so the generator draws them,
+    pixel-exact and reproducible: the lever housing (new, 238 × 118, drawn 1:1 behind the lever
+    button, its nameplate clear of the status plate), the display face's brass bezel with
+    corner screws, and the card face as punched card stock (a clipped corner, holes every 4
+    rows; the card 9-slice is tiled). The ENGAGE GEARS and PATENT labels were recentred. The
+    rack and bottom bar keep the iron grain panel; the Steampunk buttons wait for S6.
+    *First recommended:* exactly this.

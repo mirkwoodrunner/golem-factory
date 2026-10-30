@@ -331,6 +331,21 @@
       "WorkbenchScreen"
     ]
   },
+  "UI/Workbench/wb_lever_housing.png": {
+    "set": "S4",
+    "kind": "ui",
+    "size": [
+      238,
+      118
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_workbench_ui_art.py",
+    "palette": "legacy",
+    "readers": [
+      "WorkbenchScreen"
+    ]
+  },
   "UI/Workbench/wb_lever_track.png": {
     "set": "S4",
     "kind": "ui",

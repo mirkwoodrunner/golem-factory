@@ -671,15 +671,16 @@ namespace GolemFactory.Nodes
             _tape.OffsetLeft = 36f;
             tape.AddChild(_tape);
 
-            _lever = Ugui.Place(TextureButton("EngageLever", Ui + "Workbench/wb_panel_iron.png", 12, new Color(0.80f, 0.76f, 0.70f)),
+            // The housing is drawn at the button's size (wb_lever_housing, 238x118), so it is 1:1.
+            _lever = Ugui.Place(TextureButton("EngageLever", Ui + "Workbench/wb_lever_housing.png", 12, Colors.White),
                 0.672f, 0.5f, 0.672f, 0.5f, 0f, 0f, 238f, 118f, 0f, 0.5f);
             _lever.AddChild(Ugui.Place(new TextureRect
             {
                 Name = "Track", Texture = GD.Load<Texture2D>(Ui + "Workbench/wb_lever_track.png"),
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, MouseFilter = Control.MouseFilterEnum.Ignore,
             }, 0f, 0.5f, 0f, 0.5f, 7f, 0f, 40f, 118f, 0f, 0.5f));
-            _lever.AddChild(Ugui.Place(Ugui.Text("Label", "ENGAGE", 20, new Color(0.99f, 0.88f, 0.62f), align: 2, bold: true), 0.31f, 0.46f, 0.97f, 0.93f));
-            _lever.AddChild(Ugui.Place(Ugui.Text("Label2", "GEARS", 20, new Color(0.99f, 0.88f, 0.62f), align: 2, bold: true), 0.31f, 0.21f, 0.97f, 0.68f));
+            _lever.AddChild(Ugui.Place(Ugui.Text("Label", "ENGAGE", 20, new Color(0.99f, 0.88f, 0.62f), align: 2, bold: true), 0.295f, 0.386f, 0.955f, 0.856f));
+            _lever.AddChild(Ugui.Place(Ugui.Text("Label2", "GEARS", 20, new Color(0.99f, 0.88f, 0.62f), align: 2, bold: true), 0.295f, 0.136f, 0.955f, 0.606f));
             _handle = Ugui.Place(new TextureRect
             {
                 Name = "Handle", Texture = GD.Load<Texture2D>(Ui + "Workbench/wb_lever_handle.png"),
@@ -692,7 +693,7 @@ namespace GolemFactory.Nodes
 
             _patent = Ugui.Place(TextureButton("PatentButton", Ui + "Steampunk/steampunk_button_blank_iron.png", 8, new Color(0.82f, 0.72f, 0.52f)),
                 0.865f, 0.5f, 0.865f, 0.5f, 0f, 0f, 148f, 68f, 0f, 0.5f);
-            _patent.AddChild(Ugui.Place(Ugui.Text("Label", "PATENT", 17, PlateInk, align: 2, bold: true), 0f, 0.38f, 1f, 0.92f));
+            _patent.AddChild(Ugui.Place(Ugui.Text("Label", "PATENT", 17, PlateInk, align: 2, bold: true), 0f, 0f, 1f, 1f));
             _patent.Pressed += () => _session.Patent();
             bar.AddChild(_patent);
 
@@ -833,7 +834,8 @@ namespace GolemFactory.Nodes
             _id = id;
             _base = baseColor;
             MouseFilter = MouseFilterEnum.Stop;
-            AddThemeStyleboxOverride("panel", Ugui.NineSlice("res://art/UI/Workbench/wb_card_face.png", 10));
+            // Tiled, so the punched holes repeat down the card rather than stretch.
+            AddThemeStyleboxOverride("panel", Ugui.NineSlice("res://art/UI/Workbench/wb_card_face.png", 10, tiled: true));
             MouseEntered += () => { _hovered = true; Tint(); };
             MouseExited += () => { _hovered = false; Tint(); };
         }
@@ -863,7 +865,7 @@ namespace GolemFactory.Nodes
         {
             // The preview is a lifted copy of this face; the original stays behind as the ghost.
             var preview = new Panel { Size = Size, SelfModulate = _base, Scale = Vector2.One * WorkbenchDragVisuals.LiftScale };
-            preview.AddThemeStyleboxOverride("panel", Ugui.NineSlice("res://art/UI/Workbench/wb_card_face.png", 10));
+            preview.AddThemeStyleboxOverride("panel", Ugui.NineSlice("res://art/UI/Workbench/wb_card_face.png", 10, tiled: true));
             preview.AddChild(_screen.CardFace(_card, withStepper: false));
             preview.Position = -atPosition;
             var holder = new Control();
