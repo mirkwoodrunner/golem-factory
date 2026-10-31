@@ -118,7 +118,7 @@ namespace GolemFactory.Nodes
                     FocusMode = Control.FocusModeEnum.None,
                     Disabled = !row.Affordable,
                 };
-                StyleBoxTexture face = Ugui.NineSlice("res://art/UI/Steampunk/steampunk_button_blank.png", 8);
+                StyleBoxTexture face = Ugui.NineSlice("res://art/UI/Hud/hud_button.png", 8);
                 foreach (string state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
                 {
                     button.AddThemeStyleboxOverride(state, face);

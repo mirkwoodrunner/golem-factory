@@ -325,7 +325,7 @@ namespace GolemFactory.Nodes
                 HBoxContainer line = RowLine(plate);
                 line.AddThemeConstantOverride("separation", 12);
                 line.AddChild(Flex(Ugui.Text("Label", blueprint.BlueprintId, 13, ItemNameInk)));
-                Button load = PlateButton("Load", Ui + "Steampunk/steampunk_button_blank.png", Colors.White, "Load", 13, Colors.Black, bold: false);
+                Button load = PlateButton("Load", Ui + "Hud/hud_button.png", Colors.White, "Load", 13, Colors.Black, bold: false);
                 load.CustomMinimumSize = new Vector2(60f, 24f);
                 load.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
                 Blueprint captured = blueprint;
@@ -346,7 +346,7 @@ namespace GolemFactory.Nodes
             _root = Ugui.Fill(new Control { Name = "ManagementScreen", MouseFilter = Control.MouseFilterEnum.Stop });
             AddChild(_root);
             _root.AddChild(Ugui.Fill(Ugui.Rect("Backdrop", new Color(0.055f, 0.045f, 0.038f, 0.985f))));
-            _root.AddChild(Ugui.Fill(Ugui.Image("Background", Ugui.NineSlice(Ui + "Steampunk/iron_panel_nobolt.png", 8), new Color(0.13f, 0.11f, 0.09f))));
+            _root.AddChild(Ugui.Fill(Ugui.Image("Background", Ugui.NineSlice(Ui + "Hud/hud_panel_plain.png", 8), new Color(0.13f, 0.11f, 0.09f))));
 
             var bar = Ugui.Place(new MarginContainer { Name = "TabBar", MouseFilter = Control.MouseFilterEnum.Pass }, 0f, 0.845f, 0.82f, 0.95f);
             bar.AddThemeConstantOverride("margin_left", 12);
@@ -359,7 +359,7 @@ namespace GolemFactory.Nodes
             bar.AddChild(row);
             foreach (ManagementTab tab in (ManagementTab[])Enum.GetValues(typeof(ManagementTab)))
             {
-                Button button = PlateButton(tab + "Button", Ui + "Steampunk/steampunk_button_blank.png", UnselectedTab, ManagementTabs.Label(tab), 15, SelectedTabLabel, bold: true);
+                Button button = PlateButton(tab + "Button", Ui + "Hud/hud_button.png", UnselectedTab, ManagementTabs.Label(tab), 15, SelectedTabLabel, bold: true);
                 button.CustomMinimumSize = new Vector2(168f, 46f);
                 ManagementTab captured = tab;
                 button.Pressed += () => SelectTab(captured);
@@ -367,7 +367,7 @@ namespace GolemFactory.Nodes
                 row.AddChild(button);
             }
 
-            Button close = Ugui.Place(PlateButton("CloseButton", Ui + "Steampunk/steampunk_button_exit.png", new Color(0.35f, 0.10f, 0.10f), "Close", 13, Colors.White, bold: false),
+            Button close = Ugui.Place(PlateButton("CloseButton", Ui + "Hud/hud_button_close.png", new Color(0.35f, 0.10f, 0.10f), "Close", 13, Colors.White, bold: false),
                 1f, 1f, 1f, 1f, -6f, -46f, 70f, 28f, 1f, 1f);
             close.Pressed += Close;
             _root.AddChild(close);
@@ -419,9 +419,9 @@ namespace GolemFactory.Nodes
             var buttons = Ugui.Place(new HBoxContainer { Name = "ButtonRow", Alignment = BoxContainer.AlignmentMode.Begin }, 0.1f, 0.78f, 0.9f, 0.9f);
             buttons.AddThemeConstantOverride("separation", 16);
             holder.AddChild(buttons);
-            foreach ((string name, string sprite) in new[] { ("Save", "steampunk_button_accept.png"), ("Load", "steampunk_button_blank.png") })
+            foreach ((string name, string sprite) in new[] { ("Save", "hud_button_accept.png"), ("Load", "hud_button.png") })
             {
-                Button button = PlateButton(name + "Button", Ui + "Steampunk/" + sprite, new Color(0.80f, 0.62f, 0.32f), name, 15, SelectedTabLabel, bold: true);
+                Button button = PlateButton(name + "Button", Ui + "Hud/" + sprite, new Color(0.80f, 0.62f, 0.32f), name, 15, SelectedTabLabel, bold: true);
                 button.CustomMinimumSize = new Vector2(140f, 42f);
                 button.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
                 bool save = name == "Save";

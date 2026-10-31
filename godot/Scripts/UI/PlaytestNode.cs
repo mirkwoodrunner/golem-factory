@@ -166,7 +166,7 @@ namespace GolemFactory.Nodes
 
         private void BuildCard()
         {
-            _card = Ugui.Image("PlaytestCard", Ugui.NineSlice("res://art/UI/Steampunk/steampunk_panel_iron_bolt.png", 12, 10, 12, 10), new Color(0.12f, 0.08f, 0.05f, 0.97f));
+            _card = Ugui.Image("PlaytestCard", Ugui.NineSlice("res://art/UI/Hud/hud_panel_bolted.png", 12, 10, 12, 10), new Color(0.12f, 0.08f, 0.05f, 0.97f));
             // Only its buttons and note field take clicks; the plate's empty area passes them to
             // the world beneath, as the guide plate's does (a build click there was swallowed).
             _card.MouseFilter = Control.MouseFilterEnum.Ignore;

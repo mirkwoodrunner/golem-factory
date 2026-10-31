@@ -157,8 +157,11 @@ call): built, reviewed, critiqued and tested. Done:
    - **The Workbench (S4) done** (2026-10-30, §9 decision 20): the lever housing, display face
      and card faces script-drawn by the generator.
    - **Goods (S5) done** (2026-10-30, §9 decision 21): 11 goods redrawn by the generator so all
-     24 pass checks 7 and 11 at 24 px. **Next: the HUD (S6)**,
-     with its own review sheet (`art-pipeline-design.md` §3).
+     24 pass checks 7 and 11 at 24 px.
+   - **The HUD (S6): the pack swap done** (2026-10-31, §9 decision 22): the seven Steampunk
+     pieces in use script-drawn under `UI/Hud/` by `generate_hud_art.py`, the pack and its
+     licence note removed. **Next: the rest of S6**, the tech tree chrome and the overlays,
+     with its own review sheet (`art-pipeline-design.md` §3, §4 S6).
    - Before Phase 4's test run: fix the windowed `hover` flake (`open-items.md` §4).
    Done so far: the specs and the user's thirteen calls (§9), the cleanup, `verify_art.py`'s
    gap, the `Tools/Art/` tooling, Core's `GolemFrames`, the `art` scenario's golem gallery,

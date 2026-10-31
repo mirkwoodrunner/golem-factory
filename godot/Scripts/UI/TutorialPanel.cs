@@ -105,7 +105,7 @@ namespace GolemFactory.Nodes
             root.AddChild(_spot);
             root.MoveChild(_spot, 0);
 
-            _plate = Ugui.Image("GuidePlate", Ugui.NineSlice("res://art/UI/Steampunk/steampunk_panel_iron_bolt.png", 12, 10, 12, 10), new Color(0.10f, 0.08f, 0.06f, 0.95f));
+            _plate = Ugui.Image("GuidePlate", Ugui.NineSlice("res://art/UI/Hud/hud_panel_bolted.png", 12, 10, 12, 10), new Color(0.10f, 0.08f, 0.06f, 0.95f));
             _plate.MouseFilter = Control.MouseFilterEnum.Ignore; // only its buttons take clicks
             root.AddChild(_plate);
 
@@ -143,7 +143,7 @@ namespace GolemFactory.Nodes
             // is in the way never squeezes the step text in a fixed-height plate. It grows to
             // its lines. Only build and golem-tile steps raise one, and none of those is shown
             // over the Workbench, so it never hangs over the lever.
-            _noticePlate = Ugui.Image("GuideNotice", Ugui.NineSlice("res://art/UI/Steampunk/steampunk_panel_iron_bolt.png", 12, 10, 12, 10), new Color(0.30f, 0.10f, 0.07f, 0.95f));
+            _noticePlate = Ugui.Image("GuideNotice", Ugui.NineSlice("res://art/UI/Hud/hud_panel_bolted.png", 12, 10, 12, 10), new Color(0.30f, 0.10f, 0.07f, 0.95f));
             _noticePlate.MouseFilter = Control.MouseFilterEnum.Ignore;
             _noticePlate.Visible = false;
             _plate.AddChild(_noticePlate);

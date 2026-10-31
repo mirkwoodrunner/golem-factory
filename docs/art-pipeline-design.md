@@ -251,7 +251,7 @@ Workbench; goods; the HUD.
 | S3 | **Buildings** | Depot, station, Post, mast, recycler, slag heap, boiler, bench, belt tiles, pipe pieces (+ hot variants) | **Done** (decision 19): four redrawn, the rest kept; hot pipes added |
 | S4 | **The Workbench** | Lever housing, display face, card faces, panels | The core verb's screen |
 | S5 | **Goods** | 24 `item_*` | Small, generator-owned, cheap; copper ore stays green |
-| S6 | **The HUD** | The seven Steampunk pieces in use, redrawn under new names; the tech tree chrome | Last: mostly flat style boxes today. The pack leaves the tree here |
+| S6 | **The HUD** | The seven Steampunk pieces in use, redrawn under new names; the tech tree chrome | **Pack swap done** (decision 22): the seven script-drawn under `UI/Hud/`, the pack removed; the tech tree chrome and overlays still to review |
 
 Overlays (`build_ghost_tile`, `facing_arrow`, `interaction_ring`) are state tools, not
 decoration. They stay generated and are only re-coloured to the palette if a review asks.
@@ -278,7 +278,7 @@ them):
    identical, 11 hand-replaced), 34 not generated.**
 
 The Steampunk licence note (`docs/source-assets/SteampunkFantasyUIPack/`) stays until S6, since
-seven pieces remain.
+seven pieces remain. (S6 removed it with the last seven, decision 22.)
 
 **Done (2026-10-23).** Every file was searched for again first (code, scenes, data, generators,
 names built at run time such as `ManagementScreen`'s `"Steampunk/" + sprite`); none of the 26 was
@@ -441,8 +441,8 @@ ComfyUI: a new `wb_lever_housing.png` (a dark enamel nameplate behind ENGAGE GEA
 below the status plate's overlap at row 18), a brass bezel on `wb_panel_blueprint.png`, and a
 punched card on `wb_card_face.png` (tiled, so the holes repeat). No layout numbers moved except
 the ENGAGE GEARS and PATENT labels, recentred in their boxes.
-The Workbench's Steampunk pieces (its gear, close, chassis and patent buttons) are redrawn in
-S6 with the rest of the pack.
+The Workbench's Steampunk pieces (its gear, close, chassis and patent buttons) were redrawn in
+S6 with the rest of the pack (decision 22).
 
 ### S5 Goods
 
@@ -463,9 +463,9 @@ pixels thick or more, so none falls apart at 24.
 
 ### S6 The HUD
 
-**The Steampunk pack is dropped** (decision 9). The seven pieces in use are redrawn through
-ComfyUI like everything else, under new names in `UI/Hud/`, with **the same size and 9-slice
-margins**, so no `Ugui` number moves:
+**The Steampunk pack is dropped** (decision 9). The seven pieces in use are redrawn (by
+`generate_hud_art.py`, decision 22, not ComfyUI) under new names in `UI/Hud/`, with **the same
+size and 9-slice margins**, so no `Ugui` number moves:
 
 | Today (`UI/Steampunk/`) | Redrawn as (`UI/Hud/`) | Size | 9-slice | Reads (path changes in S6) |
 |---|---|---|---|---|
@@ -477,7 +477,7 @@ margins**, so no `Ugui` number moves:
 | `steampunk_button_exit.png` | `hud_button_close.png` | 34 × 34 | 8 | `ManagementScreen`, `InventoryPanel`, `WorkbenchScreen` (Close) |
 | `gear_large.png` | `hud_gear.png` | 58 × 59 | — | `WorkbenchScreen` (the gear) |
 
-Each gets a manifest entry (owner `comfyui`, `set: S6`, its `nineSlice`). Renaming is a code
+Each gets a manifest entry (owner `generated:generate_hud_art.py`, `set: S6`, its `nineSlice`). Renaming is a code
 change (`art-style-bible.md` §0.5), made in S6's commit: the paths in the ten files above
 (`CrateScreen` and `InventoryPanel` build them from a `Steampunk` constant). The buttons carry
 no lettering (invariant 12); the code draws "Close", "Save" and the rest in the font.
@@ -492,6 +492,16 @@ no lettering (invariant 12); the code draws "Close", "Save" and the rest in the 
   `generate_workbench_ui_art.py`'s header comment. The history docs
   (`docs/history/unity-implementation-plan.md`) and the Phase 1 design docs that mention the
   pack keep their wording; they record what was true then.
+
+**Pack swap done (decision 22).** `Tools/Art/generate_hud_art.py` draws the seven as pixel art
+in the Workbench's palette, each in the pack piece's tone range so the code's tints land as
+before: dark-brown plates with a bevel and an inset groove (the bolted one's bolts only in its
+corner slices, so a stretched edge never smears one), tan button faces under a pale brass rim
+(iron for the active one, stitched for active, accept and close), and a ten-tooth, six-spoke
+gear. The accept and close buttons lost the pack's check and X: in a 9-slice centre they
+stretched behind "Save" and "CLOSE". The ten readers point at `UI/Hud/`; `godot/art/UI/Steampunk/`
+and the licence note are gone; `verify_art.py` runs the new generator; check 16 passes. The
+rest of the HUD set below (tech tree chrome, overlays) is still to review.
 
 The rest of the HUD set:
 
@@ -1130,7 +1140,8 @@ Each records the decision and, where it differs, what this document first recomm
 9. **The Steampunk UI pack.** **Dropped.** The HUD set (S6) is redrawn through ComfyUI like
    everything else; each of the seven pieces in use gets a pipeline entry and a new name under
    `UI/Hud/`; the pack's files, and its licence note, are removed when S6 lands (§4, S6).
-   *First recommended:* keep the pieces in use for Phase 4.
+   *First recommended:* keep the pieces in use for Phase 4. (Drawn by script in the end,
+   decision 22.)
 10. **The order.** **Golems; the Artificer; floor and walls; lighting; buildings; the Workbench;
     goods; the HUD** (§3). (As recommended.)
 11. **The unused sprites.** **Deleted in one cleanup commit before S1**, after a full scenario
@@ -1218,3 +1229,8 @@ Each records the decision and, where it differs, what this document first recomm
     `generate_placeholder_art.py` redrew the 11 that checks 7 and 11 flagged (look-alike
     outlines, thin parts that fell apart at 24, zinc in steam's steel blue); the other 13 are
     unchanged and all 24 stay generated. *First recommended:* exactly this.
+22. **S6: the seven HUD pieces script-drawn** (the user, 2026-10-31). Small and 9-sliced, like
+    S4's chrome, so `generate_hud_art.py` draws them rather than ComfyUI, at the pack's sizes,
+    margins and tone range, so no layout number or tint moved. The accept and close buttons
+    carry no glyph (invariant 12): the stretched check and X smeared behind the words. The
+    pack and its licence note are removed. *First recommended:* exactly this.

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bay1qi837uk2a"
-path="res://.godot/imported/iron_panel_nobolt.png-cabcd9730cc1f91e01d041e3827afdf1.ctex"
+uid="uid://cnpuo0ly0aali"
+path="res://.godot/imported/hud_button_accept.png-6cd69c4fa8d5fcc18de85bef6f523eec.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/UI/Steampunk/iron_panel_nobolt.png"
-dest_files=["res://.godot/imported/iron_panel_nobolt.png-cabcd9730cc1f91e01d041e3827afdf1.ctex"]
+source_file="res://art/UI/Hud/hud_button_accept.png"
+dest_files=["res://.godot/imported/hud_button_accept.png-6cd69c4fa8d5fcc18de85bef6f523eec.ctex"]
 
 [params]
 

@@ -3,7 +3,7 @@
 docs/digital-design.md, "The Programming Interface"). Companion to
 generate_placeholder_art.py -- same free/Pillow-only approach, but these are 9-sliced /
 tiled *UI* sprites rather than world art, so they live under
-godot/art/UI/Workbench/ next to the third-party Steampunk pack.
+godot/art/UI/Workbench/ next to the HUD's shared chrome (generate_hud_art.py).
 
 Every panel/plate/card sprite is authored with an explicit 9-slice border and is meant to
 be imported with that border (see the "Workbench UI reskin" notes in

@@ -519,7 +519,7 @@ namespace GolemFactory.Nodes
             _root.AddChild(header);
             var gear = Ugui.Place(new TextureRect
             {
-                Name = "Gear", Texture = GD.Load<Texture2D>(Ui + "Steampunk/gear_large.png"),
+                Name = "Gear", Texture = GD.Load<Texture2D>(Ui + "Hud/hud_gear.png"),
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                 Modulate = new Color(0.42f, 0.30f, 0.14f), MouseFilter = Control.MouseFilterEnum.Ignore,
             }, 0f, 0.5f, 0f, 0.5f, 12f, 0f, 34f, 34f, 0f, 0.5f);
@@ -527,7 +527,7 @@ namespace GolemFactory.Nodes
             header.AddChild(Ugui.Place(Ugui.Text("Title", "THE WORKBENCH", 24, PlateInk, bold: true), 0.045f, 0f, 0.46f, 1f));
             _target = Ugui.Place(Ugui.Text("TargetLabel", "TARGET  ·  none", 15, new Color(0.28f, 0.20f, 0.10f), align: 4), 0.46f, 0f, 0.86f, 1f);
             header.AddChild(_target);
-            Button close = _close = Ugui.Place(TextureButton("CloseButton", Ui + "Steampunk/steampunk_button_exit.png", 8, new Color(0.72f, 0.30f, 0.24f)),
+            Button close = _close = Ugui.Place(TextureButton("CloseButton", Ui + "Hud/hud_button_close.png", 8, new Color(0.72f, 0.30f, 0.24f)),
                 1f, 0.5f, 1f, 0.5f, -8f, 0f, 88f, 34f, 1f, 0.5f);
             close.AddChild(Ugui.Fill(Ugui.Text("Label", "CLOSE", 14, new Color(0.98f, 0.92f, 0.82f), align: 2)));
             close.Pressed += Close;
@@ -619,7 +619,7 @@ namespace GolemFactory.Nodes
         {
             foreach (ChassisDefinition chassis in _session.RackChassis)
             {
-                Button button = TextureButton(chassis.name, Ui + "Steampunk/steampunk_button_blank.png", 8, UnselectedChassis);
+                Button button = TextureButton(chassis.name, Ui + "Hud/hud_button.png", 8, UnselectedChassis);
                 button.CustomMinimumSize = new Vector2(0f, ChassisButtonHeight);
                 button.AddChild(Ugui.Place(Ugui.Text("Name", WorkbenchDiagnostics.Humanize(chassis.name), 15, ChassisInk), 0.05f, 0.44f, 0.97f, 0.96f));
                 button.AddChild(Ugui.Place(Ugui.Text("Subtitle", WorkbenchSession.ChassisSubtitle(chassis), 11, ChassisSubInk), 0.05f, 0.06f, 0.97f, 0.46f));
@@ -691,7 +691,7 @@ namespace GolemFactory.Nodes
             _lever.Pressed += () => _session.Engage();
             bar.AddChild(_lever);
 
-            _patent = Ugui.Place(TextureButton("PatentButton", Ui + "Steampunk/steampunk_button_blank_iron.png", 8, new Color(0.82f, 0.72f, 0.52f)),
+            _patent = Ugui.Place(TextureButton("PatentButton", Ui + "Hud/hud_button_active.png", 8, new Color(0.82f, 0.72f, 0.52f)),
                 0.865f, 0.5f, 0.865f, 0.5f, 0f, 0f, 148f, 68f, 0f, 0.5f);
             _patent.AddChild(Ugui.Place(Ugui.Text("Label", "PATENT", 17, PlateInk, align: 2, bold: true), 0f, 0f, 1f, 1f));
             _patent.Pressed += () => _session.Patent();

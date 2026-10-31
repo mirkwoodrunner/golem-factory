@@ -394,7 +394,7 @@ namespace GolemFactory.Nodes
             _root.AddChild(center);
 
             _window = new PanelContainer { CustomMinimumSize = new Vector2(WindowWidth, 0f) };
-            var panelStyle = NineSlice("res://art/UI/Steampunk/iron_panel_nobolt.png", 8);
+            var panelStyle = NineSlice("res://art/UI/Hud/hud_panel_plain.png", 8);
             panelStyle.ContentMarginLeft = 16;
             panelStyle.ContentMarginRight = 16;
             panelStyle.ContentMarginTop = 14;
@@ -427,7 +427,7 @@ namespace GolemFactory.Nodes
             column.AddChild(_statusLabel);
 
             var close = new Button { Text = "Close", CustomMinimumSize = new Vector2(0f, 32f), FocusMode = Control.FocusModeEnum.None };
-            StyleBoxTexture button = NineSlice("res://art/UI/Steampunk/steampunk_button_blank.png", 8);
+            StyleBoxTexture button = NineSlice("res://art/UI/Hud/hud_button.png", 8);
             foreach (string state in new[] { "normal", "hover", "pressed", "focus" })
             {
                 close.AddThemeStyleboxOverride(state, button);

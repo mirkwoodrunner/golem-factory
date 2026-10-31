@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cfef7xmur3lf3"
-path="res://.godot/imported/steampunk_panel_iron_bolt.png-1c04418dd7dc5484994d52b3e265cb41.ctex"
+uid="uid://c4757g1d6ge54"
+path="res://.godot/imported/hud_button_close.png-686b4336e29b32214d543753e45dbabc.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/UI/Steampunk/steampunk_panel_iron_bolt.png"
-dest_files=["res://.godot/imported/steampunk_panel_iron_bolt.png-1c04418dd7dc5484994d52b3e265cb41.ctex"]
+source_file="res://art/UI/Hud/hud_button_close.png"
+dest_files=["res://.godot/imported/hud_button_close.png-686b4336e29b32214d543753e45dbabc.ctex"]
 
 [params]
 

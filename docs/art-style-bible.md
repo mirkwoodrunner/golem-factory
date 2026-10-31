@@ -79,8 +79,8 @@ An art pass must not break any of these. Each names what catches a violation tod
 11. **The route the user chose, and only that route, ships.** Shipped art is made through
     ComfyUI with tool-only cleanup (roadmap decision 3, narrowed by decision 4 here), or by a
     generator in `Tools/Art/`. The user's hand touches only a frame the user marked on a review
-    sheet. **The Steampunk UI pack is being replaced** (decision 9): nothing new is taken from
-    it, and its files leave the tree when S6 lands. Throwaway mockups go to `public/images/`,
+    sheet. **The Steampunk UI pack was replaced** in S6 (decisions 9 and 22): its files are
+    gone, and nothing is taken from it. Throwaway mockups go to `public/images/`,
     never `godot/art/` (`CLAUDE.md`, "AI image generation"). The chassis and the Artificer came
     from RetroDiffusion before decision 3; they are replaced first (S1, S1b), not a precedent.
 12. **The font is not art.** Text stays in the project font, printable Latin-1 plus → ≥ █ ░
@@ -460,7 +460,7 @@ The full table, file by file, is `art-pipeline-design.md` §4; this is what each
 7. **UI (9-slice margins, in pixels):** `wb_panel_mahogany`, `wb_panel_iron`,
    `wb_panel_blueprint` 12; `wb_plate_brass`, `wb_slot_socket`, `wb_card_face`, `tt_phase_plate`
    and the `tt_node_*` plaques 10; `wb_tape` 0. The lever is `wb_lever_track` 40 × 120 with
-   `wb_lever_handle` 34 × 30; the dial pip is `wb_gauge_needle` 16 × 16. The HUD pieces, today
-   the Steampunk pack's and after S6 their redraws under `UI/Hud/` (`art-pipeline-design.md`
-   §4, S6), keep the pack's sizes and margins: the panels 64 × 64 (bolted 12/10/12/10, plain
+   `wb_lever_handle` 34 × 30; the dial pip is `wb_gauge_needle` 16 × 16. The HUD pieces under
+   `UI/Hud/` (`art-pipeline-design.md` §4, S6) keep the old Steampunk pack's sizes and
+   margins: the panels 64 × 64 (bolted 12/10/12/10, plain
    8), the buttons 34 × 34 (8), the gear 58 × 59.

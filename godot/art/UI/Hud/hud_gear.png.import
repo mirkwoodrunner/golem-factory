@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c210u8406rnfm"
-path="res://.godot/imported/gear_large.png-2e1c955349e38d5a11d305a37911cfdc.ctex"
+uid="uid://df1ayx6jn8jwk"
+path="res://.godot/imported/hud_gear.png-933a12983655224ab56018d781babd0d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/UI/Steampunk/gear_large.png"
-dest_files=["res://.godot/imported/gear_large.png-2e1c955349e38d5a11d305a37911cfdc.ctex"]
+source_file="res://art/UI/Hud/hud_gear.png"
+dest_files=["res://.godot/imported/hud_gear.png-933a12983655224ab56018d781babd0d.ctex"]
 
 [params]
 

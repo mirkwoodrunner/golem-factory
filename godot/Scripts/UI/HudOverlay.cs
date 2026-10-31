@@ -58,7 +58,7 @@ namespace GolemFactory.Nodes
             AddChild(_root);
 
             // Alerts strip.
-            Panel strip = Ugui.Place(Ugui.Image("AlertsStrip", Ugui.NineSlice("res://art/UI/Steampunk/steampunk_panel_iron_bolt.png", 12, 10, 12, 10), new Color(0f, 0f, 0f, 0.55f)),
+            Panel strip = Ugui.Place(Ugui.Image("AlertsStrip", Ugui.NineSlice("res://art/UI/Hud/hud_panel_bolted.png", 12, 10, 12, 10), new Color(0f, 0f, 0f, 0.55f)),
                 0.5f, 1f, 0.5f, 1f, 0f, -6f, 340f, 26f, 0.5f, 1f);
             _root.AddChild(strip);
             _alerts = Ugui.Fill(Ugui.Text("Text", "All golems running.", 13, Colors.White, align: 2));

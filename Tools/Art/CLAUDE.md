@@ -11,7 +11,7 @@ root unless they say otherwise. The project font rule stays in the root.
   compares it with `godot/art/`. Exit 1 means a generated sprite drifted. It covers every
   generator, the goods included (`generate_placeholder_art.py` honours `--out-root`; a bare
   run writes only its `belts` and `goods` sections). It also lists the sprites that are
-  authored rather than generated (walk frames, chassis art, the Steampunk pack), so "not
+  authored rather than generated (walk frames, chassis art), so "not
   generated" is never mistaken for "verified".
 - **A generator that owns a replaced file skips it under `godot/art/`** through its
   `HAND_REPLACED` set and `art_paths.skip_hand_replaced`, so `--out-root` still renders the

@@ -81,8 +81,8 @@ namespace GolemFactory.Nodes
             _world = world.Sandbox;
             _build = world.Sandbox.Build;
 
-            _rowStyle = NineSlice("res://art/UI/Steampunk/steampunk_button_blank.png", 8, 8, 8, 8);
-            _rowActiveStyle = NineSlice("res://art/UI/Steampunk/steampunk_button_blank_iron.png", 8, 8, 8, 8);
+            _rowStyle = NineSlice("res://art/UI/Hud/hud_button.png", 8, 8, 8, 8);
+            _rowActiveStyle = NineSlice("res://art/UI/Hud/hud_button_active.png", 8, 8, 8, 8);
 
             int tileCount = world.Sandbox.Placeables.Count + 1;
             float width = tileCount * TileWidth + (tileCount - 1) * TileSpacing + 2 * BarPadding;
@@ -90,7 +90,7 @@ namespace GolemFactory.Nodes
 
             // Unity's spriteBorder is (left, bottom, right, top).
             var panel = new Panel { Name = "BuildMenu", Size = new Vector2(width, height) };
-            panel.AddThemeStyleboxOverride("panel", NineSlice("res://art/UI/Steampunk/steampunk_panel_iron_bolt.png", 12, 10, 12, 10));
+            panel.AddThemeStyleboxOverride("panel", NineSlice("res://art/UI/Hud/hud_panel_bolted.png", 12, 10, 12, 10));
             panel.SelfModulate = new Color(1f, 1f, 1f, 0.96f);
             AddChild(panel);
             Panel = panel;
@@ -311,7 +311,7 @@ namespace GolemFactory.Nodes
         private void BuildHoverCard()
         {
             _card = new Panel { Name = "HoverCard", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
-            _card.AddThemeStyleboxOverride("panel", NineSlice("res://art/UI/Steampunk/steampunk_panel_iron_bolt.png", 12, 10, 12, 10));
+            _card.AddThemeStyleboxOverride("panel", NineSlice("res://art/UI/Hud/hud_panel_bolted.png", 12, 10, 12, 10));
             _card.SelfModulate = new Color(1f, 1f, 1f, 0.97f);
             AddChild(_card);
 

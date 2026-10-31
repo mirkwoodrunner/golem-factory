@@ -9,10 +9,10 @@ failing that pixel for pixel (a different PIL can re-encode identical pixels dif
 
 Not every committed sprite is generated, and the report says which are not, so nobody
 mistakes "not generated" for "verified": the walk frames come from ConceptArt via
-slice_artificer_walk.py, UI/Steampunk is a third-party pack, the golem chassis frames are
-ComfyUI redraws no generator ever owned (Phase 4's S1), and a few sprites were drawn by
-hand over the generated placeholder (KNOWN_HAND_REPLACED). A hand-replaced file is expected
-to differ from what its generator writes and is reported, not failed.
+slice_artificer_walk.py, the golem chassis frames are ComfyUI redraws no generator ever
+owned (Phase 4's S1), and a few sprites were drawn by hand over the generated placeholder
+(KNOWN_HAND_REPLACED). A hand-replaced file is expected to differ from what its generator
+writes and is reported, not failed.
 """
 import os
 import subprocess
@@ -32,6 +32,7 @@ GENERATORS = [
     "generate_workbench_ui_art.py",
     "generate_tech_tree_art.py",
     "generate_clock_tower_art.py",
+    "generate_hud_art.py",
 ]
 
 # Sprites whose committed version was drawn by hand over the generated placeholder, so the

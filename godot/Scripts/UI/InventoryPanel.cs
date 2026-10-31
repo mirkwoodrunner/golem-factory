@@ -15,7 +15,7 @@ namespace GolemFactory.Nodes
     /// </summary>
     internal sealed class InventoryPanel
     {
-        private const string Steampunk = ManagementScreen.Ui + "Steampunk/";
+        private const string Hud = ManagementScreen.Ui + "Hud/";
 
         private static readonly Color RowHover = new Color(1f, 1f, 1f, 0.09f);
         private static readonly Color RowPressed = new Color(0.85f, 0.66f, 0.32f, 0.25f);
@@ -44,12 +44,12 @@ namespace GolemFactory.Nodes
         {
             _click = click;
             Root = new Control { Name = name, MouseFilter = Control.MouseFilterEnum.Stop };
-            Root.AddChild(Ugui.Fill(Ugui.Image("Plate", Ugui.NineSlice(Steampunk + "iron_panel_nobolt.png", 8), new Color(0.13f, 0.11f, 0.09f))));
+            Root.AddChild(Ugui.Fill(Ugui.Image("Plate", Ugui.NineSlice(Hud + "hud_panel_plain.png", 8), new Color(0.13f, 0.11f, 0.09f))));
 
             Title = Ugui.Place(Ugui.Text("Title", "", 17, ManagementScreen.HeaderInk, bold: true), 0f, 1f, 1f, 1f, -32f, -10f, -88f, 26f, 0.5f, 1f);
             Root.AddChild(Title);
 
-            Button closeButton = Ugui.Place(ManagementScreen.PlateButton("CloseButton", Steampunk + "steampunk_button_exit.png", new Color(0.35f, 0.10f, 0.10f), "Close", 12, Colors.White, bold: false),
+            Button closeButton = Ugui.Place(ManagementScreen.PlateButton("CloseButton", Hud + "hud_button_close.png", new Color(0.35f, 0.10f, 0.10f), "Close", 12, Colors.White, bold: false),
                 1f, 1f, 1f, 1f, -10f, -8f, 60f, 24f, 1f, 1f);
             closeButton.Pressed += close;
             Root.AddChild(closeButton);

@@ -1,120 +1,4 @@
 {
-  "UI/Steampunk/gear_large.png": {
-    "set": "S6",
-    "kind": "ui",
-    "size": [
-      58,
-      59
-    ],
-    "pivot": "ui",
-    "footRow": null,
-    "owner": "third-party",
-    "palette": "legacy",
-    "readers": [
-      "Ugui.NineSlice"
-    ]
-  },
-  "UI/Steampunk/iron_panel_nobolt.png": {
-    "set": "S6",
-    "kind": "ui",
-    "size": [
-      64,
-      64
-    ],
-    "pivot": "ui",
-    "footRow": null,
-    "owner": "third-party",
-    "palette": "legacy",
-    "readers": [
-      "Ugui.NineSlice"
-    ],
-    "nineSlice": 8
-  },
-  "UI/Steampunk/steampunk_button_accept.png": {
-    "set": "S6",
-    "kind": "ui",
-    "size": [
-      34,
-      34
-    ],
-    "pivot": "ui",
-    "footRow": null,
-    "owner": "third-party",
-    "palette": "legacy",
-    "readers": [
-      "Ugui.NineSlice"
-    ],
-    "nineSlice": 8
-  },
-  "UI/Steampunk/steampunk_button_blank.png": {
-    "set": "S6",
-    "kind": "ui",
-    "size": [
-      34,
-      34
-    ],
-    "pivot": "ui",
-    "footRow": null,
-    "owner": "third-party",
-    "palette": "legacy",
-    "readers": [
-      "Ugui.NineSlice"
-    ],
-    "nineSlice": 8
-  },
-  "UI/Steampunk/steampunk_button_blank_iron.png": {
-    "set": "S6",
-    "kind": "ui",
-    "size": [
-      34,
-      34
-    ],
-    "pivot": "ui",
-    "footRow": null,
-    "owner": "third-party",
-    "palette": "legacy",
-    "readers": [
-      "Ugui.NineSlice"
-    ],
-    "nineSlice": 8
-  },
-  "UI/Steampunk/steampunk_button_exit.png": {
-    "set": "S6",
-    "kind": "ui",
-    "size": [
-      34,
-      34
-    ],
-    "pivot": "ui",
-    "footRow": null,
-    "owner": "third-party",
-    "palette": "legacy",
-    "readers": [
-      "Ugui.NineSlice"
-    ],
-    "nineSlice": 8
-  },
-  "UI/Steampunk/steampunk_panel_iron_bolt.png": {
-    "set": "S6",
-    "kind": "ui",
-    "size": [
-      64,
-      64
-    ],
-    "pivot": "ui",
-    "footRow": null,
-    "owner": "third-party",
-    "palette": "legacy",
-    "readers": [
-      "Ugui.NineSlice"
-    ],
-    "nineSlice": [
-      12,
-      10,
-      12,
-      10
-    ]
-  },
   "UI/TechTree/tt_badge_anvil.png": {
     "set": "S6",
     "kind": "ui",
@@ -6772,6 +6656,135 @@
       "HandCrankBench.SpriteFor",
       "BuildingsLayer",
       "SandboxNode"
+    ]
+  },
+  "UI/Hud/hud_panel_bolted.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_hud_art.py",
+    "palette": "legacy",
+    "readers": [
+      "HudOverlay",
+      "BuildMenuNode",
+      "TutorialPanel",
+      "PlaytestNode"
+    ],
+    "nineSlice": [
+      12,
+      10,
+      12,
+      10
+    ]
+  },
+  "UI/Hud/hud_panel_plain.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_hud_art.py",
+    "palette": "legacy",
+    "readers": [
+      "ManagementScreen",
+      "ConstructionPanelNode",
+      "InventoryPanel"
+    ],
+    "nineSlice": 8
+  },
+  "UI/Hud/hud_button.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      34,
+      34
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_hud_art.py",
+    "palette": "legacy",
+    "readers": [
+      "BuildMenuNode",
+      "AssemblyLineTab",
+      "ConstructionPanelNode",
+      "ManagementScreen",
+      "CrateScreen",
+      "WorkbenchScreen"
+    ],
+    "nineSlice": 8
+  },
+  "UI/Hud/hud_button_active.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      34,
+      34
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_hud_art.py",
+    "palette": "legacy",
+    "readers": [
+      "BuildMenuNode",
+      "WorkbenchScreen"
+    ],
+    "nineSlice": 8
+  },
+  "UI/Hud/hud_button_accept.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      34,
+      34
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_hud_art.py",
+    "palette": "legacy",
+    "readers": [
+      "ManagementScreen"
+    ],
+    "nineSlice": 8
+  },
+  "UI/Hud/hud_button_close.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      34,
+      34
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_hud_art.py",
+    "palette": "legacy",
+    "readers": [
+      "ManagementScreen",
+      "InventoryPanel",
+      "WorkbenchScreen"
+    ],
+    "nineSlice": 8
+  },
+  "UI/Hud/hud_gear.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      58,
+      59
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_hud_art.py",
+    "palette": "legacy",
+    "readers": [
+      "WorkbenchScreen"
     ]
   }
 }

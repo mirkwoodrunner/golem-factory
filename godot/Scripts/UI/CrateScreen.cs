@@ -14,7 +14,7 @@ namespace GolemFactory.Nodes
     /// </summary>
     public partial class CrateScreen : CanvasLayer, ICrateScreen, IClosableScreen
     {
-        private const string Steampunk = ManagementScreen.Ui + "Steampunk/";
+        private const string Hud = ManagementScreen.Ui + "Hud/";
         public const string Hint = "Click moves one · Shift-click moves what fits";
 
         private SandboxWorld _world;
@@ -206,7 +206,7 @@ namespace GolemFactory.Nodes
             _cratePanel = new InventoryPanel("CratePanel", 96f, Close, TakeClicked);
             _root.AddChild(Ugui.Place(_cratePanel.Root, 0f, 0.5f, 0f, 0.5f, 140f, 0f, 380f, 520f, 0f, 0.5f));
 
-            _labelButton = Ugui.Place(ManagementScreen.PlateButton("LabelButton", Steampunk + "steampunk_button_blank.png", ManagementScreen.SelectedTab, "", 13, ManagementScreen.SelectedTabLabel, bold: false),
+            _labelButton = Ugui.Place(ManagementScreen.PlateButton("LabelButton", Hud + "hud_button.png", ManagementScreen.SelectedTab, "", 13, ManagementScreen.SelectedTabLabel, bold: false),
                 0f, 1f, 1f, 1f, 0f, -60f, -24f, 28f, 0.5f, 1f);
             _labelText = _labelButton.GetNode<Label>("Label");
             _labelButton.Pressed += () => ShowPicker(!PickerOpen);
@@ -227,7 +227,7 @@ namespace GolemFactory.Nodes
 
             // The blank plate, not the spec's accept sprite: 9-sliced, the accept's tick stretched
             // into a stroke through "Take all" (seen in the frames).
-            TakeAllButton = Ugui.Place(ManagementScreen.PlateButton("TakeAllButton", Steampunk + "steampunk_button_blank.png", new Color(0.80f, 0.62f, 0.32f), "Take all", 13, ManagementScreen.SelectedTabLabel, bold: true),
+            TakeAllButton = Ugui.Place(ManagementScreen.PlateButton("TakeAllButton", Hud + "hud_button.png", new Color(0.80f, 0.62f, 0.32f), "Take all", 13, ManagementScreen.SelectedTabLabel, bold: true),
                 0f, 0f, 0f, 0f, 12f, 12f, 110f, 30f, 0f, 0f);
             TakeAllButton.Pressed += () => _status.Text = _world.Inventory.TakeAll(Crate);
             _cratePanel.Root.AddChild(TakeAllButton);
