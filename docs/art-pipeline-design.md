@@ -451,10 +451,15 @@ S6 with the rest of the pack.
 | `item_scrap`, `item_coal`, `item_copper_ore`, `item_zinc_ore`, `item_aether`, `item_brass` | 32 × 32 | Gen placeholder (`belts` section) | `placeables.json` `itemSprites` (belts, drawn at 32); `ItemIcons.PathFor` (UI rows, drawn at 24); `BeltRun` default `item_scrap` |
 | `item_coke`, `item_iron_plate`, `item_slag`, `item_glass`, `item_copper_ingot`, `item_zinc_ingot`, `item_copper_wire`, `item_gear`, `item_casing`, `item_lens`, `item_mainspring`, `item_aether_cell`, `item_mechanism`, `item_regulator`, `item_frame_section`, `item_aether_conduit`, `item_chronometer_core`, `item_great_cog` | 32 × 32 | Gen placeholder (`goods` section) | same |
 
-`item_copper_ore.png` stays malachite green (`art-style-bible.md` §0.6). The goods are redrawn
-through ComfyUI like every set and hand-replaced (all 24 into `generate_placeholder_art.py`'s
-`HAND_REPLACED`); the rows stay at 24 (decision 6), so each good is checked at 24 at all four
-sampling phases (`art-style-bible.md` §5.4, check 11).
+`item_copper_ore.png` stays malachite green (`art-style-bible.md` §0.6). The rows stay at 24
+(decision 6), so each good is checked at 24 at all four sampling phases (`art-style-bible.md`
+§5.4, check 11).
+
+**Done (decision 21).** Not through ComfyUI: the generator redrew the 11 goods checks 7 and 11
+flagged, and all 24 stay generated (no `HAND_REPLACED`). Brass is a stack of three bars and the
+copper ingot a narrow bar (they shared one outline); zinc is pewter, off the reserved steel blue;
+the casing is a can; the great cog, regulator, mechanism, gear, wire and mainspring are drawn two
+pixels thick or more, so none falls apart at 24.
 
 ### S6 The HUD
 
@@ -1208,3 +1213,8 @@ Each records the decision and, where it differs, what this document first recomm
     rows; the card 9-slice is tiled). The ENGAGE GEARS and PATENT labels were recentred. The
     rack and bottom bar keep the iron grain panel; the Steampunk buttons wait for S6.
     *First recommended:* exactly this.
+21. **S5: the goods script-redrawn, not through ComfyUI** (the user, 2026-10-30). At 32 px, shown
+    at 24, a redraw would go muddy as S2 and S3's did, and today's goods were already clean.
+    `generate_placeholder_art.py` redrew the 11 that checks 7 and 11 flagged (look-alike
+    outlines, thin parts that fell apart at 24, zinc in steam's steel blue); the other 13 are
+    unchanged and all 24 stay generated. *First recommended:* exactly this.

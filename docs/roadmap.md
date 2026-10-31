@@ -155,8 +155,9 @@ call): built, reviewed, critiqued and tested. Done:
      redrawn in ComfyUI toward the boiler's look; the recycler and slag heap kept (muddy at play
      size), as were the boiler, bench, belts and pipes.
    - **The Workbench (S4) done** (2026-10-30, §9 decision 20): the lever housing, display face
-     and card faces script-drawn by the generator. **Next: goods (S5)**.
-   - Then goods and the HUD, each
+     and card faces script-drawn by the generator.
+   - **Goods (S5) done** (2026-10-30, §9 decision 21): 11 goods redrawn by the generator so all
+     24 pass checks 7 and 11 at 24 px. **Next: the HUD (S6)**,
      with its own review sheet (`art-pipeline-design.md` §3).
    - Before Phase 4's test run: fix the windowed `hover` flake (`open-items.md` §4).
    Done so far: the specs and the user's thirteen calls (§9), the cleanup, `verify_art.py`'s
