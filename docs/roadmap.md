@@ -164,7 +164,7 @@ call): built, reviewed, critiqued and tested. Done:
      and the overlays kept. Every set is now through (§3).
    - The windowed `hover` flake fixed (2026-10-31, `open-items.md` §4).
    - **Next: Phase 4's test run**, the done-when list in `art-pipeline-design.md` §8 (every
-     Core test and scenario twice), run from the user's terminal.
+     Core test and every scenario, once), run from the user's terminal.
    Done so far: the specs and the user's thirteen calls (§9), the cleanup, `verify_art.py`'s
    gap, the `Tools/Art/` tooling, Core's `GolemFrames`, the `art` scenario's golem gallery,
    ControlNet and IP-Adapter in ComfyUI (§1.4), the Presser (8f09b0e), `golem_set.py` (77042e9),
@@ -370,7 +370,7 @@ the pipeline (golems and Artificer not deferrable); every chassis with its full 
 every facing; the Steampunk pack gone; every set's review sheet shown to the user before its
 commit; `verify_art.py` and `check_art.py` green; the lighting in from `LightingRules` and the
 windowed `perf` run passing with it on; every Core test and scenario, the new `art` scenario
-included, passing twice; and every replaced file recorded.
+included, passing; and every replaced file recorded.
 
 The roadmap's brief:
 

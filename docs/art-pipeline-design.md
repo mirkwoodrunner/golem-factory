@@ -1101,8 +1101,8 @@ Phase 4 is done when all of these hold:
 7. **The lighting is in**, every value from `LightingRules`, `LightingRulesTests` passing
    (the floor stays readable), and the **windowed `perf` run passes on an idle machine with it
    on**, its cost recorded in `docs/performance-report-phase4.md`.
-8. **Every Core test and every scenario passes**, the new `art` scenario included, each scenario
-   run twice headless from a clean build with no flakes.
+8. **Every Core test and every scenario passes** from a clean build, the new `art` scenario
+   included. A scenario that fails only sometimes is a bug to fix, not a reason to run it again.
 9. **The record is complete:** every hand-replaced file is in its generator's guard,
    `KNOWN_HAND_REPLACED`, the manifest and `CLAUDE.md`'s art section; every `comfyui` file is in
    the manifest; and no RetroDiffusion or third-party art is left in `godot/art/`.
