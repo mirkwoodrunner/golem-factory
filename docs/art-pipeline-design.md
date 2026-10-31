@@ -251,7 +251,7 @@ Workbench; goods; the HUD.
 | S3 | **Buildings** | Depot, station, Post, mast, recycler, slag heap, boiler, bench, belt tiles, pipe pieces (+ hot variants) | **Done** (decision 19): four redrawn, the rest kept; hot pipes added |
 | S4 | **The Workbench** | Lever housing, display face, card faces, panels | The core verb's screen |
 | S5 | **Goods** | 24 `item_*` | Small, generator-owned, cheap; copper ore stays green |
-| S6 | **The HUD** | The seven Steampunk pieces in use, redrawn under new names; the tech tree chrome | **Pack swap done** (decision 22): the seven script-drawn under `UI/Hud/`, the pack removed; the tech tree chrome and overlays still to review |
+| S6 | **The HUD** | The seven Steampunk pieces in use, redrawn under new names; the tech tree chrome | **Done** (decisions 22, 23): the seven script-drawn under `UI/Hud/`, the pack removed; the locked plaque's bar dropped, the rest kept |
 
 Overlays (`build_ghost_tile`, `facing_arrow`, `interaction_ring`) are state tools, not
 decoration. They stay generated and are only re-coloured to the palette if a review asks.
@@ -500,8 +500,7 @@ corner slices, so a stretched edge never smears one), tan button faces under a p
 (iron for the active one, stitched for active, accept and close), and a ten-tooth, six-spoke
 gear. The accept and close buttons lost the pack's check and X: in a 9-slice centre they
 stretched behind "Save" and "CLOSE". The ten readers point at `UI/Hud/`; `godot/art/UI/Steampunk/`
-and the licence note are gone; `verify_art.py` runs the new generator; check 16 passes. The
-rest of the HUD set below (tech tree chrome, overlays) is still to review.
+and the licence note are gone; `verify_art.py` runs the new generator; check 16 passes.
 
 The rest of the HUD set:
 
@@ -511,6 +510,12 @@ The rest of the HUD set:
 | `interaction_ring.png` | 64 × 64 | Gen topdown | `InteractionPromptNode` |
 | `facing_arrow.png` | 28 × 28 | authored | `GolemNode` (and at 0.6 on the tiles), `BuildCursorNode`, `TutorialPanel` |
 | `build_ghost_tile.png` | 64 × 64 | Gen topdown | `BuildCursorNode`, `GolemNode` (tile overlay, carry preview) |
+
+**Done (decision 23).** One change: `tt_node_locked` lost the bar across its face. Drawn in the
+9-slice centre, it stretched into a stripe through each locked plaque's title and badge; dark
+iron and grey text still set locked apart from the brass plaques. The other tech tree pieces
+were already generator-drawn pixel art in the HUD's palette and are unchanged, as are the three
+overlays (state tools, §3).
 
 ## 5. Tooling to build
 
@@ -1235,3 +1240,7 @@ Each records the decision and, where it differs, what this document first recomm
     margins and tone range, so no layout number or tint moved. The accept and close buttons
     carry no glyph (invariant 12): the stretched check and X smeared behind the words. The
     pack and its licence note are removed. *First recommended:* exactly this.
+23. **S6: the rest of the HUD kept, one fix** (the user, 2026-10-31). The tech tree chrome
+    was already script-drawn in the HUD's palette; only the locked plaque's bar, which struck
+    through the text, was dropped (`generate_tech_tree_art.py`). The overlays stay as they
+    are. *First recommended:* exactly this.

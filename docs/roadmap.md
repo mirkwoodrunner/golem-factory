@@ -158,11 +158,12 @@ call): built, reviewed, critiqued and tested. Done:
      and card faces script-drawn by the generator.
    - **Goods (S5) done** (2026-10-30, §9 decision 21): 11 goods redrawn by the generator so all
      24 pass checks 7 and 11 at 24 px.
-   - **The HUD (S6): the pack swap done** (2026-10-31, §9 decision 22): the seven Steampunk
-     pieces in use script-drawn under `UI/Hud/` by `generate_hud_art.py`, the pack and its
-     licence note removed. **Next: the rest of S6**, the tech tree chrome and the overlays,
-     with its own review sheet (`art-pipeline-design.md` §3, §4 S6).
-   - Before Phase 4's test run: fix the windowed `hover` flake (`open-items.md` §4).
+   - **The HUD (S6) done** (2026-10-31, §9 decisions 22 and 23): the seven Steampunk pieces
+     in use script-drawn under `UI/Hud/` by `generate_hud_art.py`, the pack and its licence
+     note removed; the locked tech-tree plaque's bar dropped; the rest of the tech tree chrome
+     and the overlays kept. Every set is now through (§3).
+   - **Next:** fix the windowed `hover` flake (`open-items.md` §4), then Phase 4's test run:
+     the done-when list in `art-pipeline-design.md` §8 (every Core test and scenario twice).
    Done so far: the specs and the user's thirteen calls (§9), the cleanup, `verify_art.py`'s
    gap, the `Tools/Art/` tooling, Core's `GolemFrames`, the `art` scenario's golem gallery,
    ControlNet and IP-Adapter in ComfyUI (§1.4), the Presser (8f09b0e), `golem_set.py` (77042e9),
