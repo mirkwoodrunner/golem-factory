@@ -111,10 +111,11 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 - **`Straining`**, the only predictive mood (9 of 12 units held): on hover only since Phase 2
   (`docs/roadmap.md`, decision 6; `onboarding-feedback-design.md` §4.4). The playtest's
   `straining` question asks whether anyone missed a warning.
-- **The `hover` scenario is flaky windowed** (found 2026-10-23, Phase 4): about one windowed run
-  in two fails "W's card says nearly full"; headless it always passes, and it failed before any
-  Phase 4 change. Likely a timing dependence on real frame times (the straining golem's stock
-  moves on before the card is read). Fix before Phase 4's test agent runs scenarios windowed.
+- **The `hover` scenario's windowed flake: closed** (2026-10-31). Not timing: `StreetFixture`
+  warped the OS cursor as well as sending its own motion event, and windowed the OS's event
+  came a frame later somewhere else, putting the hover back on the last golem (it failed 5 of
+  5 windowed runs, at different steps). The fixture now sends the motion event alone; `hover`
+  passed 4 of 4 windowed, and `moods` windowed and both headless.
 - **A first-launch hitch:** the first windowed `perf` run after a clean rebuild had one 142 ms
   frame in its first phase; the immediate rerun's worst frame was 22.8 ms. Most likely a
   first-run cost (shader or pipeline compilation, a cold .NET JIT). A player's first launch

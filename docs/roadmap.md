@@ -162,8 +162,9 @@ call): built, reviewed, critiqued and tested. Done:
      in use script-drawn under `UI/Hud/` by `generate_hud_art.py`, the pack and its licence
      note removed; the locked tech-tree plaque's bar dropped; the rest of the tech tree chrome
      and the overlays kept. Every set is now through (§3).
-   - **Next:** fix the windowed `hover` flake (`open-items.md` §4), then Phase 4's test run:
-     the done-when list in `art-pipeline-design.md` §8 (every Core test and scenario twice).
+   - The windowed `hover` flake fixed (2026-10-31, `open-items.md` §4).
+   - **Next: Phase 4's test run**, the done-when list in `art-pipeline-design.md` §8 (every
+     Core test and scenario twice), run from the user's terminal.
    Done so far: the specs and the user's thirteen calls (§9), the cleanup, `verify_art.py`'s
    gap, the `Tools/Art/` tooling, Core's `GolemFrames`, the `art` scenario's golem gallery,
    ControlNet and IP-Adapter in ComfyUI (§1.4), the Presser (8f09b0e), `golem_set.py` (77042e9),

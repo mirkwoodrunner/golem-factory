@@ -153,7 +153,11 @@ namespace GolemFactory.Nodes.Scenarios
             _heldTap = key;
         }
 
-        /// <summary>Moves the real pointer to a screen point (warped: headless has no mouse).</summary>
+        /// <summary>
+        /// Moves the pointer to a screen point by a motion event alone. The OS cursor is not
+        /// warped: windowed, its own motion event arrived a frame later somewhere else and put
+        /// the hover back on the last golem (the `hover` flake, open-items.md §4).
+        /// </summary>
         protected void PointAt(Vector2 at)
         {
             _pointer = () => at;
@@ -177,7 +181,6 @@ namespace GolemFactory.Nodes.Scenarios
                 return;
             }
             _lastWarp = at;
-            Viewport.WarpMouse(at);
             // Flushed, then disposed at once: a scenario re-points every frame while it waits,
             // and hundreds of wrappers left to the finalizer crashed the engine on quit.
             using var motion = new InputEventMouseMotion { Position = at, GlobalPosition = at };
