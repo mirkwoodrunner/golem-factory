@@ -193,6 +193,12 @@ class LightTests(CheckArtCase):
         self.add("prop.png", _sprites.lit_body(lit_from="right"), entry())
         self.assertFails(self.run_checks(), 14, "prop.png")
 
+    def test_a_light_note_allows_a_low_score(self):
+        self.add("prop.png", _sprites.lit_body(lit_from="right"), entry(lightNote="one-colour outline"))
+        report = self.run_checks()
+        self.assertFalse(self.fails(report, 14), "; ".join(report.lines()))
+        self.assertTrue(any(f[0] == "INFO" and f[1] == 14 for f in report.findings), "; ".join(report.lines()))
+
     def test_a_plain_flipped_mirror_fails(self):
         east = _sprites.lit_body()
         self.add("x_base_east.png", east, entry())

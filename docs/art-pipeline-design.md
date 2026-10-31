@@ -533,7 +533,8 @@ Where the build settled something this section left open:
 - **The manifest** has 129 entries and three fields beyond §5.1: `kind` (`standing`, `floor`,
   `edge`, `tile`, `good`, `fx`, `shadow`, `overlay`, `ui`), which picks the colour-count limit
   and which checks apply; `footSlack` with a `footNote` (the six tower pictures stand 2 rows above
-  their canvas bottom, measured, and say so); and `wallHung` (the tool rack hangs on the wall, so
+  their canvas bottom, measured, and say so); `lightNote` likewise for check 14 (the Artificer's
+  36, whose approved one-colour outline scores 0, added 2026-10-31); and `wallHung` (the tool rack hangs on the wall, so
   it has no foot row). Overlays carry `partialAlpha`. The carts and the tower are set `reference`.
   `--write` is `check_art.py --write`.
 - **check_art.py** binds checks 1–3, 12, 15 and 16 on everything; 4–6 only on a replaced entry

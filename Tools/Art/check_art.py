@@ -492,7 +492,9 @@ class Checker:
                 continue
             image = self.image(rel)
             score = m.edge_light_score(image, outline if replaced(e) else None)
-            if score < EDGE_LIGHT_MIN:
+            if score < EDGE_LIGHT_MIN and e.get("lightNote"):
+                self.report.add("INFO", 14, rel, f"edge-light score {score:+.3f}, allowed: {e['lightNote']}")
+            elif score < EDGE_LIGHT_MIN:
                 self.report.bound(replaced(e), 14, rel, f"edge-light score {score:+.3f}: not lit from the upper left "
                                                         f"(at least {EDGE_LIGHT_MIN:+.2f})")
             source = e.get("mirroredFrom")

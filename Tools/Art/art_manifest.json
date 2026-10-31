@@ -357,7 +357,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "down",
-    "frame": 0
+    "frame": 0,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_walk_down_1.png": {
     "set": "S1b",
@@ -375,7 +376,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "down",
-    "frame": 1
+    "frame": 1,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_walk_down_2.png": {
     "set": "S1b",
@@ -393,7 +395,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "down",
-    "frame": 2
+    "frame": 2,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_walk_down_3.png": {
     "set": "S1b",
@@ -411,7 +414,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "down",
-    "frame": 3
+    "frame": 3,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_walk_left_0.png": {
     "set": "S1b",
@@ -429,7 +433,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "left",
-    "frame": 0
+    "frame": 0,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_walk_left_1.png": {
     "set": "S1b",
@@ -447,7 +452,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "left",
-    "frame": 1
+    "frame": 1,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_walk_left_2.png": {
     "set": "S1b",
@@ -465,7 +471,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "left",
-    "frame": 2
+    "frame": 2,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_walk_left_3.png": {
     "set": "S1b",
@@ -483,7 +490,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "left",
-    "frame": 3
+    "frame": 3,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_walk_right_0.png": {
     "set": "S1b",
@@ -501,7 +509,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "right",
-    "frame": 0
+    "frame": 0,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_walk_right_1.png": {
     "set": "S1b",
@@ -519,7 +528,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "right",
-    "frame": 1
+    "frame": 1,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_walk_right_2.png": {
     "set": "S1b",
@@ -537,7 +547,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "right",
-    "frame": 2
+    "frame": 2,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_walk_right_3.png": {
     "set": "S1b",
@@ -555,7 +566,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "right",
-    "frame": 3
+    "frame": 3,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_walk_up_0.png": {
     "set": "S1b",
@@ -573,7 +585,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "up",
-    "frame": 0
+    "frame": 0,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_walk_up_1.png": {
     "set": "S1b",
@@ -591,7 +604,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "up",
-    "frame": 1
+    "frame": 1,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_walk_up_2.png": {
     "set": "S1b",
@@ -609,7 +623,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "up",
-    "frame": 2
+    "frame": 2,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_walk_up_3.png": {
     "set": "S1b",
@@ -627,7 +642,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "up",
-    "frame": 3
+    "frame": 3,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "belt_splitter.png": {
     "set": "S3",
@@ -6246,7 +6262,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "down",
-    "frame": "stand"
+    "frame": "stand",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_stand_left.png": {
     "set": "S1b",
@@ -6264,7 +6281,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "left",
-    "frame": "stand"
+    "frame": "stand",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_stand_right.png": {
     "set": "S1b",
@@ -6282,7 +6300,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "right",
-    "frame": "stand"
+    "frame": "stand",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_stand_up.png": {
     "set": "S1b",
@@ -6300,7 +6319,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "up",
-    "frame": "stand"
+    "frame": "stand",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_down_0.png": {
     "set": "S1b",
@@ -6318,7 +6338,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "down",
-    "frame": "crank_0"
+    "frame": "crank_0",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_down_1.png": {
     "set": "S1b",
@@ -6336,7 +6357,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "down",
-    "frame": "crank_1"
+    "frame": "crank_1",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_down_2.png": {
     "set": "S1b",
@@ -6354,7 +6376,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "down",
-    "frame": "crank_2"
+    "frame": "crank_2",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_down_3.png": {
     "set": "S1b",
@@ -6372,7 +6395,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "down",
-    "frame": "crank_3"
+    "frame": "crank_3",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_left_0.png": {
     "set": "S1b",
@@ -6390,7 +6414,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "left",
-    "frame": "crank_0"
+    "frame": "crank_0",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_left_1.png": {
     "set": "S1b",
@@ -6408,7 +6433,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "left",
-    "frame": "crank_1"
+    "frame": "crank_1",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_left_2.png": {
     "set": "S1b",
@@ -6426,7 +6452,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "left",
-    "frame": "crank_2"
+    "frame": "crank_2",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_left_3.png": {
     "set": "S1b",
@@ -6444,7 +6471,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "left",
-    "frame": "crank_3"
+    "frame": "crank_3",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_right_0.png": {
     "set": "S1b",
@@ -6462,7 +6490,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "right",
-    "frame": "crank_0"
+    "frame": "crank_0",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_right_1.png": {
     "set": "S1b",
@@ -6480,7 +6509,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "right",
-    "frame": "crank_1"
+    "frame": "crank_1",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_right_2.png": {
     "set": "S1b",
@@ -6498,7 +6528,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "right",
-    "frame": "crank_2"
+    "frame": "crank_2",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_right_3.png": {
     "set": "S1b",
@@ -6516,7 +6547,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "right",
-    "frame": "crank_3"
+    "frame": "crank_3",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_up_0.png": {
     "set": "S1b",
@@ -6534,7 +6566,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "up",
-    "frame": "crank_0"
+    "frame": "crank_0",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_up_1.png": {
     "set": "S1b",
@@ -6552,7 +6585,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "up",
-    "frame": "crank_1"
+    "frame": "crank_1",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_up_2.png": {
     "set": "S1b",
@@ -6570,7 +6604,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "up",
-    "frame": "crank_2"
+    "frame": "crank_2",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "artificer_crank_up_3.png": {
     "set": "S1b",
@@ -6588,7 +6623,8 @@
       "ArtificerWalkAnimation"
     ],
     "direction": "up",
-    "frame": "crank_3"
+    "frame": "crank_3",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
   },
   "hand_crank_bench_turn_0.png": {
     "set": "S3",
