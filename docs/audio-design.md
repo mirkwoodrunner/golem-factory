@@ -151,7 +151,7 @@ enough to hear the seam, the music one layer at a time.
 1. Every slot in §2 (plus decision 3's `ui.place`, `ui.demolish` and `ui.collect`) is in `audio.json`, has a placeholder file and
    plays at its trigger.
 2. Invariants 3–5 hold and are pinned by Core tests.
-3. The user has listened to the sample sheet and approved it.
+3. The user has listened to the sample sheet and approved it. **Done 2026-11-01.**
 4. `verify_audio.py` exits 0; every Core test and every scenario passes from a clean build,
    the new `audio` scenario included.
 
