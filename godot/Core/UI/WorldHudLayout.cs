@@ -13,10 +13,25 @@ namespace GolemFactory.UI
         public readonly Vector3 Anchor;
         public readonly string OwnerId;
 
-        public WorldHudRequest(Vector3 anchor, string ownerId)
+        /// <summary>
+        /// Half the label's drawn width, in cells, or 0 when unknown. A label that says how
+        /// wide it is is also kept off neighbours in OTHER columns (Phase 2 critique: two red
+        /// badges on golems two cells apart, each wider than two cells, overlapped).
+        /// </summary>
+        public readonly float HalfWidth;
+
+        /// <summary>
+        /// The label's drawn height, in cells, or 0 for "one row". Zoomed out, a badge is taller
+        /// than <see cref="WorldHudLayout.RowHeight"/>, and a climb of one row left it overlapping.
+        /// </summary>
+        public readonly float Height;
+
+        public WorldHudRequest(Vector3 anchor, string ownerId, float halfWidth = 0f, float height = 0f)
         {
             Anchor = anchor;
             OwnerId = ownerId ?? "";
+            HalfWidth = halfWidth < 0f ? 0f : halfWidth;
+            Height = height < 0f ? 0f : height;
         }
     }
 
@@ -124,7 +139,64 @@ namespace GolemFactory.UI
                 }
             }
 
+            SpreadWideLabels(requests, resolved, rowHeight);
             return resolved;
+        }
+
+        /// <summary>
+        /// The width-aware pass. Labels that gave a width are placed south first, then by
+        /// owner id (the column pass's order, so it stays deterministic); each climbs a row at a
+        /// time while its box overlaps one already placed. A column of narrow labels is left as
+        /// the column pass stacked it; a row of wide ones staggers, every other one a row up,
+        /// so each still sits over its own golem. Labels with no width are untouched.
+        /// </summary>
+        private static void SpreadWideLabels(IReadOnlyList<WorldHudRequest> requests, Vector3[] resolved, float rowHeight)
+        {
+            var wide = new List<int>();
+            for (int i = 0; i < requests.Count; i++)
+            {
+                if (requests[i].HalfWidth > 0f)
+                {
+                    wide.Add(i);
+                }
+            }
+            if (wide.Count < 2 || rowHeight <= 0f)
+            {
+                return;
+            }
+            wide.Sort((a, b) =>
+            {
+                int byY = resolved[a].y.CompareTo(resolved[b].y);
+                return byY != 0 ? byY : string.CompareOrdinal(requests[a].OwnerId, requests[b].OwnerId);
+            });
+
+            var placed = new List<int>();
+            foreach (int index in wide)
+            {
+                // Bounded: a label can only climb past each placed one once.
+                for (int guard = 0; guard <= placed.Count; guard++)
+                {
+                    bool overlaps = false;
+                    foreach (int other in placed)
+                    {
+                        float rows = (Mathf.Max(rowHeight, requests[index].Height) + Mathf.Max(rowHeight, requests[other].Height)) / 2f;
+                        if (Mathf.Abs(resolved[index].x - resolved[other].x) < requests[index].HalfWidth + requests[other].HalfWidth &&
+                            Mathf.Abs(resolved[index].y - resolved[other].y) < rows * 0.999f)
+                        {
+                            overlaps = true;
+                            break;
+                        }
+                    }
+                    if (!overlaps)
+                    {
+                        break;
+                    }
+                    Vector3 position = resolved[index];
+                    position.y += Mathf.Max(rowHeight, requests[index].Height);
+                    resolved[index] = position;
+                }
+                placed.Add(index);
+            }
         }
     }
 }

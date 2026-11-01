@@ -22,7 +22,8 @@ namespace GolemFactory.Player
         // they are more likely to have meant.
         Refuel = 4,
 
-        // Labelling a depot (docs/cozy-automation-design.md §1). Appended for the same reason
+        // A crate: a depot or a Freight Mast, collected with E (docs/crates-design.md §4.2; it
+        // was labelling a depot, cozy-automation-design §1, before crates). Appended for the same reason
         // Refuel was, and it belongs at this end of the order for a stronger reason than the
         // boiler does: a golem almost always stands beside the depot it pushes into, and a crate
         // that beat that golem on a distance tie would make it unprogrammable.
@@ -181,10 +182,9 @@ namespace GolemFactory.Player
                 // been lit, and a player told to RE-fuel one looks for the fuel they must have
                 // spilled.
                 case InteractionKind.Refuel: return "Fuel Boiler";
-                // "Label", not "Filter" or "Sort": the fantasy is chalking a word on a crate,
-                // and the verb has to say that pressing the key CHANGES something. "Sort Depot"
-                // would read as an action the depot performs on its contents.
-                case InteractionKind.Sort: return "Label Depot";
+                // Sort keeps its value and now means "a crate" (crates-design §4.2): E takes what
+                // fits into the pack. The label moved to the crate screen.
+                case InteractionKind.Sort: return "Collect from";
                 default: return "";
             }
         }

@@ -91,6 +91,23 @@ namespace GolemFactory.Economy
             return buffer;
         }
 
+        /// <summary>
+        /// Drops a demolished crate's buffer (docs/crates-design.md §4.6), after its endpoint is
+        /// unregistered, so a depot re-placed on the cell starts with a fresh one. For that only:
+        /// <see cref="Clear"/>'s rule that a load never removes a buffer is about buffers whose
+        /// endpoints still hold the instance, and a demolished crate's no longer does.
+        /// </summary>
+        public bool Remove(string bufferId)
+        {
+            if (bufferId == null || !_buffers.TryGetValue(bufferId, out StorageBuffer buffer))
+            {
+                return false;
+            }
+
+            buffer.ClearContents();
+            return _buffers.Remove(bufferId);
+        }
+
         public bool TryGetBuffer(string bufferId, out StorageBuffer buffer)
         {
             // Guard against a null id (an unset sourceId/destinationId), matching

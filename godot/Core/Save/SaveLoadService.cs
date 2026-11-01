@@ -18,10 +18,22 @@ namespace GolemFactory.Save
             PatentRegistry patents, IEnumerable<GolemEntity> golems,
             IEnumerable<GolemFactory.Buildings.PlaceableBuilding> buildings = null)
         {
-            var data = new SaveData();
+            var data = new SaveData { version = SaveData.CurrentVersion };
+
+            // A crate that owns its buffer saves on its building (crates-design §7), not here.
+            var crateIds = new HashSet<string>(
+                (buildings ?? Enumerable.Empty<GolemFactory.Buildings.PlaceableBuilding>())
+                .Select(b => b?.GetPart<GolemFactory.Buildings.ICrate>())
+                .Where(c => c != null && c.OwnsBuffer && c.CrateId != null)
+                .Select(c => c.CrateId));
 
             foreach (StorageBuffer buffer in buffers.Buffers.Values)
             {
+                if (crateIds.Contains(buffer.BufferId))
+                {
+                    continue;
+                }
+
                 var entry = new BufferEntry { bufferId = buffer.BufferId };
                 foreach (KeyValuePair<string, int> quantity in buffer.Quantities)
                 {
@@ -121,6 +133,16 @@ namespace GolemFactory.Save
                 if (depot != null)
                 {
                     entry.depotFilterItemType = depot.FilterItemType;
+                }
+
+                var crate = building.GetPart<GolemFactory.Buildings.ICrate>();
+                if (crate != null && crate.OwnsBuffer && crate.Buffer != null)
+                {
+                    foreach (KeyValuePair<string, int> quantity in crate.Buffer.Quantities)
+                    {
+                        entry.crateItemTypes.Add(quantity.Key);
+                        entry.crateQuantities.Add(quantity.Value);
+                    }
                 }
 
                 var recycler = building.GetPart<GolemFactory.Buildings.PlaceableScrapRecycler>();
@@ -223,17 +245,26 @@ namespace GolemFactory.Save
         public static RestoreReport RestoreState(
             SaveData data, StorageBufferRegistry buffers,
             PatentRegistry patents, IEnumerable<GolemEntity> golems, DefinitionCatalog catalog,
-            IGolemRespawner respawner = null, IBuildingRebuilder buildingRebuilder = null)
+            IGolemRespawner respawner = null, IBuildingRebuilder buildingRebuilder = null,
+            string packId = null)
         {
-            // Deposit is additive -- clear first so a load *replaces* buffer state
-            // instead of merging into whatever's currently there.
+            // Clear first so a load *replaces* buffer state instead of merging into whatever's
+            // currently there.
             buffers.Clear();
 
+            // RestoreQuantity, never Deposit: a load never clamps (crates-design §0.2). A pack
+            // above its cap -- a save from before the cap, whose stockpile was unlimited -- comes
+            // back intact, spendable, and closed to more until it is under.
             foreach (BufferEntry entry in data.buffers)
             {
-                for (int i = 0; i < entry.itemTypes.Count; i++)
+                if (entry.bufferId == null)
                 {
-                    buffers.Deposit(entry.bufferId, entry.itemTypes[i], entry.quantities[i]);
+                    continue;
+                }
+                StorageBuffer buffer = buffers.GetOrCreate(entry.bufferId);
+                for (int i = 0; i < entry.itemTypes.Count && i < entry.quantities.Count; i++)
+                {
+                    buffer.RestoreQuantity(entry.itemTypes[i], entry.quantities[i]);
                 }
             }
 
@@ -268,7 +299,8 @@ namespace GolemFactory.Save
             // golem-respawn pass and this one.
             int buildingsRebuilt = 0;
             int buildingsSkipped = 0;
-            RestoreBuildings(data, buildingRebuilder, ref buildingsRebuilt, ref buildingsSkipped);
+            StorageBuffer pack = packId != null ? buffers.GetOrCreate(packId) : null;
+            RestoreBuildings(data, buildingRebuilder, pack, ref buildingsRebuilt, ref buildingsSkipped);
 
             Dictionary<string, GolemEntity> golemsById = new Dictionary<string, GolemEntity>();
             foreach (GolemEntity golem in golems)
@@ -338,6 +370,10 @@ namespace GolemFactory.Save
                     }
                 }
 
+                // A Repeat's n above what its recipe can finish loads at the limit, the program
+                // otherwise as saved (docs/tuning-data-spec.md §13.1).
+                RepeatRules.ClampProgram(program);
+
                 // G10: each Haul slot's good, the same way. An older save has none, and every
                 // slot keeps its card's own type.
                 if (entry.appendageItemTypes != null)
@@ -386,7 +422,7 @@ namespace GolemFactory.Save
         // load must REPLACE the built world, not merge into it. Loading twice would otherwise
         // stack two factories, and the second copy would fail cell by cell against the first.
         private static void RestoreBuildings(
-            SaveData data, IBuildingRebuilder rebuilder, ref int rebuilt, ref int skipped)
+            SaveData data, IBuildingRebuilder rebuilder, StorageBuffer pack, ref int rebuilt, ref int skipped)
         {
             if (rebuilder == null)
             {
@@ -410,12 +446,46 @@ namespace GolemFactory.Save
                         (GolemFactory.World.Facing)entry.facing,
                         out GolemFactory.Buildings.PlaceableBuilding building) || building == null)
                 {
+                    ReturnHeldGoodsToPack(entry, pack);
                     skipped++;
                     continue;
                 }
 
                 RestoreBuildingState(entry, building);
                 rebuilt++;
+            }
+        }
+
+        // A building the load cannot rebuild (its prefab is gone, or its cell is taken) hands what
+        // it held to the pack, handled like the pack limit (crates-design §7, §11): added without
+        // a clamp, so it stays above the cap, spendable and closed to more. Never the Post, and
+        // never the building's cost: a load does not refund. The next save no longer lists the
+        // building, so a second load cannot hand the same goods over twice.
+        private static void ReturnHeldGoodsToPack(BuildingEntry entry, StorageBuffer pack)
+        {
+            if (pack == null)
+            {
+                return;
+            }
+
+            if (entry.crateItemTypes != null && entry.crateQuantities != null)
+            {
+                for (int i = 0; i < entry.crateItemTypes.Count && i < entry.crateQuantities.Count; i++)
+                {
+                    AddUnclamped(pack, entry.crateItemTypes[i], entry.crateQuantities[i]);
+                }
+            }
+
+            AddUnclamped(pack, ItemType.Coke, entry.cokeStock);
+            AddUnclamped(pack, ItemType.Coke, entry.recyclerCokeStock);
+            AddUnclamped(pack, ItemType.Scrap, entry.recyclerScrapStock);
+        }
+
+        private static void AddUnclamped(StorageBuffer pack, string itemType, int quantity)
+        {
+            if (itemType != null && quantity > 0)
+            {
+                pack.RestoreQuantity(itemType, pack.GetQuantity(itemType) + quantity);
             }
         }
 
@@ -440,6 +510,17 @@ namespace GolemFactory.Save
             if (depot != null)
             {
                 depot.SetFilter(entry.depotFilterItemType);
+            }
+
+            // After the label, into the crate the rebuild just made empty, without a clamp. A save
+            // from before crates has no list, and its crates start empty (crates-design §7).
+            var crate = building.GetPart<GolemFactory.Buildings.ICrate>();
+            if (crate != null && crate.OwnsBuffer && crate.Buffer != null && entry.crateItemTypes != null && entry.crateQuantities != null)
+            {
+                for (int i = 0; i < entry.crateItemTypes.Count && i < entry.crateQuantities.Count; i++)
+                {
+                    crate.Buffer.RestoreQuantity(entry.crateItemTypes[i], entry.crateQuantities[i]);
+                }
             }
 
             // Restore, not Add: the rebuilt hopper was placed with whatever the prefab starts

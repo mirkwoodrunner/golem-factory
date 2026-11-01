@@ -152,7 +152,8 @@ namespace GolemFactory.Tests.EditMode
             }
         }
 
-        // §6's cost table, restated independently of the authoring script so the two must agree.
+        // §6's cost table, as tuning-data-spec §8 and §8.1 amend it (progression-design §14),
+        // restated independently of the authoring script so the two must agree.
         // Not a duplicate of the acyclicity check: that one proves the costs are REACHABLE, this
         // one proves they are the costs the design actually specified.
         [Test]
@@ -162,18 +163,18 @@ namespace GolemFactory.Tests.EditMode
             {
                 { "ClockworkScavenger", new[] { (ItemType.Scrap, 12) } },
                 { "BrassPresser", new[]
-                    { (ItemType.Scrap, 60), (ItemType.IronPlate, 20), (ItemType.Gear, 10) } },
+                    { (ItemType.Scrap, 60), (ItemType.IronPlate, 10), (ItemType.Gear, 5) } },
                 { "AetherHauler", new[]
-                    { (ItemType.IronPlate, 80), (ItemType.Gear, 40), (ItemType.Coke, 30) } },
+                    { (ItemType.IronPlate, 20), (ItemType.Gear, 10), (ItemType.Coke, 30) } },
                 { "MainspringOverclocker", new[]
                     {
                         (ItemType.Mainspring, 2), (ItemType.Brass, 20),
-                        (ItemType.Casing, 24), (ItemType.Gear, 12)
+                        (ItemType.Casing, 24), (ItemType.Gear, 12), (ItemType.IronPlate, 120)
                     } },
                 { "ZeppelinFreightLoader", new[]
                     {
                         (ItemType.Mainspring, 6), (ItemType.Lens, 8), (ItemType.AetherCell, 3),
-                        (ItemType.Casing, 30), (ItemType.Brass, 40)
+                        (ItemType.Casing, 30), (ItemType.Brass, 40), (ItemType.IronPlate, 150)
                     } },
             };
 

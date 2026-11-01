@@ -76,6 +76,9 @@ namespace GolemFactory.Tests.PlayMode
             AddBuilding(new PlaceableSlagHeap());
             AddBuilding(new PlaceableFreightMast());
             AddBuilding(new PlaceableScrapRecycler());
+            var post = new PlaceableDepot();
+            post.Configure(GolemFactory.World.SandboxWorld.PostBufferId);
+            AddBuilding(post);
 
             // Floor Expansion is the one with no part to count: what the player buys is rows of
             // floor, so the observable fact is that the room has grown past its starting shape.

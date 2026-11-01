@@ -24,6 +24,19 @@ namespace GolemFactory.World
         public bool IsDepleted => RemainingQuantity == 0;
 
         /// <summary>
+        /// A load: the stall's stock as the save left it, replacing what it holds now. An
+        /// infinite node (Creative Mode) stays infinite, and a negative count reads as empty.
+        /// </summary>
+        public void RestoreQuantity(int quantity)
+        {
+            if (RemainingQuantity == Infinite)
+            {
+                return;
+            }
+            RemainingQuantity = quantity < 0 ? 0 : quantity;
+        }
+
+        /// <summary>
         /// A truckload arriving (progression-design §13.2). Adds to a finite node's stock and
         /// returns what was actually added.
         ///

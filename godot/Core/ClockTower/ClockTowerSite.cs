@@ -452,13 +452,37 @@ namespace GolemFactory.ClockTower
 
             for (int i = 0; i < stage.demands.Count; i++)
             {
-                MeterFor(stage.demands[i].itemType).Decay(stage.demands[i].ratePerMinute);
+                MeterFor(stage.demands[i].itemType).Decay(DecayRate(stage.demands[i]));
             }
 
             if (_progressUnits >= stage.RequiredProgressUnits())
             {
                 AdvanceStage(stage, tick);
             }
+        }
+
+        /// <summary>
+        /// How fast a line's meter drains this tick, per minute: the rate the line is DELIVERING
+        /// at, up to its demand, or the demand once nothing has arrived for a minute.
+        ///
+        /// <para>
+        /// docs/tuning-data-spec.md §10.1 and §18 (decided, §17 Q4). The meter used to drain at
+        /// the demand rate whatever arrived, so a line short of its demand emptied it between
+        /// deliveries, and an empty meter freezes progress: at a supply of s against a demand
+        /// of d the meter was up for about s/d of the time and progress ran at s/d while it
+        /// was, so a stage took nominal × (d/s)² (measured: 1 a minute of 6 built the
+        /// Foundation in 3:36:00, not 36:00). Drained at the delivered rate, a steady line
+        /// keeps its meter up, progress runs at s/d throughout, and a stage takes nominal × d/s,
+        /// which is what §7 means by "scales with delivered rate". At or above the demand
+        /// nothing changes: the meter drains at the demand and banks the surplus up to its cap.
+        /// A line that stops still starves: once its window has emptied, the demand rate
+        /// drains what is left.
+        /// </para>
+        /// </summary>
+        private int DecayRate(StageDemand demand)
+        {
+            int delivered = DeliveryRatePerMinute(demand.itemType);
+            return delivered > 0 && delivered < demand.ratePerMinute ? delivered : demand.ratePerMinute;
         }
 
         // Settles this tick's multiplier, the line that is holding it down, and whether anything

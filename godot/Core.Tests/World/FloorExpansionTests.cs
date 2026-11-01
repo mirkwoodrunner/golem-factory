@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using GolemFactory.Compat;
 using GolemFactory.Economy;
@@ -146,8 +148,8 @@ namespace GolemFactory.Tests.EditMode
         // --- the purchase ---------------------------------------------------------------------
 
         // Unity also built a Grid and a Tilemap for the service to paint new rows into. Painting
-        // is the scene's job now (FloorExpansionService.RowsAdded), so the rig is the rules' two
-        // inputs: the room's bounds and the stockpile.
+        // is the scene's job now (FloorExpansionService.RowsAdded), so the rig is the rules'
+        // inputs: the room's bounds, the stockpile, and sandbox.json's price list.
         private FloorExpansionService BuildService(out StorageBufferRegistry buffers)
         {
             var bounds = new FloorBounds(FloorLayout.HalfExtent, FloorLayout.DefaultNorthExtent);
@@ -155,7 +157,50 @@ namespace GolemFactory.Tests.EditMode
 
             var service = new FloorExpansionService();
             service.Configure(bounds, buffers, "FactoryStockpile");
+            SandboxSetup.Expansion authored = GolemFactory.Tests.World.SandboxSetupTests.LoadReal().floorExpansion;
+            service.ConfigureCost(authored.purchases, authored.rowsPerPurchase);
             return service;
+        }
+
+        private static void Pay(StorageBufferRegistry buffers, IEnumerable<RecipeIngredient> cost)
+        {
+            foreach (RecipeIngredient entry in cost)
+            {
+                buffers.Deposit("FactoryStockpile", entry.itemType, entry.quantity);
+            }
+        }
+
+        [Test]
+        public void PurchaseN_ChargesBundleN_Unclamped()
+        {
+            // docs/pack-upgrades-design.md §4: the clamp at a full pack is gone. A capped pack still
+            // sees the authored price, which a pack upgrade makes payable.
+            FloorExpansionService service = BuildService(out StorageBufferRegistry buffers);
+            buffers.SetCapacity("FactoryStockpile", 100);
+            List<List<RecipeIngredient>> authored = GolemFactory.Tests.World.SandboxSetupTests.LoadReal().floorExpansion.purchases;
+            Assert.AreEqual(6, authored.Count);
+
+            for (int n = 0; n < authored.Count; n++)
+            {
+                CollectionAssert.AreEqual(authored[n], service.NextCost(), "purchase " + (n + 1));
+                buffers.SetCapacity("FactoryStockpile", StorageBuffer.Unlimited);
+                Pay(buffers, service.NextCost());
+                Assert.IsTrue(service.TryPurchaseExpansion(), service.LastStatusMessage);
+                Assert.IsTrue(authored[n].All(c => buffers.GetQuantity("FactoryStockpile", c.itemType) == 0), "purchase " + (n + 1) + " charged its bundle");
+                buffers.SetCapacity("FactoryStockpile", 100);
+            }
+            Assert.AreEqual(120, authored[1].Single(c => c.itemType == ItemType.Scrap).quantity, "above a 100 pack: the upgrade's reason");
+        }
+
+        [Test]
+        public void APurchaseAtTheLimit_TakesNothing()
+        {
+            FloorExpansionService service = BuildService(out StorageBufferRegistry buffers);
+            service.Bounds.Restore(FloorLayout.MaxNorthExtent);
+            Pay(buffers, service.NextCost());
+
+            Assert.IsFalse(service.TryPurchaseExpansion(), "the room is at its limit");
+            Assert.IsTrue(service.NextCost().All(c => buffers.GetQuantity("FactoryStockpile", c.itemType) == c.quantity), "nothing charged for air");
         }
 
         [Test]

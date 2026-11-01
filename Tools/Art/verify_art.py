@@ -9,9 +9,10 @@ failing that pixel for pixel (a different PIL can re-encode identical pixels dif
 
 Not every committed sprite is generated, and the report says which are not, so nobody
 mistakes "not generated" for "verified": the walk frames come from ConceptArt via
-slice_artificer_walk.py, UI/Steampunk is a third-party pack, and a few sprites were drawn by
-hand over the generated placeholder (KNOWN_HAND_REPLACED). A hand-replaced file is expected
-to differ from what its generator writes and is reported, not failed.
+slice_artificer_walk.py, the golem chassis frames are ComfyUI redraws no generator ever
+owned (Phase 4's S1), and a few sprites were drawn by hand over the generated placeholder
+(KNOWN_HAND_REPLACED). A hand-replaced file is expected to differ from what its generator
+writes and is reported, not failed.
 """
 import os
 import subprocess
@@ -31,6 +32,7 @@ GENERATORS = [
     "generate_workbench_ui_art.py",
     "generate_tech_tree_art.py",
     "generate_clock_tower_art.py",
+    "generate_hud_art.py",
 ]
 
 # Sprites whose committed version was drawn by hand over the generated placeholder, so the
@@ -45,6 +47,9 @@ KNOWN_HAND_REPLACED = {
     # generate_topdown_environment.py's stalls; that script skips them (HAND_REPLACED).
     "stall_scrap.png", "stall_coal.png", "stall_copper_ore.png", "stall_zinc_ore.png",
     "stall_aether.png",
+    # S3's four buildings: ComfyUI redraws (env_set.py, public/images/S3/set.json) of
+    # generate_building_art.py's, which skips them (HAND_REPLACED).
+    "depot.png", "golem_construction_station.png", "pneumatic_post.png", "freight_mast.png",
 }
 
 

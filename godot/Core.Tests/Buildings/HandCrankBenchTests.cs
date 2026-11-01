@@ -87,6 +87,57 @@ namespace GolemFactory.Tests.EditMode
             }
         }
 
+        // --- Turning: the wheel's and the Artificer's cranking frames ---------------------
+
+        [Test]
+        public void TheTurnFrameAdvancesOncePerTickOfProgress()
+        {
+            RecipeDefinition plate = MakeRecipe("IronPlate", 1, 24, ("Scrap", 1));
+            var (bench, stock) = Build(plate);
+            stock.Deposit("Scrap", 10);
+
+            bench.IsCranking = true;
+            Assert.IsTrue(bench.IsTurning);
+            Assert.AreEqual(0, bench.TurnFrame);
+            for (int tick = 1; tick <= HandCrankBench.TurnFrames + 1; tick++)
+            {
+                bench.Tick(tick);
+                Assert.AreEqual(tick % HandCrankBench.TurnFrames, bench.TurnFrame, "after tick " + tick);
+            }
+        }
+
+        [Test]
+        public void AnUnaffordableRecipeDoesNotTurn()
+        {
+            // Holding [E] with nothing to feed in makes no progress, so nothing turns: the still
+            // wheel is the cue that something is missing.
+            RecipeDefinition plate = MakeRecipe("IronPlate", 1, 24, ("Scrap", 1));
+            var (bench, _) = Build(plate);
+
+            bench.IsCranking = true;
+            bench.Tick(1);
+            bench.Tick(2);
+
+            Assert.IsFalse(bench.IsTurning);
+            Assert.AreEqual(0, bench.TurnFrame);
+            Assert.AreEqual("hand_crank_bench", bench.SpriteFor("hand_crank_bench"));
+        }
+
+        [Test]
+        public void TheBenchWearsItsTurnFrameOnlyWhileTurning()
+        {
+            RecipeDefinition plate = MakeRecipe("IronPlate", 1, 24, ("Scrap", 1));
+            var (bench, stock) = Build(plate);
+            stock.Deposit("Scrap", 10);
+
+            Assert.AreEqual("hand_crank_bench", bench.SpriteFor("hand_crank_bench"), "not held");
+            bench.IsCranking = true;
+            bench.Tick(1);
+            Assert.AreEqual("hand_crank_bench_turn_1", bench.SpriteFor("hand_crank_bench"));
+            bench.IsCranking = false;
+            Assert.AreEqual("hand_crank_bench", bench.SpriteFor("hand_crank_bench"), "let go");
+        }
+
         // --- Cranking --------------------------------------------------------------------
 
         [Test]

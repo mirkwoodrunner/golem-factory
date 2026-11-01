@@ -47,9 +47,9 @@ namespace GolemFactory.Tests.World
         {
             SandboxWorld world = Compose();
             Assert.AreEqual(world.Placeables.Count, world.Build.AvailablePrefabs.Count);
-            // Unity's ten plus the belt splitter, less the Clock Tower: it stands on its own site in
-            // the town square now (G10), never placed from the menu.
-            Assert.AreEqual(10, world.Build.AvailablePrefabs.Count);
+            // Unity's ten plus the belt splitter and the Pneumatic Post, less the Clock Tower: it
+            // stands on its own site in the town square now (G10), never placed from the menu.
+            Assert.AreEqual(11, world.Build.AvailablePrefabs.Count);
             Assert.IsFalse(world.Placeables.Any(p => p.Key == SandboxWorld.ClockTowerKey));
         }
 
@@ -58,6 +58,9 @@ namespace GolemFactory.Tests.World
         {
             SandboxWorld world = Compose();
             var cell = new Vector2Int(2, 2);
+            // Late prices use the room the pack's rungs give (tuning-data-spec §8.1): the Freight
+            // Mast asks 120 Iron Plate, so this pack is a fully upgraded one.
+            world.PackUpgrade.Restore(world.PackUpgrade.Rungs.Count);
 
             foreach (PlaceableEntry entry in world.Placeables)
             {
@@ -334,9 +337,13 @@ namespace GolemFactory.Tests.World
         public void TheBoardChargesTheStockpile()
         {
             SandboxWorld world = Compose();
+            int held = world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.Scrap);
+            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 37);
             AssemblyLineRow wallet = world.AssemblyLineBoard.Rows()[0];
-            StringAssert.Contains(world.StockpileBufferId, wallet.Text,
-                "Unity's ScrapBuffer wallet was a stale M9 setting; claims pay from the stockpile");
+            // Unity's ScrapBuffer wallet was a stale M9 setting; claims pay from the stockpile,
+            // which the player calls the pack. The header names it, never its buffer id.
+            Assert.AreEqual("Pack: " + (held + 37) + " Scrap", wallet.Text);
+            StringAssert.DoesNotContain(world.StockpileBufferId, wallet.Text);
         }
 
         [Test]

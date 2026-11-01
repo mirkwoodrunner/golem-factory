@@ -236,6 +236,12 @@ namespace GolemFactory.UI
         public int DraftQuantityAt(int index) =>
             index >= 0 && index < _draftQuantities.Length ? _draftQuantities[index] : WorkbenchQuantityPolicy.MinQuantity;
 
+        /// <summary>
+        /// The dial's top for a slot: the hold for a Haul, and for a Repeat the most runs the
+        /// Assemble before it can finish (RepeatRules, docs/tuning-data-spec.md §13.1).
+        /// </summary>
+        public int DraftQuantityMax(int index) => WorkbenchQuantityPolicy.MaxFor(_draftAppendages, index);
+
         public int AssignedAppendageCount => _draftAppendages.Count(a => a != null);
 
         private int DraftMaxSlots => _draftChassis != null ? _draftChassis.maxAppendageSlots : 0;
@@ -387,7 +393,7 @@ namespace GolemFactory.UI
             {
                 return;
             }
-            _draftQuantities[index] = WorkbenchQuantityPolicy.Step(_draftQuantities[index], delta);
+            _draftQuantities[index] = WorkbenchQuantityPolicy.Step(_draftQuantities[index], delta, DraftQuantityMax(index));
             Version++;
         }
 
@@ -437,9 +443,9 @@ namespace GolemFactory.UI
             }
 
             if (!GolemProgramWriter.TryWrite(TargetGolem.Program, _draftChassis, _draftLogicCore,
-                    _draftAppendages, _draftItemTypes, _draftQuantities))
+                    _draftAppendages, _draftItemTypes, _draftQuantities, out string refusal))
             {
-                SetStatus("Cannot engage: chassis rejected the current appendage count.", WorkbenchStatusReason.Info);
+                SetStatus($"Cannot engage: {refusal}.", WorkbenchStatusReason.Info);
                 LeverRefused?.Invoke();
                 return false;
             }
@@ -459,6 +465,15 @@ namespace GolemFactory.UI
                     $"Cannot patent: the draft is missing {DraftOverflowCount} appendage" +
                     $"{(DraftOverflowCount == 1 ? "" : "s")} this Workbench has no socket for.",
                     WorkbenchStatusReason.DraftTruncated);
+                return null;
+            }
+
+            // A draft ENGAGE would refuse is not a patent either: the station would refuse to
+            // build it (GolemConstructionStation.BlueprintRefusal), so filing it files nothing.
+            string refusal = RepeatRules.Refusal(_draftAppendages);
+            if (refusal != null)
+            {
+                SetStatus($"Cannot patent: {refusal}.", WorkbenchStatusReason.Info);
                 return null;
             }
 
@@ -493,6 +508,37 @@ namespace GolemFactory.UI
             DraftOverflowCount = Math.Max(0, blueprint.Appendages.Count - _draftAppendages.Length);
             SetStatus($"Loaded {blueprint.BlueprintId} into the draft.", WorkbenchStatusReason.Info);
             Version++;
+        }
+
+        // --- The next-drag hint (docs/onboarding-feedback-design.md §2) ----------------------
+
+        /// <summary>
+        /// The plan the hint follows for a golem, or null: wired by the Sandbox to the guide's
+        /// <c>PlanFor</c>. Without one, a golem never programmed still gets the fallback.
+        /// </summary>
+        public Func<GolemEntity, ProgramPlan> HintSource { get; set; }
+
+        /// <summary>Whether the vault offers the appendage card of this name.</summary>
+        public bool OffersCard(string appendageName) =>
+            VaultAppendages.Any(a => a.name == appendageName);
+
+        /// <summary>
+        /// What the hint outlines now, worked out on every read from the draft and the target's
+        /// committed program. Reading it changes nothing: the player makes every drag.
+        /// </summary>
+        public WorkbenchHintTarget Hint
+        {
+            get
+            {
+                if (!IsOpen || TargetGolem == null)
+                {
+                    return WorkbenchHintTarget.None;
+                }
+                ProgramPlan plan = HintSource?.Invoke(TargetGolem);
+                return plan != null
+                    ? WorkbenchHint.Next(this, plan, plan.Matches(TargetGolem.Program))
+                    : WorkbenchHint.Fallback(this, TargetGolem.HasRunnableProgram);
+            }
         }
 
         // --- Status line -------------------------------------------------------------------
@@ -570,11 +616,13 @@ namespace GolemFactory.UI
                 ? $"{AssignedAppendageCount} / {_draftChassis.maxAppendageSlots} slots filled  ·  tier {_draftChassis.tier}"
                 : "Pick a chassis from the rack";
 
-        /// <summary>"TARGET  ·  PlayerGolem-003" -- named by GolemId, never by the object's name.</summary>
+        /// <summary>
+        /// "TARGET  ·  Scavenger #3": the player's name for the golem (<see cref="GolemNames"/>),
+        /// from its GolemId, never the id itself nor the object's name.
+        /// </summary>
         public string TargetHeader => TargetGolem != null ? $"TARGET  ·  {GolemDisplayName(TargetGolem)}" : "TARGET  ·  none";
 
-        public static string GolemDisplayName(GolemEntity golem) =>
-            !string.IsNullOrEmpty(golem.GolemId) ? golem.GolemId : golem.name;
+        public static string GolemDisplayName(GolemEntity golem) => GolemNames.Short(golem);
 
         public static string CardDisplayName(LogicCoreDefinition core, AppendageActionDefinition appendage)
         {
@@ -593,7 +641,10 @@ namespace GolemFactory.UI
                 {
                     case TriggerType.Interval: return $"trigger · every {core.intervalTicks} ticks";
                     case TriggerType.Threshold: return $"trigger · {core.thresholdBufferId} ≥ {core.thresholdQuantity}";
-                    case TriggerType.Signal: return $"trigger · on signal from {core.signalGolemId}";
+                    case TriggerType.Signal:
+                        return GolemNames.Number(core.signalGolemId) is int n && n >= 0
+                            ? $"trigger · on signal from golem #{n}"
+                            : $"trigger · on signal from {core.signalGolemId}";
                     default: return "trigger · always on";
                 }
             }
@@ -601,10 +652,33 @@ namespace GolemFactory.UI
             {
                 return string.Empty;
             }
-            string route = !string.IsNullOrEmpty(appendage.sourceId) && !string.IsNullOrEmpty(appendage.destinationId)
-                ? $" · {appendage.sourceId} → {appendage.destinationId}"
-                : string.Empty;
-            return $"action · {appendage.durationTicks}t{route}";
+            // Where the card acts, as a placed golem does it: the tile behind, the tile in front.
+            // The authored sourceId/destinationId ("ScrapNode → ScrapBeltA") only route the
+            // id-routed demo golems; on a card the player reads they were ids, not directions
+            // (Phase 2 critique).
+            string where = CardDirection(appendage.actionType);
+            return $"action · {appendage.durationTicks}t{(where.Length > 0 ? " · " + where : "")}";
+        }
+
+        /// <summary>Where a card acts on a placed golem, in a few words, or "".</summary>
+        public static string CardDirection(AppendageActionType action)
+        {
+            switch (action)
+            {
+                case AppendageActionType.Haul:
+                case AppendageActionType.ExtractFromNode:
+                    return "from the tile behind";
+                case AppendageActionType.Push:
+                case AppendageActionType.LoadIntoBuffer:
+                    return "onto the tile in front";
+                case AppendageActionType.FreightLaunch:
+                    return "to its Freight Mast";
+                case AppendageActionType.Assemble:
+                case AppendageActionType.Refine:
+                    return "in its hold";
+                default:
+                    return "";
+            }
         }
 
         public static string ChassisSubtitle(ChassisDefinition chassis)

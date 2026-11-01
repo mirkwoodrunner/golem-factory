@@ -19,6 +19,18 @@ namespace GolemFactory.UI
         void Open(GolemConstructionStation station);
     }
 
+    /// <summary>The Pack screen, as the interactor's [I] away from a crate needs it.</summary>
+    public interface IPackScreen : IScreen
+    {
+        void Open();
+    }
+
+    /// <summary>The Crate screen, as the interactor's [I] at a crate needs it.</summary>
+    public interface ICrateScreen : IScreen
+    {
+        void Open(ICrate crate);
+    }
+
     /// <summary>The Workbench, as the interactor's [E] at a golem needs it.</summary>
     public interface IWorkbenchScreen : IScreen, IWorkbenchTarget
     {

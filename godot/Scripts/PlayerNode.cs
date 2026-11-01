@@ -21,6 +21,7 @@ namespace GolemFactory.Nodes
         public const string MoveDown = "move_down";
         public const string Interact = "interact";
         public const string Carry = "golem_carry";
+        public const string Inventory = "inventory";
 
         /// <summary>Cells per second, Unity's PlayerController default.</summary>
         [Export] public float MoveSpeed { get; set; } = 4f;
@@ -52,10 +53,18 @@ namespace GolemFactory.Nodes
 
         private static readonly GridCoordinateConverter UnitConverter = new GridCoordinateConverter(new CoreVector2(1f, 1f));
 
-        private readonly Texture2D[] _frames = new Texture2D[ArtificerWalkAnimation.DirectionCount * ArtificerWalkAnimation.FramesPerDirection];
+        private readonly Texture2D[] _frames = new Texture2D[ArtificerWalkAnimation.SpriteCount];
         private Sprite2D _sprite;
         private PlayerWalker _walker;
         private PlayerInteractor _interactor;
+
+        // Whether a screen was up at the end of last frame. E closes a screen in its own
+        // _UnhandledInput, before this node's _Process runs that frame; without this the same
+        // press then reached the world too, and closing a crate screen collected the crate.
+        private bool _screenWasOpen;
+
+        /// <summary>The Artificer's sprite showing (<see cref="PlayerWalker.SpriteIndex"/>), for the scenarios.</summary>
+        public int SpriteIndex => _walker.SpriteIndex;
 
         /// <summary>The interactable [E] would use right now, or null.</summary>
         public IInteractable Focus { get; private set; }
@@ -72,9 +81,16 @@ namespace GolemFactory.Nodes
                     _frames[ArtificerWalkAnimation.ComputeSpriteIndex((ArtificerFacing)row, frame)] =
                         GD.Load<Texture2D>($"res://art/artificer_walk_{rows[row]}_{frame}.png");
                 }
+                _frames[ArtificerWalkAnimation.ComputeStandingSpriteIndex((ArtificerFacing)row)] =
+                    GD.Load<Texture2D>($"res://art/artificer_stand_{rows[row]}.png");
+                for (int frame = 0; frame < ArtificerWalkAnimation.CrankFramesPerDirection; frame++)
+                {
+                    _frames[ArtificerWalkAnimation.ComputeCrankSpriteIndex((ArtificerFacing)row, frame)] =
+                        GD.Load<Texture2D>($"res://art/artificer_crank_{rows[row]}_{frame}.png");
+                }
             }
 
-            _sprite = new Sprite2D { Texture = _frames[0] };
+            _sprite = new Sprite2D { Texture = _frames[ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Down)] };
             GridConversions.StandOnCell(_sprite);
             AddChild(_sprite);
             if (OwnCamera)
@@ -94,6 +110,7 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            using var perf = NodePerf.Measure("node.player");
             // A full screen owns the keys: the player does not walk off while choosing a chassis.
             Vector2 input = ScriptedMove
                 ?? (ModalScreens.AnyOpen(GetTree()) || TextEntry.IsTyping(GetViewport())
@@ -120,9 +137,17 @@ namespace GolemFactory.Nodes
                 // whether [E] is held (the crank), then re-pick and refresh the prompt.
                 _interactor.Position = _walker.Position;
                 // Typing a note counts too: "e" in a sentence must not crank a bench.
-                bool screenOpen = ModalScreens.AnyOpen(GetTree()) || TextEntry.IsTyping(GetViewport());
+                bool openNow = ModalScreens.AnyOpen(GetTree());
+                bool screenOpen = openNow || _screenWasOpen || TextEntry.IsTyping(GetViewport());
+                _screenWasOpen = openNow;
                 _interactor.SetInteractHeld(!screenOpen && Input.IsActionPressed(Interact));
                 _interactor.Poll();
+                // Turning a crank: face the bench and show its turn frame (walking wins).
+                if (_interactor.TryGetCrank(out CoreVector3 benchAt, out int turnFrame))
+                {
+                    _walker.ShowCrank(benchAt, turnFrame);
+                    _sprite.Texture = _frames[_walker.SpriteIndex];
+                }
                 bool pressed = !screenOpen && Input.IsActionJustPressed(Interact);
                 if (pressed)
                 {
@@ -154,6 +179,11 @@ namespace GolemFactory.Nodes
                 GetViewport().SetInputAsHandled();
             }
             else if (e.IsActionPressed(Carry) && _interactor.ToggleCarryGolem())
+            {
+                GetViewport().SetInputAsHandled();
+            }
+            // I: the crate's screen at a crate, the pack's anywhere else. An open screen closes itself.
+            else if (e.IsActionPressed(Inventory) && _interactor.OpenInventory())
             {
                 GetViewport().SetInputAsHandled();
             }
@@ -192,6 +222,7 @@ namespace GolemFactory.Nodes
             Bind(MoveDown, Key.S, Key.Down);
             Bind(Interact, Key.E);
             Bind(Carry, Key.G);
+            Bind(Inventory, Key.I);
         }
 
         private static void Bind(string action, params Key[] keys)

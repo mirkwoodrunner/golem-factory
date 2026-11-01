@@ -21,18 +21,7 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 
 ## Next session: start here
 
-**The conversion is finished.** The cutover PR removed the Unity project; the tag `unity-final`
-holds its last state, and `docs/history/` holds the Unity-era docs. The game is `godot/`, and the
-root `CLAUDE.md` is its guide. **The plan from here is `docs/roadmap.md`** (2026-10-18), and its
-Phase 1 is crates (`docs/crates-design.md`, questions answered). Smaller items are in
-`docs/open-items.md`:
-1. Fix what the playtest report finds.
-2. Decide round 3 of the marked-tile plan (#54) from the playtest's answer on marked tiles.
-
-The cutover also took two clean-ups: "Extract Scrap" reads "Extract" now (a display name, so
-saves are untouched), and the unused single-cell `godot/art/clock_tower.png` is gone.
-
-Standing rules: tests and scenarios never write the player's real `save.json`.
+Moved to `docs/roadmap.md` ("Next session: start here"); the conversion is finished.
 
 ## Context
 

@@ -14,7 +14,7 @@
       },
       "YSortSpriteRenderer": {},
       "PlaceableDepot": {
-        "bufferId": "FactoryStockpile",
+        "bufferId": "",
         "filterItemType": ""
       }
     }
@@ -404,12 +404,16 @@
           {
             "itemType": "Casing",
             "quantity": 10
+          },
+          {
+            "itemType": "IronPlate",
+            "quantity": 120
           }
         ],
         "dragPlaceable": 0
       },
       "PlaceableFreightMast": {
-        "bufferId": "FactoryStockpile",
+        "bufferId": "",
         "mastId": ""
       }
     }
@@ -434,7 +438,8 @@
       },
       "PlaceableSlagHeap": {
         "heapId": "",
-        "startingCoke": 0
+        "startingCoke": 0,
+        "slagPerCoke": 4
       }
     }
   },
@@ -459,6 +464,34 @@
       "PlaceableScrapRecycler": {
         "recyclerId": "",
         "startingCoke": 0
+      }
+    }
+  },
+  {
+    "name": "PneumaticPostPrefab",
+    "sprite": "pneumatic_post.png",
+    "parts": {
+      "PlaceableBuilding": {
+        "cost": [
+          {
+            "itemType": "Brass",
+            "quantity": 10
+          },
+          {
+            "itemType": "Casing",
+            "quantity": 5
+          },
+          {
+            "itemType": "IronPlate",
+            "quantity": 40
+          }
+        ],
+        "dragPlaceable": 0
+      },
+      "YSortSpriteRenderer": {},
+      "PlaceableDepot": {
+        "bufferId": "PneumaticPost",
+        "filterItemType": ""
       }
     }
   }

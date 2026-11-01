@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace GolemFactory.Economy
 {
@@ -167,6 +168,29 @@ namespace GolemFactory.Economy
         }
 
         /// <summary>
+        /// A load's setter, and nothing else's: the quantity a save recorded, above the cap if
+        /// that is what it recorded (docs/crates-design.md §0.2, "a load never clamps"). Not a
+        /// deposit -- the flow totals are untouched, since nothing flowed.
+        /// <see cref="Deposit"/> stays the only way goods arrive in play.
+        /// </summary>
+        public void RestoreQuantity(string itemType, int quantity)
+        {
+            if (itemType == null)
+            {
+                return;
+            }
+
+            if (quantity > 0)
+            {
+                _quantities[itemType] = quantity;
+            }
+            else
+            {
+                _quantities.Remove(itemType);
+            }
+        }
+
+        /// <summary>
         /// Units of <paramref name="itemType"/> ever accepted by this buffer. Monotone, so a
         /// sampler can difference two readings into a gross INFLOW rate.
         /// </summary>
@@ -191,5 +215,13 @@ namespace GolemFactory.Economy
         }
 
         public int GetQuantity(string itemType) => _quantities.TryGetValue(itemType, out int quantity) ? quantity : 0;
+
+        /// <summary>Every good held, above zero, in tier order: what a crate shows, collects and refunds.</summary>
+        public List<string> HeldGoods()
+        {
+            List<string> goods = _quantities.Where(q => q.Value > 0).Select(q => q.Key).ToList();
+            BufferTrendUtility.SortItemTypes(goods);
+            return goods;
+        }
     }
 }

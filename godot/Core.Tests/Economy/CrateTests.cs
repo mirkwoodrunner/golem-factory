@@ -1,0 +1,473 @@
+using System.Collections.Generic;
+using System.Linq;
+using GolemFactory.AssemblyLine;
+using GolemFactory.Buildings;
+using GolemFactory.Data;
+using GolemFactory.Economy;
+using GolemFactory.Events;
+using GolemFactory.Golems;
+using GolemFactory.Player;
+using GolemFactory.PunchCards;
+using GolemFactory.World;
+using NUnit.Framework;
+using static GolemFactory.Tests.EditMode.CrateWorld;
+using Vector2Int = GolemFactory.Compat.Vector2Int;
+using Vector3 = GolemFactory.Compat.Vector3;
+
+namespace GolemFactory.Tests.EditMode
+{
+    /// <summary>
+    /// Crates and the pack (docs/crates-design.md §9, steps 1 and 2), through the real Sandbox:
+    /// a depot holds its own goods, a golem reaches only the crates beside it, the pack is capped,
+    /// E collects what fits, and demolition refunds a crate's contents or refuses.
+    /// </summary>
+    public class CrateTests
+    {
+        private static void StandAt(SandboxWorld world, Vector2Int cell)
+        {
+            world.Interactor.Position = new Vector3(cell.x, cell.y + 1f, 0f);
+            world.Interactor.Poll();
+        }
+
+        // --- A depot holds its own goods ------------------------------------------------------
+
+        [Test]
+        public void APlacedDepot_PublishesItsOwnFiftyCrate_NamedByItsCell()
+        {
+            SandboxWorld world = Compose();
+            Give(world, ItemType.Scrap, 30);
+            var cell = new Vector2Int(4, 4);
+            ICrate crate = Place(world, "DepotPrefab", cell).GetPart<ICrate>();
+
+            Assert.AreEqual("Crate(4,4)", crate.CrateId);
+            Assert.IsTrue(crate.OwnsBuffer);
+            Assert.AreEqual(50, crate.Buffer.CapacityPerType);
+            Assert.IsTrue(world.Endpoints.TryGetEndpoint(cell, out IItemEndpoint endpoint));
+            Assert.IsTrue(endpoint.TryGive(new GolemFactory.Belts.ItemStack { ItemType = ItemType.Coke }));
+            Assert.AreEqual(1, crate.Buffer.GetQuantity(ItemType.Coke), "a push lands in the crate");
+            Assert.AreEqual(0, Pack(world, ItemType.Coke), "and never in the pack");
+            Assert.AreEqual(100, world.Wallet.Pack.CapacityPerType, "the pack carries 100 of each");
+        }
+
+        [Test]
+        public void ADepotWithAnExplicitBufferId_PublishesThatBuffer_AndDoesNotOwnIt()
+        {
+            // Opt-in by null (crates-design §0.10): a named buffer is a shared store, a Post crate.
+            var depot = new PlaceableDepot();
+            depot.Configure("SharedStore");
+            var endpoints = new SpatialEndpointRegistry();
+            var buffers = new StorageBufferRegistry();
+            Assert.IsTrue(depot.RegisterAsSpatialEndpoint(endpoints, buffers, new Vector2Int(1, 1)));
+
+            Assert.AreEqual("SharedStore", depot.CrateId);
+            Assert.IsFalse(depot.OwnsBuffer);
+            Assert.AreSame(buffers.GetOrCreate("SharedStore"), depot.Buffer);
+        }
+
+        [Test]
+        public void AConverterBehindAnEmptyCrate_Stalls_EvenWithThePackFull()
+        {
+            // Golems never reach the pack (crates-design §0.4): a Presser behind an empty crate
+            // waits, naming the crate, however much Scrap the player carries.
+            SandboxWorld world = Compose();
+            DefinitionSet defs = world.Definitions;
+            Give(world, ItemType.Scrap, 100);
+            Give(world, ItemType.IronPlate, 100);
+            Give(world, ItemType.Gear, 100);
+            Give(world, ItemType.Coke, 100);
+            PlaceableBoiler boiler = Place(world, "BoilerPrefab", new Vector2Int(5, 5)).GetPart<PlaceableBoiler>();
+            world.Interactor.TryRefuelBoiler(boiler);
+            ICrate behind = Place(world, "DepotPrefab", new Vector2Int(4, 4)).GetPart<ICrate>();
+            Place(world, "DepotPrefab", new Vector2Int(4, 6));
+            Give(world, ItemType.Scrap, 100);
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["BrassPresser"], out GolemEntity presser));
+            presser.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            presser.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
+            presser.Program.TryAddAppendage(defs.Appendages["AssembleScrapReclamation"]);
+            presser.Program.TryAddAppendage(defs.Appendages["PushOutput"]);
+            presser.SetPlacement(new Vector2Int(4, 5), Facing.North);
+            Give(world, ItemType.Scrap, 100);
+            int packScrap = Pack(world, ItemType.Scrap);
+
+            world.Clock.Play();
+            for (int frame = 0; frame < 120; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+
+            Assert.AreEqual(GolemState.Stalled, presser.Program.State);
+            Assert.AreEqual(StallReason.BufferEmpty, presser.StallReason);
+            Assert.AreEqual("Crate(4,4)", presser.StallResourceId, "the badge names the crate");
+            Assert.AreEqual(packScrap, Pack(world, ItemType.Scrap), "the pack is out of its reach");
+
+            // Fed by hand, it runs.
+            Assert.AreEqual(10, CrateTransfer.Put(world.Wallet.Pack, behind, ItemType.Scrap, 10).Moved);
+            for (int frame = 0; frame < 120; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreNotEqual(StallReason.BufferEmpty, presser.StallReason, "Scrap in the crate: it hauls");
+            Assert.Less(behind.Buffer.GetQuantity(ItemType.Scrap), 10);
+        }
+
+        // --- Collect ------------------------------------------------------------------------------
+
+        [Test]
+        public void ECollect_MovesWhatFits_AndLeavesTheRestInTheCrate()
+        {
+            SandboxWorld world = Compose();
+            Give(world, ItemType.Scrap, 15);
+            var cell = new Vector2Int(6, 6);
+            ICrate crate = Place(world, "DepotPrefab", cell).GetPart<ICrate>();
+            Give(world, ItemType.Scrap, 95);
+            crate.Buffer.Deposit(ItemType.Scrap, 20);
+            crate.Buffer.Deposit(ItemType.Coke, 3);
+
+            StandAt(world, cell);
+            Assert.AreEqual(InteractionKind.Sort, world.Interactor.CurrentPick.Kind);
+            StringAssert.Contains("holds 20 Scrap, 3 Coke", world.Interactor.CurrentPrompt);
+            Assert.IsTrue(world.Interactor.Interact(), world.Interactor.LastStatusMessage);
+
+            Assert.AreEqual(100, Pack(world, ItemType.Scrap), "the pack fills to its cap");
+            Assert.AreEqual(15, crate.Buffer.GetQuantity(ItemType.Scrap), "the rest stays in the crate");
+            Assert.AreEqual(3, Pack(world, ItemType.Coke), "every good in one press");
+            Assert.AreEqual(0, crate.Buffer.GetQuantity(ItemType.Coke));
+
+            world.Interactor.Poll();
+            Assert.AreEqual(InteractionAffordance.Unavailable, world.Interactor.CurrentAffordance, "nothing left fits");
+            StringAssert.Contains("pack full", world.Interactor.CurrentPrompt);
+            Assert.IsFalse(world.Interactor.Interact());
+            StringAssert.Contains("Pack full of Scrap", world.Interactor.LastStatusMessage);
+            Assert.AreEqual(15, crate.Buffer.GetQuantity(ItemType.Scrap), "a refused collect moves nothing");
+        }
+
+        [Test]
+        public void ATransfer_HonoursALabelOnTheWayIn_NeverOnTheWayOut_AndLosesNothing()
+        {
+            SandboxWorld world = Compose();
+            Give(world, ItemType.Scrap, 15);
+            ICrate crate = Place(world, "DepotPrefab", new Vector2Int(6, 6)).GetPart<ICrate>();
+            crate.Buffer.Deposit(ItemType.Scrap, 5);
+            crate.SetFilter(ItemType.CopperOre);
+            Give(world, ItemType.Scrap, 30);
+            int total = Pack(world, ItemType.Scrap) + crate.Buffer.GetQuantity(ItemType.Scrap);
+
+            TransferResult refused = CrateTransfer.Put(world.Wallet.Pack, crate, ItemType.Scrap, 10);
+            Assert.AreEqual(0, refused.Moved);
+            Assert.AreEqual("This crate is for Copper Ore", refused.Refusal);
+
+            TransferResult taken = CrateTransfer.Take(crate, world.Wallet.Pack, ItemType.Scrap, int.MaxValue);
+            Assert.AreEqual(5, taken.Moved, "the player's hands take anything out");
+            Assert.AreEqual(total, Pack(world, ItemType.Scrap) + crate.Buffer.GetQuantity(ItemType.Scrap));
+
+            Give(world, ItemType.CopperOre, 60);
+            TransferResult put = CrateTransfer.Put(world.Wallet.Pack, crate, ItemType.CopperOre, CrateTransfer.AmountFor(shift: true));
+            Assert.AreEqual(50, put.Moved, "Shift: all that fits, the crate's 50");
+            Assert.AreEqual(10, Pack(world, ItemType.CopperOre));
+            Assert.AreEqual("Crate full of Copper Ore", CrateTransfer.Put(world.Wallet.Pack, crate, ItemType.CopperOre, 1).Refusal);
+        }
+
+        // --- Harvest -------------------------------------------------------------------------------
+
+        [Test]
+        public void HarvestStopsAtThePacksCap_AndTheStallKeepsItsUnit()
+        {
+            SandboxWorld world = Compose();
+            SandboxSetup.NodeEntry stall = world.Setup.nodes.Single(n => n.id == "ScrapNode");
+            Assert.IsTrue(world.Nodes.TryGetNode("ScrapNode", out ResourceNode node));
+            Give(world, ItemType.Scrap, 100);
+            int stock = node.RemainingQuantity;
+
+            StandAt(world, new Vector2Int(stall.x, stall.y));
+            Assert.AreEqual(InteractionKind.Harvest, world.Interactor.CurrentPick.Kind);
+            Assert.AreEqual(InteractionAffordance.Unavailable, world.Interactor.CurrentAffordance);
+            StringAssert.Contains("pack full", world.Interactor.CurrentPrompt);
+
+            Assert.IsFalse(world.Interactor.Interact());
+            Assert.AreEqual(stock, node.RemainingQuantity, "the stall keeps the unit: nothing is lost");
+            Assert.AreEqual(100, Pack(world, ItemType.Scrap));
+
+            Assert.IsTrue(world.Wallet.TryCharge(new[] { new RecipeIngredient(ItemType.Scrap, 1) }));
+            Assert.IsTrue(world.Interactor.Interact(), "room for one: one harvested");
+            Assert.AreEqual(stock - 1, node.RemainingQuantity);
+        }
+
+        // --- Demolition --------------------------------------------------------------------------
+
+        [Test]
+        public void DemolishingACrate_RefundsItsCostAndContents_AndARebuiltOneStartsEmpty()
+        {
+            SandboxWorld world = Compose();
+            Give(world, ItemType.Scrap, 15);
+            var cell = new Vector2Int(6, 6);
+            ICrate crate = Place(world, "DepotPrefab", cell).GetPart<ICrate>();
+            crate.Buffer.Deposit(ItemType.Scrap, 20);
+            crate.Buffer.Deposit(ItemType.Gear, 4);
+
+            world.Build.EnterDemolishMode();
+            world.Build.PlaceOrRemove(cell);
+            world.Build.CancelPlacement();
+
+            Assert.IsFalse(world.Build.Buildings.Any(b => !b.IsRemoved && b.Cell == cell), "demolished");
+            Assert.AreEqual(35, Pack(world, ItemType.Scrap), "15 cost and 20 contents");
+            Assert.AreEqual(4, Pack(world, ItemType.Gear));
+            Assert.IsFalse(world.Buffers.TryGetBuffer("Crate(6,6)", out _), "the crate went with its depot");
+            Assert.IsFalse(world.Endpoints.TryGetEndpoint(cell, out _));
+
+            ICrate again = Place(world, "DepotPrefab", cell).GetPart<ICrate>();
+            Assert.AreEqual(0, again.Buffer.Quantities.Values.Sum(), "a fresh crate");
+        }
+
+        [Test]
+        public void DemolishingACrate_WhoseContentsWontFit_IsRefused_AndNothingMoves()
+        {
+            SandboxWorld world = Compose();
+            Give(world, ItemType.Scrap, 15);
+            var cell = new Vector2Int(6, 6);
+            PlaceableBuilding depot = Place(world, "DepotPrefab", cell);
+            ICrate crate = depot.GetPart<ICrate>();
+            crate.Buffer.Deposit(ItemType.Scrap, 20);
+            Give(world, ItemType.Scrap, 100);
+
+            world.Build.EnterDemolishMode();
+            world.Build.PlaceOrRemove(cell);
+
+            Assert.IsFalse(depot.IsRemoved, "the crate stands");
+            Assert.AreEqual("Not demolished: pack full of Scrap.", world.Build.LastStatusMessage);
+            Assert.AreEqual(20, crate.Buffer.GetQuantity(ItemType.Scrap));
+            Assert.AreEqual(100, Pack(world, ItemType.Scrap));
+            Assert.IsTrue(world.Endpoints.TryGetEndpoint(cell, out _), "still a working crate");
+
+            world.Wallet.TryCharge(new[] { new RecipeIngredient(ItemType.Scrap, 40) });
+            world.Build.PlaceOrRemove(cell);
+            Assert.IsTrue(depot.IsRemoved, "room made: demolished");
+            Assert.AreEqual(95, Pack(world, ItemType.Scrap), "60 + 15 cost + 20 contents");
+        }
+
+        [Test]
+        public void ALoadsSweep_RefundsNoCrateContents()
+        {
+            SandboxWorld world = Compose();
+            Give(world, ItemType.Scrap, 15);
+            ICrate crate = Place(world, "DepotPrefab", new Vector2Int(6, 6)).GetPart<ICrate>();
+            crate.Buffer.Deposit(ItemType.Scrap, 20);
+
+            world.Build.ClearRuntimePlacedBuildings();
+
+            Assert.AreEqual(0, Pack(world, ItemType.Scrap), "refund: false, or save/load duplicates");
+            Assert.IsFalse(world.Buffers.TryGetBuffer("Crate(6,6)", out _));
+        }
+
+        [Test]
+        public void DismantlingAGolem_IntoAFullPack_IsRefused_NamingTheGood()
+        {
+            SandboxWorld world = Compose();
+            ChassisDefinition scavenger = world.Definitions.Chassis["ClockworkScavenger"];
+            Give(world, ItemType.Scrap, 12);
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(scavenger, out GolemEntity golem));
+            Give(world, ItemType.Scrap, 100);
+
+            Assert.IsFalse(world.StarterStation.TryDismantleGolem(golem, out _, out string reason));
+            Assert.AreEqual("Not dismantled: pack full of Scrap.", reason);
+            Assert.IsFalse(golem.IsRemoved);
+            Assert.AreEqual(0, world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Scrap), "never into the Post");
+        }
+
+        [Test]
+        public void DemolishingACrate_IntoAFullPack_WithThePostEmpty_IsRefused_AndNothingMoves()
+        {
+            // crates-design §11 (user, 2026-10-18): a refund never goes into the Post. An empty
+            // Post with room for everything changes nothing about the wrecking bar's answer.
+            SandboxWorld world = Compose();
+            Give(world, ItemType.Scrap, 15);
+            var cell = new Vector2Int(6, 6);
+            PlaceableBuilding depot = Place(world, "DepotPrefab", cell);
+            ICrate crate = depot.GetPart<ICrate>();
+            crate.Buffer.Deposit(ItemType.Scrap, 20);
+            crate.Buffer.Deposit(ItemType.Coke, 5);
+            Give(world, ItemType.Scrap, 100);
+            Assert.AreEqual(0, world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Scrap), "the Post is empty");
+
+            world.Build.EnterDemolishMode();
+            world.Build.PlaceOrRemove(cell);
+
+            Assert.IsFalse(depot.IsRemoved, "the crate stands");
+            Assert.AreEqual("Not demolished: pack full of Scrap.", world.Build.LastStatusMessage);
+            Assert.AreEqual(20, crate.Buffer.GetQuantity(ItemType.Scrap));
+            Assert.AreEqual(5, crate.Buffer.GetQuantity(ItemType.Coke));
+            Assert.AreEqual(100, Pack(world, ItemType.Scrap));
+            Assert.AreEqual(0, Pack(world, ItemType.Coke));
+            Assert.AreEqual(0, world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Scrap), "nothing into the Post");
+            Assert.AreEqual(0, world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Coke));
+        }
+
+        // --- The wallet ----------------------------------------------------------------------------
+
+        [Test]
+        public void TheWallet_ChargesAtomically_PackFirstThenPost_AndRefundsIntoThePackOnly()
+        {
+            var buffers = new StorageBufferRegistry();
+            buffers.SetCapacity("Pack", 100);
+            buffers.SetCapacity("Post", 200);
+            var wallet = new PlayerWallet(buffers, "Pack", "Post");
+            buffers.Deposit("Pack", ItemType.Scrap, 30);
+            buffers.Deposit("Post", ItemType.Scrap, 50);
+            buffers.Deposit("Post", ItemType.Brass, 5);
+
+            Assert.AreEqual(80, wallet.Quantity(ItemType.Scrap));
+            Assert.IsFalse(wallet.TryCharge(new[] { new RecipeIngredient(ItemType.Scrap, 40), new RecipeIngredient(ItemType.Brass, 6) }));
+            Assert.AreEqual(30, buffers.GetQuantity("Pack", ItemType.Scrap), "refused: nothing taken");
+            Assert.AreEqual(50, buffers.GetQuantity("Post", ItemType.Scrap));
+
+            Assert.IsTrue(wallet.TryCharge(new[] { new RecipeIngredient(ItemType.Scrap, 40), new RecipeIngredient(ItemType.Brass, 5) }));
+            Assert.AreEqual(0, buffers.GetQuantity("Pack", ItemType.Scrap), "the pack first");
+            Assert.AreEqual(40, buffers.GetQuantity("Post", ItemType.Scrap), "then the Post");
+            Assert.IsTrue(wallet.TryCharge(null), "free is free");
+
+            Assert.AreEqual(100, wallet.RoomFor(ItemType.Scrap), "a refund's room is the pack's alone");
+            Assert.AreEqual(ItemType.Scrap, wallet.FirstMisfit(new[] { new RecipeIngredient(ItemType.Scrap, 101) }),
+                "the Post's room doesn't count");
+            Assert.IsFalse(wallet.Refund(new[] { new RecipeIngredient(ItemType.Scrap, 101) }));
+            Assert.AreEqual(0, buffers.GetQuantity("Pack", ItemType.Scrap), "a refund that won't fit deposits nothing");
+            Assert.AreEqual(40, buffers.GetQuantity("Post", ItemType.Scrap));
+            Assert.IsTrue(wallet.Refund(new[] { new RecipeIngredient(ItemType.Scrap, 100) }));
+            Assert.AreEqual(100, buffers.GetQuantity("Pack", ItemType.Scrap));
+            Assert.AreEqual(40, buffers.GetQuantity("Post", ItemType.Scrap), "never into the Post");
+
+            // A charge that bought nothing goes back where it came from, the Post included.
+            Assert.IsTrue(wallet.TryCharge(new[] { new RecipeIngredient(ItemType.Scrap, 120) }));
+            wallet.Uncharge(new[] { new RecipeIngredient(ItemType.Scrap, 120) });
+            Assert.AreEqual(100, buffers.GetQuantity("Pack", ItemType.Scrap));
+            Assert.AreEqual(40, buffers.GetQuantity("Post", ItemType.Scrap), "nothing lost");
+        }
+
+        [Test]
+        public void ARefundNamingAGoodTwice_IsCheckedWhole_AndLosesNothing()
+        {
+            // Phase 1 critique: FirstMisfit asked each line alone, so two lines of Scrap that
+            // fit apart but not together passed, and Refund's "all or nothing" deposited the
+            // first and clamped the second -- goods gone. TryCharge already sums a good named twice.
+            var buffers = new StorageBufferRegistry();
+            buffers.SetCapacity("Pack", 100);
+            var wallet = new PlayerWallet(buffers, "Pack");
+            buffers.Deposit("Pack", ItemType.Scrap, 90);
+            var twice = new[] { new RecipeIngredient(ItemType.Scrap, 6), new RecipeIngredient(ItemType.Scrap, 6) };
+
+            Assert.AreEqual(ItemType.Scrap, wallet.FirstMisfit(twice), "12 Scrap into room for 10");
+            Assert.IsFalse(wallet.Refund(twice));
+            Assert.AreEqual(90, buffers.GetQuantity("Pack", ItemType.Scrap), "a refund that won't fit deposits nothing");
+
+            var fits = new[] { new RecipeIngredient(ItemType.Scrap, 4), new RecipeIngredient(ItemType.Scrap, 6) };
+            Assert.IsNull(wallet.FirstMisfit(fits));
+            Assert.IsTrue(wallet.Refund(fits));
+            Assert.AreEqual(100, buffers.GetQuantity("Pack", ItemType.Scrap));
+        }
+
+        [Test]
+        public void APlacedHandCrankBench_CranksFromThePack_LikeTheStarterOne()
+        {
+            // Phase 1 critique: a bench placed from the build menu was a clone of the catalog's
+            // prefab, which had no registry and was never on the clock, so it could not craft.
+            // Older than crates; found checking the wallet's call sites.
+            SandboxWorld world = Compose();
+            var cell = new Vector2Int(6, 6);
+            HandCrankBench bench = Place(world, "HandCrankBenchPrefab", cell).GetPart<HandCrankBench>();
+            RecipeDefinition recipe = bench.SelectedRecipe;
+            Assert.IsNotNull(recipe);
+            foreach (RecipeIngredient input in recipe.inputs)
+            {
+                Give(world, input.itemType, input.quantity);
+            }
+            Assert.IsTrue(bench.CanAffordSelected(), "it reads the pack");
+
+            world.Clock.Play();
+            bench.IsCranking = true;
+            for (int i = 0; i < bench.RequiredTicks + 2; i++)
+            {
+                world.Clock.Advance(1f / world.Clock.TicksPerSecond);
+            }
+            Assert.AreEqual(1, bench.CompletedCrafts, "the clock ticks it");
+            Assert.GreaterOrEqual(Pack(world, recipe.outputItemType), recipe.outputQuantity);
+
+            // Demolished, it leaves the clock: no ghost bench crafting from the pack.
+            world.Build.EnterDemolishMode();
+            world.Build.PlaceOrRemove(cell);
+            world.Build.CancelPlacement();
+            foreach (RecipeIngredient input in recipe.inputs)
+            {
+                Give(world, input.itemType, input.quantity);
+            }
+            int before = Pack(world, recipe.outputItemType);
+            for (int i = 0; i < bench.RequiredTicks + 2; i++)
+            {
+                world.Clock.Advance(1f / world.Clock.TicksPerSecond);
+            }
+            Assert.AreEqual(1, bench.CompletedCrafts, "a demolished bench crafts nothing");
+            Assert.AreEqual(before, Pack(world, recipe.outputItemType));
+        }
+
+        [Test]
+        public void APackAboveItsCap_CanBeSpent_ButNotAddedTo()
+        {
+            SandboxWorld world = Compose();
+            world.Wallet.Pack.RestoreQuantity(ItemType.Scrap, 140);
+
+            Assert.AreEqual(0, world.Wallet.RoomFor(ItemType.Scrap));
+            Assert.AreEqual(0, world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 1));
+            Assert.IsTrue(world.Wallet.TryCharge(new[] { new RecipeIngredient(ItemType.Scrap, 30) }));
+            Assert.AreEqual(110, Pack(world, ItemType.Scrap));
+            Assert.AreEqual(0, world.Wallet.RoomFor(ItemType.Scrap), "still above: still closed");
+        }
+
+        // --- Step 2: the mast's crate, and the Ledger's rate ---------------------------------------
+
+        [Test]
+        public void AFreightMast_LandsDeliveriesInItsOwnCrate_WhichECollects()
+        {
+            SandboxWorld world = Compose();
+            Give(world, ItemType.Brass, 20);
+            Give(world, ItemType.Casing, 10);
+            world.PackUpgrade.Restore(1); // the Mast's 120 Iron Plate needs rung 1 (tuning-data-spec §8.1)
+            Give(world, ItemType.IronPlate, 120);
+            var cell = new Vector2Int(6, 6);
+            ICrate mast = Place(world, "FreightMastPrefab", cell).GetPart<ICrate>();
+
+            Assert.AreEqual("Mast(6,6)", mast.CrateId, "the id it registers with the mast network");
+            Assert.IsFalse(mast.CanLabel);
+            Assert.IsTrue(world.Masts.TryGetId(cell, out string mastId));
+            Assert.AreEqual(mast.CrateId, mastId);
+
+            // The Zeppelin's landing is a give into the endpoint on the mast's cell.
+            Assert.IsTrue(world.Endpoints.TryGetEndpoint(cell, out IItemEndpoint endpoint));
+            Assert.IsTrue(endpoint.TryGive(new GolemFactory.Belts.ItemStack { ItemType = ItemType.CopperOre }));
+            Assert.AreEqual(1, mast.Buffer.GetQuantity(ItemType.CopperOre));
+            Assert.AreEqual(0, Pack(world, ItemType.CopperOre), "not the pack");
+
+            StandAt(world, cell);
+            StringAssert.Contains("Collect from Freight Mast", world.Interactor.CurrentPrompt);
+            Assert.IsTrue(world.Interactor.Interact(), world.Interactor.LastStatusMessage);
+            Assert.AreEqual(1, Pack(world, ItemType.CopperOre));
+        }
+
+        [Test]
+        public void TheLedgersRate_IsFreshProduction_NotThePack()
+        {
+            SandboxWorld world = Compose();
+            world.LedgerReadout.Select("r2.reclamation");
+            for (int second = 0; second < 6; second++)
+            {
+                EventBus.Publish(new ItemAssembledEvent("RateLine", ItemType.IronPlate, 1, world.Clock.CurrentTick));
+                for (int frame = 0; frame < 30; frame++)
+                {
+                    world.Advance(1f / 30f);
+                }
+            }
+
+            Assert.IsTrue(world.Throughput.TryGetRatePerMinute(ProductionTally.SeriesId, ItemType.IronPlate, out float rate));
+            Assert.AreEqual(60f, rate, 15f, "one a second is about 60 a minute");
+            Assert.AreEqual(0, Pack(world, ItemType.IronPlate), "and the pack never saw any of it");
+            StringAssert.Contains("now: ", world.LedgerReadout.Body, "the pane shows the live rate");
+        }
+    }
+}

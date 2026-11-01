@@ -137,7 +137,7 @@ namespace GolemFactory.Nodes
                     _statusMessage = _station.LastRefusalReason;
                     return false;
                 }
-                string shortfall = ConstructionCostPolicy.FormatShortfall(_station.StockOf, chassis.cost);
+                string shortfall = _station.ShortfallFor(chassis.cost);
                 _statusMessage = string.IsNullOrEmpty(shortfall)
                     ? "Could not build " + chassis.name + "."
                     : shortfall + " to build " + chassis.name + ".";
@@ -177,7 +177,7 @@ namespace GolemFactory.Nodes
                     _statusMessage = _station.LastRefusalReason;
                     return false;
                 }
-                string shortfall = ConstructionCostPolicy.FormatShortfall(_station.StockOf, blueprint.Chassis.cost);
+                string shortfall = _station.ShortfallFor(blueprint.Chassis.cost);
                 _statusMessage = string.IsNullOrEmpty(shortfall)
                     ? "Could not build " + blueprint.BlueprintId + "."
                     : shortfall + " to build " + blueprint.BlueprintId + ".";
@@ -200,8 +200,8 @@ namespace GolemFactory.Nodes
 
             bool hasStock = _station.TryGetStockpile(out int scrap, out int brass);
             _stockLabel.Text = hasStock
-                ? "Stockpile:  " + scrap + " Scrap    " + brass + " Brass"
-                : "Stockpile:  empty -- harvest a resource node to start one.";
+                ? "Pack:  " + scrap + " Scrap    " + brass + " Brass"
+                : "Pack:  empty -- harvest a resource node to start one.";
             _stockLabel.AddThemeColorOverride("font_color", hasStock ? StockColor : SubtitleColor);
 
             string signature = Signature();
@@ -281,7 +281,7 @@ namespace GolemFactory.Nodes
             bool affordable = ConstructionCostPolicy.CanAfford(_station.StockOf, chassis.cost);
             string detail = affordable
                 ? "Tier " + chassis.tier + "   -   " + chassis.maxAppendageSlots + " appendage slots"
-                : ConstructionCostPolicy.FormatShortfall(_station.StockOf, chassis.cost);
+                : _station.ShortfallFor(chassis.cost);
             ChassisDefinition captured = chassis;
             Button row = MakeRow("Chassis_" + chassis.name, chassis, chassis.name, detail, affordable,
                 () => TryConstruct(captured));
@@ -299,7 +299,7 @@ namespace GolemFactory.Nodes
                 + (blueprint.Chassis != null ? "  \u00b7  " + WorkbenchDiagnostics.Humanize(blueprint.Chassis.name) : "");
             string detail = refusal.Length > 0 ? refusal
                 : affordable ? PatentBrowser.Summary(blueprint)
-                : ConstructionCostPolicy.FormatShortfall(_station.StockOf, blueprint.Chassis.cost);
+                : _station.ShortfallFor(blueprint.Chassis.cost);
             Blueprint captured = blueprint;
             // Node names cannot hold every character an id might (godot/CLAUDE.md), so a row
             // is found through PatentRows, never by this name.
@@ -394,7 +394,7 @@ namespace GolemFactory.Nodes
             _root.AddChild(center);
 
             _window = new PanelContainer { CustomMinimumSize = new Vector2(WindowWidth, 0f) };
-            var panelStyle = NineSlice("res://art/UI/Steampunk/iron_panel_nobolt.png", 8);
+            var panelStyle = NineSlice("res://art/UI/Hud/hud_panel_plain.png", 8);
             panelStyle.ContentMarginLeft = 16;
             panelStyle.ContentMarginRight = 16;
             panelStyle.ContentMarginTop = 14;
@@ -427,7 +427,7 @@ namespace GolemFactory.Nodes
             column.AddChild(_statusLabel);
 
             var close = new Button { Text = "Close", CustomMinimumSize = new Vector2(0f, 32f), FocusMode = Control.FocusModeEnum.None };
-            StyleBoxTexture button = NineSlice("res://art/UI/Steampunk/steampunk_button_blank.png", 8);
+            StyleBoxTexture button = NineSlice("res://art/UI/Hud/hud_button.png", 8);
             foreach (string state in new[] { "normal", "hover", "pressed", "focus" })
             {
                 close.AddThemeStyleboxOverride(state, button);

@@ -1,0 +1,51 @@
+{
+  "picks": {
+    "prop_crate": 3,
+    "floor_tile": 4,
+    "wall_segment_nw": 1
+  },
+  "approved": false,
+  "set": "S2",
+  "note": "Pilot: one floor tile, the north wall and a crate, to settle the look before the other 19 files. Round 2 (2026-10-28): the crate is #3; the floor and wall rerun lighter, since at 0.35+ they drew objects into the tile. Closed 2026-10-28 with nothing installed (art-pipeline-design.md \u00a79, decision 18): the floor drew objects at every strength; wall #3 and crate #3 lost their detail at play size.",
+  "files": {
+    "floor_tile": {
+      "kind": "tile",
+      "prompt": "dark wooden floorboards seen from directly above, long horizontal planks, worn dark oak, a few nail heads",
+      "ramps": [
+        "floor"
+      ],
+      "denoise": [
+        0.15,
+        0.22,
+        0.3
+      ],
+      "seamDenoise": 0.4,
+      "negativeExtra": "objects, machinery, gears, pipes, brackets, plates, symbols"
+    },
+    "wall_segment_nw": {
+      "kind": "strip",
+      "prompt": "the back wall of a workshop seen from the front, dark red-brown brick above a wooden wainscot panel and skirting",
+      "ramps": [
+        "mahogany",
+        "outline",
+        "floor"
+      ],
+      "denoise": [
+        0.15,
+        0.22,
+        0.3
+      ],
+      "seamDenoise": 0.4,
+      "negativeExtra": "objects, machinery, door, lamp, sconce, window, sign, pipes, pillar"
+    },
+    "prop_crate": {
+      "kind": "sprite",
+      "prompt": "a wooden storage crate with brass corner brackets, seen from the front and slightly above, plain green background",
+      "ramps": [
+        "mahogany",
+        "outline",
+        "brass"
+      ]
+    }
+  }
+}

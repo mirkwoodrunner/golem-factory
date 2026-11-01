@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using GolemFactory.Belts;
 using GolemFactory.Buildings;
 using GolemFactory.Compat;
@@ -44,7 +45,7 @@ namespace GolemFactory.Player
 
     /// <summary>
     /// Finds the nearest interactable -- a node to harvest, a station to build at, a golem to
-    /// program, a boiler to fuel, a depot to relabel -- and acts on it with [E]. Also owns [G]
+    /// program, a boiler to fuel, a crate to collect from -- and acts on it with [E]. Also owns [G]
     /// (carry a golem), the context-shared [R], and the Hand-Crank Bench's held [E].
     ///
     /// <para>
@@ -90,7 +91,13 @@ namespace GolemFactory.Player
         private IConstructionScreen _constructionScreen;
         private IWorkbenchScreen _workbench;
         private IScreen _managementScreen;
+        private ScreenCoordinator _screens;
+        private IPackScreen _packScreen;
+        private ICrateScreen _crateScreen;
         private string _interactKeyLabel = "E";
+
+        /// <summary>The key that opens the inventory, as a prompt names it.</summary>
+        public const string InventoryKeyLabel = "I";
 
         // Rotating an already-placed golem. "Golems cannot pivot" is a rule about *runtime
         // execution* -- nothing in a program may turn the golem mid-cycle -- not about the
@@ -125,7 +132,7 @@ namespace GolemFactory.Player
         private GolemConstructionStation[] _stations = new GolemConstructionStation[0];
         private GolemEntity[] _golems = new GolemEntity[0];
         private PlaceableBoiler[] _boilers = new PlaceableBoiler[0];
-        private PlaceableDepot[] _depots = new PlaceableDepot[0];
+        private ICrate[] _depots = new ICrate[0];
         private HandCrankBench[] _benches = new HandCrankBench[0];
         private Vector2Int[] _boilerCells = new Vector2Int[0];
         private Vector2Int[] _depotCells = new Vector2Int[0];
@@ -195,6 +202,12 @@ namespace GolemFactory.Player
         /// </summary>
         public HandCrankBench NearestBench { get; private set; }
 
+        /// <summary>
+        /// What a stopped golem's problem is, as one line, or null for one that hasn't stopped.
+        /// Wired by <c>SandboxWorld</c> to the hover card's state line; null leaves the prompt as it was.
+        /// </summary>
+        public Func<GolemEntity, string> GolemProblem { get; set; }
+
         // --- Wiring ----------------------------------------------------------------------------
 
         public void Configure(
@@ -209,6 +222,14 @@ namespace GolemFactory.Player
         }
 
         /// <summary>
+        /// The Pneumatic Post's store (crates-design §10): what the wallet spends after the pack,
+        /// for building, ordering and loading by hand. Null (unwired) is the pack alone.
+        /// </summary>
+        public void ConfigurePost(string postBufferId) => _postBufferId = postBufferId;
+
+        private string _postBufferId;
+
+        /// <summary>
         /// Wires the affordance separately from Configure, so a scene that wants no prompt
         /// simply never calls it.
         /// </summary>
@@ -216,6 +237,19 @@ namespace GolemFactory.Player
         {
             _managementScreen = managementScreen;
             _interactKeyLabel = interactKeyLabel;
+        }
+
+        /// <summary>
+        /// The full screens' coordinator: while any screen it knows is open, the world prompt
+        /// hides, so a new screen gets that by registering (crates-design §6.7).
+        /// </summary>
+        public void ConfigureScreenCoordinator(ScreenCoordinator screens) => _screens = screens;
+
+        /// <summary>The screens [I] opens: the crate's at a crate, else the pack's. Null for one not built.</summary>
+        public void ConfigureInventory(IPackScreen packScreen, ICrateScreen crateScreen)
+        {
+            _packScreen = packScreen ?? _packScreen;
+            _crateScreen = crateScreen ?? _crateScreen;
         }
 
         /// <summary>What exists to interact with. Unity found all of this with FindObjectsByType.</summary>
@@ -303,7 +337,7 @@ namespace GolemFactory.Player
             var stations = new List<GolemConstructionStation>();
             var boilers = new List<PlaceableBoiler>();
             var boilerCells = new List<Vector2Int>();
-            var depots = new List<PlaceableDepot>();
+            var depots = new List<ICrate>();
             var depotCells = new List<Vector2Int>();
             var benches = new List<HandCrankBench>();
             var benchCells = new List<Vector2Int>();
@@ -327,7 +361,8 @@ namespace GolemFactory.Player
                     boilerCells.Add(building.Cell);
                 }
 
-                PlaceableDepot depot = building.GetPart<PlaceableDepot>();
+                // Depots and masts alike: every crate is collected the same way (crates-design §4.2).
+                ICrate depot = building.GetPart<ICrate>();
                 if (depot != null)
                 {
                     depots.Add(depot);
@@ -430,7 +465,7 @@ namespace GolemFactory.Player
             }
 
             MarketOrderResult result = _market.TryOrder(
-                marker.NodeId, _marketWallet, _marketWalletBufferId, _currentTick());
+                marker.NodeId, _marketWallet, _marketWalletBufferId, _currentTick(), _postBufferId);
 
             switch (result)
             {
@@ -446,7 +481,7 @@ namespace GolemFactory.Player
 
                 case MarketOrderResult.CannotAfford:
                     // Names the shortfall, exactly as a refused chassis or building does.
-                    LastStatusMessage = ConstructionCostPolicy.FormatShortfall(MarketStockOf, offer.Price);
+                    LastStatusMessage = ConstructionCostPolicy.FormatShortfall(MarketWallet, offer.Price);
                     Popup(marker.Position, "Can't pay", InteractionPopupKind.Refused);
                     return false;
 
@@ -456,8 +491,8 @@ namespace GolemFactory.Player
             }
         }
 
-        private int MarketStockOf(string itemType) =>
-            _marketWallet == null ? 0 : _marketWallet.GetQuantity(_marketWalletBufferId, itemType);
+        private PlayerWallet MarketWallet =>
+            _marketWallet == null ? null : new PlayerWallet(_marketWallet, _marketWalletBufferId, _postBufferId);
 
         /// <summary>
         /// Whether this stall would take an order right now: a market is wired, it trades this
@@ -534,8 +569,8 @@ namespace GolemFactory.Player
             Vector3 at = PositionOf(golem);
             CarriedGolem = golem;
             golem.SetHeld(true);
-            LastStatusMessage = $"Carrying {golem.GolemId}. [G] to set it down.";
-            Popup(at, "Carrying " + golem.GolemId, InteractionPopupKind.Gain);
+            LastStatusMessage = $"Carrying {UI.GolemNames.Short(golem)}. [G] to set it down.";
+            Popup(at, "Carrying " + UI.GolemNames.Short(golem), InteractionPopupKind.Gain);
             return true;
         }
 
@@ -586,7 +621,7 @@ namespace GolemFactory.Player
             GolemEntity standing = OtherGolemOn(cell);
             if (standing != null)
             {
-                LastStatusMessage = $"{standing.GolemId} is already standing on this tile.";
+                LastStatusMessage = $"{UI.GolemNames.Short(standing)} is already standing on this tile.";
                 Popup(Position, "Tile occupied", InteractionPopupKind.Refused);
                 return false;
             }
@@ -601,8 +636,8 @@ namespace GolemFactory.Player
             golem.SetHeld(false);
             CarriedGolem = null;
 
-            LastStatusMessage = $"{golem.GolemId} placed at {cell}.";
-            Popup(Position, "Placed " + golem.GolemId, InteractionPopupKind.Gain);
+            LastStatusMessage = $"{UI.GolemNames.Short(golem)} placed at {UI.TileNames.Cell(cell)}.";
+            Popup(Position, "Placed " + UI.GolemNames.Short(golem), InteractionPopupKind.Gain);
             return true;
         }
 
@@ -626,7 +661,7 @@ namespace GolemFactory.Player
 
             Facing rotated = FacingUtility.RotateClockwise(golem.Facing);
             golem.SetFacing(rotated);
-            LastStatusMessage = $"{golem.GolemId} will face {FacingVisuals.Describe(rotated)}.";
+            LastStatusMessage = $"{UI.GolemNames.Short(golem)} will face {FacingVisuals.Describe(rotated)}.";
             Popup(PositionOf(golem), "Facing " + FacingVisuals.Describe(rotated), InteractionPopupKind.Gain);
             return true;
         }
@@ -650,7 +685,7 @@ namespace GolemFactory.Player
 
             Facing rotated = FacingUtility.RotateClockwise(golem.Facing);
             golem.SetFacing(rotated);
-            LastStatusMessage = $"{golem.GolemId} now faces {FacingVisuals.Describe(rotated)}.";
+            LastStatusMessage = $"{UI.GolemNames.Short(golem)} now faces {FacingVisuals.Describe(rotated)}.";
             Popup(PositionOf(golem), "Facing " + FacingVisuals.Describe(rotated), InteractionPopupKind.Gain);
             return true;
         }
@@ -750,6 +785,26 @@ namespace GolemFactory.Player
             }
         }
 
+        /// <summary>
+        /// The bench the player is turning right now (<see cref="HandCrankBench.IsTurning"/>), for
+        /// the Artificer's cranking frames: where it stands and its turn frame. False when no
+        /// bench is turning, including [E] held at a recipe it can't afford.
+        /// </summary>
+        public bool TryGetCrank(out Vector3 benchAt, out int turnFrame)
+        {
+            HandCrankBench bench = NearestBench;
+            if (bench == null || !bench.IsTurning)
+            {
+                benchAt = default;
+                turnFrame = 0;
+                return false;
+            }
+
+            benchAt = BenchPosition(bench);
+            turnFrame = bench.TurnFrame;
+            return true;
+        }
+
         private Vector3 BenchPosition(HandCrankBench bench)
         {
             for (int i = 0; i < _benches.Length; i++)
@@ -797,7 +852,7 @@ namespace GolemFactory.Player
             // A full screen owns the player's attention and dims the world behind it; a
             // world-space prompt drawn under that dim is exactly the kind of leftover HUD the
             // presentation pass removed.
-            if (!HudScreenPolicy.ShouldShowWorldHud(
+            if (_screens?.AnyOpen == true || !HudScreenPolicy.ShouldShowWorldHud(
                     _workbench != null && _workbench.IsOpen,
                     _managementScreen != null && _managementScreen.IsOpen,
                     _constructionScreen != null && _constructionScreen.IsOpen))
@@ -819,12 +874,22 @@ namespace GolemFactory.Player
 
             // A depleted node is in range but cannot be harvested. Saying "[E] Harvest Aether -
             // depleted" told the player two contradictory things at once.
-            if (CurrentAffordance == InteractionAffordance.Ready && IsUnavailable(pick, target))
+            bool packFull = false;
+            if (CurrentAffordance == InteractionAffordance.Ready && IsUnavailable(pick, target, out packFull))
             {
                 CurrentAffordance = InteractionAffordance.Unavailable;
             }
 
             DescribeTarget(pick, target, CarriedGolem != null, out string targetName, out string detail);
+            if (packFull)
+            {
+                detail = "pack full";
+            }
+            // [I] opens a crate whatever E would do there: put into an empty one, label a full one.
+            if (pick.Kind == InteractionKind.Sort && CurrentAffordance != InteractionAffordance.OutOfRange)
+            {
+                detail = InteractionTargeting.AppendDetail(detail, "[" + InventoryKeyLabel + "] open");
+            }
             string verb = DescribeMarketStall(pick, target, ref detail);
 
             // [G] AND [R] ACT ON THE NEAREST GOLEM, NOT ON THE WINNER OF THE [E] PICK, and the two
@@ -838,7 +903,7 @@ namespace GolemFactory.Player
                 if (handled != null)
                 {
                     detail = InteractionTargeting.AppendDetail(
-                        detail, InteractionTargeting.GolemHandlingHint(handled.GolemId, CarriedGolem != null));
+                        detail, InteractionTargeting.GolemHandlingHint(UI.GolemNames.Short(handled), CarriedGolem != null));
                 }
             }
 
@@ -883,8 +948,12 @@ namespace GolemFactory.Player
         // A boiler with no Coke to give it, or no room for any (SteamBoiler.CokeCapacity), reads
         // Unavailable rather than Ready, for the same reason a depleted node does: "[E] Fuel
         // Boiler" there promises an action that will refuse.
-        private bool IsUnavailable(InteractionPick pick, object target)
+        //
+        // A full pack greys the prompt too (crates-design §4.2), with "pack full" for its detail:
+        // at a stocked stall whose good it has no room for, and at a crate none of whose goods fit.
+        private bool IsUnavailable(InteractionPick pick, object target, out bool packFull)
         {
+            packFull = false;
             switch (pick.Kind)
             {
                 case InteractionKind.Harvest:
@@ -897,14 +966,39 @@ namespace GolemFactory.Player
                         return false;
                     }
 
+                    if (!marker.IsDepleted && PackRoomFor(marker.ItemType) <= 0)
+                    {
+                        packFull = true;
+                        return true;
+                    }
+
                     return marker.IsDepleted;
                 }
                 case InteractionKind.Refuel:
                     return BoilerRefuelPolicy.AmountToLoad(StockpileCoke, room: RoomIn(target)) <= 0;
+                case InteractionKind.Sort:
+                {
+                    List<string> held = ((ICrate)target).Buffer?.HeldGoods();
+                    if (held == null || held.Count == 0)
+                    {
+                        return true;
+                    }
+                    packFull = !held.Any(good => PackRoomFor(good) > 0);
+                    return packFull;
+                }
                 default:
                     return false;
             }
         }
+
+        // The pack's room alone: harvesting and collecting are what the player carries, never
+        // the Post (crates-design §4.4). Unwired, there is no limit to say no with.
+        private int PackRoomFor(string itemType) =>
+            _stockpile == null ? int.MaxValue : _stockpile.RoomFor(_stockpileBufferId, itemType);
+
+        private StorageBuffer Pack => _stockpile?.GetOrCreate(_stockpileBufferId);
+
+        private PlayerWallet Wallet => _stockpile == null ? null : new PlayerWallet(_stockpile, _stockpileBufferId, _postBufferId);
 
         /// <summary>
         /// An EMPTY market stall's caption (G10, at the user's call). [E] there orders a
@@ -933,10 +1027,9 @@ namespace GolemFactory.Player
 
         private static int RoomIn(object boiler) => (boiler as PlaceableBoiler)?.Boiler?.CokeRoom ?? 0;
 
-        private int StockpileCoke =>
-            _stockpile == null ? 0 : _stockpile.GetQuantity(_stockpileBufferId, ItemType.Coke);
+        private int StockpileCoke => Wallet?.Quantity(ItemType.Coke) ?? 0;
 
-        private static void DescribeTarget(
+        private void DescribeTarget(
             InteractionPick pick, object target, bool isCarrying, out string targetName, out string detail)
         {
             targetName = "";
@@ -965,25 +1058,42 @@ namespace GolemFactory.Player
                 }
                 case InteractionKind.Sort:
                 {
-                    var depot = (PlaceableDepot)target;
-                    // The CURRENT label, not the next one: with a cycle that grows as the factory
-                    // does, "what is it now" is the harder question.
-                    detail = "holds " + depot.FilterLabel + " · [E] relabel";
+                    var crate = (ICrate)target;
+                    targetName = crate is PlaceableFreightMast ? "Freight Mast" : crate.OwnsBuffer ? "Crate" : "Pneumatic Post";
+                    detail = DescribeContents(crate.Buffer);
                     break;
                 }
                 case InteractionKind.Program:
                 {
                     var golem = (GolemEntity)target;
-                    targetName = golem.GolemId;
+                    targetName = UI.GolemNames.Short(golem);
                     // Facing is in the caption because it is routing, not decoration, and this is
                     // the only place the player is told [R] and [G] exist at all.
                     detail = InteractionTargeting.AppendDetail(
                         "faces " + FacingVisuals.Describe(golem.Facing) + " · [R] turn",
                         // No id: the golem is already this caption's subject.
                         InteractionTargeting.GolemHandlingHint(null, isCarrying));
+                    // A stopped golem's problem leads, for a player without a mouse
+                    // (onboarding-feedback-design §11 question 5): the hover card's state line.
+                    string problem = GolemProblem?.Invoke(golem);
+                    if (!string.IsNullOrEmpty(problem))
+                    {
+                        detail = InteractionTargeting.AppendDetail(problem, detail);
+                    }
                     break;
                 }
             }
+        }
+
+        /// <summary>"holds 12 Scrap, 3 Coke", in tier order, or "empty".</summary>
+        private static string DescribeContents(StorageBuffer crate)
+        {
+            List<string> goods = crate?.HeldGoods();
+            if (goods == null || goods.Count == 0)
+            {
+                return "empty";
+            }
+            return "holds " + string.Join(", ", goods.Select(g => crate.GetQuantity(g) + " " + ItemTiers.DisplayName(g)));
         }
 
         // --- [E] -----------------------------------------------------------------------------------
@@ -1022,7 +1132,7 @@ namespace GolemFactory.Player
                 case InteractionKind.Refuel:
                     return TryRefuelBoiler(target as PlaceableBoiler);
                 case InteractionKind.Sort:
-                    return TryRelabelDepot(target as PlaceableDepot);
+                    return TryCollect(target as ICrate);
                 default:
                     LastStatusMessage = "Nothing in range to interact with.";
                     return false;
@@ -1030,25 +1140,80 @@ namespace GolemFactory.Player
         }
 
         /// <summary>
-        /// Chalks the next label onto a depot (docs/cozy-automation-design.md §1): the crate
-        /// cycles through "any goods" and every item type the stockpile has handled, and the
-        /// tile it publishes is re-registered on the spot.
+        /// E at a crate (docs/crates-design.md §4.2): everything it holds that fits goes into the
+        /// pack, and the rest stays in the crate, as a golem's partial haul does. Labels don't
+        /// apply on the way out, so a relabelled crate never strands its goods.
         /// </summary>
-        public bool TryRelabelDepot(PlaceableDepot depot)
+        public bool TryCollect(ICrate crate)
         {
-            if (depot == null)
+            if (crate == null || crate.Buffer == null)
             {
-                LastStatusMessage = "No depot in range to label.";
+                LastStatusMessage = "No crate in range.";
                 return false;
             }
 
-            depot.CycleFilter();
-            LastStatusMessage = "Depot now holds " + depot.FilterLabel + ".";
-            Popup(DepotPosition(depot), depot.FilterLabel, InteractionPopupKind.Gain);
+            Vector3 at = DepotPosition(crate);
+            List<TransferResult> results = CrateTransfer.Collect(crate, Pack);
+            List<TransferResult> moved = results.Where(r => r.Moved > 0).ToList();
+            if (moved.Count == 0)
+            {
+                string refusal = results.Count == 0 ? "Empty" : results[0].Refusal;
+                LastStatusMessage = results.Count == 0 ? "This crate is empty." : refusal + ".";
+                Popup(at, refusal, InteractionPopupKind.Refused);
+                return false;
+            }
+
+            LastStatusMessage = "Collected " + CrateTransfer.Describe(moved) + ".";
+            Popup(at, string.Join("  ", moved.Select(r => YieldPopupText.Gain(r.ItemType, r.Moved))), InteractionPopupKind.Gain);
             return true;
         }
 
-        private Vector3 DepotPosition(PlaceableDepot depot)
+        /// <summary>
+        /// [I] (docs/inventory-screens-design.md §1): the nearest crate within arm's reach opens
+        /// the Crate screen on it; anywhere else, the Pack screen.
+        /// </summary>
+        public bool OpenInventory()
+        {
+            ICrate crate = SelectNearestCrate(_interactRange);
+            if (crate != null && _crateScreen != null)
+            {
+                _crateScreen.Open(crate);
+                return true;
+            }
+            if (_packScreen != null)
+            {
+                _packScreen.Open();
+                return true;
+            }
+            LastStatusMessage = "No inventory screen available.";
+            return false;
+        }
+
+        /// <summary>The nearest crate (depot or mast) within <paramref name="range"/>, or null.</summary>
+        private ICrate SelectNearestCrate(float range)
+        {
+            FillPositions();
+            ICrate nearest = null;
+            float bestSqr = range * range;
+            for (int i = 0; i < _depots.Length; i++)
+            {
+                float sqr = (_depotPositions[i] - Position).sqrMagnitude;
+                if (_depots[i] != null && sqr <= bestSqr)
+                {
+                    bestSqr = sqr;
+                    nearest = _depots[i];
+                }
+            }
+            return nearest;
+        }
+
+        /// <summary>
+        /// A line said to the player, rising from where they stand: what the game did that they
+        /// did not ask for (a migrated save's notice, crates-design §7).
+        /// </summary>
+        public void Announce(string text) => Popup(Position, text, InteractionPopupKind.Gain);
+
+        private Vector3 DepotPosition(ICrate depot)
         {
             for (int i = 0; i < _depots.Length; i++)
             {
@@ -1101,16 +1266,16 @@ namespace GolemFactory.Player
             int amount = BoilerRefuelPolicy.AmountToLoad(StockpileCoke, room: boiler.Boiler.CokeRoom);
             if (amount <= 0)
             {
-                LastStatusMessage = "No Coke in the stockpile.";
+                LastStatusMessage = "No Coke in your pack.";
                 Popup(at, "No Coke", InteractionPopupKind.Refused);
                 return false;
             }
 
             // Withdraw first, then add. The reverse order would mint Coke if the withdrawal
             // failed -- and the withdrawal is the operation that can fail.
-            if (!_stockpile.TryWithdraw(_stockpileBufferId, ItemType.Coke, amount))
+            if (!Wallet.TryCharge(new[] { new RecipeIngredient(ItemType.Coke, amount) }))
             {
-                LastStatusMessage = "No Coke in the stockpile.";
+                LastStatusMessage = "No Coke in your pack.";
                 Popup(at, "No Coke", InteractionPopupKind.Refused);
                 return false;
             }
@@ -1188,6 +1353,15 @@ namespace GolemFactory.Player
                 return false;
             }
 
+            // Room BEFORE the take (crates-design §6.5): taking from the stall and then finding
+            // the pack full would destroy the unit. A depleted stall is told apart below.
+            if (!marker.IsDepleted && PackRoomFor(marker.ItemType) <= 0)
+            {
+                LastStatusMessage = $"Your pack is full of {ItemTiers.DisplayName(marker.ItemType)}.";
+                Popup(marker.Position, "Pack full", InteractionPopupKind.Refused);
+                return false;
+            }
+
             if (!marker.TryHarvest(out ItemStack item))
             {
                 LastStatusMessage = "Nothing left to harvest here.";
@@ -1226,7 +1400,7 @@ namespace GolemFactory.Player
 
             _workbench.Open();
             _workbench.RetargetGolem(golem);
-            LastStatusMessage = $"Programming {golem.GolemId}.";
+            LastStatusMessage = $"Programming {UI.GolemNames.Short(golem)}.";
             return true;
         }
 

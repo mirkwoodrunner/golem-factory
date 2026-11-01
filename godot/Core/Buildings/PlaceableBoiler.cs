@@ -12,8 +12,6 @@ namespace GolemFactory.Buildings
     public sealed class PlaceableBoiler : IBuildingPart
     {
         public const int DefaultStartingCoke = 240;
-        public const int ScrapCost = SteamNetwork.BoilerScrapCost;
-        public const int IronPlateCost = SteamNetwork.BoilerIronPlateCost;
 
         private string boilerId;
         private int startingCoke = DefaultStartingCoke;

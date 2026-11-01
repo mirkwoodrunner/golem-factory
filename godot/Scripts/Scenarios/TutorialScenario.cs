@@ -69,6 +69,7 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 return _panel.Plate.Visible ? "the guide plate shows over the question" : null;
             });
+            Do("capture the playtest card", () => { ScenarioCapture.Shot(_tree.Root, "screen-playtest-card"); return null; });
             Do("type a note with a W in it", () =>
             {
                 standing = _player.CorePosition;
@@ -112,6 +113,7 @@ namespace GolemFactory.Nodes.Scenarios
                 _panel.Plate.Visible && _panel.TitleText == "Gather Scrap" && _panel.ProgressText == "Scrap  0 / 20"
                     ? null
                     : $"plate {_panel.Plate.Visible}, '{_panel.TitleText}', '{_panel.ProgressText}'");
+            Do("capture the guide panel", () => { ScenarioCapture.Shot(_tree.Root, "screen-guide-panel"); return null; });
             Do("its arrow points at the Scrap stall from the screen's edge", () =>
             {
                 if (!_panel.Arrow.Visible || !_panel.OffScreen)
@@ -235,14 +237,21 @@ namespace GolemFactory.Nodes.Scenarios
                     return $"guide on '{_panel.TitleText}', showing {_panel.Plate.Visible}";
                 }
                 Rect2 plate = _panel.Plate.GetGlobalRect();
-                foreach (Control control in bench.StepRows.Select(r => (Control)r.Socket).Append(bench.TriggerRow.Socket).Append(bench.Lever).Append(bench.VaultList))
+                // The next-drag hint is on: Always On and TRIGGER are framed, and the plate is
+                // clear of both frames too (onboarding-feedback-design.md §8).
+                if (!bench.HintCardOutline.Visible || !bench.HintTargetOutline.Visible)
+                {
+                    return $"no hint frames on 'Program it' (hint {bench.ShownHint})";
+                }
+                foreach (Control control in bench.StepRows.Select(r => (Control)r.Socket).Append(bench.TriggerRow.Socket).Append(bench.Lever)
+                             .Append(bench.VaultList).Append(bench.HintCardOutline).Append(bench.HintTargetOutline))
                 {
                     if (control != null && control.IsVisibleInTree() && plate.Intersects(control.GetGlobalRect()))
                     {
                         return $"the guide covers {control.Name} ({control.GetGlobalRect()}) at {plate}";
                     }
                 }
-                _log.Add("in the Workbench on 'Program it', the guide sits clear of the sockets, lever and vault");
+                _log.Add("in the Workbench on 'Program it', the guide sits clear of the sockets, lever, vault and hint frames");
                 return null;
             });
             Do("close the Workbench", () => { Tap(Key.Escape); return null; });
@@ -286,7 +295,46 @@ namespace GolemFactory.Nodes.Scenarios
                 _world.Golems.First(g => !g.IsRemoved).SetPlacement(_world.Tutorial.GolemSpot, World.Facing.North);
                 return null;
             });
-            Do("its first cycle opens chapter 2", () => _panel.TitleText == "Cut Gears" ? null : Wait);
+            // Its Scrap lands in the depot's crate, not the pack: chapter 1 ends on collecting it.
+            Do("its first cycle asks for a collect", () => _panel.TitleText == "Collect from the crate" ? null : Wait);
+            // The Workbench question waits in the plate's place; skip it so the step shows.
+            Do("skip the question over the collect step", () =>
+            {
+                if (_world.Tutorial.Playtest.Current == null)
+                {
+                    return null;
+                }
+                if (playtest.Card.Visible && ++_skipClickedAt % 10 == 0)
+                {
+                    Click(playtest.SkipButton);
+                }
+                return Wait;
+            });
+            Do("stand at the depot and press E", () =>
+            {
+                CoreVector2Int depot = _world.Tutorial.DepotSpot;
+                _world.Interactor.Teleport(new Compat.Vector3(depot.x, depot.y + 1f, 0f));
+                return null;
+            });
+            Do("tap E", () =>
+            {
+                if (!_panel.Plate.Visible || _panel.OffScreen)
+                {
+                    return Wait; // the player's teleport lands, and the plate comes back, a frame later
+                }
+                _log.Add($"frame {Engine.GetFramesDrawn()}: the collect step at the depot");
+                Tap(Key.E);
+                return null;
+            });
+            Do("collecting opens chapter 2", () =>
+            {
+                if (_panel.TitleText != "Cut Gears")
+                {
+                    return Wait;
+                }
+                _log.Add($"E at the depot collected ('{_world.Interactor.LastStatusMessage}'), and chapter 2 opened");
+                return null;
+            });
             Do("cut the Gears, claim Scrap Reclamation, build the Presser", () =>
             {
                 Give(ItemType.Gear, 30);

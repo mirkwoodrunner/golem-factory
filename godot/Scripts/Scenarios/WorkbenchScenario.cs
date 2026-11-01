@@ -18,6 +18,10 @@ namespace GolemFactory.Nodes.Scenarios
     /// <list type="number">
     ///   <item>A Scavenger is built at the station; the Workbench opens on it (Unity's order) and
     ///   the construction panel is closed (Open_ClosesManagementPanelAndConstructionPanel).</item>
+    ///   <item>The next-drag hint (docs/onboarding-feedback-design.md §2): the guide's first
+    ///   program outlines Always On and TRIGGER; real drags follow it card by card, a wrong card
+    ///   keeps it on the right socket (and a drop on a filled socket replaces), the lever is
+    ///   outlined last, ENGAGE clears it, and no frame without a drop changes the draft.</item>
     ///   <item>Picking up a vault appendage lights the sockets that would take it.</item>
     ///   <item>Real drags: AlwaysOnCore onto TRIGGER, ExtractScrap onto STEP 1, PushOutput onto
     ///   STEP 2 (RealDrag_ReleasedOverAnAppendageSocket_CommitsThroughTheNormalPath).</item>
@@ -68,6 +72,7 @@ namespace GolemFactory.Nodes.Scenarios
 
             DefinitionsCheck();
             PlanBuildAndOpen();
+            PlanHint();
             PlanDrags();
             PlanFailedDrags();
             PlanEngageAndPatent();
@@ -140,6 +145,10 @@ namespace GolemFactory.Nodes.Scenarios
             Do("the factory has made Coke, so a Haul can take it", () =>
             {
                 _world.Buffers.Deposit(_world.StockpileBufferId, Economy.ItemType.Coke, 5);
+                // The ledger sweeps the buffers once a second; poll now, or whether the picker
+                // offers Coke depends on where in that second the scenario's steps fall (it
+                // failed once a step was added before this one).
+                _world.TechTree.Poll();
                 return null;
             });
             Do("retarget onto the golem", () => { _world.Workbench.ConfigureGolem(_golem); return null; });
@@ -171,7 +180,7 @@ namespace GolemFactory.Nodes.Scenarios
                 Label value = _screen.StepRows[0].Card?.FindChild("Good", true, false)?.FindChild("Value", true, false) as Label;
                 if (good == Economy.ItemType.Scrap || value?.Text != Economy.ItemTiers.DisplayName(good))
                 {
-                    return $"draft good {good}, picker reads '{value?.Text}'";
+                    return $"draft good {good}, picker reads '{value?.Text}' (STEP 1 {Draft(0)}, options {string.Join(",", _world.Workbench.HaulOptions)})";
                 }
                 return null;
             });
@@ -246,14 +255,23 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return $"workbench open={_screen.IsOpen}, panel open={_panel.IsOpen}";
                 }
-                if (_screen.TargetGolem != _golem || !_screen.TargetText.Contains(_golem.GolemId))
+                if (_screen.TargetGolem != _golem || !_screen.TargetText.Contains(UI.GolemNames.Short(_golem)))
                 {
                     return $"target header '{_screen.TargetText}'";
+                }
+                // Phase 2 critique: the header and the cards read in player names, never ids
+                // ("TARGET · PlayerGolem-001", "ScrapNode → ScrapBeltA").
+                string raw = _screen.FindChildren("*", "Label", true, false).OfType<Label>()
+                    .Where(l => l.IsVisibleInTree()).Select(l => l.Text).FirstOrDefault(t => UI.PlayerText.RawIdIn(t) != null);
+                if (raw != null)
+                {
+                    return $"the Workbench shows an id: '{raw}' ('{UI.PlayerText.RawIdIn(raw)}')";
                 }
                 _vaultCardCount = VaultCards().Count;
                 // Gated (Sandbox.unity's gateWorkbenchRoster): 2 logic cores + the 3 opening verbs.
                 return _vaultCardCount == 5 ? null : $"vault shows {_vaultCardCount} cards, expected 2 cores + the 3-card opening hand";
             });
+            Do("capture the Workbench", () => { ScenarioCapture.Shot(_tree.Root, "critique-workbench"); return null; });
             Do("vault cards carry no dial", () =>
                 VaultCards().Any(c => c.FindChild("Quantity", true, false) != null) ? "a vault card offers a batch size" : null);
         }
@@ -326,9 +344,89 @@ namespace GolemFactory.Nodes.Scenarios
             Do("failed", () => { _log.Add("failed drags: no orphans, no ghosts; a socket card dropped on nothing leaves"); return null; });
         }
 
+        /// <summary>
+        /// The golem is the guide's first Scavenger, so the hint follows the "Program it" plan:
+        /// Always On, Extract, Push Output, then the lever. The scenario drags what the hint shows.
+        /// </summary>
+        private void PlanHint()
+        {
+            string before = null;
+            Do("the hint outlines Always On in the vault and TRIGGER, and no socket holds a card", () =>
+            {
+                before = DraftSnapshot();
+                if (_world.Workbench.DraftLogicCore != null || Enumerable.Range(0, 6).Any(i => Draft(i) != null))
+                {
+                    return "the draft was not empty: " + before;
+                }
+                return HintOn("AlwaysOnCore", _screen.TriggerRow.Socket);
+            });
+            Do("frames pass with no drop: the draft is unchanged", () =>
+                DraftSnapshot() == before ? null : $"the draft moved by itself: {before} -> {DraftSnapshot()}");
+            Do("pick up Always On", () => { DragStart(VaultCard("AlwaysOnCore")); return null; });
+            Do("carry it to TRIGGER", () => { DragMoveTo(_screen.TriggerRow.Socket); return null; });
+            Do("in hand, its vault frame hides; the socket's stays", () =>
+                _screen.HintCardOutline.Visible || !Encloses(_screen.HintTargetOutline, _screen.TriggerRow.Socket)
+                    ? $"card frame {_screen.HintCardOutline.Visible}, socket frame {_screen.HintTargetOutline.GetGlobalRect()}" : null);
+            Do("release over TRIGGER", () => { DragRelease(_screen.TriggerRow.Socket); return null; });
+            Do("the hint moves to Extract and STEP 1", () => HintOn("ExtractScrap", _screen.StepRows[0].Socket));
+
+            DragCard("PushOutput", () => _screen.StepRows[0].Socket);
+            Do("a wrong card in STEP 1: the hint still points Extract at STEP 1", () =>
+                Draft(0) != "PushOutput" ? $"STEP 1 holds {Draft(0)}" : HintOn("ExtractScrap", _screen.StepRows[0].Socket));
+            DragCard("ExtractScrap", () => _screen.StepRows[0].Socket);
+            Do("Extract replaced it, and the hint moves to Push Output and STEP 2", () =>
+                Draft(0) != "ExtractScrap" ? $"STEP 1 holds {Draft(0)}" : HintOn("PushOutput", _screen.StepRows[1].Socket));
+            DragCard("PushOutput", () => _screen.StepRows[1].Socket);
+            Do("the draft matches: the lever is outlined, and no vault card", () =>
+            {
+                if (_screen.ShownHint.Kind != WorkbenchHintKind.Lever)
+                {
+                    return $"hint {_screen.ShownHint}";
+                }
+                if (_screen.HintCardOutline.Visible || !Encloses(_screen.HintTargetOutline, _screen.Lever))
+                {
+                    return $"card frame {_screen.HintCardOutline.Visible}, lever frame {_screen.HintTargetOutline.GetGlobalRect()} vs {_screen.Lever.GetGlobalRect()}";
+                }
+                if (_golem.Program.logicCore != null || _golem.Program.appendages.Count > 0)
+                {
+                    return "the hint wrote to the golem";
+                }
+                _log.Add("hint: Always On -> TRIGGER, Extract -> STEP 1 (kept through a wrong card), Push -> STEP 2, then the lever");
+                return null;
+            });
+        }
+
+        private string HintOn(string card, Control socket)
+        {
+            WorkbenchHintTarget hint = _screen.ShownHint;
+            if (hint.Kind != WorkbenchHintKind.VaultCard || hint.Card != card)
+            {
+                return $"hint {hint}, expected {card}";
+            }
+            if (!Encloses(_screen.HintCardOutline, VaultCard(card)))
+            {
+                return $"no frame on {card} in the vault ({_screen.HintCardOutline.Visible}, {_screen.HintCardOutline.GetGlobalRect()})";
+            }
+            if (!Encloses(_screen.HintTargetOutline, socket))
+            {
+                return $"no frame on {socket.GetParent()?.Name} ({_screen.HintTargetOutline.GetGlobalRect()} vs {socket.GetGlobalRect()})";
+            }
+            return null;
+        }
+
+        private static bool Encloses(Control outline, Control control) =>
+            outline != null && control != null && outline.IsVisibleInTree() && outline.GetGlobalRect().Encloses(control.GetGlobalRect());
+
+        private string DraftSnapshot() =>
+            (_world.Workbench.DraftLogicCore?.name ?? "-") + "|" + string.Join(",", Enumerable.Range(0, 6).Select(i =>
+                $"{Draft(i) ?? "-"}:{_world.Workbench.DraftItemTypeAt(i)}:{_world.Workbench.DraftQuantityAt(i)}"));
+
         private void PlanEngageAndPatent()
         {
             Do("pull ENGAGE GEARS", () => { Click(_screen.Lever); return null; });
+            Do("ENGAGE clears the hint", () =>
+                _screen.ShownHint.Kind != WorkbenchHintKind.None || _screen.HintCardOutline.Visible || _screen.HintTargetOutline.Visible
+                    ? $"hint {_screen.ShownHint} still drawn after ENGAGE" : null);
             Do("the golem runs the draft, and the lever threw", () =>
             {
                 GolemProgram p = _golem.Program;

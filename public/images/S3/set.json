@@ -1,0 +1,83 @@
+{
+  "promptPrefix": "pixel art, cozy game sprite, steampunk workshop machine, ",
+  "promptSuffix": ", warm brown outlines, lit from the upper left, rich shading, copper and brass details, flat green background",
+  "negative": "3d render, realistic, photo, blurry, text, watermark, black outline, purple, blue, people, character, noise",
+  "reference": "steam_boiler",
+  "review": "row",
+  "picks": {
+    "depot": 2,
+    "golem_construction_station": 3,
+    "pneumatic_post": 1,
+    "freight_mast": 6,
+    "scrap_recycler": 0,
+    "slag_heap": 0
+  },
+  "approved": true,
+  "set": "S3",
+  "note": "The six generated buildings, redrawn from today's art toward the authored boiler's look (IP-Adapter on steam_boiler). The boiler and bench stay; belts and pipes are rotating tiles and stay, the five hot pipes made by pixel edits. Approved 2026-10-29: depot #2, station #3, Post #1, mast #6; the recycler and slag heap keep today's (0), muddy at play size.",
+  "files": {
+    "depot": {
+      "kind": "sprite",
+      "prompt": "a squat stepped storage depot of stacked red-brown bricks and timber with a small brass hatch, seen from the front and slightly above",
+      "ramps": [
+        "mahogany",
+        "outline",
+        "brass",
+        "copper"
+      ]
+    },
+    "golem_construction_station": {
+      "kind": "sprite",
+      "prompt": "a golem construction gantry, two iron pillars under a brass crossbeam with two teal lamps, a brass block hanging on a chain, an iron base with rivets, seen from the front",
+      "ramps": [
+        "iron",
+        "brass",
+        "outline",
+        "aether",
+        "mahogany"
+      ]
+    },
+    "pneumatic_post": {
+      "kind": "sprite",
+      "prompt": "a pneumatic post station, a tall brass tube with a glass capsule window on a red-brown brick plinth, a small green signal lamp, seen from the front",
+      "ramps": [
+        "brass",
+        "mahogany",
+        "outline",
+        "malachite",
+        "iron"
+      ]
+    },
+    "freight_mast": {
+      "kind": "sprite",
+      "prompt": "a tall slender freight mast, an iron lattice tower with a ladder, a round brass beacon on top, on a heavy iron base, seen from the front",
+      "ramps": [
+        "iron",
+        "brass",
+        "outline",
+        "slate"
+      ]
+    },
+    "scrap_recycler": {
+      "kind": "sprite",
+      "prompt": "a scrap recycler, a wide iron hopper full of scrap metal on a riveted iron stand, a brass chute at the bottom, seen from the front and slightly above",
+      "ramps": [
+        "iron",
+        "brass",
+        "outline",
+        "copper",
+        "mahogany"
+      ]
+    },
+    "slag_heap": {
+      "kind": "sprite",
+      "prompt": "a low heap of dark grey slag and cinders in two mounds, faint embers glowing at the base, seen from the front and slightly above",
+      "ramps": [
+        "iron",
+        "slate",
+        "outline",
+        "fire"
+      ]
+    }
+  }
+}

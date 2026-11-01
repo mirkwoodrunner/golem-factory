@@ -60,6 +60,21 @@ namespace GolemFactory.Nodes.Scenarios
                 return;
             }
 
+            // The lighting is Core's LightingRules, not a number on a node (art-pipeline-design.md §6.4).
+            Color ambient = Ugui.ToGodot(LightingRules.Ambient);
+            if (shell.Ambient == null || !shell.Ambient.Color.IsEqualApprox(ambient))
+            {
+                _staticFailure = $"the room's tint is {shell.Ambient?.Color}, LightingRules.Ambient is {ambient}";
+                return;
+            }
+            var sconces = shell.FindChildren("SconceLight", "PointLight2D", true, false).OfType<PointLight2D>().ToList();
+            if (sconces.Count != 7 || sconces.Any(l => !Mathf.IsEqualApprox(l.Energy, LightingRules.SconceEnergy) ||
+                                                      !l.Color.IsEqualApprox(Ugui.ToGodot(LightingRules.SconceColor))))
+            {
+                _staticFailure = $"{sconces.Count} sconce lights, not 7 at LightingRules' colour and energy";
+                return;
+            }
+
             var unpublished = world.Setup.nodes
                 .Where(n => !world.Endpoints.HasEndpoint(new CoreVector2Int(n.x, n.y)))
                 .Select(n => n.id).ToList();
@@ -76,7 +91,7 @@ namespace GolemFactory.Nodes.Scenarios
                 return;
             }
 
-            _staticReport = $"{walls} walls, {props} props, 7 sconces, {sandbox.Markers.Count} stalls published, {_standingChecked} standing sprites sort at their feet";
+            _staticReport = $"{walls} walls, {props} props, 7 sconces lit by LightingRules, {sandbox.Markers.Count} stalls published, {_standingChecked} standing sprites sort at their feet";
             _player.ScriptedMove = new Vector2(0f, -1f);
         }
 
@@ -161,6 +176,9 @@ namespace GolemFactory.Nodes.Scenarios
                     return null;
 
                 case Phase.Settle when _elapsed >= SettleSeconds:
+                    // The room at the default zoom, the player back inside (the cleanup's before
+                    // and after captures, art-pipeline-design.md §3.1).
+                    ScenarioCapture.Shot(_player.GetViewport(), "screen-room");
                     // Down the middle the street opens into the town square (G10), so the walk ends
                     // at the SQUARE's kerb.
                     int farRow = TownSquare.Bottom;

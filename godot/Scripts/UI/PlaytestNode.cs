@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.IO;
+using System.Linq;
 using Godot;
 using GolemFactory.Tutorial;
 
@@ -102,6 +103,7 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            using var perf = NodePerf.Measure("node.playtest");
             if (_session == null)
             {
                 return;
@@ -111,6 +113,8 @@ namespace GolemFactory.Nodes
             {
                 _session.RecordError(line, Now);
             }
+
+            RecordFrame();
 
             PlaytestQuestion question = _session.Current;
             bool show = question != null && !ModalScreens.AnyOpen(GetTree());
@@ -134,9 +138,35 @@ namespace GolemFactory.Nodes
             }
         }
 
+        private ulong _lastFrameUsec;
+
+        /// <summary>
+        /// The frame's wall time, in the guide's chapter, for the report's "Frame rate" table
+        /// (docs/performance-report-template.md §5): the time since this node's last frame, the
+        /// whole frame, process and render.
+        /// </summary>
+        private void RecordFrame()
+        {
+            ulong now = Time.GetTicksUsec();
+            ulong last = _lastFrameUsec;
+            _lastFrameUsec = now;
+            World.SandboxWorld sandbox = _world?.Sandbox;
+            if (last == 0 || sandbox?.Tutorial == null)
+            {
+                return;
+            }
+            int belts = 0;
+            foreach (World.PlacedBelt belt in sandbox.Belts.Belts)
+            {
+                belts += belt.Segment?.Items.Count ?? 0;
+            }
+            _session.RecordFrame(sandbox.Tutorial.ChapterOf(sandbox.Tutorial.Index), (now - last) / 1000.0,
+                sandbox.Golems.Count(g => !g.IsRemoved), belts);
+        }
+
         private void BuildCard()
         {
-            _card = Ugui.Image("PlaytestCard", Ugui.NineSlice("res://art/UI/Steampunk/steampunk_panel_iron_bolt.png", 12, 10, 12, 10), new Color(0.12f, 0.08f, 0.05f, 0.97f));
+            _card = Ugui.Image("PlaytestCard", Ugui.NineSlice("res://art/UI/Hud/hud_panel_bolted.png", 12, 10, 12, 10), new Color(0.12f, 0.08f, 0.05f, 0.97f));
             // Only its buttons and note field take clicks; the plate's empty area passes them to
             // the world beneath, as the guide plate's does (a build click there was swallowed).
             _card.MouseFilter = Control.MouseFilterEnum.Ignore;

@@ -219,6 +219,10 @@ namespace GolemFactory.Progression
             {
                 Ledger.RecordBuilding(TechTreeCatalog.BuildingScrapRecycler);
             }
+            if (Exists<PlaceableDepot>(b => b.GetPart<PlaceableDepot>().BufferId == World.SandboxWorld.PostBufferId))
+            {
+                Ledger.RecordBuilding(TechTreeCatalog.BuildingPneumaticPost);
+            }
 
             SweepFloorExpansion();
         }

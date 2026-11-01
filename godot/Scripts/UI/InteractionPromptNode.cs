@@ -98,6 +98,7 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            using var perf = NodePerf.Measure("node.prompt");
             _time += delta;
             ShowPrompt();
             AnimatePopups((float)delta);

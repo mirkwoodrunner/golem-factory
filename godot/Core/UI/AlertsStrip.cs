@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using GolemFactory.Diagnostics;
 using GolemFactory.Golems;
 
 namespace GolemFactory.UI
@@ -15,6 +16,12 @@ namespace GolemFactory.UI
     /// <see cref="ReconcileIntervalSeconds"/> it re-reads every live golem's actual state from
     /// the roster -- the reconcile pass the three ported tests pin.
     /// </para>
+    ///
+    /// <para>
+    /// It counts STOPPED golems only (red or blue, <see cref="GolemMoodRules.IsStopped"/>). A
+    /// golem waiting on the factory (grey) is never an alert; with nothing stopped the strip
+    /// says how many are waiting (docs/onboarding-feedback-design.md §3.6).
+    /// </para>
     /// </summary>
     public sealed class AlertsStrip
     {
@@ -28,9 +35,26 @@ namespace GolemFactory.UI
         public AlertsStrip(Func<IEnumerable<GolemEntity>> roster)
         {
             _roster = roster;
+            // A golem that starts waiting publishes a stall too; the event path asks the roster
+            // so it never shows for the half second before the next reconcile. One the roster
+            // doesn't know counts, as every stall did before.
+            _tracker.IsStopped = id =>
+            {
+                GolemEntity golem = Find(id);
+                return golem == null || GolemMoodRules.IsStopped(golem.Mood);
+            };
         }
 
         public StallTracker Tracker => _tracker;
+
+        /// <summary>
+        /// Names tiles for the strip's sentence; null (bare tests) prints the stall's ids as
+        /// before. <c>SandboxWorld</c> wires its <c>TileNames</c>.
+        /// </summary>
+        public TileNames Names { get; set; }
+
+        /// <summary>Golems stalled but waiting on the factory (grey), as of the last reconcile.</summary>
+        public int WaitingCount { get; private set; }
 
         public void Attach() => _tracker.Subscribe();
 
@@ -47,22 +71,50 @@ namespace GolemFactory.UI
             }
         }
 
+        /// <summary>The endgame profile's sampler (§3's <c>strip</c>); null, the default, measures nothing.</summary>
+        public PerfSampler Perf { get; set; }
+
         /// <summary>Re-reads every golem's state into the tracker.</summary>
         public void Reconcile()
         {
+            using (Perf.Measure(PerfSampler.Strip))
+            {
+                ReconcileNow();
+            }
+        }
+
+        private void ReconcileNow()
+        {
             _snapshots.Clear();
+            int waiting = 0;
             foreach (GolemEntity golem in _roster?.Invoke() ?? Array.Empty<GolemEntity>())
             {
-                if (golem == null || golem.IsRemoved || golem.Program == null)
+                if (golem == null || golem.IsRemoved || golem.Program == null ||
+                    golem.Program.State != GolemState.Stalled)
                 {
                     continue;
                 }
-                if (golem.Program.State == GolemState.Stalled)
+                if (!GolemMoodRules.IsStopped(golem.Mood))
                 {
-                    _snapshots.Add(new StallSnapshot(golem.GolemId, golem.StallReason, golem.StallResourceId, golem.StallShortfall, golem.SteamShortage));
+                    waiting++;
+                    continue;
                 }
+                _snapshots.Add(new StallSnapshot(golem.GolemId, golem.StallReason, golem.StallResourceId, golem.StallShortfall, golem.SteamShortage));
             }
             _tracker.Reconcile(_snapshots);
+            WaitingCount = waiting;
+        }
+
+        private GolemEntity Find(string golemId)
+        {
+            foreach (GolemEntity golem in _roster?.Invoke() ?? Array.Empty<GolemEntity>())
+            {
+                if (golem != null && golem.GolemId == golemId)
+                {
+                    return golem;
+                }
+            }
+            return null;
         }
 
         /// <summary>What the strip says now.</summary>
@@ -76,18 +128,15 @@ namespace GolemFactory.UI
                 // tracker also takes GolemStalled events, which carry no cause, and each one
                 // overwrote the reconciled snapshot -- so the live strip kept the vague line
                 // while the golem's own badge said why (G10, caught in the frames).
-                if (primary.Reason == Events.StallReason.NoSteam)
+                GolemEntity golem = _tracker.Count > 0 ? Find(primary.GolemId) : null;
+                if (primary.Reason == Events.StallReason.NoSteam && golem != null)
                 {
-                    foreach (GolemEntity golem in _roster?.Invoke() ?? Array.Empty<GolemEntity>())
-                    {
-                        if (golem != null && golem.GolemId == primary.GolemId)
-                        {
-                            primary = new StallSnapshot(primary.GolemId, primary.Reason, primary.ResourceId, primary.Shortfall, golem.SteamShortage);
-                            break;
-                        }
-                    }
+                    primary = new StallSnapshot(primary.GolemId, primary.Reason, primary.ResourceId, primary.Shortfall, golem.SteamShortage);
                 }
-                return StallDiagnostics.ComposeStripText(_tracker.Count, primary);
+                // In player names when the golem is known and names are wired (SandboxWorld):
+                // "Scavenger #4 stalled: Crate (2,-1) is full", never the ids (Phase 2 critique).
+                string description = golem != null && Names != null ? StallDiagnostics.Describe(golem, primary, Names) : null;
+                return StallDiagnostics.ComposeStripText(_tracker.Count, primary, WaitingCount, description);
             }
         }
     }

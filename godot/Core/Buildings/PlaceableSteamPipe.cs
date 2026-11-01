@@ -19,8 +19,6 @@ namespace GolemFactory.Buildings
     /// </summary>
     public sealed class PlaceableSteamPipe : IBuildingPart
     {
-        public const int IronPlateCost = SteamNetwork.SteamPipeIronPlateCost;
-
         public Vector2Int Cell { get; private set; }
         public bool IsRegistered { get; private set; }
         public PipeShape Shape { get; private set; } = PipeShape.End;

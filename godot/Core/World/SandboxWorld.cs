@@ -7,6 +7,7 @@ using GolemFactory.Buildings;
 using GolemFactory.ClockTower;
 using GolemFactory.Compat;
 using GolemFactory.Data;
+using GolemFactory.Diagnostics;
 using GolemFactory.Economy;
 using GolemFactory.Golems;
 using GolemFactory.AssemblyLine;
@@ -65,6 +66,9 @@ namespace GolemFactory.World
         public BuildModeController Build { get; } = new BuildModeController();
         public FloorExpansionService FloorExpansion { get; } = new FloorExpansionService();
 
+        /// <summary>The pack's cap ladder (docs/pack-upgrades-design.md): the Assembly Line tab's Pack row.</summary>
+        public PackUpgradeService PackUpgrade { get; } = new PackUpgradeService();
+
         public FloorBounds Bounds { get; private set; } = new FloorBounds();
         public DefinitionSet Definitions { get; private set; }
         public SandboxSetup Setup { get; private set; }
@@ -117,6 +121,21 @@ namespace GolemFactory.World
         private readonly List<PlaceableBuilding> _authoredBuildings = new List<PlaceableBuilding>();
 
         public string StockpileBufferId => _stockpileBufferId;
+
+        /// <summary>
+        /// The Pneumatic Post's shared store (docs/crates-design.md §10): every Post crate
+        /// publishes this one buffer. A registry buffer like any other, saved by its id.
+        /// </summary>
+        public const string PostBufferId = "PneumaticPost";
+
+        /// <summary>
+        /// The player's wallet (docs/crates-design.md §4.4): the pack, which keeps the stockpile's
+        /// id because saves name it, then the Post store. Every cost is charged through it;
+        /// golems never reach the pack.
+        /// </summary>
+        public PlayerWallet Wallet => _wallet ??= new PlayerWallet(Buffers, _stockpileBufferId, PostBufferId);
+
+        private PlayerWallet _wallet;
 
         /// <summary>Every live golem, whichever station built it.</summary>
         public IReadOnlyList<GolemEntity> Golems => _golems;
@@ -179,14 +198,15 @@ namespace GolemFactory.World
 
             // Steam ticks on the simulation clock: Coke burns per unit of work, so the burn has
             // to follow Play/Pause and the speed multiplier.
-            Clock.Register(new TickAdapter(Steam.Tick));
+            _steamTick = new TickAdapter(Steam.Tick);
+            Clock.Register(_steamTick);
 
-            FloorExpansion.Configure(Bounds, Buffers, _stockpileBufferId);
+            FloorExpansion.Configure(Bounds, Buffers, _stockpileBufferId, PostBufferId);
             if (setup.floorExpansion != null)
             {
-                FloorExpansion.ConfigureCost(
-                    setup.floorExpansion.scrapPerRow, setup.floorExpansion.ironPlatePerRow, setup.floorExpansion.rowsPerPurchase);
+                FloorExpansion.ConfigureCost(setup.floorExpansion.purchases, setup.floorExpansion.rowsPerPurchase);
             }
+            PackUpgrade.Configure(Buffers, _stockpileBufferId, PostBufferId, setup.packCapacityPerType, setup.packUpgrades);
 
             // Ticked whether or not a tower is built: an unbuilt tower accrues nothing.
             // EMPTY, as ManagerHolders.prefab's site holder was (stages: []): the site stays
@@ -201,7 +221,7 @@ namespace GolemFactory.World
             {
                 var bench = new PlaceableBuilding { name = "StarterHandCrankBench", Cell = SandboxSetup.CellOf(setup.starterBench) };
                 StarterBench = bench.AddPart(new HandCrankBench());
-                StarterBench.Configure(Buffers, _stockpileBufferId, Definitions.Recipes.Values.OrderBy(r => r.name));
+                StarterBench.Configure(Buffers, _stockpileBufferId, Definitions.Recipes.Values.OrderBy(r => r.name), PostBufferId);
                 Clock.Register(StarterBench);
                 _authoredBuildings.Add(bench);
             }
@@ -228,13 +248,16 @@ namespace GolemFactory.World
             }
 
             WireInteractor();
+            Interactor.GolemProblem = GolemProblem;
             WireWorkbench(setup.workbench);
-            Alerts = new AlertsStrip(() => _golems);
+            Alerts = new AlertsStrip(() => _golems) { Names = TileNames };
             Alerts.Attach();
             WireProgression(setup.assemblyLine);
             if (setup.tutorial)
             {
                 Tutorial = new Tutorial.TutorialGuide(this);
+                // The Workbench's next-drag hint follows the guide's program plans.
+                Workbench.HintSource = Tutorial.PlanFor;
                 if (AssemblyLine != null)
                 {
                     AssemblyLine.Wanted = card => card != null && GolemFactory.Tutorial.TutorialGuide.CardKey(card) == Tutorial.WantedCardAppendage;
@@ -268,6 +291,7 @@ namespace GolemFactory.World
             TechTree.ConfigureWorld(() => _golems, InteractableBuildings);
             TechTree.ConfigureFloorBounds(Bounds);
             TechTree.Attach();
+            Production.Attach();
 
             if (setup == null || string.IsNullOrEmpty(setup.deck) || !Definitions.Decks.TryGetValue(setup.deck, out DraftableCardCatalog deck))
             {
@@ -298,9 +322,12 @@ namespace GolemFactory.World
             // once offered stays offered.
             Workbench.HaulableGood = item => TechTree.Ledger.HasItem(item);
 
-            AssemblyLineBoard = new AssemblyLineBoard(AssemblyLine, Buffers, _stockpileBufferId, setup.claimUserId);
+            AssemblyLineBoard = new AssemblyLineBoard(AssemblyLine, Buffers, _stockpileBufferId, setup.claimUserId, PostBufferId);
             AssemblyLineBoard.ConfigureBays(AssemblyBay, _stockpileBufferId);
             AssemblyLineBoard.ConfigureFloorExpansion(FloorExpansion);
+            AssemblyLineBoard.ConfigurePackUpgrade(PackUpgrade);
+            AssemblyLineBoard.ConfigureSeen(item => TechTree.Ledger.HasItem(item));
+            AssemblyLineBoard.ConfigurePostShown(() => TechTree.Ledger.HasBuilding(TechTreeCatalog.BuildingPneumaticPost));
         }
 
         private void WireWorkbench(SandboxSetup.WorkbenchRoster roster)
@@ -324,11 +351,13 @@ namespace GolemFactory.World
         private void WireInteractor()
         {
             Interactor.Configure(InteractRange, Buffers, _stockpileBufferId, null, null);
+            Interactor.ConfigurePost(PostBufferId);
             Interactor.ConfigureAffordance(null, "E");
             Interactor.ConfigureWorld(() => Markers, InteractableBuildings, () => _golems);
             Interactor.ConfigureMarket(Market, () => Clock.CurrentTick, Buffers, _stockpileBufferId);
             Interactor.ConfigureBuildMode(Build);
             Interactor.ConfigureGolemPlacement(Grid, new Vector2(1f, 1f));
+            Interactor.ConfigureScreenCoordinator(Screens);
             Interactor.Attach();
         }
 
@@ -349,7 +378,7 @@ namespace GolemFactory.World
         /// recipe was opened). The Godot Ledger tab draws this one.
         /// </summary>
         public TechTreeReadout LedgerReadout =>
-            _ledgerReadout ??= new TechTreeReadout(Definitions.Recipes.Values.ToList(), Throughput, _stockpileBufferId, Clock.TicksPerSecond);
+            _ledgerReadout ??= new TechTreeReadout(Definitions.Recipes.Values.ToList(), Throughput, ProductionTally.SeriesId, Clock.TicksPerSecond);
 
         private TechTreeReadout _ledgerReadout;
 
@@ -372,6 +401,7 @@ namespace GolemFactory.World
             List<GolemEntity> live = LiveGolems();
             SaveData data = SaveLoadService.CaptureState(Buffers, Patents, live, Build.Buildings);
             data.progress = CaptureProgress();
+            data.market = CaptureMarket();
             SaveFileIO.WriteToFile(data, path);
             return $"Saved {live.Count} golems and {data.buildings.Count} buildings.";
         }
@@ -394,11 +424,12 @@ namespace GolemFactory.World
             }
 
             RestoreProgress(data.progress);
+            RestoreMarket(data.market);
 
             IGolemRespawner respawner = _stationTemplate != null ? new StationGolemRespawner(_stationTemplate) : null;
             SaveLoadService.RestoreReport report = SaveLoadService.RestoreState(
                 data, Buffers, Patents, LiveGolems(), Definitions.ToCatalog(), respawner,
-                new BuildModeBuildingRebuilder(Build));
+                new BuildModeBuildingRebuilder(Build), Wallet.PackId);
             Interactor.RefreshInteractables();
 
             // The guide last, once its golems are back: entering a step notes which golems were
@@ -415,11 +446,71 @@ namespace GolemFactory.World
             string buildings = report.BuildingsSkipped > 0
                 ? $"{report.BuildingsRebuilt} buildings, {report.BuildingsSkipped} skipped"
                 : $"{report.BuildingsRebuilt} buildings";
-            return golems + "; " + buildings + ".";
+            string status = golems + "; " + buildings + ".";
+
+            // A save from before crates (crates-design §7): its stockpile is the pack now, kept
+            // whole even above the cap, and its depots come back as empty crates. Said once, here
+            // and at the player, so the empty crates read as a change rather than a loss.
+            if (data.version < 1)
+            {
+                Interactor.Announce(CratesMigrationNotice);
+                status += " " + CratesMigrationNotice;
+            }
+            return status;
         }
+
+        public const string CratesMigrationNotice =
+            "Crates are local now. Your depots start empty; everything you had is in your pack.";
 
         private DraftableCardCatalog _deck;
         private string _claimUserId;
+
+        /// <summary>
+        /// The stalls' stock and the carts on the road. A load restores them with the pack, so
+        /// a truckload paid for before a save arrives after loading it, even on a fresh launch,
+        /// and one ordered after the save does not arrive on top of its refunded price.
+        /// </summary>
+        private MarketEntry CaptureMarket()
+        {
+            var market = new MarketEntry();
+            foreach (ResourceNode node in Nodes.Nodes)
+            {
+                if (node.RemainingQuantity != ResourceNode.Infinite)
+                {
+                    market.stallIds.Add(node.NodeId);
+                    market.stallStocks.Add(node.RemainingQuantity);
+                }
+            }
+            if (Market != null)
+            {
+                foreach ((string nodeId, int quantity, long ticksLeft) in Market.CartsOnTheRoad(Clock.CurrentTick))
+                {
+                    market.cartStallIds.Add(nodeId);
+                    market.cartQuantities.Add(quantity);
+                    market.cartTicksLeft.Add(ticksLeft);
+                }
+            }
+            return market;
+        }
+
+        private void RestoreMarket(MarketEntry market)
+        {
+            if (market == null)
+            {
+                return; // a save from before the street was saved: leave it as it is
+            }
+            for (int i = 0; i < market.stallIds.Count && i < market.stallStocks.Count; i++)
+            {
+                if (Nodes.TryGetNode(market.stallIds[i], out ResourceNode node))
+                {
+                    node.RestoreQuantity(market.stallStocks[i]);
+                }
+            }
+            int carts = System.Math.Min(market.cartStallIds.Count,
+                System.Math.Min(market.cartQuantities.Count, market.cartTicksLeft.Count));
+            Market?.RestoreCarts(Enumerable.Range(0, carts)
+                .Select(i => (market.cartStallIds[i], market.cartQuantities[i], market.cartTicksLeft[i])), Clock.CurrentTick);
+        }
 
         private ProgressEntry CaptureProgress()
         {
@@ -428,6 +519,7 @@ namespace GolemFactory.World
                 ledgerTowerStages = TechTree.Ledger.CompletedTowerStages,
                 floorNorthExtent = Bounds.NorthExtent,
                 assemblyBayTier = AssemblyBay.Tier,
+                packUpgradeTier = PackUpgrade.Tier,
                 clockSpeed = Clock.Speed,
                 clockPaused = Clock.State == ClockState.Paused,
                 tutorialStep = Tutorial?.Index ?? 0,
@@ -484,6 +576,7 @@ namespace GolemFactory.World
 
             AssemblyBay.RestoreTier(progress.assemblyBayTier);
             FloorExpansion.Restore(progress.floorNorthExtent);
+            PackUpgrade.Restore(progress.packUpgradeTier);
 
             // The tower on its site (G10), a fixture the building list never holds.
             if (ClockTowerBuilding != null)
@@ -532,6 +625,22 @@ namespace GolemFactory.World
             Interactor.Configure(InteractRange, Buffers, _stockpileBufferId, ConstructionScreen, WorkbenchScreen);
             Interactor.ConfigureAffordance(ManagementScreen, "E");
         }
+
+        /// <summary>
+        /// Hands [I] the Pack and Crate screens (docs/inventory-screens-design.md §2), as
+        /// <see cref="ConfigureScreens"/> does the others. Null keeps one already handed over.
+        /// </summary>
+        public void ConfigureInventoryScreens(IPackScreen pack, ICrateScreen crate) =>
+            Interactor.ConfigureInventory(pack, crate);
+
+        /// <summary>
+        /// What the Pack and Crate screens show and what their clicks do: rows, transfers through
+        /// <see cref="CrateTransfer"/>, and the labels a crate is offered (every good the ledger has seen).
+        /// </summary>
+        public CrateScreenReadout Inventory =>
+            _inventory ??= new CrateScreenReadout(Buffers, _stockpileBufferId, () => TechTree.Ledger.Items, PostBufferId);
+
+        private CrateScreenReadout _inventory;
 
         /// <summary>
         /// The screens handed over so far. Each screen registers itself (passing null for the
@@ -587,7 +696,7 @@ namespace GolemFactory.World
         private void WireBuildMode()
         {
             Build.Configure(Grid, null);
-            Build.ConfigureEconomy(Buffers, _stockpileBufferId, Placeables.Select(p => p.Prefab).ToArray());
+            Build.ConfigureEconomy(Buffers, _stockpileBufferId, Placeables.Select(p => p.Prefab).ToArray(), PostBufferId);
             Build.ConfigureBelts(Belts, Endpoints, Conveyor);
             // "I can walk there" and "I can build there" are one boundary (§3.3): the same live
             // bounds object the player's clamp reads, so new floor is buildable the moment it is
@@ -599,6 +708,7 @@ namespace GolemFactory.World
             Build.ConfigureStationWiring(this);
             Build.ConfigureGolemRoster(() => _golems);
             Build.BuildingPlaced += OnBuildingPlaced;
+            Build.BuildingRemoved += OnBuildingRemoved;
         }
 
         /// <summary>A roster field: chassis names, comma-separated, or "all".</summary>
@@ -650,7 +760,7 @@ namespace GolemFactory.World
 
             // The Workbench session is the target a new golem is handed to, as Unity's station
             // retargeted the WorkbenchController on spawn.
-            station.ConfigureSceneServices(Conveyor, Nodes, Buffers, Clock, Workbench, _stockpileBufferId);
+            station.ConfigureSceneServices(Conveyor, Nodes, Buffers, Clock, Workbench, _stockpileBufferId, PostBufferId);
             station.ConfigureSpatial(Endpoints, Grid);
 
             // THE ONE LINE THE SWITCH GATES: handing a station the steam network is what makes
@@ -669,6 +779,7 @@ namespace GolemFactory.World
 
         private void OnBuildingPlaced(PlaceableBuilding building)
         {
+            InvalidateStallFacts();
             // BuildModeController already asked ConfigureStation through the seam; hosting the
             // station's golems is the part only the world can do.
             GolemConstructionStation station = building.GetPart<GolemConstructionStation>();
@@ -676,7 +787,117 @@ namespace GolemFactory.World
             {
                 AddStation(station);
             }
+
+            // A bench from the build menu is a clone of the catalog's prefab, which has no
+            // registry: wired here to the wallet and the clock, as the starter bench is in
+            // Compose, or it never crafts (found in the Phase 1 critique; older than crates).
+            HandCrankBench bench = building.GetPart<HandCrankBench>();
+            if (bench != null)
+            {
+                bench.ConfigureStockpile(Buffers, _stockpileBufferId, PostBufferId);
+                Clock.Register(bench);
+            }
         }
+
+        private void OnBuildingRemoved(PlaceableBuilding building)
+        {
+            InvalidateStallFacts();
+            HandCrankBench bench = building.GetPart<HandCrankBench>();
+            if (bench != null)
+            {
+                bench.IsCranking = false;
+                Clock.Unregister(bench);
+            }
+        }
+
+        /// <summary>
+        /// What a stalled golem's neighbours look like: the facts that tell waiting (grey) from
+        /// stuck (red) (docs/onboarding-feedback-design.md §3.2).
+        /// </summary>
+        public StallFactsProbe StallFacts =>
+            _stallFacts ??= new StallFactsProbe(() => _golems, Endpoints, Belts, () => Market) { Frame = () => PresentationFrame };
+
+        private StallFactsProbe _stallFacts;
+
+        /// <summary>
+        /// Moves on once a frame, after the frame's ticks, and whenever a building or a golem
+        /// comes or goes: the stall-facts probe keeps its indices until it moves, or until a
+        /// golem moves, turns, is carried or changes whether it runs
+        /// (docs/performance-report-template.md §5.2 step 2).
+        /// </summary>
+        public long PresentationFrame { get; private set; }
+
+        /// <summary>Says the world changed outside a frame's ticks, so this frame's stall facts are stale.</summary>
+        public void InvalidateStallFacts() => PresentationFrame++;
+
+        /// <summary>
+        /// The endgame profile's sampler (docs/performance-report-template.md §3): null, the
+        /// default, unless a perf run sets it, so the game pays a null check. Setting it reaches
+        /// the clock (each tick, by registrant), the probe, every golem's mood, the alerts strip
+        /// and the hover card.
+        /// </summary>
+        public PerfSampler Perf
+        {
+            get => _perf;
+            set
+            {
+                _perf = value;
+                Clock.Perf = value;
+                Clock.PerfGroup = value != null ? PerfGroupOf : (Func<Simulation.ITickable, string>)null;
+                StallFacts.Perf = value;
+                if (Alerts != null)
+                {
+                    Alerts.Perf = value;
+                }
+            }
+        }
+
+        private PerfSampler _perf;
+
+        private string PerfGroupOf(Simulation.ITickable tickable)
+        {
+            switch (tickable)
+            {
+                case GolemEntity _: return PerfSampler.TickGolems;
+                case ConveyorSystem _: return PerfSampler.TickBelts;
+                default: return tickable == _steamTick ? PerfSampler.TickSteam : PerfSampler.TickOther;
+            }
+        }
+
+        /// <summary>Which golem the mouse is over (onboarding-feedback-design §4.1).</summary>
+        public GolemInspector Inspector => _inspector ??= new GolemInspector(() => _golems);
+
+        private GolemInspector _inspector;
+
+        /// <summary>What the player calls the thing on a tile: "Crate (3,4)", "Scrap stall".</summary>
+        public TileNames TileNames => _tileNames ??= new TileNames(Endpoints, Masts);
+
+        private TileNames _tileNames;
+
+        /// <summary>
+        /// The hover card for <paramref name="golem"/> drawn in <paramref name="mood"/>
+        /// (onboarding-feedback-design §4.3).
+        /// </summary>
+        /// <remarks>
+        /// A waiting golem whose source is fed names its feeders (§17.4); they are found here, for
+        /// the one hovered golem, never per frame for every golem (§17.2 invariant 3).
+        /// </remarks>
+        public HoverCard HoverCard(GolemEntity golem, GolemMood mood, bool strainingHeld = false)
+        {
+            using (Perf.Measure(PerfSampler.Hover))
+            {
+                GolemFactory.Golems.StallFacts facts = golem?.StallFacts ?? default;
+                IReadOnlyList<GolemEntity> feeders = GolemHoverText.NamesFeeders(mood, facts) ? StallFacts.FeedersOf(golem) : null;
+                return GolemHoverText.Compose(golem, mood, facts, TileNames, strainingHeld, feeders);
+            }
+        }
+
+        /// <summary>
+        /// The problem a stopped golem's [E] prompt carries (§11 question 5): the hover card's
+        /// state line, or null for a golem that hasn't stopped.
+        /// </summary>
+        public string GolemProblem(GolemEntity golem) =>
+            golem != null && GolemMoodRules.IsStopped(golem.Mood) ? HoverCard(golem, golem.Mood).State : null;
 
         private void OnGolemSpawned(GolemEntity golem)
         {
@@ -684,6 +905,12 @@ namespace GolemFactory.World
             {
                 _golems.Add(golem);
             }
+
+            // Spawned and respawned alike (the respawner builds through the station), so a
+            // golem's birth stays in one file and every one the world hosts reads grey or red.
+            InvalidateStallFacts();
+            golem.ConfigureStallFacts(StallFacts.Read);
+            golem.ConfigurePerf(() => _perf);
 
             // The station publishes WorldInteractablesChanged from inside SpawnGolem, BEFORE it
             // raises GolemSpawned -- so the interactor's re-snapshot ran against a roster one
@@ -696,6 +923,7 @@ namespace GolemFactory.World
 
         private void OnGolemDismantled(GolemEntity golem)
         {
+            InvalidateStallFacts();
             _golems.Remove(golem);
             Interactor.RefreshInteractables(); // the same ordering, the other way round
             GolemDismantled?.Invoke(golem);
@@ -705,6 +933,7 @@ namespace GolemFactory.World
         public void Advance(float seconds)
         {
             Clock.Advance(seconds);
+            InvalidateStallFacts();
 
             // Unity's BufferThroughputMonitor and AlertsPanel ran on Update in real time, not on
             // simulation ticks: the rate column reads "per minute of the player's time", and
@@ -714,6 +943,7 @@ namespace GolemFactory.World
             {
                 _nextThroughputSample = _realSeconds + BufferRateTracker.DefaultSampleIntervalSeconds;
                 Throughput.Sample(_realSeconds, Buffers);
+                Production.Sample(_realSeconds, Throughput);
             }
             Alerts?.Update(seconds);
             AssemblyLine?.Tick(seconds);
@@ -723,9 +953,16 @@ namespace GolemFactory.World
 
         private float _realSeconds;
         private float _nextThroughputSample;
+        private TickAdapter _steamTick;
 
         /// <summary>The Inventory tab's rate history (Unity's BufferThroughputMonitor), sampled in real time.</summary>
         public BufferRateTracker Throughput { get; } = new BufferRateTracker();
+
+        /// <summary>
+        /// Every good golems have assembled, sampled into <see cref="Throughput"/> beside the
+        /// buffers: the Ledger's live rate (docs/crates-design.md §4.5).
+        /// </summary>
+        public ProductionTally Production { get; } = new ProductionTally();
 
         /// <summary>The HUD's alerts strip. Null on the bare (slice) world.</summary>
         public AlertsStrip Alerts { get; private set; }

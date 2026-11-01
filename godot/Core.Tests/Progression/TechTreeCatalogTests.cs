@@ -1,4 +1,11 @@
 using System.Collections.Generic;
+using System.Linq;
+using GolemFactory.Buildings;
+using GolemFactory.ClockTower;
+using GolemFactory.Data;
+using GolemFactory.Economy;
+using GolemFactory.Steam;
+using GolemFactory.World;
 using NUnit.Framework;
 using GolemFactory.Progression;
 using GolemFactory.PunchCards;
@@ -335,5 +342,246 @@ namespace GolemFactory.Tests.EditMode
             return count;
         }
 
+
+        [Test]
+        public void EveryRecipeNode_QuotesItsRecipe_AsTheDataHasIt()
+        {
+            // docs/tuning-data-spec.md invariant 12: the Lens went to 3 Glass, and the Ledger's
+            // node still said 2. A recipe node's detail is its recipe's inputs and output.
+            // By number: node "r10.lensgrinding" is recipe "R10_LensGrinding".
+            var recipes = new Dictionary<string, RecipeDefinition>();
+            foreach (RecipeDefinition recipe in AuthoredData.All<RecipeDefinition>())
+            {
+                recipes[recipe.name.Substring(0, recipe.name.IndexOf('_')).ToLowerInvariant()] = recipe;
+            }
+            int checkedNodes = 0;
+            foreach (TechTreeNode node in TechTreeCatalog.Nodes)
+            {
+                if (node.Kind != TechTreeNodeKind.Recipe)
+                {
+                    continue;
+                }
+                string key = node.Id.Substring(0, node.Id.IndexOf('.'));
+                Assert.IsTrue(recipes.TryGetValue(key, out RecipeDefinition recipe), $"{node.Id} names no recipe");
+                // The details abbreviate goods ("2 Copper + 1 Zinc -> 3 Brass"), so the numbers
+                // are what is checked: each input's quantity in order, then the output's.
+                string[] sides = node.Detail.Split(new[] { " -> " }, System.StringSplitOptions.None);
+                var given = new List<int>();
+                foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(sides[0], @"(\d+) "))
+                {
+                    given.Add(int.Parse(m.Groups[1].Value));
+                }
+                var expected = new List<int>();
+                foreach (RecipeIngredient input in recipe.inputs)
+                {
+                    expected.Add(input.quantity);
+                }
+                CollectionAssert.AreEqual(expected, given, $"{node.Id}'s inputs: '{node.Detail}'");
+                if (sides.Length > 1) // the tier-5 nodes list their inputs alone
+                {
+                    StringAssert.StartsWith(recipe.outputQuantity + " ", sides[1], $"{node.Id}'s output: '{node.Detail}'");
+                }
+                checkedNodes++;
+            }
+            Assert.Greater(checkedNodes, 10);
+        }
+            // --- The Ledger's quoted numbers, held to the data (Phase 3 critique) ----------------
+        //
+        // The Ledger's texts are hand-written. Phase 3 retuned the Presser, the Hauler, the
+        // Overclocker, the Zeppelin, the Mast, the Post, stage 3's Lens and the bench's speed,
+        // and the texts kept the old numbers until a critique read them. These read every number
+        // the texts quote that a definition owns, so the next retune fails here instead.
+
+        // The Ledger abbreviates some goods; everything else is ItemTiers' display name.
+        private static readonly Dictionary<string, string> Abbreviated = new Dictionary<string, string>
+        {
+            { "Plate", ItemType.IronPlate }, { "Wire", ItemType.CopperWire }, { "Frame", ItemType.FrameSection },
+            { "Cog", ItemType.GreatCog }, { "Conduit", ItemType.AetherConduit }, { "Core", ItemType.ChronometerCore },
+        };
+
+        private static string GoodNamed(string name)
+        {
+            if (Abbreviated.TryGetValue(name, out string item))
+            {
+                return item;
+            }
+            foreach (string good in KnownGoods)
+            {
+                if (ItemTiers.DisplayName(good) == name)
+                {
+                    return good;
+                }
+            }
+            Assert.Fail($"the Ledger names a good '{name}' no item type displays as");
+            return null;
+        }
+
+        private static IEnumerable<string> KnownGoods =>
+            typeof(ItemType).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                .Where(f => f.IsLiteral && f.FieldType == typeof(string))
+                .Select(f => (string)f.GetRawConstantValue());
+
+        /// <summary>"60 Scrap + 10 Plate + 5 Gear" as (good, quantity).</summary>
+        private static Dictionary<string, int> PriceIn(string text)
+        {
+            var price = new Dictionary<string, int>();
+            foreach (string part in text.Split(new[] { " + " }, System.StringSplitOptions.None))
+            {
+                System.Text.RegularExpressions.Match m = System.Text.RegularExpressions.Regex.Match(part.Trim(), @"^(\d+) (.+)$");
+                Assert.IsTrue(m.Success, $"'{part}' in '{text}' is not 'N Good'");
+                string good = GoodNamed(m.Groups[2].Value);
+                price[good] = (price.TryGetValue(good, out int q) ? q : 0) + int.Parse(m.Groups[1].Value);
+            }
+            return price;
+        }
+
+        private static Dictionary<string, int> Summed(IEnumerable<RecipeIngredient> cost)
+        {
+            var price = new Dictionary<string, int>();
+            foreach (RecipeIngredient line in cost)
+            {
+                price[line.itemType] = (price.TryGetValue(line.itemType, out int q) ? q : 0) + line.quantity;
+            }
+            return price;
+        }
+
+        private static TechTreeNode Node(string id)
+        {
+            Assert.IsTrue(TechTreeCatalog.TryGetNode(id, out TechTreeNode node), id);
+            return node;
+        }
+
+        private static string[] Segments(TechTreeNode node) =>
+            node.Detail.Split(new[] { " · " }, System.StringSplitOptions.None);
+
+        [Test]
+        public void EveryChassisNode_QuotesItsChassis_AsTheDataHasIt()
+        {
+            // "3 slots · 1 input · 60 Scrap + 10 Plate + 5 Gear": slots first, the price last.
+            var chassis = new Dictionary<string, ChassisDefinition>();
+            foreach (ChassisDefinition c in AuthoredData.All<ChassisDefinition>())
+            {
+                chassis[c.name] = c;
+            }
+            int checkedNodes = 0;
+            foreach (TechTreeNode node in TechTreeCatalog.Nodes)
+            {
+                if (node.Kind != TechTreeNodeKind.Chassis)
+                {
+                    continue;
+                }
+                Assert.IsTrue(chassis.TryGetValue(node.SignalId, out ChassisDefinition definition), node.Id);
+                string[] segments = Segments(node);
+                StringAssert.StartsWith(definition.maxAppendageSlots + " slots", segments[0], $"{node.Id}: '{node.Detail}'");
+                CollectionAssert.AreEquivalent(Summed(definition.cost), PriceIn(segments[segments.Length - 1]),
+                    $"{node.Id}'s price: '{node.Detail}'");
+                checkedNodes++;
+            }
+            Assert.AreEqual(5, checkedNodes, "all five chassis");
+        }
+
+        [Test]
+        public void TheBoilerNode_QuotesTheSteamRules()
+        {
+            Assert.AreEqual(
+                $"Powers {SteamNetwork.MaxGolemsPerBoiler} golems · {SteamGaugeUtility.CokePerMinutePerGolem} Coke/min each",
+                Node("bldg.boiler").Detail);
+        }
+
+        [Test]
+        public void EveryPricedBuildingNode_QuotesThePlaceablesPrice()
+        {
+            var placeables = new Dictionary<string, PlaceableBuilding>();
+            foreach (PlaceableEntry entry in Data.PlaceableCatalogTests.LoadReal())
+            {
+                placeables[entry.Key] = entry.Prefab;
+            }
+            // The node, its prefab: the price is the first " · " segment.
+            var priced = new (string node, string prefab)[]
+            {
+                ("bldg.steampipe", "SteamPipePrefab"),
+                ("bldg.belt", "BeltPrefab"),
+                ("bldg.depot", "DepotPrefab"),
+                ("bldg.freightmast", "FreightMastPrefab"),
+            };
+            foreach ((string id, string prefab) in priced)
+            {
+                CollectionAssert.AreEquivalent(Summed(placeables[prefab].Cost), PriceIn(Segments(Node(id))[0]),
+                    $"{id}: '{Node(id).Detail}'");
+            }
+
+            // The Post names its goods, not their counts: every good it costs, and no other.
+            string post = Segments(Node("bldg.pneumaticpost"))[0];
+            CollectionAssert.AreEquivalent(
+                Summed(placeables["PneumaticPostPrefab"].Cost).Keys,
+                post.Split(new[] { " + " }, System.StringSplitOptions.None).Select(GoodNamed),
+                $"bldg.pneumaticpost: '{post}'");
+        }
+
+        [Test]
+        public void TheTowerStageNodes_QuoteEachStagesDemand_InOrder()
+        {
+            var stages = new Dictionary<int, ClockTowerStageDefinition>();
+            foreach (ClockTowerStageDefinition stage in AuthoredData.All<ClockTowerStageDefinition>())
+            {
+                stages[stage.stageNumber] = stage;
+            }
+            var full = new Dictionary<string, string>
+            {
+                { "Frame Section", ItemType.FrameSection }, { "Great Cog", ItemType.GreatCog },
+            };
+            for (int number = 1; number <= 4; number++)
+            {
+                TechTreeNode node = Node("tower.stage" + number);
+                var quoted = new List<(string, int)>();
+                foreach (System.Text.RegularExpressions.Match m in
+                         System.Text.RegularExpressions.Regex.Matches(node.Detail, @"([A-Z][A-Za-z ]*?) @ (\d+)"))
+                {
+                    string name = m.Groups[1].Value;
+                    quoted.Add((full.TryGetValue(name, out string good) ? good : GoodNamed(name), int.Parse(m.Groups[2].Value)));
+                }
+                CollectionAssert.AreEqual(stages[number].demands.Select(d => (d.itemType, d.ratePerMinute)).ToList(), quoted,
+                    $"{node.Id}: '{node.Detail}'");
+            }
+        }
+
+        [Test]
+        public void NoLedgerText_EstimatesAGolemCount()
+        {
+            // The user's call (tuning-data-spec §19.3): a hand-written "~96 golems" was a guess
+            // the data never checked, so the Ledger names no factory size at all.
+            var estimate = new System.Text.RegularExpressions.Regex(@"~\s*\d+\s+golems|factory of");
+            foreach (TechTreePhase phase in TechTreeCatalog.Phases)
+            {
+                Assert.IsFalse(estimate.IsMatch(phase.Goal), $"{phase.Title}: '{phase.Goal}'");
+            }
+            foreach (TechTreeNode node in TechTreeCatalog.Nodes)
+            {
+                Assert.IsFalse(estimate.IsMatch(node.Detail), $"{node.Id}: '{node.Detail}'");
+                Assert.IsFalse(node.Detail.TrimEnd().EndsWith("·"), $"{node.Id}: dangling separator in '{node.Detail}'");
+            }
+        }
+
+        [Test]
+        public void TheBenchBaysPackAndFloorNodes_QuoteTheirRules()
+        {
+            StringAssert.Contains($"at {HandCrankRules.SpeedPercent}% speed", Node("bench.handcrank").Detail);
+
+            var bay = new AssemblyBayStructure();
+            Assert.AreEqual(
+                $"Golem cap {AssemblyBayStructure.DefaultSlots} · +{AssemblyBayStructure.SlotsPerUpgrade} for "
+                + string.Join(" + ", bay.UpgradeCost.Select(c => c.quantity + " " + (c.itemType == ItemType.IronPlate ? "Plate" : ItemTiers.DisplayName(c.itemType)))),
+                Node("bays.assembly").Detail);
+
+            SandboxSetup setup = World.SandboxSetupTests.LoadReal();
+            string[] counts = { "zero", "one", "two", "three", "four", "five", "six", "seven" };
+            Assert.AreEqual(
+                $"Carries {setup.packCapacityPerType} · up to {setup.packUpgrades.Last().capacityPerType} in "
+                + $"{counts[setup.packUpgrades.Count]} upgrades",
+                Node("pack.upgrades").Detail);
+            StringAssert.StartsWith(
+                $"+{setup.floorExpansion.rowsPerPurchase} rows · {counts[setup.floorExpansion.purchases.Count]} purchases",
+                Node("bldg.floorexpansion").Detail);
+        }
     }
 }

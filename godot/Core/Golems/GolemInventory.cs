@@ -130,6 +130,29 @@ namespace GolemFactory.Golems
                 }
             }
 
+            /// <summary>
+            /// The type <see cref="FullestTypeUnits"/> counts, first in drain order on a tie, or
+            /// null when empty: the good a hover names when this stock is what's full.
+            /// </summary>
+            public string FullestType
+            {
+                get
+                {
+                    string fullest = null;
+                    int units = 0;
+                    for (int i = 0; i < _order.Count; i++)
+                    {
+                        int held = Get(_order[i]);
+                        if (held > units)
+                        {
+                            units = held;
+                            fullest = _order[i];
+                        }
+                    }
+                    return fullest;
+                }
+            }
+
             public int Get(string itemType)
             {
                 if (string.IsNullOrEmpty(itemType))

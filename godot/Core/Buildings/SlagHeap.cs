@@ -28,8 +28,14 @@ namespace GolemFactory.Buildings
     /// </summary>
     public sealed class SlagHeap
     {
-        /// <summary>§5.3(c): four Slag voided per Coke burned.</summary>
-        public const int SlagPerCoke = 4;
+        /// <summary>§5.3(c): four Slag voided per Coke burned, when no data says otherwise.</summary>
+        public const int DefaultSlagPerCoke = 4;
+
+        /// <summary>
+        /// Slag voided per Coke burned: the Slag Heap prefab's <c>slagPerCoke</c> in
+        /// placeables.json. Data, so the guide's carrier plan can read it rather than copy it.
+        /// </summary>
+        public int SlagPerCoke { get; }
 
         public string HeapId { get; }
 
@@ -45,9 +51,10 @@ namespace GolemFactory.Buildings
         /// <summary>Lifetime total, for the §8 HUD line ("Slag 96/min → Glass 32 · Voided 64").</summary>
         public int TotalVoided { get; private set; }
 
-        public SlagHeap(string heapId, int startingCoke = 0)
+        public SlagHeap(string heapId, int startingCoke = 0, int slagPerCoke = DefaultSlagPerCoke)
         {
             HeapId = heapId;
+            SlagPerCoke = slagPerCoke < 1 ? 1 : slagPerCoke;
             CokeStock = startingCoke < 0 ? 0 : startingCoke;
         }
 

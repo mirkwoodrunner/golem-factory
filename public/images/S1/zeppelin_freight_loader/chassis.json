@@ -1,0 +1,20 @@
+{
+  "stem": "chassis_zeppelin_freight_loader",
+  "title": "S1 Zeppelin Freight Loader (creature)",
+  "draft": "scripts/zeppelin_draft.py",
+  "ramps": ["outline", "iron", "brass", "copper", "bone", "mahogany", "aether", "steam"],
+  "rigid": ["legs", "far_leg", "body", "head", "balloon"],
+  "picks": {"south": "d0.55_s5002", "north": "d0.35_s5001", "east": "d0.55_s5000"},
+  "approved": "2026-10-25",
+  "layers": {
+    "south": ["balloon", "ropes", "legs", "body", "head", "arms", "cargo", "forearms", "hands"],
+    "north": ["cargo", "legs", "arms", "forearms", "hands", "body", "head", "ropes", "balloon"],
+    "east": ["far_arm", "far_leg", "balloon", "ropes", "legs", "body", "head", "arms", "cargo", "forearms", "hands"],
+    "west": ["far_arm", "far_leg", "balloon", "ropes", "legs", "body", "head", "arms", "cargo", "forearms", "hands"]
+  },
+  "prompts": {
+    "south": "front view of a cute massive iron behemoth golem creature, huge chest and great brass shoulders, small head sunk between them with a heavy brass brow and two teal eyes, thick iron arms with big brass fists hugging a bundle of wooden crates in a rope net, short thick legs, a little cream canvas blimp with brass rings and copper fins tethered by ropes above its head",
+    "north": "back view of a cute massive iron behemoth golem creature, huge back and great brass shoulders, a brass winch drum on its back with ropes up to a little cream canvas blimp with copper fins floating above it, thick iron arms, short thick legs",
+    "east": "side view facing right of a cute massive hunched iron behemoth golem creature, small head forward with a brass brow and a teal eye, a thick iron arm with a big brass fist holding a bundle of wooden crates in a rope net, short thick legs, a little cream canvas blimp with brass rings and copper tail fins tethered by ropes above its back"
+  }
+}

@@ -57,6 +57,7 @@ namespace GolemFactory.Progression
         public const string BuildingFreightMast = "FreightMast";
         public const string BuildingFloorExpansion = "FloorExpansion";
         public const string BuildingScrapRecycler = "ScrapRecycler";
+        public const string BuildingPneumaticPost = "PneumaticPost";
 
         private static readonly TechTreePhase[] PhaseTable =
         {
@@ -65,14 +66,14 @@ namespace GolemFactory.Progression
             new TechTreePhase("III · Steam & Scale", "Build a coal line that outgrows its own consumption"),
             new TechTreePhase("IV · The Metal Lines", "Two-input metallurgy, and Slag as a disposal obligation"),
             new TechTreePhase("V · The Great Works", "Mechanisms, remote outposts, and the last two chassis"),
-            new TechTreePhase("VI · The Clock Tower", "Four rate-scaled stages against a factory of ~96 golems")
+            new TechTreePhase("VI · The Clock Tower", "Four rate-scaled stages")
         };
 
         private static readonly TechTreeNode[] NodeTable =
         {
             // ---- I · The Cold Workshop ------------------------------------------------------
             new TechTreeNode(
-                "bench.handcrank", "Hand-Crank Bench", "1-input recipes by hand, at 25% speed",
+                "bench.handcrank", "Hand-Crank Bench", "1-input recipes by hand, at 50% speed",
                 TechTreeNodeKind.Building, 0, 0,
                 TechTreeUnlockSignal.Building, BuildingHandCrankBench,
                 new string[0]),
@@ -106,12 +107,12 @@ namespace GolemFactory.Progression
                 TechTreeUnlockSignal.Item, ItemType.Coke,
                 new[] { "bench.handcrank" }),
             new TechTreeNode(
-                "chassis.presser", "Brass Presser", "3 slots · 1 input · 60 Scrap + 20 Plate + 10 Gear",
+                "chassis.presser", "Brass Presser", "3 slots · 1 input · 60 Scrap + 10 Plate + 5 Gear",
                 TechTreeNodeKind.Chassis, 1, 3,
                 TechTreeUnlockSignal.Chassis, ChassisPresser,
                 new[] { "chassis.scavenger", "r2.reclamation", "r8.gearcutting" }, isKeystone: true),
             new TechTreeNode(
-                "bldg.boiler", "Boiler", "Powers 8 golems · 6 Coke/min each",
+                "bldg.boiler", "Boiler", "Powers 8 golems · 3 Coke/min each",
                 TechTreeNodeKind.Building, 1, 4,
                 TechTreeUnlockSignal.Building, BuildingBoiler,
                 new[] { "r2.reclamation", "r1.coking" }),
@@ -130,6 +131,13 @@ namespace GolemFactory.Progression
                 TechTreeNodeKind.Building, 1, 7,
                 TechTreeUnlockSignal.Building, BuildingDepot,
                 new[] { "chassis.scavenger" }),
+            // docs/pack-upgrades-design.md: the Assembly Line tab's Pack row, the first rung
+            // priced in Gears.
+            new TechTreeNode(
+                "pack.upgrades", "A Bigger Pack", "Carries 100 · up to 250 in three upgrades",
+                TechTreeNodeKind.Technique, 1, 8,
+                TechTreeUnlockSignal.None, null,
+                new[] { "r8.gearcutting" }),
 
             // ---- III · Steam & Scale --------------------------------------------------------
             // The only phase whose keystone is not a chassis. §9's phase 3 has no new frame in it
@@ -149,7 +157,7 @@ namespace GolemFactory.Progression
             // back wall moves north at runtime, painting new plank rows and re-placing the
             // wall run, priced per row and capped -- land is finite and expensive.
             new TechTreeNode(
-                "bldg.floorexpansion", "Floor Expansion", "60 Scrap + 30 Iron Plate per 6×6 block",
+                "bldg.floorexpansion", "Floor Expansion", "+2 rows · six purchases, priced up the tiers",
                 TechTreeNodeKind.Building, 2, 2,
                 TechTreeUnlockSignal.Building, BuildingFloorExpansion,
                 new[] { "r2.reclamation" }),
@@ -159,7 +167,7 @@ namespace GolemFactory.Progression
             // Hauler under phase 3's "newly gated" and phase 4's "newly available", and the same
             // reading puts the Presser in II and the Overclocker in V.
             new TechTreeNode(
-                "chassis.hauler", "Aether-Hauler", "4 slots · 2 inputs · 80 Plate + 40 Gear + 30 Coke",
+                "chassis.hauler", "Aether-Hauler", "4 slots · 2 inputs · 20 Plate + 10 Gear + 30 Coke",
                 TechTreeNodeKind.Chassis, 3, 0,
                 TechTreeUnlockSignal.Chassis, ChassisHauler,
                 new[] { "chassis.presser", "r1.coking", "r8.gearcutting" }, isKeystone: true),
@@ -217,7 +225,7 @@ namespace GolemFactory.Progression
                 TechTreeUnlockSignal.Item, ItemType.Casing,
                 new[] { "r4.ironsmelting", "r7.brassalloying" }),
             new TechTreeNode(
-                "r10.lensgrinding", "R10 Lens Grinding", "2 Glass + 1 Brass -> 1 Lens",
+                "r10.lensgrinding", "R10 Lens Grinding", "3 Glass + 1 Brass -> 1 Lens",
                 TechTreeNodeKind.Recipe, 3, 10,
                 TechTreeUnlockSignal.Item, ItemType.Lens,
                 new[] { "r3.glassmaking", "r7.brassalloying" }),
@@ -236,10 +244,18 @@ namespace GolemFactory.Progression
                 TechTreeNodeKind.Technique, 3, 13,
                 TechTreeUnlockSignal.None, null,
                 new[] { "chassis.hauler" }),
+            // NO LONGER PLANNED -- crates-design §10's Pneumatic Post is built: a depot whose
+            // crate is one store every Post crate shares, which the player's spending reaches
+            // after the pack. Gated by its price in Brass and Casing, as the Freight Mast is.
+            new TechTreeNode(
+                "bldg.pneumaticpost", "Pneumatic Post", "Brass + Casing + Plate · every Post crate shares one store",
+                TechTreeNodeKind.Building, 3, 14,
+                TechTreeUnlockSignal.Building, BuildingPneumaticPost,
+                new[] { "r7.brassalloying", "r9.casingpress" }),
 
             // ---- V · The Great Works --------------------------------------------------------
             new TechTreeNode(
-                "chassis.overclocker", "Mainspring Overclocker", "5 slots · 3 inputs · 2 Mainspring + 20 Brass + 24 Casing + 12 Gear",
+                "chassis.overclocker", "Mainspring Overclocker", "5 slots · 3 inputs · 2 Mainspring + 20 Brass + 24 Casing + 12 Gear + 120 Plate",
                 TechTreeNodeKind.Chassis, 4, 0,
                 TechTreeUnlockSignal.Chassis, ChassisOverclocker,
                 new[] { "r11.mainspringwinding", "r9.casingpress" }, isKeystone: true),
@@ -273,7 +289,7 @@ namespace GolemFactory.Progression
                 TechTreeUnlockSignal.Item, ItemType.AetherConduit,
                 new[] { "chassis.overclocker", "r12.aethercontainment", "r19.wiredrawing" }),
             new TechTreeNode(
-                "chassis.zeppelin", "Zeppelin Freight Loader", "6 slots · 4 inputs · 6 Mainspring + 8 Lens + 3 Aether Cell + 30 Casing + 40 Brass",
+                "chassis.zeppelin", "Zeppelin Freight Loader", "6 slots · 4 inputs · 6 Mainspring + 8 Lens + 3 Aether Cell + 30 Casing + 40 Brass + 150 Plate",
                 TechTreeNodeKind.Chassis, 4, 6,
                 TechTreeUnlockSignal.Chassis, ChassisZeppelin,
                 new[] { "r11.mainspringwinding", "r10.lensgrinding", "r12.aethercontainment" }, isKeystone: true),
@@ -287,7 +303,7 @@ namespace GolemFactory.Progression
                 TechTreeUnlockSignal.None, null,
                 new[] { "chassis.zeppelin" }),
             new TechTreeNode(
-                "bldg.freightmast", "Freight Mast", "20 Brass + 10 Casing · one Zeppelin per mast",
+                "bldg.freightmast", "Freight Mast", "20 Brass + 10 Casing + 120 Plate · one Zeppelin per mast",
                 TechTreeNodeKind.Building, 4, 8,
                 TechTreeUnlockSignal.Building, BuildingFreightMast,
                 new[] { "verb.freightlink" }),
@@ -309,22 +325,22 @@ namespace GolemFactory.Progression
                 TechTreeUnlockSignal.Building, BuildingClockTower,
                 new[] { "r15.framesection" }, isKeystone: true),
             new TechTreeNode(
-                "tower.stage1", "Stage 1 · Foundation", "Frame Section @ 6/min · ~63 golems",
+                "tower.stage1", "Stage 1 · Foundation", "Frame Section @ 6/min",
                 TechTreeNodeKind.Milestone, 5, 1,
                 TechTreeUnlockSignal.TowerStage, "1",
                 new[] { "bldg.clocktower" }),
             new TechTreeNode(
-                "tower.stage2", "Stage 2 · The Movement", "Great Cog @ 3 · Frame @ 3 /min · ~72 golems",
+                "tower.stage2", "Stage 2 · The Movement", "Great Cog @ 3 · Frame @ 3 /min",
                 TechTreeNodeKind.Milestone, 5, 2,
                 TechTreeUnlockSignal.TowerStage, "2",
                 new[] { "tower.stage1", "r16.greatcog" }),
             new TechTreeNode(
-                "tower.stage3", "Stage 3 · Aether Illumination", "Conduit @ 3 · Lens @ 24 · Frame @ 2 /min",
+                "tower.stage3", "Stage 3 · Aether Illumination", "Conduit @ 3 · Lens @ 12 · Frame @ 2 /min",
                 TechTreeNodeKind.Milestone, 5, 3,
                 TechTreeUnlockSignal.TowerStage, "3",
                 new[] { "tower.stage2", "r18.aetherconduit" }),
             new TechTreeNode(
-                "tower.stage4", "Stage 4 · The Chronometer", "Core @ 2 · Cog @ 2 · Conduit @ 1 /min · ~96 golems",
+                "tower.stage4", "Stage 4 · The Chronometer", "Core @ 2 · Cog @ 2 · Conduit @ 1 /min",
                 TechTreeNodeKind.Milestone, 5, 4,
                 TechTreeUnlockSignal.TowerStage, "4",
                 new[] { "tower.stage3", "r17.chronometercore" }),

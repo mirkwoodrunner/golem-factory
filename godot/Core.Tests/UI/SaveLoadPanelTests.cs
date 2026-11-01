@@ -148,7 +148,7 @@ namespace GolemFactory.Tests.UI
         {
             foreach (string item in new[] { ItemType.Scrap, ItemType.Brass, ItemType.IronPlate, ItemType.Gear, ItemType.Coke })
             {
-                world.Buffers.Deposit(world.StockpileBufferId, item, 5000);
+                world.Buffers.Deposit(world.StockpileBufferId, item, 5000); // a full pack of each
             }
         }
 
@@ -179,10 +179,16 @@ namespace GolemFactory.Tests.UI
             // are saved. A load REPLACES them, or a card bought after the save would survive a
             // load that also hands back the goods it cost.
             SandboxWorld world = Compose();
+            // A factory that has handled Scrap, so the line has unowned cards to offer after the
+            // load: with Repeat Assembly gated on a Mainspring (tuning-data-spec §9), a fresh
+            // ledger unlocks only Freight Launch beyond the opening hand.
+            world.TechTree.Ledger.RecordItem(ItemType.Scrap);
             Fund(world);
             ClaimFirstAffordable(world);
             Assert.IsTrue(world.AssemblyLineBoard.ExtendFloor(), world.AssemblyLineBoard.Status);
+            Fund(world);
             Assert.IsTrue(world.AssemblyLineBoard.UpgradeBays(), world.AssemblyLineBoard.Status);
+            Assert.IsTrue(world.AssemblyLineBoard.UpgradePack(), world.AssemblyLineBoard.Status);
             world.TechTree.Ledger.RecordItem(ItemType.Coke);
             world.Clock.Speed = 2f;
             world.Clock.Pause();
@@ -190,9 +196,12 @@ namespace GolemFactory.Tests.UI
             int north = world.Bounds.NorthExtent, tier = world.AssemblyBay.Tier, slots = world.AssemblyBay.MaxGolemSlots;
             world.SaveTo(_path);
 
+            Fund(world);
             ClaimFirstAffordable(world);
             Assert.IsTrue(world.AssemblyLineBoard.ExtendFloor());
+            Fund(world);
             Assert.IsTrue(world.AssemblyLineBoard.UpgradeBays());
+            Assert.IsTrue(world.AssemblyLineBoard.UpgradePack(), world.AssemblyLineBoard.Status);
             world.Clock.Speed = 4f;
             world.Clock.Play();
             Assert.AreNotEqual(claims, Claims(world), "precondition: progress moved on");
@@ -212,6 +221,8 @@ namespace GolemFactory.Tests.UI
             Assert.AreEqual(north, world.Bounds.NorthExtent);
             Assert.AreEqual(tier, world.AssemblyBay.Tier);
             Assert.AreEqual(slots, world.AssemblyBay.MaxGolemSlots);
+            Assert.AreEqual(1, world.PackUpgrade.Tier, "the pack's rung, as saved");
+            Assert.AreEqual(150, world.Wallet.Pack.CapacityPerType);
             Assert.IsTrue(world.TechTree.Ledger.HasItem(ItemType.Coke));
             Assert.AreEqual(2f, world.Clock.Speed);
             Assert.AreEqual(ClockState.Paused, world.Clock.State);

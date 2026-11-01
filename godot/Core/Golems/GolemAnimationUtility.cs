@@ -45,6 +45,7 @@ namespace GolemFactory.Golems
                     return new BobParameters(0f, 0f);
                 case GolemMood.Sleeping:
                 case GolemMood.Unprogrammed:
+                case GolemMood.Waiting:
                     // Slow and shallow -- breathing rather than working. Frequency drops harder
                     // than amplitude because it is the RATE that reads as effort.
                     return new BobParameters(baseAmplitude * 0.55f, baseFrequency * 0.30f);

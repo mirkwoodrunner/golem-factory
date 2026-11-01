@@ -17,7 +17,7 @@ namespace GolemFactory.Tests.EditMode
         {
             var heap = new SlagHeap("Heap", startingCoke: 1);
 
-            for (int i = 0; i < SlagHeap.SlagPerCoke; i++)
+            for (int i = 0; i < heap.SlagPerCoke; i++)
             {
                 Assert.IsTrue(heap.TryVoid(), "unit " + i);
             }
@@ -26,6 +26,27 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(4, heap.TotalVoided);
             Assert.AreEqual(0, heap.PendingSlag);
         }
+
+        [Test]
+        public void TheRatioIsTheHeaps_AsTheDataSetsIt()
+        {
+            var heap = new SlagHeap("Heap", startingCoke: 1, slagPerCoke: 5);
+
+            for (int i = 0; i < 4; i++)
+            {
+                Assert.IsTrue(heap.TryVoid(), "unit " + i);
+            }
+            Assert.AreEqual(1, heap.CokeStock, "four of five carried: nothing burned yet");
+
+            Assert.IsTrue(heap.TryVoid());
+            Assert.AreEqual(0, heap.CokeStock);
+            Assert.AreEqual(0, heap.PendingSlag);
+            Assert.AreEqual(4, PlaceableCatalogSlagRatio(), "placeables.json keeps §5.3(c)'s 1 Coke per 4");
+        }
+
+        private static int PlaceableCatalogSlagRatio() =>
+            System.Linq.Enumerable.Single(GolemFactory.Tests.Data.PlaceableCatalogTests.LoadReal(), e => e.Key == "SlagHeapPrefab")
+                .Prefab.GetPart<PlaceableSlagHeap>().SlagPerCoke;
 
         [Test]
         public void TheRemainderIsCarried_SoTheRatioIsExactAtEveryScale()

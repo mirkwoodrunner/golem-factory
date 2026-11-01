@@ -222,10 +222,11 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void Haul_TakesWhatIsThere_WhenTheTileHoldsLessThanTheBatch()
+        public void Haul_TakesWhatIsThereAndStaysOnTheStep_WhenTheTileHoldsLessThanTheBatch()
         {
-            // Partial takes are deliberate: stalling a golem that can still make progress would
-            // deadlock every under-supplied line in the factory.
+            // The collecting Haul (onboarding-feedback-design §13): it takes what it can toward
+            // the batch and stays put until it holds it. Advancing on a partial batch jammed the
+            // Assemble behind it for good.
             SpatialEndpointRegistry endpoints = AddHolder<SpatialEndpointRegistry>();
             var source = new StorageBuffer("Source");
             source.Deposit(ItemType.Scrap, 2);
@@ -237,8 +238,11 @@ namespace GolemFactory.Tests.EditMode
 
             golem.Tick(0);
 
-            Assert.AreEqual(StallReason.None, golem.StallReason);
+            Assert.AreEqual(StallReason.MissingItem, golem.StallReason);
+            Assert.AreEqual(ItemType.Scrap, golem.StallResourceId);
+            Assert.AreEqual(6, golem.StallShortfall);
             Assert.AreEqual(2, golem.Inventory.GetInput(ItemType.Scrap));
+            Assert.AreEqual(0, golem.Program.CurrentStepIndex);
         }
 
         [Test]
@@ -342,8 +346,11 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void Haul_WithAFullInputStock_StallsInputFullNamingTheItemType()
+        public void Haul_WithAFullInputStock_TakesNothingAndRuns()
         {
+            // A hold already at (or over) the batch has nothing to collect: the collecting Haul
+            // takes nothing and lets the step run (onboarding-feedback-design §13.1). It used to
+            // stall InputFull, which a batch of at most 12 can no longer reach.
             SpatialEndpointRegistry endpoints = AddHolder<SpatialEndpointRegistry>();
             var source = new StorageBuffer("Source");
             source.Deposit(ItemType.Scrap, 100);
@@ -355,9 +362,8 @@ namespace GolemFactory.Tests.EditMode
 
             golem.Tick(0);
 
-            Assert.AreEqual(StallReason.InputFull, golem.StallReason);
-            Assert.AreEqual(ItemType.Scrap, golem.StallResourceId,
-                "the stall must name the blocked good, not the tile behind");
+            Assert.AreEqual(StallReason.None, golem.StallReason);
+            Assert.AreNotEqual(GolemState.Stalled, golem.Program.State);
             Assert.AreEqual(100, source.GetQuantity(ItemType.Scrap));
         }
 

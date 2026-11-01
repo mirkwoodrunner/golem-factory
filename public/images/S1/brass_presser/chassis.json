@@ -1,0 +1,14 @@
+{
+  "stem": "chassis_brass_presser",
+  "title": "S1 Brass Presser (creature)",
+  "draft": "scripts/presser_draft.py",
+  "ramps": ["outline", "brass", "iron", "copper", "aether", "fire", "steam"],
+  "dirs": {"source": "source2", "raw": "raw2", "work": "work2", "clean": "clean2", "after": "after2"},
+  "prompts": {
+    "south": "front view of a cute squat brass golem creature, round domed head with one big teal glass gauge eye and a little smokestack, broad brass shoulders, glowing furnace in its iron belly, sturdy iron arms with copper elbows holding a heavy brass ram block, stubby iron legs with bolted feet, riveted brass plates",
+    "north": "back view of a cute squat brass golem creature, round domed brass head seen from behind with a little smokestack, broad brass shoulders, round iron boiler hatch with vent slats on its back, sturdy iron arms with copper elbows, stubby iron legs with bolted feet, riveted brass plates",
+    "east": "side view facing right of a cute squat brass golem creature, domed head with a teal glass gauge eye lens on the front and a little smokestack, copper boiler pack on its back, glowing furnace on its belly, iron arm with copper elbow holding a brass ram block in front, stubby iron legs with bolted feet"
+  },
+  "picks": {"south": "d0.55_s5001", "north": "d0.55_s5002", "east": "d0.45_s5002"},
+  "approved": "2026-10-23"
+}

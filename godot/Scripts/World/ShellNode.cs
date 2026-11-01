@@ -20,20 +20,9 @@ namespace GolemFactory.Nodes
     {
         public const string GroupName = "sandbox_shell";
 
-        // The dramatic-lighting pass, as Unity tuned it in its third setting: ambient 0.95, a lit
-        // spot about 3x the shadow between lamps.
-        [Export] public float AmbientLevel { get; set; } = 0.95f;
-        [Export] public float SconceEnergy { get; set; } = 1.1f;
-        [Export] public Color LampColor { get; set; } = new Color(1f, 0.72f, 0.42f);
-
-        // Unity's LampLightInset: the lit pool sits just inside the room, not at the painted
-        // flame -- a sprite's height under top-down is fake elevation, and a light at the flame
-        // would put its core outside the room.
-        private const float LampLightInsetCells = -0.25f;
-        private const float SconceOuterRadiusCells = 5.5f;
+        // Every lighting number is Core's LightingRules (art-pipeline-design.md §6).
 
         private readonly List<Node2D> _walls = new List<Node2D>();
-        private Texture2D _lightTexture;
 
         public int WallCount => _walls.Count;
 
@@ -41,13 +30,17 @@ namespace GolemFactory.Nodes
         public int PropCount { get; private set; }
         public int SconceCount { get; private set; }
 
+        /// <summary>The room's tint, for the `world` scenario to compare with the rules.</summary>
+        public CanvasModulate Ambient { get; private set; }
+
         public override void _EnterTree() => AddToGroup(GroupName);
 
         public override void _Ready()
         {
             YSortEnabled = true;
             // The ambient floor. Deferred: the parent is still adding its children during _Ready.
-            var ambient = new CanvasModulate { Name = "Ambient", Color = new Color(AmbientLevel, AmbientLevel, AmbientLevel) };
+            var ambient = new CanvasModulate { Name = "Ambient", Color = Ugui.ToGodot(LightingRules.Ambient) };
+            Ambient = ambient;
             Callable.From(() => GetParent().AddChild(ambient)).CallDeferred();
 
             WorldNode world = WorldNode.Find(this);
@@ -109,32 +102,17 @@ namespace GolemFactory.Nodes
             return node;
         }
 
-        private PointLight2D MakeSconce()
+        // The painted flame needs nothing of its own: it sits inside its own lamp's pool, which
+        // lights it above the ambient.
+        private static PointLight2D MakeSconce() => new PointLight2D
         {
-            _lightTexture ??= new GradientTexture2D
-            {
-                Width = 256,
-                Height = 256,
-                Fill = GradientTexture2D.FillEnum.Radial,
-                FillFrom = new Vector2(0.5f, 0.5f),
-                FillTo = new Vector2(0.5f, 0f),
-                Gradient = new Gradient
-                {
-                    Colors = new[] { new Color(1, 1, 1, 1), new Color(1, 1, 1, 0) },
-                    Offsets = new[] { 0f, 1f },
-                },
-            };
-
-            return new PointLight2D
-            {
-                Name = "SconceLight",
-                Texture = _lightTexture,
-                TextureScale = SconceOuterRadiusCells * 2f * GridConversions.CellPixels / 256f,
-                Color = LampColor,
-                Energy = SconceEnergy,
-                Position = new Vector2(0f, -LampLightInsetCells * GridConversions.CellPixels),
-            };
-        }
+            Name = "SconceLight",
+            Texture = LightTexture.Banded(),
+            TextureScale = LightTexture.ScaleFor(LightingRules.SconceRadiusCells),
+            Color = Ugui.ToGodot(LightingRules.SconceColor),
+            Energy = LightingRules.SconceEnergy,
+            Position = new Vector2(0f, -LightingRules.SconceInsetCells * GridConversions.CellPixels),
+        };
 
         private static Vector2 ToPixels(CoreVector2 cell) =>
             new Vector2(cell.x * GridConversions.CellPixels, -cell.y * GridConversions.CellPixels);

@@ -1,3 +1,4 @@
+using System.Linq;
 using NUnit.Framework;
 using GolemFactory.Buildings;
 using GolemFactory.Economy;
@@ -224,7 +225,9 @@ namespace GolemFactory.Tests.EditMode
             int slagPerCokeInRecycler = ScrapRecycler.PointsPerScrap / ScrapRecycler.PointsFor(ItemType.Slag);
 
             Assert.AreEqual(2, slagPerCokeInRecycler);
-            Assert.AreEqual(SlagHeap.SlagPerCoke, slagPerCokeInRecycler * 2);
+            int heapRatio = GolemFactory.Tests.Data.PlaceableCatalogTests.LoadReal()
+                .Single(e => e.Key == "SlagHeapPrefab").Prefab.GetPart<PlaceableSlagHeap>().SlagPerCoke;
+            Assert.AreEqual(heapRatio, slagPerCokeInRecycler * 2, "the authored heap's ratio (placeables.json)");
         }
 
         [Test]

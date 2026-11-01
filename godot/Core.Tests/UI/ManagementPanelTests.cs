@@ -64,6 +64,15 @@ namespace GolemFactory.Tests.UI
                 "the tint is the only thing telling the player which tab they are on");
         }
 
+        // docs/pack-upgrades-design.md §8.15: words, not enum spellings.
+        [Test]
+        public void TabLabels_ReadAsTheDocsNameThem()
+        {
+            CollectionAssert.AreEqual(
+                new[] { "Inventory", "Assembly Line", "Patents", "Save / Load", "Ledger" },
+                AllTabs.Select(ManagementTabs.Label));
+        }
+
         private sealed class StubScreen : IClosableScreen
         {
             private readonly ScreenCoordinator _coordinator;

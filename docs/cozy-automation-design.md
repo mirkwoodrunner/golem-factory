@@ -178,6 +178,13 @@ being republished a frame later.
 
 ## 2. Golem Moods
 
+> **Overridden in part by Phase 2** (`docs/onboarding-feedback-design.md` §3.5, roadmap decisions
+> 5 and 6; built 2026-10-19). A stall the factory will clear on its own becomes a seventh
+> mood, `Waiting`, quiet grey; `Stalled` (red) is kept for stalls the player must fix. `Straining`
+> loses its badge and shows on hover only. The alerts strip counts stopped golems only. §0.8's
+> "no arrows" is superseded by the root `CLAUDE.md` font rule. The table below is kept as first
+> approved.
+
 ### The problem
 
 A golem has exactly two visible states: white and bobbing, or red and shaking. Everything that is

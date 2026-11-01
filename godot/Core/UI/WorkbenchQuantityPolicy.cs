@@ -64,6 +64,27 @@ namespace GolemFactory.UI
         /// </summary>
         public static int Step(int quantity, int delta) => Clamp(Clamp(quantity) + delta);
 
+        /// <summary>One press of − or +, stopping at <paramref name="max"/> (a Repeat's limit).</summary>
+        public static int Step(int quantity, int delta, int max)
+        {
+            int top = max < MinQuantity ? MinQuantity : (max > MaxQuantity ? MaxQuantity : max);
+            int next = Step(quantity, delta);
+            return next > top ? top : next;
+        }
+
+        /// <summary>
+        /// The dial's top for the card in <paramref name="index"/>: <see cref="MaxQuantity"/>,
+        /// or for a Repeat the most runs the Assemble before it can finish in a 12 hold
+        /// (<see cref="RepeatRules.DialMax"/>, docs/tuning-data-spec.md §13.1).
+        /// </summary>
+        public static int MaxFor(System.Collections.Generic.IReadOnlyList<AppendageActionDefinition> cards, int index)
+        {
+            AppendageActionDefinition card = cards != null && index >= 0 && index < cards.Count ? cards[index] : null;
+            return card != null && card.actionType == AppendageActionType.Repeat
+                ? RepeatRules.DialMax(cards, index)
+                : MaxQuantity;
+        }
+
         /// <summary>
         /// What the control says. The tick cost is the point of showing anything at all -- the
         /// trade §2 hands the player is throughput against buffer pressure, and a stepper that

@@ -46,6 +46,14 @@ namespace GolemFactory.Golems
         public const float AdvisoryDwellSeconds = 2f;
 
         /// <summary>
+        /// How long <see cref="GolemMood.Waiting"/> must be held before it is drawn at all --
+        /// tint as well as badge (docs/onboarding-feedback-design.md §3.4). <b>TUNING.</b> A
+        /// Presser hauling Scrap as it arrives flicks between Working and Waiting many times a
+        /// minute; a tint that changed at once would strobe.
+        /// </summary>
+        public const float WaitingDwellSeconds = 2f;
+
+        /// <summary>
         /// The mood this golem is in right now.
         /// </summary>
         /// <param name="state">The program's own state machine.</param>
@@ -62,8 +70,13 @@ namespace GolemFactory.Golems
         /// The largest per-type count in the stock <c>Push</c> would drain. One number rather
         /// than the stock itself, so this stays engine-free and allocation-free.
         /// </param>
+        /// <param name="urgency">
+        /// For a stall: whether the factory will clear it (<see cref="StallTriage"/>). Defaults
+        /// to <see cref="StallUrgency.Stuck"/>, which is how every stall read before Phase 2.
+        /// </param>
         public static GolemMood Classify(
-            GolemState state, StallReason stallReason, bool hasRunnableProgram, int fullestPushStockUnits)
+            GolemState state, StallReason stallReason, bool hasRunnableProgram, int fullestPushStockUnits,
+            StallUrgency urgency = StallUrgency.Stuck)
         {
             if (!hasRunnableProgram)
             {
@@ -72,7 +85,11 @@ namespace GolemFactory.Golems
 
             if (state == GolemState.Stalled)
             {
-                return stallReason == StallReason.NoSteam ? GolemMood.Starved : GolemMood.Stalled;
+                if (stallReason == StallReason.NoSteam)
+                {
+                    return GolemMood.Starved;
+                }
+                return urgency == StallUrgency.Waiting ? GolemMood.Waiting : GolemMood.Stalled;
             }
 
             if (state == GolemState.Idle)
@@ -100,6 +117,8 @@ namespace GolemFactory.Golems
                 case GolemMood.Straining:
                 case GolemMood.Unprogrammed:
                     return AdvisoryDwellSeconds;
+                case GolemMood.Waiting:
+                    return WaitingDwellSeconds;
                 default:
                     // Including Working, which never draws a badge at all -- but a mood with no
                     // entry must fall through to "show it" rather than "hide it forever", so a
@@ -120,13 +139,29 @@ namespace GolemFactory.Golems
         /// </summary>
         public static bool ShouldShowBadge(GolemMood mood, float heldSeconds)
         {
-            if (mood == GolemMood.Working)
+            // Straining is on hover only (decision 6): a factory of near-full golems is a busy
+            // factory, not news.
+            if (mood == GolemMood.Working || mood == GolemMood.Straining)
             {
                 return false;
             }
 
             return heldSeconds >= DwellSeconds(mood);
         }
+
+        /// <summary>
+        /// The mood to DRAW (tint, bob, badge colour) when the classified mood is
+        /// <paramref name="mood"/>, held for <paramref name="heldSeconds"/>, and the last one
+        /// drawn was <paramref name="previous"/>. Waiting is drawn only once held for
+        /// <see cref="WaitingDwellSeconds"/>; every other mood at once, so Waiting → Stalled is
+        /// immediate (docs/onboarding-feedback-design.md §3.4). The view owns the stopwatch.
+        /// </summary>
+        public static GolemMood Presented(GolemMood mood, float heldSeconds, GolemMood previous) =>
+            mood == GolemMood.Waiting && heldSeconds < WaitingDwellSeconds ? previous : mood;
+
+        /// <summary>A waiting golem's badge: "waiting for Scrap", or "waiting" with no good known.</summary>
+        public static string WaitingCaption(string wantedGood) =>
+            string.IsNullOrEmpty(wantedGood) ? "waiting" : "waiting for " + wantedGood;
 
         /// <summary>
         /// True for the moods that mean the golem has stopped and will not restart on its own.
@@ -155,6 +190,8 @@ namespace GolemFactory.Golems
                     return "hold nearly full";
                 case GolemMood.Unprogrammed:
                     return "no program";
+                case GolemMood.Waiting:
+                    return "waiting";
                 default:
                     return "";
             }

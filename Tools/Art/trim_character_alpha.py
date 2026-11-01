@@ -47,9 +47,7 @@ INDEPENDENT = [
     "chassis_aether_hauler",
     "chassis_mainspring_overclocker",
     "chassis_zeppelin_freight_loader",
-    "golem_generic_brass",
     "golem_generic_copper",
-    "golem_generic_steel",
 ]
 
 # Trimmed together, by the smallest padding any of them has. See THE SHARED-MINIMUM RULE.

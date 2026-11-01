@@ -62,6 +62,9 @@ namespace GolemFactory.Nodes.Scenarios
             }
 
             // Fund every placeable twice over, and remember the books: the run must end here.
+            // A fixture's pack, uncapped: this run is about the menu, the cursor and the refund's
+            // arithmetic, and every building at once costs more Scrap than a 100 pack holds.
+            _world.Buffers.SetCapacity(_world.StockpileBufferId, StorageBuffer.Unlimited);
             foreach (PlaceableEntry entry in _world.Placeables)
             {
                 foreach (RecipeIngredient c in entry.Prefab.Cost)
@@ -167,6 +170,7 @@ namespace GolemFactory.Nodes.Scenarios
                 return _menu.HoverCard.GetGlobalRect().End.Y <= _menu.Panel.GetGlobalRect().Position.Y
                     ? null : "the card overlaps the menu";
             });
+            Do("capture the build menu", () => { ScenarioCapture.Shot(_viewport, "screen-build-menu"); return null; });
             Do("press 1", () => { PressKey(Key.Key1); return null; });
             Do("1 picked up the first placeable", () =>
                 _world.Build.ActivePrefab == _world.Placeables[0].Prefab ? null : $"holding {_world.Build.ActivePrefab?.name ?? "nothing"}");

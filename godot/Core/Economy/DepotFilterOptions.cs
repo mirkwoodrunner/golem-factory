@@ -82,30 +82,6 @@ namespace GolemFactory.Economy
             return options;
         }
 
-        /// <summary>
-        /// The next option after <paramref name="currentFilter"/>, wrapping at the end.
-        /// A filter that is not in the cycle at all lands on the first entry, which is
-        /// <see cref="AnyGoods"/> -- the safe answer, since an unlisted filter is one the player
-        /// can no longer see.
-        /// </summary>
-        public static string Next(IReadOnlyList<string> cycle, string currentFilter)
-        {
-            if (cycle == null || cycle.Count == 0)
-            {
-                return AnyGoods;
-            }
-
-            for (int i = 0; i < cycle.Count; i++)
-            {
-                if (Same(cycle[i], currentFilter))
-                {
-                    return cycle[(i + 1) % cycle.Count];
-                }
-            }
-
-            return cycle[0];
-        }
-
         /// <summary>The label for one option, on the prompt and on the crate's own readout.</summary>
         public static string Describe(string filterItemType) =>
             string.IsNullOrEmpty(filterItemType)

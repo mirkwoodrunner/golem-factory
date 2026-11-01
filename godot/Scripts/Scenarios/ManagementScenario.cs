@@ -24,7 +24,8 @@ namespace GolemFactory.Nodes.Scenarios
     ///   <item>Inventory: a header and one row per good, each with an icon slot.</item>
     ///   <item>Every tab button shows only its own content and lights only itself.</item>
     ///   <item>Assembly Line: claim an unlocked card from the stockpile -- it reaches the
-    ///   Workbench's vault; Extend buys two rows of workshop, which are planked and walled.</item>
+    ///   Workbench's vault; the Pack row's Upgrade makes the pack 150, which the Pack screen's cap
+    ///   line shows; Extend twice (the second at 120 Scrap) buys four rows, planked and walled.</item>
     ///   <item>Patents: a patented program is listed; Load opens the Workbench with it in the
     ///   draft and closes Management.</item>
     ///   <item>Ledger: one clickable plaque per node; clicking R4 opens its recipe; redrawing the
@@ -45,6 +46,7 @@ namespace GolemFactory.Nodes.Scenarios
         private HudOverlay _hud;
         private BuildMenuNode _menu;
         private WorkbenchScreen _workbench;
+        private PackScreen _pack;
         private int _wait;
         private Key? _heldTap;
 
@@ -56,9 +58,10 @@ namespace GolemFactory.Nodes.Scenarios
             _hud = _tree.Root.FindChild("Hud", true, false) as HudOverlay;
             _menu = _tree.Root.FindChild("BuildMenu", true, false) as BuildMenuNode;
             _workbench = _tree.Root.FindChild("Workbench", true, false) as WorkbenchScreen;
-            if (_screen == null || _hud == null || _menu == null || _workbench == null)
+            _pack = _tree.Root.FindChild("PackScreen", true, false) as PackScreen;
+            if (_screen == null || _hud == null || _menu == null || _workbench == null || _pack == null)
             {
-                Do("scene", () => "Sandbox.tscn is missing Management, the HUD, the build menu or the Workbench");
+                Do("scene", () => "Sandbox.tscn is missing Management, the HUD, the build menu, the Workbench or the Pack screen");
                 return;
             }
 
@@ -101,6 +104,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("let the alerts strip reconcile", () => null);
             Do("the strip says all golems are running", () =>
                 _hud.AlertsText.Contains("running") ? null : $"strip reads '{_hud.AlertsText}'");
+            Do("capture the HUD", () => { ScenarioCapture.Shot(_tree.Root, "screen-hud"); return null; });
             Do("click PAUSE", () => { Click(_hud.PlayPauseButton); return null; });
             Do("the clock is paused", () => _world.Clock.State == ClockState.Paused ? null : "PAUSE did not pause the clock");
             Do("click PLAY", () => { Click(_hud.PlayPauseButton); return null; });
@@ -122,6 +126,8 @@ namespace GolemFactory.Nodes.Scenarios
                 _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Scrap, 500);
                 _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.IronPlate, 200);
                 _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Coal, 5);
+                // Some Scrap in the Post, so the Assembly Line's header names it beside the pack.
+                _world.Buffers.Deposit(SandboxWorld.PostBufferId, ItemType.Scrap, 40);
                 return null;
             });
             Do("press Tab", () => { Tap(Key.Tab); return null; });
@@ -151,10 +157,21 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "an item row without its icon slot";
                 }
-                _log.Add($"Inventory: {items.Count} item rows with icons");
+                string id = Texts(_screen.InventoryList).FirstOrDefault(IsInternalId);
+                if (id != null)
+                {
+                    return $"the Inventory shows an internal id: '{id}'";
+                }
+                _log.Add($"Inventory: {items.Count} item rows with icons, titled for the player");
                 return null;
             });
         }
+
+        private static IEnumerable<string> Texts(Node root) =>
+            root.FindChildren("*", "Label", true, false).OfType<Label>().Select(l => l.Text);
+
+        private static bool IsInternalId(string text) =>
+            text.Contains("FactoryStockpile") || text.Contains("PneumaticPost") || text.Contains("IronPlate");
 
         private void PlanTabs()
         {
@@ -173,6 +190,7 @@ namespace GolemFactory.Nodes.Scenarios
                     int sameAsLit = _screen.TabButtons.Values.Count(b => b.SelfModulate == lit);
                     return sameAsLit == 1 ? null : $"{sameAsLit} tab buttons wear the lit plate";
                 });
+                Do($"capture the {tab} tab", () => { ScenarioCapture.Shot(_tree.Root, $"screen-management-{captured}"); return null; });
             }
             Do("tabs", () => { _log.Add("each tab shows only itself, lit alone"); return null; });
         }
@@ -180,6 +198,18 @@ namespace GolemFactory.Nodes.Scenarios
         private void PlanAssemblyLine()
         {
             Do("open the Assembly Line tab", () => { Click(_screen.TabButtons[ManagementTab.AssemblyLine]); return null; });
+            // The header used to read "Wallet: 500 Scrap (FactoryStockpile)", blind to the Post.
+            Do("the header names the pack and the Post, never a buffer id", () =>
+            {
+                string expected = _world.AssemblyLineBoard.WalletLine();
+                List<string> texts = Texts(_screen.AssemblyLine.RowList).ToList();
+                if (!texts.Contains(expected) || !expected.StartsWith("Pack: ") || !expected.EndsWith("  ·  Post: 40 Scrap"))
+                {
+                    return $"header '{expected}', labels [{string.Join(" | ", texts.Take(3))}]";
+                }
+                string id = texts.FirstOrDefault(IsInternalId);
+                return id == null ? null : $"the Assembly Line shows an internal id: '{id}'";
+            });
             int vaultBefore = 0;
             string claimed = null;
             // The line opens on cards the player can actually use: never the opening hand,
@@ -215,24 +245,82 @@ namespace GolemFactory.Nodes.Scenarios
                 return after == vaultBefore + 1 ? null : $"claimed '{claimed}' ({_world.AssemblyLineBoard.Status}); Workbench offers {after} cards/chassis, was {vaultBefore}";
             });
 
-            int northBefore = 0;
-            Do("click Extend", () =>
+            // docs/pack-upgrades-design.md §5: the Pack row's Upgrade, then two extensions -- the
+            // second asks 120 Scrap, more than a 100 pack holds.
+            Do("stock the upgrade's goods", () =>
             {
-                northBefore = _world.Bounds.NorthExtent;
-                Button extend = _screen.AssemblyLine.RowList.FindChild("Extend", true, false) as Button;
-                if (extend == null || extend.Disabled)
-                {
-                    return "no live Extend button";
-                }
-                Click(extend);
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.IronPlate, 200);
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Gear, 60);
+                _world.TechTree.Poll(); // the Ledger sees the Gear now, not at its next second
                 return null;
             });
-            Do("two rows of workshop were bought, planked and walled", () =>
+            Do("click Upgrade on the Pack row", () =>
+            {
+                Button upgrade = _screen.AssemblyLine.RowList.FindChild("PackRow", true, false)?.FindChild("Upgrade", true, false) as Button;
+                if (upgrade == null || upgrade.Disabled)
+                {
+                    return "no live Upgrade on the Pack row";
+                }
+                Click(upgrade);
+                return null;
+            });
+            Do("the pack is upgraded; open the Pack screen", () =>
+            {
+                if (_world.PackUpgrade.Tier != 1)
+                {
+                    return $"tier {_world.PackUpgrade.Tier} ({_world.AssemblyLineBoard.Status})";
+                }
+                _pack.Open();
+                return null;
+            });
+            Do("its cap line reads 150", () =>
+            {
+                if (!_pack.IsOpen || _pack.CapText != "Carries 150 of each good")
+                {
+                    return $"Pack screen open={_pack.IsOpen}, cap line '{_pack.CapText}'";
+                }
+                _pack.Close();
+                return null;
+            });
+            Do("press Tab", () => { Tap(Key.Tab); return null; });
+            Do("back to the Assembly Line tab", () => { Click(_screen.TabButtons[ManagementTab.AssemblyLine]); return null; });
+
+            int northBefore = 0;
+            for (int purchase = 1; purchase <= 2; purchase++)
+            {
+                int n = purchase;
+                Do($"fill the pack past 100 Scrap ({n})", () =>
+                {
+                    _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Scrap, 500);
+                    _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.IronPlate, 500);
+                    int scrap = _world.Buffers.GetQuantity(_world.StockpileBufferId, ItemType.Scrap);
+                    if (scrap < 120)
+                    {
+                        return $"the pack holds {scrap} Scrap";
+                    }
+                    if (n == 1)
+                    {
+                        northBefore = _world.Bounds.NorthExtent;
+                    }
+                    return null;
+                });
+                Do($"click Extend ({n})", () =>
+                {
+                    Button extend = _screen.AssemblyLine.RowList.FindChild("FloorRow", true, false)?.FindChild("Extend", true, false) as Button;
+                    if (extend == null || extend.Disabled)
+                    {
+                        return $"no live Extend button ({_world.FloorExpansion.NextCost().Count} goods, {_world.AssemblyLineBoard.Status})";
+                    }
+                    Click(extend);
+                    return null;
+                });
+            }
+            Do("four rows of workshop were bought, planked and walled", () =>
             {
                 int north = _world.Bounds.NorthExtent;
-                if (north != northBefore + 2)
+                if (north != northBefore + 4)
                 {
-                    return $"north wall {northBefore} -> {north}";
+                    return $"north wall {northBefore} -> {north} ({_world.AssemblyLineBoard.Status})";
                 }
                 var floor = _tree.Root.FindChild("Floor", true, false) as TileMapLayer;
                 if (floor == null || floor.GetCellSourceId(new Vector2I(0, -north)) < 0)
@@ -245,7 +333,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return $"the north wall stands at y={wall?.Position.Y}, expected {expectedY}";
                 }
-                _log.Add($"Assembly Line: claimed '{claimed}', it reached the Workbench; Extend {northBefore}->{north}, planked and walled");
+                _log.Add($"Assembly Line: claimed '{claimed}', it reached the Workbench; the Pack row's Upgrade made the pack 150; Extend twice {northBefore}->{north} (the second at 120 Scrap), planked and walled");
                 return null;
             });
         }

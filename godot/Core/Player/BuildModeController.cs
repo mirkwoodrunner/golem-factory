@@ -70,6 +70,7 @@ namespace GolemFactory.Player
 
         // Left null in a scene that never wires an economy -- placement there stays free.
         private StorageBufferRegistry _stockpile;
+        private PlayerWallet _wallet;
         private string _stockpileBufferId = "FactoryStockpile";
         private PlaceableBuilding[] _availablePrefabs;
 
@@ -189,10 +190,14 @@ namespace GolemFactory.Player
 
         // Wires the economy separately from Configure so a scene that never calls this keeps
         // placement free.
-        public void ConfigureEconomy(StorageBufferRegistry stockpile, string stockpileBufferId, PlaceableBuilding[] availablePrefabs)
+        // postBufferId: the Pneumatic Post's store, spent and refunded after the pack
+        // (crates-design §10); null for none.
+        public void ConfigureEconomy(StorageBufferRegistry stockpile, string stockpileBufferId, PlaceableBuilding[] availablePrefabs,
+            string postBufferId = null)
         {
             _stockpile = stockpile;
             _stockpileBufferId = stockpileBufferId;
+            _wallet = stockpile == null ? null : new PlayerWallet(stockpile, stockpileBufferId, postBufferId);
             _availablePrefabs = availablePrefabs;
         }
 
@@ -533,15 +538,7 @@ namespace GolemFactory.Player
             return UI.ConstructionCostPolicy.CanAfford(ReadStock, _buildingPrefab.Cost);
         }
 
-        private int ReadStock(string itemType)
-        {
-            if (_stockpile == null || !_stockpile.TryGetBuffer(_stockpileBufferId, out StorageBuffer buffer))
-            {
-                return 0;
-            }
-
-            return buffer.GetQuantity(itemType);
-        }
+        private int ReadStock(string itemType) => _wallet?.Quantity(itemType) ?? 0;
 
         private void Popup(Vector2Int cell, string text, BuildPopupKind kind)
         {
@@ -990,11 +987,14 @@ namespace GolemFactory.Player
             // what it could not hand back would be exactly the punishment a full refund exists
             // to remove. Checked before anything is torn down, so the refusal leaves the world
             // untouched rather than half-dismantled.
-            if (refund && !RefundWouldFit(building))
+            // The wallet names the first good that won't fit (crates-design §4.6): with a 100 pack
+            // and crates holding goods, "pack full of Scrap" is a thing the player can act on.
+            string misfit = refund ? RefundMisfit(building) : null;
+            if (misfit != null)
             {
-                LastStatusMessage =
-                    "Not demolished: the stockpile has no room for the refund. Make space first.";
-                Popup(cell, "no room for refund", BuildPopupKind.Refused);
+                string full = "pack full of " + ItemTiers.DisplayName(misfit);
+                LastStatusMessage = "Not demolished: " + full + ".";
+                Popup(cell, full, BuildPopupKind.Refused);
                 return;
             }
 
@@ -1023,6 +1023,15 @@ namespace GolemFactory.Player
                  building.GetPart<PlaceableScrapRecycler>() != null))
             {
                 _spatialEndpoints.Unregister(cell);
+            }
+
+            // The crate goes with its building, after its endpoint (crates-design §4.6): what it
+            // held was read into the refund above, and a depot re-placed here starts empty. A
+            // load's sweep removes it too; the save brings its contents back on the rebuilt one.
+            ICrate crate = building.GetPart<ICrate>();
+            if (crate != null && crate.OwnsBuffer && crate.CrateId != null)
+            {
+                _stockpile?.Remove(crate.CrateId);
             }
 
             // A demolished mast must leave the registry too, or a Zeppelin stays bound to a cell
@@ -1078,17 +1087,14 @@ namespace GolemFactory.Player
         /// </summary>
         private void RefundBuilding(List<RecipeIngredient> refund, Vector2Int cell)
         {
-            if (_stockpile == null || refund.Count == 0)
+            if (_wallet == null || refund.Count == 0)
             {
                 return;
             }
 
-            // Room was checked before a single registration was torn down (RefundWouldFit), so
+            // Room was checked before a single registration was torn down (RefundMisfit), so
             // every unit lands.
-            for (int i = 0; i < refund.Count; i++)
-            {
-                _stockpile.Deposit(_stockpileBufferId, refund[i].itemType, refund[i].quantity);
-            }
+            _wallet.Refund(refund);
 
             LastStatusMessage = "";
             Popup(cell, "+" + UI.ConstructionCostPolicy.FormatCost(refund), BuildPopupKind.Refund);
@@ -1131,6 +1137,17 @@ namespace GolemFactory.Player
             ScrapRecycler recycler = building.GetPart<PlaceableScrapRecycler>()?.Recycler;
             Add(refund, ItemType.Coke, recycler?.CokeStock ?? 0);
             Add(refund, ItemType.Scrap, recycler?.ScrapStock ?? 0);
+
+            // A crate's goods, if they are its own (crates-design §4.6). A Post crate's are the
+            // shared store's, and stay there.
+            ICrate crate = building.GetPart<ICrate>();
+            if (crate != null && crate.OwnsBuffer && crate.Buffer != null)
+            {
+                foreach (string good in crate.Buffer.HeldGoods())
+                {
+                    Add(refund, good, crate.Buffer.GetQuantity(good));
+                }
+            }
             return refund;
         }
 
@@ -1152,46 +1169,30 @@ namespace GolemFactory.Player
         }
 
         /// <summary>
-        /// Whether the stockpile can take back everything <see cref="RefundFor"/> would hand
-        /// back. Asked BEFORE the demolition so a refusal is a no-op rather than a
+        /// The first good of <see cref="RefundFor"/> the wallet has no room for, or null when the
+        /// whole refund fits. Asked BEFORE the demolition so a refusal is a no-op rather than a
         /// half-dismantled building.
         ///
         /// <para>
-        /// Answers <c>true</c> for anything that would not be refunded anyway -- no stockpile
-        /// wired, scene-authored furniture holding nothing, a free building -- so the check never
-        /// blocks a removal it has no stake in.
+        /// Null for anything that would not be refunded anyway -- no wallet wired, scene-authored
+        /// furniture holding nothing, a free building -- so the check never blocks a removal it
+        /// has no stake in.
         /// </para>
         /// </summary>
-        private bool RefundWouldFit(PlaceableBuilding building)
-        {
-            if (_stockpile == null)
-            {
-                return true;
-            }
-
-            foreach (RecipeIngredient item in RefundFor(building))
-            {
-                if (_stockpile.RoomFor(_stockpileBufferId, item.itemType) < item.quantity)
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
+        private string RefundMisfit(PlaceableBuilding building) =>
+            _wallet?.FirstMisfit(RefundFor(building));
 
         private void PlaceInternal(Vector2Int cell, GridMap map)
         {
-            // Atomic with a full refund on shortfall (StorageBufferRegistry.TryWithdrawBundle):
-            // a Boiler is 30 Scrap + 10 Iron Plate, and taking the Scrap for a placement that
-            // then refuses would be a straight theft at the cursor.
-            if (_stockpile != null && !_stockpile.TryWithdrawBundle(_stockpileBufferId, _buildingPrefab.Cost))
+            // Atomic (PlayerWallet.TryCharge): a Boiler is 30 Scrap + 10 Iron Plate, and taking
+            // the Scrap for a placement that then refuses would be a straight theft at the cursor.
+            if (_wallet != null && !_wallet.TryCharge(_buildingPrefab.Cost))
             {
                 LastStatusMessage = $"Not enough resources to build {_buildingPrefab.name} " +
                                      $"(needs {UI.ConstructionCostPolicy.FormatCost(_buildingPrefab.Cost)}).";
                 // The refusal has to appear at the cursor, or a click that could not be paid for
                 // is indistinguishable from a click that did not register.
-                Popup(cell, UI.ConstructionCostPolicy.FormatShortfall(ReadStock, _buildingPrefab.Cost),
+                Popup(cell, UI.ConstructionCostPolicy.FormatShortfall(_wallet, _buildingPrefab.Cost),
                     BuildPopupKind.Refused);
                 return;
             }

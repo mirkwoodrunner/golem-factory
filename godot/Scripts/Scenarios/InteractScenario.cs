@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using GolemFactory.Buildings;
 using GolemFactory.Economy;
+using GolemFactory.Player;
 using GolemFactory.PunchCards;
 using GolemFactory.World;
 using CoreVector3 = GolemFactory.Compat.Vector3;
@@ -17,7 +19,7 @@ namespace GolemFactory.Nodes.Scenarios
     /// <list type="number">
     ///   <item>At the free Scrap stall: the ring and the "[E] ..." caption show; E harvests one
     ///   Scrap and a "+1 Scrap" popup rises.</item>
-    ///   <item>At an empty Coal stall with 10 Scrap: E orders a truckload and pays for it.</item>
+    ///   <item>At an empty Coal stall with its truckload's price in Scrap: E orders a truckload and pays for it.</item>
     ///   <item>At the starter bench: the Hand-Crank panel shows its readout; holding E cranks.</item>
     ///   <item>At the starter station: E opens "Construct Golem" with a row per chassis; clicking
     ///   the Scavenger's row builds one and closes the panel; Escape would close it too.</item>
@@ -55,6 +57,7 @@ namespace GolemFactory.Nodes.Scenarios
             PlanStalls();
             PlanBench();
             PlanStation();
+            PlanCrate();
             Do("walk away from everything", () => { Stand(-9f, 9f); return null; });
             Do("no prompt out of reach", () => _prompt.Caption == "" ? null : $"still advertising '{_prompt.Caption}'");
         }
@@ -108,9 +111,13 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
 
-            Do("walk up to the empty Coal stall with 10 Scrap", () =>
+            // The offer's price, from sandbox.json (tuning-data-spec §4.3), not a copy of it.
+            int price = _world.Market.TryGetOffer("CoalNode", out MarketOffer coalOffer)
+                ? coalOffer.Price.Where(c => c.itemType == ItemType.Scrap).Sum(c => c.quantity) : 0;
+            Do("walk up to the empty Coal stall with the truckload's price", () =>
             {
-                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Scrap, 9);
+                // One Scrap is already in the pack, harvested above.
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Scrap, price - 1);
                 Stand(coal.x, coal.y + 1f);
                 return null;
             });
@@ -118,7 +125,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("the empty stall offers a truckload and its price", () =>
             {
                 offered = _prompt.Caption;
-                return offered.StartsWith("[E]  Order a truckload of Coal  -  10 Scrap") ? null : $"caption '{offered}'";
+                return offered.StartsWith($"[E]  Order a truckload of Coal  -  {price} Scrap") ? null : $"caption '{offered}'";
             });
             Do("press E", () => { Tap(Key.E); return null; });
             Do("the truckload is ordered and paid for", () =>
@@ -126,7 +133,7 @@ namespace GolemFactory.Nodes.Scenarios
                 int left = _world.Buffers.GetQuantity(_world.StockpileBufferId, ItemType.Scrap);
                 if (left != 0)
                 {
-                    return $"{left} Scrap left; the 10 Scrap price was not paid";
+                    return $"{left} Scrap left; the {price} Scrap price was not paid";
                 }
                 return null;
             });
@@ -136,7 +143,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return $"caption '{_prompt.Caption}'";
                 }
-                _log.Add($"Coal stall: '{offered}', E ordered it for 10 Scrap, then '{_prompt.Caption}'");
+                _log.Add($"Coal stall: '{offered}', E ordered it for {price} Scrap, then '{_prompt.Caption}'");
                 return null;
             });
         }
@@ -165,12 +172,35 @@ namespace GolemFactory.Nodes.Scenarios
             });
             Do("hold E", () => { Press(Key.E, true); return null; });
             Do("the handle turns", () => _world.StarterBench.IsCranking ? null : "holding E did not crank");
+            Do("he cranks, facing the bench, and its wheel turns", () =>
+            {
+                if (!_world.StarterBench.IsTurning)
+                {
+                    return "held, but the bench makes no progress (nothing to feed it?)";
+                }
+                int first = ArtificerWalkAnimation.ComputeCrankSpriteIndex(ArtificerFacing.Up, 0);
+                if (_player.SpriteIndex < first || _player.SpriteIndex >= first + ArtificerWalkAnimation.CrankFramesPerDirection)
+                {
+                    return $"sprite {_player.SpriteIndex}, not a crank frame facing up (from {first})";
+                }
+                var view = _player.GetTree().Root.FindChild("StarterHandCrankBench", true, false) as StarterBenchView;
+                if (view == null || !view.Shown.StartsWith("hand_crank_bench_turn_"))
+                {
+                    return $"the bench shows '{view?.Shown}', not a turning frame";
+                }
+                _log.Add($"cranking: sprite {_player.SpriteIndex}, bench '{view.Shown}'");
+                return null;
+            });
             Do("let go", () => { Press(Key.E, false); return null; });
             Do("the handle stops", () =>
             {
                 if (_world.StarterBench.IsCranking)
                 {
                     return "still cranking after release";
+                }
+                if (_player.SpriteIndex != ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Up))
+                {
+                    return $"sprite {_player.SpriteIndex} after letting go, not standing facing the bench";
                 }
                 _log.Add("bench: panel '" + _crank.Text.Split('\n')[0] + "', hold E cranks");
                 return null;
@@ -205,6 +235,7 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 return _prompt.Caption == "" ? null : "the world prompt still shows over the open panel";
             });
+            Do("capture the construction panel", () => { ScenarioCapture.Shot(_player.GetViewport(), "screen-construction-panel"); return null; });
             CoreVector3 heldAt = default;
             Do("hold W while it is open", () =>
             {
@@ -306,6 +337,73 @@ namespace GolemFactory.Nodes.Scenarios
                     return $"landed on {_construction.LastBuilt.Cell}, outlined {_previewedDrop}";
                 }
                 _log.Add($"G carried the golem, the outline marked {_previewedDrop}, R turned it, and it landed there");
+                return null;
+            });
+        }
+
+        /// <summary>
+        /// A depot is a crate (docs/crates-design.md §4.2): tap E collects what fits into the
+        /// 100 pack and leaves the rest; with the pack full the prompt greys to "pack full", and
+        /// a harvest at the Scrap stall is refused with the stall keeping its unit.
+        /// </summary>
+        private void PlanCrate()
+        {
+            var cell = new Compat.Vector2Int(-4, 6);
+            SandboxSetup.NodeEntry scrap = _world.Setup.nodes.Single(n => n.id == "ScrapNode");
+            ICrate crate = null;
+            int Pack() => _world.Buffers.GetQuantity(_world.StockpileBufferId, ItemType.Scrap);
+
+            Do("a depot with 20 Scrap in its crate, the pack at 95", () =>
+            {
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Scrap, 15);
+                _world.Build.SetActivePrefab(_world.Placeables.Single(p => p.Key == "DepotPrefab").Prefab);
+                _world.Build.PlaceOrRemove(cell);
+                _world.Build.CancelPlacement();
+                crate = _world.Build.Buildings.SingleOrDefault(b => b.Cell == cell && !b.IsRemoved)?.GetPart<ICrate>();
+                if (crate == null)
+                {
+                    return "no depot placed: " + _world.Build.LastStatusMessage;
+                }
+                crate.Buffer.Deposit(ItemType.Scrap, 20);
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Scrap, 95 - Pack());
+                Stand(cell.x, cell.y + 1f);
+                return null;
+            });
+            string offered = null;
+            Do("the crate offers its goods", () =>
+            {
+                offered = _prompt.Caption;
+                return offered == "[E]  Collect from Crate  -  holds 20 Scrap · [I] open" ? null : $"caption '{offered}'";
+            });
+            Do("press E", () => { Tap(Key.E); return null; });
+            Do("what fits went into the pack, the rest stayed", () =>
+            {
+                if (Pack() != 100 || crate.Buffer.GetQuantity(ItemType.Scrap) != 15)
+                {
+                    return $"pack {Pack()}, crate {crate.Buffer.GetQuantity(ItemType.Scrap)}; expected 100 and 15";
+                }
+                return null;
+            });
+            Do("the prompt greys: pack full", () =>
+                _prompt.Caption == "Crate  -  pack full · [I] open" ? null : $"caption '{_prompt.Caption}'");
+            int stallBefore = 0;
+            Do("walk to the Scrap stall with a full pack", () =>
+            {
+                stallBefore = _world.Nodes.TryGetNode("ScrapNode", out ResourceNode node) ? node.RemainingQuantity : -1;
+                Stand(scrap.x, scrap.y + 1f);
+                return null;
+            });
+            Do("the stall greys too", () =>
+                _prompt.Caption == "Scrap  -  pack full" ? null : $"caption '{_prompt.Caption}'");
+            Do("press E", () => { Tap(Key.E); return null; });
+            Do("nothing harvested, nothing lost", () =>
+            {
+                int now = _world.Nodes.TryGetNode("ScrapNode", out ResourceNode node) ? node.RemainingQuantity : -1;
+                if (now != stallBefore || Pack() != 100)
+                {
+                    return $"stall {stallBefore} -> {now}, pack {Pack()}";
+                }
+                _log.Add($"crate: '{offered}', E collected to 100 and left 15, then 'Crate  -  pack full'; the stall refused at the cap");
                 return null;
             });
         }

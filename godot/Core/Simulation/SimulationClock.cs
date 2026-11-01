@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using GolemFactory.Diagnostics;
 
 namespace GolemFactory.Simulation
 {
@@ -48,6 +50,16 @@ namespace GolemFactory.Simulation
             }
         }
 
+        /// <summary>
+        /// The endgame profile's sampler (docs/performance-report-template.md §3), null unless a
+        /// perf run sets it: each tick is timed as <c>tick</c>, and each registrant under the
+        /// section <see cref="PerfGroup"/> names. Timing never changes what a tick does.
+        /// </summary>
+        public PerfSampler Perf { get; set; }
+
+        /// <summary>The <c>tick.*</c> section a registrant's time counts in; null: <c>tick.other</c>.</summary>
+        public Func<ITickable, string> PerfGroup { get; set; }
+
         public void Register(ITickable tickable) => _tickables.Add(tickable);
 
         public void Unregister(ITickable tickable) => _tickables.Remove(tickable);
@@ -71,9 +83,30 @@ namespace GolemFactory.Simulation
                 _accumulator -= tickDuration;
                 CurrentTick++;
 
+                if (Perf != null)
+                {
+                    TickMeasured(Perf);
+                    continue;
+                }
+
                 for (int i = 0; i < _tickables.Count; i++)
                 {
                     _tickables[i].Tick(CurrentTick);
+                }
+            }
+        }
+
+        private void TickMeasured(PerfSampler perf)
+        {
+            using (perf.Measure(PerfSampler.Tick))
+            {
+                for (int i = 0; i < _tickables.Count; i++)
+                {
+                    ITickable tickable = _tickables[i];
+                    using (perf.Measure(PerfGroup?.Invoke(tickable) ?? PerfSampler.TickOther))
+                    {
+                        tickable.Tick(CurrentTick);
+                    }
                 }
             }
         }

@@ -11,6 +11,18 @@ namespace GolemFactory.Save
     [Serializable]
     public sealed class SaveData
     {
+        /// <summary>The format this build writes: 1 since crates (docs/crates-design.md §7).</summary>
+        public const int CurrentVersion = 1;
+
+        /// <summary>
+        /// The format a save was written in. Absent reads 0 -- the initializer must stay 0 for
+        /// that -- which is a save from before crates: one stockpile, depots that held nothing.
+        /// </summary>
+        public int version;
+
+        // The pack (and, once it exists, the Post store) by id. A crate that owns its buffer is
+        // NOT here: buffers restore before buildings, and the load's sweep of the old buildings
+        // removes their crates, so its contents ride on its BuildingEntry instead.
         public List<BufferEntry> buffers = new List<BufferEntry>();
         public List<BlueprintEntry> blueprints = new List<BlueprintEntry>();
         public List<GolemEntry> golems = new List<GolemEntry>();
@@ -24,6 +36,27 @@ namespace GolemFactory.Save
         // The factory's progress (G10): what Unity's save never held. Null in a save written
         // before it existed, and a load then leaves progress exactly as it is.
         public ProgressEntry progress;
+
+        /// <summary>
+        /// The market street: what each stall holds and the carts on the road (Phase 3
+        /// critique). Null in a save written before it, and a load then leaves the street as it is.
+        /// </summary>
+        public MarketEntry market;
+    }
+
+    /// <summary>
+    /// The stalls' stock and the truckloads in flight, as parallel lists like
+    /// <see cref="BufferEntry"/>. A truckload keeps the ticks it still has to travel, since a
+    /// save keeps no tick count.
+    /// </summary>
+    [Serializable]
+    public sealed class MarketEntry
+    {
+        public List<string> stallIds = new List<string>();
+        public List<int> stallStocks = new List<int>();
+        public List<string> cartStallIds = new List<string>();
+        public List<int> cartQuantities = new List<int>();
+        public List<long> cartTicksLeft = new List<long>();
     }
 
     /// <summary>
@@ -42,6 +75,9 @@ namespace GolemFactory.Save
         public int ledgerTowerStages;
         public int floorNorthExtent;
         public int assemblyBayTier = 1;
+
+        /// <summary>Pack upgrades bought (docs/pack-upgrades-design.md): absent in an older save, so 0, the base cap.</summary>
+        public int packUpgradeTier;
         public float clockSpeed = 1f;
         public bool clockPaused;
         public int tutorialStep;
@@ -107,6 +143,13 @@ namespace GolemFactory.Save
         /// </para>
         /// </summary>
         public string depotFilterItemType;
+
+        /// <summary>
+        /// A crate's own goods (a depot's or a mast's), parallel lists as <see cref="BufferEntry"/>
+        /// keeps. Empty in a save from before crates, whose depots held nothing of their own.
+        /// </summary>
+        public List<string> crateItemTypes = new List<string>();
+        public List<int> crateQuantities = new List<int>();
 
         /// <summary>
         /// A Scrap Recycler's fuel, its uncollected Scrap, and its banked remainder

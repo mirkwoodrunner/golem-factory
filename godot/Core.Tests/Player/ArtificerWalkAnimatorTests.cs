@@ -10,7 +10,7 @@ namespace GolemFactory.Tests.Player
     /// Ported from Unity's PlayMode ArtificerWalkAnimatorTests onto <see cref="PlayerWalker"/>.
     /// Unity's tests named the sprite on the renderer; here they name the frame INDEX the walker
     /// picks, which is the same thing one step earlier -- PlayerNode draws frame[SpriteIndex].
-    /// UnwiredFrames_LeaveTheSpriteAlone is retired: the Godot node loads its sixteen frames from
+    /// UnwiredFrames_LeaveTheSpriteAlone is retired: the Godot node loads its twenty sprites from
     /// res://art at startup, so there is no half-wired frame array to guard against.
     /// </summary>
     public class ArtificerWalkAnimatorTests
@@ -24,7 +24,7 @@ namespace GolemFactory.Tests.Player
             walker.MoveBy(Vector2.zero, 0.1f);
 
             Assert.AreEqual(
-                ArtificerWalkAnimation.ComputeSpriteIndex(ArtificerFacing.Down, ArtificerWalkAnimation.StandingFrameIndex),
+                ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Down),
                 walker.SpriteIndex);
         }
 
@@ -92,9 +92,39 @@ namespace GolemFactory.Tests.Player
             walker.MoveBy(Vector2.zero, 0.1f);
 
             Assert.AreEqual(
-                ArtificerWalkAnimation.ComputeSpriteIndex(ArtificerFacing.Right, ArtificerWalkAnimation.StandingFrameIndex),
+                ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Right),
                 walker.SpriteIndex,
                 "stopping should stand, still facing the way he was walking");
+        }
+
+        [Test]
+        public void Cranking_FacesTheBenchAndShowsItsTurnFrame()
+        {
+            PlayerWalker walker = Build();
+            walker.MoveBy(Vector2.zero, 0.1f);
+
+            // The bench a cell north of him: he turns to face it.
+            walker.ShowCrank(new Vector3(0f, 1f, 0f), 2);
+
+            Assert.AreEqual(ArtificerFacing.Up, walker.Facing);
+            Assert.AreEqual(ArtificerWalkAnimation.ComputeCrankSpriteIndex(ArtificerFacing.Up, 2), walker.SpriteIndex);
+
+            walker.MoveBy(Vector2.zero, 0.1f);
+            walker.ShowCrank(new Vector3(-1f, 0.5f, 0f), 3);
+            Assert.AreEqual(ArtificerFacing.Left, walker.Facing, "a bench more to the side than above is faced side-on");
+        }
+
+        [Test]
+        public void Cranking_WhileWalking_ShowsTheWalk()
+        {
+            PlayerWalker walker = Build();
+            walker.MoveBy(Vector2.right, 0.1f);
+            int walking = walker.SpriteIndex;
+
+            walker.ShowCrank(new Vector3(0f, 1f, 0f), 1);
+
+            Assert.AreEqual(ArtificerFacing.Right, walker.Facing);
+            Assert.AreEqual(walking, walker.SpriteIndex, "walking wins over the crank");
         }
 
         [Test]
@@ -114,7 +144,7 @@ namespace GolemFactory.Tests.Player
                 walker.MoveBy(Vector2.right, 0.1f);
 
                 Assert.AreEqual(
-                    ArtificerWalkAnimation.ComputeSpriteIndex(ArtificerFacing.Right, ArtificerWalkAnimation.StandingFrameIndex),
+                    ArtificerWalkAnimation.ComputeStandingSpriteIndex(ArtificerFacing.Right),
                     walker.SpriteIndex,
                     "pressing into a bound must face him at it without walking him on the spot");
             }

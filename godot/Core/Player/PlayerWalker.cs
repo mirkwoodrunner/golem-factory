@@ -26,7 +26,7 @@ namespace GolemFactory.Player
         {
             MoveSpeed = moveSpeed;
             StrideLength = strideLength;
-            SpriteIndex = ArtificerWalkAnimation.ComputeSpriteIndex(Facing, ArtificerWalkAnimation.StandingFrameIndex);
+            SpriteIndex = ArtificerWalkAnimation.ComputeStandingSpriteIndex(Facing);
         }
 
         /// <summary>Cells per second, Unity's PlayerController default (4).</summary>
@@ -39,8 +39,14 @@ namespace GolemFactory.Player
 
         public ArtificerFacing Facing { get; private set; } = ArtificerFacing.Down;
 
-        /// <summary>Index into the sixteen walk frames (<see cref="ArtificerWalkAnimation.ComputeSpriteIndex"/>).</summary>
+        /// <summary>
+        /// Index into the Artificer's sprites: a walk frame (<see cref="ArtificerWalkAnimation.ComputeSpriteIndex"/>)
+        /// or, standing still, a standing pose (<see cref="ArtificerWalkAnimation.ComputeStandingSpriteIndex"/>).
+        /// </summary>
         public int SpriteIndex { get; private set; }
+
+        /// <summary>Whether the last <see cref="MoveBy"/> covered ground.</summary>
+        public bool IsWalking { get; private set; }
 
         public bool HasFloorBounds => _bounded;
 
@@ -73,10 +79,27 @@ namespace GolemFactory.Player
             float moved = (next - before).magnitude;
             Facing = ArtificerWalkAnimation.ComputeFacing(input.x, input.y, Facing);
             _distanceTravelled = ArtificerWalkAnimation.AdvanceDistance(_distanceTravelled, moved, StrideLength);
-            int frame = ArtificerWalkAnimation.IsWalking(moved)
-                ? ArtificerWalkAnimation.ComputeFrameIndex(_distanceTravelled, StrideLength)
-                : ArtificerWalkAnimation.StandingFrameIndex;
-            SpriteIndex = ArtificerWalkAnimation.ComputeSpriteIndex(Facing, frame);
+            IsWalking = ArtificerWalkAnimation.IsWalking(moved);
+            SpriteIndex = IsWalking
+                ? ArtificerWalkAnimation.ComputeSpriteIndex(
+                    Facing, ArtificerWalkAnimation.ComputeFrameIndex(_distanceTravelled, StrideLength))
+                : ArtificerWalkAnimation.ComputeStandingSpriteIndex(Facing);
+        }
+
+        /// <summary>
+        /// After this frame's <see cref="MoveBy"/>: the player is turning a bench's crank, so he
+        /// faces the bench (at <paramref name="benchAt"/>) and shows its turn frame. Walking wins:
+        /// a frame that covered ground keeps its walk frame, and nothing changes.
+        /// </summary>
+        public void ShowCrank(Compat.Vector3 benchAt, int turnFrame)
+        {
+            if (IsWalking)
+            {
+                return;
+            }
+
+            Facing = ArtificerWalkAnimation.ComputeFacing(benchAt.x - Position.x, benchAt.y - Position.y, Facing);
+            SpriteIndex = ArtificerWalkAnimation.ComputeCrankSpriteIndex(Facing, turnFrame);
         }
     }
 }

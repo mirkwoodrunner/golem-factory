@@ -128,12 +128,12 @@ namespace GolemFactory.Data
                             fields.Names("candidateRecipes").Select(n => Lookup(definitions.Recipes, n, key)));
                         break;
                     case "PlaceableFreightMast":
-                        fields.Ignore("bufferId"); // PlaceableFreightMast reads the stockpile it is wired to
                         fields.Ignore("mastId");   // empty: the registry assigns one at placement
-                        entry.Prefab.AddPart(new PlaceableFreightMast());
+                        entry.Prefab.AddPart(new PlaceableFreightMast()).Configure(fields.String("bufferId"));
                         break;
                     case "PlaceableSlagHeap":
-                        entry.Prefab.AddPart(new PlaceableSlagHeap()).Configure(fields.String("heapId"), fields.Int("startingCoke"));
+                        entry.Prefab.AddPart(new PlaceableSlagHeap()).Configure(
+                            fields.String("heapId"), fields.Int("startingCoke"), fields.Int("slagPerCoke"));
                         break;
                     case "PlaceableScrapRecycler":
                         entry.Prefab.AddPart(new PlaceableScrapRecycler()).Configure(fields.String("recyclerId"), fields.Int("startingCoke"));

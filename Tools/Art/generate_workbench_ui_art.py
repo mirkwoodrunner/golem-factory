@@ -3,7 +3,7 @@
 docs/digital-design.md, "The Programming Interface"). Companion to
 generate_placeholder_art.py -- same free/Pillow-only approach, but these are 9-sliced /
 tiled *UI* sprites rather than world art, so they live under
-godot/art/UI/Workbench/ next to the third-party Steampunk pack.
+godot/art/UI/Workbench/ next to the HUD's shared chrome (generate_hud_art.py).
 
 Every panel/plate/card sprite is authored with an explicit 9-slice border and is meant to
 be imported with that border (see the "Workbench UI reskin" notes in
@@ -17,12 +17,18 @@ Re-run to regenerate. Requires Pillow.
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from art_paths import art_dir  # noqa: E402
+from art_paths import art_dir, skip_hand_replaced  # noqa: E402
 import random
 
 from PIL import Image, ImageDraw
 
 OUT_DIR = art_dir("UI", "Workbench")
+
+# Files a Phase 4 set has replaced (art-pipeline-design.md §2, step 13). Writing them into
+# godot/art/ would quietly put this script's pictures back, so they are skipped there;
+# --out-root <dir> still renders the originals, which verify_art.py compares and reports as
+# hand-replaced. Each name here is also in verify_art.py's KNOWN_HAND_REPLACED. None yet.
+HAND_REPLACED = set()
 
 # Mahogany-and-brass palette, extending generate_placeholder_art.py's warm wood/brass set.
 MAHOGANY_DEEP = (46, 24, 18, 255)
@@ -44,6 +50,8 @@ TRANSPARENT = (0, 0, 0, 0)
 
 
 def save(img: Image.Image, name: str) -> None:
+    if skip_hand_replaced(name, HAND_REPLACED, OUT_DIR):
+        return
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, name)
     img.save(path)
@@ -114,16 +122,30 @@ def make_panel_iron() -> Image.Image:
     return framed_panel(IRON, IRON_DARK, IRON_LIGHT, IRON_DARK, IRON_LIGHT, (26, 24, 22, 255), seed=23)
 
 
+def _screw(d: ImageDraw.ImageDraw, cx: int, cy: int) -> None:
+    """A 3x3 slotted brass screw head."""
+    d.rectangle([cx - 1, cy - 1, cx + 1, cy + 1], fill=BRASS_DARK)
+    d.point((cx - 1, cy - 1), fill=BRASS_LIGHT)
+    d.line([(cx - 1, cy + 1), (cx + 1, cy - 1)], fill=OUTLINE)
+
+
 def make_panel_blueprint() -> Image.Image:
-    """The blueprint field: dark drafting-paper blue with a faint graticule that tiles."""
+    """The display face (art-pipeline-design.md section 4, S4): the blueprint field behind a
+    brass bezel with a screw in each corner, so the chassis pane reads as an instrument's glass.
+    Dark drafting-paper blue with a faint graticule that tiles."""
     size = 48
     img = Image.new("RGBA", (size, size), TRANSPARENT)
     d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, size - 1, size - 1], fill=MAHOGANY_DARK)
-    d.rectangle([0, 0, size - 1, size - 1], outline=OUTLINE)
-    bevel(d, (0, 0, size - 1, size - 1), MAHOGANY_LIGHT, MAHOGANY_DEEP, inset=1)
-    d.rectangle([9, 9, size - 10, size - 10], outline=BRASS_DARK)
-    d.rectangle([10, 10, size - 11, size - 11], fill=BLUEPRINT, outline=OUTLINE)
+    d.rectangle([0, 0, size - 1, size - 1], fill=BRASS, outline=OUTLINE)
+    bevel(d, (0, 0, size - 1, size - 1), BRASS_LIGHT, BRASS_DARK, inset=1, width=2)
+    # The bezel's inner step down to the glass.
+    bevel(d, (6, 6, size - 7, size - 7), BRASS_DARK, BRASS_LIGHT, width=1)
+    for c in (4, size - 5):
+        for r in (4, size - 5):
+            _screw(d, c, r)
+    d.rectangle([8, 8, size - 9, size - 9], outline=OUTLINE)
+    d.rectangle([9, 9, size - 10, size - 10], outline=(14, 26, 36, 255))
+    d.rectangle([10, 10, size - 11, size - 11], fill=BLUEPRINT, outline=(18, 34, 46, 255))
     # 8px graticule inside the 24x24 tiling centre (11..36) so the grid stays continuous.
     for i in range(11, size - 11, 8):
         d.line([(i, 11), (i, size - 12)], fill=BLUEPRINT_LIGHT)
@@ -148,19 +170,32 @@ def make_plate_brass() -> Image.Image:
 
 
 def make_card_face() -> Image.Image:
-    """32x32 / border 10 punch-card face. Deliberately near-white so WorkbenchController's
-    teal/copper Image.color tint is what carries the colour coding, unchanged."""
+    """32x32 / border 10 punch card (art-pipeline-design.md section 4, S4): card stock with the
+    clipped corner and a column of punched holes down the left margin. Deliberately near-white
+    so the per-kind teal/copper tint carries the colour coding, unchanged. Drawn to tile: the
+    holes step every 4 rows and the 12-row middle holds three, so the Workbench's tiled
+    9-slice repeats them evenly down a card of any height."""
     size = 32
+    ink = (30, 30, 30, 255)
     img = Image.new("RGBA", (size, size), TRANSPARENT)
     d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, size - 1, size - 1], fill=(232, 232, 232, 255), outline=(30, 30, 30, 255))
-    bevel(d, (0, 0, size - 1, size - 1), (255, 255, 255, 255), (128, 128, 128, 255), inset=1)
-    d.rectangle([3, 3, size - 4, size - 4], fill=(214, 214, 214, 255))
-    # Punch holes down the left border region (inside the 10px slice, so exactly one column).
-    for y in (7, 12, 17, 20, 25):
-        d.rectangle([5, y, 7, y + 1], fill=(120, 120, 120, 255))
-    # Brass tab along the right border region.
-    d.rectangle([size - 8, 4, size - 5, size - 5], fill=(184, 184, 184, 255))
+    notch = 4
+    d.polygon([(notch, 0), (size - 1, 0), (size - 1, size - 1), (0, size - 1), (0, notch)],
+              fill=(236, 236, 236, 255), outline=ink)
+    d.line([(notch + 1, 1), (size - 2, 1)], fill=(255, 255, 255, 255))
+    d.line([(1, notch + 1), (1, size - 2)], fill=(255, 255, 255, 255))
+    d.line([(2, notch), (notch, 2)], fill=(255, 255, 255, 255))
+    d.line([(1, size - 2), (size - 2, size - 2)], fill=(150, 150, 150, 255))
+    d.line([(size - 2, 2), (size - 2, size - 2)], fill=(150, 150, 150, 255))
+    d.rectangle([3, 3, size - 4, size - 4], fill=(222, 222, 222, 255))
+    d.polygon([(2, notch + 1), (notch + 1, 2), (3, 3)], fill=(222, 222, 222, 255))
+    # The punched margin: a darker column, holes every 4 rows.
+    d.rectangle([3, notch + 2, 8, size - 4], fill=(204, 204, 204, 255))
+    for y in range(3, size - 3, 4):
+        if y >= notch + 2:
+            d.rectangle([5, y, 6, y + 1], fill=(92, 92, 92, 255))
+            d.point((5, y + 2), fill=(240, 240, 240, 255))
+    d.line([(9, 3), (9, size - 4)], fill=(196, 196, 196, 255))
     return img
 
 
@@ -249,6 +284,49 @@ def make_lever_handle() -> Image.Image:
     return img
 
 
+def make_lever_housing() -> Image.Image:
+    """The ENGAGE GEARS housing (art-pipeline-design.md section 4, S4): 238x118, the lever
+    button's exact size, so it draws 1:1. A recessed slot on the left for wb_lever_track
+    (x 7..46), a brass strap, and a dark enamel nameplate behind WorkbenchScreen's two words,
+    with vents beneath. Brushed iron rather than the grain panel, so the words have a quiet
+    ground."""
+    w, h = 238, 118
+    deep = (26, 24, 22, 255)
+    img = Image.new("RGBA", (w, h), TRANSPARENT)
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, w - 1, h - 1], fill=IRON, outline=OUTLINE)
+    for y in range(3, h - 3, 3):
+        d.line([(3, y), (w - 4, y)], fill=(80, 76, 71, 255))
+    bevel(d, (0, 0, w - 1, h - 1), IRON_LIGHT, deep, inset=1, width=2)
+    # The lever's slot: a recess, shadowed on its upper and left sides.
+    d.rectangle([4, 4, 50, h - 5], fill=deep, outline=OUTLINE)
+    bevel(d, (4, 4, 50, h - 5), (16, 14, 13, 255), IRON, inset=1)
+    # A brass strap between the slot and the plate.
+    d.rectangle([55, 3, 60, h - 4], fill=BRASS, outline=OUTLINE)
+    d.line([(56, 4), (56, h - 5)], fill=BRASS_LIGHT)
+    d.line([(59, 4), (59, h - 5)], fill=BRASS_DARK)
+    for y in (9, h // 2, h - 10):
+        _screw(d, 57, y)
+    # The nameplate the two words sit on (ENGAGE about y 36, GEARS about y 65). It starts at
+    # row 20: the bottom bar's status plate covers the housing's top 18 rows.
+    px0, py0, px1, py1 = 68, 20, 229, 99
+    d.rectangle([px0, py0, px1, py1], fill=BRASS_DARK, outline=OUTLINE)
+    bevel(d, (px0, py0, px1, py1), BRASS_LIGHT, (86, 60, 24, 255), inset=1, width=2)
+    d.rectangle([px0 + 4, py0 + 4, px1 - 4, py1 - 4], fill=MAHOGANY_DEEP, outline=OUTLINE)
+    d.line([(px0 + 5, py0 + 5), (px1 - 5, py0 + 5)], fill=(30, 16, 12, 255))
+    d.rectangle([px0 + 7, py0 + 7, px1 - 7, py1 - 7], outline=(84, 58, 30, 255))
+    for c in (px0 + 2, px1 - 2):
+        for r in (py0 + 2, py1 - 2):
+            _screw(d, c, r)
+    # Vents under the plate.
+    for x in range(px0 + 6, px1 - 6, 9):
+        d.rectangle([x, 104, x + 5, 109], fill=deep, outline=OUTLINE)
+        d.line([(x + 1, 109), (x + 5, 109)], fill=IRON_LIGHT)
+    for r in (4, h - 5):
+        _screw(d, w - 5, r)
+    return img
+
+
 def make_gauge_needle() -> Image.Image:
     """16x16 brass indicator pip used as the tape ticker's leading marker."""
     size = 16
@@ -269,6 +347,7 @@ def main() -> None:
     save(make_tape(), "wb_tape.png")
     save(make_lever_track(), "wb_lever_track.png")
     save(make_lever_handle(), "wb_lever_handle.png")
+    save(make_lever_housing(), "wb_lever_housing.png")
     save(make_gauge_needle(), "wb_gauge_needle.png")
 
 

@@ -67,6 +67,11 @@ namespace GolemFactory.Nodes.Scenarios
                 ["save"] = () => new SaveScenario(),
                 ["tutorial"] = () => new TutorialScenario(),
                 ["playtest-kit"] = () => new PlaytestKitScenario(),
+                ["inventory"] = () => new InventoryScenario(),
+                ["moods"] = () => new MoodsScenario(),
+                ["hover"] = () => new HoverScenario(),
+                ["perf"] = () => new PerfScenario(),
+                ["art"] = () => new ArtScenario(),
             };
 
         [Export] public NodePath StationPath { get; set; }

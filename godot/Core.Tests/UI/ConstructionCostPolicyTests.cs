@@ -150,5 +150,44 @@ namespace GolemFactory.Tests.EditMode
             StringAssert.Contains("24 more Casing", text);
             StringAssert.Contains("12 more Gear", text);
         }
+
+        // docs/pack-upgrades-design.md §8.14: Floor Expansion #2's 120 Scrap at cap 100, no Post.
+        [Test]
+        public void FormatShortfall_SaysWhenThePackCantHoldALine()
+        {
+            Assert.AreEqual("Upgrade your pack: this needs 120 Scrap, your pack holds 100",
+                ConstructionCostPolicy.FormatShortfall(Stock(("Scrap", 100)), Bundle(("Scrap", 120)), 100));
+            Assert.AreEqual("Upgrade your pack: this needs 120 Scrap, your pack holds 100  ·  Need 5 more Gear",
+                ConstructionCostPolicy.FormatShortfall(Stock(("Scrap", 90)), Bundle(("Scrap", 120), ("Gear", 5)), 100));
+        }
+
+        [Test]
+        public void FormatShortfall_APostThatCoversTheLineNeedsNoUpgrade()
+        {
+            // The wallet (pack + Post) holds 150: affordable, so nothing at all.
+            Assert.IsEmpty(ConstructionCostPolicy.FormatShortfall(Stock(("Scrap", 150)), Bundle(("Scrap", 120)), 100));
+            // A line within the cap reads as before; so does an uncapped pack.
+            Assert.AreEqual("Need 20 more Scrap",
+                ConstructionCostPolicy.FormatShortfall(Stock(("Scrap", 60)), Bundle(("Scrap", 80)), 100));
+            Assert.AreEqual("Need 20 more Scrap",
+                ConstructionCostPolicy.FormatShortfall(Stock(("Scrap", 100)), Bundle(("Scrap", 120))));
+        }
+
+        [Test]
+        public void FormatShortfall_AWalletReadsItsPacksCap()
+        {
+            var buffers = new GolemFactory.Economy.StorageBufferRegistry();
+            buffers.SetCapacity("Pack", 100);
+            buffers.Deposit("Pack", "Scrap", 100);
+            var wallet = new GolemFactory.Economy.PlayerWallet(buffers, "Pack", "Post");
+
+            Assert.AreEqual("Upgrade your pack: this needs 120 Scrap, your pack holds 100",
+                ConstructionCostPolicy.FormatShortfall(wallet, Bundle(("Scrap", 120))));
+            buffers.Deposit("Post", "Scrap", 10);
+            Assert.AreEqual("Upgrade your pack: this needs 120 Scrap, your pack holds 100",
+                ConstructionCostPolicy.FormatShortfall(wallet, Bundle(("Scrap", 120))));
+            buffers.Deposit("Post", "Scrap", 10);
+            Assert.IsEmpty(ConstructionCostPolicy.FormatShortfall(wallet, Bundle(("Scrap", 120))));
+        }
     }
 }

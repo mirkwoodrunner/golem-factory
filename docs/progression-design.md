@@ -983,3 +983,97 @@ infinite, free, steady. The old boulder behaviour is therefore **a state the gam
 not a version of the game that was deleted, which is what keeps every pre-existing test, `Main.unity`,
 and any save made before the change valid.
 
+
+### 13.3 Pack upgrades, and Floor Expansion priced up the tiers (amends §3.3, §8)
+
+Taken by the user on 2026-10-18, after crates gave the player a pack capped at 100 of each good.
+**Floor Expansion keeps ramping its cost**, and its later purchases are priced in more advanced
+goods (Gear, Copper Ingot, Brass, Casing, Glass, Lens, Mainspring, Aether Cell) rather than in
+more Scrap and Iron Plate. **Pack upgrades** raise the pack's cap (100, 150, 200, 250) so those
+purchases can be paid. Every price must fit the cap that is reachable by the time the price
+opens. The spec, the invariants and the cost tables are in `docs/pack-upgrades-design.md`. §3.3's
+"60 Scrap + 30 Iron Plate per 6 × 6 block" no longer describes the game: each purchase adds 2
+rows, and there are six.
+
+---
+
+## 14. Phase 3 tuning (amends §2, §3.1, §4, §5.2, §6, §7, §13.2)
+
+Proposed on 2026-10-19 in `docs/tuning-data-spec.md`, which holds every number, where it lives,
+the test that pins it, and the questions still open for the user. Recorded here so this document
+says which of its own numbers the game no longer uses. Numbers marked there as "[M]" are measured
+in the code phase and recorded in that spec's §18, not here.
+
+**Formulas as finally chosen.**
+
+| Formula | §2 / §3 said | As built and tuned |
+|---|---|---|
+| Steam burn | 1 Coke per powered golem per 10 s (6/min) | 1 per *working* golem per 20 s (**3/min**), 8 golems a boiler (G10, kept) |
+| Coker vs boiler | 35 Coke/min against 6/min golems | The guide's coker (Extract, R1, Push) makes 27.3/min, which feeds one full boiler: 8 × 3 = 24 plus its own 3. Pinned as an invariant |
+| Hand-crank speed | 25 % | 50 % (`HandCrankRules.SpeedPercent`; a craft takes 2 × the recipe) |
+| Repeat(n) | n more runs from one Haul | Unchanged, and n is capped so that n + 1 runs fit the 12 hold (`RepeatRules.MaxIterations`): 11 for R1–R3, 5 for R4–R6, R8 and R12, 3 for R7, R10, R11 and R19, 2 for R9. A Repeat that could never finish is refused at ENGAGE |
+| Claim prices | §8: "item-bundle claim costs" | A recipe card asks 4 × its recipe's inputs; a chassis card max(1, ⌊q/4⌋) of each line of its price. Pinned |
+| Market (§13.2) | priced bursts | Sized so stage 1 at full demand needs at most 8 truckload orders a minute: Σ raw demand ÷ truckload size |
+
+**Number changes.**
+
+| What | Was | Now | Why |
+|---|---|---|---|
+| R10 Lens Grinding | 2 Glass + 1 Brass | **3 Glass** + 1 Brass | Roadmap decision 8, and §12 weakness 3's "first thing to try": the Glass-or-void choice now matters in stage 4 too |
+| Stage 3 Lens demand | 24/min | **12/min** | Keeps stage 3's Slag deficit where it was at 2 Glass (38 → 44 Slag/min). §5.3(c) counted only the tower's Lenses; with the Aether Cells' the deficit at 2 Glass was 38, not 2 |
+| Brass Presser | 60 Scrap + 20 Iron Plate + 10 Gear | 60 Scrap + **10 Iron Plate + 5 Gear** | Chapter 2's game-time floor was 4:15 of its 4:30 budget, nearly all cranking. §4's 10–15-minute manual era gives way to Phase 2's 15 minutes for chapters 1–4 |
+| Truckloads | Scrap 30; Coal 40 for 10 Scrap; ores 40 for 20; Aether 20 for 40 | Scrap 100; Coal 120 for 30; ores 120 for 60; Aether 40 for 80 | At the old sizes stage 1 needed ~24 orders a minute by hand. The price per unit is unchanged |
+| Floor Expansion 5 | 200 Glass + 20 Lens + 15 Casing | **180 Glass** + 20 Lens + 15 Casing | The same Glass in all, at 3 Glass a Lens |
+| `Card_RepeatAssembly` | no prerequisite | prerequisite Mainspring | It filled Assembly Line slots from chapter 2 on, a card no early chassis can hold |
+| Aether-Hauler (and its card) | 80 Iron Plate + 40 Gear + 30 Coke | **20 Iron Plate + 10 Gear** + 30 Coke (card 5 + 2 + 7) | Chapter 8's floor was 35:39 of its 30:00 ceiling, one Hauler per two-input good; now 23:05 (the user's call, after measuring) |
+| Mainspring Overclocker (and its card) | 2 Mainspring + 20 Brass + 24 Casing + 12 Gear | the same + **120 Iron Plate** (card + 30) | Late prices use the room the pack rungs give (below) |
+| Zeppelin Freight Loader (and its card) | 6 Mainspring + 8 Lens + 3 Aether Cell + 30 Casing + 40 Brass | the same + **150 Iron Plate** (card + 37) | The same |
+| Freight Mast | 20 Brass + 10 Casing | the same + **120 Iron Plate** | The same |
+| Pneumatic Post crate | 10 Brass + 5 Casing | the same + **40 Iron Plate** | The same |
+| Floor Expansion 3, 4, 6 | 40 Gear; 10 Casing; 15 Casing | **80 Gear; 20 Casing; 30 Casing** | The same |
+
+**Price ceilings (the user's call, 2026-10-19).** A flat "no line above 100" was proposed and
+rejected: "some costs could be higher if they're expected to come later when we'd expect the player
+to upgrade their limits." The only ceiling on a line is the pack reachable when its price opens
+(100, 150, 200, 250; §13.3), and prices opening after a rung use that room, raised in bulk goods
+(Iron Plate, Gear, Casing) rather than scarce ones. Nothing opening in chapters 1–4 is raised; a
+price the guide's path pays stays within 150, the rung chapter 7 teaches; every rung has a price
+that needs it.
+
+**Decided with it** (the spec's §17): the Presser's price changes now; bigger truckloads now and
+standing orders only if the playthrough asks; once measured, the tower's meter decays at the
+delivered rate so under-supply slows a stage linearly; stage 4's Conduit is trimmed only if the
+profile still fails after the probe is optimised; the Overclocker plays the full run with Repeat at
+100 %, then 75 % is tried before a second card; Lens at 3 Glass with stage 3's Lens at 12; the
+drainer is not named on the hover card in Phase 3.
+
+**Unchanged, and now invariants:** every
+price fits the pack reachable when it opens (§13.3); every good a guide step asks for is makeable
+when the step opens; chapters 1–4 under 10:00 of game-time floor and each chapter under two thirds
+of its budget; the Overclocker's cost (2 Mainspring + 20 Brass + 24 Casing + 12 Gear), slots and
+steam (no surcharge).
+
+**Measured in the code phase** (`docs/tuning-data-spec.md` §18): chapters 1–4's game-time floor
+is 5:16 (was 7:58); at the Hauler's old price chapters 5–10 measured 12:51, 0:23, 3:09, **35:39**,
+9:34 and 24:49 (stage 1 6:15), chapter 8 over its 30:00 ceiling. Stage 1 at full
+demand needs 7.59 truckload orders a minute. Chapter 8's floor was settled by **lowering the
+Aether-Hauler to 20 Iron Plate + 10 Gear + 30 Coke** (from 80 + 40 + 30; the user's call): chapters
+5–10 then measure 7:28, 0:20, 4:14, 23:05, 7:34 and 27:21, every one under its ceiling. Stage 3's Slag balance is −44 a minute. Under
+supply, the tower was quadratic as feared (1 Frame Section a minute of 6 took 3:36:00) and is
+now linear (36:00): a meter drains at the rate its line delivers.
+
+**Findings this section's numbers don't settle on their own:**
+
+- **The tower slowed quadratically under demand** (§7). A meter drained at the demand rate, and an
+  empty meter freezes progress, so at a supply of *s* against a demand of *d* a stage took about
+  nominal × (d/s)², not the nominal × d/s that §7's "scales with delivered rate" reads as.
+  Measured and fixed: the meter drains at the delivered rate (up to the demand), and a stage takes
+  nominal × d/s.
+- **Stage 4's Conduit cut** (§12 weakness 1) applies only if the endgame profile
+  (`docs/performance-report-template.md`) fails after the stall probe is optimised. Stage 3
+  already demands 3 Conduits a minute, so the cut saves less than §12 assumed.
+- **The Overclocker's identity** (roadmap decision 7). Repeat buys 8–20 % over a single-shot
+  golem, since it only amortises 2-tick overheads. The full playthrough
+  (`testscript/full-playthrough.md`) asks whether anyone used it.
+- **Coal-line share.** At 3 Coke/min the stage 4 upkeep is ~288 Coke/min, not 576: the coal line
+  is closer to a third of the factory than §3.1's 41 %.

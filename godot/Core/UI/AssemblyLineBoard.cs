@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using GolemFactory.AssemblyLine;
 using GolemFactory.Buildings;
 using GolemFactory.Economy;
@@ -19,6 +21,7 @@ namespace GolemFactory.UI
         WaitingHeader,
         Waiting,
         More,
+        Pack,
     }
 
     /// <summary>One row of the Assembly Line tab, decided; the screen only lays it out.</summary>
@@ -32,7 +35,10 @@ namespace GolemFactory.UI
 
         public bool Affordable;
 
-        /// <summary>"Claim", "Upgrade" or "Extend" for rows with a button; null otherwise.</summary>
+        /// <summary>
+        /// "Claim", "Upgrade" or "Extend" for rows with a button; null otherwise. Two rows say
+        /// "Upgrade" (bays, pack), so a click dispatches on <see cref="Kind"/>.
+        /// </summary>
         public string ButtonLabel;
 
         /// <summary>Whether the row reads as active (bright) rather than dim.</summary>
@@ -63,16 +69,23 @@ namespace GolemFactory.UI
         private readonly StorageBufferRegistry _buffers;
         private readonly string _wallet;
         private readonly string _userId;
+        private readonly string _post;
         private AssemblyBayStructure _bay;
         private string _stockpile;
         private FloorExpansionService _floor;
+        private PackUpgradeService _pack;
+        private Func<string, bool> _seen;
+        private Func<bool> _postShown;
 
-        public AssemblyLineBoard(AssemblyLineState line, StorageBufferRegistry buffers, string walletBufferId, string userId = PlaceableBuilding.LocalPlayerOwnerId)
+        /// <param name="postBufferId">The Pneumatic Post's store, spent after the pack (crates-design §10); null for none.</param>
+        public AssemblyLineBoard(AssemblyLineState line, StorageBufferRegistry buffers, string walletBufferId,
+            string userId = PlaceableBuilding.LocalPlayerOwnerId, string postBufferId = null)
         {
             _line = line;
             _buffers = buffers;
             _wallet = walletBufferId;
             _userId = userId;
+            _post = postBufferId;
         }
 
         public void ConfigureBays(AssemblyBayStructure bay, string stockpileBufferId)
@@ -82,6 +95,37 @@ namespace GolemFactory.UI
         }
 
         public void ConfigureFloorExpansion(FloorExpansionService floor) => _floor = floor;
+
+        public void ConfigurePackUpgrade(PackUpgradeService pack) => _pack = pack;
+
+        /// <summary>
+        /// Whether the factory has made a good (the Ledger). An Extend or Pack price naming one it
+        /// hasn't reads "Requires: Brass", greyed (docs/pack-upgrades-design.md §0.11). Unset, all are seen.
+        /// </summary>
+        public void ConfigureSeen(Func<string, bool> seen) => _seen = seen;
+
+        /// <summary>
+        /// Whether a Pneumatic Post has been built (the Ledger), so the header names its Scrap
+        /// beside the pack's: a claim spends the pack, then the Post. A Post store still holding
+        /// Scrap is named whatever this says, since the wallet still spends it.
+        /// </summary>
+        public void ConfigurePostShown(Func<bool> postShown) => _postShown = postShown;
+
+        /// <summary>
+        /// The header: "Pack: 100 Scrap", and "  ·  Post: 40 Scrap" once a Post exists. Never a
+        /// buffer id (it used to read "Wallet: 100 Scrap (FactoryStockpile)").
+        /// </summary>
+        public string WalletLine()
+        {
+            int pack = _buffers?.GetQuantity(_wallet, ItemType.Scrap) ?? 0;
+            string line = "Pack: " + pack + " Scrap";
+            if (_post == null)
+            {
+                return line;
+            }
+            int post = _buffers?.GetQuantity(_post, ItemType.Scrap) ?? 0;
+            return post > 0 || (_postShown?.Invoke() ?? false) ? line + "  ·  Post: " + post + " Scrap" : line;
+        }
 
         /// <summary>The status line under the rows: what the last action did, or why it could not.</summary>
         public string Status { get; private set; } = "";
@@ -95,8 +139,7 @@ namespace GolemFactory.UI
                 return rows;
             }
 
-            int scrap = _buffers?.GetQuantity(_wallet, ItemType.Scrap) ?? 0;
-            rows.Add(new AssemblyLineRow { Kind = AssemblyLineRowKind.Wallet, Text = "Wallet: " + scrap + " Scrap (" + _wallet + ")", Bright = true });
+            rows.Add(new AssemblyLineRow { Kind = AssemblyLineRowKind.Wallet, Text = WalletLine(), Bright = true });
 
             // FIRST, above the cards: the cap decides whether a claimed card can ever be put on
             // a golem, so a player who cannot build is looking for this line.
@@ -127,15 +170,22 @@ namespace GolemFactory.UI
                 }
                 else
                 {
-                    rows.Add(new AssemblyLineRow
-                    {
-                        Kind = AssemblyLineRowKind.Floor,
-                        Text = label + "  ·  +" + _floor.RowsPerPurchase + " rows north",
-                        Bright = true,
-                        CostText = ConstructionCostPolicy.FormatCost(_floor.NextCost()),
-                        Affordable = _floor.CanAfford(),
-                        ButtonLabel = "Extend",
-                    });
+                    rows.Add(PricedRow(AssemblyLineRowKind.Floor, label + "  ·  +" + _floor.RowsPerPurchase + " rows north",
+                        _floor.NextCost(), _floor.CanAfford(), "Extend"));
+                }
+            }
+
+            if (_pack != null && _pack.CapacityPerType > 0)
+            {
+                string label = "Pack  ·  carries " + _pack.CapacityPerType + " of each good";
+                if (_pack.IsMaxed)
+                {
+                    rows.Add(new AssemblyLineRow { Kind = AssemblyLineRowKind.Pack, Text = label });
+                }
+                else
+                {
+                    rows.Add(PricedRow(AssemblyLineRowKind.Pack, label + "  ·  +" + (_pack.NextCapacity - _pack.CapacityPerType),
+                        _pack.NextCost(), _pack.CanAfford(), "Upgrade"));
                 }
             }
 
@@ -201,7 +251,7 @@ namespace GolemFactory.UI
             }
             string name = WorkbenchDiagnostics.Humanize(card.DisplayName);
             IReadOnlyList<RecipeIngredient> price = _line.GetCurrentCostBundle(slotIndex);
-            if (_line.TryClaimSlot(slotIndex, _userId, _buffers, _wallet))
+            if (_line.TryClaimSlot(slotIndex, _userId, _buffers, _wallet, _post))
             {
                 Status = $"Claimed {name}.";
                 return true;
@@ -223,8 +273,9 @@ namespace GolemFactory.UI
                 return false;
             }
             IReadOnlyList<RecipeIngredient> cost = _bay.UpgradeCost;
-            bool upgraded = _buffers != null && _bay.TryUpgrade(_buffers, _stockpile);
-            Status = AssemblyBayRowPolicy.DescribeResult(upgraded, StockpileOf, cost, AssemblyBayStructure.SlotsPerUpgrade);
+            bool upgraded = _buffers != null && _bay.TryUpgrade(_buffers, _stockpile, _post);
+            Status = AssemblyBayRowPolicy.DescribeResult(upgraded, StockpileOf, cost, AssemblyBayStructure.SlotsPerUpgrade,
+                new PlayerWallet(_buffers, _stockpile, _post).PackCapacity);
             return upgraded;
         }
 
@@ -240,26 +291,43 @@ namespace GolemFactory.UI
             return expanded;
         }
 
-        private int StockpileOf(string itemType) => _buffers?.GetQuantity(_stockpile, itemType) ?? 0;
-
-        private bool CanAfford(IReadOnlyList<RecipeIngredient> price)
+        public bool UpgradePack()
         {
-            if (price == null || price.Count == 0)
+            if (_pack == null)
             {
-                return true;
-            }
-            if (_buffers == null)
-            {
+                Status = "No pack upgrades in this scene.";
                 return false;
             }
-            foreach (RecipeIngredient p in price)
-            {
-                if (_buffers.GetQuantity(_wallet, p.itemType) < p.quantity)
-                {
-                    return false;
-                }
-            }
-            return true;
+            bool upgraded = _pack.TryUpgrade();
+            Status = upgraded ? "" : _pack.LastStatusMessage;
+            return upgraded;
         }
+
+        /// <summary>
+        /// The Floor and Pack rows: a price, or "Requires: Brass", greyed, when it names goods the
+        /// factory has never made.
+        /// </summary>
+        private AssemblyLineRow PricedRow(AssemblyLineRowKind kind, string text, IReadOnlyList<RecipeIngredient> price, bool canAfford, string button)
+        {
+            List<string> unseen = _seen == null || price == null
+                ? new List<string>()
+                : price.Where(p => p.quantity > 0 && !_seen(p.itemType)).Select(p => ConstructionCostPolicy.DisplayName(p.itemType)).ToList();
+            bool locked = unseen.Count > 0;
+            return new AssemblyLineRow
+            {
+                Kind = kind,
+                Text = text,
+                Bright = true,
+                CostText = locked ? "Requires: " + string.Join(", ", unseen) : ConstructionCostPolicy.FormatCost(price),
+                Affordable = !locked && canAfford,
+                ButtonLabel = button,
+            };
+        }
+
+        // The pack plus the Post: what the bay's charge (PlayerWallet.TryCharge) can spend.
+        private int StockpileOf(string itemType) => _buffers == null ? 0 : new PlayerWallet(_buffers, _stockpile, _post).Quantity(itemType);
+
+        private bool CanAfford(IReadOnlyList<RecipeIngredient> price) =>
+            ConstructionCostPolicy.CanAfford(item => _buffers == null ? 0 : new PlayerWallet(_buffers, _wallet, _post).Quantity(item), price);
     }
 }

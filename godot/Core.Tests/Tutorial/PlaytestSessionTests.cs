@@ -75,10 +75,111 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual("workbench", playtest.Current?.Id, "asked once the first program is written");
             playtest.Answer("A real decision", "  the dial is nice  ", 120f);
 
+            Assert.AreEqual("hint", playtest.Current?.Id, "Phase 2's hint question waits behind it, at the same step");
+            playtest.Skip(121f);
             Assert.IsNull(playtest.Current);
             PlaytestAnswer answer = playtest.Answers.Single(a => a.QuestionId == "workbench");
             Assert.AreEqual("A real decision", answer.Choice);
             Assert.AreEqual("the dial is nice", answer.Note, "trimmed");
+        }
+
+        /// <summary>testscript/phase-2-playtest.md: the first fifteen minutes, timed to chapter 5.</summary>
+        [Test]
+        public void TheReport_TimesChaptersOneToFour_AndSaysWhetherTheKitWasUsed()
+        {
+            var playtest = new PlaytestSession();
+            playtest.StepEntered("scrap", "Gather Scrap", 0f);
+            Assert.IsNull(playtest.ChaptersOneToFour(), "not there yet");
+
+            playtest.StepEntered("r4-card", "Claim Iron Smelting", 754f);
+            Assert.AreEqual("Chapters 1–4: 12:34 (target 15:00) · kit used: no", playtest.ChaptersOneToFour());
+            StringAssert.Contains("Chapters 1–4: 12:34", playtest.Compose("", 800f));
+
+            var kit = new PlaytestSession();
+            kit.StepEntered("scrap", "Gather Scrap", 0f);
+            kit.RecordKit("fast-forwarded chapter 1", 30f);
+            kit.StepEntered("r4-card", "Claim Iron Smelting", 300f);
+            StringAssert.EndsWith("kit used: yes", kit.ChaptersOneToFour(), "a kit use voids the timing");
+        }
+
+        /// <summary>
+        /// Phase 2's test pass: F9 in chapter 5 or later (the Phase 1 script carries on from
+        /// here) doesn't void the chapters 1-4 time, an overrun prints past 15:00 as it is, and
+        /// the line sits at the top of the report, before the answers.
+        /// </summary>
+        [Test]
+        public void TheChaptersOneToFourLine_IgnoresLaterKitUse_AndPrintsAnOverrun()
+        {
+            var playtest = new PlaytestSession();
+            playtest.StepEntered("scrap", "Gather Scrap", 0f);
+            playtest.StepEntered("patent", "Patent a program", 900f);
+            playtest.StepEntered("r4-card", "Claim Iron Smelting", 1085.6f);
+            playtest.RecordKit("fast-forwarded chapter 5", 1200f);
+            playtest.StepEntered("copper", "Buy Copper Ore", 1210f);
+
+            Assert.AreEqual("Chapters 1–4: 18:05 (target 15:00) · kit used: no", playtest.ChaptersOneToFour());
+            string report = playtest.Compose("Build: test", 1300f);
+            Assert.Less(report.IndexOf("Chapters 1–4: 18:05", System.StringComparison.Ordinal),
+                report.IndexOf("## Your answers", System.StringComparison.Ordinal), "the line opens the report");
+            StringAssert.Contains("fast-forwarded chapter 5", report, "the later kit use is still reported");
+        }
+
+        /// <summary>
+        /// performance-report-template.md §5: "Time per chapter" (before the answers, each chapter
+        /// against its budget), the "Chapters 1–10" line once `done` is reached, and "Frame rate"
+        /// (after the step timings) with each chapter's percentiles and its last counts.
+        /// </summary>
+        [Test]
+        public void TheReport_TimesEachChapter_AndChaptersOneToTen()
+        {
+            var playtest = new PlaytestSession();
+            playtest.StepEntered("scrap", "Gather Scrap", 0f, 1);
+            playtest.StepEntered("coal", "Buy Coal", 100f, 1);
+            playtest.StepEntered("gears", "Gears", 290f, 2);
+            Assert.IsNull(playtest.ChaptersOneToTen(), "not done yet");
+
+            string report = playtest.Compose("", 400f);
+            StringAssert.Contains("| 1 | 4:50 | 5:00 |", report);
+            StringAssert.Contains("| 2 | 1:50 (so far) | 4:30 |", report);
+            Assert.Less(report.IndexOf("## Time per chapter", System.StringComparison.Ordinal),
+                report.IndexOf("## Your answers", System.StringComparison.Ordinal));
+
+            playtest.RecordKit("fast-forwarded chapter 8", 5000f);
+            playtest.StepEntered("tower-visit", "Visit the tower", 7000f, 10);
+            playtest.StepEntered("done", "Done", 9667f, 10);
+            Assert.AreEqual("Chapters 1–10: 2:41:07 (target 3:00:00) · kit used: yes", playtest.ChaptersOneToTen());
+            report = playtest.Compose("", 9700f);
+            StringAssert.Contains("| 10 | 44:27 | 45:00 |", report, "the last chapter ends at done");
+            StringAssert.Contains("Chapters 1–10: 2:41:07", report);
+        }
+
+        [Test]
+        public void TheFrameRateSection_HasEachChaptersPercentiles()
+        {
+            var playtest = new PlaytestSession();
+            playtest.StepEntered("scrap", "Gather Scrap", 0f, 1);
+            for (int i = 1; i <= 100; i++)
+            {
+                playtest.RecordFrame(1, i, 0, 0);
+            }
+            playtest.RecordFrame(5, 16.6, 12, 40);
+            playtest.RecordFrame(5, 20.0, 14, 52);
+
+            string report = playtest.Compose("", 10f);
+            StringAssert.Contains("## Frame rate", report);
+            StringAssert.Contains("| Chapter | Frames | p50 ms | p95 ms | worst ms | golems | belt items |", report);
+            StringAssert.Contains("| 1 | 100 | 50.0 | 95.0 | 100.0 | 0 | 0 |", report);
+            StringAssert.Contains("| 5 | 2 | 16.6 | 20.0 | 20.0 | 14 | 52 |", report, "golems and belt items at the chapter's last frame");
+            Assert.Less(report.IndexOf("## Time on each step", System.StringComparison.Ordinal),
+                report.IndexOf("## Frame rate", System.StringComparison.Ordinal));
+        }
+
+        [Test]
+        public void TheGuide_ReportsEachStepsChapter()
+        {
+            SandboxWorld world = Compose();
+            string report = world.Tutorial.Playtest.Compose("", 1f);
+            StringAssert.Contains("| 1 | 0:01 (so far) | 5:00 |", report);
         }
 
         [Test]
@@ -116,14 +217,44 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
-        public void OnlyTheTowerAndTheGuideItself_WaitForTheLastStep()
+        public void ThePackUpgradeQuestions_AreAskedWhereTheDocSays()
+        {
+            // docs/pack-upgrades-design.md §6 and §8.5: the upgrade's question as `ledger` opens
+            // (the step after `pack`), the dear-room one as `frame-section` opens.
+            var after = PlaytestSession.Questions.ToDictionary(q => q.Id, q => q.AfterStepId);
+            Assert.AreEqual("ledger", after["pack-upgrade"]);
+            Assert.AreEqual("frame-section", after["dear-room"]);
+
+            SandboxWorld world = Compose();
+            var ids = world.Tutorial.Steps.Select(s => s.Id).ToList();
+            Assert.AreEqual(ids.IndexOf("pack") + 1, ids.IndexOf("ledger"), "`ledger` comes straight after `pack`");
+            Assert.AreEqual(ids.IndexOf("bays") + 1, ids.IndexOf("pack"), "`pack` comes straight after `bays`");
+        }
+
+        [Test]
+        public void OnlyTheTowerTheRunAndTheGuideItself_WaitForTheLastStep()
         {
             // A chapter's question is asked as the next chapter opens. Nine once waited for
             // "done", after the Clock Tower's Foundation, so a playtest that stopped sooner never
-            // asked them at all.
+            // asked them at all. Chapter 10's own (the Overclocker it builds, the stage's rate)
+            // and the whole run's have nowhere later to go.
             CollectionAssert.AreEquivalent(
-                new[] { "tower", "guide" },
+                new[] { "tower", "overclocker", "stage-rate", "whole-run", "guide" },
                 PlaytestSession.Questions.Where(q => q.AfterStepId == "done").Select(q => q.Id));
+        }
+
+        [Test]
+        public void ThePhaseThreeQuestions_AreAskedWhereTheFullPlaythroughSays()
+        {
+            // testscript/full-playthrough.md, "The questions" (its `market` is `market-late`).
+            var after = PlaytestSession.Questions.ToDictionary(q => q.Id, q => q.AfterStepId);
+            Assert.AreEqual("copper-ingot", after["coal-share"]);
+            Assert.AreEqual("post", after["market-late"]);
+            Assert.AreEqual("aether-cell", after["lens-glass"]);
+            Assert.AreEqual("done", after["overclocker"]);
+            Assert.AreEqual("done", after["stage-rate"]);
+            Assert.AreEqual("done", after["whole-run"]);
+            Assert.AreEqual("program-coker", after["market"], "chapter 3's market question keeps its saved name");
         }
 
         [Test]

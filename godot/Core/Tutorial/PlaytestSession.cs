@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using GolemFactory.Diagnostics;
 
 namespace GolemFactory.Tutorial
 {
@@ -55,7 +56,7 @@ namespace GolemFactory.Tutorial
         /// The script's questions, keyed to the step that FOLLOWS the experience they ask about:
         /// the light on the first step, the manual era once the first Presser runs, the market
         /// once Coal has been bought, the burn once the coal line feeds its boiler. Each chapter's
-        /// question is asked as the next chapter opens; only the tower's and the guide's own wait
+        /// question is asked as the next chapter opens; only chapter 10's, the run's and the guide's own wait
         /// for the end. (Nine used to wait for "done", after the Clock Tower's Foundation, so a
         /// playtest that stopped sooner never asked them, and one that didn't asked hours late.)
         /// </summary>
@@ -67,6 +68,9 @@ namespace GolemFactory.Tutorial
             new PlaytestQuestion("workbench", "depot",
                 "You just programmed your first golem. Did the Workbench feel like making a decision, or like busywork?",
                 "A real decision", "Somewhere between", "Busywork"),
+            new PlaytestQuestion("hint", "depot",
+                "The glowing card and socket: did they show you what to drag?",
+                "Clear", "Took a moment", "In my way"),
             new PlaytestQuestion("manual-era", "coking-card",
                 "Your first machine is running. How did the hand-gathering and cranking before it feel?",
                 "Miserable", "Long but fine", "About right", "Too short"),
@@ -83,8 +87,8 @@ namespace GolemFactory.Tutorial
                 "You stamped a patent onto a new golem. Did that feel obviously better than programming it again?",
                 "Obviously", "A little", "No difference"),
             new PlaytestQuestion("labels", "unloader",
-                "You labelled a depot by pressing E until it said Copper Ore. A decent control, or do you want a picker?",
-                "Decent", "Fiddly", "Want a picker"),
+                "You labelled a depot on the crate screen. Did the picker work?",
+                "Good", "Fiddly", "Couldn't find it"),
             new PlaytestQuestion("drag", "scav3",
                 "Did laying belts and pipes by dragging feel good?",
                 "Good", "Fiddly", "Didn't work how I expected"),
@@ -107,19 +111,82 @@ namespace GolemFactory.Tutorial
             new PlaytestQuestion("marked-tiles", "copper",
                 "Chapter 5 marked a tile for everything you built. Did the marks help, or did you want to place things your own way?",
                 "They helped", "Fine either way", "In my way (say where)"),
+            // Phase 2's hint, turning, grey and red, and hover (testscript/phase-2-playtest.md).
+            new PlaytestQuestion("turning", "r4-card",
+                "Turning golems with R: how did it go?",
+                "Easy", "Fiddly", "I turned the wrong one"),
+            new PlaytestQuestion("grey-red", "r4-card",
+                "Waiting golems go grey, stuck ones red. Could you tell which needed you?",
+                "Always", "Mostly", "No"),
+            new PlaytestQuestion("hover", "r4-card",
+                "Hovering a golem shows its arrows and, when stuck, why. Did you use it?",
+                "Often", "Once or twice", "Didn't know"),
             new PlaytestQuestion("badge", "r4-card",
-                "When the golem stalled, did its badge tell you what was wrong?",
-                "Clearly", "Vaguely", "I didn't notice it"),
+                "When the golem stopped red, did its badge and hover tell you what was wrong?",
+                "Clearly", "Vaguely", "I didn't hover it"),
             new PlaytestQuestion("coke-burn", "patent",
                 "Your coal line feeds its boiler. Is Coke upkeep a cost worth managing, or a coal simulator?",
                 "Burns too fast", "About right", "Too slow to matter"),
+            // Phase 1's crates and pack (testscript/phase-1-playtest.md, "The questions").
+            new PlaytestQuestion("collect", "gears",
+                "Collecting from the crate with E: did taking what fits feel easy, or like a chore?",
+                "Easy", "Fine", "A chore"),
+            new PlaytestQuestion("pack-full", "coking-card",
+                "Did you fill your pack to 100 of something? Did \"pack full\" tell you what to do?",
+                "Never filled it", "Filled it and knew", "Filled it and was stuck"),
+            new PlaytestQuestion("hand-feed", "slag-heap",
+                "You fed the smelter's crate by hand on the crate screen. Was it clear?",
+                "Clear", "Fiddly", "I couldn't find it"),
+            new PlaytestQuestion("crate-stall", "copper",
+                "Did a golem stop because its crate was full or empty? Did its badge say why?",
+                "Never saw it", "Yes, clearly", "Yes, but I was confused"),
+            new PlaytestQuestion("straining", "expand",
+                "A busy golem's \"nearly full\" is on hover only. Did you ever miss a warning?",
+                "Never", "Once (say where)", "Often"),
+            new PlaytestQuestion("layout", "expand",
+                "Has where you put things started to matter: walks between crates, or a line that needed a belt?",
+                "It matters", "A little", "Not yet"),
+            // docs/pack-upgrades-design.md §6.
+            new PlaytestQuestion("pack-upgrade", "ledger",
+                "The pack upgrade: did you need the room, and was it easy to find?",
+                "Needed it", "Nice to have", "Didn't notice it"),
+            new PlaytestQuestion("dear-room", "frame-section",
+                "Later extensions cost Brass, Casing, Glass and Mainsprings. Was spending them on room worth it?",
+                "Worth it", "Too dear", "Never got that far"),
+            new PlaytestQuestion("post", "glass",
+                "The Pneumatic Post: did it take a chore off you, or add one?",
+                "Took one off", "No difference", "Added one"),
+            new PlaytestQuestion("mast-crate", "tower-visit",
+                "The Copper landed in the mast's crate. Did you find it?",
+                "Straight away", "Eventually", "No"),
+            // Phase 3's full playthrough (testscript/full-playthrough.md, "The questions"). Its
+            // `market` is `market-late` here: chapter 3's `market` question already holds that
+            // saved name. The last three are about chapter 10 and the run, so they wait for the end.
+            new PlaytestQuestion("coal-share", "copper-ingot",
+                "How much of your factory was feeding the boilers?",
+                "About right", "Too much", "Hardly noticed it"),
+            new PlaytestQuestion("market-late", "post",
+                "Ordering truckloads at the stalls:",
+                "Fine", "A chore", "I ran out a lot"),
+            new PlaytestQuestion("lens-glass", "aether-cell",
+                "Was there enough Glass for your Lenses?",
+                "Plenty", "Just enough", "Never enough"),
+            new PlaytestQuestion("overclocker", "done",
+                "Did you use Repeat on the Overclocker?",
+                "Often", "Tried it", "Didn't know it existed"),
+            new PlaytestQuestion("stage-rate", "done",
+                "How fast did the Foundation build at your rate?",
+                "Fair", "Slow", "It kept freezing"),
+            new PlaytestQuestion("whole-run", "done",
+                "Which chapter dragged?",
+                "None", "5", "6", "7", "8", "9", "10"),
             new PlaytestQuestion("guide", "done",
                 "Was this guide clear?",
                 "Clear", "Mostly", "Confusing"),
         };
 
         private readonly List<PlaytestAnswer> _answers = new List<PlaytestAnswer>();
-        private readonly List<(string stepId, string title, float enteredAt)> _steps = new List<(string, string, float)>();
+        private readonly List<(string stepId, string title, float enteredAt, int chapter)> _steps = new List<(string, string, float, int)>();
         private readonly List<string> _errors = new List<string>();
         private readonly HashSet<string> _asked = new HashSet<string>();
         private readonly Queue<PlaytestQuestion> _pending = new Queue<PlaytestQuestion>();
@@ -136,13 +203,13 @@ namespace GolemFactory.Tutorial
         private readonly List<string> _kitUses = new List<string>();
 
         /// <summary>The guide entered a step: time it, and queue any question that waits for it.</summary>
-        public void StepEntered(string stepId, string title, float atSeconds)
+        public void StepEntered(string stepId, string title, float atSeconds, int chapter = 0)
         {
             if (_steps.Count > 0 && _steps[_steps.Count - 1].stepId == stepId)
             {
                 return;
             }
-            _steps.Add((stepId, title, atSeconds));
+            _steps.Add((stepId, title, atSeconds, chapter));
             foreach (PlaytestQuestion question in Questions)
             {
                 if (question.AfterStepId == stepId && _asked.Add(question.Id))
@@ -190,8 +257,89 @@ namespace GolemFactory.Tutorial
         public void RecordKit(string what, float atSeconds)
         {
             _kitUses.Add($"{Clock(atSeconds)}  {what}");
+            _kitTimes.Add(atSeconds);
             Version++;
         }
+
+        // --- Frame rate (docs/performance-report-template.md §5) -------------------------------
+
+        private sealed class ChapterFrames
+        {
+            public readonly FrameTimeStats Ms = new FrameTimeStats(4096);
+            public int Golems;
+            public int BeltItems;
+        }
+
+        private readonly SortedDictionary<int, ChapterFrames> _frames = new SortedDictionary<int, ChapterFrames>();
+
+        /// <summary>
+        /// One frame's wall milliseconds, in the guide's current <paramref name="chapter"/>, with
+        /// the golems and belt items standing then (the table keeps a chapter's last). Doesn't
+        /// bump <see cref="Version"/>: the report picks the frames up at its next rewrite.
+        /// </summary>
+        public void RecordFrame(int chapter, double milliseconds, int golems, int beltItems)
+        {
+            if (!_frames.TryGetValue(chapter, out ChapterFrames frames))
+            {
+                _frames[chapter] = frames = new ChapterFrames();
+            }
+            frames.Ms.Add(milliseconds);
+            frames.Golems = golems;
+            frames.BeltItems = beltItems;
+        }
+
+        // --- Chapters ------------------------------------------------------------------------
+
+        /// <summary>Each chapter's human budget, in seconds (docs/tuning-data-spec.md §14), chapters 1-10.</summary>
+        public static readonly float[] ChapterBudgetSeconds = { 300, 270, 210, 120, 1200, 900, 600, 2700, 1800, 2700 };
+
+        /// <summary>The guide's last step: chapters 1-10 are timed to it.</summary>
+        public const string DoneStepId = "done";
+
+        /// <summary>The full playthrough's target (testscript/full-playthrough.md), in seconds.</summary>
+        public const float ChaptersOneToTenTargetSeconds = 3 * 3600;
+
+        /// <summary>
+        /// Each chapter's time, from its first step to the first step of the next (or to
+        /// <c>done</c> for the last), and whether it is still running.
+        /// </summary>
+        private IEnumerable<(int chapter, float seconds, bool running)> ChapterTimes(float nowSeconds)
+        {
+            var starts = new SortedDictionary<int, float>();
+            foreach ((string _, string _, float at, int chapter) in _steps)
+            {
+                if (chapter > 0 && !starts.ContainsKey(chapter))
+                {
+                    starts[chapter] = at;
+                }
+            }
+            float? done = _steps.Where(st => st.stepId == DoneStepId).Select(st => (float?)st.enteredAt).FirstOrDefault();
+            List<int> chapters = starts.Keys.ToList();
+            for (int i = 0; i < chapters.Count; i++)
+            {
+                float start = starts[chapters[i]];
+                float? end = i + 1 < chapters.Count ? starts[chapters[i + 1]] : done;
+                yield return (chapters[i], (end ?? nowSeconds) - start, end == null);
+            }
+        }
+
+        /// <summary>
+        /// "Chapters 1–10: 2:41:07 (target 3:00:00) · kit used: no", from the session's start to
+        /// reaching <c>done</c>; null until then.
+        /// </summary>
+        public string ChaptersOneToTen()
+        {
+            int at = _steps.FindIndex(st => st.stepId == DoneStepId);
+            if (at < 0)
+            {
+                return null;
+            }
+            float reached = _steps[at].enteredAt;
+            bool kit = _kitTimes.Any(t => t <= reached);
+            return $"Chapters 1–10: {Clock(reached)} (target {Clock(ChaptersOneToTenTargetSeconds)}) · kit used: {(kit ? "yes" : "no")}";
+        }
+
+        private static string Ms(double ms) => ms.ToString("F1", CultureInfo.InvariantCulture);
 
         /// <summary>The report, as Markdown: answers, step timings, kit uses, errors.</summary>
         public string Compose(string header, float nowSeconds)
@@ -205,6 +353,29 @@ namespace GolemFactory.Tutorial
                 b.AppendLine();
             }
             b.AppendLine($"Session length: {Clock(nowSeconds)}");
+            b.AppendLine();
+            string chapters = ChaptersOneToFour();
+            if (chapters != null)
+            {
+                b.AppendLine(chapters);
+                b.AppendLine();
+            }
+            string allChapters = ChaptersOneToTen();
+            if (allChapters != null)
+            {
+                b.AppendLine(allChapters);
+                b.AppendLine();
+            }
+
+            b.AppendLine("## Time per chapter");
+            b.AppendLine();
+            b.AppendLine("| Chapter | Time | Budget |");
+            b.AppendLine("|---|---|---|");
+            foreach ((int chapter, float seconds, bool running) in ChapterTimes(nowSeconds))
+            {
+                string budget = chapter >= 1 && chapter <= ChapterBudgetSeconds.Length ? Clock(ChapterBudgetSeconds[chapter - 1]) : "";
+                b.AppendLine($"| {chapter} | {Clock(seconds)}{(running ? " (so far)" : "")} | {budget} |");
+            }
             b.AppendLine();
 
             b.AppendLine("## Your answers");
@@ -230,6 +401,17 @@ namespace GolemFactory.Tutorial
             }
             b.AppendLine();
 
+            b.AppendLine("## Frame rate");
+            b.AppendLine();
+            b.AppendLine("| Chapter | Frames | p50 ms | p95 ms | worst ms | golems | belt items |");
+            b.AppendLine("|---|---|---|---|---|---|---|");
+            foreach (KeyValuePair<int, ChapterFrames> entry in _frames)
+            {
+                FrameTimeStats ms = entry.Value.Ms;
+                b.AppendLine($"| {entry.Key} | {ms.Count} | {Ms(ms.P50)} | {Ms(ms.P95)} | {Ms(ms.Max)} | {entry.Value.Golems} | {entry.Value.BeltItems} |");
+            }
+            b.AppendLine();
+
             b.AppendLine("## Playtest kit");
             b.AppendLine();
             b.AppendLine(_kitUses.Count == 0 ? "Not used: everything above was played for real." : "Used, so timings after these points are not real play:");
@@ -252,6 +434,31 @@ namespace GolemFactory.Tutorial
             }
             return b.ToString();
         }
+
+        /// <summary>The step that opens chapter 5: chapters 1-4 are timed to it.</summary>
+        public const string ChapterFiveStepId = "r4-card";
+
+        /// <summary>Phase 2's target (testscript/phase-2-playtest.md), in seconds.</summary>
+        public const float ChaptersOneToFourTargetSeconds = 15 * 60;
+
+        /// <summary>
+        /// "Chapters 1–4: 12:34 (target 15:00) · kit used: no", from the session's start to
+        /// entering chapter 5; null until the player gets there. Any kit use before then voids
+        /// the timing, and the line says so.
+        /// </summary>
+        public string ChaptersOneToFour()
+        {
+            int at = _steps.FindIndex(s => s.stepId == ChapterFiveStepId);
+            if (at < 0)
+            {
+                return null;
+            }
+            float reached = _steps[at].enteredAt;
+            bool kit = _kitTimes.Any(t => t <= reached);
+            return $"Chapters 1–4: {Clock(reached)} (target {Clock(ChaptersOneToFourTargetSeconds)}) · kit used: {(kit ? "yes" : "no")}";
+        }
+
+        private readonly List<float> _kitTimes = new List<float>();
 
         private static string Clock(float seconds)
         {

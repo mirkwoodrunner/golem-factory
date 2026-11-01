@@ -28,7 +28,7 @@ namespace GolemFactory.UI
 
         private static readonly Dictionary<string, string> Descriptions = new Dictionary<string, string>
         {
-            ["DepotPrefab"] = "A door into the stockpile: golems push into it and haul out of it.",
+            ["DepotPrefab"] = "A crate of 50 of each good: golems beside it push into it and haul out of it, and E collects.",
             ["GolemConstructionStationPrefab"] = "Builds golems. Another one lets you build in a second place.",
             ["BeltPrefab"] = "Carries goods a cell at a time. Drag to lay a run.",
             ["BeltSplitterPrefab"] = "Hands goods out to every belt leading away from it, in turn.",
@@ -39,6 +39,7 @@ namespace GolemFactory.UI
             ["FreightMastPrefab"] = "A landing mast for Zeppelin freight between distant sites.",
             ["SlagHeapPrefab"] = "Burns Coke to get rid of Slag.",
             ["ScrapRecyclerPrefab"] = "Burns Coke to turn junk, Slag included, back into Scrap.",
+            ["PneumaticPostPrefab"] = "A Post crate: every one opens onto one shared store, 200 of each good. Your building spends from it once your pack runs short.",
         };
 
         /// <summary>The row's name: "Golem Station", "Belt Splitter", "Steam Pipe".</summary>

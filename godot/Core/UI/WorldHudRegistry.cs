@@ -46,7 +46,7 @@ namespace GolemFactory.UI
         /// that label should sit. An owner with no neighbours gets its anchor back unchanged, so
         /// the common case -- one golem stalled by itself -- is untouched.
         /// </summary>
-        public static Vector3 Resolve(Vector3 anchor, string ownerId)
+        public static Vector3 Resolve(Vector3 anchor, string ownerId, float halfWidth = 0f, float height = 0f)
         {
             // DELIBERATELY DOES NOT SOLVE. A first-caller-solves rule would make the answer
             // depend on which label happened to register first -- the very script-order
@@ -54,7 +54,7 @@ namespace GolemFactory.UI
             // which runs before every view's LateUpdate by Unity's own phase order rather than
             // by anyone's execution-order setting.
             string key = ownerId ?? "";
-            Pending.Add(new WorldHudRequest(anchor, key));
+            Pending.Add(new WorldHudRequest(anchor, key, halfWidth, height));
 
             return Resolved.TryGetValue(key, out Vector3 position) ? position : anchor;
         }

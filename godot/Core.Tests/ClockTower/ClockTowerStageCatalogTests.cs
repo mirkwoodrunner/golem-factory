@@ -20,7 +20,7 @@ namespace GolemFactory.Tests.EditMode
     public class ClockTowerStageCatalogTests
     {
 
-        /// <summary>§7's stage table, verbatim, hand-transcribed.</summary>
+        /// <summary>§7's stage table, hand-transcribed, with stage 3's Lens at 12 (tuning-data-spec §11).</summary>
         private static readonly (int Number, string Name, int NominalSeconds,
             (string Item, int Rate)[] Demands)[] Expected =
         {
@@ -28,7 +28,7 @@ namespace GolemFactory.Tests.EditMode
             (2, "The Movement", 480, new[] { (ItemType.GreatCog, 3), (ItemType.FrameSection, 3) }),
             (3, "Aether Illumination", 480, new[]
             {
-                (ItemType.AetherConduit, 3), (ItemType.Lens, 24), (ItemType.FrameSection, 2)
+                (ItemType.AetherConduit, 3), (ItemType.Lens, 12), (ItemType.FrameSection, 2)
             }),
             (4, "The Chronometer", 600, new[]
             {
@@ -94,7 +94,7 @@ namespace GolemFactory.Tests.EditMode
         public void EveryDemandedGoodIsARealItemTypeAndTerminalOrNear()
         {
             // §5.1 makes the four Tier-5 goods terminal by design and names the Clock Tower as
-            // their sink. Lens is the one exception §7 reaches back for -- stage 3's 24/min is
+            // their sink. Lens is the one exception §7 reaches back for -- stage 3's 12/min (24 before tuning-data-spec §11) is
             // what "flips the section 5.3(c) decision from voiding to over-smelting" -- so it is
             // listed explicitly rather than allowed through by a loose check.
             var allowed = new HashSet<string>

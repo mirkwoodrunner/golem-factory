@@ -1578,19 +1578,16 @@ def main():
     # Room boundary. ne/nw are the same image under top-down (see make_wall) -- the mirrored
     # pair was an isometric artefact.
     wall, wall_lamp = make_wall(False), make_wall(True)
-    _save(wall, "wall_segment_ne.png")
     _save(wall, "wall_segment_nw.png")
-    _save(wall_lamp, "wall_segment_ne_lamp.png")
     _save(wall_lamp, "wall_segment_nw_lamp.png")
     # The east/west runs, which isometric never needed as separate art (see make_side_wall).
     _save(make_side_wall(False), "wall_side_e.png")
     _save(make_side_wall(True), "wall_side_w.png")
 
     # Only the SOUTH edge is skirted now -- it is the one edge left open so the camera can see
-    # in. floor_edge_se is still written because the sprite/pivot table is keyed by edge name
-    # and the west edge answers to "SouthEast"; it is the same band, unused by the generator.
+    # in. (floor_edge_se and wall_segment_ne were written as copies until the Phase 4 cleanup;
+    # nothing drew them.)
     edge = make_floor_edge()
-    _save(edge, "floor_edge_se.png")
     _save(edge, "floor_edge_sw.png")
     _save(make_corner_post(), "wall_corner_post.png")
 

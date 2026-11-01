@@ -4,6 +4,7 @@ using System.Linq;
 using Godot;
 using GolemFactory.Buildings;
 using GolemFactory.Data;
+using GolemFactory.Diagnostics;
 using GolemFactory.Economy;
 using GolemFactory.Golems;
 using GolemFactory.PunchCards;
@@ -33,6 +34,8 @@ namespace GolemFactory.Nodes.Scenarios
             public GolemEntity Golem;
             public GolemNode View;
             public float MinScaleY = 1f, MaxScaleY = 1f, MaxSkew, MinOffsetX, MaxOffsetX, MaxLift, MaxRed;
+            public readonly HashSet<string> Frames = new HashSet<string>();
+            public readonly HashSet<string> Bodies = new HashSet<string>();
         }
 
         private SandboxWorld _world;
@@ -80,23 +83,9 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void Setup(ConstructionPanelNode panel)
         {
-            DefinitionSet defs = _world.Definitions;
-            foreach (ChassisDefinition chassis in defs.Chassis.Values)
-            {
-                foreach (RecipeIngredient c in chassis.cost)
-                {
-                    Deposit(c.itemType, c.quantity);
-                }
-            }
-            foreach (PlaceableEntry entry in _world.Placeables)
-            {
-                foreach (RecipeIngredient c in entry.Prefab.Cost)
-                {
-                    Deposit(c.itemType, c.quantity * 16);
-                }
-            }
+            // The pack holds 100 of each good, so each building and chassis is paid for as it is
+            // bought (Pay).
             Deposit(ItemType.Coke, 100);
-            Deposit(ItemType.Scrap, 200);
 
             PlaceableBoiler boiler = Place("BoilerPrefab", -7, -15).GetPart<PlaceableBoiler>();
             for (int x = -6; x <= 4; x++)
@@ -107,8 +96,8 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 throw new InvalidOperationException("refuel: " + _world.Interactor.LastStatusMessage);
             }
-            Place("DepotPrefab", -1, -14);
-            Place("DepotPrefab", 1, -14);
+            _haulFrom = Place("DepotPrefab", -1, -14).GetPart<ICrate>();
+            _haulTo = Place("DepotPrefab", 1, -14).GetPart<ICrate>();
             Place("FreightMastPrefab", 6, -14);
 
             Build(panel, "BrassPresser", -5, -14, ("AssembleCoking", 0));
@@ -122,6 +111,7 @@ namespace GolemFactory.Nodes.Scenarios
         private void Build(ConstructionPanelNode panel, string chassis, int x, int y, params (string card, int quantity)[] steps)
         {
             DefinitionSet defs = _world.Definitions;
+            Pay(defs.Chassis[chassis].cost);
             panel.Open(_world.StarterStation);
             GolemEntity golem = panel.TryConstruct(defs.Chassis[chassis])
                 ? panel.LastBuilt
@@ -166,6 +156,9 @@ namespace GolemFactory.Nodes.Scenarios
                 w.MaxOffsetX = Math.Max(w.MaxOffsetX, w.View.DrawnOffset.X / cell);
                 w.MaxLift = Math.Max(w.MaxLift, -w.View.DrawnOffset.Y / cell);
                 w.MaxRed = Math.Max(w.MaxRed, w.View.DrawnModulate.R);
+                GolemFrameKey frame = w.View.DrawnFrame;
+                w.Frames.Add(frame.State == GolemFrameState.Work ? "work_" + frame.Index : frame.State.ToString());
+                w.Bodies.Add(w.View.BodySprite);
             }
 
             _elapsed += delta;
@@ -176,10 +169,19 @@ namespace GolemFactory.Nodes.Scenarios
             return Verdict();
         }
 
+        // The Aether-Hauler's crates: a golem reaches only the crates beside it.
+        private ICrate _haulFrom, _haulTo;
+
         // Keep every golem busy: the stampers never run out of Coal or fill with Coke, the
-        // Scavenger's stall never empties, and its haul and the Zeppelin's cargo are cleared.
+        // Scavenger's stall never empties, the Hauler's crate behind stays stocked and the one in
+        // front emptied, and the Scavenger's haul and the Zeppelin's cargo are cleared.
         private void Feed()
         {
+            _haulFrom?.Buffer?.Deposit(ItemType.Scrap, _haulFrom.Buffer.RoomFor(ItemType.Scrap));
+            if (_haulTo?.Buffer != null && _haulTo.Buffer.GetQuantity(ItemType.Scrap) > 0)
+            {
+                _haulTo.Buffer.TryWithdraw(ItemType.Scrap, _haulTo.Buffer.GetQuantity(ItemType.Scrap));
+            }
             if (_world.Nodes.TryGetNode("ScrapNode", out ResourceNode scrap) && scrap.RemainingQuantity < 20)
             {
                 scrap.Deliver(20);
@@ -230,17 +232,40 @@ namespace GolemFactory.Nodes.Scenarios
             Expect("AetherHauler", ha.MinOffsetX < -0.04f && ha.MaxOffsetX > 0.08f && ha.MinScaleY < 0.93f, "heave and lunge");
             Expect("ZeppelinFreightLoader", ze.MinScaleY < 0.9f && ze.MaxLift > 0.2f, "crouch and hop");
 
+            // GolemFrames (art-style-bible.md §4.4): each signature stroke picks its wind-up, impact
+            // and recover frames; a chassis with no frame files yet draws its south base for all
+            // of them, so the game looks as it did before the frames existed.
+            foreach ((string chassis, Watch w) in _watch)
+            {
+                string[] strokes = { "work_0", "work_1", "work_2" };
+                string missing = string.Join(",", strokes.Where(f => !w.Frames.Contains(f)));
+                if (missing.Length > 0)
+                {
+                    problems.Add($"{chassis} never picked {missing} (picked {string.Join(",", w.Frames)})");
+                }
+                string south = w.Golem.Program.chassis?.chassisSprite;
+                string stem = GolemFrames.Stem(south);
+                bool hasFrames = DirAccess.GetFilesAt("res://art").Any(f => f.StartsWith(stem + "_") && f.EndsWith(".png"));
+                if (!hasFrames && (w.Bodies.Count != 1 || !w.Bodies.Contains(south)))
+                {
+                    problems.Add($"{chassis} has no frame files but drew {string.Join(",", w.Bodies)}, not {south}");
+                }
+            }
+
             if (problems.Count > 0)
             {
                 return new ScenarioResult(false, string.Join("; ", problems));
             }
-            return new ScenarioResult(true, string.Join("; ", _watch.Select(kv => $"{kv.Key}: {Seen(kv.Value)}")));
+            return new ScenarioResult(true, string.Join("; ", _watch.Select(kv =>
+                $"{kv.Key}: {Seen(kv.Value)} frames {string.Join("/", kv.Value.Frames.OrderBy(f => f))} drawn {string.Join("/", kv.Value.Bodies)}")));
         }
 
         private PlaceableBuilding Place(string key, int x, int y)
         {
             var cell = new CoreVector2Int(x, y);
-            _world.Build.SetActivePrefab(_world.Placeables.Single(p => p.Key == key).Prefab);
+            PlaceableBuilding prefab = _world.Placeables.Single(p => p.Key == key).Prefab;
+            Pay(prefab.Cost);
+            _world.Build.SetActivePrefab(prefab);
             _world.Build.PlaceOrRemove(cell);
             _world.Build.CancelPlacement();
             return _world.Build.Buildings.SingleOrDefault(b => b.Cell == cell && !b.IsRemoved)
@@ -248,5 +273,9 @@ namespace GolemFactory.Nodes.Scenarios
         }
 
         private void Deposit(string itemType, int quantity) => _world.Buffers.Deposit(_world.StockpileBufferId, itemType, quantity);
+
+        // A late price can ask more than a base pack holds (the Freight Mast's 120 Iron Plate,
+        // tuning-data-spec §8.1): the rest waits in the Post, which the wallet spends next.
+        private void Pay(IEnumerable<RecipeIngredient> cost) => EndgameLoad.Grant(_world, cost);
     }
 }

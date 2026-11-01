@@ -9,10 +9,17 @@ pixel art later without touching any code. Re-run to regenerate; output goes to 
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from art_paths import art_dir  # noqa: E402
+from art_paths import art_dir, skip_hand_replaced  # noqa: E402
 from PIL import Image, ImageDraw
 
 OUT_DIR = art_dir()
+
+# Files a Phase 4 set has replaced (art-pipeline-design.md §2, step 13). Writing them into
+# godot/art/ would quietly put this script's pictures back, so they are skipped there;
+# --out-root <dir> still renders the originals, which verify_art.py compares and reports as
+# hand-replaced. Each name here is also in verify_art.py's KNOWN_HAND_REPLACED. None: the goods (S5)
+# were redrawn here rather than replaced (art-pipeline-design.md section 9, decision 21).
+HAND_REPLACED = set()
 
 # Warm wood-and-brass steampunk palette (docs/digital-design.md).
 WOOD_DARK = (74, 48, 33, 255)
@@ -108,6 +115,8 @@ def save(img: Image.Image, name: str) -> None:
             f"the projection switch. Run the top-down generator instead, or delete this name from\n"
             f"TOP_DOWN_OWNED if the isometric set is genuinely being restored."
         )
+    if skip_hand_replaced(name, HAND_REPLACED, OUT_DIR):
+        return
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, name)
     img.save(path)
@@ -930,9 +939,10 @@ COAL_LIGHT = (88, 84, 96, 255)
 COAL_DARK = (28, 26, 32, 255)
 ORE_ROCK = (104, 92, 80, 255)
 ORE_ROCK_DARK = (68, 58, 50, 255)
-ZINC = (176, 190, 200, 255)
-ZINC_LIGHT = (226, 236, 244, 255)
-ZINC_DARK = (108, 124, 136, 255)
+# Pewter, not blue-grey: steel blue (hue 200-230) is reserved for steam (palette.json, check 7).
+ZINC = (184, 188, 184, 255)
+ZINC_LIGHT = (232, 236, 230, 255)
+ZINC_DARK = (112, 118, 114, 255)
 # The copper ore cart's malachite (generate_topdown_environment.make_stall_ore).
 MALACHITE = (96, 158, 104, 255)
 MALACHITE_DARK = (62, 112, 74, 255)
@@ -973,8 +983,16 @@ def make_scrap_item() -> Image.Image:
 
 
 def make_brass_item() -> Image.Image:
-    """Brass -- a poured ingot, the tallest and most golden of the three bars."""
-    return _ingot(_icon(), INGOT, INGOT_LIGHT, INGOT_DARK, tall=True)
+    """Brass -- a stack of three poured bars, two below and one on top. It used to be the copper
+    ingot's own tall trapezoid in gold, the same silhouette at 24 px (check 11); the stack is
+    the only stepped outline among the metals."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    for x0, y0 in ((2, 18), (16, 18), (9, 8)):
+        d.polygon([(x0 + 2, y0), (x0 + 12, y0), (x0 + 14, y0 + 9), (x0, y0 + 9)], fill=INGOT, outline=OUTLINE)
+        d.polygon([(x0 + 2, y0), (x0 + 12, y0), (x0 + 13, y0 + 3), (x0 + 1, y0 + 3)], fill=INGOT_LIGHT, outline=OUTLINE)
+        d.line([(x0 + 1, y0 + 7), (x0 + 13, y0 + 7)], fill=INGOT_DARK)
+    return img
 
 
 def make_aether_item() -> Image.Image:
@@ -1145,8 +1163,15 @@ def make_glass_item() -> Image.Image:
 
 
 def make_copper_ingot_item() -> Image.Image:
-    """Copper ingot -- tall bar, the only warm-orange one of the three."""
-    return _ingot(_icon(), COPPER, COPPER_LIGHT, COPPER_DARK, tall=True)
+    """Copper ingot -- a tall narrow bar, the only warm-orange one of the three. Narrower than
+    the shared trapezoid, so it no longer fills Slag's slumped outline at 24 px (check 11)."""
+    img = _icon()
+    d = ImageDraw.Draw(img)
+    d.polygon([(10, 14), (21, 14), (24, 27), (7, 27)], fill=COPPER, outline=OUTLINE)
+    d.polygon([(11, 8), (20, 8), (21, 14), (10, 14)], fill=COPPER_LIGHT, outline=OUTLINE)
+    d.line([(13, 10), (18, 10)], fill=COPPER_LIGHT)
+    d.rectangle([8, 22, 23, 23], fill=COPPER_DARK)
+    return img
 
 
 def make_zinc_ingot_item() -> Image.Image:
@@ -1156,56 +1181,68 @@ def make_zinc_ingot_item() -> Image.Image:
 
 def make_copper_wire_item() -> Image.Image:
     """Copper Wire -- a spool. Concentric coils are unlike anything else in the set; the loose
-    tail is what stops it reading as a Gear at cargo size."""
+    tail, two pixels thick and joined to the spool so it survives at 24 px, is what stops it
+    reading as a Gear at cargo size."""
     img = _icon()
     d = ImageDraw.Draw(img)
-    d.ellipse([5, 7, 26, 25], fill=COPPER_DARK, outline=OUTLINE)
+    d.line([(19, 12), (23, 6), (27, 8), (30, 2)], fill=OUTLINE, width=4, joint="curve")
+    d.line([(19, 12), (23, 6), (27, 8), (30, 2)], fill=COPPER_LIGHT, width=2, joint="curve")
+    d.ellipse([4, 9, 24, 28], fill=COPPER_DARK, outline=OUTLINE)
     for inset in (3, 6):
-        d.ellipse([5 + inset, 7 + inset, 26 - inset, 25 - inset], outline=COPPER)
-    d.ellipse([13, 14, 18, 18], fill=OUTLINE)
-    d.line([(24, 10), (30, 5)], fill=COPPER_LIGHT)
-    d.line([(24, 11), (29, 7)], fill=COPPER)
+        d.ellipse([4 + inset, 9 + inset, 24 - inset, 28 - inset], outline=COPPER, width=2 if inset == 3 else 1)
+    d.ellipse([11, 16, 17, 21], fill=OUTLINE)
     return img
 
 
 def make_gear_item() -> Image.Image:
     """Gear -- the classic toothed disc, brass. Kept SMALL with chunky teeth so the Great Cog can
-    be the same shape at a larger radius and still read as a different part."""
+    be the same shape at a larger radius and still read as a different part. Each tooth sinks
+    into the disc, so none hangs on by a corner at 24 px."""
     img = _icon()
     d = ImageDraw.Draw(img)
+    for x, y in [(13, 3), (13, 24), (3, 13), (24, 13), (6, 6), (20, 6), (6, 20), (20, 20)]:
+        d.rectangle([x, y, x + 5, y + 5], fill=INGOT, outline=OUTLINE)
     d.ellipse([7, 7, 24, 24], fill=INGOT, outline=OUTLINE)
-    for x, y in [(14, 3), (14, 25), (3, 14), (25, 14), (6, 6), (21, 6), (6, 21), (21, 21)]:
-        d.rectangle([x, y, x + 3, y + 3], fill=INGOT, outline=OUTLINE)
-    d.ellipse([12, 12, 19, 19], fill=OUTLINE)
-    d.arc([9, 9, 22, 22], 200, 320, fill=INGOT_LIGHT)
+    d.ellipse([13, 13, 18, 18], fill=OUTLINE)
+    d.arc([9, 9, 22, 22], 200, 320, fill=INGOT_LIGHT, width=2)
+    d.arc([9, 9, 22, 22], 20, 140, fill=INGOT_DARK, width=2)
     return img
 
 
 def make_great_cog_item() -> Image.Image:
-    """Great Cog -- the endgame gear. Fills the canvas edge to edge with SPOKES rather than a
-    solid face, so at a glance it is 'the big open one' next to the small solid Gear."""
+    """Great Cog -- the endgame gear. Fills the canvas edge to edge, OPEN between four broad
+    spokes rather than a solid face, so at a glance it is 'the big open one' next to the small
+    solid Gear. Rim, spokes and teeth are all at least three pixels thick: the old one-pixel
+    diagonal spokes fell apart into a dozen pieces at 24 px (check 11)."""
     img = _icon()
     d = ImageDraw.Draw(img)
-    d.ellipse([1, 1, 30, 30], fill=INGOT_DARK, outline=OUTLINE)
-    d.ellipse([5, 5, 26, 26], fill=TRANSPARENT, outline=OUTLINE)
-    for x, y in [(14, 0), (14, 28), (0, 14), (28, 14)]:
-        d.rectangle([x, y, x + 3, y + 3], fill=INGOT, outline=OUTLINE)
-    for a, b in [((16, 6), (16, 25)), ((6, 16), (25, 16)), ((9, 9), (22, 22)), ((22, 9), (9, 22))]:
-        d.line([a, b], fill=INGOT)
-    d.ellipse([12, 12, 19, 19], fill=INGOT_LIGHT, outline=OUTLINE)
+    for x, y in [(13, 0), (13, 26), (0, 13), (26, 13), (4, 4), (22, 4), (4, 22), (22, 22)]:
+        d.rectangle([x, y, x + 5, y + 5], fill=INGOT, outline=OUTLINE)
+    d.ellipse([2, 2, 29, 29], fill=INGOT_DARK, outline=OUTLINE)
+    d.ellipse([3, 3, 28, 28], outline=INGOT, width=2)
+    d.ellipse([7, 7, 24, 24], fill=TRANSPARENT, outline=OUTLINE)
+    d.rectangle([14, 7, 17, 24], fill=INGOT, outline=OUTLINE)
+    d.rectangle([7, 14, 24, 17], fill=INGOT, outline=OUTLINE)
+    d.line([(15, 8), (15, 23)], fill=INGOT_LIGHT)
+    d.ellipse([11, 11, 20, 20], fill=INGOT_LIGHT, outline=OUTLINE)
+    d.ellipse([14, 14, 17, 17], fill=INGOT_DARK)
     return img
 
 
 def make_casing_item() -> Image.Image:
-    """Casing -- a pressed shell: boxy with a rolled rim and a flat lid, i.e. a container rather
-    than a part. The rim is what separates it from Iron Plate's bare slab."""
+    """Casing -- a pressed shell: a can with a rolled rim, i.e. a container rather than a part.
+    Narrow and round-shouldered, so it no longer covers Copper Ore's boulder at 24 px (it was a
+    wide box, check 11), and the rim is what separates it from Iron Plate's bare slab."""
     img = _icon()
     d = ImageDraw.Draw(img)
-    d.rectangle([5, 11, 26, 25], fill=IRON, outline=OUTLINE)
-    d.rectangle([3, 8, 28, 12], fill=IRON_LIGHT, outline=OUTLINE)
-    d.line([(7, 16), (24, 16)], fill=IRON_DARK)
-    d.line([(7, 20), (24, 20)], fill=IRON_DARK)
-    d.point([(7, 10), (24, 10)], fill=OUTLINE)
+    d.rectangle([8, 9, 23, 25], fill=IRON, outline=OUTLINE)
+    d.ellipse([8, 22, 23, 28], fill=IRON_DARK, outline=OUTLINE)
+    d.rectangle([9, 9, 22, 24], fill=IRON)
+    d.rectangle([18, 10, 21, 24], fill=IRON_DARK)
+    d.rectangle([10, 11, 11, 23], fill=IRON_LIGHT)
+    d.ellipse([6, 4, 25, 12], fill=IRON_LIGHT, outline=OUTLINE)
+    d.ellipse([10, 6, 21, 10], fill=IRON_DARK, outline=OUTLINE)
+    d.rectangle([9, 17, 22, 18], fill=IRON_DARK)
     return img
 
 
@@ -1224,21 +1261,18 @@ def make_lens_item() -> Image.Image:
 
 def make_mainspring_item() -> Image.Image:
     """Mainspring -- a tight coil wound from the outside in, drawn as a SQUARED spiral so it
-    never trades with the Wire spool's concentric rings."""
+    never trades with the Wire spool's concentric rings. Two-pixel turns on a dark barrel, so
+    the coil keeps its light and its shade at 24 px (check 11)."""
     img = _icon()
     d = ImageDraw.Draw(img)
-    box = [4, 5, 27, 26]
-    for step in range(4):
-        inset = step * 4
-        x0, y0, x1, y1 = box[0] + inset, box[1] + inset, box[2] - inset, box[3] - inset
-        if x1 - x0 < 3:
-            break
-        colour = INGOT if step % 2 == 0 else INGOT_LIGHT
-        d.line([(x0, y0), (x1, y0)], fill=colour)
-        d.line([(x1, y0), (x1, y1)], fill=colour)
-        d.line([(x1, y1), (x0 + 2, y1)], fill=colour)
-        d.line([(x0 + 2, y1), (x0 + 2, y0 + 3)], fill=colour)
-    d.line([(4, 5), (4, 26)], fill=OUTLINE)
+    d.rectangle([2, 2, 10, 6], fill=INGOT_LIGHT, outline=OUTLINE)
+    d.rectangle([6, 6, 25, 25], fill=INGOT_DARK, outline=OUTLINE)
+    # The spiral, outside in: each leg two pixels thick, two-pixel gaps of barrel between turns,
+    # its outer end the hook above.
+    for colour, legs in ((INGOT_LIGHT, [(8, 3, 9, 9), (8, 8, 23, 9), (22, 8, 23, 23), (12, 22, 23, 23), (12, 12, 13, 23)]),
+                         (INGOT, [(12, 12, 19, 13), (18, 12, 19, 19), (16, 18, 19, 19)])):
+        for leg in legs:
+            d.rectangle(leg, fill=colour)
     return img
 
 
@@ -1258,32 +1292,40 @@ def make_aether_cell_item() -> Image.Image:
 
 def make_mechanism_item() -> Image.Image:
     """Mechanism -- a small assembly: a gear meshed against a lever arm on a plate. The first
-    good in the ladder that is visibly MADE OF other goods, which is the point of tier 4."""
+    good in the ladder that is visibly MADE OF other goods, which is the point of tier 4. The
+    arm is three pixels thick and rests on the plate, so nothing parts at 24 px."""
     img = _icon()
     d = ImageDraw.Draw(img)
-    d.rectangle([3, 18, 28, 26], fill=IRON_DARK, outline=OUTLINE)
-    d.ellipse([5, 8, 18, 21], fill=INGOT, outline=OUTLINE)
-    for x, y in [(10, 5), (10, 20), (2, 13), (17, 13)]:
-        d.rectangle([x, y, x + 2, y + 2], fill=INGOT, outline=OUTLINE)
-    d.ellipse([9, 12, 14, 17], fill=OUTLINE)
-    d.line([(18, 12), (27, 8)], fill=IRON_LIGHT)
-    d.line([(18, 13), (27, 9)], fill=IRON)
-    d.ellipse([25, 6, 29, 10], fill=COPPER, outline=OUTLINE)
+    d.rectangle([2, 19, 29, 27], fill=IRON_DARK, outline=OUTLINE)
+    d.line([(4, 21), (27, 21)], fill=IRON)
+    d.polygon([(16, 14), (25, 9), (27, 12), (18, 19)], fill=IRON, outline=OUTLINE)
+    d.line([(17, 15), (25, 10)], fill=IRON_LIGHT)
+    d.rectangle([22, 13, 25, 19], fill=IRON_DARK, outline=OUTLINE)
+    d.ellipse([23, 4, 30, 11], fill=COPPER, outline=OUTLINE)
+    for x, y in [(9, 3), (9, 19), (2, 11), (16, 11)]:
+        d.rectangle([x, y, x + 4, y + 4], fill=INGOT, outline=OUTLINE)
+    d.ellipse([4, 6, 18, 20], fill=INGOT, outline=OUTLINE)
+    d.arc([6, 8, 16, 18], 200, 320, fill=INGOT_LIGHT, width=2)
+    d.ellipse([9, 11, 13, 15], fill=OUTLINE)
     return img
 
 
 def make_regulator_item() -> Image.Image:
     """Regulator -- a centrifugal governor: two weighted arms splayed off a central spindle. The
-    only Y-shaped silhouette in the set."""
+    only Y-shaped silhouette in the set. Arms are three pixels thick and the balls overlap them,
+    so the governor stays one piece at 24 px (it broke into seven, check 11)."""
     img = _icon()
     d = ImageDraw.Draw(img)
-    d.rectangle([14, 6, 17, 24], fill=IRON, outline=OUTLINE)
-    d.line([(15, 10), (6, 17)], fill=INGOT)
-    d.line([(16, 10), (25, 17)], fill=INGOT)
-    d.ellipse([2, 14, 10, 22], fill=INGOT, outline=OUTLINE)
-    d.ellipse([21, 14, 29, 22], fill=INGOT, outline=OUTLINE)
-    d.arc([3, 15, 9, 21], 180, 300, fill=INGOT_LIGHT)
-    d.rectangle([10, 24, 21, 28], fill=IRON_DARK, outline=OUTLINE)
+    d.rectangle([9, 23, 22, 28], fill=IRON_DARK, outline=OUTLINE)
+    d.polygon([(14, 8), (17, 8), (9, 17), (6, 15)], fill=INGOT_DARK, outline=OUTLINE)
+    d.polygon([(14, 8), (17, 8), (25, 15), (22, 17)], fill=INGOT_DARK, outline=OUTLINE)
+    d.rectangle([13, 4, 18, 24], fill=IRON, outline=OUTLINE)
+    d.rectangle([14, 5, 15, 23], fill=IRON_LIGHT)
+    d.rectangle([12, 2, 19, 6], fill=INGOT, outline=OUTLINE)
+    for x0 in (1, 21):
+        d.ellipse([x0, 13, x0 + 9, 22], fill=INGOT, outline=OUTLINE)
+        d.arc([x0 + 1, 14, x0 + 8, 21], 180, 300, fill=INGOT_LIGHT, width=2)
+    d.line([(11, 25), (20, 25)], fill=IRON)
     return img
 
 
@@ -1331,9 +1373,8 @@ def make_chronometer_core_item() -> Image.Image:
 
 
 def generate_belts() -> None:
-    save(make_belt_lane(), "belt_lane.png")
-    save(make_belt_arrow(), "belt_arrow.png")
-    save(make_belt_roller(), "belt_roller.png")
+    # belt_lane, belt_arrow and belt_roller were written here until the Phase 4 cleanup
+    # (art-pipeline-design.md 3.1): nothing drew them, so they and their lines are gone.
     # These three keep their original file names (and therefore their GUIDs and every existing
     # scene reference) -- they are a reskin, not new assets.
     save(make_scrap_item(), "item_scrap.png")
@@ -1572,18 +1613,12 @@ def generate_legacy_placeholders() -> None:
     save(make_floor_tile(WOOD_MID, WOOD_LIGHT, accent=BRASS), "floor_tile_accent.png")
 
     save(make_golem(COPPER, COPPER_DARK, TEAL_GLOW), "golem_generic_copper.png")
-    save(make_golem(BRASS, BRASS_DARK, TEAL_GLOW), "golem_generic_brass.png")
-    save(make_golem(STEEL, STEEL_DARK, TEAL_GLOW), "golem_generic_steel.png")
 
     save(make_clockwork_scavenger(COPPER, COPPER_DARK, TEAL_GLOW), "chassis_clockwork_scavenger.png")
     save(make_brass_presser(BRASS, BRASS_DARK, TEAL_GLOW), "chassis_brass_presser.png")
     save(make_aether_hauler(STEEL, STEEL_DARK, TEAL_GLOW), "chassis_aether_hauler.png")
     save(make_mainspring_overclocker(WOOD_MID, WOOD_DARK, TEAL_GLOW), "chassis_mainspring_overclocker.png")
     save(make_zeppelin_freight_loader(BRASS_DARK, WOOD_DARK, TEAL_GLOW), "chassis_zeppelin_freight_loader.png")
-
-    save(make_player(WOOD_MID, WOOD_DARK, BRASS), "player.png")
-
-    save(make_building_block(WOOD_DARK, WOOD_MID), "building_block.png")
 
     # NOTE: item_scrap/item_brass/item_aether used to be regenerated here from
     # make_item_icon. They now live in generate_belts() (the belt readability pass reskinned
@@ -1593,19 +1628,39 @@ def generate_legacy_placeholders() -> None:
     save(make_ghost_placeholder(), "ghost_placeholder.png")
 
 
+# What a bare run writes: the only sections that don't trip TOP_DOWN_OWNED. The others
+# (environment, interaction, routing) raise on purpose when named.
+DEFAULT_SECTIONS = ("belts", "goods")
+
+
+def sections(argv) -> list:
+    """The section names in argv: every argument that isn't a flag, nor the folder after
+    --out-root (which used to be read as a section, so verify_art.py's run wrote nothing;
+    art-pipeline-design.md §1.3). None named means DEFAULT_SECTIONS."""
+    names, skip = [], False
+    for arg in argv:
+        if skip:
+            skip = False
+        elif arg == "--out-root":
+            skip = True
+        elif not arg.startswith("--"):
+            names.append(arg)
+    return names or list(DEFAULT_SECTIONS)
+
+
 def main() -> None:
     import sys
 
-    only = [a for a in sys.argv[1:] if not a.startswith("--")]
-    if not only or "environment" in only:
+    only = sections(sys.argv[1:])
+    if "environment" in only:
         generate_environment()
-    if not only or "belts" in only:
+    if "belts" in only:
         generate_belts()
-    if not only or "goods" in only:
+    if "goods" in only:
         generate_goods()
-    if not only or "interaction" in only:
+    if "interaction" in only:
         generate_interaction()
-    if not only or "routing" in only:
+    if "routing" in only:
         generate_routing()
     if "--legacy" in sys.argv:
         generate_legacy_placeholders()

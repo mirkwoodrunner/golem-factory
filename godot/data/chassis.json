@@ -5,11 +5,11 @@
     "cost": [
       {
         "itemType": "IronPlate",
-        "quantity": 80
+        "quantity": 20
       },
       {
         "itemType": "Gear",
-        "quantity": 40
+        "quantity": 10
       },
       {
         "itemType": "Coke",
@@ -30,11 +30,11 @@
       },
       {
         "itemType": "IronPlate",
-        "quantity": 20
+        "quantity": 10
       },
       {
         "itemType": "Gear",
-        "quantity": 10
+        "quantity": 5
       }
     ],
     "allowsRepeat": 0,
@@ -73,6 +73,10 @@
       {
         "itemType": "Gear",
         "quantity": 12
+      },
+      {
+        "itemType": "IronPlate",
+        "quantity": 120
       }
     ],
     "allowsRepeat": 1,
@@ -102,6 +106,10 @@
       {
         "itemType": "Brass",
         "quantity": 40
+      },
+      {
+        "itemType": "IronPlate",
+        "quantity": 150
       }
     ],
     "allowsRepeat": 0,

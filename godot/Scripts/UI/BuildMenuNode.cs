@@ -81,8 +81,8 @@ namespace GolemFactory.Nodes
             _world = world.Sandbox;
             _build = world.Sandbox.Build;
 
-            _rowStyle = NineSlice("res://art/UI/Steampunk/steampunk_button_blank.png", 8, 8, 8, 8);
-            _rowActiveStyle = NineSlice("res://art/UI/Steampunk/steampunk_button_blank_iron.png", 8, 8, 8, 8);
+            _rowStyle = NineSlice("res://art/UI/Hud/hud_button.png", 8, 8, 8, 8);
+            _rowActiveStyle = NineSlice("res://art/UI/Hud/hud_button_active.png", 8, 8, 8, 8);
 
             int tileCount = world.Sandbox.Placeables.Count + 1;
             float width = tileCount * TileWidth + (tileCount - 1) * TileSpacing + 2 * BarPadding;
@@ -90,7 +90,7 @@ namespace GolemFactory.Nodes
 
             // Unity's spriteBorder is (left, bottom, right, top).
             var panel = new Panel { Name = "BuildMenu", Size = new Vector2(width, height) };
-            panel.AddThemeStyleboxOverride("panel", NineSlice("res://art/UI/Steampunk/steampunk_panel_iron_bolt.png", 12, 10, 12, 10));
+            panel.AddThemeStyleboxOverride("panel", NineSlice("res://art/UI/Hud/hud_panel_bolted.png", 12, 10, 12, 10));
             panel.SelfModulate = new Color(1f, 1f, 1f, 0.96f);
             AddChild(panel);
             Panel = panel;
@@ -201,6 +201,7 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            using var perf = NodePerf.Measure("node.menu");
             // Unity's BuildMenuPanel asked HudScreenPolicy every frame: no world HUD over a
             // full screen. HudScreenExclusivityTests' last case is the `management` scenario's.
             Panel.Visible = !ModalScreens.AnyOpen(GetTree());
@@ -270,8 +271,20 @@ namespace GolemFactory.Nodes
             return row;
         }
 
+        // What each row was last drawn as. Theme overrides notify and re-lay out the row even
+        // when the value is the same, and doing that for every row every frame cost ~3 ms (the
+        // perf scenario's node.menu, docs/performance-report-phase3.md); a row is restyled only
+        // when its state changes.
+        private readonly Dictionary<Button, (bool active, bool hovered)> _drawnAs = new Dictionary<Button, (bool, bool)>();
+
         private void Highlight(Button row, bool active)
         {
+            (bool, bool) look = (active, row == _hovered);
+            if (_drawnAs.TryGetValue(row, out (bool, bool) drawn) && drawn == look)
+            {
+                return;
+            }
+            _drawnAs[row] = look;
             StyleBoxTexture style = active ? _rowActiveStyle : _rowStyle;
             foreach (string state in new[] { "normal", "hover", "pressed", "hover_pressed", "focus" })
             {
@@ -298,7 +311,7 @@ namespace GolemFactory.Nodes
         private void BuildHoverCard()
         {
             _card = new Panel { Name = "HoverCard", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
-            _card.AddThemeStyleboxOverride("panel", NineSlice("res://art/UI/Steampunk/steampunk_panel_iron_bolt.png", 12, 10, 12, 10));
+            _card.AddThemeStyleboxOverride("panel", NineSlice("res://art/UI/Hud/hud_panel_bolted.png", 12, 10, 12, 10));
             _card.SelfModulate = new Color(1f, 1f, 1f, 0.97f);
             AddChild(_card);
 

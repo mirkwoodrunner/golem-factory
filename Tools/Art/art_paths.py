@@ -32,3 +32,22 @@ def art_root() -> str:
 def art_dir(*parts: str) -> str:
     """A folder beneath the art root, e.g. art_dir("UI", "TechTree")."""
     return os.path.join(art_root(), *parts)
+
+
+def writes_into_godot_art(folder: str) -> bool:
+    """Whether a folder is godot/art/ or beneath it. A generator skips its HAND_REPLACED names
+    only there, so --out-root still renders the originals for verify_art.py; the art tools
+    (art-pipeline-design.md §5) refuse to write there at all, except at the commit step."""
+    root = os.path.normcase(os.path.abspath(DEFAULT_ROOT))
+    here = os.path.normcase(os.path.abspath(folder))
+    return here == root or here.startswith(root + os.sep)
+
+
+def skip_hand_replaced(name: str, hand_replaced, folder: str) -> bool:
+    """True (and says so) when `name` is hand-replaced and `folder` is under godot/art/: the
+    guard of generate_topdown_environment.py's _save, shared by every generator that owns a file
+    a set replaces (art-pipeline-design.md §2, step 13)."""
+    if name in hand_replaced and writes_into_godot_art(folder):
+        print("skipped %s: godot/art/ holds the hand-replaced redraw" % name)
+        return True
+    return False

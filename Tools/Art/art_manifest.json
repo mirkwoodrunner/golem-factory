@@ -1,0 +1,6826 @@
+{
+  "UI/TechTree/tt_badge_anvil.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      16,
+      16
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_tech_tree_art.py",
+    "palette": "legacy",
+    "readers": [
+      "LedgerTab"
+    ]
+  },
+  "UI/TechTree/tt_badge_cog.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      16,
+      16
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_tech_tree_art.py",
+    "palette": "legacy",
+    "readers": [
+      "LedgerTab"
+    ]
+  },
+  "UI/TechTree/tt_badge_crucible.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      16,
+      16
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_tech_tree_art.py",
+    "palette": "legacy",
+    "readers": [
+      "LedgerTab"
+    ]
+  },
+  "UI/TechTree/tt_badge_hand.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      16,
+      16
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_tech_tree_art.py",
+    "palette": "legacy",
+    "readers": [
+      "LedgerTab"
+    ]
+  },
+  "UI/TechTree/tt_badge_tower.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      16,
+      16
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_tech_tree_art.py",
+    "palette": "legacy",
+    "readers": [
+      "LedgerTab"
+    ]
+  },
+  "UI/TechTree/tt_field.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_tech_tree_art.py",
+    "palette": "legacy",
+    "readers": [
+      "LedgerTab"
+    ]
+  },
+  "UI/TechTree/tt_node_available.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_tech_tree_art.py",
+    "palette": "legacy",
+    "readers": [
+      "LedgerTab"
+    ],
+    "nineSlice": 10
+  },
+  "UI/TechTree/tt_node_locked.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_tech_tree_art.py",
+    "palette": "legacy",
+    "readers": [
+      "LedgerTab"
+    ],
+    "nineSlice": 10
+  },
+  "UI/TechTree/tt_node_planned.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_tech_tree_art.py",
+    "palette": "legacy",
+    "readers": [
+      "LedgerTab"
+    ],
+    "nineSlice": 10
+  },
+  "UI/TechTree/tt_node_researched.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_tech_tree_art.py",
+    "palette": "legacy",
+    "readers": [
+      "LedgerTab"
+    ],
+    "nineSlice": 10
+  },
+  "UI/TechTree/tt_phase_plate.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_tech_tree_art.py",
+    "palette": "legacy",
+    "readers": [
+      "LedgerTab"
+    ],
+    "nineSlice": 10
+  },
+  "UI/Workbench/wb_card_face.png": {
+    "set": "S4",
+    "kind": "ui",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_workbench_ui_art.py",
+    "palette": "legacy",
+    "readers": [
+      "WorkbenchScreen"
+    ],
+    "nineSlice": 10
+  },
+  "UI/Workbench/wb_gauge_needle.png": {
+    "set": "S4",
+    "kind": "ui",
+    "size": [
+      16,
+      16
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_workbench_ui_art.py",
+    "palette": "legacy",
+    "readers": [
+      "WorkbenchScreen"
+    ]
+  },
+  "UI/Workbench/wb_lever_handle.png": {
+    "set": "S4",
+    "kind": "ui",
+    "size": [
+      34,
+      30
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_workbench_ui_art.py",
+    "palette": "legacy",
+    "readers": [
+      "WorkbenchScreen"
+    ]
+  },
+  "UI/Workbench/wb_lever_housing.png": {
+    "set": "S4",
+    "kind": "ui",
+    "size": [
+      238,
+      118
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_workbench_ui_art.py",
+    "palette": "legacy",
+    "readers": [
+      "WorkbenchScreen"
+    ]
+  },
+  "UI/Workbench/wb_lever_track.png": {
+    "set": "S4",
+    "kind": "ui",
+    "size": [
+      40,
+      120
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_workbench_ui_art.py",
+    "palette": "legacy",
+    "readers": [
+      "WorkbenchScreen"
+    ]
+  },
+  "UI/Workbench/wb_panel_blueprint.png": {
+    "set": "S4",
+    "kind": "ui",
+    "size": [
+      48,
+      48
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_workbench_ui_art.py",
+    "palette": "legacy",
+    "readers": [
+      "WorkbenchScreen"
+    ],
+    "nineSlice": 12
+  },
+  "UI/Workbench/wb_panel_iron.png": {
+    "set": "S4",
+    "kind": "ui",
+    "size": [
+      48,
+      48
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_workbench_ui_art.py",
+    "palette": "legacy",
+    "readers": [
+      "WorkbenchScreen"
+    ],
+    "nineSlice": 12
+  },
+  "UI/Workbench/wb_panel_mahogany.png": {
+    "set": "S4",
+    "kind": "ui",
+    "size": [
+      48,
+      48
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_workbench_ui_art.py",
+    "palette": "legacy",
+    "readers": [
+      "WorkbenchScreen"
+    ],
+    "nineSlice": 12
+  },
+  "UI/Workbench/wb_plate_brass.png": {
+    "set": "S4",
+    "kind": "ui",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_workbench_ui_art.py",
+    "palette": "legacy",
+    "readers": [
+      "WorkbenchScreen"
+    ],
+    "nineSlice": 10
+  },
+  "UI/Workbench/wb_slot_socket.png": {
+    "set": "S4",
+    "kind": "ui",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_workbench_ui_art.py",
+    "palette": "legacy",
+    "readers": [
+      "WorkbenchScreen"
+    ],
+    "nineSlice": 10
+  },
+  "UI/Workbench/wb_tape.png": {
+    "set": "S4",
+    "kind": "ui",
+    "size": [
+      32,
+      64
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_workbench_ui_art.py",
+    "palette": "legacy",
+    "readers": [
+      "WorkbenchScreen"
+    ],
+    "nineSlice": 0
+  },
+  "artificer_walk_down_0.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "down",
+    "frame": 0,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_walk_down_1.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "down",
+    "frame": 1,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_walk_down_2.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "down",
+    "frame": 2,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_walk_down_3.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "down",
+    "frame": 3,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_walk_left_0.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "left",
+    "frame": 0,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_walk_left_1.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "left",
+    "frame": 1,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_walk_left_2.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "left",
+    "frame": 2,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_walk_left_3.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "left",
+    "frame": 3,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_walk_right_0.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "right",
+    "frame": 0,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_walk_right_1.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "right",
+    "frame": 1,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_walk_right_2.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "right",
+    "frame": 2,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_walk_right_3.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "right",
+    "frame": 3,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_walk_up_0.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "up",
+    "frame": 0,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_walk_up_1.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "up",
+    "frame": 1,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_walk_up_2.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "up",
+    "frame": 2,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_walk_up_3.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "up",
+    "frame": 3,
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "belt_splitter.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer",
+      "BeltRun"
+    ]
+  },
+  "belt_tile.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer",
+      "BeltRun"
+    ]
+  },
+  "belt_tile_corner_left.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer",
+      "BeltRun"
+    ]
+  },
+  "belt_tile_corner_right.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer",
+      "BeltRun"
+    ]
+  },
+  "build_ghost_tile.png": {
+    "set": "S6",
+    "kind": "overlay",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "BuildCursorNode",
+      "GolemNode"
+    ],
+    "partialAlpha": true
+  },
+  "chassis_aether_hauler.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "data/chassis.json chassisSprite",
+      "GolemFrames.Resolve",
+      "GolemNode",
+      "WorkbenchScreen"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "base",
+    "facing": "south",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_brass_presser.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "data/chassis.json chassisSprite",
+      "GolemFrames.Resolve",
+      "GolemNode",
+      "WorkbenchScreen"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "base",
+    "facing": "south",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_base_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "base",
+    "facing": "east",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_base_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "base",
+    "facing": "north",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_base_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "base",
+    "facing": "west",
+    "source": "public/images/S1/brass_presser/",
+    "mirroredFrom": "chassis_brass_presser_base_east.png"
+  },
+  "chassis_brass_presser_carry_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "carry",
+    "facing": "east",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_carry_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "carry",
+    "facing": "north",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_carry_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "carry",
+    "facing": "south",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_carry_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "carry",
+    "facing": "west",
+    "source": "public/images/S1/brass_presser/",
+    "mirroredFrom": "chassis_brass_presser_carry_east.png"
+  },
+  "chassis_brass_presser_idle_1_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "idle_1",
+    "facing": "east",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_idle_1_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "idle_1",
+    "facing": "north",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_idle_1_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "idle_1",
+    "facing": "south",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_idle_1_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "idle_1",
+    "facing": "west",
+    "source": "public/images/S1/brass_presser/",
+    "mirroredFrom": "chassis_brass_presser_idle_1_east.png"
+  },
+  "chassis_brass_presser_stall_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "stall",
+    "facing": "east",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_stall_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "stall",
+    "facing": "north",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_stall_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "stall",
+    "facing": "south",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_stall_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "stall",
+    "facing": "west",
+    "source": "public/images/S1/brass_presser/",
+    "mirroredFrom": "chassis_brass_presser_stall_east.png"
+  },
+  "chassis_brass_presser_work_0_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "work_0",
+    "facing": "east",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_work_0_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "work_0",
+    "facing": "north",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_work_0_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "work_0",
+    "facing": "south",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_work_0_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "work_0",
+    "facing": "west",
+    "source": "public/images/S1/brass_presser/",
+    "mirroredFrom": "chassis_brass_presser_work_0_east.png"
+  },
+  "chassis_brass_presser_work_1_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "work_1",
+    "facing": "east",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_work_1_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "work_1",
+    "facing": "north",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_work_1_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "work_1",
+    "facing": "south",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_work_1_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "work_1",
+    "facing": "west",
+    "source": "public/images/S1/brass_presser/",
+    "mirroredFrom": "chassis_brass_presser_work_1_east.png"
+  },
+  "chassis_brass_presser_work_2_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "work_2",
+    "facing": "east",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_work_2_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "work_2",
+    "facing": "north",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_work_2_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "work_2",
+    "facing": "south",
+    "source": "public/images/S1/brass_presser/"
+  },
+  "chassis_brass_presser_work_2_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "aether",
+      "fire",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_brass_presser",
+    "state": "work_2",
+    "facing": "west",
+    "source": "public/images/S1/brass_presser/",
+    "mirroredFrom": "chassis_brass_presser_work_2_east.png"
+  },
+  "chassis_clockwork_scavenger.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "data/chassis.json chassisSprite",
+      "GolemFrames.Resolve",
+      "GolemNode",
+      "WorkbenchScreen"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "base",
+    "facing": "south",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_mainspring_overclocker.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "data/chassis.json chassisSprite",
+      "GolemFrames.Resolve",
+      "GolemNode",
+      "WorkbenchScreen"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "base",
+    "facing": "south",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_zeppelin_freight_loader.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "data/chassis.json chassisSprite",
+      "GolemFrames.Resolve",
+      "GolemNode",
+      "WorkbenchScreen"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "base",
+    "facing": "south",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "clock_tower_site.png": {
+    "set": "reference",
+    "kind": "standing",
+    "size": [
+      192,
+      640
+    ],
+    "pivot": "bottom-center",
+    "footRow": 639,
+    "owner": "hand-replaced",
+    "palette": "legacy",
+    "readers": [
+      "ClockTowerArt",
+      "BuildingsLayer"
+    ],
+    "footSlack": 2,
+    "footNote": "the hand-composited redraw's base sits 2 rows above the canvas bottom (measured 2026-10-23)"
+  },
+  "clock_tower_stage0.png": {
+    "set": "reference",
+    "kind": "standing",
+    "size": [
+      192,
+      640
+    ],
+    "pivot": "bottom-center",
+    "footRow": 639,
+    "owner": "hand-replaced",
+    "palette": "legacy",
+    "readers": [
+      "ClockTowerArt",
+      "BuildingsLayer"
+    ],
+    "footSlack": 2,
+    "footNote": "the hand-composited redraw's base sits 2 rows above the canvas bottom (measured 2026-10-23)"
+  },
+  "clock_tower_stage1.png": {
+    "set": "reference",
+    "kind": "standing",
+    "size": [
+      192,
+      640
+    ],
+    "pivot": "bottom-center",
+    "footRow": 639,
+    "owner": "hand-replaced",
+    "palette": "legacy",
+    "readers": [
+      "ClockTowerArt",
+      "BuildingsLayer"
+    ],
+    "footSlack": 2,
+    "footNote": "the hand-composited redraw's base sits 2 rows above the canvas bottom (measured 2026-10-23)"
+  },
+  "clock_tower_stage2.png": {
+    "set": "reference",
+    "kind": "standing",
+    "size": [
+      192,
+      640
+    ],
+    "pivot": "bottom-center",
+    "footRow": 639,
+    "owner": "hand-replaced",
+    "palette": "legacy",
+    "readers": [
+      "ClockTowerArt",
+      "BuildingsLayer"
+    ],
+    "footSlack": 2,
+    "footNote": "the hand-composited redraw's base sits 2 rows above the canvas bottom (measured 2026-10-23)"
+  },
+  "clock_tower_stage3.png": {
+    "set": "reference",
+    "kind": "standing",
+    "size": [
+      192,
+      640
+    ],
+    "pivot": "bottom-center",
+    "footRow": 639,
+    "owner": "hand-replaced",
+    "palette": "legacy",
+    "readers": [
+      "ClockTowerArt",
+      "BuildingsLayer"
+    ],
+    "footSlack": 2,
+    "footNote": "the hand-composited redraw's base sits 2 rows above the canvas bottom (measured 2026-10-23)"
+  },
+  "clock_tower_stage4.png": {
+    "set": "reference",
+    "kind": "standing",
+    "size": [
+      192,
+      640
+    ],
+    "pivot": "bottom-center",
+    "footRow": 639,
+    "owner": "hand-replaced",
+    "palette": "legacy",
+    "readers": [
+      "ClockTowerArt",
+      "BuildingsLayer"
+    ],
+    "footSlack": 2,
+    "footNote": "the hand-composited redraw's base sits 2 rows above the canvas bottom (measured 2026-10-23)"
+  },
+  "depot.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      62,
+      69
+    ],
+    "pivot": "bottom-center",
+    "footRow": 68,
+    "owner": "hand-replaced",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "DepotNode",
+      "BuildingsLayer"
+    ]
+  },
+  "facing_arrow.png": {
+    "set": "S6",
+    "kind": "overlay",
+    "size": [
+      28,
+      28
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "authored",
+    "palette": "legacy",
+    "readers": [
+      "GolemNode",
+      "BuildCursorNode",
+      "TutorialPanel"
+    ],
+    "partialAlpha": true
+  },
+  "floor_edge_sw.png": {
+    "set": "S2",
+    "kind": "edge",
+    "size": [
+      64,
+      24
+    ],
+    "pivot": [
+      0.5,
+      1.0
+    ],
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "SandboxLayout",
+      "SpritePivots",
+      "ShellNode"
+    ]
+  },
+  "floor_tile.png": {
+    "set": "S2",
+    "kind": "floor",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "FloorLayer"
+    ]
+  },
+  "floor_tile_accent.png": {
+    "set": "S2",
+    "kind": "floor",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "FloorLayer"
+    ]
+  },
+  "floor_tile_grate.png": {
+    "set": "S2",
+    "kind": "floor",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "FloorLayer"
+    ]
+  },
+  "floor_tile_wood_b.png": {
+    "set": "S2",
+    "kind": "floor",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "FloorLayer"
+    ]
+  },
+  "floor_tile_wood_c.png": {
+    "set": "S2",
+    "kind": "floor",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "FloorLayer"
+    ]
+  },
+  "floor_tile_wood_d.png": {
+    "set": "S2",
+    "kind": "floor",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "FloorLayer"
+    ]
+  },
+  "freight_mast.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      52,
+      118
+    ],
+    "pivot": "bottom-center",
+    "footRow": 117,
+    "owner": "hand-replaced",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer"
+    ]
+  },
+  "fx_steam_puff.png": {
+    "set": "S1",
+    "kind": "fx",
+    "size": [
+      24,
+      20
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "comfyui",
+    "palette": "legacy",
+    "readers": [
+      "GolemNode.PuffSprite",
+      "GolemWorkMotion.Puff"
+    ]
+  },
+  "ghost_placeholder.png": {
+    "set": "S3",
+    "kind": "overlay",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "authored",
+    "palette": "legacy",
+    "readers": [
+      "BuildingsLayer fallback",
+      "data/placeables.json fallbackItem"
+    ],
+    "partialAlpha": true
+  },
+  "golem_construction_station.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      78,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "hand-replaced",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "ConstructionStationNode",
+      "BuildingsLayer"
+    ]
+  },
+  "golem_generic_copper.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      92
+    ],
+    "pivot": "bottom-center",
+    "footRow": 91,
+    "owner": "authored",
+    "palette": "legacy",
+    "readers": [
+      "GolemFrames.FallbackSprite",
+      "GolemNode"
+    ]
+  },
+  "ground_shadow.png": {
+    "set": "S1",
+    "kind": "shadow",
+    "size": [
+      48,
+      36
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "SpritePivots",
+      "GolemNode",
+      "ShellNode"
+    ],
+    "partialAlpha": true
+  },
+  "hand_crank_bench.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      94,
+      82
+    ],
+    "pivot": "bottom-center",
+    "footRow": 81,
+    "owner": "authored",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer"
+    ]
+  },
+  "interaction_ring.png": {
+    "set": "S6",
+    "kind": "overlay",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "InteractionPromptNode"
+    ],
+    "partialAlpha": true
+  },
+  "item_aether.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_aether_cell.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_aether_conduit.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_brass.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_casing.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_chronometer_core.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_coal.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_coke.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_copper_ingot.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_copper_ore.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_copper_wire.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_frame_section.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_gear.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_glass.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_great_cog.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_iron_plate.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_lens.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_mainspring.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_mechanism.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_regulator.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_scrap.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor",
+      "BeltRun"
+    ]
+  },
+  "item_slag.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_zinc_ingot.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "item_zinc_ore.png": {
+    "set": "S5",
+    "kind": "good",
+    "size": [
+      32,
+      32
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_placeholder_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json itemSprites",
+      "ItemIcons.PathFor"
+    ]
+  },
+  "pneumatic_post.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      62,
+      92
+    ],
+    "pivot": "bottom-center",
+    "footRow": 91,
+    "owner": "hand-replaced",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer"
+    ]
+  },
+  "prop_barrel.png": {
+    "set": "S2",
+    "kind": "standing",
+    "size": [
+      40,
+      56
+    ],
+    "pivot": [
+      0.5,
+      0.017857142857142856
+    ],
+    "footRow": 55,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "SandboxLayout",
+      "SpritePivots",
+      "ShellNode"
+    ]
+  },
+  "prop_crate.png": {
+    "set": "S2",
+    "kind": "standing",
+    "size": [
+      56,
+      56
+    ],
+    "pivot": [
+      0.5,
+      0.017857142857142856
+    ],
+    "footRow": 55,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "SandboxLayout",
+      "SpritePivots",
+      "ShellNode"
+    ]
+  },
+  "prop_hearth.png": {
+    "set": "S2",
+    "kind": "standing",
+    "size": [
+      56,
+      56
+    ],
+    "pivot": [
+      0.5,
+      0.017857142857142856
+    ],
+    "footRow": 55,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "SandboxLayout",
+      "SpritePivots",
+      "ShellNode"
+    ]
+  },
+  "prop_shelf.png": {
+    "set": "S2",
+    "kind": "standing",
+    "size": [
+      52,
+      56
+    ],
+    "pivot": [
+      0.5,
+      0.017857142857142856
+    ],
+    "footRow": 55,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "SandboxLayout",
+      "SpritePivots",
+      "ShellNode"
+    ]
+  },
+  "prop_tool_rack.png": {
+    "set": "S2",
+    "kind": "standing",
+    "size": [
+      48,
+      56
+    ],
+    "pivot": [
+      0.5,
+      0.017857142857142856
+    ],
+    "footRow": 55,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "SandboxLayout",
+      "SpritePivots",
+      "ShellNode"
+    ],
+    "wallHung": "hangs on the north wall's face; its lowest row is 39, above its pivot on purpose"
+  },
+  "prop_workbench.png": {
+    "set": "S2",
+    "kind": "standing",
+    "size": [
+      56,
+      56
+    ],
+    "pivot": [
+      0.5,
+      0.017857142857142856
+    ],
+    "footRow": 55,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "SandboxLayout",
+      "SpritePivots",
+      "ShellNode"
+    ]
+  },
+  "scrap_recycler.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      62,
+      56
+    ],
+    "pivot": "bottom-center",
+    "footRow": 55,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer"
+    ]
+  },
+  "slag_heap.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      68,
+      44
+    ],
+    "pivot": "bottom-center",
+    "footRow": 43,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer"
+    ]
+  },
+  "stall_aether.png": {
+    "set": "reference",
+    "kind": "standing",
+    "size": [
+      96,
+      120
+    ],
+    "pivot": [
+      0.5,
+      0.025
+    ],
+    "footRow": 117,
+    "owner": "hand-replaced",
+    "palette": "legacy",
+    "readers": [
+      "data/sandbox.json",
+      "SandboxNode",
+      "SpritePivots"
+    ],
+    "shadowRows": [
+      114,
+      119
+    ]
+  },
+  "stall_coal.png": {
+    "set": "reference",
+    "kind": "standing",
+    "size": [
+      96,
+      120
+    ],
+    "pivot": [
+      0.5,
+      0.025
+    ],
+    "footRow": 117,
+    "owner": "hand-replaced",
+    "palette": "legacy",
+    "readers": [
+      "data/sandbox.json",
+      "SandboxNode",
+      "SpritePivots"
+    ],
+    "shadowRows": [
+      114,
+      119
+    ]
+  },
+  "stall_copper_ore.png": {
+    "set": "reference",
+    "kind": "standing",
+    "size": [
+      96,
+      120
+    ],
+    "pivot": [
+      0.5,
+      0.025
+    ],
+    "footRow": 117,
+    "owner": "hand-replaced",
+    "palette": "legacy",
+    "readers": [
+      "data/sandbox.json",
+      "SandboxNode",
+      "SpritePivots"
+    ],
+    "shadowRows": [
+      114,
+      119
+    ]
+  },
+  "stall_scrap.png": {
+    "set": "reference",
+    "kind": "standing",
+    "size": [
+      96,
+      120
+    ],
+    "pivot": [
+      0.5,
+      0.025
+    ],
+    "footRow": 117,
+    "owner": "hand-replaced",
+    "palette": "legacy",
+    "readers": [
+      "data/sandbox.json",
+      "SandboxNode",
+      "SpritePivots"
+    ],
+    "shadowRows": [
+      114,
+      119
+    ]
+  },
+  "stall_zinc_ore.png": {
+    "set": "reference",
+    "kind": "standing",
+    "size": [
+      96,
+      120
+    ],
+    "pivot": [
+      0.5,
+      0.025
+    ],
+    "footRow": 117,
+    "owner": "hand-replaced",
+    "palette": "legacy",
+    "readers": [
+      "data/sandbox.json",
+      "SandboxNode",
+      "SpritePivots"
+    ],
+    "shadowRows": [
+      114,
+      119
+    ]
+  },
+  "steam_boiler.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      71,
+      114
+    ],
+    "pivot": "bottom-center",
+    "footRow": 113,
+    "owner": "authored",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer"
+    ]
+  },
+  "steam_pipe.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer"
+    ]
+  },
+  "steam_pipe_corner.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer"
+    ]
+  },
+  "steam_pipe_cross.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer"
+    ]
+  },
+  "steam_pipe_end.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer"
+    ]
+  },
+  "steam_pipe_tee.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer"
+    ]
+  },
+  "steam_pipe_hot.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "BuildingsLayer"
+    ]
+  },
+  "steam_pipe_corner_hot.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "BuildingsLayer"
+    ]
+  },
+  "steam_pipe_cross_hot.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "BuildingsLayer"
+    ]
+  },
+  "steam_pipe_end_hot.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "BuildingsLayer"
+    ]
+  },
+  "steam_pipe_tee_hot.png": {
+    "set": "S3",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_building_art.py",
+    "palette": "legacy",
+    "readers": [
+      "BuildingsLayer"
+    ]
+  },
+  "street_cobble.png": {
+    "set": "S2",
+    "kind": "floor",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "FloorLayer"
+    ]
+  },
+  "street_cobble_b.png": {
+    "set": "S2",
+    "kind": "floor",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "FloorLayer"
+    ]
+  },
+  "street_edge.png": {
+    "set": "S2",
+    "kind": "edge",
+    "size": [
+      64,
+      24
+    ],
+    "pivot": [
+      0.5,
+      1.0
+    ],
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "SandboxLayout",
+      "SpritePivots",
+      "ShellNode"
+    ]
+  },
+  "wall_corner_post.png": {
+    "set": "S2",
+    "kind": "standing",
+    "size": [
+      50,
+      96
+    ],
+    "pivot": [
+      0.5,
+      0.010416666666666666
+    ],
+    "footRow": 95,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "SandboxLayout",
+      "SpritePivots",
+      "ShellNode"
+    ]
+  },
+  "wall_segment_nw.png": {
+    "set": "S2",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": [
+      0.5,
+      0.03125
+    ],
+    "footRow": 93,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "SandboxLayout",
+      "SpritePivots",
+      "ShellNode"
+    ],
+    "shadowRows": [
+      93,
+      95
+    ]
+  },
+  "wall_segment_nw_lamp.png": {
+    "set": "S2",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": [
+      0.5,
+      0.03125
+    ],
+    "footRow": 93,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "SandboxLayout",
+      "SpritePivots",
+      "ShellNode"
+    ],
+    "shadowRows": [
+      93,
+      95
+    ]
+  },
+  "wall_side_e.png": {
+    "set": "S2",
+    "kind": "edge",
+    "size": [
+      40,
+      64
+    ],
+    "pivot": [
+      0.075,
+      0.5
+    ],
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "SandboxLayout",
+      "SpritePivots",
+      "ShellNode"
+    ]
+  },
+  "wall_side_w.png": {
+    "set": "S2",
+    "kind": "edge",
+    "size": [
+      40,
+      64
+    ],
+    "pivot": [
+      0.925,
+      0.5
+    ],
+    "footRow": null,
+    "owner": "generated:generate_topdown_environment.py",
+    "palette": "legacy",
+    "readers": [
+      "SandboxLayout",
+      "SpritePivots",
+      "ShellNode"
+    ]
+  },
+  "chassis_clockwork_scavenger_idle_1_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "idle_1",
+    "facing": "south",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_work_0_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "work_0",
+    "facing": "south",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_work_1_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "work_1",
+    "facing": "south",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_work_2_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "work_2",
+    "facing": "south",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_stall_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "stall",
+    "facing": "south",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_carry_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "carry",
+    "facing": "south",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_base_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "base",
+    "facing": "north",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_idle_1_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "idle_1",
+    "facing": "north",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_work_0_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "work_0",
+    "facing": "north",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_work_1_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "work_1",
+    "facing": "north",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_work_2_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "work_2",
+    "facing": "north",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_stall_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "stall",
+    "facing": "north",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_carry_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "carry",
+    "facing": "north",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_base_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "base",
+    "facing": "east",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_idle_1_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "idle_1",
+    "facing": "east",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_work_0_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "work_0",
+    "facing": "east",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_work_1_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "work_1",
+    "facing": "east",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_work_2_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "work_2",
+    "facing": "east",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_stall_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "stall",
+    "facing": "east",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_carry_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "carry",
+    "facing": "east",
+    "source": "public/images/S1/clockwork_scavenger/"
+  },
+  "chassis_clockwork_scavenger_base_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "base",
+    "facing": "west",
+    "source": "public/images/S1/clockwork_scavenger/",
+    "mirroredFrom": "chassis_clockwork_scavenger_base_east.png"
+  },
+  "chassis_clockwork_scavenger_idle_1_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "idle_1",
+    "facing": "west",
+    "source": "public/images/S1/clockwork_scavenger/",
+    "mirroredFrom": "chassis_clockwork_scavenger_idle_1_east.png"
+  },
+  "chassis_clockwork_scavenger_work_0_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "work_0",
+    "facing": "west",
+    "source": "public/images/S1/clockwork_scavenger/",
+    "mirroredFrom": "chassis_clockwork_scavenger_work_0_east.png"
+  },
+  "chassis_clockwork_scavenger_work_1_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "work_1",
+    "facing": "west",
+    "source": "public/images/S1/clockwork_scavenger/",
+    "mirroredFrom": "chassis_clockwork_scavenger_work_1_east.png"
+  },
+  "chassis_clockwork_scavenger_work_2_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "work_2",
+    "facing": "west",
+    "source": "public/images/S1/clockwork_scavenger/",
+    "mirroredFrom": "chassis_clockwork_scavenger_work_2_east.png"
+  },
+  "chassis_clockwork_scavenger_stall_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "stall",
+    "facing": "west",
+    "source": "public/images/S1/clockwork_scavenger/",
+    "mirroredFrom": "chassis_clockwork_scavenger_stall_east.png"
+  },
+  "chassis_clockwork_scavenger_carry_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "copper",
+      "iron",
+      "brass",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_clockwork_scavenger",
+    "state": "carry",
+    "facing": "west",
+    "source": "public/images/S1/clockwork_scavenger/",
+    "mirroredFrom": "chassis_clockwork_scavenger_carry_east.png"
+  },
+  "chassis_mainspring_overclocker_idle_1_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "idle_1",
+    "facing": "south",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_work_0_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "work_0",
+    "facing": "south",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_work_1_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "work_1",
+    "facing": "south",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_work_2_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "work_2",
+    "facing": "south",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_stall_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "stall",
+    "facing": "south",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_carry_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "carry",
+    "facing": "south",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_base_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "base",
+    "facing": "north",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_idle_1_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "idle_1",
+    "facing": "north",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_work_0_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "work_0",
+    "facing": "north",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_work_1_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "work_1",
+    "facing": "north",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_work_2_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "work_2",
+    "facing": "north",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_stall_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "stall",
+    "facing": "north",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_carry_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "carry",
+    "facing": "north",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_base_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "base",
+    "facing": "east",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_idle_1_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "idle_1",
+    "facing": "east",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_work_0_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "work_0",
+    "facing": "east",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_work_1_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "work_1",
+    "facing": "east",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_work_2_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "work_2",
+    "facing": "east",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_stall_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "stall",
+    "facing": "east",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_carry_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "carry",
+    "facing": "east",
+    "source": "public/images/S1/mainspring_overclocker/"
+  },
+  "chassis_mainspring_overclocker_base_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "base",
+    "facing": "west",
+    "source": "public/images/S1/mainspring_overclocker/",
+    "mirroredFrom": "chassis_mainspring_overclocker_base_east.png"
+  },
+  "chassis_mainspring_overclocker_idle_1_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "idle_1",
+    "facing": "west",
+    "source": "public/images/S1/mainspring_overclocker/",
+    "mirroredFrom": "chassis_mainspring_overclocker_idle_1_east.png"
+  },
+  "chassis_mainspring_overclocker_work_0_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "work_0",
+    "facing": "west",
+    "source": "public/images/S1/mainspring_overclocker/",
+    "mirroredFrom": "chassis_mainspring_overclocker_work_0_east.png"
+  },
+  "chassis_mainspring_overclocker_work_1_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "work_1",
+    "facing": "west",
+    "source": "public/images/S1/mainspring_overclocker/",
+    "mirroredFrom": "chassis_mainspring_overclocker_work_1_east.png"
+  },
+  "chassis_mainspring_overclocker_work_2_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "work_2",
+    "facing": "west",
+    "source": "public/images/S1/mainspring_overclocker/",
+    "mirroredFrom": "chassis_mainspring_overclocker_work_2_east.png"
+  },
+  "chassis_mainspring_overclocker_stall_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "stall",
+    "facing": "west",
+    "source": "public/images/S1/mainspring_overclocker/",
+    "mirroredFrom": "chassis_mainspring_overclocker_stall_east.png"
+  },
+  "chassis_mainspring_overclocker_carry_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "brass",
+      "iron",
+      "copper",
+      "steam",
+      "aether",
+      "fire"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_mainspring_overclocker",
+    "state": "carry",
+    "facing": "west",
+    "source": "public/images/S1/mainspring_overclocker/",
+    "mirroredFrom": "chassis_mainspring_overclocker_carry_east.png"
+  },
+  "chassis_aether_hauler_idle_1_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "idle_1",
+    "facing": "south",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_0_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_0",
+    "facing": "south",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_1_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_1",
+    "facing": "south",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_2_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_2",
+    "facing": "south",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_stall_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "stall",
+    "facing": "south",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_carry_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "carry",
+    "facing": "south",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_base_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "base",
+    "facing": "north",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_idle_1_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "idle_1",
+    "facing": "north",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_0_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_0",
+    "facing": "north",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_1_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_1",
+    "facing": "north",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_2_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_2",
+    "facing": "north",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_stall_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "stall",
+    "facing": "north",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_carry_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "carry",
+    "facing": "north",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_base_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "base",
+    "facing": "east",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_idle_1_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "idle_1",
+    "facing": "east",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_0_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_0",
+    "facing": "east",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_1_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_1",
+    "facing": "east",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_work_2_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_2",
+    "facing": "east",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_stall_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "stall",
+    "facing": "east",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_carry_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "carry",
+    "facing": "east",
+    "source": "public/images/S1/aether_hauler/"
+  },
+  "chassis_aether_hauler_base_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "base",
+    "facing": "west",
+    "source": "public/images/S1/aether_hauler/",
+    "mirroredFrom": "chassis_aether_hauler_base_east.png"
+  },
+  "chassis_aether_hauler_idle_1_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "idle_1",
+    "facing": "west",
+    "source": "public/images/S1/aether_hauler/",
+    "mirroredFrom": "chassis_aether_hauler_idle_1_east.png"
+  },
+  "chassis_aether_hauler_work_0_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_0",
+    "facing": "west",
+    "source": "public/images/S1/aether_hauler/",
+    "mirroredFrom": "chassis_aether_hauler_work_0_east.png"
+  },
+  "chassis_aether_hauler_work_1_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_1",
+    "facing": "west",
+    "source": "public/images/S1/aether_hauler/",
+    "mirroredFrom": "chassis_aether_hauler_work_1_east.png"
+  },
+  "chassis_aether_hauler_work_2_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "work_2",
+    "facing": "west",
+    "source": "public/images/S1/aether_hauler/",
+    "mirroredFrom": "chassis_aether_hauler_work_2_east.png"
+  },
+  "chassis_aether_hauler_stall_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "stall",
+    "facing": "west",
+    "source": "public/images/S1/aether_hauler/",
+    "mirroredFrom": "chassis_aether_hauler_stall_east.png"
+  },
+  "chassis_aether_hauler_carry_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "bone",
+      "copper",
+      "iron",
+      "brass",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_aether_hauler",
+    "state": "carry",
+    "facing": "west",
+    "source": "public/images/S1/aether_hauler/",
+    "mirroredFrom": "chassis_aether_hauler_carry_east.png"
+  },
+  "chassis_zeppelin_freight_loader_idle_1_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "idle_1",
+    "facing": "south",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_0_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_0",
+    "facing": "south",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_1_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_1",
+    "facing": "south",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_2_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_2",
+    "facing": "south",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_stall_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "stall",
+    "facing": "south",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_carry_south.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "carry",
+    "facing": "south",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_base_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "base",
+    "facing": "north",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_idle_1_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "idle_1",
+    "facing": "north",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_0_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_0",
+    "facing": "north",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_1_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_1",
+    "facing": "north",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_2_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_2",
+    "facing": "north",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_stall_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "stall",
+    "facing": "north",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_carry_north.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "carry",
+    "facing": "north",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_base_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "base",
+    "facing": "east",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_idle_1_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "idle_1",
+    "facing": "east",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_0_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_0",
+    "facing": "east",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_1_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_1",
+    "facing": "east",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_work_2_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_2",
+    "facing": "east",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_stall_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "stall",
+    "facing": "east",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_carry_east.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "carry",
+    "facing": "east",
+    "source": "public/images/S1/zeppelin_freight_loader/"
+  },
+  "chassis_zeppelin_freight_loader_base_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "base",
+    "facing": "west",
+    "source": "public/images/S1/zeppelin_freight_loader/",
+    "mirroredFrom": "chassis_zeppelin_freight_loader_base_east.png"
+  },
+  "chassis_zeppelin_freight_loader_idle_1_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "idle_1",
+    "facing": "west",
+    "source": "public/images/S1/zeppelin_freight_loader/",
+    "mirroredFrom": "chassis_zeppelin_freight_loader_idle_1_east.png"
+  },
+  "chassis_zeppelin_freight_loader_work_0_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_0",
+    "facing": "west",
+    "source": "public/images/S1/zeppelin_freight_loader/",
+    "mirroredFrom": "chassis_zeppelin_freight_loader_work_0_east.png"
+  },
+  "chassis_zeppelin_freight_loader_work_1_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_1",
+    "facing": "west",
+    "source": "public/images/S1/zeppelin_freight_loader/",
+    "mirroredFrom": "chassis_zeppelin_freight_loader_work_1_east.png"
+  },
+  "chassis_zeppelin_freight_loader_work_2_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "work_2",
+    "facing": "west",
+    "source": "public/images/S1/zeppelin_freight_loader/",
+    "mirroredFrom": "chassis_zeppelin_freight_loader_work_2_east.png"
+  },
+  "chassis_zeppelin_freight_loader_stall_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "stall",
+    "facing": "west",
+    "source": "public/images/S1/zeppelin_freight_loader/",
+    "mirroredFrom": "chassis_zeppelin_freight_loader_stall_east.png"
+  },
+  "chassis_zeppelin_freight_loader_carry_west.png": {
+    "set": "S1",
+    "kind": "standing",
+    "size": [
+      64,
+      96
+    ],
+    "pivot": "bottom-center",
+    "footRow": 95,
+    "owner": "comfyui",
+    "palette": [
+      "outline",
+      "iron",
+      "brass",
+      "copper",
+      "bone",
+      "mahogany",
+      "aether",
+      "steam"
+    ],
+    "readers": [
+      "GolemFrames.FileName",
+      "GolemFrames.Resolve",
+      "GolemNode"
+    ],
+    "chassis": "chassis_zeppelin_freight_loader",
+    "state": "carry",
+    "facing": "west",
+    "source": "public/images/S1/zeppelin_freight_loader/",
+    "mirroredFrom": "chassis_zeppelin_freight_loader_carry_east.png"
+  },
+  "artificer_stand_down.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "down",
+    "frame": "stand",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_stand_left.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "left",
+    "frame": "stand",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_stand_right.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "right",
+    "frame": "stand",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_stand_up.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "up",
+    "frame": "stand",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_down_0.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "down",
+    "frame": "crank_0",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_down_1.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "down",
+    "frame": "crank_1",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_down_2.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "down",
+    "frame": "crank_2",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_down_3.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "down",
+    "frame": "crank_3",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_left_0.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "left",
+    "frame": "crank_0",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_left_1.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "left",
+    "frame": "crank_1",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_left_2.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "left",
+    "frame": "crank_2",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_left_3.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "left",
+    "frame": "crank_3",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_right_0.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "right",
+    "frame": "crank_0",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_right_1.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "right",
+    "frame": "crank_1",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_right_2.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "right",
+    "frame": "crank_2",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_right_3.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "right",
+    "frame": "crank_3",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_up_0.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "up",
+    "frame": "crank_0",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_up_1.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "up",
+    "frame": "crank_1",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_up_2.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "up",
+    "frame": "crank_2",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "artificer_crank_up_3.png": {
+    "set": "S1b",
+    "kind": "standing",
+    "size": [
+      64,
+      93
+    ],
+    "pivot": "bottom-center",
+    "footRow": 92,
+    "owner": "retrodiffusion",
+    "palette": "legacy",
+    "readers": [
+      "PlayerNode",
+      "ArtificerWalkAnimation"
+    ],
+    "direction": "up",
+    "frame": "crank_3",
+    "lightNote": "the approved one-colour outline (outline.py, decision 16) has no lit side, so the score is 0 by construction (recorded 2026-10-31)"
+  },
+  "hand_crank_bench_turn_0.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      94,
+      82
+    ],
+    "pivot": "bottom-center",
+    "footRow": 81,
+    "owner": "authored",
+    "palette": "legacy",
+    "readers": [
+      "HandCrankBench.SpriteFor",
+      "BuildingsLayer",
+      "SandboxNode"
+    ]
+  },
+  "hand_crank_bench_turn_1.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      94,
+      82
+    ],
+    "pivot": "bottom-center",
+    "footRow": 81,
+    "owner": "authored",
+    "palette": "legacy",
+    "readers": [
+      "HandCrankBench.SpriteFor",
+      "BuildingsLayer",
+      "SandboxNode"
+    ]
+  },
+  "hand_crank_bench_turn_2.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      94,
+      82
+    ],
+    "pivot": "bottom-center",
+    "footRow": 81,
+    "owner": "authored",
+    "palette": "legacy",
+    "readers": [
+      "HandCrankBench.SpriteFor",
+      "BuildingsLayer",
+      "SandboxNode"
+    ]
+  },
+  "hand_crank_bench_turn_3.png": {
+    "set": "S3",
+    "kind": "standing",
+    "size": [
+      94,
+      82
+    ],
+    "pivot": "bottom-center",
+    "footRow": 81,
+    "owner": "authored",
+    "palette": "legacy",
+    "readers": [
+      "HandCrankBench.SpriteFor",
+      "BuildingsLayer",
+      "SandboxNode"
+    ]
+  },
+  "UI/Hud/hud_panel_bolted.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_hud_art.py",
+    "palette": "legacy",
+    "readers": [
+      "HudOverlay",
+      "BuildMenuNode",
+      "TutorialPanel",
+      "PlaytestNode"
+    ],
+    "nineSlice": [
+      12,
+      10,
+      12,
+      10
+    ]
+  },
+  "UI/Hud/hud_panel_plain.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      64,
+      64
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_hud_art.py",
+    "palette": "legacy",
+    "readers": [
+      "ManagementScreen",
+      "ConstructionPanelNode",
+      "InventoryPanel"
+    ],
+    "nineSlice": 8
+  },
+  "UI/Hud/hud_button.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      34,
+      34
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_hud_art.py",
+    "palette": "legacy",
+    "readers": [
+      "BuildMenuNode",
+      "AssemblyLineTab",
+      "ConstructionPanelNode",
+      "ManagementScreen",
+      "CrateScreen",
+      "WorkbenchScreen"
+    ],
+    "nineSlice": 8
+  },
+  "UI/Hud/hud_button_active.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      34,
+      34
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_hud_art.py",
+    "palette": "legacy",
+    "readers": [
+      "BuildMenuNode",
+      "WorkbenchScreen"
+    ],
+    "nineSlice": 8
+  },
+  "UI/Hud/hud_button_accept.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      34,
+      34
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_hud_art.py",
+    "palette": "legacy",
+    "readers": [
+      "ManagementScreen"
+    ],
+    "nineSlice": 8
+  },
+  "UI/Hud/hud_button_close.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      34,
+      34
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_hud_art.py",
+    "palette": "legacy",
+    "readers": [
+      "ManagementScreen",
+      "InventoryPanel",
+      "WorkbenchScreen"
+    ],
+    "nineSlice": 8
+  },
+  "UI/Hud/hud_gear.png": {
+    "set": "S6",
+    "kind": "ui",
+    "size": [
+      58,
+      59
+    ],
+    "pivot": "ui",
+    "footRow": null,
+    "owner": "generated:generate_hud_art.py",
+    "palette": "legacy",
+    "readers": [
+      "WorkbenchScreen"
+    ]
+  }
+}

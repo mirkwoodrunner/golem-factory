@@ -56,6 +56,15 @@ namespace GolemFactory.Nodes
         private const float VaultHeadingHeight = 26f;
         private const float LeverTravel = 74f;
 
+        // The next-drag hint (docs/onboarding-feedback-design.md §2.4): a pulsing brass frame
+        // around controls that already exist, never a card placed for the player.
+        private static readonly Color HintBrass = new Color(1f, 0.8f, 0.416f);           // #FFCC6A
+        private static readonly Color HintDragOut = new Color(0.753f, 0.376f, 0.227f);   // #C0603A
+        private const int HintBorder = 3;
+        private const float HintGrow = 4f;
+        private const int HintGlow = 8;
+        private const float HintGlowAlpha = 0.55f;
+
         private const string Ui = "res://art/UI/";
 
         private WorldNode _world;
@@ -78,6 +87,11 @@ namespace GolemFactory.Nodes
         private Button _patent;
         private Label _status;
         private int _renderedVersion = -1;
+        private ScrollContainer _vaultScroll;
+        private Panel _hintCardOutline;
+        private Panel _hintTargetOutline;
+        private WorkbenchHintTarget _shownHint;
+        private float _hintClock;
 
         // Drag bookkeeping: cards are rebuilt, so a drag carries an id into this table.
         private readonly Dictionary<int, WorkbenchCardRef> _cards = new Dictionary<int, WorkbenchCardRef>();
@@ -109,6 +123,15 @@ namespace GolemFactory.Nodes
         public Control RootControl => _root;
         public bool LeverAnimating => _leverElapsed >= 0f;
         public bool LeverRefusing => _leverRefusing && _leverElapsed >= 0f;
+
+        /// <summary>What the hint outlines this frame (the session's answer, as drawn).</summary>
+        public WorkbenchHintTarget ShownHint => _shownHint;
+
+        /// <summary>The frame around the hinted vault card; hidden when there is none, or it is in hand.</summary>
+        public Control HintCardOutline => _hintCardOutline;
+
+        /// <summary>The frame around the socket, picker or dial button, or lever the hint points at.</summary>
+        public Control HintTargetOutline => _hintTargetOutline;
 
         public override void _EnterTree() => AddToGroup(ModalScreens.GroupName);
 
@@ -142,6 +165,7 @@ namespace GolemFactory.Nodes
         {
             _session.Close();
             _root.Visible = false;
+            _shownHint = WorkbenchHintTarget.None;
         }
 
         public void RetargetGolem(GolemEntity golem)
@@ -191,6 +215,7 @@ namespace GolemFactory.Nodes
             _lever.Disabled = !_session.CanEngage;
             _lever.Modulate = _session.CanEngage ? Colors.White : new Color(1f, 1f, 1f, WorkbenchInteractionColors.DisabledAlpha);
             ApplyHighlights();
+            DrawHint(dt);
             AnimateLever(dt);
             AnimateFlash(dt);
         }
@@ -219,6 +244,101 @@ namespace GolemFactory.Nodes
             }
             _dropTaken = true;
             _session.HandleDrop(card, zone);
+        }
+
+        // --- The next-drag hint ---------------------------------------------------------------
+
+        /// <summary>
+        /// Draws <see cref="WorkbenchSession.Hint"/> and decides nothing: a frame on the hinted
+        /// vault card and one on where it goes (or the picker, the dial, the lever). A drag's
+        /// socket tints still show inside it.
+        /// </summary>
+        private void DrawHint(float dt)
+        {
+            WorkbenchHintTarget hint = _session.Hint;
+            Control vaultCard = HintedVaultCard(hint);
+            if (!hint.Equals(_shownHint))
+            {
+                _shownHint = hint;
+                _hintClock = 0f;
+                // The vault scrolls the card into view once, when the hint moves to it, never
+                // while the player is scrolling.
+                if (vaultCard != null)
+                {
+                    _vaultScroll.EnsureControlVisible(vaultCard);
+                }
+            }
+            _hintClock += dt;
+            float alpha = WorkbenchHint.PulseAlpha(_hintClock);
+
+            bool inHand = vaultCard != null && _draggingId >= 0 && _cards.TryGetValue(_draggingId, out WorkbenchCardRef held)
+                && held.IsVaultOrigin && CardName(held) == hint.Card;
+            Rect2 cardRect = vaultCard != null
+                ? vaultCard.GetGlobalRect().Grow(HintGrow).Intersection(_vaultScroll.GetGlobalRect().Grow(HintGrow))
+                : default;
+            PlaceOutline(_hintCardOutline, vaultCard != null && !inHand && cardRect.Size.X > 0f && cardRect.Size.Y > 0f,
+                cardRect, HintBrass, alpha);
+
+            Control target = HintedTarget(hint);
+            PlaceOutline(_hintTargetOutline, target != null && target.IsVisibleInTree(),
+                target != null ? target.GetGlobalRect().Grow(HintGrow) : default,
+                hint.Kind == WorkbenchHintKind.DragOut ? HintDragOut : HintBrass, alpha);
+        }
+
+        private static void PlaceOutline(Panel outline, bool show, Rect2 rect, Color color, float alpha)
+        {
+            outline.Visible = show;
+            if (!show)
+            {
+                return;
+            }
+            outline.GlobalPosition = rect.Position;
+            outline.Size = rect.Size;
+            var box = (StyleBoxFlat)outline.GetThemeStylebox("panel");
+            box.BorderColor = new Color(color, alpha);
+            // A soft glow outside the border: the guide calls them "the glowing card and socket",
+            // and a bare 3 px line was lost against the brass vault at the pulse's low point.
+            box.ShadowColor = new Color(color, alpha * HintGlowAlpha);
+        }
+
+        private static string CardName(WorkbenchCardRef card) => card.LogicCore?.name ?? card.Appendage?.name;
+
+        private Control HintedVaultCard(WorkbenchHintTarget hint) =>
+            hint.Kind != WorkbenchHintKind.VaultCard || hint.Card == null ? null
+                : _vault.GetChildren().OfType<WorkbenchCardControl>()
+                    .FirstOrDefault(c => !c.IsQueuedForDeletion() && CardName(c.CardRef) == hint.Card);
+
+        private Control HintedTarget(WorkbenchHintTarget hint)
+        {
+            WorkbenchDropRow row = hint.Zone.Kind == DropZoneKind.LogicCore ? _triggerRow
+                : hint.Zone.AppendageIndex >= 0 && hint.Zone.AppendageIndex < _stepRows.Count ? _stepRows[hint.Zone.AppendageIndex] : null;
+            switch (hint.Kind)
+            {
+                case WorkbenchHintKind.VaultCard:
+                case WorkbenchHintKind.DragOut:
+                    return row?.Socket;
+                case WorkbenchHintKind.GoodPicker:
+                    return row?.Card?.FindChild(hint.Delta < 0 ? "PreviousGood" : "NextGood", true, false) as Control ?? row?.Socket;
+                case WorkbenchHintKind.QuantityDial:
+                    return row?.Card?.FindChild(hint.Delta < 0 ? "Decrease" : "Increase", true, false) as Control ?? row?.Socket;
+                case WorkbenchHintKind.Lever:
+                    return _lever;
+                default:
+                    return null;
+            }
+        }
+
+        private static Panel HintOutline(string name)
+        {
+            var outline = new Panel { Name = name, MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
+            outline.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+            {
+                DrawCenter = false,
+                BorderWidthLeft = HintBorder, BorderWidthTop = HintBorder, BorderWidthRight = HintBorder, BorderWidthBottom = HintBorder,
+                BorderColor = HintBrass,
+                ShadowSize = HintGlow,
+            });
+            return outline;
         }
 
         private void ApplyHighlights()
@@ -366,7 +486,7 @@ namespace GolemFactory.Nodes
             int quantity = _session.DraftQuantityAt(slot);
             row.AddChild(StepperButton("Decrease", "-", 0f, 0.22f, slot, -1, quantity > WorkbenchQuantityPolicy.MinQuantity));
             row.AddChild(Ugui.Place(Ugui.Text("Value", WorkbenchQuantityPolicy.Describe(card, quantity), 11, CardInk, align: 2), 0.24f, 0f, 0.76f, 1f));
-            row.AddChild(StepperButton("Increase", "+", 0.78f, 1f, slot, +1, quantity < WorkbenchQuantityPolicy.MaxQuantity));
+            row.AddChild(StepperButton("Increase", "+", 0.78f, 1f, slot, +1, quantity < _session.DraftQuantityMax(slot)));
             return row;
         }
 
@@ -399,7 +519,7 @@ namespace GolemFactory.Nodes
             _root.AddChild(header);
             var gear = Ugui.Place(new TextureRect
             {
-                Name = "Gear", Texture = GD.Load<Texture2D>(Ui + "Steampunk/gear_large.png"),
+                Name = "Gear", Texture = GD.Load<Texture2D>(Ui + "Hud/hud_gear.png"),
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                 Modulate = new Color(0.42f, 0.30f, 0.14f), MouseFilter = Control.MouseFilterEnum.Ignore,
             }, 0f, 0.5f, 0f, 0.5f, 12f, 0f, 34f, 34f, 0f, 0.5f);
@@ -407,7 +527,7 @@ namespace GolemFactory.Nodes
             header.AddChild(Ugui.Place(Ugui.Text("Title", "THE WORKBENCH", 24, PlateInk, bold: true), 0.045f, 0f, 0.46f, 1f));
             _target = Ugui.Place(Ugui.Text("TargetLabel", "TARGET  ·  none", 15, new Color(0.28f, 0.20f, 0.10f), align: 4), 0.46f, 0f, 0.86f, 1f);
             header.AddChild(_target);
-            Button close = _close = Ugui.Place(TextureButton("CloseButton", Ui + "Steampunk/steampunk_button_exit.png", 8, new Color(0.72f, 0.30f, 0.24f)),
+            Button close = _close = Ugui.Place(TextureButton("CloseButton", Ui + "Hud/hud_button_close.png", 8, new Color(0.72f, 0.30f, 0.24f)),
                 1f, 0.5f, 1f, 0.5f, -8f, 0f, 88f, 34f, 1f, 0.5f);
             close.AddChild(Ugui.Fill(Ugui.Text("Label", "CLOSE", 14, new Color(0.98f, 0.92f, 0.82f), align: 2)));
             close.Pressed += Close;
@@ -418,6 +538,12 @@ namespace GolemFactory.Nodes
             BuildRack();
             BuildVault();
             BuildBottomBar();
+
+            // Last, so the frames sit over everything they outline.
+            _hintCardOutline = HintOutline("HintCardOutline");
+            _hintTargetOutline = HintOutline("HintTargetOutline");
+            _root.AddChild(_hintCardOutline);
+            _root.AddChild(_hintTargetOutline);
         }
 
         private void BuildViewport()
@@ -493,7 +619,7 @@ namespace GolemFactory.Nodes
         {
             foreach (ChassisDefinition chassis in _session.RackChassis)
             {
-                Button button = TextureButton(chassis.name, Ui + "Steampunk/steampunk_button_blank.png", 8, UnselectedChassis);
+                Button button = TextureButton(chassis.name, Ui + "Hud/hud_button.png", 8, UnselectedChassis);
                 button.CustomMinimumSize = new Vector2(0f, ChassisButtonHeight);
                 button.AddChild(Ugui.Place(Ugui.Text("Name", WorkbenchDiagnostics.Humanize(chassis.name), 15, ChassisInk), 0.05f, 0.44f, 0.97f, 0.96f));
                 button.AddChild(Ugui.Place(Ugui.Text("Subtitle", WorkbenchSession.ChassisSubtitle(chassis), 11, ChassisSubInk), 0.05f, 0.06f, 0.97f, 0.46f));
@@ -513,7 +639,7 @@ namespace GolemFactory.Nodes
             vault.AddChild(TitlePlate("CARD VAULT", 0.035f, 0.965f, 0.04f));
             ColorRect viewport = Ugui.Place(Ugui.Rect("VaultViewport", new Color(0.10f, 0.07f, 0.05f, 0.85f)), 0.035f, 0.02f, 0.965f, 0.902f);
             vault.AddChild(viewport);
-            var scroll = Ugui.Fill(new ScrollContainer { Name = "Scroll", HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled });
+            var scroll = _vaultScroll = Ugui.Fill(new ScrollContainer { Name = "Scroll", HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled });
             viewport.AddChild(scroll);
             var margin = new MarginContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             foreach (string side in new[] { "margin_left", "margin_right", "margin_top", "margin_bottom" })
@@ -545,15 +671,16 @@ namespace GolemFactory.Nodes
             _tape.OffsetLeft = 36f;
             tape.AddChild(_tape);
 
-            _lever = Ugui.Place(TextureButton("EngageLever", Ui + "Workbench/wb_panel_iron.png", 12, new Color(0.80f, 0.76f, 0.70f)),
+            // The housing is drawn at the button's size (wb_lever_housing, 238x118), so it is 1:1.
+            _lever = Ugui.Place(TextureButton("EngageLever", Ui + "Workbench/wb_lever_housing.png", 12, Colors.White),
                 0.672f, 0.5f, 0.672f, 0.5f, 0f, 0f, 238f, 118f, 0f, 0.5f);
             _lever.AddChild(Ugui.Place(new TextureRect
             {
                 Name = "Track", Texture = GD.Load<Texture2D>(Ui + "Workbench/wb_lever_track.png"),
                 ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, MouseFilter = Control.MouseFilterEnum.Ignore,
             }, 0f, 0.5f, 0f, 0.5f, 7f, 0f, 40f, 118f, 0f, 0.5f));
-            _lever.AddChild(Ugui.Place(Ugui.Text("Label", "ENGAGE", 20, new Color(0.99f, 0.88f, 0.62f), align: 2, bold: true), 0.31f, 0.46f, 0.97f, 0.93f));
-            _lever.AddChild(Ugui.Place(Ugui.Text("Label2", "GEARS", 20, new Color(0.99f, 0.88f, 0.62f), align: 2, bold: true), 0.31f, 0.21f, 0.97f, 0.68f));
+            _lever.AddChild(Ugui.Place(Ugui.Text("Label", "ENGAGE", 20, new Color(0.99f, 0.88f, 0.62f), align: 2, bold: true), 0.295f, 0.386f, 0.955f, 0.856f));
+            _lever.AddChild(Ugui.Place(Ugui.Text("Label2", "GEARS", 20, new Color(0.99f, 0.88f, 0.62f), align: 2, bold: true), 0.295f, 0.136f, 0.955f, 0.606f));
             _handle = Ugui.Place(new TextureRect
             {
                 Name = "Handle", Texture = GD.Load<Texture2D>(Ui + "Workbench/wb_lever_handle.png"),
@@ -564,9 +691,9 @@ namespace GolemFactory.Nodes
             _lever.Pressed += () => _session.Engage();
             bar.AddChild(_lever);
 
-            _patent = Ugui.Place(TextureButton("PatentButton", Ui + "Steampunk/steampunk_button_blank_iron.png", 8, new Color(0.82f, 0.72f, 0.52f)),
+            _patent = Ugui.Place(TextureButton("PatentButton", Ui + "Hud/hud_button_active.png", 8, new Color(0.82f, 0.72f, 0.52f)),
                 0.865f, 0.5f, 0.865f, 0.5f, 0f, 0f, 148f, 68f, 0f, 0.5f);
-            _patent.AddChild(Ugui.Place(Ugui.Text("Label", "PATENT", 17, PlateInk, align: 2, bold: true), 0f, 0.38f, 1f, 0.92f));
+            _patent.AddChild(Ugui.Place(Ugui.Text("Label", "PATENT", 17, PlateInk, align: 2, bold: true), 0f, 0f, 1f, 1f));
             _patent.Pressed += () => _session.Patent();
             bar.AddChild(_patent);
 
@@ -707,7 +834,8 @@ namespace GolemFactory.Nodes
             _id = id;
             _base = baseColor;
             MouseFilter = MouseFilterEnum.Stop;
-            AddThemeStyleboxOverride("panel", Ugui.NineSlice("res://art/UI/Workbench/wb_card_face.png", 10));
+            // Tiled, so the punched holes repeat down the card rather than stretch.
+            AddThemeStyleboxOverride("panel", Ugui.NineSlice("res://art/UI/Workbench/wb_card_face.png", 10, tiled: true));
             MouseEntered += () => { _hovered = true; Tint(); };
             MouseExited += () => { _hovered = false; Tint(); };
         }
@@ -723,11 +851,21 @@ namespace GolemFactory.Nodes
             new Compat.Color(_base.R, _base.G, _base.B, 1f),
             _hovered ? WorkbenchInteractionState.Hovered : WorkbenchInteractionState.Normal));
 
+        /// <summary>
+        /// A card in a socket passes a drop on to its socket, so a card dropped on a filled socket
+        /// replaces it, as WorkbenchSession.HandleDrop always did; the card used to swallow the drop.
+        /// </summary>
+        private WorkbenchDropRow Row => GetParent()?.GetParent() as WorkbenchDropRow;
+
+        public override bool _CanDropData(Vector2 atPosition, Variant data) => Row != null && data.VariantType == Variant.Type.Int;
+
+        public override void _DropData(Vector2 atPosition, Variant data) => Row?._DropData(atPosition, data);
+
         public override Variant _GetDragData(Vector2 atPosition)
         {
             // The preview is a lifted copy of this face; the original stays behind as the ghost.
             var preview = new Panel { Size = Size, SelfModulate = _base, Scale = Vector2.One * WorkbenchDragVisuals.LiftScale };
-            preview.AddThemeStyleboxOverride("panel", Ugui.NineSlice("res://art/UI/Workbench/wb_card_face.png", 10));
+            preview.AddThemeStyleboxOverride("panel", Ugui.NineSlice("res://art/UI/Workbench/wb_card_face.png", 10, tiled: true));
             preview.AddChild(_screen.CardFace(_card, withStepper: false));
             preview.Position = -atPosition;
             var holder = new Control();

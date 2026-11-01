@@ -52,9 +52,11 @@ namespace GolemFactory.Nodes
 
             if (setup.starterBench != null)
             {
-                var node = new Node2D { Name = "StarterHandCrankBench", Position = GridConversions.CellToWorld(SandboxSetup.CellOf(setup.starterBench)) };
-                node.AddChild(SpritePivots.Make("hand_crank_bench"));
-                AddChild(node);
+                AddChild(new StarterBenchView(_world.Sandbox.StarterBench)
+                {
+                    Name = "StarterHandCrankBench",
+                    Position = GridConversions.CellToWorld(SandboxSetup.CellOf(setup.starterBench)),
+                });
             }
 
             // Every golem any station builds -- the starter one, or one the player placed --
@@ -71,5 +73,45 @@ namespace GolemFactory.Nodes
         }
 
         private void OnGolemSpawned(GolemEntity golem) => GetParent().AddChild(GolemNode.Host(golem));
+    }
+
+    /// <summary>The starter Hand-Crank Bench, drawn: its wheel turns while it makes progress.</summary>
+    public partial class StarterBenchView : Node2D
+    {
+        private const string BaseSprite = "hand_crank_bench";
+
+        private readonly HandCrankBench _bench;
+        private readonly Dictionary<string, Texture2D> _textures = new Dictionary<string, Texture2D>();
+        private Sprite2D _sprite;
+        private string _shown;
+
+        /// <summary>The picture showing: the bench, or one of its turning frames.</summary>
+        public string Shown => _shown;
+
+        public StarterBenchView() { } // Godot needs a parameterless constructor for every node type.
+
+        public StarterBenchView(HandCrankBench bench) => _bench = bench;
+
+        public override void _Ready()
+        {
+            _sprite = SpritePivots.Make(BaseSprite);
+            _shown = BaseSprite;
+            AddChild(_sprite);
+        }
+
+        public override void _Process(double delta)
+        {
+            string name = _bench?.SpriteFor(BaseSprite) ?? BaseSprite;
+            if (name == _shown)
+            {
+                return;
+            }
+            _shown = name;
+            if (!_textures.TryGetValue(name, out Texture2D texture))
+            {
+                _textures[name] = texture = GD.Load<Texture2D>("res://art/" + name + ".png");
+            }
+            _sprite.Texture = texture; // every turning frame shares the bench's canvas and pivot
+        }
     }
 }

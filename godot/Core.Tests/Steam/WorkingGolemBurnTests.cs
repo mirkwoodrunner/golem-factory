@@ -45,10 +45,17 @@ namespace GolemFactory.Tests.Steam
 
         private static void RunOneMinute(SandboxWorld world)
         {
-            // 60 s at 10 ticks a second, in frames.
+            // 60 s at 10 ticks a second, in frames. The player empties the depot's crate every
+            // 20 s, as they would: a Scavenger fills a 50-crate in under a minute, and a full
+            // crate stalls it (crates-design §0.3), which would end its work and its burn early.
+            ICrate crate = world.Build.Buildings.Select(b => b.GetPart<ICrate>()).Single(c => c != null);
             for (int frame = 0; frame < 600; frame++)
             {
                 world.Advance(0.1f);
+                if (frame % 200 == 199)
+                {
+                    CrateTransfer.Collect(crate, world.Wallet.Pack);
+                }
             }
         }
 

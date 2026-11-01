@@ -117,13 +117,10 @@ def _plaque_base(face, frame, frame_light, frame_dark):
 
 
 def make_node_locked() -> Image.Image:
-    """Iron, shut. The bar across the face is the silhouette cue -- at a glance a locked
-    card is the one with a line through it, whatever the palette is doing."""
+    """Iron, shut: dark against the brass plaques, with grey text. It carried a bar across the
+    face until S6; stretched under the title and badge, it struck through both."""
     img, d, size = _plaque_base((44, 42, 40, 255), IRON_DARK, IRON, (22, 21, 20, 255))
     d.line([(3, 3), (size - 4, 3)], fill=(58, 56, 53, 255))
-    # The bar. Kept in the vertical middle of the 12px centre region so a stretched
-    # plaque draws exactly one bar across the middle of the card, not a stack of them.
-    d.rectangle([10, 14, size - 11, 17], fill=IRON, outline=(30, 29, 28, 255))
     rivets(d, size, (30, 29, 28, 255), IRON_LIGHT)
     return img
 
@@ -290,8 +287,6 @@ def main() -> None:
     save(make_badge_anvil(), "tt_badge_anvil.png")
     save(make_badge_hand(), "tt_badge_hand.png")
     save(make_badge_tower(), "tt_badge_tower.png")
-    save(make_line_h(), "tt_line_h.png")
-    save(make_line_v(), "tt_line_v.png")
 
 
 if __name__ == "__main__":

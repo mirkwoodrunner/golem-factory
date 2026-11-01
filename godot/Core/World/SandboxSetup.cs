@@ -46,12 +46,14 @@ namespace GolemFactory.World
             public string roster;
         }
 
-        /// <summary>The Floor Expansion purchase, as Sandbox.unity's FloorExpansionService authored it.</summary>
+        /// <summary>
+        /// The Floor Expansion purchase: rows per purchase, and one price per purchase, priced up
+        /// the tiers (docs/pack-upgrades-design.md §4).
+        /// </summary>
         public sealed class Expansion
         {
-            public int scrapPerRow;
-            public int ironPlatePerRow;
             public int rowsPerPurchase;
+            public List<List<RecipeIngredient>> purchases = new List<List<RecipeIngredient>>();
         }
 
         /// <summary>
@@ -88,7 +90,21 @@ namespace GolemFactory.World
         public bool creativeMode;
         public bool requireSteamPower;
         public string stockpileBufferId = "FactoryStockpile";
-        public int productionBufferCapacityPerType = 100;
+
+        /// <summary>
+        /// A crate holds this many of each good (docs/crates-design.md §0.3). In the Sandbox every
+        /// buffer without an override is a crate, so it is the registry's default.
+        /// </summary>
+        public int crateCapacityPerType = 50;
+
+        /// <summary>The pack (the stockpile id): what the player carries, this many of each good.</summary>
+        public int packCapacityPerType = 100;
+
+        /// <summary>The pack's cap ladder above <see cref="packCapacityPerType"/> (docs/pack-upgrades-design.md §3).</summary>
+        public List<PackUpgradeRung> packUpgrades = new List<PackUpgradeRung>();
+
+        /// <summary>The Pneumatic Post's shared store (crates-design §10): this many of each good. A placeholder.</summary>
+        public int postCapacityPerType = 200;
         public int startingNorthExtent = FloorLayout.DefaultNorthExtent;
 
         /// <summary>
@@ -149,16 +165,19 @@ namespace GolemFactory.World
         }
 
         /// <summary>
-        /// Production buffers are capped per type; the factory stockpile is not
-        /// (SandboxBootstrap.ApplyBufferCapacityPolicy, unchanged).
+        /// Crates are the default, capped per type; the pack and the Post store are overrides,
+        /// capped at their own numbers (docs/crates-design.md §4.3). The pack was unlimited while
+        /// every depot opened onto it. The Post store exists from the start, empty, so the wallet
+        /// never has to ask whether it does (§10).
         /// </summary>
         public void ApplyBufferPolicy(StorageBufferRegistry buffers)
         {
-            buffers.DefaultCapacityPerType = productionBufferCapacityPerType;
+            buffers.DefaultCapacityPerType = crateCapacityPerType;
             if (!string.IsNullOrEmpty(stockpileBufferId))
             {
-                buffers.SetCapacity(stockpileBufferId, StorageBuffer.Unlimited);
+                buffers.SetCapacity(stockpileBufferId, packCapacityPerType);
             }
+            buffers.SetCapacity(SandboxWorld.PostBufferId, postCapacityPerType);
         }
 
         /// <summary>The truckload market with every stall's offer -- ManagerHolders' TruckloadMarketHolder.</summary>

@@ -52,10 +52,20 @@ namespace GolemFactory.UI
         public bool IsHighlighted(ManagementTab tab) => tab == ActiveTab;
 
         /// <summary>
-        /// The tab bar's labels, as Unity's prefab spelled them -- "AssemblyLine" and "SaveLoad"
-        /// included, and the tech tree as "Ledger".
+        /// The tab bar's labels, as the docs name the tabs (docs/pack-upgrades-design.md §8.15):
+        /// "Assembly Line", "Save / Load", and the tech tree as "Ledger". Display text only;
+        /// nothing finds a tab by it.
         /// </summary>
-        public static string Label(ManagementTab tab) => tab == ManagementTab.TechTree ? "Ledger" : tab.ToString();
+        public static string Label(ManagementTab tab)
+        {
+            switch (tab)
+            {
+                case ManagementTab.AssemblyLine: return "Assembly Line";
+                case ManagementTab.SaveLoad: return "Save / Load";
+                case ManagementTab.TechTree: return "Ledger";
+                default: return tab.ToString();
+            }
+        }
     }
 
     /// <summary>The Patents tab: the named-program library's rows, and loading one.</summary>
