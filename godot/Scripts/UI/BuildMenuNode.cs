@@ -313,7 +313,12 @@ namespace GolemFactory.Nodes
             _card = new Panel { Name = "HoverCard", MouseFilter = Control.MouseFilterEnum.Ignore, Visible = false };
             _card.AddThemeStyleboxOverride("panel", NineSlice("res://art/UI/Hud/hud_panel_bolted.png", 12, 10, 12, 10));
             _card.SelfModulate = new Color(1f, 1f, 1f, 0.97f);
-            AddChild(_card);
+            // On a layer of its own above every other one: the guide's arrow and plate (40), the
+            // playtest card (41) and the golem hover card (42) covered it (the user, 2026-11-01:
+            // "the quick tip should take priority"). The bar stays on its own low layer.
+            var cardLayer = new CanvasLayer { Name = "HoverCardLayer", Layer = 45 };
+            AddChild(cardLayer);
+            cardLayer.AddChild(_card);
 
             var column = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
             _cardColumn = column;
