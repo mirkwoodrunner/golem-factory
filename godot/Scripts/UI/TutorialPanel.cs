@@ -30,6 +30,7 @@ namespace GolemFactory.Nodes
         private Label _title;
         private Label _body;
         private Label _progress;
+        private bool _fitted;
         private Panel _noticePlate;
         private Label _notice;
         private Button _skip;
@@ -120,10 +121,11 @@ namespace GolemFactory.Nodes
             _counter = Ugui.Text("Counter", "", 12, Dim);
             _title = Ugui.Text("Title", "", 17, Amber, bold: true);
             _body = Ugui.Text("Body", "", 13, Ink);
-            _body.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            Wrap(_body);
             _body.SizeFlagsVertical = Control.SizeFlags.ExpandFill;
             _body.VerticalAlignment = VerticalAlignment.Top;
-            _progress = Ugui.Text("Progress", "", 14, Amber, bold: true);
+            // The step's goods wrap too: a long list ended in an ellipsis (the Phase 2 playtest).
+            _progress = Wrap(Ugui.Text("Progress", "", 14, Amber, bold: true));
             column.AddChild(_counter);
             column.AddChild(_title);
             column.AddChild(_body);
@@ -147,15 +149,40 @@ namespace GolemFactory.Nodes
             _noticePlate.MouseFilter = Control.MouseFilterEnum.Ignore;
             _noticePlate.Visible = false;
             _plate.AddChild(_noticePlate);
-            _notice = Ugui.Text("Notice", "", 13, Ink);
-            _notice.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            _notice.ClipText = false; // a clipping label asks for no height (see PlaytestNode)
-            _notice.TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming;
+            _notice = Wrap(Ugui.Text("Notice", "", 13, Ink));
             _notice.CustomMinimumSize = new Vector2(PlateWidth - 28f, 0f);
             _notice.Position = new Vector2(14f, 8f);
             _noticePlate.AddChild(_notice);
 
             Dock(false);
+        }
+
+        /// <summary>Wraps at words and asks for every line's height; a clipping label asks for none (see PlaytestNode).</summary>
+        private static Label Wrap(Label label)
+        {
+            label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            label.ClipText = false;
+            label.TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming;
+            return label;
+        }
+
+        /// <summary>
+        /// Grows the plate down to its text, never below <see cref="PlateHeight"/>: a long step or
+        /// list of goods used to be cut off. Measured like the notice, each wrapping label at the
+        /// width it will get.
+        /// </summary>
+        private void FitPlate()
+        {
+            float inner = PlateWidth - 28f;
+            float buttons = (_skip.Visible ? _skip.CustomMinimumSize.X + 4f : 0f) + (_finish.Visible ? _finish.CustomMinimumSize.X + 4f : 0f);
+            _body.Size = new Vector2(inner, 0f);
+            _progress.Size = new Vector2(inner - buttons, 0f);
+            float height = 10f + 8f + 3f * 3f
+                + _counter.GetCombinedMinimumSize().Y
+                + _title.GetCombinedMinimumSize().Y
+                + _body.GetCombinedMinimumSize().Y
+                + Mathf.Max(_progress.GetCombinedMinimumSize().Y, 18f);
+            _plate.OffsetBottom = _plate.OffsetTop + Mathf.Max(PlateHeight, height);
         }
 
         private static Button FooterButton(string name, string text)
@@ -240,6 +267,7 @@ namespace GolemFactory.Nodes
             if (inWorkbench != _docked)
             {
                 Dock(inWorkbench);
+                _fitted = false;
             }
 
             if (guide.Version != _renderedVersion)
@@ -256,8 +284,18 @@ namespace GolemFactory.Nodes
                 bool last = guide.Index == guide.StepCount - 1;
                 _finish.Visible = last;
                 _skip.Visible = !last;
+                _fitted = false;
             }
-            _progress.Text = guide.Progress;
+            if (_progress.Text != guide.Progress)
+            {
+                _progress.Text = guide.Progress;
+                _fitted = false;
+            }
+            if (!_fitted)
+            {
+                FitPlate();
+                _fitted = true;
+            }
             ShowNotice(guide.Notice);
 
             PointArrow(guide, screenOpen);
@@ -279,7 +317,7 @@ namespace GolemFactory.Nodes
             }
             _notice.Size = new Vector2(PlateWidth - 28f, 0f);
             float height = _notice.GetCombinedMinimumSize().Y + 16f;
-            _noticePlate.Position = new Vector2(0f, PlateHeight + 4f);
+            _noticePlate.Position = new Vector2(0f, _plate.Size.Y + 4f);
             _noticePlate.Size = new Vector2(PlateWidth, height);
         }
 

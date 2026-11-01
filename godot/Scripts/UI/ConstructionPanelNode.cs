@@ -283,7 +283,7 @@ namespace GolemFactory.Nodes
                 ? "Tier " + chassis.tier + "   -   " + chassis.maxAppendageSlots + " appendage slots"
                 : _station.ShortfallFor(chassis.cost);
             ChassisDefinition captured = chassis;
-            Button row = MakeRow("Chassis_" + chassis.name, chassis, chassis.name, detail, affordable,
+            Button row = MakeRow("Chassis_" + chassis.name, chassis, WorkbenchDiagnostics.Humanize(chassis.name), detail, affordable,
                 () => TryConstruct(captured));
             _rows.Add((chassis, row));
             return row;
@@ -364,10 +364,10 @@ namespace GolemFactory.Nodes
             Label name = MakeLabel(title, affordable ? NameAffordableColor : NameUnaffordableColor, 16);
             name.AddThemeFontOverride("font", _bold);
             text.AddChild(name);
-            text.AddChild(MakeLabel(detail, affordable ? SubtitleColor : CostUnaffordableColor, 12));
+            text.AddChild(Wrapped(MakeLabel(detail, affordable ? SubtitleColor : CostUnaffordableColor, 12)));
 
             string costText = chassis == null ? "" : ConstructionCostPolicy.FormatCost(chassis.cost);
-            Label cost = MakeLabel(costText, affordable ? CostAffordableColor : CostUnaffordableColor, 14);
+            Label cost = Wrapped(MakeLabel(costText, affordable ? CostAffordableColor : CostUnaffordableColor, 14));
             cost.CustomMinimumSize = new Vector2(CostWidth, 0f);
             cost.HorizontalAlignment = HorizontalAlignment.Right;
             cost.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
@@ -376,7 +376,22 @@ namespace GolemFactory.Nodes
                 cost.AddThemeFontOverride("font", _bold);
             }
             line.AddChild(cost);
+
+            // A long cost or shortfall wraps instead of ending in an ellipsis (the Phase 2
+            // playtest: "20 Iron Plate + 10 Gear ..." hid the Coke), so the row grows to its
+            // lines. A Button doesn't size to its children; this does it for the row.
+            line.MinimumSizeChanged += () =>
+                row.CustomMinimumSize = new Vector2(0f, Mathf.Max(RowHeight, line.GetCombinedMinimumSize().Y + 8f));
             return row;
+        }
+
+        /// <summary>Wraps at words and asks for the height of every line; a clipping label asks for none.</summary>
+        private static Label Wrapped(Label label)
+        {
+            label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            label.ClipText = false;
+            label.TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming;
+            return label;
         }
 
         private void Build()

@@ -151,6 +151,96 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsTrue(_network.CarriesSteam(C(1, 0), 1));
         }
 
+        // --- Joined boilers share (the user's call, 2026-11-01) --------------------------------
+
+        [Test]
+        public void AGolemBesideADryBoiler_IsPoweredByAFuelledBoilerPipedToIt()
+        {
+            _network.RegisterBoiler("Dry", C(0, 0), 0);
+            _network.RegisterBoiler("Fuelled", C(3, 0), 100);
+            _network.AddPipe(C(1, 0));
+            _network.AddPipe(C(2, 0));
+            Consumer("G", C(-1, 0));
+
+            Assert.IsTrue(_network.TryGetPoweringBoiler("G", 1, out string boilerId), "steam passes through the dry boiler");
+            Assert.AreEqual("Fuelled", boilerId);
+        }
+
+        [Test]
+        public void SteamPassesThroughABoilerFromOneRunToAnother()
+        {
+            // The Phase 2 playtest's room: chapter 2's run and chapter 3's run each touch the
+            // first boiler, which is dry; only the coal line's boiler, on chapter 3's run, has Coke.
+            _network.RegisterBoiler("First", C(0, 0), 0);
+            _network.AddPipe(C(0, 1));
+            _network.AddPipe(C(0, 2));
+            _network.AddPipe(C(1, 0));
+            _network.AddPipe(C(2, 0));
+            _network.RegisterBoiler("CoalLine", C(3, 0), 100);
+            Consumer("Presser", C(-1, 2));
+
+            Assert.IsTrue(_network.IsPowered("Presser", 1));
+            Assert.IsTrue(_network.CarriesSteam(C(0, 2), 1), "the far run is hot");
+            Assert.IsTrue(_network.ReachesFrom(C(3, 0), C(-1, 2), 1));
+            Assert.IsTrue(_network.AreJoined(C(0, 0), C(3, 0), 1));
+        }
+
+        [Test]
+        public void BoilersSideBySideWithNoPipe_DoNotShare()
+        {
+            _network.RegisterBoiler("Dry", C(0, 0), 0);
+            _network.RegisterBoiler("Fuelled", C(1, 0), 100);
+            Consumer("G", C(-1, 0));
+
+            Assert.IsFalse(_network.IsPowered("G", 1));
+            Assert.IsFalse(_network.AreJoined(C(0, 0), C(1, 0), 1));
+        }
+
+        [Test]
+        public void AFuelledBoilerPowersItsOwnGolemsFirst_ThenLendsTheSpare()
+        {
+            // A dry boiler at the west end with a golem beside it, joined by pipe to a fuelled one
+            // in the east with a full eight of its own. Cell order would reach the dry boiler's
+            // golem first; the fuelled boiler's own eight keep their steam.
+            _network.RegisterBoiler("Dry", C(-4, 0), 0);
+            for (int x = -3; x <= -1; x++)
+            {
+                _network.AddPipe(C(x, 0));
+            }
+            _network.RegisterBoiler("Fuelled", C(0, 0), 100);
+            Consumer("Lender", C(-5, 0));
+            _network.AddPipe(C(0, 1));
+            for (int x = 1; x <= 8; x++)
+            {
+                _network.AddPipe(C(x, 1));
+                Consumer("Own" + x, C(x, 2));
+            }
+
+            for (int x = 1; x <= 8; x++)
+            {
+                Assert.IsTrue(_network.IsPowered("Own" + x, 1), "Own" + x);
+            }
+            Assert.IsFalse(_network.IsPowered("Lender", 1), "no spare: the dry boiler's golem waits");
+            Assert.AreEqual(SteamShortage.BoilerAtCapacity, _network.Diagnose("Lender", 1));
+
+            _network.UnregisterConsumer("Own8");
+            Assert.IsTrue(_network.IsPowered("Lender", 2), "one spare, lent across the dry boiler");
+        }
+
+        [Test]
+        public void JoinedBoilers_BurnOnlyTheFuelledOnesCoke()
+        {
+            SteamBoiler dry = _network.RegisterBoiler("Dry", C(0, 0), 0);
+            SteamBoiler fuelled = _network.RegisterBoiler("Fuelled", C(2, 0), 100);
+            _network.AddPipe(C(1, 0));
+            Consumer("G", C(-1, 0));
+
+            Run(SteamNetwork.TicksPerCokePerPoweredGolem);
+
+            Assert.AreEqual(0, dry.CokeStock);
+            Assert.AreEqual(99, fuelled.CokeStock);
+        }
+
         // --- Determinism decision 1: WHICH 8 --------------------------------------------------
 
         [Test]
