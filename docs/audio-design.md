@@ -3,8 +3,7 @@
 Written 2026-11-01 for Phase 5 (`docs/roadmap.md`, "Phase 5: Audio"), on branch `phase5/audio`
 (from `phase4/art`). The game has no sound today: no audio file, no player node, no bus. This
 spec says what sounds, when, how loud, where the placeholder files come from, and how a final
-asset replaces one. The user's open decisions are in §9; nothing in §2–§7 that depends on one is
-built before it is made.
+asset replaces one. The user's decisions are in §9; all four are made, and §2–§7 are built.
 
 Roadmap decision 9: **placeholders for now**, built so a final asset drops into the same slot.
 Whether anything is commissioned is the user's call and isn't planned here.
@@ -23,7 +22,8 @@ Whether anything is commissioned is the user's call and isn't planned here.
    while paused.
 4. **Red means the player must act.** The stall chime plays for a red stall only (a golem the
    player has to fix), never for grey waiting or blue no-steam. One chime per stall, not per
-   retry.
+   retry, and not again until the golem has run again. It isn't positional: a red golem off
+   screen needs the player most.
 5. **A big factory doesn't turn to noise.** At most N copies of one slot play at once (§5), a
    sound is panned and quieted by its distance from the screen centre, and one off screen past a
    margin doesn't play.
@@ -53,67 +53,95 @@ The roadmap's list, as slots. "Trigger" is the one place in code that asks for i
 | `amb.workshop` | Ambience | always, looped | low room hum |
 | `amb.clock` | Ambience | each game second while the clock runs | the ticking clock; silent while paused |
 | `amb.steam` | Ambience | looped; volume from the working golem count | hiss rising with boiler load, silent with no boiler burning |
-| `work.<chassis>.<verb>` | Effects | `Pose.Impact` on the golem's node | one per chassis signature verb (5), plus `work.any.haul`, `work.any.push` and `work.any.extract` for the shared verbs |
+| `work.<motion>` | Effects | `GolemWorkMotion.SoundBeats` goes up | one per work motion, which follows the verb: `work.stamp` (Assemble), `work.fast-stamp` (the Overclocker's Assemble and Repeat), `work.tug` (Extract), `work.heave` (Haul), `work.lunge` (Push), `work.launch` (FreightLaunch); positional, at most 4 at once |
 | `ui.card-snap` | UI | a card dropped into a Workbench socket | |
 | `ui.engage` | UI | the Engage lever thrown | |
 | `ui.patent` | UI | Patent pressed | a stamp |
 | `ui.claim` | UI | a card claimed on the Assembly Line | |
-| `ui.stall-chime` | UI | a golem turns red (invariant 4) | positional (§5) |
+| `ui.stall-chime` | UI | a golem turns red (invariant 4) | not positional (invariant 4) |
+| `ui.place` | UI | a building placed (`BuildModeController.BuildingPlaced`) | decision 3 |
+| `ui.demolish` | UI | a building removed (`BuildingRemoved`) | decision 3 |
+| `ui.collect` | UI | goods taken from a crate: E, or the Crate screen's Take | decision 3 |
 | `music.layer.1`…`music.layer.4` | Music | looped together, layers faded in by factory size (§4) | one tempo and key, so they stack |
 | `music.tower-fanfare` | Music | `ClockTowerStageCompletedEvent` | ducks the layers while it plays |
 
-Decision 3 (§9) is whether to add a few slots beyond the roadmap's list.
+A work sound lands once per stroke at the motion's `SoundPhase` (the stamp bottoming out, the
+tug's yank, the heave's lift, the lunge's thrust, the hop), counted from step progress, so it is
+heard once however many frames a stroke takes, faster at 4×, and never while paused. A load
+doesn't sound: `SandboxWorld.LoadFrom` suppresses the director while it rebuilds.
 
 ## 3. Data: `godot/data/audio.json`
 
-One entry per slot: `id`, `path` (`res://audio/...`), `bus`, `volumeDb`, `maxCopies`,
-`positional` (true for anything a golem or building makes), and for loops `loop: true`. Loaded by
-`DefinitionLoader` like the other data files, so it's strict: an unknown key or a missing file
-fails the load (and the `art`-style `audio` scenario, §7).
+One entry per slot, keyed by its name (`Core/Audio/AudioSlotDefinition`): `path`
+(`res://audio/<name>.wav`), `bus` (an integer, as the data's enums are: 0 Music, 1 Ambience,
+2 Effects, 3 UI), `volumeDb`, `maxCopies`, `positional` (the work sounds) and `loop` (the
+ambience and music loops). Loaded by `DefinitionLoader` like the other data files, so an unknown
+key fails the load; a missing file fails the `audio` scenario (§7).
 
 ## 4. Rules in Core: `Core/Audio/`
 
-- **`AudioRules`** (static, pure, like `LightingRules`): the mix values the data doesn't own.
-  - `SteamHissVolume(workingGolems)`: 0 with none, rising to full by 24.
-  - `MusicLayers(golemCount)`: layer 1 always; 2 from 4 golems, 3 from 16, 4 from 48. Faded
-    over 4 s, and a layer never drops out because one golem was wrecked (it needs the count to
-    fall below 80% of its threshold).
-  - `Pan(screenOffset)` and `Attenuation(screenOffset)`: −1…1 across the screen, quieter toward
-    the edge, nothing past 25% of a screen width off it.
-- **`AudioDirector`** (owned by `SandboxWorld`, so a test composes it): subscribes to the
-  events, takes the impact and UI calls, applies `maxCopies`, and keeps a queue of requests
-  (`slot`, `position?`) the node drains each frame. A test reads the same queue.
+- **`AudioRules`** (static, pure, like `LightingRules`): the mix values the data doesn't own,
+  and the slot names code asks for.
+  - `SteamHissVolume(workingGolems)`: 0 with none, rising (square root) to full by 24.
+  - `MusicLayers(golemCount, current)`: layer 1 always; 2 from 4 golems, 3 from 16, 4 from 48.
+    Faded over 4 s, and a layer never drops out because one golem was wrecked (it needs the
+    count to fall below 80% of its threshold).
+  - `Audible(position, viewCentre, viewHalfSize)`: the off-screen cut, nothing past 25% of a
+    screen width off it. Panning and quieting toward the edge are Godot's
+    (`AudioStreamPlayer2D`, the camera as listener).
+  - `SliderToDb`: a volume slider's 0–1 as a bus level.
+- **`AudioDirector`** (owned by `SandboxWorld`, so a test composes it): `Update` once a frame
+  after the clock reads the clock's second, each golem's `SoundBeats` and red stall, and the
+  loops' levels; `Play(slot, position?)` applies the off-screen cut and `maxCopies` (copies
+  counted by each file's length, which the node reports) and queues a request the node drains
+  each frame. The player's moments reach it through events wired in `SandboxWorld.WireAudio`
+  (`WorkbenchSession.CardSeated`, `LeverPulled`, `Patented`; `AssemblyLineBoard.Claimed`;
+  `BuildModeController.BuildingPlaced`/`Removed`; `PlayerInteractor.Collected`,
+  `CrateScreenReadout.Collected`) and the tower's off the event bus. Scenarios count
+  `Requested(slot)`.
+- **`Scripts/Audio/AudioNode`** (added by `WorldNode`): makes the buses, loads every slot, runs
+  the loops at the director's levels, tells it the camera's view, and plays its queue.
 
 ## 5. Mix
 
-- **Buses:** Master → Music, Ambience, Effects, UI. Created in code at startup (like the input
-  actions), not a hand-written `.tres`.
+- **Buses:** Master → Music and Effects; Effects → Ambience and UI, so the Effects slider covers
+  every sound but the music. Created in code at startup (like the input actions), not a
+  hand-written `.tres`.
 - **Copies:** `maxCopies` per slot (default 4 for work sounds, 1 for UI and the chime). A request
   over the cap is dropped, not queued, so a 100-golem factory sounds like 4 stamps, not 100.
-- **Position:** positional slots play through `AudioStreamPlayer2D` at the golem's or building's
-  node, so Godot pans and attenuates by the camera. `AudioRules` adds the off-screen cut.
-- **Volume controls:** decision 4 (§9).
+- **Position:** positional slots play through an `AudioStreamPlayer2D` where the golem stands,
+  so Godot pans and attenuates by the camera. `AudioRules.Audible` adds the off-screen cut.
+- **Volume controls:** Master, Music and Effects sliders and a mute on Management's Settings tab
+  (`Scripts/UI/SettingsTab`), kept in `user://settings.cfg`, not the save. Music starts at 0.7.
 
 ## 6. Placeholder files
 
-Decision 1 (§9) is where they come from. Whatever the source, every placeholder:
-- is a short `.wav` (effects, UI) or a looping `.ogg` (ambience, music) under `godot/audio/`, at
-  the path its slot names;
-- is listed in `Tools/Audio/audio_manifest.json` with its owner (the generator, or the pack and
-  its licence), as `art_manifest.json` does for art;
-- is checked by `Tools/Audio/verify_audio.py`: every slot has a file, every file has a slot,
-  loops loop without a click, and peaks stay under −1 dBFS.
+Decision 1 (§9): CC0 recordings for every effect and the ambience, synthesized music. Every
+placeholder:
+- is a mono 16-bit 44.1 kHz `.wav` under `godot/audio/`, at the path its slot names (WAV for
+  the loops too, so the checks need only Python's standard library; Godot compresses on import);
+- is listed in `Tools/Audio/audio_manifest.json` with its owner (the generator, or the pack, its
+  author, licence and page), as `art_manifest.json` does for art;
+- is made by `Tools/Audio/build_cc0.py` (from the downloaded packs; needs PyAV and numpy, which
+  ComfyUI's embedded Python has) or `Tools/Audio/synth_music.py` (standard library);
+- is checked by `Tools/Audio/verify_audio.py`: every slot has a file, every file has a slot and a
+  manifest entry, loops loop without a click, and peaks stay at or under −1 dBFS.
+
+`Tools/Audio/review_sheet.py` builds the listening sheet (§7): every slot in turn, the loops long
+enough to hear the seam, the music one layer at a time.
 
 ## 7. Tests and the `audio` scenario
 
-- **Core tests:** `AudioRulesTests` (hiss, layers and their hysteresis, pan, the off-screen cut),
-  and `AudioDirectorTests`: a red stall requests one chime and a grey one none; a stall retried
-  doesn't chime again; 10 Pressers stamping on one tick request `maxCopies` stamps; a paused clock
-  requests no work sound; a tower stage requests the fanfare.
-- **The `audio` scenario** (Sandbox, headless with the dummy audio driver): every slot in
-  `audio.json` loads; the buses exist; a Presser on steam requests `work.presser.stamp` on each
-  impact and none while paused; the Workbench's drop, Engage and Patent, and a Claim, each
-  request theirs; a red stall chimes once.
+- **Core tests:** `AudioRulesTests` (hiss, layers and their hysteresis, the off-screen cut,
+  sliders) and `AudioDirectorTests`: every slot code asks for is in the data and nothing else; a
+  red stall requests one chime however often it retries, again once cleared and hit again, and a
+  blue one none; 10 Pressers stamping at once request `maxCopies` stamps; a Presser stamps once per
+  stroke; a paused clock requests no work sound; the clock ticks once a game second and not while
+  paused; a tower stage requests the fanfare.
+- **The `audio` scenario** (Sandbox, headless, muted): every slot in `audio.json` loads and the
+  buses exist; the `golem-motion` row, as its fixture, requests every work sound and none while
+  paused; the Workbench's card snap, Engage and Patent, a Claim, placing, demolishing and
+  collecting each request theirs once.
 - **A listening check by the user:** the scenario can't hear. Each slot goes in front of the user
   as a short sample sheet (all the slots played one after another, as an `.ogg`) before its
   commit, as art went through review sheets.
@@ -129,19 +157,15 @@ Decision 1 (§9) is where they come from. Whatever the source, every placeholder
 
 ## 9. Decisions (the user's)
 
-**Made 2026-11-01:** 2, 3 and 4 as recommended (the synthesized music layers; `ui.place`,
-`ui.demolish` and `ui.collect` added; sliders and mute). For 1 the user asked to hear all three
-sources first: the same five slots (`work.presser.stamp`, `ui.card-snap`, `ui.stall-chime`,
-`amb.steam`, `music.layer.1`) from each, in `public/audio/samples/{synth,cc0,ai}/` (local, not
-committed), each with a `_sheet.wav` that plays them in turn.
-- **synth:** `Tools/Audio/synth_samples.py` (standard library only).
-- **cc0:** OpenGameArt files whose pages say CC0, listed in the folder's `SOURCES.txt`. Kenney's own
-  site refuses scripted downloads, so Kenney's packs there weren't used (one of Kenney's sets is
-  also on OpenGameArt and was).
-- **ai:** Stable Audio Open 1.0 in the local ComfyUI, `Tools/Audio/comfy_audio_samples.py`, run by
-  the user once the model is downloaded (gated on Hugging Face; its licence is Stability AI's
-  Community Licence, free under US$1M annual revenue).
+**All made 2026-11-01.** 2, 3 and 4 as recommended (the synthesized music layers; `ui.place`,
+`ui.demolish` and `ui.collect` added; sliders and mute). For 1 the user heard the same five
+sounds synthesized (`Tools/Audio/synth_samples.py`) and from CC0 packs, and chose **CC0, except
+the music**: the CC0 tavern tune didn't fit the game, so the music is synthesized, as decision 2
+already said. The AI route (Stable Audio Open in ComfyUI) wasn't needed; its script is in git
+history at 764e6ce. Kenney's own site refuses scripted downloads, so Kenney's packs came from
+OpenGameArt.
 
+The options as they were put:
 
 1. **Where the placeholders come from.**
    - **Recommended: synthesized by a script** (`Tools/Audio/generate_audio.py`, numpy only):

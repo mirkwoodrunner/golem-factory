@@ -531,21 +531,10 @@ namespace GolemFactory.Nodes
         /// </summary>
         private bool TryWorkPose(out GolemWorkMotion.Pose pose)
         {
-            pose = GolemWorkMotion.Pose.Rest;
-            GolemProgram program = Entity.Program;
-            AppendageActionDefinition step = program.CurrentStep;
-            if (program.State != GolemState.Running || step == null || program.StepProgressTicks <= 0 ||
-                !GolemWorkMotion.Animates(program.chassis?.name, step.actionType))
-            {
-                return false;
-            }
-
             float fraction = _world?.Clock != null && _world.Clock.State == Simulation.ClockState.Running
                 ? _world.Clock.TickFraction
                 : 0f;
-            pose = GolemWorkMotion.Evaluate(GolemWorkMotion.MotionFor(program.chassis?.name, step.actionType),
-                program.StepProgressTicks + fraction, Entity.StepDurationTicks);
-            return true;
+            return GolemWorkMotion.TryPose(Entity, fraction, out pose);
         }
 
         /// <summary>

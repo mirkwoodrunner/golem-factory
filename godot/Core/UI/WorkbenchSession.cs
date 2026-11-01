@@ -121,6 +121,12 @@ namespace GolemFactory.UI
         /// <summary>A chassis button was refused (too few slots): flash it at the click.</summary>
         public event Action<ChassisDefinition> ChassisRejected;
 
+        /// <summary>A card was dropped into a socket and took it: the card's snap.</summary>
+        public event Action CardSeated;
+
+        /// <summary>The draft was patented: the stamp.</summary>
+        public event Action<Blueprint> Patented;
+
         // --- Wiring ------------------------------------------------------------------------
 
         public void ConfigureRoster(ChassisDefinition[] chassis, LogicCoreDefinition[] cores, AppendageActionDefinition[] appendages)
@@ -297,6 +303,7 @@ namespace GolemFactory.UI
         /// </summary>
         public void HandleDrop(WorkbenchCardRef card, WorkbenchZone? zone)
         {
+            bool seated = false;
             if (zone == null)
             {
                 if (!card.IsVaultOrigin)
@@ -316,6 +323,7 @@ namespace GolemFactory.UI
             else if (zone.Value.Kind == DropZoneKind.LogicCore && card.LogicCore != null)
             {
                 _draftLogicCore = card.LogicCore;
+                seated = true;
             }
             else if (zone.Value.Kind == DropZoneKind.Appendage && card.Appendage != null
                      && zone.Value.AppendageIndex >= 0 && zone.Value.AppendageIndex < _draftAppendages.Length
@@ -336,9 +344,14 @@ namespace GolemFactory.UI
                 _draftAppendages[target] = card.Appendage;
                 _draftQuantities[target] = arriving;
                 _draftItemTypes[target] = arrivingType;
+                seated = true;
             }
             EndCardDrag();
             Version++;
+            if (seated)
+            {
+                CardSeated?.Invoke();
+            }
         }
 
         public void RemoveFromSlot(WorkbenchCardRef card) => HandleDrop(card, null);
@@ -486,6 +499,7 @@ namespace GolemFactory.UI
                 filled.Select(i => _draftQuantities[i]).ToList());
             _patents?.TryPatent(blueprint);
             SetStatus($"Patented as {id}.", WorkbenchStatusReason.Info);
+            Patented?.Invoke(blueprint);
             return blueprint;
         }
 

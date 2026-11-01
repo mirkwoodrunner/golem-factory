@@ -65,10 +65,14 @@ call): built, reviewed, critiqued and tested. Done:
   their prices (7a79046). 1925 Core tests pass.
 
 **Resume here:**
-0. **Phase 5 (Audio), on branch `phase5/audio` (from `phase4/art`), started 2026-11-01.** The spec
-   is `docs/audio-design.md`. Decisions 2–4 are made (§9). Decision 1, where the placeholders come
-   from, waits on the user listening to three sample sets (synthesized, CC0, AI). Nothing is built
-   past the samples until it's made. Phases 1–4 are pushed as PR #60 (the user's call, 2026-10-31).
+0. **Phase 5 (Audio), on branch `phase5/audio` (from `phase4/art`), built 2026-11-01**, waiting
+   on the user's listen. The spec is `docs/audio-design.md`; all four decisions are made (§9):
+   CC0 recordings for the effects and ambience, synthesized music. Every slot plays at its
+   trigger (`Core/Audio`, `Scripts/Audio/AudioNode`), the Settings tab has the sliders, the
+   `audio` scenario and `verify_audio.py` pass. Left for done (§8 item 3): the user listens to the
+   sheet (`Tools/Audio/review_sheet.py`) and in the game, and any sound they reject is swapped in
+   `audio_manifest.json` and rebuilt. Phases 1–4 are pushed as PR #60 (the user's call,
+   2026-10-31).
 1. **Phase 4 (Art), on branch `phase4/art`, is done** (2026-10-31; the record follows). **All five S1 chassis are in the game** (the Brass
    Presser, the Clockwork Scavenger, the Mainspring Overclocker, the Aether Hauler and the
    Zeppelin Freight Loader; the Hauler and the Zeppelin approved 2026-10-25). The Artificer's

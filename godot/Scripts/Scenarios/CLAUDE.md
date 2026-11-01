@@ -106,6 +106,11 @@ Current scenarios:
   in-game cells; and every standing sprite's lowest opaque row
   sits on its node's origin within the manifest's allowance. A new sprite needs its manifest
   entry or this fails.
+- `audio` (Sandbox, muted): the sound (`docs/audio-design.md` §7), counted through
+  `SandboxWorld.Audio.Requested`, never heard. Every slot in `data/audio.json` loads and the
+  buses exist; the `golem-motion` row runs as its fixture and must request each work sound, and
+  none over 90 paused frames; then the Workbench's card snap, Engage and Patent, a Claim, placing
+  and demolishing a pipe, and E at a crate each request theirs exactly once.
 
 **Screen captures:** a windowed run with `--capture-dir=<dir>` writes `screen-*.png`, one per
 screen (`world` the room, `management` the HUD and every tab, `build` the menu, `tutorial` the

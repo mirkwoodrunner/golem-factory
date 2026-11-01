@@ -76,6 +76,9 @@ namespace GolemFactory.Nodes
         public string SaveStatus => _saveStatus?.Text ?? "";
         public LedgerTab Ledger { get; private set; }
 
+        /// <summary>The Settings tab: the sound's sliders and mute.</summary>
+        public SettingsTab Settings { get; private set; }
+
         public override void _EnterTree() => AddToGroup(ModalScreens.GroupName);
 
         public override void _Ready()
@@ -96,6 +99,8 @@ namespace GolemFactory.Nodes
             Ledger = new LedgerTab(_world.Sandbox.TechTree, _world.Sandbox.LedgerReadout);
             _world.Sandbox.DefaultSavePath = ProjectSettings.GlobalizePath(SavePath);
             AddTab(ManagementTab.TechTree, Ledger);
+            Settings = new SettingsTab(AudioNode.Find(this));
+            AddTab(ManagementTab.Settings, Settings);
             _root.Visible = false;
             _world.Sandbox.Screens.Register(this);
             _world.Sandbox.ConfigureScreens(null, null, this);
@@ -360,7 +365,7 @@ namespace GolemFactory.Nodes
             foreach (ManagementTab tab in (ManagementTab[])Enum.GetValues(typeof(ManagementTab)))
             {
                 Button button = PlateButton(tab + "Button", Ui + "Hud/hud_button.png", UnselectedTab, ManagementTabs.Label(tab), 15, SelectedTabLabel, bold: true);
-                button.CustomMinimumSize = new Vector2(168f, 46f);
+                button.CustomMinimumSize = new Vector2(150f, 46f);
                 ManagementTab captured = tab;
                 button.Pressed += () => SelectTab(captured);
                 _tabButtons[tab] = button;
@@ -379,6 +384,7 @@ namespace GolemFactory.Nodes
             _patents = ScrollList(content, ManagementTab.Patents, "PatentsTab");
             _tabContent[ManagementTab.AssemblyLine] = TabHolder(content, "AssemblyLineTab");
             _tabContent[ManagementTab.TechTree] = TabHolder(content, "TechTreeTab");
+            _tabContent[ManagementTab.Settings] = TabHolder(content, "SettingsTab");
             BuildSaveLoad(content);
         }
 

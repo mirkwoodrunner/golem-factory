@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using GolemFactory.Audio;
 using GolemFactory.Belts;
 using GolemFactory.Blueprints;
 using GolemFactory.Buildings;
@@ -156,6 +157,10 @@ namespace GolemFactory.World
         public SandboxWorld(DefinitionSet definitions, int beltSegmentLengthTicks = 4, float ticksPerSecond = 10f)
         {
             Definitions = definitions;
+            Audio = new AudioDirector(definitions != null && definitions.Tables.ContainsKey(typeof(AudioSlotDefinition))
+                ? definitions.AudioSlots
+                : null);
+            Audio.Attach();
             Belts.Configure(Conveyor, Endpoints, beltSegmentLengthTicks);
             Clock.TicksPerSecond = ticksPerSecond;
             Clock.Register(Conveyor);
@@ -253,6 +258,7 @@ namespace GolemFactory.World
             Alerts = new AlertsStrip(() => _golems) { Names = TileNames };
             Alerts.Attach();
             WireProgression(setup.assemblyLine);
+            WireAudio();
             if (setup.tutorial)
             {
                 Tutorial = new Tutorial.TutorialGuide(this);
@@ -328,6 +334,28 @@ namespace GolemFactory.World
             AssemblyLineBoard.ConfigurePackUpgrade(PackUpgrade);
             AssemblyLineBoard.ConfigureSeen(item => TechTree.Ledger.HasItem(item));
             AssemblyLineBoard.ConfigurePostShown(() => TechTree.Ledger.HasBuilding(TechTreeCatalog.BuildingPneumaticPost));
+        }
+
+        /// <summary>
+        /// What the game sounds like (docs/audio-design.md): the director, and the player's
+        /// moments it hears. The golems' work, red stalls and the loops it reads each frame in
+        /// <see cref="Advance"/>; the Clock Tower's stages off the event bus.
+        /// </summary>
+        public AudioDirector Audio { get; }
+
+        private void WireAudio()
+        {
+            Workbench.CardSeated += () => Audio.Play(AudioRules.CardSnap);
+            Workbench.LeverPulled += () => Audio.Play(AudioRules.Engage);
+            Workbench.Patented += _ => Audio.Play(AudioRules.Patent);
+            if (AssemblyLineBoard != null)
+            {
+                AssemblyLineBoard.Claimed += () => Audio.Play(AudioRules.Claim);
+            }
+            Build.BuildingPlaced += _ => Audio.Play(AudioRules.Place);
+            Build.BuildingRemoved += _ => Audio.Play(AudioRules.Demolish);
+            Interactor.Collected += () => Audio.Play(AudioRules.Collect);
+            Inventory.Collected += () => Audio.Play(AudioRules.Collect);
         }
 
         private void WireWorkbench(SandboxSetup.WorkbenchRoster roster)
@@ -422,6 +450,21 @@ namespace GolemFactory.World
             {
                 return "No save file found.";
             }
+
+            // A load rebuilding the factory isn't the player placing and wrecking it.
+            Audio.Suppressed = true;
+            try
+            {
+                return Restore(data);
+            }
+            finally
+            {
+                Audio.Suppressed = false;
+            }
+        }
+
+        private string Restore(SaveData data)
+        {
 
             RestoreProgress(data.progress);
             RestoreMarket(data.market);
@@ -949,6 +992,7 @@ namespace GolemFactory.World
             AssemblyLine?.Tick(seconds);
             TechTree.Update(_realSeconds);
             Tutorial?.Update();
+            Audio.Update(seconds, Clock, _golems, Steam.LastEvaluatedWorkingCount);
         }
 
         private float _realSeconds;

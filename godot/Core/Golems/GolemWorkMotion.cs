@@ -61,6 +61,9 @@ namespace GolemFactory.Golems
         /// <summary>Where in a launch the Zeppelin leaves the floor.</summary>
         public const float LaunchTakeoff = 0.7f;
 
+        /// <summary>How much of a stroke the stamp's slam takes, from full stretch to full squash.</summary>
+        public const float StampSlam = 0.08f;
+
         private const float WindUpStretch = 0.05f;
         private const float WindUpLift = 0.03f;
         private const float ImpactSquash = 0.14f;
@@ -167,6 +170,85 @@ namespace GolemFactory.Golems
         /// <summary>Whether this golem has a work motion for the step it is on.</summary>
         public static bool Animates(string chassisName, AppendageActionType action) =>
             MotionFor(chassisName, action) != Motion.None;
+
+        /// <summary>
+        /// The pose for the step <paramref name="golem"/> is running, if it has a work motion.
+        /// <paramref name="tickFraction"/> is the clock's fraction of the next tick (0 while
+        /// paused), so the stroke moves smoothly between ticks. The view draws this, and the
+        /// audio hears its <see cref="Pose.Impact"/>, so a stamp sounds on the frame it lands.
+        /// </summary>
+        public static bool TryPose(GolemEntity golem, float tickFraction, out Pose pose)
+        {
+            pose = Pose.Rest;
+            GolemProgram program = golem?.Program;
+            AppendageActionDefinition step = program?.CurrentStep;
+            if (program == null || program.State != GolemState.Running || step == null || program.StepProgressTicks <= 0 ||
+                !Animates(program.chassis?.name, step.actionType))
+            {
+                return false;
+            }
+
+            pose = Evaluate(MotionFor(program.chassis?.name, step.actionType),
+                program.StepProgressTicks + tickFraction, golem.StepDurationTicks);
+            return true;
+        }
+
+        /// <summary>
+        /// Where in one stroke of <paramref name="motion"/> its sound lands (docs/audio-design.md
+        /// §2): the stamp as it bottoms out, the tug's yank, the heave's lift, the lunge's thrust,
+        /// the Zeppelin's hop.
+        /// </summary>
+        public static float SoundPhase(Motion motion)
+        {
+            switch (motion)
+            {
+                case Motion.Stamp:
+                case Motion.FastStamp: return StampImpact + StampSlam;
+                case Motion.Tug: return 0.5f;
+                case Motion.Heave: return 0.45f;
+                case Motion.Lunge: return 0.3f;
+                case Motion.Launch: return LaunchTakeoff;
+                default: return 0f;
+            }
+        }
+
+        /// <summary>
+        /// How many of its sounds the step <paramref name="golem"/> is running has made so far,
+        /// or -1 with no work motion. The audio plays one each time this goes up, so a stroke
+        /// sounds once however many frames it takes, faster at 4x, and never while paused.
+        /// </summary>
+        public static int SoundBeats(GolemEntity golem, float tickFraction, out Motion motion)
+        {
+            motion = Motion.None;
+            GolemProgram program = golem?.Program;
+            AppendageActionDefinition step = program?.CurrentStep;
+            if (program == null || program.State != GolemState.Running || step == null || program.StepProgressTicks <= 0)
+            {
+                return -1;
+            }
+            motion = MotionFor(program.chassis?.name, step.actionType);
+            if (motion == Motion.None)
+            {
+                return -1;
+            }
+
+            int duration = golem.StepDurationTicks;
+            float progress = Mathf.Clamp01((program.StepProgressTicks + tickFraction) / Mathf.Max(1, duration));
+            float strokes = progress * StrokesPerStep(motion, duration);
+            return Mathf.FloorToInt(strokes - SoundPhase(motion)) + 1;
+        }
+
+        /// <summary>Strokes in one step: several for the repeating motions, one for the rest.</summary>
+        private static int StrokesPerStep(Motion motion, int durationTicks)
+        {
+            switch (motion)
+            {
+                case Motion.Stamp: return StrokeCount(durationTicks, StampStrokeTicks);
+                case Motion.FastStamp: return StrokeCount(durationTicks, FastStampStrokeTicks);
+                case Motion.Tug: return StrokeCount(durationTicks, TugStrokeTicks);
+                default: return 1;
+            }
+        }
 
         /// <summary>The pose for <paramref name="motion"/> at this point in the step.</summary>
         public static Pose Evaluate(Motion motion, float progressTicks, int durationTicks)
@@ -364,7 +446,7 @@ namespace GolemFactory.Golems
                 return new Pose(1f - WindUpStretch * 0.6f * e, 1f + WindUpStretch * e, WindUpLift * e, false);
             }
 
-            const float slam = 0.08f;
+            const float slam = StampSlam;
             if (u < StampImpact + slam)
             {
                 // The slam: down from full stretch to full squash in a few frames.

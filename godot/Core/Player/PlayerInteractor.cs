@@ -179,6 +179,9 @@ namespace GolemFactory.Player
         /// <summary>Raised for every popup Unity spawned.</summary>
         public event Action<InteractionPopup> PopupRaised;
 
+        /// <summary>E took goods from a crate into the pack: the collect sound.</summary>
+        public event Action Collected;
+
         // Set by Interact()/the Try* methods on failure, for the prompt or a test to surface.
         public string LastStatusMessage { get; private set; } = "";
 
@@ -1164,6 +1167,7 @@ namespace GolemFactory.Player
             }
 
             LastStatusMessage = "Collected " + CrateTransfer.Describe(moved) + ".";
+            Collected?.Invoke();
             Popup(at, string.Join("  ", moved.Select(r => YieldPopupText.Gain(r.ItemType, r.Moved))), InteractionPopupKind.Gain);
             return true;
         }
