@@ -1,12 +1,19 @@
 using Godot;
+using GolemFactory.ClockTower;
+using GolemFactory.Golems;
 using GolemFactory.Player;
+using GolemFactory.World;
 using CoreVector2 = GolemFactory.Compat.Vector2;
 
 namespace GolemFactory.Nodes
 {
     /// <summary>
     /// The camera: eases after the player and zooms with the wheel, by Core's
-    /// <see cref="CameraRigRules"/> -- Unity's CameraRigController, the rules extracted.
+    /// <see cref="CameraRigRules"/> -- Unity's CameraRigController, the rules extracted -- and,
+    /// since Phase 6, by the world's <see cref="CameraDirector"/>: the wheel steps between fixed
+    /// zoom levels and glides there, a click on the alert strip glides to a stopped golem until
+    /// the player walks, and a Clock Tower stage glides to the tower and back
+    /// (docs/game-feel-design.md §2–§3).
     ///
     /// <para>
     /// Unity zoomed an orthographic camera by its SIZE (half the view's height, in cells); Godot
@@ -27,10 +34,21 @@ namespace GolemFactory.Nodes
 
         private Node2D _target;
         private float _pendingZoom;
+        private CameraDirector _director;
+        private SandboxWorld _sandbox;
+
+        // A size a scenario set directly stays put until the wheel moves it.
+        private bool _pinned;
+
+        /// <summary>The world point the camera is gliding to this frame.</summary>
+        public Vector2 Aim { get; private set; }
 
         public override void _Ready()
         {
             _target = TargetPath != null && !TargetPath.IsEmpty ? GetNode<Node2D>(TargetPath) : null;
+            _sandbox = WorldNode.Find(this)?.Sandbox;
+            _director = _sandbox?.Camera;
+            _director?.SnapZoomTo(OrthographicSize);
             Bind(ZoomIn, MouseButton.WheelUp);
             Bind(ZoomOut, MouseButton.WheelDown);
             if (_target != null)
@@ -44,6 +62,12 @@ namespace GolemFactory.Nodes
 
         public override void _UnhandledInput(InputEvent e)
         {
+            // Any key while the tower's event plays skips it (decision 4).
+            if (e is InputEventKey { Pressed: true, Echo: false } && _director != null &&
+                (_director.TowerPhase == TowerEventPhase.GlideIn || _director.TowerPhase == TowerEventPhase.Reveal))
+            {
+                _director.SkipTowerEvent();
+            }
             if (e.IsActionPressed(ZoomIn))
             {
                 _pendingZoom += 1f;
@@ -56,27 +80,105 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
-            if (_target != null)
+            float dt = (float)delta;
+            if (_director == null)
             {
-                CoreVector2 next = CameraRigRules.Follow(
-                    new CoreVector2(GlobalPosition.X, GlobalPosition.Y),
-                    new CoreVector2(_target.GlobalPosition.X, _target.GlobalPosition.Y),
-                    (float)delta);
-                GlobalPosition = new Vector2(next.x, next.y);
+                FollowTarget(dt, CameraRigRules.FollowLerpSpeed, _target?.GlobalPosition);
+                if (_pendingZoom != 0f)
+                {
+                    OrthographicSize = CameraRigRules.Zoom(OrthographicSize, _pendingZoom, WheelNotchSeconds);
+                    _pendingZoom = 0f;
+                    ApplyZoom();
+                }
+                return;
             }
+
+            // Walking takes the camera back from a golem it was sent to.
+            if (_director.Focus == CameraFocus.Alert && PlayerIsWalking())
+            {
+                _director.PlayerMoved();
+            }
+            _director.UpdateTowerEvent(dt);
+            FollowTarget(dt, _director.GlideSpeed, FocusPoint());
 
             if (_pendingZoom != 0f)
             {
-                OrthographicSize = CameraRigRules.Zoom(OrthographicSize, _pendingZoom, WheelNotchSeconds);
+                _director.ZoomStep(_pendingZoom > 0f ? 1 : -1);
                 _pendingZoom = 0f;
-                ApplyZoom();
+                _pinned = false;
+            }
+            if (!_pinned)
+            {
+                float size = _director.GlideZoom(OrthographicSize, dt);
+                if (System.Math.Abs(size - OrthographicSize) > 0.0001f)
+                {
+                    OrthographicSize = size;
+                    ApplyZoom();
+                }
             }
         }
+
+        private void FollowTarget(float dt, float speed, Vector2? aim)
+        {
+            if (aim == null)
+            {
+                return;
+            }
+            Aim = aim.Value;
+            CoreVector2 next = CameraRigRules.Follow(
+                new CoreVector2(GlobalPosition.X, GlobalPosition.Y), new CoreVector2(Aim.X, Aim.Y), dt, speed);
+            GlobalPosition = new Vector2(next.x, next.y);
+        }
+
+        /// <summary>Where the director wants the camera: the player, a stopped golem, or the tower.</summary>
+        private Vector2? FocusPoint()
+        {
+            switch (_director.Focus)
+            {
+                case CameraFocus.Alert:
+                    GolemEntity golem = FindGolem(_director.AlertGolemId);
+                    if (golem == null)
+                    {
+                        _director.PlayerMoved(); // gone: back to the player
+                        return _target?.GlobalPosition;
+                    }
+                    return GridConversions.CellToWorld(golem.Cell);
+                case CameraFocus.TowerEvent:
+                    // The tower's middle: its feet are the footprint's south edge, the picture
+                    // stands ten cells tall.
+                    return GridConversions.FootprintFeet(TownSquare.TowerCentre, TownSquare.TowerSize)
+                        - new Vector2(0f, ClockTowerArt.CanvasHeight * 0.45f);
+                default:
+                    return _target?.GlobalPosition;
+            }
+        }
+
+        private GolemEntity FindGolem(string id)
+        {
+            if (id == null || _sandbox == null)
+            {
+                return null;
+            }
+            foreach (GolemEntity golem in _sandbox.Golems)
+            {
+                if (golem != null && !golem.IsRemoved && golem.GolemId == id)
+                {
+                    return golem;
+                }
+            }
+            return null;
+        }
+
+        private bool PlayerIsWalking() =>
+            !TextEntry.IsTyping(GetViewport()) && (Input.IsActionPressed(PlayerNode.MoveLeft) || Input.IsActionPressed(PlayerNode.MoveRight)
+                || Input.IsActionPressed(PlayerNode.MoveUp) || Input.IsActionPressed(PlayerNode.MoveDown));
 
         /// <summary>Zooms straight to <paramref name="size"/> (clamped), as a scenario capture wants.</summary>
         public void SetOrthographicSize(float size)
         {
             OrthographicSize = System.Math.Clamp(size, CameraRigRules.MinOrthographicSize, CameraRigRules.MaxOrthographicSize);
+            _director?.SnapZoomTo(OrthographicSize);
+            _pinned = true;
             ApplyZoom();
         }
 

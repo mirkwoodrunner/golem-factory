@@ -21,6 +21,11 @@ Kinds:
 - `strip`: seamless left to right (a wall run, a kerb): the same, with only the vertical band.
 - `sprite`: stands on the floor; rendered on the key colour, which the cleanup clears.
 
+A file that isn't in godot/art/ yet (a new FX sprite, Phase 6) names its `draft`, a PNG in the
+set dir drawn by the set's own script, which stands in for today's art at every step. A file may
+set its own `scale` (default 8): a tiny sprite renders at 32x, so the model sees a
+model-sized image.
+
 `run` starts ComfyUI if it isn't up and stops it afterwards (golem_set.Comfy). Run it in your
 own terminal: from Claude Code the low-memory reaper kills it.
 """
@@ -96,7 +101,12 @@ class EnvSet:
         return path
 
     def today(self, name):
-        return m.load(os.path.join(ART, name + ".png"))
+        draft = self.files[name].get("draft")
+        return m.load(os.path.join(self.root, draft) if draft else os.path.join(ART, name + ".png"))
+
+    def scale(self, name):
+        """How much bigger than the sprite the render is: the file's `scale`, else 8."""
+        return self.files[name].get("scale", SCALE)
 
     def candidates(self, name):
         """[(label, raw path)] in sheet order: every denoise over every seed, the seamed one for a tile."""
@@ -125,7 +135,8 @@ class EnvSet:
 def init_image(es, name):
     """Today's sprite at 8x, nearest-neighbour; a sprite's transparency filled with the key."""
     image = es.today(name)
-    big = image.resize((image.width * SCALE, image.height * SCALE), Image.NEAREST)
+    scale = es.scale(name)
+    big = image.resize((image.width * scale, image.height * scale), Image.NEAREST)
     if es.files[name]["kind"] == "sprite":
         ground = Image.new("RGBA", big.size, KEY + (255,))
         ground.alpha_composite(big)
@@ -177,8 +188,8 @@ def step_source(es, log=print):
         if ref is not None:
             ref.save(es.dir("source", f"{name}_ref.png"))
         if spec["kind"] in ("tile", "strip"):
-            size = (es.today(name).width * SCALE, es.today(name).height * SCALE)
-            seam_mask(size, spec["kind"], es.seamWidth * SCALE).save(es.dir("source", f"{name}_seam_mask.png"))
+            size = (es.today(name).width * es.scale(name), es.today(name).height * es.scale(name))
+            seam_mask(size, spec["kind"], es.seamWidth * es.scale(name)).save(es.dir("source", f"{name}_seam_mask.png"))
     log(f"source: {len(es.files)} inits in {es.dir('source')}")
 
 
@@ -234,7 +245,7 @@ def clean(es, name, raw_path):
     """A candidate at 1x on the set's ramps; (image, the share of pixels the snap moved far)."""
     spec = es.files[name]
     sprite = spec["kind"] == "sprite"
-    image, counts = palette_snap.run(m.load(raw_path), m.Palette.load(), spec["ramps"], reduce_by=SCALE,
+    image, counts = palette_snap.run(m.load(raw_path), m.Palette.load(), spec["ramps"], reduce_by=es.scale(name),
                                      key=KEY if sprite else None, key_holes=256 if sprite else 0,
                                      outline=sprite, max_change=1.0, log=lambda *_: None)
     opaque = sum(1 for p in image.getdata() if p[3] >= 128) or 1

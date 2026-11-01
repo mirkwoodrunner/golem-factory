@@ -484,6 +484,7 @@ namespace GolemFactory.Nodes
         private readonly Sprite2D[] _puffs = new Sprite2D[2];
         private float _puffAge = GolemWorkMotion.PuffSeconds;
         private bool _wasImpact;
+        private FxLayer _fx;
 
         /// <summary>
         /// Starts the puffs on the frame a stamp lands, and moves them for their short life.
@@ -494,6 +495,12 @@ namespace GolemFactory.Nodes
             if (impact && !_wasImpact)
             {
                 _puffAge = 0f;
+                // The Overclocker runs hot: its stamp throws sparks too (docs/game-feel-design.md §4).
+                if (Entity.Program.CurrentStep != null &&
+                    GolemWorkMotion.MotionFor(Entity.Program.chassis?.name, Entity.Program.CurrentStep.actionType) == GolemWorkMotion.Motion.FastStamp)
+                {
+                    (_fx ??= FxLayer.Find(this))?.Spawn(FxKind.Spark, GlobalPosition + new Vector2(0f, -0.3f * GridConversions.CellPixels));
+                }
             }
             _wasImpact = impact;
             _puffAge += delta;

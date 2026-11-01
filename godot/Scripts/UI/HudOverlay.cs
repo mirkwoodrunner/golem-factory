@@ -44,6 +44,15 @@ namespace GolemFactory.Nodes
         private float _untilRefresh;
 
         public string AlertsText => _alerts.Text;
+
+        /// <summary>The alert strip: a click on it looks at the next stopped golem.</summary>
+        public Control AlertsStrip { get; private set; }
+
+        private Control _banner;
+        private Label _bannerText;
+
+        /// <summary>The tower's stage banner's text while it shows; empty otherwise.</summary>
+        public string BannerText => _banner.Visible ? _bannerText.Text : "";
         public string GaugeText => _gauge.Text;
         public string TickText => _tick.Text;
         public Button PlayPauseButton => _playPause;
@@ -63,6 +72,26 @@ namespace GolemFactory.Nodes
             _root.AddChild(strip);
             _alerts = Ugui.Fill(Ugui.Text("Text", "All golems running.", 13, Colors.White, align: 2));
             strip.AddChild(_alerts);
+            // A click glides the camera to the next stopped golem (docs/game-feel-design.md §2).
+            strip.MouseFilter = Control.MouseFilterEnum.Stop;
+            strip.MouseDefaultCursorShape = Control.CursorShape.PointingHand;
+            strip.GuiInput += e =>
+            {
+                if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true })
+                {
+                    _world.Sandbox.FocusNextAlert();
+                }
+            };
+            AlertsStrip = strip;
+
+            // The Clock Tower's stage banner, while its event plays (§3).
+            _banner = Ugui.Place(Ugui.Image("TowerBanner", Ugui.NineSlice("res://art/UI/Hud/hud_panel_bolted.png", 12, 10, 12, 10), new Color(0.16f, 0.11f, 0.07f, 0.92f)),
+                0.5f, 0.5f, 0.5f, 0.5f, 0f, 200f, 520f, 64f, 0.5f, 0.5f);
+            _banner.MouseFilter = Control.MouseFilterEnum.Ignore;
+            _bannerText = Ugui.Fill(Ugui.Text("Text", "", 22, Amber, align: 2, bold: true));
+            _banner.AddChild(_bannerText);
+            _banner.Visible = false;
+            _root.AddChild(_banner);
 
             // Steam gauge.
             ColorRect gauge = Ugui.Place(Ugui.Rect("SteamGauge", Plate), 0f, 1f, 0f, 1f, 12f, -10f, 400f, 34f, 0f, 1f);
@@ -182,6 +211,12 @@ namespace GolemFactory.Nodes
             }
 
             _alerts.Text = _world.Sandbox.Alerts?.Text ?? "";
+            Player.CameraDirector camera = _world.Sandbox.Camera;
+            _banner.Visible = camera.TowerPhase != Player.TowerEventPhase.None && camera.TowerRevealed;
+            if (_banner.Visible)
+            {
+                _bannerText.Text = Player.TowerBanner.Text(camera.TowerStageNumber, camera.TowerStageName);
+            }
 
             // The two readouts refresh on Unity's 0.25 s interval rather than every frame.
             _untilRefresh -= (float)delta;

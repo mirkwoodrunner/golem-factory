@@ -252,6 +252,17 @@ namespace GolemFactory.Nodes.Scenarios
                 }
             }
 
+            // Game feel (docs/game-feel-design.md §4): the Overclocker's stamps throw sparks, and
+            // the burning boiler puffs from its chimney.
+            FxLayer fx = FxLayer.Find(_tree.Root);
+            foreach (FxKind kind in new[] { FxKind.Spark, FxKind.Puff })
+            {
+                if (fx == null || !fx.Started.TryGetValue(kind, out int n) || n == 0)
+                {
+                    problems.Add($"no {kind} effect while the row worked");
+                }
+            }
+
             if (problems.Count > 0)
             {
                 return new ScenarioResult(false, string.Join("; ", problems));

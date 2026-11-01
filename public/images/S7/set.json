@@ -1,0 +1,35 @@
+{
+  "promptPrefix": "pixel art, cozy game visual effect sprite, ",
+  "promptSuffix": ", soft glowing shading, warm palette, flat green background",
+  "negative": "3d render, realistic, photo, blurry, text, watermark, black outline, people, character, machine, building, noise",
+  "review": "row",
+  "denoise": [0.3, 0.45, 0.6],
+  "seeds": 3,
+  "picks": {},
+  "approved": false,
+  "set": "S7",
+  "note": "Phase 6's FX sprites (docs/game-feel-design.md §5), drawn by scripts/fx_draft.py and redrawn in ComfyUI at 32x. New files: no today's art, so each names its draft.",
+  "files": {
+    "fx_spark": {
+      "kind": "sprite",
+      "draft": "drafts/fx_spark.png",
+      "scale": 32,
+      "prompt": "a small burst of hot orange and gold sparks flying out from a bright white-gold centre",
+      "ramps": ["fire", "outline"]
+    },
+    "fx_build_dust": {
+      "kind": "sprite",
+      "draft": "drafts/fx_build_dust.png",
+      "scale": 32,
+      "prompt": "a low soft cloud of pale tan workshop dust puffing up from the floor",
+      "ramps": ["steam", "bone", "outline"]
+    },
+    "fx_pop_glint": {
+      "kind": "sprite",
+      "draft": "drafts/fx_pop_glint.png",
+      "scale": 32,
+      "prompt": "a small four-pointed shining brass star glint",
+      "ramps": ["brass", "steam", "outline"]
+    }
+  }
+}

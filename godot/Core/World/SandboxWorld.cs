@@ -10,6 +10,7 @@ using GolemFactory.Compat;
 using GolemFactory.Data;
 using GolemFactory.Diagnostics;
 using GolemFactory.Economy;
+using GolemFactory.Events;
 using GolemFactory.Golems;
 using GolemFactory.AssemblyLine;
 using GolemFactory.Progression;
@@ -259,6 +260,7 @@ namespace GolemFactory.World
             Alerts.Attach();
             WireProgression(setup.assemblyLine);
             WireAudio();
+            EventBus.ClockTowerStageCompleted += OnTowerStageCompleted;
             if (setup.tutorial)
             {
                 Tutorial = new Tutorial.TutorialGuide(this);
@@ -342,6 +344,27 @@ namespace GolemFactory.World
         /// <see cref="Advance"/>; the Clock Tower's stages off the event bus.
         /// </summary>
         public AudioDirector Audio { get; }
+
+        /// <summary>
+        /// The camera's decisions (docs/game-feel-design.md §2–§3): zoom levels, the pan to a
+        /// stopped golem, the Clock Tower's stage event. <c>CameraRigNode</c> follows it.
+        /// </summary>
+        public CameraDirector Camera { get; } = new CameraDirector();
+
+        /// <summary>The alert strip was clicked: the camera goes to the next stopped golem. Its id, or null with none.</summary>
+        public string FocusNextAlert()
+        {
+            Alerts?.Reconcile();
+            return Camera.NextAlert(Alerts?.Tracker.StallsWorstFirst());
+        }
+
+        private void OnTowerStageCompleted(ClockTowerStageCompletedEvent e)
+        {
+            if (!Restoring)
+            {
+                Camera.BeginTowerEvent(e.StageNumber, e.StageName);
+            }
+        }
 
         private void WireAudio()
         {
@@ -451,8 +474,10 @@ namespace GolemFactory.World
                 return "No save file found.";
             }
 
-            // A load rebuilding the factory isn't the player placing and wrecking it.
+            // A load rebuilding the factory isn't the player placing and wrecking it: no sound,
+            // and no landing or dust (Restoring).
             Audio.Suppressed = true;
+            Restoring = true;
             try
             {
                 return Restore(data);
@@ -460,8 +485,12 @@ namespace GolemFactory.World
             finally
             {
                 Audio.Suppressed = false;
+                Restoring = false;
             }
         }
+
+        /// <summary>True while a load rebuilds the world: buildings appear and go without their landing or dust.</summary>
+        public bool Restoring { get; private set; }
 
         private string Restore(SaveData data)
         {

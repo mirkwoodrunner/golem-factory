@@ -6,6 +6,7 @@ using GolemFactory.Belts;
 using GolemFactory.Buildings;
 using GolemFactory.ClockTower;
 using GolemFactory.Data;
+using GolemFactory.Economy;
 using GolemFactory.Steam;
 using GolemFactory.World;
 
@@ -41,11 +42,19 @@ namespace GolemFactory.Nodes
 
         public override void _EnterTree() => AddToGroup(GroupName);
 
+        /// <summary>The short effects (dust, sparks, puffs, pops): one layer, above everything standing.</summary>
+        public FxLayer Fx { get; private set; }
+
+        // Buildings drawn at startup are already standing; only one placed later lands.
+        private bool _started;
+
         public override void _Ready()
         {
             YSortEnabled = true;
             _world = WorldNode.Find(this);
             SandboxWorld sandbox = _world.Sandbox;
+            Fx = new FxLayer { Name = "Fx" };
+            AddChild(Fx);
             _entries = sandbox.AllPlaceables.ToDictionary(p => p.Key);
 
             sandbox.Build.BuildingPlaced += OnPlaced;
@@ -62,6 +71,7 @@ namespace GolemFactory.Nodes
             {
                 OnPlaced(sandbox.ClockTowerBuilding);
             }
+            _started = true;
         }
 
         public override void _ExitTree()
@@ -82,7 +92,7 @@ namespace GolemFactory.Nodes
                 return;
             }
             _entries.TryGetValue(building.PrefabKey ?? building.name, out PlaceableEntry entry);
-            var view = new BuildingView(building, entry, _world);
+            var view = new BuildingView(building, entry, _world, Fx, landing: _started && !_world.Sandbox.Restoring);
             _views[building] = view;
             AddChild(view);
         }
@@ -91,7 +101,16 @@ namespace GolemFactory.Nodes
         {
             if (_views.Remove(building, out BuildingView view))
             {
-                view.QueueFree();
+                // Coming down: a squash flat and dust, then gone (docs/game-feel-design.md §4). A
+                // load clearing the world just clears it.
+                if (_world.Sandbox.Restoring)
+                {
+                    view.QueueFree();
+                }
+                else
+                {
+                    view.Demolish();
+                }
             }
         }
 
@@ -117,6 +136,23 @@ namespace GolemFactory.Nodes
         private readonly PlaceableBoiler _boiler;
         private Sprite2D _sprite;
         private PointLight2D _glow;
+        private readonly FxLayer _fx;
+        private readonly ICrate _crate;
+
+        // The game-feel clocks (FeelRules), in real seconds; below zero, not playing.
+        private float _landAge = -1f;
+        private float _demolishAge = -1f;
+        private float _bumpAge = -1f;
+        private float _sincePop = 99f;
+        private float _revealAge = -1f;
+        private int _deposits;
+        private long _nextPuffTick;
+
+        /// <summary>True while it lands, from its placing; a scenario reads it.</summary>
+        public bool Landing => _landAge >= 0f && _landAge < FeelRules.PlaceSeconds;
+
+        /// <summary>True from its demolishing until it frees itself.</summary>
+        public bool Demolishing => _demolishAge >= 0f;
 
         /// <summary>A pipe piece's picture while it carries steam (LightingRules.PipeHot).</summary>
         public static string HotPipe(string name) => name + "_hot";
@@ -136,8 +172,11 @@ namespace GolemFactory.Nodes
 
         public BuildingView() { } // Godot needs a parameterless constructor for every node type.
 
-        public BuildingView(PlaceableBuilding building, PlaceableEntry entry, WorldNode world)
+        public BuildingView(PlaceableBuilding building, PlaceableEntry entry, WorldNode world, FxLayer fx = null, bool landing = false)
         {
+            _fx = fx;
+            _crate = building.GetPart<ICrate>();
+            _landAge = landing ? 0f : -1f;
             _building = building;
             _entry = entry;
             _world = world;
@@ -172,6 +211,11 @@ namespace GolemFactory.Nodes
                 _sprite.ZIndex = -1;
             }
             RefreshShape();
+            _deposits = _crate?.Buffer?.Deposits ?? 0;
+            if (_landAge >= 0f)
+            {
+                SpawnDust();
+            }
 
             if (_boiler != null)
             {
@@ -261,7 +305,18 @@ namespace GolemFactory.Nodes
         /// </summary>
         private void RefreshTower()
         {
-            string name = ClockTowerArt.SpriteFor(_tower.Site);
+            // While the stage event glides in, the tower still wears the stage before; the new
+            // one appears as the reveal strikes (docs/game-feel-design.md §3).
+            Player.CameraDirector camera = _world.Sandbox?.Camera;
+            bool hold = camera != null && !camera.TowerRevealed &&
+                (camera.TowerPhase == Player.TowerEventPhase.GlideIn || camera.TowerPhase == Player.TowerEventPhase.Reveal);
+            bool revealing = _heldBack && !hold;
+            _heldBack = hold;
+            if (revealing)
+            {
+                Reveal();
+            }
+            string name = ClockTowerArt.SpriteFor(_tower.Site, hold);
             if (name == SpriteName)
             {
                 return;
@@ -301,9 +356,160 @@ namespace GolemFactory.Nodes
             }
         }
 
+        /// <summary>The building came down: it squashes flat in a puff of dust, then frees itself.</summary>
+        public void Demolish()
+        {
+            if (_demolishAge >= 0f)
+            {
+                return;
+            }
+            _demolishAge = 0f;
+            SpawnDust();
+        }
+
+        private bool IsFloorTile => _belt != null || _pipe != null;
+
+        private void SpawnDust()
+        {
+            if (_fx == null)
+            {
+                return;
+            }
+            // A floor tile raises a little; a standing building a cloud either side of its feet.
+            Vector2 at = GlobalPosition + new Vector2(0f, IsFloorTile ? 0f : -6f);
+            _fx.Spawn(FxKind.Dust, at + new Vector2(-14f, 0f));
+            if (!IsFloorTile)
+            {
+                _fx.Spawn(FxKind.Dust, at + new Vector2(14f, 0f));
+            }
+        }
+
+        /// <summary>The landing, the coming down, a crate's bump and the tower's reveal, on the sprite.</summary>
+        private void UpdateFeel(float delta)
+        {
+            if (_demolishAge >= 0f)
+            {
+                _demolishAge += delta;
+                var d = FeelRules.DemolishSquash(_demolishAge);
+                _sprite.Scale = new Vector2(d.x, d.y);
+                _sprite.Modulate = new Color(1f, 1f, 1f, d.alpha);
+                if (_demolishAge >= FeelRules.DemolishSeconds)
+                {
+                    QueueFree();
+                }
+                return;
+            }
+
+            float sx = 1f, sy = 1f;
+            if (_landAge >= 0f && _landAge < FeelRules.PlaceSeconds)
+            {
+                _landAge += delta;
+                if (!IsFloorTile)
+                {
+                    (sx, sy) = FeelRules.PlaceSquash(_landAge);
+                }
+            }
+            if (_bumpAge >= 0f)
+            {
+                _bumpAge += delta;
+                var b = FeelRules.CrateBump(_bumpAge);
+                sx *= b.x;
+                sy *= b.y;
+                if (_bumpAge >= FeelRules.CratePopSeconds)
+                {
+                    _bumpAge = -1f;
+                }
+            }
+            if (_revealAge >= 0f)
+            {
+                _revealAge += delta;
+                var r = FeelRules.TowerReveal(_revealAge);
+                sx *= r.scale;
+                sy *= r.scale;
+                _sprite.Modulate = new Color(1f + 0.5f * r.flash, 1f + 0.4f * r.flash, 1f + 0.2f * r.flash);
+                if (_revealAge >= FeelRules.TowerRevealSeconds)
+                {
+                    _revealAge = -1f;
+                    _sprite.Modulate = Colors.White;
+                }
+            }
+            // Floor tiles rotate about their centre; a squash on them would read as a wobble.
+            if (!IsFloorTile)
+            {
+                _sprite.Scale = new Vector2(sx, sy);
+            }
+        }
+
+        /// <summary>A good landed in this crate: the crate bumps and the good pops out of the lid.</summary>
+        private void UpdateCrate(float delta)
+        {
+            _sincePop += delta;
+            StorageBuffer buffer = _crate?.Buffer;
+            if (buffer == null || buffer.Deposits == _deposits)
+            {
+                return;
+            }
+            _deposits = buffer.Deposits;
+            if (_sincePop < FeelRules.CratePopMinInterval || _fx == null)
+            {
+                return;
+            }
+            _sincePop = 0f;
+            _bumpAge = 0f;
+            Vector2 lid = GlobalPosition + new Vector2(0f, -40f);
+            _fx.Spawn(FxKind.GoodPop, lid, ItemIcons.Load(buffer.LastDepositedType));
+            _fx.Spawn(FxKind.Glint, lid + new Vector2(10f, -6f));
+        }
+
+        /// <summary>A burning boiler puffs from its chimney on the factory's clock, so not while paused.</summary>
+        private void UpdateBoilerPuff()
+        {
+            SandboxWorld sandbox = _world.Sandbox;
+            SteamBoiler boiler = _boiler.Boiler;
+            if (_fx == null || boiler == null || sandbox == null || boiler.CokeStock <= 0 || boiler.WorkingGolemCount <= 0)
+            {
+                return;
+            }
+            long now = sandbox.Clock.CurrentTick;
+            if (now < _nextPuffTick)
+            {
+                return;
+            }
+            _nextPuffTick = now + (long)System.Math.Max(1f, FeelRules.BoilerPuffInterval * sandbox.Clock.TicksPerSecond);
+            Vector2 top = _sprite.Position + _sprite.Offset + new Vector2(_sprite.Texture.GetWidth() / 2f + 1f, 4f);
+            _fx.Spawn(FxKind.Puff, GlobalPosition + top);
+        }
+
+        private bool _heldBack;
+
+        /// <summary>True while the tower's swell and flash play.</summary>
+        public bool Revealing => _revealAge >= 0f;
+
+        /// <summary>The Clock Tower's new stage appears: a swell, a warm flash and dust.</summary>
+        private void Reveal()
+        {
+            _revealAge = 0f;
+            if (_fx != null)
+            {
+                for (int i = -2; i <= 2; i++)
+                {
+                    _fx.Spawn(FxKind.Dust, GlobalPosition + new Vector2(i * 40f, -4f));
+                }
+            }
+        }
+
         public override void _Process(double delta)
         {
             using var perf = NodePerf.Measure("node.buildings");
+            UpdateFeel((float)delta);
+            if (_crate != null)
+            {
+                UpdateCrate((float)delta);
+            }
+            if (_boiler != null)
+            {
+                UpdateBoilerPuff();
+            }
             if (_tower != null)
             {
                 RefreshTower(); // a stage completing, or the rope coming down, changes the picture

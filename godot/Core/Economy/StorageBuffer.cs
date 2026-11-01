@@ -136,8 +136,21 @@ namespace GolemFactory.Economy
             // read as the busiest thing on screen.
             _deposited.TryGetValue(itemType, out int totalIn);
             _deposited[itemType] = totalIn + accepted;
+            if (accepted > 0)
+            {
+                Deposits++;
+                LastDepositedType = itemType;
+            }
             return accepted;
         }
+
+        /// <summary>
+        /// How many deposits have landed, ever (a load's Clear keeps it): the crate's pop reads
+        /// it going up (docs/game-feel-design.md §4), with <see cref="LastDepositedType"/> for the icon.
+        /// </summary>
+        public int Deposits { get; private set; }
+
+        public string LastDepositedType { get; private set; }
 
         /// <summary>
         /// Empties this buffer without replacing it. Exists so
