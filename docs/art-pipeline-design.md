@@ -7,15 +7,11 @@ makes cleanup, mirroring, checks and review repeatable, the lighting, the scenar
 all, and when the phase is done. **What the art looks like** is `docs/art-style-bible.md`; its
 §0 invariants hold for every step here.
 
-**Next:** S1, the golems (§2, §4): the Brass Presser's 28 frames are in (8f09b0e, approved
-2026-10-23 at its third review round, `public/images/S1/brass_presser/review.json`), and the
-Clockwork Scavenger's (approved 2026-10-24 at its second round, made end to end by `golem_set.py`),
-the Mainspring Overclocker's (approved 2026-10-24, redrawn as the Watchmaker at the user's call),
-the Aether Hauler's (approved 2026-10-25, on treads with a crate of Aether crystals) and the
-Zeppelin Freight Loader's (approved 2026-10-25, an iron behemoth under a tethered blimp): all
-five S1 chassis are in. Next: the Artificer (S1b), then S2 onwards. Done on 2026-10-23: the
-cleanup commit (§3.1), the `verify_art.py` fix (§5.5), the tooling (§5), Core's `GolemFrames`
-(§7.4) and the `art` scenario's first part (§7.1); ControlNet and IP-Adapter are installed (§1.4).
+**Phase 4 is done** (2026-10-31): every set is through (§3), the done-when list (§8) holds,
+and the test run passed from a clean build (1991 Core tests, all 17 scenarios). History of the
+sets: the S1 golems (the Brass Presser 8f09b0e, then the Scavenger, Overclocker, Hauler and
+Zeppelin), the Artificer kept and adjusted (S1b), floor and walls kept (S2), lighting (L), the
+buildings (S3), the Workbench (S4), goods (S5) and the HUD (S6); each approved by the user (§9).
 
 ## 1. Where things stand (measured 2026-10-22, at 8b3ec0b)
 
@@ -1038,8 +1034,8 @@ in-game readability (Lighting, since it reads the ambient).
 
 A sixth phase, `unlit`: the `flowing-1x` load with `ShellNode`'s lights and the boiler glows off.
 Its render CPU p95 against `flowing-1x`'s is the lighting's cost, a new row in the report's
-§6.4. Every lit phase must still pass with all 28 frames per chassis in use. The run is recorded
-in `docs/performance-report-phase4.md`.
+§6.4. Every lit phase must still pass with all 28 frames per chassis in use. The windowed
+measurement is in §6.5.
 
 ### 7.4 Core tests
 
@@ -1084,23 +1080,23 @@ Phase 4 is done when all of these hold:
 3. **The golems have the full frame set in every facing:** every chassis has its 28 files
    (8 frame slots, 7 distinct files, × 4 facings), **140 for the five, 105 drawn and 35
    mirrored and re-shaded**, one canvas and foot row per chassis, chosen by `GolemFrames` with
-   facing as an input. The Artificer's 16 walk frames are redrawn, 4 of them mirrored and
-   re-shaded.
+   facing as an input. The Artificer keeps today's 16 walk frames, adjusted from their own
+   pixels (decisions 15 and 16: the redraw was rejected).
 4. **The Steampunk pack is gone:** `godot/art/UI/Steampunk/` and
    `docs/source-assets/SteampunkFantasyUIPack/` are removed, the seven HUD pieces in use are
    redrawn under `UI/Hud/` with manifest entries, and no doc that describes the current tree
    names the pack as present.
 5. **Every set's review sheet was shown to the user before its commit**, at the default, closest
    and widest zooms, and every frame the user marked was redone, fixed by script or by the
-   user's hand and shown again. The sheets and their `review.json` are in
-   `public/images/<set>/`.
+   user's hand and shown again. The user's approval of each set is in its commit message and
+   §9; the sheets are in `public/images/<set>/`.
 6. **The checks are green:** `verify_art.py` exits 0 and covers every generator (the §1.3 blind
-   spot fixed); `check_art.py` exits 0 over the whole manifest with every replaced set at
-   `palette: bible`, including the per-facing silhouette, pose, tint-shift, light-direction,
+   spot fixed); `check_art.py` exits 0 over the whole manifest (the redrawn golems at
+   `palette: bible`; kept and script-drawn sets stay `legacy`), including the per-facing silhouette, pose, tint-shift, light-direction,
    frame-set, goods (at 24, all four phases) and copper-ore checks; the tools' unit tests pass.
 7. **The lighting is in**, every value from `LightingRules`, `LightingRulesTests` passing
-   (the floor stays readable), and the **windowed `perf` run passes on an idle machine with it
-   on**, its cost recorded in `docs/performance-report-phase4.md`.
+   (the floor stays readable), and `perf` passes with it on. Its cost was measured windowed
+   when it landed (0.27 ms of the 1.0 ms budget, §6.5); the sets since kept their canvas sizes.
 8. **Every Core test and every scenario passes** from a clean build, the new `art` scenario
    included. A scenario that fails only sometimes is a bug to fix, not a reason to run it again.
 9. **The record is complete:** every hand-replaced file is in its generator's guard,

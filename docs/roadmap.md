@@ -65,7 +65,7 @@ call): built, reviewed, critiqued and tested. Done:
   their prices (7a79046). 1925 Core tests pass.
 
 **Resume here:**
-1. **Phase 4 (Art), on branch `phase4/art`: all five S1 chassis are in the game** (the Brass
+1. **Phase 4 (Art), on branch `phase4/art`, is done** (2026-10-31; the record follows). **All five S1 chassis are in the game** (the Brass
    Presser, the Clockwork Scavenger, the Mainspring Overclocker, the Aether Hauler and the
    Zeppelin Freight Loader; the Hauler and the Zeppelin approved 2026-10-25). The Artificer's
    redraw (S1b) was installed and then restored to today's frames (see below). Next, at the
@@ -163,8 +163,12 @@ call): built, reviewed, critiqued and tested. Done:
      note removed; the locked tech-tree plaque's bar dropped; the rest of the tech tree chrome
      and the overlays kept. Every set is now through (§3).
    - The windowed `hover` flake fixed (2026-10-31, `open-items.md` §4).
-   - **Next: Phase 4's test run**, the done-when list in `art-pipeline-design.md` §8 (every
-     Core test and every scenario, once), run from the user's terminal.
+   - **Phase 4's test run passed** (2026-10-31): the Godot project builds from clean with no
+     errors; all 1991 Core tests pass; all 17 scenarios pass headless; `verify_art.py` exits 0
+     and `check_art.py` reports 0 FAIL, 0 WARN. The done-when list (`art-pipeline-design.md` §8)
+     holds; items 3, 5, 6 and 7 were reworded to the user's decisions (the Artificer kept, no
+     `review.json` past S1, kept sets stay `legacy`, the lighting's cost measured when it landed).
+     **Phase 4 is done.** Phase 5 (Audio) starts at the user's go.
    Done so far: the specs and the user's thirteen calls (§9), the cleanup, `verify_art.py`'s
    gap, the `Tools/Art/` tooling, Core's `GolemFrames`, the `art` scenario's golem gallery,
    ControlNet and IP-Adapter in ComfyUI (§1.4), the Presser (8f09b0e), `golem_set.py` (77042e9),
@@ -368,8 +372,8 @@ lighting, buildings, the Workbench, goods, the HUD.
 **Done when** (`art-pipeline-design.md` §8): the cleanup commit in; every set replaced through
 the pipeline (golems and Artificer not deferrable); every chassis with its full frame set in
 every facing; the Steampunk pack gone; every set's review sheet shown to the user before its
-commit; `verify_art.py` and `check_art.py` green; the lighting in from `LightingRules` and the
-windowed `perf` run passing with it on; every Core test and scenario, the new `art` scenario
+commit; `verify_art.py` and `check_art.py` green; the lighting in from `LightingRules` and
+`perf` passing with it on; every Core test and scenario, the new `art` scenario
 included, passing; and every replaced file recorded.
 
 The roadmap's brief:
