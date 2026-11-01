@@ -28,6 +28,7 @@ Read the docs before making design calls, not just the code:
 - `docs/guide-chapters-design.md` -- the guide's texts, checks, marks, plans and kit actions.
 - `docs/art-style-bible.md` -- Phase 4's look. §0: the invariants any art pass must keep.
 - `docs/art-pipeline-design.md` -- Phase 4's how: ComfyUI workflow, sprites, user decisions (§9).
+- `docs/audio-design.md` -- Phase 5: sound slots, mix rules, placeholder sources, decisions (§9).
 - `docs/performance-report-template.md` -- the endgame profile's spec; `-phase3.md` is a run.
 - `docs/open-items.md` -- the backlog: open decisions, known gaps, deliberate scope cuts.
 - `docs/godot-spike.md` -- what the port measured before it began.
