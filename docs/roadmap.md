@@ -68,9 +68,8 @@ call): built, reviewed, critiqued and tested. Done:
 0. **Phase 6 (Game feel), on branch `phase6/feel` (from `phase5/audio`), built 2026-11-01.** The
    spec is `docs/game-feel-design.md`; the user's four decisions are its §7 (ComfyUI FX art,
    click the alert strip, fixed zoom levels, the tower's event skippable with the clock running).
-   Everything plays, on the steam puff tinted where its art isn't in yet. Left for done (§8):
-   the user renders the S7 set (`env_set.py public/images/S7 run`, in their own terminal), picks
-   and approves it, it's installed; and the user plays it.
+   Everything plays. The S7 FX art is rendered and installed (the user picked spark #6, dust
+   #7, glint #6). Left for done (§8): the user plays it and is happy with the feel.
    **Phase 5 (Audio), on branch `phase5/audio` (from `phase4/art`), is done** (2026-11-01; the
    user approved the listening sheet). The spec is `docs/audio-design.md`; all four decisions are
    made (§9): CC0 recordings for the effects and ambience, synthesized music. Every slot plays at

@@ -35,8 +35,8 @@ curve and freed when it ends. Kinds and where they start:
 | GoodPop | a deposit landing in a crate: the good's icon out of the lid (at most every 0.25 s a crate) | the good's icon |
 | Glint | with the pop | `fx_pop_glint.png` |
 
-Until the S7 set (§5) installs its three pictures, each falls back to the steam puff tinted to its
-colour, so every effect plays already.
+The S7 set (§5) draws Dust, Spark and Glint. A picture missing falls back to the steam puff
+tinted to its colour, so the effect still plays.
 
 ## 2. The camera (`CameraDirector`, `CameraRigNode`)
 
@@ -114,5 +114,6 @@ the `art` scenario's named sprites. Nothing enters `godot/art/` before the user 
 ## 8. Done when
 
 1. Every item in the roadmap's list plays (§1–§4), and every Core test and scenario passes.
-2. The S7 pictures are rendered, picked and approved by the user, and installed.
+2. The S7 pictures are rendered, picked and approved by the user, and installed. **Done
+   2026-11-01:** the user picked spark #6, dust #7, glint #6.
 3. The user has played it and is happy with the feel.

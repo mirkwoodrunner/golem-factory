@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using GolemFactory.World;
 
@@ -21,9 +22,9 @@ namespace GolemFactory.Nodes
     /// Above everything standing (z 1), so an effect is never hidden behind what made it.
     ///
     /// <para>
-    /// The pictures are <c>res://art/fx_*.png</c>. Until the S7 set (decision 1) installs
-    /// <c>fx_build_dust</c>, <c>fx_spark</c> and <c>fx_pop_glint</c>, each falls back to the
-    /// steam puff tinted to its colour, so the effects play before their art lands.
+    /// The pictures are <c>res://art/fx_*.png</c>; <c>fx_build_dust</c>, <c>fx_spark</c> and
+    /// <c>fx_pop_glint</c> are the S7 set (decision 1). One missing falls back to the steam puff
+    /// tinted to its colour, so an effect still plays.
     /// </para>
     /// </summary>
     public partial class FxLayer : Node2D
@@ -39,6 +40,9 @@ namespace GolemFactory.Nodes
             [FxKind.Puff] = (Puff, Colors.White),
             [FxKind.Glint] = ("res://art/fx_pop_glint.png", new Color(1.0f, 0.85f, 0.45f)),
         };
+
+        /// <summary>The pictures' file names under <c>res://art/</c>: what the <c>art</c> scenario requires.</summary>
+        public static IEnumerable<string> PictureFiles => Art.Values.Select(a => a.Path.Substring("res://art/".Length)).Distinct();
 
         private readonly Dictionary<FxKind, (Texture2D Texture, Color Tint)> _textures = new Dictionary<FxKind, (Texture2D, Color)>();
         private readonly List<Effect> _live = new List<Effect>();
