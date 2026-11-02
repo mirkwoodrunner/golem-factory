@@ -32,6 +32,14 @@ namespace GolemFactory.Nodes
 
         public static Vector2 CellToWorld(Vector2I cell) => CellToWorld(ToCore(cell));
 
+        /// <summary>A point in cells (fractional, Core's frame) in Godot world pixels.</summary>
+        public static Vector2 PointToWorld(Compat.Vector2 point) =>
+            new Vector2(point.x * CellPixels, -point.y * CellPixels);
+
+        /// <summary>A Godot world position as a point in cells (fractional, Core's frame).</summary>
+        public static Compat.Vector2 WorldToPoint(Vector2 world) =>
+            new Compat.Vector2(world.X / CellPixels, -world.Y / CellPixels);
+
         /// <summary>The cell whose square contains <paramref name="world"/>.</summary>
         public static CoreVector2Int WorldToCell(Vector2 world) =>
             new CoreVector2Int(

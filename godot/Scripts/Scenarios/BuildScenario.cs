@@ -167,8 +167,15 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return $"card cost '{_menu.HoverCardCost}'";
                 }
-                return _menu.HoverCard.GetGlobalRect().End.Y <= _menu.Panel.GetGlobalRect().Position.Y
-                    ? null : "the card overlaps the menu";
+                if (_menu.HoverCard.GetGlobalRect().End.Y > _menu.Panel.GetGlobalRect().Position.Y)
+                {
+                    return "the card overlaps the menu";
+                }
+                // Drawn over everything: the guide's arrow and plate covered it (the user, 2026-11-01).
+                int cardLayer = _menu.HoverCard.GetParent<CanvasLayer>().Layer;
+                Node over = _viewport.FindChildren("*", "CanvasLayer", true, false)
+                    .FirstOrDefault(n => n != _menu.HoverCard.GetParent() && ((CanvasLayer)n).Layer >= cardLayer);
+                return over == null ? null : $"layer {((CanvasLayer)over).Layer} ({over.Name}) draws over the card's {cardLayer}";
             });
             Do("capture the build menu", () => { ScenarioCapture.Shot(_viewport, "screen-build-menu"); return null; });
             Do("press 1", () => { PressKey(Key.Key1); return null; });

@@ -240,6 +240,9 @@ namespace GolemFactory.UI
             return rows;
         }
 
+        /// <summary>A card was claimed: the latch.</summary>
+        public event Action Claimed;
+
         /// <summary>The Claim button on slot <paramref name="slotIndex"/>.</summary>
         public bool Claim(int slotIndex)
         {
@@ -254,6 +257,7 @@ namespace GolemFactory.UI
             if (_line.TryClaimSlot(slotIndex, _userId, _buffers, _wallet, _post))
             {
                 Status = $"Claimed {name}.";
+                Claimed?.Invoke();
                 return true;
             }
             // Two ways to be refused, needing different answers: go and make something, or go

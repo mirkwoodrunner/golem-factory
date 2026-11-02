@@ -47,6 +47,10 @@ python Tools/Art/env_set.py <set dir> pick     # then review; install only once 
   A set may name a `reference` (IP-Adapter, as the golem sets use the cart): S3's buildings are
   redrawn toward `steam_boiler`. `review` also draws both sides at play size (1280x720, default zoom).
 
+- **A new sprite with no art yet** (Phase 6's FX, set S7) names a `draft` in its `set.json`
+  entry, drawn by the set's own script, and renders at its own `scale` (32 for the tiny FX, so the
+  model sees a model-sized image); `env_set.py` treats the draft as today's art throughout.
+
 - **A golem chassis is made with `golem_set.py`** (art-pipeline-design.md §5.10): its own
   settings in `public/images/S1/<chassis>/chassis.json`, its draft script beside it. It starts
   and stops ComfyUI and Godot itself. **The user runs `run` (the render) in their own

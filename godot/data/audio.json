@@ -1,0 +1,146 @@
+{
+  "amb.workshop": {
+    "path": "res://audio/amb.workshop.wav",
+    "bus": 1,
+    "volumeDb": -16.0,
+    "maxCopies": 1,
+    "loop": 1
+  },
+  "amb.clock": {
+    "path": "res://audio/amb.clock.wav",
+    "bus": 1,
+    "volumeDb": -18.0,
+    "maxCopies": 1
+  },
+  "amb.steam": {
+    "path": "res://audio/amb.steam.wav",
+    "bus": 1,
+    "volumeDb": -14.0,
+    "maxCopies": 1,
+    "loop": 1
+  },
+  "work.stamp": {
+    "path": "res://audio/work.stamp.wav",
+    "bus": 2,
+    "volumeDb": -10.0,
+    "maxCopies": 4,
+    "positional": 1
+  },
+  "work.fast-stamp": {
+    "path": "res://audio/work.fast-stamp.wav",
+    "bus": 2,
+    "volumeDb": -10.0,
+    "maxCopies": 4,
+    "positional": 1
+  },
+  "work.tug": {
+    "path": "res://audio/work.tug.wav",
+    "bus": 2,
+    "volumeDb": -10.0,
+    "maxCopies": 4,
+    "positional": 1
+  },
+  "work.heave": {
+    "path": "res://audio/work.heave.wav",
+    "bus": 2,
+    "volumeDb": -10.0,
+    "maxCopies": 4,
+    "positional": 1
+  },
+  "work.lunge": {
+    "path": "res://audio/work.lunge.wav",
+    "bus": 2,
+    "volumeDb": -10.0,
+    "maxCopies": 4,
+    "positional": 1
+  },
+  "work.launch": {
+    "path": "res://audio/work.launch.wav",
+    "bus": 2,
+    "volumeDb": -10.0,
+    "maxCopies": 4,
+    "positional": 1
+  },
+  "ui.card-snap": {
+    "path": "res://audio/ui.card-snap.wav",
+    "bus": 3,
+    "volumeDb": -4.0,
+    "maxCopies": 1
+  },
+  "ui.engage": {
+    "path": "res://audio/ui.engage.wav",
+    "bus": 3,
+    "volumeDb": -6.0,
+    "maxCopies": 1
+  },
+  "ui.patent": {
+    "path": "res://audio/ui.patent.wav",
+    "bus": 3,
+    "volumeDb": -4.0,
+    "maxCopies": 1
+  },
+  "ui.claim": {
+    "path": "res://audio/ui.claim.wav",
+    "bus": 3,
+    "volumeDb": -4.0,
+    "maxCopies": 1
+  },
+  "ui.stall-chime": {
+    "path": "res://audio/ui.stall-chime.wav",
+    "bus": 3,
+    "volumeDb": -6.0,
+    "maxCopies": 1
+  },
+  "ui.place": {
+    "path": "res://audio/ui.place.wav",
+    "bus": 3,
+    "volumeDb": -6.0,
+    "maxCopies": 1
+  },
+  "ui.demolish": {
+    "path": "res://audio/ui.demolish.wav",
+    "bus": 3,
+    "volumeDb": -8.0,
+    "maxCopies": 1
+  },
+  "ui.collect": {
+    "path": "res://audio/ui.collect.wav",
+    "bus": 3,
+    "volumeDb": -6.0,
+    "maxCopies": 1
+  },
+  "music.layer.1": {
+    "path": "res://audio/music.layer.1.wav",
+    "bus": 0,
+    "volumeDb": -8.0,
+    "maxCopies": 1,
+    "loop": 1
+  },
+  "music.layer.2": {
+    "path": "res://audio/music.layer.2.wav",
+    "bus": 0,
+    "volumeDb": -8.0,
+    "maxCopies": 1,
+    "loop": 1
+  },
+  "music.layer.3": {
+    "path": "res://audio/music.layer.3.wav",
+    "bus": 0,
+    "volumeDb": -8.0,
+    "maxCopies": 1,
+    "loop": 1
+  },
+  "music.layer.4": {
+    "path": "res://audio/music.layer.4.wav",
+    "bus": 0,
+    "volumeDb": -8.0,
+    "maxCopies": 1,
+    "loop": 1
+  },
+  "music.tower-fanfare": {
+    "path": "res://audio/music.tower-fanfare.wav",
+    "bus": 0,
+    "volumeDb": -4.0,
+    "maxCopies": 1
+  }
+}

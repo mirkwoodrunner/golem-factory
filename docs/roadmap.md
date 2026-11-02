@@ -65,6 +65,19 @@ call): built, reviewed, critiqued and tested. Done:
   their prices (7a79046). 1925 Core tests pass.
 
 **Resume here:**
+0. **Phase 6 (Game feel), on branch `phase6/feel` (from `phase5/audio`), built 2026-11-01.** The
+   spec is `docs/game-feel-design.md`; the user's four decisions are its §7 (ComfyUI FX art,
+   click the alert strip, fixed zoom levels, the tower's event skippable with the clock running).
+   Everything plays. The S7 FX art is rendered and installed (the user picked spark #6, dust
+   #7, glint #6). Left for done (§8): the user plays it and is happy with the feel.
+   **Phase 5 (Audio), on branch `phase5/audio` (from `phase4/art`), is done** (2026-11-01; the
+   user approved the listening sheet). The spec is `docs/audio-design.md`; all four decisions are
+   made (§9): CC0 recordings for the effects and ambience, synthesized music. Every slot plays at
+   its trigger (`Core/Audio`, `Scripts/Audio/AudioNode`), the Settings tab has the sliders, the
+   `audio` scenario and `verify_audio.py` pass. To change a sound: swap it in
+   `Tools/Audio/audio_manifest.json`, rebuild (`build_cc0.py` / `synth_music.py`), rerun
+   `verify_audio.py` and the sheet. Phase 6 (Game feel) starts at the user's go. Phases 1–4 are
+   pushed as PR #60 (the user's call, 2026-10-31); `phase5/audio` is not pushed.
 1. **Phase 4 (Art), on branch `phase4/art`, is done** (2026-10-31; the record follows). **All five S1 chassis are in the game** (the Brass
    Presser, the Clockwork Scavenger, the Mainspring Overclocker, the Aether Hauler and the
    Zeppelin Freight Loader; the Hauler and the Zeppelin approved 2026-10-25). The Artificer's

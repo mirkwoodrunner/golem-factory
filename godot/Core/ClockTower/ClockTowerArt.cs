@@ -32,6 +32,22 @@ namespace GolemFactory.ClockTower
         }
 
         /// <summary>The picture after <paramref name="completed"/> finished stages, capped at the last.</summary>
+        /// <summary>
+        /// The picture, holding back the stage just completed while <paramref name="holdBack"/>:
+        /// the Clock Tower's event shows the new stage only once the camera has arrived
+        /// (docs/game-feel-design.md §3).
+        /// </summary>
+        public static string SpriteFor(ClockTowerSite site, bool holdBack)
+        {
+            string now = SpriteFor(site);
+            if (!holdBack || site == null || !site.IsOpen)
+            {
+                return now;
+            }
+            int shown = site.IsComplete ? FinalPicture : site.StageIndex;
+            return shown > 0 ? Stage(shown - 1) : now;
+        }
+
         public static string Stage(int completed) =>
             "clock_tower_stage" + (completed < 0 ? 0 : completed > FinalPicture ? FinalPicture : completed);
     }

@@ -13,6 +13,9 @@ namespace GolemFactory.UI
         Patents,
         SaveLoad,
         TechTree,
+
+        /// <summary>Sound volumes and mute (docs/audio-design.md §5). Appended.</summary>
+        Settings,
     }
 
     /// <summary>

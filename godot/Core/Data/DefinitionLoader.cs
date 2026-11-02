@@ -5,6 +5,7 @@ using System.IO;
 using System.Reflection;
 using System.Text.Json;
 using GolemFactory.AssemblyLine;
+using GolemFactory.Audio;
 using GolemFactory.ClockTower;
 using GolemFactory.PunchCards;
 using GolemFactory.Save;
@@ -25,6 +26,9 @@ namespace GolemFactory.Data
         public IReadOnlyDictionary<string, ClockTowerStageDefinition> ClockTowerStages => Table<ClockTowerStageDefinition>();
         public IReadOnlyDictionary<string, DraftableCardDefinition> Cards => Table<DraftableCardDefinition>();
         public IReadOnlyDictionary<string, DraftableCardCatalog> Decks => Table<DraftableCardCatalog>();
+
+        /// <summary>Every sound slot (docs/audio-design.md §3), by name.</summary>
+        public IReadOnlyDictionary<string, AudioSlotDefinition> AudioSlots => Table<AudioSlotDefinition>();
 
         /// <summary>The save system's name-to-definition resolver, over everything loaded.</summary>
         public DefinitionCatalog ToCatalog() =>
@@ -79,6 +83,7 @@ namespace GolemFactory.Data
             new KeyValuePair<string, Type>("clock_tower_stages.json", typeof(ClockTowerStageDefinition)),
             new KeyValuePair<string, Type>("assembly_line_cards.json", typeof(DraftableCardDefinition)),
             new KeyValuePair<string, Type>("assembly_line_decks.json", typeof(DraftableCardCatalog)),
+            new KeyValuePair<string, Type>("audio.json", typeof(AudioSlotDefinition)),
         };
 
         private const BindingFlags FieldFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;

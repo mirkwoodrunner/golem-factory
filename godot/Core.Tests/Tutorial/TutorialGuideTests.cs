@@ -921,15 +921,15 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
-        public void JoinTheBoilers_IsNotDone_ByARouteThatJoinsButLeavesTheCokerToTheEmptyBoiler()
+        public void JoinTheBoilers_IsDone_ByAnyRouteThatJoinsThem()
         {
             SandboxWorld world = AtJoinTheBoilers();
             TutorialGuide guide = world.Tutorial;
             Pipe(world, guide.Boiler2Spot + new Vector2Int(-2, 0), guide.Boiler2Spot + new Vector2Int(-1, 0));
             Assert.IsTrue(world.Steam.AreJoined(guide.BoilerSpot, guide.Boiler2Spot, world.Clock.CurrentTick), "precondition: joined");
 
-            Assert.AreEqual("pipes2", StepId(world),
-                "steam never passes through the new boiler to its neighbours: the coker would sit beside a cold firebox");
+            Assert.AreNotEqual("pipes2", StepId(world),
+                "joined boilers share: the first boiler's steam passes through the new one to the coker");
         }
 
         private static SandboxWorld AtColumnPipes()

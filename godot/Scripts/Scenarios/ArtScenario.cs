@@ -173,6 +173,7 @@ namespace GolemFactory.Nodes.Scenarios
                 names.Add("hand_crank_bench_turn_" + frame + ".png"); // HandCrankBench.SpriteFor
             }
             names.Add(GolemFrames.FallbackSprite);
+            names.AddRange(FxLayer.PictureFiles);
             List<string> missing = names.Distinct().Where(n => !ResourceLoader.Exists("res://art/" + n)).ToList();
             if (missing.Count > 0)
             {

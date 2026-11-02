@@ -115,6 +115,21 @@ namespace GolemFactory.UI
             return found;
         }
 
+        /// <summary>
+        /// Every stopped golem's id, worst first, in the order <see cref="TryGetPrimaryStall"/>
+        /// picks (lowest reason, then id): what clicking the strip walks through.
+        /// </summary>
+        public List<string> StallsWorstFirst()
+        {
+            var ids = new List<string>(_stalled.Keys);
+            ids.Sort((a, b) =>
+            {
+                int byReason = _stalled[a].Reason.CompareTo(_stalled[b].Reason);
+                return byReason != 0 ? byReason : string.CompareOrdinal(a, b);
+            });
+            return ids;
+        }
+
         // A golem with no id (an unconfigured one, as unit tests build) is ignored rather than
         // thrown on: the bus is static, so a live world's tracker hears every golem in the process.
         /// <summary>

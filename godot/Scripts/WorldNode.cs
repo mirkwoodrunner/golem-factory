@@ -85,6 +85,9 @@ namespace GolemFactory.Nodes
                 : new SandboxWorld(definitions, BeltSegmentLengthTicks, TicksPerSecond);
 
             Sandbox.Clock.Play();
+
+            // The sound (docs/audio-design.md): plays what the world's AudioDirector decides.
+            AddChild(new AudioNode { Name = "Audio" });
         }
 
         public override void _Process(double delta)

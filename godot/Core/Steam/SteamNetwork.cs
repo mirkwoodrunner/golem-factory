@@ -48,6 +48,16 @@ namespace GolemFactory.Steam
     //     and can leave a boiler idle while an adjacent one is over-subscribed).
     //
     // (3) FRACTIONAL BURN. Integer accumulator, no floats. See SteamBoiler.Accrue.
+    //
+    // JOINED BOILERS SHARE (the user's call, 2026-11-01, from the Phase 2 playtest). Boilers
+    // whose pipe runs touch form one network, and every boiler on it reaches everything any of
+    // them reaches: a boiler passes steam on like a pipe. Before this, steam stopped at a
+    // boiler, so a player who joined a fuelled boiler to a dry one still had every golem on the
+    // dry one's far side stalled. Each boiler with Coke still powers at most 8, and claims in
+    // two passes: first from its OWN reach (its neighbours and its own pipes), as before, then
+    // whatever capacity it has left from the network's shared reach. So joining a dry boiler's
+    // golems on never takes steam from a golem that already had it; they only get the spare.
+    // Both passes walk boilers and golems in decision (1)'s and (2)'s orders.
     // ---------------------------------------------------------------------------------------
     public sealed class SteamNetwork
     {
@@ -80,14 +90,19 @@ namespace GolemFactory.Steam
         private readonly List<string> _consumerOrder = new List<string>();
         private bool _orderDirty = true;
 
-        // boilerId -> the cells it can power. Depends only on TOPOLOGY (boiler and pipe
+        // boilerId -> the cells its network can power. Depends only on TOPOLOGY (boiler and pipe
         // positions), never on fuel or on golems, so it survives every tick in which nothing
         // was built and the per-tick cost is a set lookup per golem.
         private readonly Dictionary<string, HashSet<Vector2Int>> _poweredCellsByBoiler =
             new Dictionary<string, HashSet<Vector2Int>>();
 
-        // boilerId -> the pipe cells connected back to it. Same topology-only lifetime as the
-        // powered cells; kept so the guide can ask whether two boilers share a run.
+        // boilerId -> the cells it powers on its own: its neighbours and its own pipes, before
+        // joined boilers share. Its golems are claimed first (see the header).
+        private readonly Dictionary<string, HashSet<Vector2Int>> _ownCellsByBoiler =
+            new Dictionary<string, HashSet<Vector2Int>>();
+
+        // boilerId -> the pipe cells of its network. Same topology-only lifetime as the
+        // powered cells; kept so the guide can ask whether two boilers are joined.
         private readonly Dictionary<string, HashSet<Vector2Int>> _pipesByBoiler =
             new Dictionary<string, HashSet<Vector2Int>>();
         private bool _topologyDirty = true;
@@ -363,10 +378,8 @@ namespace GolemFactory.Steam
 
         /// <summary>
         /// Whether the boiler standing on <paramref name="boilerCell"/> reaches
-        /// <paramref name="cell"/>, regardless of Coke. A boiler's own neighbours are powered by
-        /// that boiler alone: steam never passes through a second boiler, or a golem, to reach
-        /// them. For the guide (G10), which must tell "the first boiler powers the coker" from
-        /// "the coker stands beside an empty boiler".
+        /// <paramref name="cell"/>, regardless of Coke: through its own pipes, or through any
+        /// boiler joined to it by pipe. Steam never passes through a golem. For the guide (G10).
         /// </summary>
         public bool ReachesFrom(Vector2Int boilerCell, Vector2Int cell, long tick)
         {
@@ -377,8 +390,9 @@ namespace GolemFactory.Steam
         }
 
         /// <summary>
-        /// Whether the boilers on <paramref name="a"/> and <paramref name="b"/> are joined: one
-        /// pipe run touches both. Golems never join boilers; only a pipe does.
+        /// Whether the boilers on <paramref name="a"/> and <paramref name="b"/> are joined: on one
+        /// network, through pipe runs and the boilers between them. Golems never join boilers,
+        /// and neither does two boilers standing side by side; only a pipe does.
         /// </summary>
         public bool AreJoined(Vector2Int a, Vector2Int b, long tick)
         {
@@ -531,6 +545,7 @@ namespace GolemFactory.Steam
             _pipes.Clear();
             _consumerCells.Clear();
             _poweredCellsByBoiler.Clear();
+            _ownCellsByBoiler.Clear();
             _pipesByBoiler.Clear();
             _poweredBy.Clear();
             _boilerOrder.Clear();
@@ -576,8 +591,19 @@ namespace GolemFactory.Steam
 
             for (int b = 0; b < _boilerOrder.Count; b++)
             {
+                _boilerOrder[b].PoweredGolemCount = 0;
+            }
+
+            // Its own golems first, then the network's spare (see the header).
+            Claim(_ownCellsByBoiler);
+            Claim(_poweredCellsByBoiler);
+        }
+
+        private void Claim(Dictionary<string, HashSet<Vector2Int>> reachByBoiler)
+        {
+            for (int b = 0; b < _boilerOrder.Count; b++)
+            {
                 SteamBoiler boiler = _boilerOrder[b];
-                boiler.PoweredGolemCount = 0;
 
                 // A BOILER THAT CANNOT PAY POWERS NOTHING. §3.1's golems do not run on credit:
                 // when the Coke runs out the golems it was powering lose steam and stall NoSteam
@@ -589,12 +615,12 @@ namespace GolemFactory.Steam
                 }
 
                 HashSet<Vector2Int> reach;
-                if (!_poweredCellsByBoiler.TryGetValue(boiler.BoilerId, out reach))
+                if (!reachByBoiler.TryGetValue(boiler.BoilerId, out reach))
                 {
                     continue;
                 }
 
-                int claimed = 0;
+                int claimed = boiler.PoweredGolemCount;
                 for (int c = 0; c < _consumerOrder.Count && claimed < MaxGolemsPerBoiler; c++)
                 {
                     string consumerId = _consumerOrder[c];
@@ -668,6 +694,7 @@ namespace GolemFactory.Steam
 
             _topologyDirty = false;
             _poweredCellsByBoiler.Clear();
+            _ownCellsByBoiler.Clear();
             _pipesByBoiler.Clear();
 
             for (int i = 0; i < _boilerOrder.Count; i++)
@@ -677,7 +704,63 @@ namespace GolemFactory.Steam
                 SteamPipeRules.CollectConnectedPipes(boiler.Cell, _pipes, _connectedScratch);
                 SteamPipeRules.CollectPoweredCells(boiler.Cell, _connectedScratch, powered);
                 _poweredCellsByBoiler[boiler.BoilerId] = powered;
+                _ownCellsByBoiler[boiler.BoilerId] = powered;
                 _pipesByBoiler[boiler.BoilerId] = new HashSet<Vector2Int>(_connectedScratch);
+            }
+
+            ShareAcrossJoinedBoilers();
+        }
+
+        /// <summary>
+        /// Joined boilers share (see the header): boilers whose pipe runs overlap are one
+        /// network, transitively, and each gets the network's whole reach and pipes. Walked in
+        /// boiler order, so the grouping is the same however the factory was built.
+        /// </summary>
+        private void ShareAcrossJoinedBoilers()
+        {
+            var assigned = new HashSet<string>();
+            for (int i = 0; i < _boilerOrder.Count; i++)
+            {
+                string seed = _boilerOrder[i].BoilerId;
+                if (!assigned.Add(seed))
+                {
+                    continue;
+                }
+
+                var group = new List<string> { seed };
+                var pipes = new HashSet<Vector2Int>(_pipesByBoiler[seed]);
+                bool grew = true;
+                while (grew)
+                {
+                    grew = false;
+                    for (int j = 0; j < _boilerOrder.Count; j++)
+                    {
+                        string other = _boilerOrder[j].BoilerId;
+                        if (!assigned.Contains(other) && _pipesByBoiler[other].Overlaps(pipes))
+                        {
+                            assigned.Add(other);
+                            group.Add(other);
+                            pipes.UnionWith(_pipesByBoiler[other]);
+                            grew = true;
+                        }
+                    }
+                }
+
+                if (group.Count == 1)
+                {
+                    continue;
+                }
+
+                var reach = new HashSet<Vector2Int>();
+                foreach (string id in group)
+                {
+                    reach.UnionWith(_poweredCellsByBoiler[id]);
+                }
+                foreach (string id in group)
+                {
+                    _poweredCellsByBoiler[id] = reach;
+                    _pipesByBoiler[id] = pipes;
+                }
             }
         }
     }

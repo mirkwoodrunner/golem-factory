@@ -87,6 +87,13 @@ namespace GolemFactory.Nodes
         private Button _patent;
         private Label _status;
         private int _renderedVersion = -1;
+
+        // Game feel (docs/game-feel-design.md §4): the socket a card just landed in, and how long
+        // ago; and how long since the tape began printing its line.
+        private WorkbenchZone? _landingZone;
+        private WorkbenchDropRow _landingRow;
+        private float _landAge = -1f;
+        private float _tapeAge;
         private ScrollContainer _vaultScroll;
         private Panel _hintCardOutline;
         private Panel _hintTargetOutline;
@@ -116,7 +123,14 @@ namespace GolemFactory.Nodes
         public Control VaultList => _vault;
         public IReadOnlyDictionary<ChassisDefinition, Button> ChassisButtons => _chassisButtons;
         public string StatusText => _status.Text;
-        public string TapeText => _tape.Text;
+        /// <summary>The tape's whole line, printed or still printing.</summary>
+        public string TapeText => _session.Ticker();
+
+        /// <summary>What the tape shows this frame: the line, as far as it has printed.</summary>
+        public string TapePrintedText => _tape.Text;
+
+        /// <summary>True while a card is landing in its socket.</summary>
+        public bool CardLanding => _landAge >= 0f && _landAge < World.FeelRules.CardLandSeconds;
         public string TargetText => _target.Text;
         public Control TargetLabelControl => _target;
         public Control CloseButtonControl => _close;
@@ -207,9 +221,14 @@ namespace GolemFactory.Nodes
             if (_session.Version != _renderedVersion)
             {
                 Rebuild();
+                _tapeAge = 0f; // a new draft prints its line afresh
             }
 
-            _tape.Text = _session.Ticker();
+            // The tape prints a new line a character at a time, then follows the live numbers.
+            _tapeAge += dt;
+            string line = _session.Ticker();
+            _tape.Text = line.Substring(0, World.FeelRules.TapePrinted(_tapeAge, line.Length));
+            AnimateLanding(dt);
             _status.Text = _session.StatusText;
             _status.AddThemeColorOverride("font_color", _session.StatusIsInfo ? StatusInfo : StatusError);
             _lever.Disabled = !_session.CanEngage;
@@ -236,6 +255,19 @@ namespace GolemFactory.Nodes
             return cardId;
         }
 
+        /// <summary>The id of <paramref name="appendage"/>'s vault card, for a scenario's drop; -1 if it isn't shown.</summary>
+        internal int VaultCardId(AppendageActionDefinition appendage)
+        {
+            foreach (KeyValuePair<int, WorkbenchCardRef> entry in _cards)
+            {
+                if (entry.Value.IsVaultOrigin && entry.Value.Appendage == appendage)
+                {
+                    return entry.Key;
+                }
+            }
+            return -1;
+        }
+
         internal void Drop(int cardId, WorkbenchZone zone)
         {
             if (!_cards.TryGetValue(cardId, out WorkbenchCardRef card))
@@ -243,6 +275,7 @@ namespace GolemFactory.Nodes
                 return;
             }
             _dropTaken = true;
+            _landingZone = zone;
             _session.HandleDrop(card, zone);
         }
 
@@ -352,10 +385,35 @@ namespace GolemFactory.Nodes
 
         // --- Rebuild from the session --------------------------------------------------------
 
+        /// <summary>A card just dropped drops the last few pixels into its socket, squashes and settles.</summary>
+        private void AnimateLanding(float dt)
+        {
+            if (_landingRow?.Card == null || _landAge < 0f)
+            {
+                return;
+            }
+            _landAge += dt;
+            Control card = _landingRow.Card;
+            var land = World.FeelRules.CardLand(_landAge);
+            card.PivotOffset = card.Size / 2f;
+            card.Scale = new Vector2(land.x, land.y);
+            card.OffsetTop = land.drop;
+            card.OffsetBottom = land.drop;
+            if (_landAge >= World.FeelRules.CardLandSeconds)
+            {
+                card.Scale = Vector2.One;
+                card.OffsetTop = card.OffsetBottom = 0f;
+                _landAge = -1f;
+                _landingRow = null;
+            }
+        }
+
         private void Rebuild()
         {
             _renderedVersion = _session.Version;
             _cards.Clear();
+            WorkbenchZone? landed = _landingZone;
+            _landingZone = null;
 
             foreach (Node child in _vault.GetChildren())
             {
@@ -376,6 +434,11 @@ namespace GolemFactory.Nodes
             if (_session.DraftLogicCore != null)
             {
                 _triggerRow.SetCard(MakeCard(WorkbenchCardRef.FromTriggerSocket(_session.DraftLogicCore), inSocket: true));
+                if (landed.HasValue && landed.Value.Kind == DropZoneKind.LogicCore)
+                {
+                    _landingRow = _triggerRow;
+                    _landAge = 0f;
+                }
             }
             _triggerRow.Caption.Text = _session.TriggerCaption;
 
@@ -388,6 +451,11 @@ namespace GolemFactory.Nodes
                 if (row.Visible && card != null)
                 {
                     row.SetCard(MakeCard(WorkbenchCardRef.FromSocket(card, i), inSocket: true));
+                    if (landed.HasValue && landed.Value.Kind == DropZoneKind.Appendage && landed.Value.AppendageIndex == i)
+                    {
+                        _landingRow = row;
+                        _landAge = 0f;
+                    }
                 }
                 row.Caption.Text = _session.SlotCaption(i);
             }

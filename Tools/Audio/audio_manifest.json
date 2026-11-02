@@ -1,0 +1,38 @@
+{
+  "_about": "Where every sound in godot/audio/ comes from (docs/audio-design.md §6). A 'generator' slot is made by that script; any other is cut by build_cc0.py from 'source' in its pack. Every pack is CC0 on its page (checked 2026-11-01); credit is given though none is required.",
+  "packs": {
+    "metal_impact": {"title": "Metal Impact Sounds", "author": "bmaczero", "licence": "CC0", "url": "https://opengameart.org/content/metal-impact-sounds"},
+    "mechanical_sounds": {"title": "Mechanical Sounds", "author": "BMacZero", "licence": "CC0", "url": "https://opengameart.org/node/118336"},
+    "kenney_ui": {"title": "51 UI sound effects (buttons, switches and clicks)", "author": "Kenney", "licence": "CC0", "url": "https://opengameart.org/content/51-ui-sound-effects-buttons-switches-and-clicks"},
+    "kenney_rpg": {"title": "50 RPG sound effects", "author": "Kenney", "licence": "CC0", "url": "https://opengameart.org/content/50-rpg-sound-effects"},
+    "bell_dings": {"title": "Bell dings/chimes", "author": "pwl", "licence": "CC0", "url": "https://opengameart.org/content/bell-dingschimes"},
+    "steam_boiler": {"title": "Steam boiler sound loop", "author": "bart", "licence": "CC0", "url": "https://opengameart.org/content/steam-boiler-sound-loop"},
+    "ticking_clock": {"title": "Ticking clock", "author": "bart", "licence": "CC0", "url": "https://opengameart.org/content/ticking-clock"},
+    "100_cc0_sfx": {"title": "100 CC0 SFX", "author": "rubberduck", "licence": "CC0", "url": "https://opengameart.org/content/100-cc0-sfx"},
+    "100_cc0_sfx_2": {"title": "100 CC0 SFX #2", "author": "rubberduck", "licence": "CC0", "url": "https://opengameart.org/content/100-cc0-sfx-2"}
+  },
+  "slots": {
+    "amb.workshop": {"source": "100_cc0_sfx_2/sfx100v2_loop_ambient_03.ogg", "loop": true},
+    "amb.clock": {"source": "ticking_clock/tick1.wav"},
+    "amb.steam": {"source": "steam_boiler/generator_loop.wav", "loop": true, "seconds": [2.0, 14.0]},
+    "work.stamp": {"source": "metal_impact/thud2.wav"},
+    "work.fast-stamp": {"source": "metal_impact/thud3.wav"},
+    "work.tug": {"source": "100_cc0_sfx/tools_05.ogg"},
+    "work.heave": {"source": "100_cc0_sfx_2/sfx100v2_wood_hit_01.ogg"},
+    "work.lunge": {"source": "100_cc0_sfx/slam_03.ogg"},
+    "work.launch": {"source": "100_cc0_sfx/spring_01.ogg"},
+    "ui.card-snap": {"source": "kenney_ui/click1.wav"},
+    "ui.engage": {"source": "mechanical_sounds/mechanical1.wav"},
+    "ui.patent": {"source": "kenney_rpg/bookPlace1.ogg"},
+    "ui.claim": {"source": "kenney_rpg/metalLatch.ogg"},
+    "ui.stall-chime": {"source": "bell_dings/bell_ding1.wav"},
+    "ui.place": {"source": "100_cc0_sfx/wooden_01.ogg"},
+    "ui.demolish": {"source": "mechanical_sounds/clank1.wav"},
+    "ui.collect": {"source": "kenney_rpg/handleCoins2.ogg"},
+    "music.layer.1": {"generator": "synth_music.py", "loop": true},
+    "music.layer.2": {"generator": "synth_music.py", "loop": true},
+    "music.layer.3": {"generator": "synth_music.py", "loop": true},
+    "music.layer.4": {"generator": "synth_music.py", "loop": true},
+    "music.tower-fanfare": {"generator": "synth_music.py"}
+  }
+}

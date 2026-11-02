@@ -18,3 +18,6 @@ public/images/**/*.png
 public/images/**/*.wav
 public/images/**/drafts/
 public/images/S1/brass_presser/v1/
+
+# Audio sample comparisons (docs/audio-design.md §9): files stay local
+public/audio/

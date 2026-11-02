@@ -484,6 +484,7 @@ namespace GolemFactory.Nodes
         private readonly Sprite2D[] _puffs = new Sprite2D[2];
         private float _puffAge = GolemWorkMotion.PuffSeconds;
         private bool _wasImpact;
+        private FxLayer _fx;
 
         /// <summary>
         /// Starts the puffs on the frame a stamp lands, and moves them for their short life.
@@ -494,6 +495,12 @@ namespace GolemFactory.Nodes
             if (impact && !_wasImpact)
             {
                 _puffAge = 0f;
+                // The Overclocker runs hot: its stamp throws sparks too (docs/game-feel-design.md §4).
+                if (Entity.Program.CurrentStep != null &&
+                    GolemWorkMotion.MotionFor(Entity.Program.chassis?.name, Entity.Program.CurrentStep.actionType) == GolemWorkMotion.Motion.FastStamp)
+                {
+                    (_fx ??= FxLayer.Find(this))?.Spawn(FxKind.Spark, GlobalPosition + new Vector2(0f, -0.3f * GridConversions.CellPixels));
+                }
             }
             _wasImpact = impact;
             _puffAge += delta;
@@ -531,21 +538,10 @@ namespace GolemFactory.Nodes
         /// </summary>
         private bool TryWorkPose(out GolemWorkMotion.Pose pose)
         {
-            pose = GolemWorkMotion.Pose.Rest;
-            GolemProgram program = Entity.Program;
-            AppendageActionDefinition step = program.CurrentStep;
-            if (program.State != GolemState.Running || step == null || program.StepProgressTicks <= 0 ||
-                !GolemWorkMotion.Animates(program.chassis?.name, step.actionType))
-            {
-                return false;
-            }
-
             float fraction = _world?.Clock != null && _world.Clock.State == Simulation.ClockState.Running
                 ? _world.Clock.TickFraction
                 : 0f;
-            pose = GolemWorkMotion.Evaluate(GolemWorkMotion.MotionFor(program.chassis?.name, step.actionType),
-                program.StepProgressTicks + fraction, Entity.StepDurationTicks);
-            return true;
+            return GolemWorkMotion.TryPose(Entity, fraction, out pose);
         }
 
         /// <summary>

@@ -191,6 +191,12 @@ departure from it.
   budget the player spends by building rather than a hidden timer they cannot affect.
 - Power reaches a golem by **adjacency**: the golem must be orthogonally adjacent to the Boiler or
   to a **Steam Pipe** (1 Iron Plate each) that chains back to one.
+  > **Changed in the Phase 2 playtest (2026-11-01, the user's call):** boilers joined by pipe
+  > share their steam. A boiler passes steam on like a pipe, so every boiler on a network reaches
+  > everything any of them reaches. Each fuelled one powers up to 8: its own golems first, then
+  > the network's, so a joined dry boiler's golems only get spare capacity. Before,
+  > steam stopped at a boiler: a player who piped a fuelled boiler to a dry one still had the dry
+  > one's golems stalled. Boilers standing side by side with no pipe stay separate.
 - An unpowered golem stalls with a new `StallReason.NoSteam`, naming the tile.
 
 What this buys:

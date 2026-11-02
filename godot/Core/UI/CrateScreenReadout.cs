@@ -187,10 +187,17 @@ namespace GolemFactory.UI
 
         // --- Clicks ----------------------------------------------------------------------------
 
+        /// <summary>Goods went from a crate into the pack: the collect sound.</summary>
+        public event Action Collected;
+
         /// <summary>A crate row's click: one into the pack, or all that fits with Shift. Returns the status line.</summary>
         public string Take(ICrate crate, string itemType, bool shift)
         {
             TransferResult moved = CrateTransfer.Take(crate, Pack, itemType, CrateTransfer.AmountFor(shift));
+            if (moved.Moved > 0)
+            {
+                Collected?.Invoke();
+            }
             return Said(moved, "to your pack", CrateTransfer.PlanTake(crate, Pack, itemType, 1));
         }
 
@@ -209,6 +216,7 @@ namespace GolemFactory.UI
             {
                 return results.Count == 0 ? "Nothing to take" : results[0].Refusal;
             }
+            Collected?.Invoke();
             string line = "Moved " + CrateTransfer.Describe(results) + " to your pack";
             string first = crate.Buffer.Quantities.FirstOrDefault(q => q.Value > 0).Key;
             string left = first == null ? null : CrateTransfer.PlanTake(crate, Pack, first, 1).Refusal;

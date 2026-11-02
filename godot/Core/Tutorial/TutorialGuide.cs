@@ -624,12 +624,10 @@ namespace GolemFactory.Tutorial
         private bool SteamReaches(Vector2Int cell) => _world.Steam.Reaches(cell, _world.Clock.CurrentTick);
 
         /// <summary>
-        /// Chapter 3's pipes do two jobs: an older boiler's run reaches the coker's tile, so it
-        /// powers the coker before the new boiler has any Coke, and the same run touches the new
-        /// boiler, joining them. Only a pipe joins boilers, never a golem standing between them,
-        /// and the new boiler's own neighbours are its alone, so a route that joins them but
-        /// stops short of the coker's tile does not count: the coker would sit beside a cold
-        /// firebox.
+        /// Chapter 3's pipes join an older boiler to the new one, so the older one powers the coker
+        /// before the new boiler has any Coke. Joined boilers share their reach (SteamNetwork), so
+        /// any route that joins them reaches the coker's tile beside the new boiler. Only a pipe
+        /// joins boilers, never a golem standing between them.
         /// </summary>
         private bool FirstBoilerPowersCokerAndJoins
         {
@@ -1411,8 +1409,9 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "pipes2", "Join the boilers",
-                "Lay Steam Pipe on the marked tiles, from your first boiler to the new one. The first powers the "
-                + "coking Presser until the new one has Coke. Your own route counts if it does both.",
+                "Lay Steam Pipe on the marked tiles, from your first boiler to the new one. Joined boilers share "
+                + "steam: the first powers the coking Presser until the new one has Coke, then the new one powers "
+                + "the rest. Your own route counts too.",
                 // The OUTCOME, not the marked tiles: any route that does both jobs the body names.
                 w => FirstBoilerPowersCokerAndJoins,
                 w => Pipe2Spots.Where(c => !_world.Steam.HasPipe(c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
@@ -1493,8 +1492,9 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "depot3", "A depot beside the stall",
-                "Build a Depot on the marked tile, two out from another side of the Scrap stall. Leave the tile "
-                + "between empty: the new Scavenger stands there.",
+                "Your new Scavenger needs a crate to fill, like your first one has. Build a Depot on the marked "
+                + "tile, two tiles out from another side of the Scrap stall. The new Scavenger will stand on the "
+                + "empty tile between them.",
                 w => Built.Any(b => b.Cell == Depot3Spot && b.GetPart<PlaceableDepot>() != null),
                 w => ScrapFirst(DepotScrap, Depot3Spot),
                 w => Count(ItemType.Scrap, DepotScrap),

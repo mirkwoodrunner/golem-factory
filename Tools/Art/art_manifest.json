@@ -6822,5 +6822,64 @@
     "readers": [
       "WorkbenchScreen"
     ]
+  },
+  "fx_spark.png": {
+    "set": "S7",
+    "kind": "fx",
+    "size": [
+      24,
+      24
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "comfyui",
+    "palette": [
+      "fire",
+      "outline"
+    ],
+    "readers": [
+      "FxLayer"
+    ],
+    "source": "public/images/S7/"
+  },
+  "fx_build_dust.png": {
+    "set": "S7",
+    "kind": "fx",
+    "size": [
+      32,
+      24
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "comfyui",
+    "palette": [
+      "steam",
+      "bone",
+      "outline"
+    ],
+    "readers": [
+      "FxLayer"
+    ],
+    "source": "public/images/S7/"
+  },
+  "fx_pop_glint.png": {
+    "set": "S7",
+    "kind": "fx",
+    "size": [
+      16,
+      16
+    ],
+    "pivot": "center",
+    "footRow": null,
+    "owner": "comfyui",
+    "palette": [
+      "brass",
+      "steam",
+      "outline"
+    ],
+    "readers": [
+      "FxLayer"
+    ],
+    "source": "public/images/S7/"
   }
 }

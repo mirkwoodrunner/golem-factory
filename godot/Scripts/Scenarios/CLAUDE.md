@@ -106,6 +106,18 @@ Current scenarios:
   in-game cells; and every standing sprite's lowest opaque row
   sits on its node's origin within the manifest's allowance. A new sprite needs its manifest
   entry or this fails.
+- `audio` (Sandbox, muted): the sound (`docs/audio-design.md` §7), counted through
+  `SandboxWorld.Audio.Requested`, never heard. Every slot in `data/audio.json` loads and the
+  buses exist; the `golem-motion` row runs as its fixture and must request each work sound, and
+  none over 90 paused frames; then the Workbench's card snap, Engage and Patent, a Claim, placing
+  and demolishing a pipe, and E at a crate each request theirs exactly once.
+- `feel` (Sandbox): game feel (`docs/game-feel-design.md` §6). The wheel steps to Near and the
+  camera glides there and back; a depot beside the player lands with dust, pops a good when
+  filled, and comes down in dust and is gone; a card dropped in the Workbench lands and the tape
+  prints its line; a click on the alert strip glides the camera to a stopped golem and walking
+  brings it back; a stage completing glides to the tower, shows the banner after the reveal with
+  the clock running, and glides back. Captures `feel-place`, `feel-pop`, `feel-alert`,
+  `feel-tower`. (`golem-motion` checks the sparks and the boiler's puffs.)
 
 **Screen captures:** a windowed run with `--capture-dir=<dir>` writes `screen-*.png`, one per
 screen (`world` the room, `management` the HUD and every tab, `build` the menu, `tutorial` the

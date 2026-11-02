@@ -28,6 +28,8 @@ Read the docs before making design calls, not just the code:
 - `docs/guide-chapters-design.md` -- the guide's texts, checks, marks, plans and kit actions.
 - `docs/art-style-bible.md` -- Phase 4's look. §0: the invariants any art pass must keep.
 - `docs/art-pipeline-design.md` -- Phase 4's how: ComfyUI workflow, sprites, user decisions (§9).
+- `docs/audio-design.md` -- Phase 5: sound slots, mix rules, placeholder sources, decisions (§9).
+- `docs/game-feel-design.md` -- Phase 6: effects, camera levels and alert pan, the tower's event (§7).
 - `docs/performance-report-template.md` -- the endgame profile's spec; `-phase3.md` is a run.
 - `docs/open-items.md` -- the backlog: open decisions, known gaps, deliberate scope cuts.
 - `docs/godot-spike.md` -- what the port measured before it began.
@@ -82,7 +84,7 @@ slice, kept as the `loop` scenario's fixture; run it by passing `res://Scenes/Lo
 **Scenarios** (`Scripts/Scenarios/`) are the scene-level checks. `ScenarioRunner` is a node in each scene; `--
 --scenario <name>` runs one to a verdict, prints `[scenario <name>] PASS|FAIL …` and exits 0/1. An unknown name fails
 and lists the known ones. Current scenarios: `world`, `build`, `interact`, `golems`, `golem-motion`, `workbench`,
-`management`, `save`, `tutorial`, `playtest-kit`, `loop`, `inventory`, `moods`, `hover`, `font-glyphs`, `perf`, `art`; what
+`management`, `save`, `tutorial`, `playtest-kit`, `loop`, `inventory`, `moods`, `hover`, `font-glyphs`, `perf`, `art`, `audio`, `feel`; what
 each checks is in `godot/Scripts/Scenarios/CLAUDE.md`.
 
 To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scenarios`. `--demo` (alias `--spike-demo`)
