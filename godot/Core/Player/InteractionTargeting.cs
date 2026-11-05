@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using System.Collections.Generic;
 using GolemFactory.Compat;
 
@@ -218,10 +219,10 @@ namespace GolemFactory.Player
             {
                 // "Set down", not "drop": dropping is what happens to something you were not
                 // being careful with, and this places the golem on a chosen tile.
-                return "[G] set down";
+                return $"[{KeyNames.Carry}] set down";
             }
 
-            return string.IsNullOrEmpty(golemId) ? "[G] carry" : "[G] carry " + golemId;
+            return string.IsNullOrEmpty(golemId) ? $"[{KeyNames.Carry}] carry" : $"[{KeyNames.Carry}] carry " + golemId;
         }
 
         /// <summary>

@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -94,10 +95,9 @@ namespace GolemFactory.Player
         private ScreenCoordinator _screens;
         private IPackScreen _packScreen;
         private ICrateScreen _crateScreen;
-        private string _interactKeyLabel = "E";
 
         /// <summary>The key that opens the inventory, as a prompt names it.</summary>
-        public const string InventoryKeyLabel = "I";
+        public static string InventoryKeyLabel => KeyNames.Inventory;
 
         // Rotating an already-placed golem. "Golems cannot pivot" is a rule about *runtime
         // execution* -- nothing in a program may turn the golem mid-cycle -- not about the
@@ -236,10 +236,9 @@ namespace GolemFactory.Player
         /// Wires the affordance separately from Configure, so a scene that wants no prompt
         /// simply never calls it.
         /// </summary>
-        public void ConfigureAffordance(IScreen managementScreen, string interactKeyLabel)
+        public void ConfigureAffordance(IScreen managementScreen)
         {
             _managementScreen = managementScreen;
-            _interactKeyLabel = interactKeyLabel;
         }
 
         /// <summary>
@@ -572,7 +571,7 @@ namespace GolemFactory.Player
             Vector3 at = PositionOf(golem);
             CarriedGolem = golem;
             golem.SetHeld(true);
-            LastStatusMessage = $"Carrying {UI.GolemNames.Short(golem)}. [G] to set it down.";
+            LastStatusMessage = $"Carrying {UI.GolemNames.Short(golem)}. [{KeyNames.Carry}] to set it down.";
             Popup(at, "Carrying " + UI.GolemNames.Short(golem), InteractionPopupKind.Gain);
             return true;
         }
@@ -911,7 +910,7 @@ namespace GolemFactory.Player
             }
 
             CurrentPrompt = InteractionTargeting.BuildPrompt(
-                pick.Kind, targetName, detail, CurrentAffordance, _interactKeyLabel, verb);
+                pick.Kind, targetName, detail, CurrentAffordance, KeyNames.Interact, verb);
             PromptPosition = targetPosition;
         }
 
@@ -1073,7 +1072,7 @@ namespace GolemFactory.Player
                     // Facing is in the caption because it is routing, not decoration, and this is
                     // the only place the player is told [R] and [G] exist at all.
                     detail = InteractionTargeting.AppendDetail(
-                        "faces " + FacingVisuals.Describe(golem.Facing) + " · [R] turn",
+                        "faces " + FacingVisuals.Describe(golem.Facing) + " · [" + KeyNames.Rotate + "] turn",
                         // No id: the golem is already this caption's subject.
                         InteractionTargeting.GolemHandlingHint(null, isCarrying));
                     // A stopped golem's problem leads, for a player without a mouse

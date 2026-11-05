@@ -403,7 +403,7 @@ namespace GolemFactory.World
         {
             Interactor.Configure(InteractRange, Buffers, _stockpileBufferId, null, null);
             Interactor.ConfigurePost(PostBufferId);
-            Interactor.ConfigureAffordance(null, "E");
+            Interactor.ConfigureAffordance(null);
             Interactor.ConfigureWorld(() => Markers, InteractableBuildings, () => _golems);
             Interactor.ConfigureMarket(Market, () => Clock.CurrentTick, Buffers, _stockpileBufferId);
             Interactor.ConfigureBuildMode(Build);
@@ -695,7 +695,7 @@ namespace GolemFactory.World
             WorkbenchScreen = workbench ?? WorkbenchScreen;
             ManagementScreen = management ?? ManagementScreen;
             Interactor.Configure(InteractRange, Buffers, _stockpileBufferId, ConstructionScreen, WorkbenchScreen);
-            Interactor.ConfigureAffordance(ManagementScreen, "E");
+            Interactor.ConfigureAffordance(ManagementScreen);
         }
 
         /// <summary>

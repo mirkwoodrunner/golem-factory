@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -16,7 +17,10 @@ namespace GolemFactory.Tutorial
     public sealed class PlaytestQuestion
     {
         public string Id { get; }
-        public string Prompt { get; }
+        private readonly string _prompt;
+
+        /// <summary>The question, its key names filled from the current bindings.</summary>
+        public string Prompt => KeyNames.Fill(_prompt);
         public IReadOnlyList<string> Options { get; }
         public string AfterStepId { get; }
 
@@ -24,7 +28,7 @@ namespace GolemFactory.Tutorial
         {
             Id = id;
             AfterStepId = afterStepId;
-            Prompt = prompt;
+            _prompt = prompt;
             Options = options;
         }
     }
@@ -113,7 +117,7 @@ namespace GolemFactory.Tutorial
                 "They helped", "Fine either way", "In my way (say where)"),
             // Phase 2's hint, turning, grey and red, and hover (testscript/phase-2-playtest.md).
             new PlaytestQuestion("turning", "r4-card",
-                "Turning golems with R: how did it go?",
+                "Turning golems with [[rotate]]: how did it go?",
                 "Easy", "Fiddly", "I turned the wrong one"),
             new PlaytestQuestion("grey-red", "r4-card",
                 "Waiting golems go grey, stuck ones red. Could you tell which needed you?",
@@ -129,7 +133,7 @@ namespace GolemFactory.Tutorial
                 "Burns too fast", "About right", "Too slow to matter"),
             // Phase 1's crates and pack (testscript/phase-1-playtest.md, "The questions").
             new PlaytestQuestion("collect", "gears",
-                "Collecting from the crate with E: did taking what fits feel easy, or like a chore?",
+                "Collecting from the crate with [[interact]]: did taking what fits feel easy, or like a chore?",
                 "Easy", "Fine", "A chore"),
             new PlaytestQuestion("pack-full", "coking-card",
                 "Did you fill your pack to 100 of something? Did \"pack full\" tell you what to do?",

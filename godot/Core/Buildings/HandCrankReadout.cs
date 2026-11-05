@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using System.Globalization;
 using System.Text;
 using GolemFactory.PunchCards;
@@ -195,7 +196,7 @@ namespace GolemFactory.Buildings
             }
             else
             {
-                sb.Append("hold [E] to crank   ·   [R] changes recipe");
+                sb.Append($"hold [{KeyNames.Interact}] to crank   ·   [{KeyNames.Rotate}] changes recipe");
             }
 
             return sb.ToString();

@@ -74,6 +74,7 @@ namespace GolemFactory.Nodes.Scenarios
                 ["art"] = () => new ArtScenario(),
                 ["audio"] = () => new AudioScenario(),
                 ["feel"] = () => new FeelScenario(),
+                ["settings"] = () => new SettingsScenario(),
             };
 
         [Export] public NodePath StationPath { get; set; }

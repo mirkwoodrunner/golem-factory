@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using GolemFactory.Steam;
 using GolemFactory.Events;
 using GolemFactory.Golems;
@@ -136,7 +137,7 @@ namespace GolemFactory.UI
                     case SteamShortage.NoPipe:
                         return who + " stalled: no steam pipe reaches it from a boiler";
                     case SteamShortage.BoilerOutOfCoke:
-                        return who + " stalled: its boiler is out of Coke - fuel it with [E]";
+                        return who + " stalled: its boiler is out of Coke - fuel it with [" + KeyNames.Interact + "]";
                     case SteamShortage.BoilerAtCapacity:
                         return who + " stalled: its boiler already powers " + SteamNetwork.MaxGolemsPerBoiler + " golems - build another";
                 }

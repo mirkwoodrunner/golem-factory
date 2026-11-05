@@ -76,7 +76,7 @@ namespace GolemFactory.Nodes
         public string SaveStatus => _saveStatus?.Text ?? "";
         public LedgerTab Ledger { get; private set; }
 
-        /// <summary>The Settings tab: the sound's sliders and mute.</summary>
+        /// <summary>The Settings tab: sound, display and keys.</summary>
         public SettingsTab Settings { get; private set; }
 
         public override void _EnterTree() => AddToGroup(ModalScreens.GroupName);
@@ -130,6 +130,7 @@ namespace GolemFactory.Nodes
 
         public void Close()
         {
+            Settings?.CancelCapture();
             _tabs.Close();
             _root.Visible = false;
         }
@@ -150,6 +151,18 @@ namespace GolemFactory.Nodes
         {
             _tabs.SelectTab(tab);
             ApplyTabs();
+        }
+
+        /// <summary>
+        /// A key press while the Settings tab waits for a key goes to the capture, before the GUI
+        /// and before <see cref="_UnhandledInput"/>'s Tab and Escape, so any key can be chosen.
+        /// </summary>
+        public override void _Input(InputEvent e)
+        {
+            if (IsOpen && Settings != null && Settings.TryCapture(e))
+            {
+                GetViewport().SetInputAsHandled();
+            }
         }
 
         public override void _UnhandledInput(InputEvent e)

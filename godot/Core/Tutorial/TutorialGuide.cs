@@ -17,8 +17,14 @@ namespace GolemFactory.Tutorial
     public sealed class TutorialStep
     {
         public string Id { get; }
-        public string Title { get; }
-        public string Body { get; }
+        private readonly string _title;
+
+        /// <summary>The step's title, its key names filled like <see cref="Body"/>.</summary>
+        public string Title => Settings.KeyNames.Fill(_title);
+        private readonly string _body;
+
+        /// <summary>The step's text, its key names filled from the current bindings (<see cref="Settings.KeyNames.Fill"/>).</summary>
+        public string Body => Settings.KeyNames.Fill(_body);
 
         /// <summary>The build-menu row the step needs (a placeable key), or null.</summary>
         public string MenuKey { get; }
@@ -141,8 +147,8 @@ namespace GolemFactory.Tutorial
             _spotFacing = spotFacing;
             _moreSpots = moreSpots;
             Id = id;
-            Title = title;
-            Body = body;
+            _title = title;
+            _body = body;
             Done = done;
             Target = target;
             ProgressText = progress;
@@ -1205,7 +1211,7 @@ namespace GolemFactory.Tutorial
         {
             new TutorialStep(
                 "scrap", "Gather Scrap",
-                "Walk with WASD to the Scrap stall the arrow points at. Press E to take Scrap; hold E to keep "
+                "Walk with [[move]] to the Scrap stall the arrow points at. Press [[interact]] to take Scrap; hold [[interact]] to keep "
                 + "taking. Scrap pays for almost everything at first.",
                 w => Stock(ItemType.Scrap) >= 20,
                 w => Stall("ScrapNode"),
@@ -1213,8 +1219,8 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "coal", "Buy Coal",
-                $"The Coal stall is empty. Press E there to order a truckload ({OfferPrice("CoalNode")}). "
-                + "When the cart arrives, press E again to take Coal.",
+                $"The Coal stall is empty. Press [[interact]] there to order a truckload ({OfferPrice("CoalNode")}). "
+                + "When the cart arrives, press [[interact]] again to take Coal.",
                 w => Stock(ItemType.Coal) >= 5,
                 w => _world.Market != null && !_world.Market.IsInTransit("CoalNode") && Stock(ItemType.Scrap) < OfferScrap("CoalNode")
                     ? Stall("ScrapNode")
@@ -1223,15 +1229,15 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "coke", "Make Coke",
-                $"At the Hand-Crank Bench, hold E to crank R1 Coking: {Makes("AssembleCoking")}. Boilers burn Coke.",
+                $"At the Hand-Crank Bench, hold [[interact]] to crank R1 Coking: {Makes("AssembleCoking")}. Boilers burn Coke.",
                 w => Stock(ItemType.Coke) >= 5,
                 w => Bench,
                 w => Count(ItemType.Coke, 5)),
 
             new TutorialStep(
                 "iron", "Make Iron Plate",
-                $"Press R at the bench to switch it to R2 Scrap Reclamation ({Makes("AssembleScrapReclamation")}), then "
-                + "hold E. Holding a building? Escape puts it down first.",
+                $"Press [[rotate]] at the bench to switch it to R2 Scrap Reclamation ({Makes("AssembleScrapReclamation")}), then "
+                + "hold [[interact]]. Holding a building? Escape puts it down first.",
                 w => Stock(ItemType.IronPlate) >= 10,
                 w => ScrapFirst(1, Bench),
                 w => Count(ItemType.IronPlate, 10)),
@@ -1250,13 +1256,13 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "fuel", "Fuel the Boiler",
-                "Stand at the boiler and press E to load your Coke. No Coke, no steam.",
+                "Stand at the boiler and press [[interact]] to load your Coke. No Coke, no steam.",
                 w => Boilers.Any(b => b.Boiler != null && b.Boiler.CokeStock > 0),
                 w => BoilerBuildings.OrderBy(b => b.Cell == BoilerSpot ? 0 : 1).Select(b => (Vector2Int?)b.Cell).FirstOrDefault()),
 
             new TutorialStep(
                 "golem", "Build a Golem",
-                $"At the construction station, press E and pick the Clockwork Scavenger ({Price(ChassisCost("ClockworkScavenger"))}). The Workbench "
+                $"At the construction station, press [[interact]] and pick the Clockwork Scavenger ({Price(ChassisCost("ClockworkScavenger"))}). The Workbench "
                 + "opens on it.",
                 w => LiveGolems.Any(),
                 w => ScrapFirst(ScavengerScrap, Station),
@@ -1265,7 +1271,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "program", "Program it",
                 "Drag the glowing card onto the glowing socket, then the next: Always On, Extract, Push Output. "
-                + "Then pull ENGAGE GEARS. Closed it? Press E at the golem.",
+                + "Then pull ENGAGE GEARS. Closed it? Press [[interact]] at the golem.",
                 w => LiveGolems.Any(IsProgrammed),
                 w => FirstGolem,
                 workbench: true,
@@ -1285,8 +1291,8 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "work", "Put it to work",
-                "Press G by the golem to lift it. The outline under you is where it lands: teal is behind it, gold "
-                + "in front. Stand on the marked tile, press R until gold is on the depot, then G.",
+                "Press [[carry]] by the golem to lift it. The outline under you is where it lands: teal is behind it, gold "
+                + "in front. Stand on the marked tile, press [[rotate]] until gold is on the depot, then [[carry]].",
                 w => _cycleSeen,
                 w => LiveGolems.Any(g => g.Cell == GolemSpot) ? GolemSpot
                     : LiveGolems.Where(IsProgrammed).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? GolemSpot,
@@ -1297,7 +1303,7 @@ namespace GolemFactory.Tutorial
             // withdrawal counts (E, the crate screen), and nothing else in chapter 1 takes from it.
             new TutorialStep(
                 "collect", "Collect from the crate",
-                "Your golem fills the depot's crate, not your pack. Stand at the depot and press E: you take what "
+                "Your golem fills the depot's crate, not your pack. Stand at the depot and press [[interact]]: you take what "
                 + "fits, the rest stays. Hover any golem to see its teal and gold tiles.",
                 w => Withdrawn(FirstDepot, ItemType.Scrap),
                 w => FirstDepot?.Cell ?? DepotSpot,
@@ -1309,8 +1315,8 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "gears", "Cut Gears",
-                $"The Brass Presser crafts, and costs {PresserGears} Gears. Press R at the bench until it shows R8 Gear Cutting "
-                + $"({Makes("AssembleGearCutting")}), then hold E. Short of Plate? Back to R2.",
+                $"The Brass Presser crafts, and costs {PresserGears} Gears. Press [[rotate]] at the bench until it shows R8 Gear Cutting "
+                + $"({Makes("AssembleGearCutting")}), then hold [[interact]]. Short of Plate? Back to R2.",
                 // The Presser's own Gear line, not a copy of it (tuning-data-spec §12.3).
                 w => Stock(ItemType.Gear) >= PresserGears,
                 w => ScrapFirst(1, Bench),
@@ -1357,7 +1363,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "program-presser", "Program the Presser",
                 "Drag the glowing cards: Always On, Haul, Assemble Scrap Reclamation, Push Output. Then ENGAGE. "
-                + "Closed it? Press E at the Presser.",
+                + "Closed it? Press [[interact]] at the Presser.",
                 w => Pressers.Any(IsIronPresser),
                 w => Pressers.Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
                 workbench: true,
@@ -1366,8 +1372,8 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "work-presser", "Make Iron Plate",
-                "Lift the Presser (G) onto the marked tile between the depots: teal on the first, gold on the new "
-                + "one (R turns it), then G. Grey means it is waiting for Scrap. That's fine.",
+                "Lift the Presser ([[carry]]) onto the marked tile between the depots: teal on the first, gold on the new "
+                + "one ([[rotate]] turns it), then [[carry]]. Grey means it is waiting for Scrap. That's fine.",
                 w => Pressers.Any(g => _completedSinceEntry.Contains(g.GolemId)),
                 w => Pressers.Any(g => g.Cell == PresserSpot) ? PresserSpot
                     : Pressers.Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? PresserSpot,
@@ -1391,7 +1397,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "presser2", "A second Presser",
                 $"Build another Brass Presser ({Price(PresserCost)}). Take Plate from the first "
-                + "Presser's crate (E); crank the Gears (R8). A full crate turns its golem red.",
+                + "Presser's crate ([[interact]]); crank the Gears (R8). A full crate turns its golem red.",
                 w => Pressers.Count() >= 2,
                 w => ScrapFirst(LineOf(PresserCost, ItemType.Scrap), Station),
                 w => CostCounts(PresserCost)),
@@ -1422,7 +1428,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "coal-order", "Stock the Coal stall",
-                "Golems take from stalls as you do. Press E at the empty Coal stall to order a truckload "
+                "Golems take from stalls as you do. Press [[interact]] at the empty Coal stall to order a truckload "
                 + $"({OfferPrice("CoalNode")} for {OfferSize("CoalNode")} Coal).",
                 w => CoalStallStocked,
                 w => Stall("CoalNode")),
@@ -1443,7 +1449,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "work-coker", "Feed the boiler",
                 "Lift the coking Presser onto the marked tile: teal on the Coal stall, gold on the new boiler. "
-                + "Boilers dry? Load Coke into the new one with E.",
+                + "Boilers dry? Load Coke into the new one with [[interact]].",
                 w => Pressers.Any(g => IsCoker(g) && _completedSinceEntry.Contains(g.GolemId)),
                 // A coker on dry boilers can never make the Coke that would fuel them, so point at
                 // the new boiler (right in front of it) until one has Coke again.
@@ -1460,7 +1466,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "patent", "Patent a program",
-                "A patent saves a program to reuse. Press E at your first Scavenger and press PATENT in the "
+                "A patent saves a program to reuse. Press [[interact]] at your first Scavenger and press PATENT in the "
                 + "Workbench.",
                 w => _world.Patents.Blueprints.Count > 0,
                 w => FirstGolem,
@@ -1503,9 +1509,9 @@ namespace GolemFactory.Tutorial
                 builds: IsDepot, exactTile: true),
 
             new TutorialStep(
-                "turn", "Turn it with R",
-                "Lift the new Scavenger (G) and stand on the marked tile. While you carry it, R turns it: turn "
-                + "until teal is on the stall and gold on the depot, then set it down (G).",
+                "turn", "Turn it with [[rotate]]",
+                "Lift the new Scavenger ([[carry]]) and stand on the marked tile. While you carry it, [[rotate]] turns it: turn "
+                + "until teal is on the stall and gold on the depot, then set it down ([[carry]]).",
                 w => SecondScavenger != null && _completedSinceEntry.Contains(SecondScavenger.GolemId),
                 w => SecondScavenger != null && SecondScavenger.Cell != Scav2Spot ? SecondScavenger.Cell : Scav2Spot,
                 spot: () => Scav2Spot,
@@ -1513,7 +1519,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "stall", "Stall it on purpose",
-                "Golems never improvise. Stand by the new Scavenger and press R to turn it away. It stops and "
+                "Golems never improvise. Stand by the new Scavenger and press [[rotate]] to turn it away. It stops and "
                 + "turns red. Hover it: it names the tile and what is wrong.",
                 // Any stall of chapter 4's golem: which way the player turned it decides the
                 // reason, and every reason's badge names the problem.
@@ -1522,7 +1528,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "unstall", "And back to work",
-                "Turn it back (R) until teal is on the stall. A stuck golem retries the same step, and starts "
+                "Turn it back ([[rotate]]) until teal is on the stall. A stuck golem retries the same step, and starts "
                 + "again the moment its tile is right.",
                 // The golem chapter 4 built, by its saved role: a load on this step used to leave the
                 // stalled golem's id behind in the last session, and the step could never finish.
@@ -1590,7 +1596,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "smelt-feed", "Feed the smelter",
                 "No golem brings Scrap or Coke to the smelter's crate yet, so you do. Stand at the depot behind the "
-                + "smelter's tile, press I, and Shift-click Scrap, then Coke, in your pack: Shift-click moves all "
+                + "smelter's tile, press [[inventory]], and Shift-click Scrap, then Coke, in your pack: Shift-click moves all "
                 + $"that fits, a click moves one. Each cycle takes {Takes("AssembleIronSmelting")}.",
                 w => (InCrate(SmeltInSpot, ItemType.Scrap) >= SmeltScrap && InCrate(SmeltInSpot, ItemType.Coke) >= SmeltCoke)
                     || Haulers.Any(g => IsSmelter(g) && _completedSinceEntry.Contains(g.GolemId)),
@@ -1641,7 +1647,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "carrier-feed", "Coke for the carrier",
                 "The carrier hauls from the smelter's output crate, and the smelter pushes Slag there but no Coke. "
-                + "Stand at that depot, press I, and Shift-click Coke in your pack to move all that fits.",
+                + "Stand at that depot, press [[inventory]], and Shift-click Coke in your pack to move all that fits.",
                 w => InCrate(SmeltOutSpot, ItemType.Coke) >= CarryCoke
                     || Pressers.Any(g => IsCarrier(g) && _completedSinceEntry.Contains(g.GolemId)),
                 w => SmeltOutSpot,
@@ -1665,8 +1671,8 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "copper", "Buy Copper Ore",
-                $"Press E at the empty Copper stall to order a truckload ({OfferPrice("CopperOreNode")}). When it arrives, take one "
-                + "by hand with E: a crate's label can only name a good your factory has handled.",
+                $"Press [[interact]] at the empty Copper stall to order a truckload ({OfferPrice("CopperOreNode")}). When it arrives, take one "
+                + "by hand with [[interact]]: a crate's label can only name a good your factory has handled.",
                 w => Stock(ItemType.CopperOre) >= 1,
                 w => Stall("CopperOreNode"),
                 w => Count(ItemType.CopperOre, 1)),
@@ -1714,7 +1720,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "copper-depot", "A labelled depot",
                 "A belt only hands goods to another belt, so the ore stops at the end. Build a Depot on the "
-                + "marked tile past it, then stand by it, press I and choose Copper Ore for its label.",
+                + "marked tile past it, then stand by it, press [[inventory]] and choose Copper Ore for its label.",
                 w => DepotAt(CopperDepotSpot)?.FilterItemType == ItemType.CopperOre,
                 w => DepotAt(CopperDepotSpot) == null ? ScrapFirst(DepotScrap, CopperDepotSpot) : CopperDepotSpot,
                 w => DepotAt(CopperDepotSpot) == null ? Count(ItemType.Scrap, DepotScrap) : "Label: " + DepotAt(CopperDepotSpot).FilterLabel,
@@ -1917,7 +1923,7 @@ namespace GolemFactory.Tutorial
             // Any withdrawal: E, the crate screen, or a golem the player stood beside the mast.
             new TutorialStep(
                 "mast-collect", "Unload the mast",
-                $"The Copper lands in the mast's own crate, {CrateHolds} of each good, not in your pack. Press E at the mast "
+                $"The Copper lands in the mast's own crate, {CrateHolds} of each good, not in your pack. Press [[interact]] at the mast "
                 + "to collect it, or stand a golem beside it to carry it on.",
                 w => Built.Any(b => b.GetPart<PlaceableFreightMast>() != null && Withdrawn(b, ItemType.CopperOre)),
                 w => MastBuilding?.Cell,

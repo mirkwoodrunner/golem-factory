@@ -118,6 +118,17 @@ Current scenarios:
   brings it back; a stage completing glides to the tower, shows the banner after the reveal with
   the clock running, and glides back. Captures `feel-place`, `feel-pop`, `feel-alert`,
   `feel-tower`. (`golem-motion` checks the sparks and the boiler's puffs.)
+- `settings` (Sandbox): the Settings tab with real keys, clicks and the wheel
+  (`docs/menus-design.md` §4). A key button listens; Tab, a digit and Shift are refused and it
+  keeps listening, E and Escape never close the screen mid-capture, F binds Use, F for Carry
+  swaps Use to G, and Escape or a tab change cancels. Then the rebind is live: the InputMap, the
+  guide's step 1, the Pack hint, and at the Scrap stall "[G] Harvest" with G harvesting and E
+  not. Reset keys restores E. UI scale 1.5 by a click on the track is kept but held at 1 in a
+  1280x720 window, let through at 1920x1080 (the camera frames the same cells), and a 1024x576
+  window is fitted to 0.8; every tab button stays on screen at each. The toggles take, the saved
+  file reads back the same, and a hand-edited file with a bad key reads back safe. Writes only
+  `user://scenario-settings.cfg`. Captures `screen-settings`, `settings-listening`,
+  `settings-scale`, `settings-scale-world`, `settings-small-window`.
 
 **Screen captures:** a windowed run with `--capture-dir=<dir>` writes `screen-*.png`, one per
 screen (`world` the room, `management` the HUD and every tab, `build` the menu, `tutorial` the

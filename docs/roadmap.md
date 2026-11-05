@@ -70,7 +70,8 @@ call): built, reviewed, critiqued and tested. Done:
    click the alert strip, fixed zoom levels, the tower's event skippable with the clock running).
    Everything plays. The S7 FX art is installed. **Done** (2026-11-05, the user is happy with the feel).
    **Phase 7 (`docs/menus-design.md`), branch `phase7/menus`, in progress:** step 1 (settings) is in
-   (`Core/Settings`, `GameSettingsStore`, the Settings tab); steps 2-6 remain.
+   (`Core/Settings`, `GameSettingsStore`, the Settings tab, the `settings` scenario; the calls
+   made are `menus-design.md` §4); steps 2-6 remain. Next: step 2, accessibility.
    **Phase 5 (Audio), on branch `phase5/audio` (from `phase4/art`), is done** (2026-11-01; the
    user approved the listening sheet). The spec is `docs/audio-design.md`; all four decisions are
    made (§9): CC0 recordings for the effects and ambience, synthesized music. Every slot plays at

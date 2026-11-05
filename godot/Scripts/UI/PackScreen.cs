@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using Godot;
 using GolemFactory.UI;
 using GolemFactory.World;
@@ -11,7 +12,12 @@ namespace GolemFactory.Nodes
     /// </summary>
     public partial class PackScreen : CanvasLayer, IPackScreen, IClosableScreen
     {
-        public const string Hint = "Stand at a crate and press I to fill it from here.";
+        private Label _hint;
+
+        /// <summary>The hint as drawn.</summary>
+        public string HintText => _hint?.Text ?? "";
+
+        public static string Hint => $"Stand at a crate and press {KeyNames.Inventory} to fill it from here.";
 
         private SandboxWorld _world;
         private Control _root;
@@ -74,6 +80,7 @@ namespace GolemFactory.Nodes
             _panel.Render(_world.Inventory.PackRows(null), _world.Inventory.PostRows());
             _panel.Cap.Text = _world.Inventory.PackCapLine; // live: a pack upgrade raises it
             _summary.Text = _world.Inventory.PackSummary;
+            _hint.Text = Hint; // the Pack key can be rebound (Settings)
         }
 
         private void Build()
@@ -88,7 +95,7 @@ namespace GolemFactory.Nodes
             _summary = Ugui.Place(Ugui.Text("Summary", "", 12, ManagementScreen.DimInk), 0f, 0f, 1f, 0f, 0f, 12f, -24f, 30f, 0.5f, 0f);
             _panel.Root.AddChild(_summary);
 
-            _root.AddChild(Ugui.Place(Ugui.Text("Hint", Hint, 12, ManagementScreen.DimInk, align: 2), 0.5f, 0.5f, 0.5f, 0.5f, 0f, -272f, 380f, 18f, 0.5f, 1f));
+            _root.AddChild(Ugui.Place(_hint = Ugui.Text("Hint", Hint, 12, ManagementScreen.DimInk, align: 2), 0.5f, 0.5f, 0.5f, 0.5f, 0f, -272f, 380f, 18f, 0.5f, 1f));
         }
     }
 }

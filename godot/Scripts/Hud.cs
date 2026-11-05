@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using System.Text;
 using Godot;
 using GolemFactory.Economy;
@@ -46,7 +47,7 @@ namespace GolemFactory.Nodes
             }
             // In the Sandbox the [E] prompt floats over its target (InteractionPromptNode); the
             // slice's interactables still report theirs here.
-            text.Append('\n').Append(_player.Focus != null ? _player.Focus.Prompt : "WASD move · E use · hold E crank · R turn · G carry");
+            text.Append('\n').Append(_player.Focus != null ? _player.Focus.Prompt : $"{KeyNames.Move} move · {KeyNames.Interact} use · hold {KeyNames.Interact} crank · {KeyNames.Rotate} turn · {KeyNames.Carry} carry");
             _label.Text = text.ToString();
         }
     }
