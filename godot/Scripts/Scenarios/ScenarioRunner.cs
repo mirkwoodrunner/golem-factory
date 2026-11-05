@@ -31,6 +31,16 @@ namespace GolemFactory.Nodes.Scenarios
     }
 
     /// <summary>
+    /// A scenario that goes on across a scene reload (the title's New game and Continue reload
+    /// the scene, docs/menus-design.md §6). The runner of the new scene hands it back here; its
+    /// old nodes are gone, so it finds them again.
+    /// </summary>
+    public interface IReloadingScenario : IScenario
+    {
+        void Resumed(ScenarioRunner runner);
+    }
+
+    /// <summary>
     /// The headless end-to-end checks (docs/godot-conversion-plan.md, "Verification"):
     ///
     /// <code>
@@ -76,6 +86,7 @@ namespace GolemFactory.Nodes.Scenarios
                 ["feel"] = () => new FeelScenario(),
                 ["settings"] = () => new SettingsScenario(),
                 ["accessibility"] = () => new AccessibilityScenario(),
+                ["title"] = () => new TitleScenario(),
             };
 
         [Export] public NodePath StationPath { get; set; }
@@ -83,6 +94,9 @@ namespace GolemFactory.Nodes.Scenarios
 
         private string _name;
         private IScenario _scenario;
+
+        // A scenario still running when its scene went: the next scene's runner takes it up.
+        private static (string name, IScenario scenario)? _carried;
 
         public ConstructionStationNode Station => GetNode<ConstructionStationNode>(StationPath);
         public DepotNode Depot => GetNode<DepotNode>(DepotPath);
@@ -102,6 +116,22 @@ namespace GolemFactory.Nodes.Scenarios
 
         public override void _Ready()
         {
+            if (_carried is (string carriedName, IScenario carried))
+            {
+                _carried = null;
+                _name = carriedName;
+                _scenario = carried;
+                if (carried is IReloadingScenario reloading)
+                {
+                    Callable.From(() => reloading.Resumed(this)).CallDeferred();
+                }
+                else
+                {
+                    Finish(new ScenarioResult(false, "the scene reloaded mid-scenario"));
+                }
+                return;
+            }
+
             string[] args = OS.GetCmdlineUserArgs();
             _name = ScenarioName(args);
 
@@ -136,6 +166,14 @@ namespace GolemFactory.Nodes.Scenarios
             _scenario = make();
             // Deferred for the same reason: scenarios drive nodes that must already be ready.
             Callable.From(() => _scenario.Begin(this)).CallDeferred();
+        }
+
+        public override void _ExitTree()
+        {
+            if (_scenario != null)
+            {
+                _carried = (_name, _scenario);
+            }
         }
 
         public override void _Process(double delta)

@@ -364,6 +364,37 @@ namespace GolemFactory.World
             return Camera.NextAlert(Alerts?.Tracker.StallsWorstFirst());
         }
 
+        /// <summary>
+        /// Takes the world off the static <see cref="EventBus"/>: its golems, the guide, the
+        /// alerts, the tower, the tech tree, the tally, the hands and the sound. Called when its
+        /// scene goes (a new game or a load from the title reloads the scene,
+        /// docs/menus-design.md §6); without it the old world went on reacting to the new one's
+        /// events. The world is not used again after.
+        /// </summary>
+        public void Dispose()
+        {
+            if (Disposed)
+            {
+                return;
+            }
+            Disposed = true;
+            foreach (GolemEntity golem in _golems)
+            {
+                golem?.Detach();
+            }
+            Tutorial?.Detach();
+            Alerts?.Detach();
+            ClockTower.Detach();
+            TechTree.Detach();
+            Production.Detach();
+            Interactor.Detach();
+            Audio.Detach();
+            EventBus.ClockTowerStageCompleted -= OnTowerStageCompleted;
+        }
+
+        /// <summary>Whether <see cref="Dispose"/> has run.</summary>
+        public bool Disposed { get; private set; }
+
         private void OnTowerStageCompleted(ClockTowerStageCompletedEvent e)
         {
             if (!Restoring)
@@ -482,21 +513,34 @@ namespace GolemFactory.World
 
             // A load rebuilding the factory isn't the player placing and wrecking it: no sound,
             // and no landing or dust (Restoring).
+            return Quietly(() => Restore(data));
+        }
+
+        /// <summary>
+        /// True while a load (or the title's showcase, docs/menus-design.md §6) rebuilds the world:
+        /// buildings appear and go without their landing or dust, and nothing pops up.
+        /// </summary>
+        public bool Restoring { get; private set; }
+
+        /// <summary>
+        /// Runs <paramref name="rebuild"/> as a load runs: silent, with <see cref="Restoring"/> set,
+        /// so a world built in one frame doesn't land, dust, ring and pop all at once.
+        /// </summary>
+        public T Quietly<T>(Func<T> rebuild)
+        {
+            bool wasSuppressed = Audio.Suppressed, wasRestoring = Restoring;
             Audio.Suppressed = true;
             Restoring = true;
             try
             {
-                return Restore(data);
+                return rebuild();
             }
             finally
             {
-                Audio.Suppressed = false;
-                Restoring = false;
+                Audio.Suppressed = wasSuppressed;
+                Restoring = wasRestoring;
             }
         }
-
-        /// <summary>True while a load rebuilds the world: buildings appear and go without their landing or dust.</summary>
-        public bool Restoring { get; private set; }
 
         private string Restore(SaveData data)
         {

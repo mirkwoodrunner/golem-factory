@@ -31,6 +31,15 @@ namespace GolemFactory.Economy
             }
         }
 
+        public void Detach()
+        {
+            if (_attached)
+            {
+                EventBus.ItemAssembled -= OnItemAssembled;
+                _attached = false;
+            }
+        }
+
         private void OnItemAssembled(ItemAssembledEvent e)
         {
             if (string.IsNullOrEmpty(e.ItemType) || e.Quantity <= 0)

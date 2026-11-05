@@ -67,9 +67,7 @@ namespace GolemFactory.Nodes
         public AssemblyLineTab AssemblyLine { get; private set; }
 
         /// <summary>Where Save writes and Load reads. A scenario points it at a scratch file.</summary>
-        public string SavePath { get; set; } = PlaytestNode.UnderScenario
-            ? "user://scenario-save.json" // a scenario run (the kit's save step included) never touches the player's save
-            : "user://" + Save.SaveFileIO.DefaultFileName;
+        public string SavePath { get; set; } = SavePaths.Campaign; // a scenario run (the kit's save step included) never touches the player's save
 
         public Button SaveButton { get; private set; }
         public Button LoadButton { get; private set; }

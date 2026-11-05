@@ -139,12 +139,23 @@ namespace GolemFactory.Nodes
             Center(_caption, ScreenOf(new CoreVector3(target.x, target.y + CaptionOffsetCells, 0f)));
         }
 
-        private void OnInteractionPopup(InteractionPopup popup) =>
+        private void OnInteractionPopup(InteractionPopup popup)
+        {
+            // A load, or the title's showcase being built, is not the player acting.
+            if (_world.Sandbox.Restoring)
+            {
+                return;
+            }
             Spawn(new CoreVector3(popup.Position.x, popup.Position.y + popup.Height, 0f), popup.Text,
                 popup.Kind == InteractionPopupKind.Gain ? GainPopupColor : RefusedPopupColor);
+        }
 
         private void OnBuildPopup(BuildPopup popup)
         {
+            if (_world.Sandbox.Restoring)
+            {
+                return;
+            }
             Color color = popup.Kind switch
             {
                 BuildPopupKind.Refused => BuildRefusedColor,

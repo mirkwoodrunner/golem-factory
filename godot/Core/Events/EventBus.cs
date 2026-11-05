@@ -322,6 +322,18 @@ namespace GolemFactory.Events
         public static event Action<ClockTowerStageCompletedEvent> ClockTowerStageCompleted;
         public static event Action<WorldInteractablesChangedEvent> WorldInteractablesChanged;
 
+        /// <summary>
+        /// Every handler on the bus, for the test that a world leaves none behind
+        /// (SandboxWorld.Dispose): the bus is static, so a world that forgot to unsubscribe went
+        /// on reacting to the next world's events after a scene reload.
+        /// </summary>
+        public static int ListenerCount =>
+            Count(TickAdvanced) + Count(ThresholdCrossed) + Count(GolemCompleted) + Count(GolemStalled)
+            + Count(GolemResumed) + Count(GolemTriggerFired) + Count(ItemAssembled)
+            + Count(ClockTowerStageCompleted) + Count(WorldInteractablesChanged);
+
+        private static int Count(Delegate handlers) => handlers?.GetInvocationList().Length ?? 0;
+
         public static void Publish(TickAdvancedEvent e) => TickAdvanced?.Invoke(e);
         public static void Publish(ThresholdCrossedEvent e) => ThresholdCrossed?.Invoke(e);
         public static void Publish(GolemCompletedEvent e) => GolemCompleted?.Invoke(e);

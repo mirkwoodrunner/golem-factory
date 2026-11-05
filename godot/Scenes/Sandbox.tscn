@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3]
+[gd_scene load_steps=25 format=3]
 
 [ext_resource type="Script" path="res://Scripts/WorldNode.cs" id="1_world"]
 [ext_resource type="Script" path="res://Scripts/FloorLayer.cs" id="2_floor"]
@@ -23,6 +23,7 @@
 [ext_resource type="Script" path="res://Scripts/UI/PackScreen.cs" id="21_pack"]
 [ext_resource type="Script" path="res://Scripts/UI/CrateScreen.cs" id="22_crate"]
 [ext_resource type="Script" path="res://Scripts/Golems/GolemHoverNode.cs" id="23_hover"]
+[ext_resource type="Script" path="res://Scripts/UI/TitleScreen.cs" id="24_title"]
 
 [node name="Sandbox" type="Node2D"]
 
@@ -107,3 +108,6 @@ script = ExtResource("20_playtest")
 [node name="Scenarios" type="Node" parent="."]
 script = ExtResource("9_scenarios")
 StationPath = NodePath("../Entities/StarterConstructionStation")
+
+[node name="Title" type="CanvasLayer" parent="."]
+script = ExtResource("24_title")

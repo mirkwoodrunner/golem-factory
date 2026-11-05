@@ -139,6 +139,24 @@ Current scenarios:
   with no swell or flash, the banner shown. Off: the golems bob, a depot lands in dust, no
   stripes. Each `MotionPreference` gate, broken on purpose, fails it. Captures
   `access-settings`, `access-stripes`, `access-tower`.
+- `title` (Sandbox, reloaded onto the title): the title screen (`docs/menus-design.md` §6) with
+  real keys and clicks, across the scene reloads New game and Continue make
+  (`IReloadingScenario`). With no save, Continue is greyed; the staged workshop has at least six
+  golems drawn and working, none stopped, the camera at Near drifting with the workshop right of
+  the menu, and the HUD, build menu and guide hidden. D, Tab, 1, I, F1, Escape and the wheel
+  reach nothing. The arrows and S walk the entries past the greyed Continue, the pointer lights
+  one, and Quit is chosen. Settings: a rebind (Escape cancels the listening, not the tab), Reset
+  keys, Reduced motion stilling the drift, Back, Enter, Escape. New game reloads onto a fresh
+  game with as many bus listeners as a fresh game has; the player walks. A save made there is
+  offered on the title ("Saved today at ..."), and Enter on Continue brings back its depot and
+  pack. A save spoiled after the title read it brings Continue back to the title with a notice,
+  Continue greyed and the file untouched. Writes only `user://scenario-save.json` (deleted at the
+  end) and `user://scenario-settings.cfg`. Captures `title`, `title-settings`, `title-continue`,
+  `title-notice`.
+
+**A scenario that reloads the scene** implements `IReloadingScenario`: the runner of the new
+scene hands it back (`Resumed`), and it finds its nodes again. Count a reload from before the
+click or key that causes it; the reload can land between two steps.
 
 **Screen captures:** a windowed run with `--capture-dir=<dir>` writes `screen-*.png`, one per
 screen (`world` the room, `management` the HUD and every tab, `build` the menu, `tutorial` the

@@ -30,7 +30,8 @@ Branch `phase7/menus` (from `phase6/feel`). Design written 2026-11-05. Roadmap: 
    Display and Keys. Rebinding: click an action, press a key; conflicts swap, Reset restores defaults.
 2. **Accessibility. Done** (§5). Reduced motion stills every decorative motion; Colour-blind
    marks stripe a golem's source tile, the one place colour was the only cue.
-3. **Title screen** over a live (read-only, scripted) workshop; Continue, New, Load, Creative, Quit.
+3. **Title screen. Done** (§6). Over a live workshop the player watches but can't touch:
+   Continue, New game, Settings, Quit. Load joins with step 4 and Creative with step 6.
 4. **Save slots** with thumbnails and metadata; autosave to a reserved slot on quit and on a tower
    stage change.
 5. **Factory overview:** map overlay, production graphs from the Ledger's rates, alerts history.
@@ -106,3 +107,35 @@ reads as different):
 | 4 | The moods need no mark. | Their badges say what is wrong in words, and red/blue/grey stay at least 18 apart in every simulation. |
 | 5 | The setting is "Colour-blind marks", not "... on cards". | It marks tiles. |
 | 6 | No separate text size. | Text is the UI scale (§4, call 6); a size of its own would need the same reflowing screens as the Deck. |
+
+## 6. Step 3: the title screen (done 2026-11-05)
+
+**Where it lives.** The menu's rules in `Core/Menus` (`TitleMenu`, `SaveSummary`, `GameLaunch`,
+`TitleShowcase`); the camera's drift in `CameraDirector` (`CameraFocus.Showcase`); the screen in
+`Scripts/UI/TitleScreen`, the last node of `Sandbox.tscn`; the save's path in
+`Scripts/UI/SavePaths`. The `title` scenario drives it.
+
+**How a game starts.** The game opens on the title, which runs on the scene's own world. A
+choice names the next launch (`GameLaunch.Request`) and reloads the scene; `WorldNode` takes the
+launch first thing (`GameLaunch.Take`). New game is a fresh world; Continue is a fresh world
+with the save loaded into it. A world comes off the static event bus when its scene goes
+(`SandboxWorld.Dispose`), which the scenario checks by counting listeners after each reload. A
+scenario or `--demo` run opens on a new game, as before, unless it asks for the title.
+
+**Calls made while building it:**
+
+| # | Call | Why |
+|---|---|---|
+| 1 | The entries are Continue, New game, Settings and Quit. Load arrives with step 4's slots and Creative with step 6, each tested then. | A button that does nothing yet, or says "coming soon", isn't finished work. Settings is here because a player wants sound and keys set before playing. |
+| 2 | The workshop is the guide's first six chapters, built by the playtest kit's own actions (`TitleShowcase.Stage`) in about a third of a second, quietly (`SandboxWorld.Quietly`: no landing, dust, sound or popup). | It is the workshop the player is about to build, and it follows the guide whenever the guide changes. |
+| 3 | A script keeps it running (`TitleShowcase.Keep`): it restocks stalls, stokes boilers, empties full crates, and keeps every Haul's source crate stocked. No golem goes red or blue in 20 minutes; a grey one waits on a full boiler. | Left alone, the same workshop needs a player within minutes (a test shows it). Red on the title would read as something to fix. |
+| 4 | The camera drifts round the workshop's middle at Near, never faster than 0.4 cells a second, with the workshop framed right of the menu. On Reduced motion it holds still. A tower stage never takes it. | Slow enough to read as calm, not as a pan. |
+| 5 | Nothing reaches the world behind the title: it is a full screen (the HUD, build menu, guide and prompts hide, the player stays still), and it swallows every key and click. | The workshop is watched, not played. |
+| 6 | Keys: Up and Down (or the move keys) walk the entries, skipping a greyed one and wrapping; Enter or Use picks; the pointer lights what it is over. | Controller-ready (§0.3), and the keyboard and the pointer always agree on one highlight. |
+| 7 | Continue offers the newest save that can be read. A save that can't be read greys Continue with "Your save can't be read". One that fails to load after the title read it brings the player back with a notice, and the file is left alone. | Continue must never lead nowhere, and a bad save must never be overwritten unasked. |
+| 8 | Settings is the Management tab, on Management's plate, with Back where Management has Close. Escape returns too. | One settings screen to learn and to test. |
+| 9 | The showcase asks no playtest questions, writes no report and has no save path. | Nobody is playing it. |
+
+**Not yet:** there is no way back to the title from a game; Quit to title is an autosave
+trigger, so it comes with step 4. Until step 4's slots, New game and Continue share the one save
+file: Save in a new game overwrites the old game, as it always has.

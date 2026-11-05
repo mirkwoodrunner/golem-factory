@@ -80,13 +80,15 @@ G=".../Godot_v4.7.2-stable_mono_win64_console.exe"
 `--fixed-fps 60` makes every frame 1/60 s of game time, so headless runs are deterministic and as fast as the machine
 allows.
 
-**Scenes.** `Scenes/Sandbox.tscn` is the game world (the main scene). `Scenes/LoopSlice.tscn` is a small hand-built
+**Scenes.** `Scenes/Sandbox.tscn` is the game world (the main scene). It opens on the title
+screen (`docs/menus-design.md` §6), and starting a game reloads it; a scenario or `--demo` run
+opens straight on a new game. `Scenes/LoopSlice.tscn` is a small hand-built
 slice, kept as the `loop` scenario's fixture; run it by passing `res://Scenes/LoopSlice.tscn` before `--`.
 
 **Scenarios** (`Scripts/Scenarios/`) are the scene-level checks. `ScenarioRunner` is a node in each scene; `--
 --scenario <name>` runs one to a verdict, prints `[scenario <name>] PASS|FAIL …` and exits 0/1. An unknown name fails
 and lists the known ones. Current scenarios: `world`, `build`, `interact`, `golems`, `golem-motion`, `workbench`,
-`management`, `save`, `tutorial`, `playtest-kit`, `loop`, `inventory`, `moods`, `hover`, `font-glyphs`, `perf`, `art`, `audio`, `feel`, `settings`, `accessibility`; what
+`management`, `save`, `tutorial`, `playtest-kit`, `loop`, `inventory`, `moods`, `hover`, `font-glyphs`, `perf`, `art`, `audio`, `feel`, `settings`, `accessibility`, `title`; what
 each checks is in `godot/Scripts/Scenarios/CLAUDE.md`.
 
 To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scenarios`. `--demo` (alias `--spike-demo`)

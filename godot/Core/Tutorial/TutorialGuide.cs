@@ -530,6 +530,9 @@ namespace GolemFactory.Tutorial
             Playtest.StepEntered(step?.Id ?? "finished", step?.Title ?? "Finished", _clock(), ChapterOf(Index));
         }
 
+        /// <summary>Stops listening to the bus, for good: the world is going (SandboxWorld.Dispose).</summary>
+        public void Detach() => EventBus.GolemCompleted -= OnGolemCompleted;
+
         private void OnGolemCompleted(GolemCompletedEvent e)
         {
             // Only this world's golems: tests compose many worlds on one static bus.
