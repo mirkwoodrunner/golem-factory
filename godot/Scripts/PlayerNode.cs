@@ -72,6 +72,7 @@ namespace GolemFactory.Nodes
         public override void _Ready()
         {
             RegisterInputActions();
+            GameSettingsStore.Apply(GetWindow());
 
             string[] rows = { "down", "left", "right", "up" }; // ArtificerFacing's order
             for (int row = 0; row < rows.Length; row++)

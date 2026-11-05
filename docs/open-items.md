@@ -125,6 +125,8 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 
 ## 5. Deliberate cuts
 
+- **No gamepad and no Linux export yet** (roadmap decision 10). The plan to run on a Steam Deck is
+  `docs/steam-deck-design.md`; it has five decisions waiting (its §2).
 - No player collision; the player walks through buildings and golems.
 - A belt hands off only to another belt: getting goods into a depot needs a golem.
 - `Refine` stays id-routed rather than spatial, so an untyped take can't grab the wrong input.

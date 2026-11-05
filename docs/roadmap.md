@@ -68,8 +68,9 @@ call): built, reviewed, critiqued and tested. Done:
 0. **Phase 6 (Game feel), on branch `phase6/feel` (from `phase5/audio`), built 2026-11-01.** The
    spec is `docs/game-feel-design.md`; the user's four decisions are its §7 (ComfyUI FX art,
    click the alert strip, fixed zoom levels, the tower's event skippable with the clock running).
-   Everything plays. The S7 FX art is rendered and installed (the user picked spark #6, dust
-   #7, glint #6). Left for done (§8): the user plays it and is happy with the feel.
+   Everything plays. The S7 FX art is installed. **Done** (2026-11-05, the user is happy with the feel).
+   **Phase 7 (`docs/menus-design.md`), branch `phase7/menus`, in progress:** step 1 (settings) is in
+   (`Core/Settings`, `GameSettingsStore`, the Settings tab); steps 2-6 remain.
    **Phase 5 (Audio), on branch `phase5/audio` (from `phase4/art`), is done** (2026-11-01; the
    user approved the listening sheet). The spec is `docs/audio-design.md`; all four decisions are
    made (§9): CC0 recordings for the effects and ambience, synthesized music. Every slot plays at
@@ -447,6 +448,10 @@ Waiting: a second map region, and selling golems to the city.
 
 Release itself isn't planned (decision 14). These shape the code, so they are kept in mind
 throughout rather than retrofitted:
+
+- **Steam Deck, as hardware only** (not the store): planned in `docs/steam-deck-design.md`, to
+  start after Phase 7. Its first two steps (a Linux export, a Steam Input template) need no game
+  changes. Native gamepad support is best built once Phase 7's menus exist.
 
 - **Text kept in data**, not strings in code, so a translation is a data change. The font's
   glyph rule (`font-glyphs` scenario) already constrains characters.
