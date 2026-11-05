@@ -154,6 +154,10 @@ namespace GolemFactory.Nodes
         /// <summary>True from its demolishing until it frees itself.</summary>
         public bool Demolishing => _demolishAge >= 0f;
 
+        /// <summary>The sprite's drawn scale and tint: a squash, a bump, the tower's swell and flash. For a scenario.</summary>
+        public Vector2 DrawnScale => _sprite.Scale;
+        public Color DrawnModulate => _sprite.Modulate;
+
         /// <summary>A pipe piece's picture while it carries steam (LightingRules.PipeHot).</summary>
         public static string HotPipe(string name) => name + "_hot";
 
@@ -387,6 +391,22 @@ namespace GolemFactory.Nodes
         /// <summary>The landing, the coming down, a crate's bump and the tower's reveal, on the sprite.</summary>
         private void UpdateFeel(float delta)
         {
+            if (_world?.Sandbox != null && !_world.Sandbox.Motion.Squash)
+            {
+                // Reduced motion: a building is simply there, and simply gone.
+                if (_demolishAge >= 0f)
+                {
+                    QueueFree();
+                    return;
+                }
+                _landAge = _bumpAge = _revealAge = -1f;
+                if (!IsFloorTile)
+                {
+                    _sprite.Scale = Vector2.One;
+                }
+                _sprite.Modulate = Colors.White;
+                return;
+            }
             if (_demolishAge >= 0f)
             {
                 _demolishAge += delta;

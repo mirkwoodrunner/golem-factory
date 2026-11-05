@@ -19,8 +19,8 @@ namespace GolemFactory.Tutorial
         public string Id { get; }
         private readonly string _prompt;
 
-        /// <summary>The question, its key names filled from the current bindings.</summary>
-        public string Prompt => KeyNames.Fill(_prompt);
+        /// <summary>The question, its key names and colour words filled (TextTokens).</summary>
+        public string Prompt => TextTokens.Fill(_prompt);
         public IReadOnlyList<string> Options { get; }
         public string AfterStepId { get; }
 

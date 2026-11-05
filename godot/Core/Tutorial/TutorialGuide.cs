@@ -20,11 +20,11 @@ namespace GolemFactory.Tutorial
         private readonly string _title;
 
         /// <summary>The step's title, its key names filled like <see cref="Body"/>.</summary>
-        public string Title => Settings.KeyNames.Fill(_title);
+        public string Title => Settings.TextTokens.Fill(_title);
         private readonly string _body;
 
-        /// <summary>The step's text, its key names filled from the current bindings (<see cref="Settings.KeyNames.Fill"/>).</summary>
-        public string Body => Settings.KeyNames.Fill(_body);
+        /// <summary>The step's text, its key names and colour words filled (<see cref="Settings.TextTokens.Fill"/>).</summary>
+        public string Body => Settings.TextTokens.Fill(_body);
 
         /// <summary>The build-menu row the step needs (a placeable key), or null.</summary>
         public string MenuKey { get; }
@@ -1291,8 +1291,8 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "work", "Put it to work",
-                "Press [[carry]] by the golem to lift it. The outline under you is where it lands: teal is behind it, gold "
-                + "in front. Stand on the marked tile, press [[rotate]] until gold is on the depot, then [[carry]].",
+                "Press [[carry]] by the golem to lift it. The outline under you is where it lands: [[source-tile]] is behind it, [[target-tile]] "
+                + "in front. Stand on the marked tile, press [[rotate]] until [[target-tile]] is on the depot, then [[carry]].",
                 w => _cycleSeen,
                 w => LiveGolems.Any(g => g.Cell == GolemSpot) ? GolemSpot
                     : LiveGolems.Where(IsProgrammed).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? GolemSpot,
@@ -1304,7 +1304,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "collect", "Collect from the crate",
                 "Your golem fills the depot's crate, not your pack. Stand at the depot and press [[interact]]: you take what "
-                + "fits, the rest stays. Hover any golem to see its teal and gold tiles.",
+                + "fits, the rest stays. Hover any golem to see its [[source-tile]] and [[target-tile]] tiles.",
                 w => Withdrawn(FirstDepot, ItemType.Scrap),
                 w => FirstDepot?.Cell ?? DepotSpot,
                 w => FirstDepot == null ? "" : InTheCrate(FirstDepot.Cell, ItemType.Scrap)),
@@ -1372,7 +1372,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "work-presser", "Make Iron Plate",
-                "Lift the Presser ([[carry]]) onto the marked tile between the depots: teal on the first, gold on the new "
+                "Lift the Presser ([[carry]]) onto the marked tile between the depots: [[source-tile]] on the first, [[target-tile]] on the new "
                 + "one ([[rotate]] turns it), then [[carry]]. Grey means it is waiting for Scrap. That's fine.",
                 w => Pressers.Any(g => _completedSinceEntry.Contains(g.GolemId)),
                 w => Pressers.Any(g => g.Cell == PresserSpot) ? PresserSpot
@@ -1448,7 +1448,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "work-coker", "Feed the boiler",
-                "Lift the coking Presser onto the marked tile: teal on the Coal stall, gold on the new boiler. "
+                "Lift the coking Presser onto the marked tile: [[source-tile]] on the Coal stall, [[target-tile]] on the new boiler. "
                 + "Boilers dry? Load Coke into the new one with [[interact]].",
                 w => Pressers.Any(g => IsCoker(g) && _completedSinceEntry.Contains(g.GolemId)),
                 // A coker on dry boilers can never make the Coke that would fuel them, so point at
@@ -1511,7 +1511,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "turn", "Turn it with [[rotate]]",
                 "Lift the new Scavenger ([[carry]]) and stand on the marked tile. While you carry it, [[rotate]] turns it: turn "
-                + "until teal is on the stall and gold on the depot, then set it down ([[carry]]).",
+                + "until [[source-tile]] is on the stall and [[target-tile]] on the depot, then set it down ([[carry]]).",
                 w => SecondScavenger != null && _completedSinceEntry.Contains(SecondScavenger.GolemId),
                 w => SecondScavenger != null && SecondScavenger.Cell != Scav2Spot ? SecondScavenger.Cell : Scav2Spot,
                 spot: () => Scav2Spot,
@@ -1528,7 +1528,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "unstall", "And back to work",
-                "Turn it back ([[rotate]]) until teal is on the stall. A stuck golem retries the same step, and starts "
+                "Turn it back ([[rotate]]) until [[source-tile]] is on the stall. A stuck golem retries the same step, and starts "
                 + "again the moment its tile is right.",
                 // The golem chapter 4 built, by its saved role: a load on this step used to leave the
                 // stalled golem's id behind in the last session, and the step could never finish.

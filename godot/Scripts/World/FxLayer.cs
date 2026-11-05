@@ -52,6 +52,11 @@ namespace GolemFactory.Nodes
 
         public int LiveCount => _live.Count;
 
+        /// <summary>Effects not started because of Reduced motion, by kind: what a scenario counts.</summary>
+        public Dictionary<FxKind, int> Withheld { get; } = new Dictionary<FxKind, int>();
+
+        private World.MotionPreference _motion;
+
         private sealed class Effect
         {
             public FxKind Kind;
@@ -70,6 +75,12 @@ namespace GolemFactory.Nodes
         /// <summary>Starts an effect at <paramref name="at"/> (a global position). A good's pop takes its icon.</summary>
         public void Spawn(FxKind kind, Vector2 at, Texture2D icon = null)
         {
+            _motion ??= WorldNode.Find(this)?.Sandbox?.Motion;
+            if (_motion != null && !_motion.Particles)
+            {
+                Withheld[kind] = (Withheld.TryGetValue(kind, out int w) ? w : 0) + 1;
+                return;
+            }
             at = ToLocal(at);
             Texture2D texture;
             Color tint = Colors.White;

@@ -273,10 +273,10 @@ namespace GolemFactory.Nodes
                 _fitted = false;
             }
 
-            if (guide.Version != _renderedVersion || KeyNames.Version != _renderedKeys)
+            if (guide.Version != _renderedVersion || TextTokens.Version != _renderedKeys)
             {
                 _renderedVersion = guide.Version;
-                _renderedKeys = KeyNames.Version; // a rebind redraws the step's key names
+                _renderedKeys = TextTokens.Version; // a rebind or the marks setting redraws the step's words
                 TutorialStep step = guide.Current;
                 int chapter = guide.ChapterOf(guide.Index);
                 _counter.Text = guide.KitRunning

@@ -129,6 +129,16 @@ Current scenarios:
   file reads back the same, and a hand-edited file with a bad key reads back safe. Writes only
   `user://scenario-settings.cfg`. Captures `screen-settings`, `settings-listening`,
   `settings-scale`, `settings-scale-world`, `settings-small-window`.
+- `accessibility` (Sandbox, the `moods` street): Reduced motion and Colour-blind marks
+  (`docs/menus-design.md` §5), switched on and off by clicks in the Settings tab. First the
+  golems must bob, so "still" proves something. On: for 2 s no golem's body moves, scales or
+  skews while their frames still change; the wheel cuts to a zoom level; a depot placed, filled
+  and demolished has no landing, bump, dust or pop (withheld, counted) and is gone at once; the
+  alert strip cuts the camera to the golem and back; the hovered golem's source tile is striped;
+  a dropped card is settled at once and the tape's line whole; a tower stage cuts to the tower
+  with no swell or flash, the banner shown. Off: the golems bob, a depot lands in dust, no
+  stripes. Each `MotionPreference` gate, broken on purpose, fails it. Captures
+  `access-settings`, `access-stripes`, `access-tower`.
 
 **Screen captures:** a windowed run with `--capture-dir=<dir>` writes `screen-*.png`, one per
 screen (`world` the room, `management` the HUD and every tab, `build` the menu, `tutorial` the

@@ -21,6 +21,9 @@ Workbench cards that land with weight and a tape ticker that prints. The user's 
    world: buildings appear and go without their landing or dust, and no tower event starts.
 6. **The player can always take the camera back.** Walking ends an alert's look; any key skips
    the tower's event.
+7. **Reduced motion stills it** (Phase 7, `menus-design.md` §5): every effect here asks
+   `SandboxWorld.Motion` before it moves; the camera cuts instead of gliding. A new effect asks
+   too, and the `accessibility` scenario checks it.
 
 ## 1. Effects (`Scripts/World/FxLayer`)
 

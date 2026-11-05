@@ -62,7 +62,7 @@ namespace GolemFactory.UI
 
         /// <summary>One line on what the building is for, or "" for one this table has not met.</summary>
         public static string DescriptionFor(string placeableKey) =>
-            placeableKey != null && Descriptions.TryGetValue(placeableKey, out string text) ? KeyNames.Fill(text) : "";
+            placeableKey != null && Descriptions.TryGetValue(placeableKey, out string text) ? TextTokens.Fill(text) : "";
 
         /// <summary>
         /// The hover card's cost line: "30 Scrap + 10 Iron Plate", "Free", or, short of it,

@@ -28,8 +28,8 @@ Branch `phase7/menus` (from `phase6/feel`). Design written 2026-11-05. Roadmap: 
 1. **Settings. Done** (§4). A `GameSettings` Core object (display mode, UI scale, reduced motion,
    colour-blind marks, key bindings) kept beside the audio settings. The Settings tab has Sound,
    Display and Keys. Rebinding: click an action, press a key; conflicts swap, Reset restores defaults.
-2. **Accessibility.** Colour-blind-safe card colours (teal against copper): add a glyph per card
-   family so colour is never the only cue. Reduced motion turns off camera pan, squash and puffs.
+2. **Accessibility. Done** (§5). Reduced motion stills every decorative motion; Colour-blind
+   marks stripe a golem's source tile, the one place colour was the only cue.
 3. **Title screen** over a live (read-only, scripted) workshop; Continue, New, Load, Creative, Quit.
 4. **Save slots** with thumbnails and metadata; autosave to a reserved slot on quit and on a tower
    stage change.
@@ -67,6 +67,42 @@ Scenario runs start from the defaults and write only `user://scenario-settings.c
 | 9 | Fullscreen is borderless, not exclusive. | Alt-tab and overlays behave. |
 | 10 | A settings file with an unknown, reserved or doubled key is sanitized on load; one that would leave an action keyless resets the keys. | A hand-edited file must not leave an action dead. |
 
-**Not yet:** Reduced motion and Colour-blind marks are stored and saved but change nothing until
-step 2. A UI scale above 1 at 1280 x 800 (the Steam Deck) needs screens that reflow, not a
+**Not yet:** a UI scale above 1 at 1280 x 800 (the Steam Deck) needs screens that reflow, not a
 setting: see `open-items.md` §3.
+
+## 5. Step 2: accessibility (done 2026-11-05)
+
+**Reduced motion** (`Core/World/MotionPreference`, on `SandboxWorld.Motion`, which the camera
+director shares). One answer per kind of motion, so every node asks the same question:
+
+| Stops | Stays |
+|---|---|
+| Dust, sparks, steam puffs, a good's pop and glint (`FxLayer` withholds and counts them) | A golem's animation frames: they say what it is doing |
+| A building's landing and demolition squash, a crate's bump | Mood tints and badges |
+| A golem's idle bob, work sway and stall shake, and the Overclocker's pulsing glow | The walk |
+| Pulsing rings and the ghost's blocked pulse (held at their middle) | Popups: they fade where they appear, without rising |
+| Camera glides and the follow ease: it cuts | The tower's stage and banner, on the same timeline |
+| The tower's swell and flash | The Workbench's red refusal tint (colour, not motion) |
+| A card's landing, the tape's typing, the lever's travel | |
+
+None of it changes what the simulation does (`game-feel-design.md` §0.1).
+
+**Colour-blind marks.** Measured first (`Machado 2009` severity 1 and CIEDE2000; above about 20
+reads as different):
+
+| Pair | Normal | Protan | Deutan | Tritan |
+|---|---|---|---|---|
+| Card teal / copper | 41.8 | 22.7 | 28.9 | 56.4 |
+| Mood red / blue | 41.0 | 36.0 | 39.5 | 56.7 |
+| Mood red / grey | 37.0 | 35.6 | 31.3 | 37.8 |
+| Mood blue / grey | 20.2 | 18.4 | 20.6 | 22.0 |
+| Source tile teal / target gold | 31.6 | **17.5** | 28.0 | 39.5 |
+
+| # | Call | Why |
+|---|---|---|
+| 1 | No marks on cards. | A card's family is already in words wherever it is: the vault's "LOGIC CORES · triggers" and "APPENDAGES · actions", each subtitle's "trigger ·" or "action ·", an empty socket's "drop a logic core". Colour is not the only cue there, so a mark would only crowd the card. |
+| 2 | The marks go on a golem's source tile: diagonal stripes (`ColourMarks.StripeAt`), so source and target differ in shape. | It is the weakest pair, and the guide steers by it ("press R until gold is on the depot"): the one place colour was the only cue. |
+| 3 | With the marks on, the guide says "striped teal" and "plain gold" (tokens, like the key names). | The words must match what a player who can't see the colour sees. |
+| 4 | The moods need no mark. | Their badges say what is wrong in words, and red/blue/grey stay at least 18 apart in every simulation. |
+| 5 | The setting is "Colour-blind marks", not "... on cards". | It marks tiles. |
+| 6 | No separate text size. | Text is the UI scale (§4, call 6); a size of its own would need the same reflowing screens as the Deck. |

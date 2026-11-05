@@ -67,6 +67,7 @@ namespace GolemFactory.Settings
         public DisplayMode Display = DisplayMode.Windowed;
         public float UiScale = 1f;
         public bool ReducedMotion;
+        /// <summary>Stripes on a golem's source tile, and the guide naming them (<see cref="ColourMarks"/>).</summary>
         public bool ColorBlindMarks;
         public KeyBindings Keys = KeyBindings.Defaults();
 

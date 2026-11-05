@@ -91,15 +91,16 @@ namespace GolemFactory.Player
         /// wall-clock seconds; passing a constant yields a stable colour, which is what makes
         /// this assertable in a test.
         /// </summary>
-        public static Color Evaluate(BuildGhostState state, float time)
+        public static Color Evaluate(BuildGhostState state, float time, bool pulse = true)
         {
             switch (state)
             {
                 case BuildGhostState.Blocked:
                 {
                     Color c = BlockedTint;
+                    // Reduced motion holds the pulse at its middle (World.MotionPreference.StillPulse).
                     c.a = Mathf.Lerp(BlockedPulseMinAlpha, BlockedTint.a,
-                        FeedbackMotion.Breathe01(time, BlockedPulsePeriod));
+                        pulse ? FeedbackMotion.Breathe01(time, BlockedPulsePeriod) : World.MotionPreference.StillPulse);
                     return c;
                 }
                 case BuildGhostState.Unaffordable:

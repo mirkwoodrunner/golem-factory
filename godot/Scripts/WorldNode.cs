@@ -86,9 +86,17 @@ namespace GolemFactory.Nodes
 
             Sandbox.Clock.Play();
 
+            // The player's Reduced motion (docs/menus-design.md §5), now and whenever it changes.
+            Sandbox.Motion.Reduced = GameSettingsStore.Load().ReducedMotion;
+            GameSettingsStore.Applied += OnSettingsApplied;
+
             // The sound (docs/audio-design.md): plays what the world's AudioDirector decides.
             AddChild(new AudioNode { Name = "Audio" });
         }
+
+        private void OnSettingsApplied(Settings.GameSettings settings) => Sandbox.Motion.Reduced = settings.ReducedMotion;
+
+        public override void _ExitTree() => GameSettingsStore.Applied -= OnSettingsApplied;
 
         public override void _Process(double delta)
         {

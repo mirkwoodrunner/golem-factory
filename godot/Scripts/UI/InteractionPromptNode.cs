@@ -121,7 +121,7 @@ namespace GolemFactory.Nodes
             _ring.Position = ToPixels(target) + new Vector2(0f, -RingOffsetCells * GridConversions.CellPixels);
             if (ready)
             {
-                float breathe = FeedbackMotion.Breathe01((float)_time, PulsePeriod);
+                float breathe = _world.Sandbox.Motion.Breathe(FeedbackMotion.Breathe01((float)_time, PulsePeriod));
                 Color c = ReadyRingColor;
                 c.A = ReadyRingColor.A * (1f - PulseDepth + PulseDepth * breathe);
                 _ring.Modulate = c;
@@ -183,7 +183,7 @@ namespace GolemFactory.Nodes
 
         private void Place(Popup p)
         {
-            float rise = FeedbackMotion.RiseOffset(p.Elapsed, PopupDuration, PopupRiseCells);
+            float rise = _world.Sandbox.Motion.PopupRise ? FeedbackMotion.RiseOffset(p.Elapsed, PopupDuration, PopupRiseCells) : 0f;
             Color c = p.Color;
             c.A = FeedbackMotion.FadeOutAlpha(p.Elapsed, PopupDuration);
             p.Label.Modulate = new Color(1f, 1f, 1f, c.A);

@@ -88,7 +88,7 @@ namespace GolemFactory.Nodes
             column.AddChild(ScaleNote);
             ShowScale();
             ReducedMotion = Check(column, "ReducedMotion", "Reduced motion", Settings.ReducedMotion, on => { Settings.ReducedMotion = on; Commit(); });
-            ColorBlindMarks = Check(column, "ColorBlindMarks", "Colour-blind marks on cards", Settings.ColorBlindMarks, on => { Settings.ColorBlindMarks = on; Commit(); });
+            ColorBlindMarks = Check(column, "ColorBlindMarks", "Colour-blind marks", Settings.ColorBlindMarks, on => { Settings.ColorBlindMarks = on; Commit(); });
 
             keys.AddChild(Ugui.Text("KeysHeading", "Keys", 18, ManagementScreen.HeaderInk, bold: true));
             foreach (string action in KeyBindings.Actions())

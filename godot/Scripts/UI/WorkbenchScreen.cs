@@ -227,7 +227,8 @@ namespace GolemFactory.Nodes
             // The tape prints a new line a character at a time, then follows the live numbers.
             _tapeAge += dt;
             string line = _session.Ticker();
-            _tape.Text = line.Substring(0, World.FeelRules.TapePrinted(_tapeAge, line.Length));
+            bool still = _world?.Sandbox?.Motion.WorkbenchMotion == false;
+            _tape.Text = still ? line : line.Substring(0, World.FeelRules.TapePrinted(_tapeAge, line.Length));
             AnimateLanding(dt);
             _status.Text = _session.StatusText;
             _status.AddThemeColorOverride("font_color", _session.StatusIsInfo ? StatusInfo : StatusError);
@@ -393,6 +394,10 @@ namespace GolemFactory.Nodes
                 return;
             }
             _landAge += dt;
+            if (_world?.Sandbox?.Motion.WorkbenchMotion == false)
+            {
+                _landAge = World.FeelRules.CardLandSeconds; // Reduced motion: settled at once
+            }
             Control card = _landingRow.Card;
             var land = World.FeelRules.CardLand(_landAge);
             card.PivotOffset = card.Size / 2f;
@@ -802,6 +807,10 @@ namespace GolemFactory.Nodes
             }
             _leverElapsed += dt;
             float duration = _leverRefusing ? WorkbenchLeverMotion.RefuseSeconds : WorkbenchLeverMotion.TotalSeconds;
+            if (_world?.Sandbox?.Motion.WorkbenchMotion == false)
+            {
+                _leverElapsed = duration; // Reduced motion: the handle is simply back at rest
+            }
             float normalized = 0f;
             if (_leverElapsed >= duration)
             {

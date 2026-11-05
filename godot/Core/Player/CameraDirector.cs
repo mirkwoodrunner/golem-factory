@@ -66,6 +66,12 @@ namespace GolemFactory.Player
 
         public int ZoomLevel { get; private set; } = DefaultZoomLevel;
 
+        /// <summary>
+        /// The player's Reduced motion (<see cref="World.MotionPreference"/>): with it the camera
+        /// cuts instead of gliding. <see cref="World.SandboxWorld"/> hands in its own.
+        /// </summary>
+        public World.MotionPreference Motion { get; set; } = new World.MotionPreference();
+
         /// <summary>The size the camera glides to.</summary>
         public float TargetSize => ZoomLevels[ZoomLevel];
 
@@ -111,7 +117,7 @@ namespace GolemFactory.Player
 
         /// <summary>One frame of the zoom's glide toward its level.</summary>
         public float GlideZoom(float size, float deltaTime) =>
-            Approach(size, TargetSize, deltaTime, ZoomGlideSpeed);
+            Motion.CameraGlides ? Approach(size, TargetSize, deltaTime, ZoomGlideSpeed) : TargetSize;
 
         /// <summary>
         /// The alert strip was clicked: the camera goes to the next stopped golem, worst first
@@ -210,10 +216,15 @@ namespace GolemFactory.Player
             return struck;
         }
 
-        /// <summary>How fast the camera moves this frame: following the player, or gliding to a focus.</summary>
-        public float GlideSpeed => Focus == CameraFocus.Player && TowerPhase != TowerEventPhase.GlideBack
-            ? CameraRigRules.FollowLerpSpeed
-            : FocusGlideSpeed;
+        /// <summary>
+        /// How fast the camera moves this frame: following the player, or gliding to a focus.
+        /// Infinite on Reduced motion: <see cref="CameraRigRules.Follow"/> then cuts to the target.
+        /// </summary>
+        public float GlideSpeed => !Motion.CameraGlides
+            ? float.PositiveInfinity
+            : Focus == CameraFocus.Player && TowerPhase != TowerEventPhase.GlideBack
+                ? CameraRigRules.FollowLerpSpeed
+                : FocusGlideSpeed;
 
         private static float Approach(float value, float target, float deltaTime, float speed)
         {

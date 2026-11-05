@@ -29,6 +29,10 @@ namespace GolemFactory.Player
         /// </summary>
         public static Vector2 Follow(Vector2 camera, Vector2 target, float deltaTime, float speed = FollowLerpSpeed)
         {
+            if (float.IsPositiveInfinity(speed))
+            {
+                return target; // a cut (Reduced motion); the ease below would give 0 * inf = NaN on a 0 s frame
+            }
             float t = 1f - (float)System.Math.Exp(-speed * deltaTime);
             return new Vector2(camera.x + (target.x - camera.x) * t, camera.y + (target.y - camera.y) * t);
         }

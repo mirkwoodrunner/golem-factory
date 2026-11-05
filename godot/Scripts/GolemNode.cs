@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using System.Collections.Generic;
 using Godot;
 using GolemFactory.Data;
@@ -135,6 +136,40 @@ namespace GolemFactory.Nodes
         private string _bodySprite;
         private Sprite2D _arrow;
         private Sprite2D _sourceTile;
+        private Sprite2D _sourceStripes;
+
+        /// <summary>Whether the source tile wears its colour-blind stripes: for a scenario.</summary>
+        public bool SourceStripesVisible => _sourceStripes != null && _sourceStripes.IsVisibleInTree();
+
+        // Dark teal ink: reads on the pale teal tile over any floor, lit or not.
+        private static readonly Color StripeInk = new Color(0.03f, 0.20f, 0.20f, 0.62f);
+        private static Texture2D _stripes;
+
+        /// <summary>
+        /// The source tile's stripes (Core's <see cref="ColourMarks.StripeAt"/>), inside the tile's
+        /// 3-pixel border so its outline still reads. Made once and shared by every golem.
+        /// </summary>
+        private static Texture2D StripeTexture()
+        {
+            if (_stripes != null)
+            {
+                return _stripes;
+            }
+            const int size = 64, border = 3;
+            Image image = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
+            for (int y = border; y < size - border; y++)
+            {
+                for (int x = border; x < size - border; x++)
+                {
+                    if (ColourMarks.StripeAt(x, y))
+                    {
+                        image.SetPixel(x, y, StripeInk);
+                    }
+                }
+            }
+            _stripes = ImageTexture.CreateFromImage(image);
+            return _stripes;
+        }
         private Sprite2D _targetTile;
         private Sprite2D _sourceArrow;
         private Sprite2D _targetArrow;
@@ -162,6 +197,7 @@ namespace GolemFactory.Nodes
         /// <summary>The body's lean, offset from its cell and tint as drawn -- for a scenario.</summary>
         public float DrawnSkew => _body.Skew;
         public Vector2 DrawnOffset => _body.Position;
+
         public Color DrawnModulate => _body.Modulate;
 
         /// <summary>Whether the mood badge is up, and what it says -- for a scenario.</summary>
@@ -226,6 +262,9 @@ namespace GolemFactory.Nodes
             _targetTile = MakeTile(TargetTint);
             _sourceArrow = MakeTileArrow(_sourceTile);
             _targetArrow = MakeTileArrow(_targetTile);
+            _sourceStripes = new Sprite2D { Name = "Stripes", Texture = StripeTexture(), Visible = false };
+            _sourceTile.AddChild(_sourceStripes);
+            _sourceTile.MoveChild(_sourceStripes, 0); // under the arrow
 
             // The landing outline while carried: the build ghost's tile and colours (red where
             // [G] would refuse), with the facing arrow on it as the build cursor draws one.
@@ -404,7 +443,8 @@ namespace GolemFactory.Nodes
             {
                 _dropTile.GlobalPosition = GridConversions.CellToWorld(drop);
                 Compat.Color tint = BuildGhostVisuals.Evaluate(
-                    BuildGhostVisuals.Classify(hands.CarryDropBlocked, affordable: true), _time);
+                    BuildGhostVisuals.Classify(hands.CarryDropBlocked, affordable: true), _time,
+                    pulse: _world?.Sandbox?.Motion.Pulse ?? true);
                 _dropTile.Modulate = new Color(tint.r, tint.g, tint.b, tint.a);
                 _dropArrow.Rotation = GridConversions.FacingToRotation(Entity.Facing);
                 _dropArrow.Position = step * 0.28f;
@@ -415,6 +455,7 @@ namespace GolemFactory.Nodes
             GolemTileOverlay.Decision tiles = GolemTileOverlay.Decide(Hovered, ShowTiles, landing, carried, Entity.Cell);
             _sourceTile.Visible = tiles.Show;
             _targetTile.Visible = tiles.Show;
+            _sourceStripes.Visible = ColourMarks.Enabled; // shape as well as colour (menus-design §5)
             if (tiles.Show)
             {
                 _sourceTile.GlobalPosition = GridConversions.CellToWorld(FacingUtility.SourceCell(tiles.Cell, Entity.Facing));
@@ -441,6 +482,20 @@ namespace GolemFactory.Nodes
         {
             Compat.Color tint = GolemMoodPalette.Tint(_mood);
             _body.Modulate = new Color(tint.r, tint.g, tint.b, tint.a);
+
+            World.MotionPreference motion = _world?.Sandbox?.Motion;
+            if (motion != null && !motion.GolemSway)
+            {
+                // Reduced motion: the golem stands still on its cell. Its frames (ApplyFrame) still
+                // show what it is doing, and its tint and badge its mood.
+                _shakeLeft = 0f;
+                _body.Scale = Vector2.One;
+                _body.Skew = 0f;
+                _body.Position = Vector2.Zero;
+                bool impact = TryWorkPose(out GolemWorkMotion.Pose still) && still.Impact;
+                AnimatePuffs(delta, impact);
+                return;
+            }
 
             if (_shakeLeft > 0f)
             {
@@ -504,6 +559,10 @@ namespace GolemFactory.Nodes
             }
             _wasImpact = impact;
             _puffAge += delta;
+            if (_world?.Sandbox?.Motion.Particles == false)
+            {
+                _puffAge = GolemWorkMotion.PuffSeconds; // no puffs on Reduced motion
+            }
 
             // No puff art yet (it is to come from ComfyUI): the stamp still squashes, without puffs.
             if (!ResourceLoader.Exists(PuffSprite))

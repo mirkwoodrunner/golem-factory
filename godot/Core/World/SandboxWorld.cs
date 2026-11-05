@@ -351,6 +351,12 @@ namespace GolemFactory.World
         /// </summary>
         public CameraDirector Camera { get; } = new CameraDirector();
 
+        /// <summary>
+        /// The player's Reduced motion (<see cref="MotionPreference"/>; docs/menus-design.md §5).
+        /// The camera reads it too. Set by the Godot layer from the player's settings.
+        /// </summary>
+        public MotionPreference Motion => Camera.Motion;
+
         /// <summary>The alert strip was clicked: the camera goes to the next stopped golem. Its id, or null with none.</summary>
         public string FocusNextAlert()
         {

@@ -82,6 +82,12 @@ namespace GolemFactory.Nodes
         private static Window _watched;
 
         /// <summary>
+        /// After every <see cref="Apply"/>: the world takes Reduced motion from here
+        /// (<c>WorldNode</c>). Colour-blind marks are global text and are set directly.
+        /// </summary>
+        public static event Action<GameSettings> Applied;
+
+        /// <summary>
         /// Applies display mode, UI scale and key bindings. Safe to call again: the window's mode
         /// changes only when it is in the other category (so a maximized window stays maximized).
         /// The scale is <see cref="GameSettings.EffectiveUiScale"/> for the window's size, and is
@@ -108,6 +114,8 @@ namespace GolemFactory.Nodes
                 ApplyScale(window);
             }
             ApplyKeys();
+            ColourMarks.Enabled = Current.ColorBlindMarks;
+            Applied?.Invoke(Current);
         }
 
         /// <summary>The scale this window shows now (see <see cref="GameSettings.EffectiveUiScale"/>).</summary>
