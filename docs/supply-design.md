@@ -157,8 +157,13 @@ first needed and climbing a tier per rung:
 Zinc Ore a minute (`tuning-data-spec.md` §4.2). At the top rates that's one Scrap cart, three Coal,
 one Copper Ore and one Zinc Ore: six spots of seventeen. But a cart gives only what two
 extractors pull, so at the Scavenger's 120 a minute it's three Scrap, four Coal, one Copper Ore
-and one Zinc Ore: nine. A test pins that **the street's spots at the top rungs, pulled at two
-extractors each, cover stage 1's raw demand**, with spots to spare.
+and one Zinc Ore: nine. **Stage 4 is the real limit.** It needs about 302 Scrap, 856 Coal (steam upkeep at ~96 golems
+included), 153 Copper Ore, 69 Zinc Ore and 7 Aether a minute (`progression-design.md` §7). Pulled
+at 120 a cart that's three Scrap, eight Coal, two Copper Ore, one Zinc Ore and one Aether: fifteen
+of seventeen spots. Extractors with Repeat pull more than 120, so it isn't a wall, but it's tight.
+A test pins that **the street's spots at the top rungs, pulled at two Scavengers each, cover stage
+4's raw demand**. If the playthrough finds it too tight, the street gains spots before the rates
+rise.
 
 ## 4. What the player sees
 

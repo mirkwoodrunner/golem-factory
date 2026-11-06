@@ -456,7 +456,9 @@ Factorio's breadth.
    runs without the player at the stalls.
 1. **City contracts** (decision 12): requests that fill the gaps between tower stages, and give
    the Artificer's flexible half of the tabletop design a job. Open-ended, with a bonus for
-   speed (decision 13).
+   speed (decision 13). Proposed in `docs/contracts-design.md` (2026-11-06): a City Office in the
+   square from chapter 5, one contract at a time, any source counts. With it, the tower's
+   fresh-production rule goes: any delivered good counts (its §11).
 2. **Endless play after the tower** (decision 1).
 
 Waiting: a second map region, and selling golems to the city.
