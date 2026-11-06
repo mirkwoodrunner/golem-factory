@@ -459,7 +459,9 @@ Factorio's breadth.
    speed (decision 13). Proposed in `docs/contracts-design.md` (2026-11-06): a City Office in the
    square from chapter 5, one contract at a time, any source counts. With it, the tower's
    fresh-production rule goes: any delivered good counts (its §11).
-2. **Endless play after the tower** (decision 1).
+2. **Endless play after the tower** (decision 1). Approved in `docs/endless-design.md` (2026-11-06): generated contracts that level
+   off, endless rungs on the pack, carts and bays, civic works in the square, no more floor, and a
+   golem cap set by measuring the frame budget at 160 golems.
 
 Waiting: a second map region, and selling golems to the city.
 
