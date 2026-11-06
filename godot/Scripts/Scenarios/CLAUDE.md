@@ -43,7 +43,8 @@ Current scenarios:
   buildings, golems (with program and place) and pack must come back exactly, and two
   more rounds must change nothing. Then it extends the room after a save and loads, and the
   rows and back wall must go back, and a pack upgraded after a save loads back at the saved rung.
-  Writes `user://scenario-save.json`, never the player's save.
+  It saves into Slot 1, so every save after the first and every load takes its second press.
+  Writes only `user://scenario-saves`, never the player's saves.
 - `tutorial` (Sandbox): the step-by-step guide's panel.
   - It opens on step 1, with the arrow pinned to the screen edge toward the Scrap stall and
     clear of the HUD bars.
@@ -54,7 +55,7 @@ Current scenarios:
 - `playtest-kit` (Sandbox): F9 once per chapter from a fresh game (all ten). The kit must
   fast-forward every guide chapter, leaving the golems and buildings a player would have
   built, and the report must record it. Its Save and Load steps use
-  `user://scenario-save.json`.
+  `user://scenario-saves/kit-save.json`.
 - `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
   into the stockpile, over 600 ticks. `--spike-check` is an alias.
 - `inventory` (Sandbox): the Pack and Crate screens with real keys and clicks. I opens the pack
@@ -150,12 +151,24 @@ Current scenarios:
   game with as many bus listeners as a fresh game has; the player walks. A save made there is
   offered on the title ("Saved today at ..."), and Enter on Continue brings back its depot and
   pack. A save spoiled after the title read it brings Continue back to the title with a notice,
-  Continue greyed and the file untouched. Writes only `user://scenario-save.json` (deleted at the
+  Continue greyed and the file untouched. Writes only `user://scenario-saves` (emptied at the
   end) and `user://scenario-settings.cfg`. Captures `title`, `title-settings`, `title-continue`,
   `title-notice`.
+- `slots` (Sandbox, across reloads): the save slots and the autosave (`docs/menus-design.md` §7)
+  with real keys and clicks. A save from before slots moves into Slot 1 and the title offers it
+  (Continue, Load "1 save"); the title's Load lists the slots, the keys walk the ones that load,
+  and Enter loads one. In the game, Tab and the Save / Load tab: the Autosave has no Save, an
+  empty slot no Load or Delete; Save into an empty slot is at once, with its summary and, when
+  windowed, its picture. Saving over, deleting and loading each wait for a second press, which
+  another press or closing the screen lets go. A tower stage autosaves without counting as the
+  player's Save; Quit to title autosaves and the title's Continue resumes it; Quit to desktop and
+  the window's close each autosave first; the showcase never does. Writes only
+  `user://scenario-saves`. Captures `title-load`, `slots-world`, `slots`, `slot-picture`,
+  `title-autosaved`.
 
-**A scenario that reloads the scene** implements `IReloadingScenario`: the runner of the new
-scene hands it back (`Resumed`), and it finds its nodes again. Count a reload from before the
+**A scenario that reloads the scene** implements `IReloadingScenario` (or derives from
+`StepScenario`, which does): the runner of the new scene hands it back (`Resumed`), and it finds
+its nodes again. Count a reload from before the
 click or key that causes it; the reload can land between two steps.
 
 **Screen captures:** a windowed run with `--capture-dir=<dir>` writes `screen-*.png`, one per

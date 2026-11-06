@@ -6,6 +6,7 @@ using GolemFactory.Buildings;
 using GolemFactory.Data;
 using GolemFactory.Economy;
 using GolemFactory.Golems;
+using GolemFactory.Menus;
 using GolemFactory.PunchCards;
 using GolemFactory.UI;
 using GolemFactory.World;
@@ -15,7 +16,8 @@ namespace GolemFactory.Nodes.Scenarios
 {
     /// <summary>
     /// G9's exit check: a save/load/save/load leaves the stockpile and the world identical, and a
-    /// load really rebuilds what is gone. Driven through the SaveLoad tab's own buttons.
+    /// load really rebuilds what is gone. Driven through the Save / Load tab's own buttons, on
+    /// Slot 1: saving over it and loading each take their second press (docs/menus-design.md §7).
     ///
     /// <list type="number">
     ///   <item>Build a small factory: two depots and a belt run, and a Scavenger programmed to
@@ -33,7 +35,7 @@ namespace GolemFactory.Nodes.Scenarios
     public sealed class SaveScenario : IScenario
     {
         private const int FramesBetweenSteps = 4;
-        private const string ScratchPath = "user://scenario-save.json";
+        private const string Slot = "slot-1";
 
         private readonly Queue<(string name, Func<string> step)> _steps = new Queue<(string, Func<string>)>();
         private readonly List<string> _log = new List<string>();
@@ -89,21 +91,21 @@ namespace GolemFactory.Nodes.Scenarios
                 Do("scene", () => "Sandbox.tscn is missing Management or the buildings layer");
                 return;
             }
-            _screen.SavePath = ScratchPath; // never the player's own save
+            Do("no saves", () => { ScenarioSaves.Clear(); return null; }); // never the player's own
 
             Do("build a small factory", BuildFactory);
             Do("open Management on SaveLoad", () => { _screen.Open(); _screen.SelectTab(ManagementTab.SaveLoad); return null; });
-            Do("click Save", () => { _saved = Take(); Click(_screen.SaveButton); return null; });
+            Do("click Save", () => { _saved = Take(); Click(Button(SlotAction.Save)); return null; });
             Do("it saved", () =>
-                _screen.SaveStatus.StartsWith("Saved 1 golems and 3 buildings") ? null : $"status '{_screen.SaveStatus}'");
+                _screen.SaveStatus.StartsWith("Slot 1: Saved 1 golem and 3 buildings") ? null : $"status '{_screen.SaveStatus}'");
             Do("wreck the factory", Wreck);
-            Do("click Load", () => { Click(_screen.LoadButton); return null; });
+            Press("click Load", SlotAction.Load);
             Do("everything is back, exactly", Restored);
             for (int round = 1; round <= 2; round++)
             {
                 int captured = round;
-                Do($"save again (round {round})", () => { Click(_screen.SaveButton); return null; });
-                Do($"load again (round {round})", () => { Click(_screen.LoadButton); return null; });
+                Press($"save again (round {round})", SlotAction.Save);
+                Press($"load again (round {round})", SlotAction.Load);
                 Do($"nothing moved (round {round})", () =>
                 {
                     string diff = _saved.Diff(Take());
@@ -121,17 +123,17 @@ namespace GolemFactory.Nodes.Scenarios
             // The floor is saved too (G10): extend after the save, and a load takes the bought
             // rows back out -- planks, back wall and all.
             int north = 0;
-            Do("deposit and save", () =>
+            Do("deposit", () =>
             {
                 _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Scrap, 500);
                 _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.IronPlate, 500);
-                Click(_screen.SaveButton); // lands next frame: extend in the step after
                 _saved = Take();
                 north = _world.Bounds.NorthExtent;
                 return null;
             });
+            Press("and save", SlotAction.Save);
             Do("the save was taken before extending", () =>
-                _screen.SaveStatus.StartsWith("Saved") && _world.Bounds.NorthExtent == north
+                _screen.SaveStatus.StartsWith("Slot 1: Saved") && _world.Bounds.NorthExtent == north
                     ? null
                     : $"save not taken first ('{_screen.SaveStatus}')");
             Do("extend the workshop", () =>
@@ -140,7 +142,7 @@ namespace GolemFactory.Nodes.Scenarios
             });
             Do("the new rows are planked", () =>
                 Floor().GetCellSourceId(new Vector2I(0, -_world.Bounds.NorthExtent)) >= 0 ? null : "no planks on the new back row");
-            Do("load the save from before the expansion", () => { Click(_screen.LoadButton); return null; });
+            Press("load the save from before the expansion", SlotAction.Load);
             Do("the rows and the wall went back", () =>
             {
                 if (_world.Bounds.NorthExtent != north)
@@ -173,10 +175,10 @@ namespace GolemFactory.Nodes.Scenarios
                     return "Upgrade refused: " + _world.AssemblyLineBoard.Status;
                 }
                 _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Scrap, 500);
-                Click(_screen.SaveButton);
                 _saved = Take();
                 return null;
             });
+            Press("save at tier 1", SlotAction.Save);
             Do("upgrade again after the save", () =>
             {
                 _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.IronPlate, 100);
@@ -187,7 +189,7 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 return _world.PackUpgrade.Tier == 2 && _world.Wallet.Pack.CapacityPerType == 200 ? null : $"tier {_world.PackUpgrade.Tier}";
             });
-            Do("load the tier-1 save", () => { Click(_screen.LoadButton); return null; });
+            Press("load the tier-1 save", SlotAction.Load);
             Do("the pack is back at tier 1, nothing clamped", () =>
             {
                 if (_world.PackUpgrade.Tier != 1 || _world.Wallet.Pack.CapacityPerType != 150)
@@ -197,7 +199,32 @@ namespace GolemFactory.Nodes.Scenarios
                 _log.Add("pack saved at tier 1, upgraded to 200, loaded back to 150 with the pack as saved");
                 return _saved.Diff(Take());
             });
-            Do("close", () => { _screen.Close(); return null; });
+            Do("close", () => { _screen.Close(); ScenarioSaves.Clear(); return null; });
+        }
+
+        private Button Button(SlotAction action) => _screen.Slots.Button(Slot, action);
+
+        /// <summary>
+        /// Clicks Slot 1's button; when it asks to be pressed again (saving over, loading), it
+        /// must say so on the button, and the second click does it.
+        /// </summary>
+        private void Press(string name, SlotAction action)
+        {
+            Do(name, () => { Click(Button(action)); return null; });
+            Do(name + ": press again", () =>
+            {
+                if (!_screen.SlotBoard.IsArmed(Slot, action))
+                {
+                    return $"the first press didn't ask again: status '{_screen.SaveStatus}'";
+                }
+                string label = Button(action).GetNode<Label>("Label").Text;
+                if (label != _screen.SlotBoard.Label(Slot, action) || label == action.ToString() || _screen.SlotPrompt.Length == 0)
+                {
+                    return $"armed, but the button reads '{label}' and the prompt '{_screen.SlotPrompt}'";
+                }
+                Click(Button(action));
+                return null;
+            });
         }
 
         public ScenarioResult? Step(double delta)
@@ -279,7 +306,7 @@ namespace GolemFactory.Nodes.Scenarios
 
         private string Restored()
         {
-            if (!_screen.SaveStatus.StartsWith("Loaded 0 golems, rebuilt 1; 3 buildings"))
+            if (!_screen.SaveStatus.StartsWith("Slot 1: Loaded 0 golems, rebuilt 1; 3 buildings"))
             {
                 return $"status '{_screen.SaveStatus}'";
             }

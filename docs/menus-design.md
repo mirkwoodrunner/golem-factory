@@ -32,8 +32,8 @@ Branch `phase7/menus` (from `phase6/feel`). Design written 2026-11-05. Roadmap: 
    marks stripe a golem's source tile, the one place colour was the only cue.
 3. **Title screen. Done** (§6). Over a live workshop the player watches but can't touch:
    Continue, New game, Settings, Quit. Load joins with step 4 and Creative with step 6.
-4. **Save slots** with thumbnails and metadata; autosave to a reserved slot on quit and on a tower
-   stage change.
+4. **Save slots. Done** (§7). Five slots and an Autosave, each with a picture and a summary;
+   autosave on quit and when a tower stage completes; Quit to title.
 5. **Factory overview:** map overlay, production graphs from the Ledger's rates, alerts history.
 6. **Creative Mode:** a `GameMode` on `SandboxWorld`; the wallet, unlock checks and guide read it.
 
@@ -136,6 +136,40 @@ scenario or `--demo` run opens on a new game, as before, unless it asks for the 
 | 8 | Settings is the Management tab, on Management's plate, with Back where Management has Close. Escape returns too. | One settings screen to learn and to test. |
 | 9 | The showcase asks no playtest questions, writes no report and has no save path. | Nobody is playing it. |
 
-**Not yet:** there is no way back to the title from a game; Quit to title is an autosave
-trigger, so it comes with step 4. Until step 4's slots, New game and Continue share the one save
-file: Save in a new game overwrites the old game, as it always has.
+**Since step 4** (§7): the title has Load, Continue may resume the Autosave, and Quit to title
+returns here.
+
+## 7. Step 4: save slots and autosave (done 2026-11-05)
+
+**Where it lives.** The slots in `Core/Menus` (`SaveSlots`: the files; `SaveSlotBoard`: what a
+row says and offers, and the second presses); what a save says about itself in `SaveData.meta`
+(`MetaEntry`); the autosave on `SandboxWorld` (`SaveFolder`, `AutosaveDue`, `Autosave`). In the
+scene, `Scripts/UI/GameSaves` (the node `Saves`) writes a slot and its picture, takes the
+autosave and leaves the game; `SaveSlotList` draws the rows for Management's Save / Load tab and
+the title's Load. The `slots` scenario drives it.
+
+**The files.** `user://saves/autosave.json` and `slot-1.json` to `slot-5.json`, each with its
+picture beside it (`slot-1.png`). Scenario runs use `user://scenario-saves`. No absolute path is
+written into a save (§0.4).
+
+**Calls made while building it:**
+
+| # | Call | Why |
+|---|---|---|
+| 1 | Five slots for the player and one Autosave, all on one screen. | A fixed list fits without scrolling, and a controller walks it. |
+| 2 | Only the game writes the Autosave. The player can load it or delete it, not save into it. | A slot the game overwrites is no place for the player's own save. |
+| 3 | Autosave on Quit to title, Quit to desktop and closing the window, and when a tower stage completes. Never on the title, never while a load replays a stage, and it isn't the guide's Save. | Decision 3. A stage is tens of minutes of a factory's output. |
+| 4 | A save records its time (UTC), the guide's chapter, its golems, buildings and tower stages (`meta`). A load reads none of it back; a slot shows it. | Copying a file changes the file's time. The slot should say where the game was without loading it. |
+| 5 | A slot's picture is the world alone, as the screen showed it: a second viewport draws the world's canvas with the screen's transform, so Management and the HUD aren't in it. 320 x 180, written a frame after its save. The old picture is deleted before the save is written. A headless run takes none, and the row says "No picture". | A picture of the menu tells the player nothing. A picture must never sit beside a newer save. |
+| 6 | Saving over a slot that holds a save, loading in a game and deleting each ask for a second press: the button reads "Save over", "Load now" or "Delete now", and a line says why. Any other press or closing the screen lets it go. Loading on the title asks once. | One click must never lose a game. On the title there is nothing to lose. |
+| 7 | In a game, Load loads in place, as before. The title's Load reloads the scene, as Continue does. | A load in a game was already pinned by the `save` scenario. The title's world is the showcase, which must not mix with play. |
+| 8 | Quit to title and Quit to desktop live on the Save / Load tab, with "Both save to the Autosave first". There is no pause menu. | Tab is the game's menu, and leaving is about saving. |
+| 9 | The save from before slots (`user://save.json`) moves into the first empty slot the first time the slots are read. With every slot full it stays where it is. | The player's game must still be there after the update. |
+| 10 | Continue resumes the newest save that reads, the Autosave included, and says "Autosaved" when it is. Load is greyed with nothing to load and says how many saves it offers. | Quitting and coming back should be one click. |
+| 11 | The playtest kit's save step writes `kit-save.json` in the same folder, which is no slot. | F9 must never write over a slot. |
+| 12 | The save and load lines count properly ("1 golem", "1 building"). | They're player text. |
+| 13 | Closing the window autosaves on the next frame: the close notification reaches nodes while the tree is busy, and the picture's viewport can't be added until it is done. One picture viewport serves the scene: freeing one that shares the world's canvas tripped the renderer. | Both were found by the scenario's windowed run. |
+
+**Not yet:** a slot shows no play time. A save from a newer build isn't told apart from a
+damaged one. Creative Mode's saves need a kind of their own so they can't load as a campaign
+(step 6).

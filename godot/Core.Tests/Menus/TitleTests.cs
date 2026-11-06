@@ -60,13 +60,15 @@ namespace GolemFactory.Tests.Menus
         private static readonly DateTime Now = new DateTime(2026, 11, 5, 16, 0, 0);
 
         [Test]
-        public void WithoutASave_ContinueIsGreyed_AndTheKeyboardStartsOnNewGame()
+        public void WithoutASave_ContinueAndLoadAreGreyed_AndTheKeyboardStartsOnNewGame()
         {
             var menu = new TitleMenu(Array.Empty<SaveSummary>(), Now);
             Assert.IsFalse(menu.IsEnabled(TitleChoice.Continue));
+            Assert.IsFalse(menu.IsEnabled(TitleChoice.Load));
             Assert.AreEqual(TitleMenu.NoSave, menu.Detail(TitleChoice.Continue));
+            Assert.AreEqual("", menu.Detail(TitleChoice.Load));
             Assert.AreEqual(TitleChoice.NewGame, menu.DefaultFocus);
-            Assert.IsTrue(TitleMenu.Order.Where(c => c != TitleChoice.Continue).All(menu.IsEnabled));
+            Assert.IsTrue(TitleMenu.Order.Where(c => c != TitleChoice.Continue && c != TitleChoice.Load).All(menu.IsEnabled));
         }
 
         [Test]
@@ -80,6 +82,19 @@ namespace GolemFactory.Tests.Menus
             Assert.AreEqual(TitleChoice.Continue, menu.DefaultFocus);
             Assert.AreEqual("Saved today at 14:32", menu.Detail(TitleChoice.Continue));
             Assert.AreEqual("", menu.Detail(TitleChoice.NewGame));
+            Assert.IsTrue(menu.IsEnabled(TitleChoice.Load));
+            Assert.AreEqual("2 saves", menu.Detail(TitleChoice.Load));
+        }
+
+        [Test]
+        public void ContinueSaysWhenItsSaveIsTheAutosave()
+        {
+            var auto = new SaveSummary("autosave.json", new DateTime(2026, 11, 5, 15, 10, 0), key: "autosave",
+                meta: new Save.MetaEntry { autosave = true, reason = "On quit" });
+            var older = new SaveSummary("slot-1.json", new DateTime(2026, 11, 5, 9, 0, 0), key: "slot-1");
+            var menu = new TitleMenu(new[] { older, auto }, Now);
+            Assert.AreEqual("autosave.json", menu.Newest?.Path);
+            Assert.AreEqual("Autosaved today at 15:10", menu.Detail(TitleChoice.Continue));
         }
 
         [Test]
@@ -94,6 +109,11 @@ namespace GolemFactory.Tests.Menus
             var good = new SaveSummary("good.json", new DateTime(2026, 11, 4, 9, 0, 0));
             var both = new TitleMenu(new[] { bad, good }, Now);
             Assert.AreEqual("good.json", both.Newest?.Path, "the newest that reads, not the newest");
+            Assert.AreEqual("1 save", both.Detail(TitleChoice.Load), "Load counts only what it can load");
+
+            var twoBad = new TitleMenu(new[] { bad, new SaveSummary("worse.json", Now, readable: false) }, Now);
+            Assert.AreEqual(TitleMenu.NoneReadable, twoBad.Detail(TitleChoice.Continue));
+            Assert.IsFalse(twoBad.IsEnabled(TitleChoice.Load));
         }
 
         [Test]
@@ -111,7 +131,7 @@ namespace GolemFactory.Tests.Menus
             var menu = new TitleMenu(null, Now);
             Assert.AreEqual(TitleChoice.NewGame, menu.Selected);
             menu.Move(-1);
-            Assert.AreEqual(TitleChoice.Quit, menu.Selected, "up from New game wraps past the greyed Continue");
+            Assert.AreEqual(TitleChoice.Quit, menu.Selected, "up from New game wraps past the greyed Load and Continue");
             menu.Move(1);
             Assert.AreEqual(TitleChoice.NewGame, menu.Selected);
             menu.Move(1);
@@ -125,12 +145,14 @@ namespace GolemFactory.Tests.Menus
             Assert.AreEqual(TitleChoice.Quit, withSave.Selected);
             withSave.Move(1);
             Assert.AreEqual(TitleChoice.Continue, withSave.Selected);
+            withSave.Move(1);
+            Assert.AreEqual(TitleChoice.Load, withSave.Selected);
         }
 
         [Test]
         public void EveryEntryHasALabel()
         {
-            CollectionAssert.AreEqual(new[] { "Continue", "New game", "Settings", "Quit" }, TitleMenu.Order.Select(TitleMenu.Label));
+            CollectionAssert.AreEqual(new[] { "Continue", "Load", "New game", "Settings", "Quit" }, TitleMenu.Order.Select(TitleMenu.Label));
         }
     }
 

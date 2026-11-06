@@ -7,8 +7,8 @@ using GolemFactory.UI;
 namespace GolemFactory.Nodes
 {
     /// <summary>
-    /// The title screen (docs/menus-design.md §6): Continue, New game, Settings and Quit over a
-    /// live workshop the player watches but cannot touch.
+    /// The title screen (docs/menus-design.md §6): Continue, Load, New game, Settings and Quit
+    /// over a live workshop the player watches but cannot touch.
     ///
     /// <para>
     /// The workshop is this scene's own world, built by <see cref="TitleShowcase"/> (the guide's
@@ -16,8 +16,9 @@ namespace GolemFactory.Nodes
     /// screen, so the player stays still and the HUD, build menu, guide and prompts hide, as they
     /// do under any screen; every key and click that reaches the world is swallowed here. Starting
     /// a game reloads the scene (<see cref="GameLaunch"/>), so the showcase never mixes with play:
-    /// New game gets a fresh world, Continue a fresh world with the newest save loaded into it. A
-    /// save that can't be read brings the player back here, told so.
+    /// New game gets a fresh world, Continue a fresh world with the newest save loaded into it,
+    /// Load the same with the slot the player picks (§7). A save that can't be read brings the
+    /// player back here, told so.
     /// </para>
     ///
     /// <para>
@@ -36,6 +37,7 @@ namespace GolemFactory.Nodes
         private const float MenuLeft = 80f;
         private const float MenuWidth = 340f;
         private const float EntryHeight = 52f;
+        private const float MenuTop = 262f;
 
         private static readonly Color DisabledTint = new Color(0.20f, 0.18f, 0.16f, 1f);
         private static readonly Color Shade = new Color(0.045f, 0.036f, 0.030f, 1f);
@@ -45,6 +47,7 @@ namespace GolemFactory.Nodes
         private Control _root;
         private Control _main;
         private Control _settingsView;
+        private Control _loadView;
         private Label _notice;
         private readonly Dictionary<TitleChoice, Button> _entries = new Dictionary<TitleChoice, Button>();
         private bool _shown;
@@ -58,6 +61,12 @@ namespace GolemFactory.Nodes
         public SettingsTab Settings { get; private set; }
         public Button BackButton { get; private set; }
         public bool SettingsOpen => _settingsView != null && _settingsView.Visible;
+
+        /// <summary>The Load view: the slots, load only (docs/menus-design.md §7).</summary>
+        public SaveSlotBoard SlotBoard { get; private set; }
+        public SaveSlotList LoadSlots { get; private set; }
+        public Button LoadBackButton { get; private set; }
+        public bool LoadOpen => _loadView != null && _loadView.Visible;
         public string NoticeText => _notice != null && _notice.Visible ? _notice.Text : "";
 
         /// <summary>What a Continue's load reported, on the scene it started.</summary>
@@ -86,8 +95,6 @@ namespace GolemFactory.Nodes
                     Build();
                     _shown = true;
                     _world.Sandbox.Screens.Register(this);
-                    // The showcase never saves: no path for the kit's save step to write beside.
-                    _world.Sandbox.DefaultSavePath = null;
                     // Deferred: every node must be ready to draw what staging builds.
                     Callable.From(Stage).CallDeferred();
                     break;
@@ -189,6 +196,9 @@ namespace GolemFactory.Nodes
                 case TitleChoice.Continue:
                     Leave(LaunchKind.Continue, _menu.Newest?.Path);
                     break;
+                case TitleChoice.Load:
+                    OpenLoad();
+                    break;
                 case TitleChoice.NewGame:
                     Leave(LaunchKind.NewGame, null);
                     break;
@@ -221,6 +231,32 @@ namespace GolemFactory.Nodes
             _main.Visible = true;
         }
 
+        public void OpenLoad()
+        {
+            SlotBoard.Show(SavePaths.Saves(), DateTime.Now);
+            LoadSlots.Refresh();
+            _main.Visible = false;
+            _loadView.Visible = true;
+        }
+
+        public void CloseLoad()
+        {
+            _loadView.Visible = false;
+            _main.Visible = true;
+        }
+
+        /// <summary>Loads a slot, as a click on its Load or Enter on its row does: a fresh game with it loaded.</summary>
+        public void PickSlot(string key)
+        {
+            if (_leaving || key == null || SlotBoard.Press(key, SlotAction.Load) != SlotPress.Go)
+            {
+                return;
+            }
+            SlotBoard.Select(key);
+            LoadSlots.Refresh();
+            Leave(LaunchKind.Continue, SlotBoard.Row(key).Save?.Path);
+        }
+
         // --- Input ----------------------------------------------------------------------------
 
         /// <summary>A key the Settings tab is listening for goes to it first, as in Management.</summary>
@@ -249,6 +285,27 @@ namespace GolemFactory.Nodes
                 if (e.IsActionPressed(BuildCursorNode.CancelAction))
                 {
                     CloseSettings();
+                }
+            }
+            else if (LoadOpen)
+            {
+                if (e.IsActionPressed(BuildCursorNode.CancelAction))
+                {
+                    CloseLoad();
+                }
+                else if (e.IsActionPressed("ui_up") || e.IsActionPressed(PlayerNode.MoveUp))
+                {
+                    SlotBoard.Move(-1);
+                    LoadSlots.Refresh();
+                }
+                else if (e.IsActionPressed("ui_down") || e.IsActionPressed(PlayerNode.MoveDown))
+                {
+                    SlotBoard.Move(1);
+                    LoadSlots.Refresh();
+                }
+                else if (e.IsActionPressed("ui_accept") || e.IsActionPressed(PlayerNode.Interact))
+                {
+                    PickSlot(SlotBoard.Selected);
                 }
             }
             else if (e.IsActionPressed("ui_up") || e.IsActionPressed(PlayerNode.MoveUp))
@@ -297,7 +354,7 @@ namespace GolemFactory.Nodes
 
             var column = new VBoxContainer { Name = "Entries", MouseFilter = Control.MouseFilterEnum.Pass };
             column.AddThemeConstantOverride("separation", 10);
-            Place(column, MenuLeft, 270f, MenuWidth, 4f * EntryHeight + 30f);
+            Place(column, MenuLeft, MenuTop, MenuWidth, TitleMenu.Order.Count * (EntryHeight + 10f));
             _main.AddChild(column);
             foreach (TitleChoice choice in TitleMenu.Order)
             {
@@ -309,7 +366,7 @@ namespace GolemFactory.Nodes
             _notice.ClipText = false;
             _notice.VerticalAlignment = VerticalAlignment.Top;
             _notice.Visible = !string.IsNullOrEmpty(GameLaunch.Notice);
-            Place(_notice, MenuLeft, 270f + 4f * EntryHeight + 44f, MenuWidth + 80f, 48f);
+            Place(_notice, MenuLeft, MenuTop + TitleMenu.Order.Count * (EntryHeight + 10f) + 12f, MenuWidth + 80f, 48f);
             _main.AddChild(_notice);
 
             Label hint = Ugui.Text("Hint", "Up and Down to choose  ·  Enter to pick", 13, ManagementScreen.DimInk);
@@ -322,6 +379,7 @@ namespace GolemFactory.Nodes
             _main.AddChild(hint);
 
             BuildSettings();
+            BuildLoad();
             ShowSelection();
         }
 
@@ -413,6 +471,49 @@ namespace GolemFactory.Nodes
             BackButton.Pressed += CloseSettings;
             _settingsView.AddChild(BackButton);
         }
+
+        /// <summary>
+        /// The Load view on Management's plate: the six slots, each with Load, and Back. The
+        /// keyboard walks the slots that load, starting on the newest; the pointer lights one.
+        /// </summary>
+        private void BuildLoad()
+        {
+            _loadView = Ugui.Fill(new Control { Name = "LoadView", MouseFilter = Control.MouseFilterEnum.Stop, Visible = false });
+            _root.AddChild(_loadView);
+            _loadView.AddChild(Ugui.Fill(Ugui.Rect("Backdrop", new Color(0.055f, 0.045f, 0.038f, 0.985f))));
+            _loadView.AddChild(Ugui.Fill(Ugui.Image("Background", Ugui.NineSlice(ManagementScreen.Ui + "Hud/hud_panel_plain.png", 8), new Color(0.13f, 0.11f, 0.09f))));
+            Label heading = Ugui.Text("Heading", "Load", 22, ManagementScreen.HeaderInk, bold: true);
+            Place(heading, LoadLeft, 30f, 400f, 32f);
+            _loadView.AddChild(heading);
+
+            SlotBoard = new SaveSlotBoard(SlotBoardMode.Title, null, DateTime.Now);
+            LoadSlots = new SaveSlotList(SlotBoard, (key, _) => PickSlot(key))
+            {
+                Hovered = key =>
+                {
+                    if (!_leaving && SlotBoard.Select(key))
+                    {
+                        LoadSlots.Refresh();
+                    }
+                },
+            };
+            Control list = LoadSlots.Build(LoadWidth, new[] { SlotAction.Load });
+            Place(list, LoadLeft, 78f, LoadWidth, 6f * SaveSlotList.RowHeight + 5f * SaveSlotList.RowGap);
+            _loadView.AddChild(list);
+
+            Label hint = Ugui.Text("Hint", "Up and Down to choose  ·  Enter to load  ·  Escape to go back", 13, ManagementScreen.DimInk);
+            Place(hint, LoadLeft, 78f + 6f * SaveSlotList.RowHeight + 5f * SaveSlotList.RowGap + 18f, LoadWidth, 22f);
+            _loadView.AddChild(hint);
+
+            LoadBackButton = Ugui.Place(ManagementScreen.PlateButton("BackButton", ManagementScreen.Ui + "Hud/hud_button.png",
+                    new Color(0.34f, 0.30f, 0.26f, 1f), "Back", 14, ManagementScreen.ItemNameInk, bold: true),
+                1f, 1f, 1f, 1f, -6f, -46f, 90f, 30f, 1f, 1f);
+            LoadBackButton.Pressed += CloseLoad;
+            _loadView.AddChild(LoadBackButton);
+        }
+
+        private const float LoadWidth = 760f;
+        private const float LoadLeft = (1280f - LoadWidth) / 2f;
 
         /// <summary>Dark behind the menu, clear over the workshop: the words read, the factory shows.</summary>
         private static GradientTexture2D ShadeTexture()

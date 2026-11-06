@@ -72,9 +72,9 @@ launch used to overwrite it. A question is asked as the chapter after its experi
 (`PlaytestQuestion.AfterStepId`); only the end-of-run ones (`tower`, `overclocker`,
 `stage-rate`, `whole-run`, `guide`) wait for `done`. A new question needs a new id: saves store
 the ids already asked, so reusing one (chapter 3's `market`) skips it. The
-kit's chapter 7 Save and Load use `kit-save.json` beside the player's save, never the save
-itself. Scenario runs write
-`user://scenario-playtest-report.md` instead, and save to `user://scenario-save.json`
+kit's chapter 7 Save and Load use `kit-save.json` in the save folder, which is never a slot
+(`SaveSlots.KitFileName`). Scenario runs write
+`user://scenario-playtest-report.md` instead, and save to `user://scenario-saves`
 (`PlaytestNode.UnderScenario`, which reads `--scenario` off the command line itself: a flag
 set by the ScenarioRunner arrived too late, and a kit run overwrote a player's save). Never
 point a test at the real paths. **A save calls `TutorialGuide.Settle`, never `Update`**:

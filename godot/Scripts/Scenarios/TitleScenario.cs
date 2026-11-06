@@ -28,35 +28,23 @@ namespace GolemFactory.Nodes.Scenarios
     ///   world. The game is saved, and the title offers it: Enter on Continue loads it.</item>
     ///   <item>A save that can't be read brings Continue back to the title, saying so.</item>
     /// </list>
-    /// Writes only <c>user://scenario-save.json</c> and <c>user://scenario-settings.cfg</c>.
+    /// Writes only <c>user://scenario-saves</c> and <c>user://scenario-settings.cfg</c>.
     /// </summary>
-    public sealed class TitleScenario : IReloadingScenario
+    public sealed class TitleScenario : StepScenario
     {
-        private const int FramesBetweenSteps = 3;
-
-        private readonly Queue<(string name, Func<string> step, double timeout)> _steps =
-            new Queue<(string, Func<string>, double)>();
-        private readonly List<string> _log = new List<string>();
-        private ScenarioRunner _runner;
-        private int _wait;
-        private double _stepElapsed;
-        private Key? _heldTap;
-        private int _reloads;
-
         // Found again after every reload.
-        private SceneTree Tree => _runner.GetTree();
-        private WorldNode World => WorldNode.Find(_runner);
+        private WorldNode World => WorldNode.Find(Runner);
         private SandboxWorld Sandbox => World.Sandbox;
-        private TitleScreen Title => TitleScreen.Find(_runner);
+        private TitleScreen Title => TitleScreen.Find(Runner);
         private PlayerNode Player => Tree.Root.FindChild("Player", true, false) as PlayerNode;
-        private CameraRigNode Camera => _runner.GetViewport().GetCamera2D() as CameraRigNode;
+        private CameraRigNode Camera => Runner.GetViewport().GetCamera2D() as CameraRigNode;
         private HudOverlay Hud => Tree.Root.FindChild("Hud", true, false) as HudOverlay;
         private ManagementScreen Management => Tree.Root.FindChild("Management", true, false) as ManagementScreen;
         private PackScreen Pack => Tree.Root.FindChild("PackScreen", true, false) as PackScreen;
         private BuildMenuNode BuildMenu => Tree.Root.FindChild("BuildMenu", true, false) as BuildMenuNode;
         private TutorialPanel Guide => Tree.Root.FindChild("Tutorial", true, false) as TutorialPanel;
 
-        private static string SaveFile => ProjectSettings.GlobalizePath(SavePaths.Campaign);
+        private static string SaveFile => SaveSlots.PathIn(SavePaths.Folder, SaveSlots.ManualKey(1));
 
         private int _gameListeners = -1;
         private Vector2 _playerAt;
@@ -65,17 +53,12 @@ namespace GolemFactory.Nodes.Scenarios
         private int _savedScrap;
         private CoreVector2Int _savedDepot = new CoreVector2Int(-6, -2);
 
-        public void Begin(ScenarioRunner runner)
+        protected override void Plan()
         {
-            _runner = runner;
             GameSettingsStore.ResetForScenario(Tree.Root);
-            ParkPointer();
             Do("no save", () =>
             {
-                if (System.IO.File.Exists(SaveFile))
-                {
-                    System.IO.File.Delete(SaveFile);
-                }
+                ScenarioSaves.Clear();
                 return System.IO.File.Exists(SaveFile) ? "could not clear the scratch save" : null;
             });
             Do("a game's listeners", () =>
@@ -92,98 +75,6 @@ namespace GolemFactory.Nodes.Scenarios
             PlanContinue();
             PlanBadSave();
         }
-
-        public void Resumed(ScenarioRunner runner)
-        {
-            _runner = runner;
-            _reloads++;
-            ParkPointer();
-        }
-
-        /// <summary>
-        /// The pointer over the workshop, clear of the menu: windowed, the real mouse would
-        /// otherwise light whichever entry it happens to be over.
-        /// </summary>
-        private void ParkPointer()
-        {
-            Vector2 window = new Vector2(1180f, 640f) * Tree.Root.ContentScaleFactor;
-            Tree.Root.WarpMouse(window);
-            Input.ParseInputEvent(new InputEventMouseMotion { Position = window, GlobalPosition = window });
-        }
-
-        public ScenarioResult? Step(double delta)
-        {
-            if (_heldTap is Key held)
-            {
-                Input.ParseInputEvent(new InputEventKey { PhysicalKeycode = held, Keycode = held, Pressed = false });
-                _heldTap = null;
-            }
-            if (_wait-- > 0)
-            {
-                return null;
-            }
-            if (_steps.Count == 0)
-            {
-                Cleanup();
-                return new ScenarioResult(true, string.Join("; ", _log));
-            }
-            (string name, Func<string> step, double timeout) = _steps.Peek();
-            string failure;
-            try
-            {
-                failure = step();
-            }
-            catch (Exception e)
-            {
-                failure = e.GetType().Name + ": " + e.Message;
-                timeout = 0;
-            }
-            if (failure != null && _stepElapsed < timeout)
-            {
-                _stepElapsed += delta;
-                return null;
-            }
-            _steps.Dequeue();
-            _stepElapsed = 0;
-            if (failure != null)
-            {
-                Cleanup();
-                return new ScenarioResult(false, $"{name}: {failure}");
-            }
-            _wait = FramesBetweenSteps;
-            return null;
-        }
-
-        private void Do(string name, Func<string> step) => _steps.Enqueue((name, step, 0));
-
-        private void Until(string name, double seconds, Func<string> check) => _steps.Enqueue((name, check, seconds));
-
-        /// <summary>Asks for <paramref name="launch"/> and reloads the scene, as the title does, then waits for the new scene.</summary>
-        private void Reload(string name, LaunchKind launch) =>
-            Reloading(name, 1, () =>
-            {
-                GameLaunch.Request(launch);
-                Tree.ReloadCurrentScene();
-            });
-
-        /// <summary>
-        /// Runs <paramref name="cause"/> (a click or key that reloads the scene), then waits for
-        /// <paramref name="reloads"/> new scenes to hand the scenario back. Counted from before
-        /// the cause: a reload can land between two steps.
-        /// </summary>
-        private void Reloading(string name, int reloads, Action cause)
-        {
-            int expected = -1;
-            Do(name, () =>
-            {
-                expected = _reloads + reloads;
-                cause();
-                return null;
-            });
-            Until(name + ": the scene reloads", 8, () => _reloads >= expected ? null : $"{expected - _reloads} reload(s) still to come");
-        }
-
-        private void Log(string line) => _log.Add(line);
 
         // --- 1. The title over the workshop -----------------------------------------------------
 
@@ -224,7 +115,7 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 Vector2 middle = ScreenOf(GridConversions.PointToWorld(Title.Showcase.Centre));
                 Rect2 menu = Title.Entries[TitleChoice.Quit].GetGlobalRect().Merge(Title.Entries[TitleChoice.Continue].GetGlobalRect());
-                Rect2 screen = _runner.GetViewport().GetVisibleRect();
+                Rect2 screen = Runner.GetViewport().GetVisibleRect();
                 if (middle.X < menu.End.X + 40f || middle.X > screen.End.X - 120f || middle.Y < 120f || middle.Y > screen.End.Y - 120f)
                 {
                     return $"the workshop's middle is drawn at {middle}, the menu ends at x {menu.End.X}";
@@ -251,7 +142,7 @@ namespace GolemFactory.Nodes.Scenarios
             });
             Do("capture", () =>
             {
-                ScenarioCapture.Shot(_runner.GetViewport(), "title");
+                ScenarioCapture.Shot(Runner.GetViewport(), "title");
                 Log($"title over {Sandbox.Golems.Count(g => !g.IsRemoved)} golems");
                 return null;
             });
@@ -279,7 +170,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("Escape", () => { Tap(Key.Escape); return null; });
             Do("wheel", () =>
             {
-                Vector2 at = _runner.GetViewport().GetVisibleRect().GetCenter() + new Vector2(200f, 0f);
+                Vector2 at = Runner.GetViewport().GetVisibleRect().GetCenter() + new Vector2(200f, 0f);
                 Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.WheelUp, Pressed = true, Factor = 1f, Position = at, GlobalPosition = at });
                 Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.WheelUp, Pressed = false, Factor = 1f, Position = at, GlobalPosition = at });
                 return null;
@@ -312,7 +203,7 @@ namespace GolemFactory.Nodes.Scenarios
         {
             Expect(Key.Down, TitleChoice.Settings);
             Expect(Key.Up, TitleChoice.NewGame);
-            Expect(Key.Up, TitleChoice.Quit);    // past the greyed Continue
+            Expect(Key.Up, TitleChoice.Quit);    // past the greyed Load and Continue
             Expect(Key.S, TitleChoice.NewGame);  // the move keys walk it too
             Do("point at Settings", () => { PointAt(Title.Entries[TitleChoice.Settings]); return null; });
             Do("the pointer lights it", () => Title.Menu.Selected == TitleChoice.Settings ? null : "selected " + Title.Menu.Selected);
@@ -344,7 +235,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "no Settings tab";
                 }
-                ScenarioCapture.Shot(_runner.GetViewport(), "title-settings");
+                ScenarioCapture.Shot(Runner.GetViewport(), "title-settings");
                 return null;
             });
             Do("click Use's key", () => { Click(Title.Settings.KeyButtons[PlayerNode.Interact]); return null; });
@@ -406,7 +297,7 @@ namespace GolemFactory.Nodes.Scenarios
                 Tap(Key.Down); // Settings -> Quit
                 return null;
             });
-            Do("Down again", () => { Tap(Key.Down); return null; }); // Quit -> New game (Continue greyed)
+            Do("Down again", () => { Tap(Key.Down); return null; }); // Quit -> New game (Continue and Load greyed)
             Do("on New game", () => Title.Menu.Selected == TitleChoice.NewGame ? null : "selected " + Title.Menu.Selected);
             Reloading("click New game", 1, () => Click(Title.Entries[TitleChoice.NewGame]));
             Do("a fresh game", () =>
@@ -478,7 +369,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "the keyboard starts on " + Title.Menu.Selected;
                 }
-                ScenarioCapture.Shot(_runner.GetViewport(), "title-continue");
+                ScenarioCapture.Shot(Runner.GetViewport(), "title-continue");
                 return null;
             });
             Reloading("Enter on Continue", 1, () => Tap(Key.Enter));
@@ -551,54 +442,14 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "the keyboard starts on " + Title.Menu.Selected;
                 }
-                ScenarioCapture.Shot(_runner.GetViewport(), "title-notice");
+                ScenarioCapture.Shot(Runner.GetViewport(), "title-notice");
                 return System.IO.File.ReadAllText(SaveFile) == "{ this is not a save" ? null : "the bad save was changed";
             });
         }
 
-        private void Cleanup()
-        {
-            if (System.IO.File.Exists(SaveFile))
-            {
-                System.IO.File.Delete(SaveFile);
-            }
-        }
+        protected override void Cleanup() => ScenarioSaves.Clear();
 
-        // --- Input ------------------------------------------------------------------------------
-
-        private void Wait(double seconds)
-        {
-            double until = -1;
-            Do("wait " + seconds + " s", () => { until = seconds; return null; });
-            Until("waited " + seconds + " s", seconds + 1, () => (until -= 1.0 / 60.0) <= 0 ? null : "waiting");
-        }
-
-        private void Tap(Key key)
-        {
-            Input.ParseInputEvent(new InputEventKey { PhysicalKeycode = key, Keycode = key, Pressed = true });
-            _heldTap = key;
-        }
-
-        private static void Press(Key key, bool down) =>
-            Input.ParseInputEvent(new InputEventKey { PhysicalKeycode = key, Keycode = key, Pressed = down });
-
-        private void PointAt(Control control)
-        {
-            Vector2 window = control.GetGlobalRect().GetCenter() * Tree.Root.ContentScaleFactor;
-            Tree.Root.WarpMouse(window);
-            Input.ParseInputEvent(new InputEventMouseMotion { Position = window, GlobalPosition = window });
-        }
-
-        private void Click(Control control)
-        {
-            Vector2 window = control.GetGlobalRect().GetCenter() * Tree.Root.ContentScaleFactor;
-            Tree.Root.WarpMouse(window);
-            Input.ParseInputEvent(new InputEventMouseMotion { Position = window, GlobalPosition = window });
-            Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = window, GlobalPosition = window });
-            Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = window, GlobalPosition = window });
-        }
-
-        private Vector2 ScreenOf(Vector2 world) => _runner.GetViewport().GetCanvasTransform() * world;
+        private Vector2 ScreenOf(Vector2 world) => Runner.GetViewport().GetCanvasTransform() * world;
 
         private static string DetailOf(Button entry) => entry.GetNodeOrNull<Label>("Detail")?.Text ?? "";
     }

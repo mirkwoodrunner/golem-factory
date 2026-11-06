@@ -400,6 +400,12 @@ namespace GolemFactory.World
             if (!Restoring)
             {
                 Camera.BeginTowerEvent(e.StageNumber, e.StageName);
+                // A stage is tens of minutes of the factory's output: worth an autosave
+                // (docs/menus-design.md §7). Taken by the scene between frames, not mid-tick.
+                if (SaveFolder != null)
+                {
+                    AutosaveDue = $"Tower stage {e.StageNumber} complete";
+                }
             }
         }
 
@@ -449,18 +455,8 @@ namespace GolemFactory.World
             Interactor.Attach();
         }
 
-        /// <summary>
-        /// Hands the player's [E] the screens it opens, once the scene has built them -- the
-        /// construction panel for a station, the Workbench for a golem (G7) and the Management
-        /// screen whose being open hides the prompt (G8). Null for one not built yet.
-        /// </summary>
         // --- Save and load (G9) ---------------------------------------------------------------
 
-        /// <summary>
-        /// The SaveLoad tab's Save: the stockpile and every buffer, the patent library, every
-        /// golem's program and placement, and every building the player placed. Returns the
-        /// status line Unity's SaveLoadPanel printed.
-        /// </summary>
         /// <summary>
         /// The Ledger's recipe pane (G10: on the world rather than the tab, so the guide can see a
         /// recipe was opened). The Godot Ledger tab draws this one.
@@ -475,14 +471,54 @@ namespace GolemFactory.World
         public int LoadsMade { get; private set; }
 
         /// <summary>
-        /// Where the SaveLoad tab saves -- set by the Godot layer (user://save.json, globalized) --
-        /// so the playtest kit's save step writes where the player's own Save does.
+        /// The folder the save slots live in (docs/menus-design.md §7) -- set by the Godot layer
+        /// (user://saves, globalized) -- so the autosave and the playtest kit's save step write
+        /// where the player's own saves are. Null for a world that never saves: the title's
+        /// showcase.
         /// </summary>
-        public string DefaultSavePath { get; set; }
+        public string SaveFolder { get; set; }
 
+        /// <summary>
+        /// Why an autosave is wanted, or null: a tower stage completed. The scene takes it
+        /// (<see cref="Autosave"/>) between frames. Never set while loading, or with no folder.
+        /// </summary>
+        public string AutosaveDue { get; private set; }
+
+        /// <summary>Autosaves made this session; they never count as the player's <see cref="SavesMade"/>.</summary>
+        public int AutosavesMade { get; private set; }
+
+        /// <summary>The clock a save's time is read from; a test fixes it.</summary>
+        public Func<DateTime> UtcNow { get; set; } = () => DateTime.UtcNow;
+
+        /// <summary>
+        /// The SaveLoad tab's Save: the stockpile and every buffer, the patent library, every
+        /// golem's program and placement, and every building the player placed, with the
+        /// summary its slot shows. Returns the status line Unity's SaveLoadPanel printed.
+        /// </summary>
         public string SaveTo(string path)
         {
             SavesMade++;
+            return Write(path, null);
+        }
+
+        /// <summary>
+        /// Writes the autosave slot (docs/menus-design.md §7): on quit, and when a tower stage
+        /// completes. It isn't the player saving, so the guide's Save step doesn't count it.
+        /// Returns the status line, or null for a world with no save folder.
+        /// </summary>
+        public string Autosave(string reason)
+        {
+            AutosaveDue = null;
+            if (SaveFolder == null)
+            {
+                return null;
+            }
+            AutosavesMade++;
+            return Write(Menus.SaveSlots.PathIn(SaveFolder, Menus.SaveSlots.AutosaveKey), reason ?? "");
+        }
+
+        private string Write(string path, string autosaveReason)
+        {
             // The guide's Save step is done by saving, so it moves on BEFORE the save records its
             // place: otherwise a load lands back on Save, and saving again loops (the kit did).
             Tutorial?.Settle();
@@ -490,8 +526,28 @@ namespace GolemFactory.World
             SaveData data = SaveLoadService.CaptureState(Buffers, Patents, live, Build.Buildings);
             data.progress = CaptureProgress();
             data.market = CaptureMarket();
+            data.meta = CaptureMeta(live.Count, data.buildings.Count, autosaveReason);
             SaveFileIO.WriteToFile(data, path);
-            return $"Saved {live.Count} golems and {data.buildings.Count} buildings.";
+            return $"Saved {Count(live.Count, "golem")} and {Count(data.buildings.Count, "building")}.";
+        }
+
+        private MetaEntry CaptureMeta(int golems, int buildings, string autosaveReason)
+        {
+            bool guiding = Tutorial != null && Tutorial.IsShowing;
+            int chapter = guiding ? Tutorial.ChapterOf(Tutorial.Index) : 0;
+            ClockTowerSite site = ClockTower.Site;
+            return new MetaEntry
+            {
+                savedAtUtc = UtcNow().ToUniversalTime().ToString("o", System.Globalization.CultureInfo.InvariantCulture),
+                autosave = autosaveReason != null,
+                reason = autosaveReason ?? "",
+                chapter = chapter,
+                chapterTitle = guiding ? Tutorial.ChapterTitle(chapter) : "",
+                golems = golems,
+                buildings = buildings,
+                towerStagesDone = site.StageIndex, // stages done: it counts past the last
+                towerComplete = site.IsComplete,
+            };
         }
 
         /// <summary>
@@ -563,11 +619,11 @@ namespace GolemFactory.World
             }
 
             string golems = report.Skipped > 0
-                ? $"Loaded {report.Restored} golems, rebuilt {report.Respawned}, skipped {report.Skipped}"
-                : $"Loaded {report.Restored} golems, rebuilt {report.Respawned}";
+                ? $"Loaded {Count(report.Restored, "golem")}, rebuilt {report.Respawned}, skipped {report.Skipped}"
+                : $"Loaded {Count(report.Restored, "golem")}, rebuilt {report.Respawned}";
             string buildings = report.BuildingsSkipped > 0
-                ? $"{report.BuildingsRebuilt} buildings, {report.BuildingsSkipped} skipped"
-                : $"{report.BuildingsRebuilt} buildings";
+                ? $"{Count(report.BuildingsRebuilt, "building")}, {report.BuildingsSkipped} skipped"
+                : Count(report.BuildingsRebuilt, "building");
             string status = golems + "; " + buildings + ".";
 
             // A save from before crates (crates-design §7): its stockpile is the pack now, kept
@@ -580,6 +636,9 @@ namespace GolemFactory.World
             }
             return status;
         }
+
+        /// <summary>"1 golem", "3 golems".</summary>
+        private static string Count(int n, string noun) => n + " " + noun + (n == 1 ? "" : "s");
 
         public const string CratesMigrationNotice =
             "Crates are local now. Your depots start empty; everything you had is in your pack.";

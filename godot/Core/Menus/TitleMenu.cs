@@ -9,12 +9,16 @@ namespace GolemFactory.Menus
     public enum TitleChoice
     {
         Continue,
+        Load,
         NewGame,
         Settings,
         Quit,
     }
 
-    /// <summary>A save the title can offer: where it is, when it was written, and whether it reads.</summary>
+    /// <summary>
+    /// A save found in a slot: where it is, when it was written, whether it reads, and what its
+    /// slot shows (<see cref="SaveSlots.Summarize"/>).
+    /// </summary>
     public readonly struct SaveSummary
     {
         public readonly string Path;
@@ -23,11 +27,23 @@ namespace GolemFactory.Menus
         /// <summary>False when the file is there but isn't a save the game can read.</summary>
         public readonly bool Readable;
 
-        public SaveSummary(string path, DateTime savedAt, bool readable = true)
+        /// <summary>The slot it is in (<see cref="SaveSlots.Keys"/>).</summary>
+        public readonly string Key;
+
+        /// <summary>The save's own summary, or null (a save from before slots, or one that doesn't read).</summary>
+        public readonly Save.MetaEntry Meta;
+
+        /// <summary>The slot's picture, or null without one.</summary>
+        public readonly string Thumbnail;
+
+        public SaveSummary(string path, DateTime savedAt, bool readable = true, string key = null, Save.MetaEntry meta = null, string thumbnail = null)
         {
             Path = path;
             SavedAt = savedAt;
             Readable = readable;
+            Key = key;
+            Meta = meta;
+            Thumbnail = thumbnail;
         }
 
         /// <summary>
@@ -50,21 +66,24 @@ namespace GolemFactory.Menus
 
     /// <summary>
     /// The title screen's entries and what each says: Continue resumes the newest save and is
-    /// greyed without one, New game starts the guide, Settings opens the same tab Management
-    /// has, Quit leaves. The node only draws these and feeds clicks and keys.
+    /// greyed without one, Load picks a slot (greyed likewise), New game starts the guide,
+    /// Settings opens the same tab Management has, Quit leaves. The node only draws these and
+    /// feeds clicks and keys.
     /// </summary>
     public sealed class TitleMenu
     {
         public static readonly IReadOnlyList<TitleChoice> Order =
-            new[] { TitleChoice.Continue, TitleChoice.NewGame, TitleChoice.Settings, TitleChoice.Quit };
+            new[] { TitleChoice.Continue, TitleChoice.Load, TitleChoice.NewGame, TitleChoice.Settings, TitleChoice.Quit };
 
         public const string GameName = "Golem Factory";
         public const string Subtitle = "The Clockwork Metropolis";
         public const string NoSave = "No saved game yet";
         public const string Unreadable = "Your save can't be read";
+        public const string NoneReadable = "None of your saves can be read";
 
         private readonly SaveSummary? _newest;
-        private readonly bool _unreadable;
+        private readonly int _found;
+        private readonly int _readable;
         private readonly DateTime _now;
 
         /// <summary>The title's menu over <paramref name="saves"/>: every save found, readable or not.</summary>
@@ -72,7 +91,8 @@ namespace GolemFactory.Menus
         {
             List<SaveSummary> all = (saves ?? Enumerable.Empty<SaveSummary>()).ToList();
             _newest = SaveSummary.Newest(all);
-            _unreadable = _newest == null && all.Count > 0;
+            _found = all.Count;
+            _readable = all.Count(s => s.Readable);
             _now = now;
             Selected = DefaultFocus;
         }
@@ -121,7 +141,8 @@ namespace GolemFactory.Menus
         /// <summary>The save Continue loads, or null.</summary>
         public SaveSummary? Newest => _newest;
 
-        public bool IsEnabled(TitleChoice choice) => choice != TitleChoice.Continue || _newest != null;
+        public bool IsEnabled(TitleChoice choice) =>
+            (choice != TitleChoice.Continue && choice != TitleChoice.Load) || _newest != null;
 
         /// <summary>Where the keyboard starts: Continue when there is a save, else New game.</summary>
         public TitleChoice DefaultFocus => IsEnabled(TitleChoice.Continue) ? TitleChoice.Continue : TitleChoice.NewGame;
@@ -129,24 +150,32 @@ namespace GolemFactory.Menus
         public static string Label(TitleChoice choice) => choice switch
         {
             TitleChoice.Continue => "Continue",
+            TitleChoice.Load => "Load",
             TitleChoice.NewGame => "New game",
             TitleChoice.Settings => "Settings",
             TitleChoice.Quit => "Quit",
             _ => "",
         };
 
-        /// <summary>The line under an entry: when Continue's save was written, or why it is greyed.</summary>
+        /// <summary>
+        /// The line beside an entry: when Continue's save was written, or why it is greyed; how
+        /// many saves Load offers.
+        /// </summary>
         public string Detail(TitleChoice choice)
         {
+            if (choice == TitleChoice.Load)
+            {
+                return _readable == 0 ? "" : _readable == 1 ? "1 save" : _readable + " saves";
+            }
             if (choice != TitleChoice.Continue)
             {
                 return "";
             }
             if (_newest == null)
             {
-                return _unreadable ? Unreadable : NoSave;
+                return _found == 0 ? NoSave : _found == 1 ? Unreadable : NoneReadable;
             }
-            return "Saved " + When(_newest.Value.SavedAt, _now);
+            return (_newest.Value.Meta?.autosave == true ? "Autosaved " : "Saved ") + When(_newest.Value.SavedAt, _now);
         }
 
         /// <summary>"today at 14:32", "yesterday at 9:05", "3 Nov at 9:05", "3 Nov 2025".</summary>

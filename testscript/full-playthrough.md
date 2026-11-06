@@ -16,13 +16,13 @@ are timed again here, but only the Phase 2 script's first-time player counts for
 
 1. **One player, any experience.** A player who has done the Phase 2 script is fine. Tell them:
    "Follow the guide to the end. Think aloud if you like. Don't press F9."
-2. **A fresh game.** Move `save.json` out of `%APPDATA%\Godot\app_userdata\Golem Factory\` and put
-   it back afterwards. Playtest mode on (`"playtest": true` in `godot/data/sandbox.json`), so the
+2. **A fresh game.** Choose New game on the title; the player's own saves stay in their slots.
+   Playtest mode on (`"playtest": true` in `godot/data/sandbox.json`), so the
    report writes.
 3. **No F9, anywhere.** A kit use voids the timing of that chapter and every chapter after it; the
    report's "Playtest kit" section lists each use. The notes still count.
-4. **Breaks are allowed between chapters.** Save (Tab, Save / Load), quit, and resume later with
-   Load. Each launch writes its own report (the previous one is archived as
+4. **Breaks are allowed between chapters.** Save into a slot (Tab, Save / Load), quit, and resume
+   later with Continue or Load on the title. Each launch writes its own report (the previous one is archived as
    `playtest-report-<date>-<time>.md`), so a run in three sittings leaves three reports. Note the
    sitting's chapters on each.
 5. **Don't help.** If asked, note the question and the step; answer only after **two full

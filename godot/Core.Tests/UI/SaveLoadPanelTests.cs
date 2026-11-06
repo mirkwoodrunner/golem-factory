@@ -67,7 +67,7 @@ namespace GolemFactory.Tests.UI
             SandboxWorld world = Compose();
             AdoptSceneGolem(world);
 
-            Assert.AreEqual("Saved 1 golems and 0 buildings.", world.SaveTo(_path));
+            Assert.AreEqual("Saved 1 golem and 0 buildings.", world.SaveTo(_path));
             Assert.IsTrue(File.Exists(_path));
         }
 
@@ -86,7 +86,7 @@ namespace GolemFactory.Tests.UI
 
             // The golem is still in the world, so it is restored in place, not rebuilt -- and
             // the line says what the load DID, not how many entries the file held.
-            Assert.AreEqual("Loaded 1 golems, rebuilt 0; 0 buildings.", world.LoadFrom(_path));
+            Assert.AreEqual("Loaded 1 golem, rebuilt 0; 0 buildings.", world.LoadFrom(_path));
         }
 
         [Test]
@@ -248,7 +248,7 @@ namespace GolemFactory.Tests.UI
             SandboxWorld after = Compose();
             int rowsAdded = 0;
             after.FloorExpansion.RowsAdded += (from, to) => rowsAdded += to - from + 1;
-            StringAssert.EndsWith("1 buildings.", after.LoadFrom(_path));
+            StringAssert.EndsWith("1 building.", after.LoadFrom(_path));
 
             Assert.AreEqual(before.Bounds.NorthExtent, after.Bounds.NorthExtent);
             Assert.AreEqual(before.Bounds.NorthExtent - after.Bounds.MinNorthExtent, rowsAdded, "the floor heard about its rows");

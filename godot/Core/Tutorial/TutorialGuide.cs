@@ -1789,14 +1789,15 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "save", "Save",
-                "Press Tab, open Save/Load and click Save. Everything you built goes into the save: golems "
-                + "and their programs, buildings, your pack and every crate, your cards and this guide's place.",
+                "Press Tab, open Save / Load and click Save beside any slot. Everything you built goes into the "
+                + "save: golems and their programs, buildings, your pack and every crate, your cards and this guide's place.",
                 w => _world.SavesMade > 0,
                 w => null),
 
             new TutorialStep(
                 "load", "And load",
-                "Now click Load. Your factory comes back exactly as you saved it, mid-cycle and all.",
+                "Now click Load beside that slot, then Load now. Your factory comes back exactly as you "
+                + "saved it, mid-cycle and all.",
                 w => _world.LoadsMade > 0,
                 w => null),
 

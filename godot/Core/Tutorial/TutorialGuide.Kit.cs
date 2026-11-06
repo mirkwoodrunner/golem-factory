@@ -357,18 +357,14 @@ namespace GolemFactory.Tutorial
         };
 
         /// <summary>
-        /// Where the kit's save step saves: beside the player's save slot under its own name
-        /// ("kit-save.json"), else a temp file. Never the slot itself: F9 in chapter 7 used to
-        /// overwrite the player's own save with the kit's world, without a word (from review).
+        /// Where the kit's save step saves: in the save folder under its own name
+        /// (<see cref="Menus.SaveSlots.KitFileName"/>, which is no slot), else a temp file. Never a
+        /// slot: F9 in chapter 7 used to overwrite the player's own save with the kit's world,
+        /// without a word (from review).
         /// </summary>
-        private string KitSavePath => KitSavePathBeside(_world.DefaultSavePath)
-            ?? (_kitScratchSave ??= System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"golem-factory-kit-{System.Guid.NewGuid():N}.json"));
-
-        /// <summary>The kit's save file next to <paramref name="savePath"/>, or null without one.</summary>
-        public static string KitSavePathBeside(string savePath) =>
-            string.IsNullOrEmpty(savePath)
-                ? null
-                : System.IO.Path.Combine(System.IO.Path.GetDirectoryName(savePath) ?? "", "kit-" + System.IO.Path.GetFileName(savePath));
+        private string KitSavePath => _world.SaveFolder != null
+            ? System.IO.Path.Combine(_world.SaveFolder, Menus.SaveSlots.KitFileName)
+            : (_kitScratchSave ??= System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"golem-factory-kit-{System.Guid.NewGuid():N}.json"));
 
         private string _kitScratchSave;
 

@@ -75,8 +75,10 @@ call): built, reviewed, critiqued and tested. Done:
    (`MotionPreference`) and the colour-blind stripes (`ColourMarks`), `menus-design.md` §5, the
    `accessibility` scenario. Step 3 (the title screen) is in: the game opens on Continue, New
    game, Settings and Quit over the guide's six-chapter workshop, kept running (`Core/Menus`,
-   `TitleScreen`, `menus-design.md` §6, the `title` scenario). Next: step 4, save slots and
-   autosave.
+   `TitleScreen`, `menus-design.md` §6, the `title` scenario). Step 4 (save slots) is in: five
+   slots and an Autosave with pictures and summaries, autosave on quit and on a tower stage, Load
+   on the title, Quit to title (`SaveSlots`, `SaveSlotBoard`, `GameSaves`, `menus-design.md` §7,
+   the `slots` scenario). Next: step 5, the factory overview.
    **Phase 5 (Audio), on branch `phase5/audio` (from `phase4/art`), is done** (2026-11-01; the
    user approved the listening sheet). The spec is `docs/audio-design.md`; all four decisions are
    made (§9): CC0 recordings for the effects and ambience, synthesized music. Every slot plays at
@@ -201,7 +203,7 @@ call): built, reviewed, critiqued and tested. Done:
 `FloorPlayer`'s chapter 8 floor jumps around as prices change (`open-items.md` §3), so check
 any retune at neighbouring prices.
 
-Standing rules: tests and scenarios never write the player's real `save.json`; a renamed step `Id`
+Standing rules: tests and scenarios never write the player's saves (`user://saves`); a renamed step `Id`
 or definition name breaks saves.
 
 ## Decisions (2026-10-18)

@@ -291,14 +291,5 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual(System.IO.Path.Combine("user", "playtest-report-20261012-1930-2.md"),
                 PlaytestReportArchive.NameFor(report, when, taken.Contains), "two sessions ending in one minute");
         }
-
-        [Test]
-        public void TheKitSavesBesideThePlayersSave_NeverOverIt()
-        {
-            string slot = System.IO.Path.Combine("appdata", "Golem Factory", "save.json");
-            Assert.AreEqual(System.IO.Path.Combine("appdata", "Golem Factory", "kit-save.json"),
-                TutorialGuide.KitSavePathBeside(slot));
-            Assert.IsNull(TutorialGuide.KitSavePathBeside(null));
-        }
     }
 }

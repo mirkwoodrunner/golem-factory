@@ -42,6 +42,41 @@ namespace GolemFactory.Save
         /// critique). Null in a save written before it, and a load then leaves the street as it is.
         /// </summary>
         public MarketEntry market;
+
+        /// <summary>
+        /// What a save slot shows about this save (docs/menus-design.md §7): when it was written,
+        /// where the guide was, how big the factory is. Null in a save from before slots; a slot
+        /// then falls back to the file's own time. Nothing here is read back into the world.
+        /// </summary>
+        public MetaEntry meta;
+    }
+
+    /// <summary>A save's summary for its slot: display only, never restored.</summary>
+    [Serializable]
+    public sealed class MetaEntry
+    {
+        /// <summary>
+        /// When it was written, in UTC and the round-trip format ("o"): the file's own time
+        /// changes when the file is copied, this doesn't.
+        /// </summary>
+        public string savedAtUtc;
+
+        /// <summary>Written by the game, not the player: on quit, or when a tower stage completes.</summary>
+        public bool autosave;
+
+        /// <summary>Why an autosave was made ("on quit", "Tower stage 2 complete"); empty for the player's own.</summary>
+        public string reason;
+
+        /// <summary>The guide's chapter and its title, or 0 when the guide is finished or put away.</summary>
+        public int chapter;
+        public string chapterTitle;
+
+        public int golems;
+        public int buildings;
+
+        /// <summary>Clock Tower stages completed, and whether the tower stands.</summary>
+        public int towerStagesDone;
+        public bool towerComplete;
     }
 
     /// <summary>

@@ -113,6 +113,10 @@ namespace GolemFactory.Nodes
 
             Sandbox.Clock.Play();
 
+            // Where the slots, the autosave and the kit's save go (docs/menus-design.md §7). The
+            // showcase never saves.
+            Sandbox.SaveFolder = IsShowcase ? null : SavePaths.Folder;
+
             // The player's Reduced motion (docs/menus-design.md §5), now and whenever it changes.
             Sandbox.Motion.Reduced = GameSettingsStore.Load().ReducedMotion;
             GameSettingsStore.Applied += OnSettingsApplied;
