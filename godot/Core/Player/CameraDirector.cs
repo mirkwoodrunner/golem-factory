@@ -198,6 +198,23 @@ namespace GolemFactory.Player
         }
 
         /// <summary>
+        /// The camera goes to one golem, as an alert's does, until the player walks: the
+        /// overview's map and alerts history pick one. Ignored, false, during the tower's
+        /// event and on the title.
+        /// </summary>
+        public bool LookAt(string golemId)
+        {
+            if (TowerPhase == TowerEventPhase.GlideIn || TowerPhase == TowerEventPhase.Reveal ||
+                Focus == CameraFocus.Showcase || string.IsNullOrEmpty(golemId))
+            {
+                return false;
+            }
+            _alertGolem = golemId;
+            Focus = CameraFocus.Alert;
+            return true;
+        }
+
+        /// <summary>
         /// The player walked (or the golem looked at is gone): the camera goes back to them.
         /// During the tower's glide-in or reveal, any input skips the event instead.
         /// </summary>

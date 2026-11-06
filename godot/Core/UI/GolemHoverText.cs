@@ -137,7 +137,7 @@ namespace GolemFactory.UI
             int index = golem.Program.CurrentStepIndex;
             AppendageActionDefinition step = golem.Program.CurrentStep;
             return "Working · step " + (index + 1) + " of " + golem.Program.appendages.Count +
-                   (step != null ? ", " + step.Label : "");
+                   (step != null ? ", " + WorkbenchDiagnostics.Humanize(step.Label) : ""); // the card as the Workbench names it, never its id
         }
 
         private static string Trigger(LogicCoreDefinition core)

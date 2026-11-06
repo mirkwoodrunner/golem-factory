@@ -34,7 +34,8 @@ Branch `phase7/menus` (from `phase6/feel`). Design written 2026-11-05. Roadmap: 
    Continue, New game, Settings, Quit. Load joins with step 4 and Creative with step 6.
 4. **Save slots. Done** (§7). Five slots and an Autosave, each with a picture and a summary;
    autosave on quit and when a tower stage completes; Quit to title.
-5. **Factory overview:** map overlay, production graphs from the Ledger's rates, alerts history.
+5. **Factory overview. Done** (§8). A Management tab: the map, an hour of production graphed
+   from the Ledger's counts, and every time a golem stopped.
 6. **Creative Mode:** a `GameMode` on `SandboxWorld`; the wallet, unlock checks and guide read it.
 
 ## 3. Done when
@@ -173,3 +174,28 @@ written into a save (§0.4).
 **Not yet:** a slot shows no play time. A save from a newer build isn't told apart from a
 damaged one. Creative Mode's saves need a kind of their own so they can't load as a campaign
 (step 6).
+
+## 8. Step 5: the factory overview (done 2026-11-05)
+
+**Where it lives.** The rules in `Core/Overview`: `FactoryMap` (what the map shows),
+`ProductionHistory` (an hour of what was made, on `SandboxWorld.History`), `ProductionChart`
+(the graph's range, lines and colours) and `AlertLog` (every stop, on `AlertsStrip.Log`). The
+camera's `LookAt` and `SandboxWorld.FocusGolem` take the camera to a picked golem. The tab is
+`Scripts/UI/OverviewTab`. The `overview` scenario drives it.
+
+**Calls made while building it:**
+
+| # | Call | Why |
+|---|---|---|
+| 1 | The overview is a Management tab, first on the bar, not a screen with a key of its own. The seven tabs are 138 px wide (six were 150). | Tab is the game's menu, and a new key would need a rebindable action and a row in Settings for one screen. |
+| 2 | The map draws the workshop, the street and the town square to scale: what the player built by kind, the stalls, the tower, every golem by its mood, and the player. A stopped golem (red or blue) is ringed and drawn larger, so it isn't colour alone, and a key along the bottom names every colour in words. | The map answers "is anything wrong, and where", at a glance. |
+| 3 | The pointer names what it is over in player names (the hover card's state for a golem). A click on a golem closes the screen with the camera on it, as the alerts strip's click does; walking brings the camera back. | The map leads to the problem, not just to its picture. |
+| 4 | The graph reads the Ledger's own counts (fresh goods only, `ProductionTally`), in ten-second buckets on the player's time: a paused factory makes nothing. Ten minutes (a point every ten seconds) or an hour (a point a minute). It isn't saved: a session starts with an empty graph. | "Production graphs from the Ledger's rates" (§2): the graph and the Ledger never disagree. |
+| 5 | At most four lines, each named at its end, in four colours validated as a set against the panel (dark mode, worst adjacent CVD ΔE 8.4, every pair at least 3:1). The legend lists every good made in the range with its average and is the table view; a click on a row draws or hides its line. A good keeps its colour while drawn, and a fifth is refused until one is hidden. | Colour follows the good, never its rank: a click must never repaint the others. |
+| 6 | The pointer on the graph draws a crosshair and gives each line's rate at that point. | The values are readable without a number on every point. |
+| 7 | The alerts history is fed by the alerts strip's own reconcile, so the two always agree on what counts: a golem waiting on the factory (grey) is never an alert. Each stop records the strip's sentence, when, and how long it lasted ("still stopped · 1:05"); a new cause is a new entry. The newest are first. At most 40; an open stop is never dropped. Not saved. A click looks at the golem. | Every stop the strip showed for half a second can be found again afterwards. |
+| 8 | The rows are rebuilt only when an entry or a good comes, goes or ends; the times and rates are written in place. | Rebuilt every second, a row could be swapped out between the press and the release of a click. |
+| 9 | The hover card names a working golem's step as the Workbench does ("Push Output"), not by its id. | The map's labels found it: the card printed "PushOutput". |
+
+**Not yet:** the graph shows goods made, not goods spent; the map doesn't pan or zoom (the
+whole world fits); a stop's history isn't kept across a load.

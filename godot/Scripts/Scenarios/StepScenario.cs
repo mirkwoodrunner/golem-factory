@@ -152,16 +152,22 @@ namespace GolemFactory.Nodes.Scenarios
         protected static void Press(Key key, bool down) =>
             Input.ParseInputEvent(new InputEventKey { PhysicalKeycode = key, Keycode = key, Pressed = down });
 
-        protected void PointAt(Control control)
+        protected void PointAt(Control control) => PointAt(control.GetGlobalRect().GetCenter());
+
+        /// <summary>The pointer to <paramref name="canvas"/>, a point in the canvas's pixels.</summary>
+        protected void PointAt(Vector2 canvas)
         {
-            Vector2 window = control.GetGlobalRect().GetCenter() * Tree.Root.ContentScaleFactor;
+            Vector2 window = canvas * Tree.Root.ContentScaleFactor;
             Tree.Root.WarpMouse(window);
             Input.ParseInputEvent(new InputEventMouseMotion { Position = window, GlobalPosition = window });
         }
 
-        protected void Click(Control control)
+        protected void Click(Control control) => Click(control.GetGlobalRect().GetCenter());
+
+        /// <summary>A left click at <paramref name="canvas"/>, a point in the canvas's pixels.</summary>
+        protected void Click(Vector2 canvas)
         {
-            Vector2 window = control.GetGlobalRect().GetCenter() * Tree.Root.ContentScaleFactor;
+            Vector2 window = canvas * Tree.Root.ContentScaleFactor;
             Tree.Root.WarpMouse(window);
             Input.ParseInputEvent(new InputEventMouseMotion { Position = window, GlobalPosition = window });
             Input.ParseInputEvent(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = window, GlobalPosition = window });

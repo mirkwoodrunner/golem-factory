@@ -111,7 +111,7 @@ namespace GolemFactory.Tests.EditMode
             var endpoints = new SpatialEndpointRegistry();
             GolemEntity golem = Golem(endpoints, Haul(), Push());
             var names = new TileNames(endpoints);
-            StringAssert.StartsWith("Working · step 1 of 2, HaulScrap", GolemHoverText.Compose(golem, GolemMood.Working, default, names).State);
+            StringAssert.StartsWith("Working · step 1 of 2, Haul Scrap", GolemHoverText.Compose(golem, GolemMood.Working, default, names).State);
             StringAssert.StartsWith("Sleeping until its trigger: always on", GolemHoverText.Compose(golem, GolemMood.Sleeping, default, names).State);
             Assert.AreEqual("No program · press E at it to open the Workbench",
                 GolemHoverText.Compose(golem, GolemMood.Unprogrammed, default, names).State);

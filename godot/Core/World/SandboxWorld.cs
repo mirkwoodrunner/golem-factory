@@ -358,6 +358,16 @@ namespace GolemFactory.World
         public MotionPreference Motion => Camera.Motion;
 
         /// <summary>The alert strip was clicked: the camera goes to the next stopped golem. Its id, or null with none.</summary>
+        /// <summary>
+        /// The overview's map or alerts picked a golem: the camera goes to it, as the alerts
+        /// strip's click does. False for a golem that is gone.
+        /// </summary>
+        public bool FocusGolem(string golemId)
+        {
+            bool live = _golems.Any(g => g != null && !g.IsRemoved && g.GolemId == golemId);
+            return live && Camera.LookAt(golemId);
+        }
+
         public string FocusNextAlert()
         {
             Alerts?.Reconcile();
@@ -1126,6 +1136,7 @@ namespace GolemFactory.World
                 Throughput.Sample(_realSeconds, Buffers);
                 Production.Sample(_realSeconds, Throughput);
             }
+            History.Record(_realSeconds, Production.Totals);
             Alerts?.Update(seconds);
             AssemblyLine?.Tick(seconds);
             TechTree.Update(_realSeconds);
@@ -1145,6 +1156,9 @@ namespace GolemFactory.World
         /// buffers: the Ledger's live rate (docs/crates-design.md §4.5).
         /// </summary>
         public ProductionTally Production { get; } = new ProductionTally();
+
+        /// <summary>An hour of what the factory made, for the overview's graph (docs/menus-design.md §8).</summary>
+        public Overview.ProductionHistory History { get; } = new Overview.ProductionHistory();
 
         /// <summary>The HUD's alerts strip. Null on the bare (slice) world.</summary>
         public AlertsStrip Alerts { get; private set; }

@@ -22,6 +22,9 @@ namespace GolemFactory.Economy
         private readonly Dictionary<string, int> _produced = new Dictionary<string, int>();
         private bool _attached;
 
+        /// <summary>Every good assembled so far, by item type: monotone counts.</summary>
+        public IReadOnlyDictionary<string, int> Totals => _produced;
+
         public void Attach()
         {
             if (!_attached)

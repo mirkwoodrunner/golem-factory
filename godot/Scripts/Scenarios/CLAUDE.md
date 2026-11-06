@@ -165,6 +165,16 @@ Current scenarios:
   the window's close each autosave first; the showcase never does. Writes only
   `user://scenario-saves`. Captures `title-load`, `slots-world`, `slots`, `slot-picture`,
   `title-autosaved`.
+- `overview` (Sandbox): the factory overview (`docs/menus-design.md` §8) with real keys and
+  clicks, on the guide's first six chapters (kept stocked) after a minute of work. Tab and the
+  Overview tab: the map marks every golem, building and the player, no label holds an id, and
+  the summary matches. The pointer names a golem; a click closes the screen with the camera on
+  it, and walking brings it back. The graph draws at most four lines and the legend lists every
+  good; the pointer reads the newest point; a legend click hides a line and a second draws it
+  back in its colour; 1 hour and 10 min switch the range. The boilers run dry: the map rings
+  the stopped golems and the alerts list them, still stopped; stoked, each says how long; a
+  click on one (scrolled to) looks at it. Captures `overview`, `overview-look`, `overview-hour`,
+  `overview-alerts`.
 
 **A scenario that reloads the scene** implements `IReloadingScenario` (or derives from
 `StepScenario`, which does): the runner of the new scene hands it back (`Resumed`), and it finds

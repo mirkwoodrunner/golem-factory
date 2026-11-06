@@ -78,7 +78,9 @@ call): built, reviewed, critiqued and tested. Done:
    `TitleScreen`, `menus-design.md` §6, the `title` scenario). Step 4 (save slots) is in: five
    slots and an Autosave with pictures and summaries, autosave on quit and on a tower stage, Load
    on the title, Quit to title (`SaveSlots`, `SaveSlotBoard`, `GameSaves`, `menus-design.md` §7,
-   the `slots` scenario). Next: step 5, the factory overview.
+   the `slots` scenario). Step 5 (the factory overview) is in: a Management tab with the map,
+   the production graph and the alerts history (`Core/Overview`, `OverviewTab`,
+   `menus-design.md` §8, the `overview` scenario). Next: step 6, Creative Mode.
    **Phase 5 (Audio), on branch `phase5/audio` (from `phase4/art`), is done** (2026-11-01; the
    user approved the listening sheet). The spec is `docs/audio-design.md`; all four decisions are
    made (§9): CC0 recordings for the effects and ambience, synthesized music. Every slot plays at

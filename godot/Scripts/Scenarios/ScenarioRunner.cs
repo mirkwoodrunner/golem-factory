@@ -88,6 +88,7 @@ namespace GolemFactory.Nodes.Scenarios
                 ["accessibility"] = () => new AccessibilityScenario(),
                 ["title"] = () => new TitleScenario(),
                 ["slots"] = () => new SlotsScenario(),
+                ["overview"] = () => new OverviewScenario(),
             };
 
         [Export] public NodePath StationPath { get; set; }

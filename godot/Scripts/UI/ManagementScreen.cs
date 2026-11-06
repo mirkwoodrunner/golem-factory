@@ -79,6 +79,9 @@ namespace GolemFactory.Nodes
         public string SlotPrompt => _slotPrompt?.Text ?? "";
         public LedgerTab Ledger { get; private set; }
 
+        /// <summary>The Overview tab: the map, the production graph and the alerts (docs/menus-design.md §8).</summary>
+        public OverviewTab Overview { get; private set; }
+
         /// <summary>The Settings tab: sound, display and keys.</summary>
         public SettingsTab Settings { get; private set; }
 
@@ -103,6 +106,8 @@ namespace GolemFactory.Nodes
             AddTab(ManagementTab.TechTree, Ledger);
             Settings = new SettingsTab(AudioNode.Find(this));
             AddTab(ManagementTab.Settings, Settings);
+            Overview = new OverviewTab(_world.Sandbox, Close);
+            AddTab(ManagementTab.Overview, Overview);
             _root.Visible = false;
             if (GetParent()?.GetNodeOrNull<GameSaves>("Saves") is GameSaves saves)
             {
@@ -387,10 +392,11 @@ namespace GolemFactory.Nodes
             var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Begin };
             row.AddThemeConstantOverride("separation", 8);
             bar.AddChild(row);
-            foreach (ManagementTab tab in (ManagementTab[])Enum.GetValues(typeof(ManagementTab)))
+            foreach (ManagementTab tab in ManagementTabs.BarOrder)
             {
                 Button button = PlateButton(tab + "Button", Ui + "Hud/hud_button.png", UnselectedTab, ManagementTabs.Label(tab), 15, SelectedTabLabel, bold: true);
-                button.CustomMinimumSize = new Vector2(150f, 46f);
+                // Seven fit the bar at 138 (six had 150): "Assembly Line" still clears its plate.
+                button.CustomMinimumSize = new Vector2(138f, 46f);
                 ManagementTab captured = tab;
                 button.Pressed += () => SelectTab(captured);
                 _tabButtons[tab] = button;
@@ -410,6 +416,7 @@ namespace GolemFactory.Nodes
             _tabContent[ManagementTab.AssemblyLine] = TabHolder(content, "AssemblyLineTab");
             _tabContent[ManagementTab.TechTree] = TabHolder(content, "TechTreeTab");
             _tabContent[ManagementTab.Settings] = TabHolder(content, "SettingsTab");
+            _tabContent[ManagementTab.Overview] = TabHolder(content, "OverviewTab");
             BuildSaveLoad(content);
         }
 
