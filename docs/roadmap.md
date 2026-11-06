@@ -450,6 +450,10 @@ Each addition gets its own design doc, like `crates-design.md`, with its invaria
 first. Additions grow along the game's identity (rigid, local, deterministic) rather than copying
 Factorio's breadth.
 
+0. **Supply carts** (`docs/supply-design.md`, proposed 2026-11-06): the market street becomes
+   carts the player adds, upgrades and removes on roped-off spots, each restocking at a rate.
+   Truckloads and hand orders go. First, because contracts and endless play assume a factory that
+   runs without the player at the stalls.
 1. **City contracts** (decision 12): requests that fill the gaps between tower stages, and give
    the Artificer's flexible half of the tabletop design a job. Open-ended, with a bonus for
    speed (decision 13).
