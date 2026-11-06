@@ -180,6 +180,8 @@ namespace GolemFactory.World
         private void Apply(SandboxSetup setup, IReadOnlyList<PlaceableEntry> placeables)
         {
             Setup = setup;
+            Creative = setup.creativeMode;
+            Buffers.CostsWaived = Creative;
             AllPlaceables = placeables ?? new List<PlaceableEntry>();
             Placeables = AllPlaceables.Where(p => !FixtureKeys.Contains(p.Key)).ToList();
             _stockpileBufferId = setup.stockpileBufferId;
@@ -261,7 +263,11 @@ namespace GolemFactory.World
             WireProgression(setup.assemblyLine);
             WireAudio();
             EventBus.ClockTowerStageCompleted += OnTowerStageCompleted;
-            if (setup.tutorial)
+            if (Creative)
+            {
+                OpenEverything();
+            }
+            if (setup.tutorial && !setup.creativeMode)
             {
                 Tutorial = new Tutorial.TutorialGuide(this);
                 // The Workbench's next-drag hint follows the guide's program plans.
@@ -357,7 +363,6 @@ namespace GolemFactory.World
         /// </summary>
         public MotionPreference Motion => Camera.Motion;
 
-        /// <summary>The alert strip was clicked: the camera goes to the next stopped golem. Its id, or null with none.</summary>
         /// <summary>
         /// The overview's map or alerts picked a golem: the camera goes to it, as the alerts
         /// strip's click does. False for a golem that is gone.
@@ -368,6 +373,7 @@ namespace GolemFactory.World
             return live && Camera.LookAt(golemId);
         }
 
+        /// <summary>The alert strip was clicked: the camera goes to the next stopped golem. Its id, or null with none.</summary>
         public string FocusNextAlert()
         {
             Alerts?.Reconcile();
@@ -400,6 +406,66 @@ namespace GolemFactory.World
             Interactor.Detach();
             Audio.Detach();
             EventBus.ClockTowerStageCompleted -= OnTowerStageCompleted;
+        }
+
+        // --- Creative Mode (docs/menus-design.md §9) ------------------------------------------
+
+        /// <summary>
+        /// A Creative world: costs waived (every wallet, through <see cref="StorageBufferRegistry.CostsWaived"/>),
+        /// every card claimed and every good, chassis and building seen, the pack kept full of
+        /// every good, no guide, and no tower stage. Set from the setup when the world is composed
+        /// and never changed: a save records it, and a load refuses the other kind.
+        /// </summary>
+        public bool Creative { get; private set; }
+
+        /// <summary>What the HUD's tower panel says in Creative.</summary>
+        public const string CreativeTowerReason = "is closed in Creative";
+
+        /// <summary>How often Creative tops the pack up, in the player's seconds.</summary>
+        public const float CreativeRefillSeconds = 1f;
+
+        private float _untilRefill;
+
+        private void OpenEverything()
+        {
+            if (AssemblyLine != null && _deck != null)
+            {
+                foreach (DraftableCardDefinition card in _deck.OpeningHand.Concat(_deck.Cards))
+                {
+                    AssemblyLine.GrantClaim(_claimUserId, card);
+                }
+            }
+            foreach (string item in ItemTiers.CanonicalOrder)
+            {
+                TechTree.Ledger.RecordItem(item);
+            }
+            foreach (string chassis in Definitions.Chassis.Keys)
+            {
+                TechTree.Ledger.RecordChassis(chassis);
+            }
+            // What the build menu places; not the tower (there is none in Creative) nor a bought floor row.
+            foreach (string building in Progression.TechTreeCatalog.AllBuildings.Where(b =>
+                b != Progression.TechTreeCatalog.BuildingClockTower && b != Progression.TechTreeCatalog.BuildingFloorExpansion))
+            {
+                TechTree.Ledger.RecordBuilding(building);
+            }
+            ClockTower.Site.OpenWhen = () => false;
+            ClockTower.Site.ClosedReason = CreativeTowerReason;
+            FillPack();
+        }
+
+        /// <summary>Every good the game has, to the pack's cap: Creative's way to feed a line by hand.</summary>
+        private void FillPack()
+        {
+            StorageBuffer pack = Wallet.Pack;
+            foreach (string item in ItemTiers.CanonicalOrder)
+            {
+                int missing = pack.CapacityPerType - pack.GetQuantity(item);
+                if (missing > 0 && pack.CapacityPerType != StorageBuffer.Unlimited)
+                {
+                    pack.Deposit(item, missing);
+                }
+            }
         }
 
         /// <summary>Whether <see cref="Dispose"/> has run.</summary>
@@ -537,6 +603,7 @@ namespace GolemFactory.World
             data.progress = CaptureProgress();
             data.market = CaptureMarket();
             data.meta = CaptureMeta(live.Count, data.buildings.Count, autosaveReason);
+            data.creative = Creative;
             SaveFileIO.WriteToFile(data, path);
             return $"Saved {Count(live.Count, "golem")} and {Count(data.buildings.Count, "building")}.";
         }
@@ -570,8 +637,14 @@ namespace GolemFactory.World
         /// </summary>
         public string LoadFrom(string path)
         {
-            LoadsMade++;
             SaveData data = SaveFileIO.ReadFromFile(path);
+            // Creative and campaign never mix (decision 2): a save of the other kind is refused
+            // untouched, and isn't a load the guide counts.
+            if (data != null && data.creative != Creative)
+            {
+                return WrongKind(data.creative);
+            }
+            LoadsMade++;
             if (data == null)
             {
                 return "No save file found.";
@@ -581,6 +654,11 @@ namespace GolemFactory.World
             // and no landing or dust (Restoring).
             return Quietly(() => Restore(data));
         }
+
+        /// <summary>The refusal for a save of the other kind: "That save is a Creative world, ...".</summary>
+        public static string WrongKind(bool saveIsCreative) => saveIsCreative
+            ? "That save is a Creative world, and this is a campaign game: load it from the title."
+            : "That save is a campaign game, and this is a Creative world: load it from the title.";
 
         /// <summary>
         /// True while a load (or the title's showcase, docs/menus-design.md §6) rebuilds the world:
@@ -1137,6 +1215,11 @@ namespace GolemFactory.World
                 Production.Sample(_realSeconds, Throughput);
             }
             History.Record(_realSeconds, Production.Totals);
+            if (Creative && (_untilRefill -= seconds) <= 0f)
+            {
+                _untilRefill = CreativeRefillSeconds;
+                FillPack();
+            }
             Alerts?.Update(seconds);
             AssemblyLine?.Tick(seconds);
             TechTree.Update(_realSeconds);

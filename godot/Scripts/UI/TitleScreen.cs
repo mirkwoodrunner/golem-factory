@@ -7,8 +7,8 @@ using GolemFactory.UI;
 namespace GolemFactory.Nodes
 {
     /// <summary>
-    /// The title screen (docs/menus-design.md §6): Continue, Load, New game, Settings and Quit
-    /// over a live workshop the player watches but cannot touch.
+    /// The title screen (docs/menus-design.md §6): Continue, Load, New game, Creative, Settings
+    /// and Quit over a live workshop the player watches but cannot touch.
     ///
     /// <para>
     /// The workshop is this scene's own world, built by <see cref="TitleShowcase"/> (the guide's
@@ -36,8 +36,9 @@ namespace GolemFactory.Nodes
 
         private const float MenuLeft = 80f;
         private const float MenuWidth = 340f;
-        private const float EntryHeight = 52f;
-        private const float MenuTop = 262f;
+        private const float EntryHeight = 48f;
+        private const float EntryGap = 8f;
+        private const float MenuTop = 252f;
 
         private static readonly Color DisabledTint = new Color(0.20f, 0.18f, 0.16f, 1f);
         private static readonly Color Shade = new Color(0.045f, 0.036f, 0.030f, 1f);
@@ -67,6 +68,13 @@ namespace GolemFactory.Nodes
         public SaveSlotList LoadSlots { get; private set; }
         public Button LoadBackButton { get; private set; }
         public bool LoadOpen => _loadView != null && _loadView.Visible;
+
+        /// <summary>Whether the Load view lists Creative's slots rather than the campaign's (docs/menus-design.md §9).</summary>
+        public bool LoadingCreative { get; private set; }
+
+        /// <summary>The Load view's two kinds: Campaign and Creative, Left and Right between them.</summary>
+        public Button CampaignTab { get; private set; }
+        public Button CreativeTab { get; private set; }
         public string NoticeText => _notice != null && _notice.Visible ? _notice.Text : "";
 
         /// <summary>What a Continue's load reported, on the scene it started.</summary>
@@ -91,7 +99,7 @@ namespace GolemFactory.Nodes
             {
                 case LaunchKind.Title:
                     Layer = LayerIndex;
-                    _menu = new TitleMenu(SavePaths.Saves(), DateTime.Now);
+                    _menu = new TitleMenu(SavePaths.AllSaves(), DateTime.Now);
                     Build();
                     _shown = true;
                     _world.Sandbox.Screens.Register(this);
@@ -194,13 +202,16 @@ namespace GolemFactory.Nodes
             switch (choice)
             {
                 case TitleChoice.Continue:
-                    Leave(LaunchKind.Continue, _menu.Newest?.Path);
+                    Leave(LaunchKind.Continue, _menu.Newest?.Path, _menu.Newest?.Creative == true);
                     break;
                 case TitleChoice.Load:
                     OpenLoad();
                     break;
                 case TitleChoice.NewGame:
                     Leave(LaunchKind.NewGame, null);
+                    break;
+                case TitleChoice.Creative:
+                    Leave(LaunchKind.NewGame, null, creative: true);
                     break;
                 case TitleChoice.Settings:
                     OpenSettings();
@@ -211,10 +222,10 @@ namespace GolemFactory.Nodes
             }
         }
 
-        private void Leave(LaunchKind kind, string path)
+        private void Leave(LaunchKind kind, string path, bool creative = false)
         {
             _leaving = true;
-            GameLaunch.Request(kind, path);
+            GameLaunch.Request(kind, path, creative: creative);
             GetTree().ReloadCurrentScene();
         }
 
@@ -231,12 +242,25 @@ namespace GolemFactory.Nodes
             _main.Visible = true;
         }
 
+        /// <summary>Opens Load on the kind of the newest save that loads: the one the player most likely wants.</summary>
         public void OpenLoad()
         {
-            SlotBoard.Show(SavePaths.Saves(), DateTime.Now);
-            LoadSlots.Refresh();
+            ShowKind(_menu.Newest?.Creative == true);
             _main.Visible = false;
             _loadView.Visible = true;
+        }
+
+        /// <summary>Lists the campaign's slots or Creative's: the two are never mixed (decision 2).</summary>
+        public void ShowKind(bool creative)
+        {
+            LoadingCreative = creative;
+            SlotBoard.Show(SavePaths.Saves(creative), DateTime.Now);
+            LoadSlots.Refresh();
+            foreach ((Button tab, bool lit) in new[] { (CampaignTab, !creative), (CreativeTab, creative) })
+            {
+                tab.SelfModulate = lit ? ManagementScreen.SelectedTab : new Color(0.34f, 0.30f, 0.26f, 1f);
+                tab.GetNode<Label>("Label").AddThemeColorOverride("font_color", lit ? ManagementScreen.SelectedTabLabel : ManagementScreen.ItemNameInk);
+            }
         }
 
         public void CloseLoad()
@@ -254,7 +278,7 @@ namespace GolemFactory.Nodes
             }
             SlotBoard.Select(key);
             LoadSlots.Refresh();
-            Leave(LaunchKind.Continue, SlotBoard.Row(key).Save?.Path);
+            Leave(LaunchKind.Continue, SlotBoard.Row(key).Save?.Path, LoadingCreative);
         }
 
         // --- Input ----------------------------------------------------------------------------
@@ -292,6 +316,11 @@ namespace GolemFactory.Nodes
                 if (e.IsActionPressed(BuildCursorNode.CancelAction))
                 {
                     CloseLoad();
+                }
+                else if (e.IsActionPressed("ui_left") || e.IsActionPressed(PlayerNode.MoveLeft) ||
+                         e.IsActionPressed("ui_right") || e.IsActionPressed(PlayerNode.MoveRight))
+                {
+                    ShowKind(!LoadingCreative);
                 }
                 else if (e.IsActionPressed("ui_up") || e.IsActionPressed(PlayerNode.MoveUp))
                 {
@@ -353,8 +382,8 @@ namespace GolemFactory.Nodes
             _main.AddChild(rule);
 
             var column = new VBoxContainer { Name = "Entries", MouseFilter = Control.MouseFilterEnum.Pass };
-            column.AddThemeConstantOverride("separation", 10);
-            Place(column, MenuLeft, MenuTop, MenuWidth, TitleMenu.Order.Count * (EntryHeight + 10f));
+            column.AddThemeConstantOverride("separation", (int)EntryGap);
+            Place(column, MenuLeft, MenuTop, MenuWidth, TitleMenu.Order.Count * (EntryHeight + EntryGap));
             _main.AddChild(column);
             foreach (TitleChoice choice in TitleMenu.Order)
             {
@@ -366,7 +395,7 @@ namespace GolemFactory.Nodes
             _notice.ClipText = false;
             _notice.VerticalAlignment = VerticalAlignment.Top;
             _notice.Visible = !string.IsNullOrEmpty(GameLaunch.Notice);
-            Place(_notice, MenuLeft, MenuTop + TitleMenu.Order.Count * (EntryHeight + 10f) + 12f, MenuWidth + 80f, 48f);
+            Place(_notice, MenuLeft, MenuTop + TitleMenu.Order.Count * (EntryHeight + EntryGap) + 8f, MenuWidth + 80f, 48f);
             _main.AddChild(_notice);
 
             Label hint = Ugui.Text("Hint", "Up and Down to choose  ·  Enter to pick", 13, ManagementScreen.DimInk);
@@ -485,6 +514,8 @@ namespace GolemFactory.Nodes
             Label heading = Ugui.Text("Heading", "Load", 22, ManagementScreen.HeaderInk, bold: true);
             Place(heading, LoadLeft, 30f, 400f, 32f);
             _loadView.AddChild(heading);
+            CampaignTab = KindTab("CampaignTab", "Campaign", LoadLeft + LoadWidth - 2f * 120f - 8f, false);
+            CreativeTab = KindTab("CreativeTab", "Creative", LoadLeft + LoadWidth - 120f, true);
 
             SlotBoard = new SaveSlotBoard(SlotBoardMode.Title, null, DateTime.Now);
             LoadSlots = new SaveSlotList(SlotBoard, (key, _) => PickSlot(key))
@@ -501,7 +532,7 @@ namespace GolemFactory.Nodes
             Place(list, LoadLeft, 78f, LoadWidth, 6f * SaveSlotList.RowHeight + 5f * SaveSlotList.RowGap);
             _loadView.AddChild(list);
 
-            Label hint = Ugui.Text("Hint", "Up and Down to choose  ·  Enter to load  ·  Escape to go back", 13, ManagementScreen.DimInk);
+            Label hint = Ugui.Text("Hint", "Up and Down to choose  ·  Left and Right for Campaign or Creative  ·  Enter to load  ·  Escape to go back", 13, ManagementScreen.DimInk);
             Place(hint, LoadLeft, 78f + 6f * SaveSlotList.RowHeight + 5f * SaveSlotList.RowGap + 18f, LoadWidth, 22f);
             _loadView.AddChild(hint);
 
@@ -510,6 +541,17 @@ namespace GolemFactory.Nodes
                 1f, 1f, 1f, 1f, -6f, -46f, 90f, 30f, 1f, 1f);
             LoadBackButton.Pressed += CloseLoad;
             _loadView.AddChild(LoadBackButton);
+        }
+
+        private Button KindTab(string name, string label, float x, bool creative)
+        {
+            Button tab = ManagementScreen.PlateButton(name, ManagementScreen.Ui + "Hud/hud_button.png",
+                new Color(0.34f, 0.30f, 0.26f, 1f), label, 14, ManagementScreen.ItemNameInk, bold: true);
+            tab.MouseDefaultCursorShape = Control.CursorShape.PointingHand;
+            Place(tab, x, 30f, 120f, 32f);
+            tab.Pressed += () => ShowKind(creative);
+            _loadView.AddChild(tab);
+            return tab;
         }
 
         private const float LoadWidth = 760f;

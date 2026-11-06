@@ -59,6 +59,12 @@ namespace GolemFactory.Nodes
         public Button SpeedButton(int i) => _speeds[i];
         public bool Showing => _root.Visible;
 
+        public const string CreativeHeadline = "Creative world";
+        public const string CreativeNote = "Every card and building is yours, and nothing costs a thing. Your pack refills itself. No guide, no Clock Tower.";
+
+        /// <summary>The tower panel's headline as drawn, for scenarios.</summary>
+        public string TowerHeadline => _headline?.Text ?? "";
+
         public override void _Ready()
         {
             Layer = 2;
@@ -232,6 +238,15 @@ namespace GolemFactory.Nodes
             _gauge.Text = "Boiler fuel  " + SteamGaugeUtility.Format(reading);
             _gauge.AddThemeColorOverride("font_color", reading.IsLow ? Coral : reading.HasCountdown ? Amber : Dim);
 
+            if (_world.Sandbox.Creative)
+            {
+                // A Creative world has no tower to build toward (docs/menus-design.md §9): the
+                // panel says what kind of world this is instead.
+                _headline.Text = CreativeHeadline;
+                _demand.Text = CreativeNote;
+                _starved.Text = "";
+                return;
+            }
             ClockTowerReading tower = _world.Sandbox.ClockTower.Site.BuildReading();
             _headline.Text = ClockTowerReadout.FormatHeadline(tower);
             _headline.AddThemeColorOverride("font_color", tower.IsComplete ? Win : tower.HasActiveStage ? Amber : Dim);

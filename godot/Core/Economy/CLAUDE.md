@@ -30,6 +30,9 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   **Golems never reach the pack** (`FactoryStockpile`, id kept because saves name it; 100 of
   each, up to 250 by upgrade). A depot with an explicit `bufferId` publishes that buffer and doesn't own it: a Post
   crate, and how a test keeps the old behaviour.
+- **Creative Mode waives every cost at the wallet** (`StorageBufferRegistry.CostsWaived`,
+  docs/menus-design.md §9). Ask a wallet whether something is affordable (`PlayerWallet.CanAfford`),
+  never the stock directly, or Creative's waiver is missed.
 - **Every cost goes through `PlayerWallet.TryCharge`** (pack first, then the Post store);
   refunds through `Refund`, **into the pack only, never the Post**, after `FirstMisfit` says they
   fit (a demolition or a dismantle the pack can't hold is refused, Post or no Post). Only a

@@ -216,16 +216,7 @@ namespace GolemFactory.Buildings
             {
                 return false;
             }
-
-            for (int i = 0; i < recipe.inputs.Count; i++)
-            {
-                if (Wallet.Quantity(recipe.inputs[i].itemType) < recipe.inputs[i].quantity)
-                {
-                    return false;
-                }
-            }
-
-            return true;
+            return Wallet.CanAfford(recipe.inputs);
         }
     }
 }

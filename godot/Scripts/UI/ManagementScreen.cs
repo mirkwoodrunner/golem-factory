@@ -462,10 +462,13 @@ namespace GolemFactory.Nodes
             holder.AddChild(list);
 
             float side = 24f + ListWidth + 28f;
-            Label heading = Ugui.Text("SideHeading", "Saving", 15, HeaderInk, bold: true);
+            bool creative = _world.Sandbox.Creative;
+            Label heading = Ugui.Text("SideHeading", creative ? "Saving a Creative world" : "Saving", 15, HeaderInk, bold: true);
             TopLeft(heading, side, 18f, SideWidth, 22f);
             holder.AddChild(heading);
-            Label about = Wrapped("About", "Five slots are yours. The game writes the Autosave itself: when you quit, and when a Clock Tower stage completes.", 12, DimInk);
+            Label about = Wrapped("About", creative
+                ? "Five slots are yours, apart from the campaign's. The game writes the Autosave itself when you quit."
+                : "Five slots are yours. The game writes the Autosave itself: when you quit, and when a Clock Tower stage completes.", 12, DimInk);
             TopLeft(about, side, 44f, SideWidth, 64f);
             holder.AddChild(about);
 
@@ -520,7 +523,7 @@ namespace GolemFactory.Nodes
         /// <summary>The slots as they are on disk now; anything armed is let go.</summary>
         private void ReadSlots()
         {
-            SlotBoard.Show(SavePaths.Saves(), DateTime.Now);
+            SlotBoard.Show(SavePaths.Saves(_world.Sandbox.Creative), DateTime.Now);
             ShowSlots();
         }
 

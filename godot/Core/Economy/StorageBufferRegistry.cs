@@ -12,6 +12,14 @@ namespace GolemFactory.Economy
         public IReadOnlyDictionary<string, StorageBuffer> Buffers => _buffers;
 
         /// <summary>
+        /// Creative Mode (docs/menus-design.md §9): every <see cref="PlayerWallet"/> over this
+        /// registry charges nothing and refunds nothing. On the registry because a wallet is
+        /// stateless over it, so every part that builds its own wallet reads the same rule, and
+        /// no cost can be missed. Golems never touch a wallet, so their goods move as ever.
+        /// </summary>
+        public bool CostsWaived { get; set; }
+
+        /// <summary>
         /// Per-item-type capacity handed to buffers this registry auto-creates on first deposit.
         /// <see cref="StorageBuffer.Unlimited"/> by default, so a registry nobody has tuned
         /// behaves exactly as it did before capacity existed -- backpressure is opt-in per

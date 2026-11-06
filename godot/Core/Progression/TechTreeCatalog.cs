@@ -59,6 +59,13 @@ namespace GolemFactory.Progression
         public const string BuildingScrapRecycler = "ScrapRecycler";
         public const string BuildingPneumaticPost = "PneumaticPost";
 
+        /// <summary>Every building id above: what Creative marks as seen (docs/menus-design.md §9).</summary>
+        public static readonly string[] AllBuildings =
+        {
+            BuildingHandCrankBench, BuildingBoiler, BuildingSteamPipe, BuildingBelt, BuildingDepot, BuildingClockTower,
+            BuildingSlagHeap, BuildingFreightMast, BuildingFloorExpansion, BuildingScrapRecycler, BuildingPneumaticPost,
+        };
+
         private static readonly TechTreePhase[] PhaseTable =
         {
             new TechTreePhase("I · The Cold Workshop", "Hand-gather and hand-crank your way to the first machine"),

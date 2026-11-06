@@ -47,8 +47,12 @@ namespace GolemFactory.Menus
 
         public static string ThumbnailIn(string folder, string key) => Path.Combine(folder, key + ".png");
 
-        /// <summary>Every slot in <paramref name="folder"/> that holds a file, readable or not.</summary>
-        public static List<SaveSummary> Read(string folder)
+        /// <summary>
+        /// Every slot in <paramref name="folder"/> that holds a file, readable or not.
+        /// <paramref name="creative"/>: the folder is Creative's (docs/menus-design.md §9), whose
+        /// saves are its own; a save of the other kind found there reads as unreadable.
+        /// </summary>
+        public static List<SaveSummary> Read(string folder, bool creative = false)
         {
             var found = new List<SaveSummary>();
             if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder))
@@ -60,7 +64,7 @@ namespace GolemFactory.Menus
                 string path = PathIn(folder, key);
                 if (File.Exists(path))
                 {
-                    found.Add(Summarize(folder, key));
+                    found.Add(Summarize(folder, key, creative));
                 }
             }
             return found;
@@ -71,7 +75,7 @@ namespace GolemFactory.Menus
         /// and whether it reads. A file that doesn't read is reported, never thrown, so one bad
         /// slot can't take the list down with it.
         /// </summary>
-        public static SaveSummary Summarize(string folder, string key)
+        public static SaveSummary Summarize(string folder, string key, bool creative = false)
         {
             string path = PathIn(folder, key);
             DateTime written = File.GetLastWriteTime(path);
@@ -80,7 +84,7 @@ namespace GolemFactory.Menus
             try
             {
                 SaveData data = SaveFileIO.ReadFromFile(path);
-                readable = data != null;
+                readable = data != null && data.creative == creative; // never offered as the other kind
                 meta = data?.meta;
             }
             catch (Exception)
@@ -92,7 +96,7 @@ namespace GolemFactory.Menus
                 written = saved.ToLocalTime();
             }
             string thumbnail = ThumbnailIn(folder, key);
-            return new SaveSummary(path, written, readable, key, meta, File.Exists(thumbnail) ? thumbnail : null);
+            return new SaveSummary(path, written, readable, key, meta, File.Exists(thumbnail) ? thumbnail : null, creative);
         }
 
         /// <summary>Removes a slot's save and its picture.</summary>

@@ -175,6 +175,15 @@ Current scenarios:
   the stopped golems and the alerts list them, still stopped; stoked, each says how long; a
   click on one (scrolled to) looks at it. Captures `overview`, `overview-look`, `overview-hour`,
   `overview-alerts`.
+- `creative` (Sandbox, across reloads): Creative Mode (`docs/menus-design.md` §9) with real keys
+  and clicks. The title offers Creative ("Build freely"); Down and Enter start a Creative world
+  with no guide, the HUD's panel reading "Creative world", the pack full of every good, every
+  chassis on the Workbench and its saves in Creative's folder. 1 and a click place a depot for
+  nothing. Save into Slot 1 lands in Creative's slots only, and so does Quit to title's
+  autosave. The title's Continue reads "Creative, today at ..."; Load opens on Creative's slots,
+  Left shows the campaign's (none), Right comes back, Enter loads the world with its depot. A
+  campaign game greys a Creative save copied among its slots and refuses to load it. Captures
+  `creative`, `creative-load`.
 
 **A scenario that reloads the scene** implements `IReloadingScenario` (or derives from
 `StepScenario`, which does): the runner of the new scene hands it back (`Resumed`), and it finds

@@ -7,12 +7,18 @@ namespace GolemFactory.Nodes
     /// <summary>
     /// Where the save slots live (docs/menus-design.md §7): <c>user://saves</c>, or
     /// <c>user://scenario-saves</c> on a scenario run, which never touches the player's saves
-    /// (Core/Tutorial/CLAUDE.md). Core's <see cref="SaveSlots"/> names the files inside.
+    /// (Core/Tutorial/CLAUDE.md). Creative's slots are their own, in <c>creative</c> inside it
+    /// (§9). Core's <see cref="SaveSlots"/> names the files inside.
     /// </summary>
     public static class SavePaths
     {
         /// <summary>The slots' folder, globalized: Core reads and writes it with System.IO.</summary>
         public static string Folder => ProjectSettings.GlobalizePath(PlaytestNode.UnderScenario ? "user://scenario-saves" : "user://saves");
+
+        /// <summary>Creative's slots: never the campaign's (decision 2).</summary>
+        public static string CreativeFolder => System.IO.Path.Combine(Folder, "creative");
+
+        public static string FolderFor(bool creative) => creative ? CreativeFolder : Folder;
 
         /// <summary>The one save from before slots, which <see cref="Saves"/> moves into a slot.</summary>
         public static string Legacy => ProjectSettings.GlobalizePath(PlaytestNode.UnderScenario ? "user://scenario-save.json" : "user://save.json");
@@ -22,8 +28,12 @@ namespace GolemFactory.Nodes
         /// can't be read rather than offering it. A save from before slots moves into the first
         /// empty slot first, so the player's game is still there.
         /// </summary>
-        public static List<SaveSummary> Saves()
+        public static List<SaveSummary> Saves(bool creative = false)
         {
+            if (creative)
+            {
+                return Checked(SaveSlots.Read(CreativeFolder, creative: true));
+            }
             try
             {
                 string moved = SaveSlots.MigrateLegacy(Legacy, Folder);
@@ -36,7 +46,19 @@ namespace GolemFactory.Nodes
             {
                 GD.PushWarning($"The save from before slots stays at {Legacy}: {e.Message}");
             }
-            List<SaveSummary> found = SaveSlots.Read(Folder);
+            return Checked(SaveSlots.Read(Folder));
+        }
+
+        /// <summary>Both kinds: what the title's Continue chooses from.</summary>
+        public static List<SaveSummary> AllSaves()
+        {
+            List<SaveSummary> all = Saves();
+            all.AddRange(Saves(creative: true));
+            return all;
+        }
+
+        private static List<SaveSummary> Checked(List<SaveSummary> found)
+        {
             foreach (SaveSummary save in found)
             {
                 if (!save.Readable)

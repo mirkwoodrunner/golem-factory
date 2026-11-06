@@ -135,6 +135,8 @@ namespace GolemFactory.Tests.Menus
             menu.Move(1);
             Assert.AreEqual(TitleChoice.NewGame, menu.Selected);
             menu.Move(1);
+            Assert.AreEqual(TitleChoice.Creative, menu.Selected);
+            menu.Move(1);
             menu.Move(1);
             Assert.AreEqual(TitleChoice.Quit, menu.Selected);
             Assert.IsFalse(menu.Select(TitleChoice.Continue), "the pointer can't light a greyed entry");
@@ -152,7 +154,7 @@ namespace GolemFactory.Tests.Menus
         [Test]
         public void EveryEntryHasALabel()
         {
-            CollectionAssert.AreEqual(new[] { "Continue", "Load", "New game", "Settings", "Quit" }, TitleMenu.Order.Select(TitleMenu.Label));
+            CollectionAssert.AreEqual(new[] { "Continue", "Load", "New game", "Creative", "Settings", "Quit" }, TitleMenu.Order.Select(TitleMenu.Label));
         }
     }
 

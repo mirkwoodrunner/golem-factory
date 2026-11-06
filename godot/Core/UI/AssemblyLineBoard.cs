@@ -153,7 +153,7 @@ namespace GolemFactory.UI
                            + "  ·  " + AssemblyBayRowPolicy.FormatUpgradeEffect(AssemblyBayStructure.SlotsPerUpgrade),
                     Bright = !_bay.HasFreeSlot,
                     CostText = AssemblyBayRowPolicy.FormatCost(cost),
-                    Affordable = AssemblyBayRowPolicy.CanAfford(StockpileOf, cost),
+                    Affordable = CanAfford(cost),
                     ButtonLabel = "Upgrade",
                 });
             }
@@ -331,7 +331,8 @@ namespace GolemFactory.UI
         // The pack plus the Post: what the bay's charge (PlayerWallet.TryCharge) can spend.
         private int StockpileOf(string itemType) => _buffers == null ? 0 : new PlayerWallet(_buffers, _stockpile, _post).Quantity(itemType);
 
+        // What the charge (PlayerWallet.TryCharge) would take: Creative's waiver included.
         private bool CanAfford(IReadOnlyList<RecipeIngredient> price) =>
-            ConstructionCostPolicy.CanAfford(item => _buffers == null ? 0 : new PlayerWallet(_buffers, _wallet, _post).Quantity(item), price);
+            _buffers == null ? ConstructionCostPolicy.CanAfford(_ => 0, price) : new PlayerWallet(_buffers, _wallet, _post).CanAfford(price);
     }
 }

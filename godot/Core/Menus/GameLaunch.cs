@@ -29,6 +29,7 @@ namespace GolemFactory.Menus
         private static LaunchKind? _next;
         private static string _nextPath;
         private static string _nextNotice;
+        private static bool _nextCreative;
 
         /// <summary>What the scene now running was loaded for.</summary>
         public static LaunchKind Current { get; private set; } = LaunchKind.Title;
@@ -42,12 +43,22 @@ namespace GolemFactory.Menus
         /// </summary>
         public static string Notice { get; private set; }
 
-        /// <summary>Names what the next scene load is for. <paramref name="savePath"/> is for Continue.</summary>
-        public static void Request(LaunchKind kind, string savePath = null, string notice = null)
+        /// <summary>
+        /// Whether the game now running is a Creative world (docs/menus-design.md §9): asked for
+        /// with a new game or a Continue. Never on the title, whose showcase is the guide's.
+        /// </summary>
+        public static bool Creative { get; private set; }
+
+        /// <summary>
+        /// Names what the next scene load is for. <paramref name="savePath"/> is for Continue;
+        /// <paramref name="creative"/> for a new game or a Continue, never the title.
+        /// </summary>
+        public static void Request(LaunchKind kind, string savePath = null, string notice = null, bool creative = false)
         {
             _next = kind;
             _nextPath = kind == LaunchKind.Continue ? savePath : null;
             _nextNotice = notice;
+            _nextCreative = creative && kind != LaunchKind.Title;
         }
 
         /// <summary>
@@ -59,9 +70,11 @@ namespace GolemFactory.Menus
             Current = _next ?? (underScenario ? LaunchKind.NewGame : LaunchKind.Title);
             SavePath = Current == LaunchKind.Continue ? _nextPath : null;
             Notice = _nextNotice;
+            Creative = _nextCreative;
             _next = null;
             _nextPath = null;
             _nextNotice = null;
+            _nextCreative = false;
             return Current;
         }
 
@@ -71,9 +84,11 @@ namespace GolemFactory.Menus
             _next = null;
             _nextPath = null;
             _nextNotice = null;
+            _nextCreative = false;
             Current = LaunchKind.Title;
             SavePath = null;
             Notice = null;
+            Creative = false;
         }
     }
 }

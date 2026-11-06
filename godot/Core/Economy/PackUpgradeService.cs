@@ -53,7 +53,7 @@ namespace GolemFactory.Economy
 
         public IReadOnlyList<RecipeIngredient> NextCost() => IsMaxed ? new RecipeIngredient[0] : _rungs[Tier].cost;
 
-        public bool CanAfford() => !IsMaxed && Wallet != null && UI.ConstructionCostPolicy.CanAfford(Wallet.Quantity, NextCost());
+        public bool CanAfford() => !IsMaxed && Wallet != null && Wallet.CanAfford(NextCost());
 
         /// <summary>The Pack row's Upgrade: charges the next rung through the wallet, then raises the cap.</summary>
         public bool TryUpgrade()

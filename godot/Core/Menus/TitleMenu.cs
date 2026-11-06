@@ -11,6 +11,7 @@ namespace GolemFactory.Menus
         Continue,
         Load,
         NewGame,
+        Creative,
         Settings,
         Quit,
     }
@@ -36,8 +37,13 @@ namespace GolemFactory.Menus
         /// <summary>The slot's picture, or null without one.</summary>
         public readonly string Thumbnail;
 
-        public SaveSummary(string path, DateTime savedAt, bool readable = true, string key = null, Save.MetaEntry meta = null, string thumbnail = null)
+        /// <summary>A Creative world's save, from Creative's own slots (docs/menus-design.md §9).</summary>
+        public readonly bool Creative;
+
+        public SaveSummary(string path, DateTime savedAt, bool readable = true, string key = null, Save.MetaEntry meta = null,
+            string thumbnail = null, bool creative = false)
         {
+            Creative = creative;
             Path = path;
             SavedAt = savedAt;
             Readable = readable;
@@ -73,13 +79,14 @@ namespace GolemFactory.Menus
     public sealed class TitleMenu
     {
         public static readonly IReadOnlyList<TitleChoice> Order =
-            new[] { TitleChoice.Continue, TitleChoice.Load, TitleChoice.NewGame, TitleChoice.Settings, TitleChoice.Quit };
+            new[] { TitleChoice.Continue, TitleChoice.Load, TitleChoice.NewGame, TitleChoice.Creative, TitleChoice.Settings, TitleChoice.Quit };
 
         public const string GameName = "Golem Factory";
         public const string Subtitle = "The Clockwork Metropolis";
         public const string NoSave = "No saved game yet";
         public const string Unreadable = "Your save can't be read";
         public const string NoneReadable = "None of your saves can be read";
+        public const string CreativeDetail = "Build freely";
 
         private readonly SaveSummary? _newest;
         private readonly int _found;
@@ -152,6 +159,7 @@ namespace GolemFactory.Menus
             TitleChoice.Continue => "Continue",
             TitleChoice.Load => "Load",
             TitleChoice.NewGame => "New game",
+            TitleChoice.Creative => "Creative",
             TitleChoice.Settings => "Settings",
             TitleChoice.Quit => "Quit",
             _ => "",
@@ -163,6 +171,10 @@ namespace GolemFactory.Menus
         /// </summary>
         public string Detail(TitleChoice choice)
         {
+            if (choice == TitleChoice.Creative)
+            {
+                return CreativeDetail;
+            }
             if (choice == TitleChoice.Load)
             {
                 return _readable == 0 ? "" : _readable == 1 ? "1 save" : _readable + " saves";
@@ -174,6 +186,10 @@ namespace GolemFactory.Menus
             if (_newest == null)
             {
                 return _found == 0 ? NoSave : _found == 1 ? Unreadable : NoneReadable;
+            }
+            if (_newest.Value.Creative)
+            {
+                return "Creative, " + When(_newest.Value.SavedAt, _now); // which world Continue opens
             }
             return (_newest.Value.Meta?.autosave == true ? "Autosaved " : "Saved ") + When(_newest.Value.SavedAt, _now);
         }

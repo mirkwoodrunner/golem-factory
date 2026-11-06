@@ -96,7 +96,7 @@ namespace GolemFactory.World
 
         private int StockOf(string itemType) => Wallet?.Quantity(itemType) ?? 0;
 
-        public bool CanAfford() => UI.ConstructionCostPolicy.CanAfford(StockOf, NextCost());
+        public bool CanAfford() => Wallet?.CanAfford(NextCost()) ?? UI.ConstructionCostPolicy.CanAfford(StockOf, NextCost());
 
         public bool TryPurchaseExpansion()
         {

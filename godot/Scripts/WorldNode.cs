@@ -101,6 +101,8 @@ namespace GolemFactory.Nodes
                 SandboxSetup setup = SandboxSetup.Parse(Read("sandbox.json"));
                 // The showcase asks no playtest questions and writes no report: nobody is playing.
                 setup.playtest &= !IsShowcase;
+                // A Creative world (docs/menus-design.md §9): the setup's own Creative switch.
+                setup.creativeMode = GameLaunch.Creative && !IsShowcase;
                 Sandbox = SandboxWorld.Compose(
                     definitions, setup,
                     PlaceableCatalog.Load(Read(PlaceableCatalog.FileName), definitions),
@@ -115,7 +117,7 @@ namespace GolemFactory.Nodes
 
             // Where the slots, the autosave and the kit's save go (docs/menus-design.md §7). The
             // showcase never saves.
-            Sandbox.SaveFolder = IsShowcase ? null : SavePaths.Folder;
+            Sandbox.SaveFolder = IsShowcase ? null : SavePaths.FolderFor(Sandbox.Creative);
 
             // The player's Reduced motion (docs/menus-design.md §5), now and whenever it changes.
             Sandbox.Motion.Reduced = GameSettingsStore.Load().ReducedMotion;

@@ -49,6 +49,12 @@ namespace GolemFactory.Save
         /// then falls back to the file's own time. Nothing here is read back into the world.
         /// </summary>
         public MetaEntry meta;
+
+        /// <summary>
+        /// A Creative world's save (docs/menus-design.md §9). Absent, false, in every save before
+        /// Creative, which were all campaign games. A load refuses a save of the other kind.
+        /// </summary>
+        public bool creative;
     }
 
     /// <summary>A save's summary for its slot: display only, never restored.</summary>

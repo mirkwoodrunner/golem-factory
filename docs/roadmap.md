@@ -80,7 +80,10 @@ call): built, reviewed, critiqued and tested. Done:
    on the title, Quit to title (`SaveSlots`, `SaveSlotBoard`, `GameSaves`, `menus-design.md` §7,
    the `slots` scenario). Step 5 (the factory overview) is in: a Management tab with the map,
    the production graph and the alerts history (`Core/Overview`, `OverviewTab`,
-   `menus-design.md` §8, the `overview` scenario). Next: step 6, Creative Mode.
+   `menus-design.md` §8, the `overview` scenario). Step 6 (Creative Mode) is in: a Creative
+   world from the title, everything unlocked and free, no guide or tower stage, its own save
+   slots, refused as a campaign load (`SandboxWorld.Creative`, `CostsWaived`, `menus-design.md`
+   §9, the `creative` scenario). **All six steps of Phase 7 are in.**
    **Phase 5 (Audio), on branch `phase5/audio` (from `phase4/art`), is done** (2026-11-01; the
    user approved the listening sheet). The spec is `docs/audio-design.md`; all four decisions are
    made (§9): CC0 recordings for the effects and ambience, synthesized music. Every slot plays at

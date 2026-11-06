@@ -36,7 +36,8 @@ Branch `phase7/menus` (from `phase6/feel`). Design written 2026-11-05. Roadmap: 
    autosave on quit and when a tower stage completes; Quit to title.
 5. **Factory overview. Done** (§8). A Management tab: the map, an hour of production graphed
    from the Ledger's counts, and every time a golem stopped.
-6. **Creative Mode:** a `GameMode` on `SandboxWorld`; the wallet, unlock checks and guide read it.
+6. **Creative Mode. Done** (§9). A Creative world on `SandboxWorld`: the wallets, the unlocks,
+   the guide and the tower read it; its saves are its own.
 
 ## 3. Done when
 
@@ -199,3 +200,30 @@ camera's `LookAt` and `SandboxWorld.FocusGolem` take the camera to a picked gole
 
 **Not yet:** the graph shows goods made, not goods spent; the map doesn't pan or zoom (the
 whole world fits); a stop's history isn't kept across a load.
+
+## 9. Step 6: Creative Mode (done 2026-11-05)
+
+**Where it lives.** The setup's existing Creative switch (`SandboxSetup.creativeMode`, which
+already made stalls infinite and truckloads free and instant) now makes a whole Creative world:
+`SandboxWorld.Creative`, set when the world is composed. The waiver is
+`StorageBufferRegistry.CostsWaived`, which every `PlayerWallet` reads. The launch carries it
+(`GameLaunch.Creative`), the saves record it (`SaveData.creative`), and Creative's slots are
+`user://saves/creative`. The `creative` scenario drives it.
+
+**Calls made while building it:**
+
+| # | Call | Why |
+|---|---|---|
+| 1 | The waiver lives on the buffer registry, and every wallet reads it: `TryCharge` takes nothing, `Refund` and `Uncharge` give nothing, `FirstMisfit` names nothing, and the new `PlayerWallet.CanAfford` says yes. Every "can I afford it" now asks the wallet (the station, the bench, building, the floor, the pack, the bays, a card). | Every cost already went through `PlayerWallet` (a settled rule), and wallets are built in ten places: one rule they all read can't miss a cost. |
+| 2 | Every card in the deck is claimed at the start, so the Workbench has every card and chassis. Every good, chassis and building the build menu places is marked seen, so Haul and the labels offer every good. | "Every definition unlocked" (decision 2), through the systems that already gate them rather than around them. |
+| 3 | The pack holds every good, full, and refills every second. | Creative's way to feed a line by hand. A demolition is never refused for a full pack, since a refund is nothing. |
+| 4 | No guide (and no playtest questions), and the Clock Tower's site is closed: no stage, so no stage autosave. The HUD's tower panel says "Creative world" and what that means. | Decision 2. The panel would otherwise only say the tower is closed. |
+| 5 | Golems run by the same rules: steam, crates, stalls. | A sandbox for building factories, not a different game. |
+| 6 | Creative's slots are their own (`user://saves/creative`, five and an Autosave). A save records its kind, and a load refuses a save of the other kind, untouched ("That save is a Creative world, and this is a campaign game"). A save of the other kind in a slot folder is greyed as unreadable. | "Creative saves cannot load as campaign" (§3). |
+| 7 | The title has Creative, between New game and Settings: a new Creative world. Continue resumes the newest save of either kind, and says "Creative, today at ..." when it is a Creative world. Load lists one kind at a time, with Campaign and Creative tabs (Left and Right switch), opening on the kind of the newest save. | Quitting and coming back must be one click either way; the lists never mix. |
+| 8 | The title's entries are 48 px tall with 8 px between, so six fit with the notice below them. | Measured in a frame. |
+| 9 | Inside Creative, Management's Save / Load tab reads "Saving a Creative world" and lists only Creative's slots. | The player always knows which kind they are saving. |
+
+**Not yet:** Creative boilers burn Coke like any other (the pack refills, so fuelling is free);
+collecting from a crate into the full pack is refused, and a crate's goods go with it when it
+is demolished.

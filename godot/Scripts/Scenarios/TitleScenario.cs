@@ -201,7 +201,7 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void PlanKeys()
         {
-            Expect(Key.Down, TitleChoice.Settings);
+            Expect(Key.Down, TitleChoice.Creative);
             Expect(Key.Up, TitleChoice.NewGame);
             Expect(Key.Up, TitleChoice.Quit);    // past the greyed Load and Continue
             Expect(Key.S, TitleChoice.NewGame);  // the move keys walk it too
