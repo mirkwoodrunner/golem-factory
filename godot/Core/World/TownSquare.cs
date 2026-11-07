@@ -74,6 +74,51 @@ namespace GolemFactory.World
             cell.x >= TowerOrigin.x && cell.x < TowerOrigin.x + TowerSize
             && cell.y >= TowerOrigin.y && cell.y < TowerOrigin.y + TowerSize;
 
+        // --- The City Office (docs/contracts-design.md §1) -------------------------------------
+
+        /// <summary>The office's footprint: three cells wide, two deep.</summary>
+        public const int OfficeWidth = 3;
+        public const int OfficeDepth = 2;
+
+        /// <summary>
+        /// The office's south-west cell: east of the tower, on the tower's rows, three cells clear
+        /// of it, so a delivery line fits between them and the square's east edge stays walkable.
+        /// </summary>
+        public static readonly Vector2Int OfficeOrigin = new Vector2Int(TowerOrigin.x + TowerSize + 3, TowerOrigin.y);
+
+        /// <summary>The front row's middle cell: where the office is drawn, and where E and I reach it.</summary>
+        public static Vector2Int OfficeCell => OfficeOrigin + new Vector2Int(1, 0);
+
+        public static IEnumerable<Vector2Int> OfficeCells()
+        {
+            for (int y = 0; y < OfficeDepth; y++)
+            {
+                for (int x = 0; x < OfficeWidth; x++)
+                {
+                    yield return OfficeOrigin + new Vector2Int(x, y);
+                }
+            }
+        }
+
+        public static bool IsOfficeCell(Vector2Int cell) =>
+            cell.x >= OfficeOrigin.x && cell.x < OfficeOrigin.x + OfficeWidth
+            && cell.y >= OfficeOrigin.y && cell.y < OfficeOrigin.y + OfficeDepth;
+
+        /// <summary>The ring around the office: its rope while contracts haven't opened, and where a golem stands to deliver.</summary>
+        public static IEnumerable<Vector2Int> OfficeRing()
+        {
+            for (int y = -1; y <= OfficeDepth; y++)
+            {
+                for (int x = -1; x <= OfficeWidth; x++)
+                {
+                    if (x == -1 || y == -1 || x == OfficeWidth || y == OfficeDepth)
+                    {
+                        yield return OfficeOrigin + new Vector2Int(x, y);
+                    }
+                }
+            }
+        }
+
         /// <summary>
         /// The ring of cells around the footprint: where the rope runs while the site is closed,
         /// and where a golem stands to deliver once it is open.

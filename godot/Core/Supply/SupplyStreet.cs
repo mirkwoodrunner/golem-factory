@@ -302,11 +302,18 @@ namespace GolemFactory.Supply
             return SupplyResult.Ok($"Added a {ItemTiers.DisplayName(itemType)} cart.");
         }
 
-        public SupplyResult UpgradeRate(CartSpot spot) => Upgrade(spot, rate: true);
+        public SupplyResult UpgradeRate(CartSpot spot) => Upgrade(spot, rate: true, given: false);
 
-        public SupplyResult UpgradeCapacity(CartSpot spot) => Upgrade(spot, rate: false);
+        public SupplyResult UpgradeCapacity(CartSpot spot) => Upgrade(spot, rate: false, given: false);
 
-        private SupplyResult Upgrade(CartSpot spot, bool rate)
+        /// <summary>
+        /// The next Rate or Capacity rung for nothing: a contract's reward (docs/contracts-design.md
+        /// §4). Nothing is recorded as paid, so a removal refunds nothing of it, and a given rung
+        /// can never be turned into goods.
+        /// </summary>
+        public SupplyResult GiveRung(CartSpot spot, bool rate) => Upgrade(spot, rate, given: true);
+
+        private SupplyResult Upgrade(CartSpot spot, bool rate, bool given)
         {
             SupplyCart cart = spot?.Cart;
             if (cart == null)
@@ -318,12 +325,15 @@ namespace GolemFactory.Supply
             {
                 return SupplyResult.Refused("At the top rung.");
             }
-            PlayerWallet wallet = _wallet();
-            if (!wallet.TryCharge(cost))
+            if (!given)
             {
-                return SupplyResult.Refused(ConstructionCostPolicy.FormatShortfall(wallet, cost));
+                PlayerWallet wallet = _wallet();
+                if (!wallet.TryCharge(cost))
+                {
+                    return SupplyResult.Refused(ConstructionCostPolicy.FormatShortfall(wallet, cost));
+                }
+                cart.RecordRung(cost);
             }
-            cart.RecordRung(cost);
             string good = ItemTiers.DisplayName(cart.ItemType);
             if (rate)
             {

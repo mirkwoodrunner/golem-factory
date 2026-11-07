@@ -184,6 +184,7 @@ flags and kit are as built (`TutorialGuide.cs`, `TutorialGuide.Kit.cs`, `crates-
 | `program-carrier` | 5 | kept | `Program.Matches` | newest Presser | `Workbench`; `Program` | `PerformPlan` |
 | `carrier-feed` | 5 | kept | `SmeltOut` crate ≥ 1 Coke, or the carrier cycled | `SmeltOut` | `Crate` | `Put` 10 Coke |
 | `work-carrier` | 5 | kept | a heap has voided Slag | spot `CarrierSpot` + facing | | `SetPlacement`, `Put` 8 Slag, 4 Coke |
+| `contract` | 5 | new (contracts-design §6) | a contract taken, or one done | the City Office | | walks there, takes it, walks back |
 | `copper` | 6 | "Buy a Copper Ore cart" | pack Copper Ore ≥ 1 | spot: the Copper Ore cart's (x 0) until one stands; then the cart | | add the cart, grant 1 |
 | `belts` | 6 | kept | the run laid, pointing `CopperFacing` | spots `BeltSpots` | `menuKey` Belt | `PlaceGranted` each |
 | `pipes4` | 6 | kept | steam reaches the extractor's and unloader's tiles | spots `Pipe4Spots` | `menuKey` Steam Pipe | `PlaceGranted` each |

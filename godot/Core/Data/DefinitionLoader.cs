@@ -30,6 +30,12 @@ namespace GolemFactory.Data
         /// <summary>Every sound slot (docs/audio-design.md §3), by name.</summary>
         public IReadOnlyDictionary<string, AudioSlotDefinition> AudioSlots => Table<AudioSlotDefinition>();
 
+        /// <summary>The City Office's contracts (docs/contracts-design.md). Empty in a set loaded without the file.</summary>
+        public IReadOnlyDictionary<string, GolemFactory.Contracts.ContractDefinition> Contracts =>
+            Tables.TryGetValue(typeof(GolemFactory.Contracts.ContractDefinition), out IDictionary table)
+                ? (Dictionary<string, GolemFactory.Contracts.ContractDefinition>)table
+                : new Dictionary<string, GolemFactory.Contracts.ContractDefinition>();
+
         /// <summary>The save system's name-to-definition resolver, over everything loaded.</summary>
         public DefinitionCatalog ToCatalog() =>
             new DefinitionCatalog(Chassis.Values, LogicCores.Values, Appendages.Values);
@@ -84,6 +90,7 @@ namespace GolemFactory.Data
             new KeyValuePair<string, Type>("assembly_line_cards.json", typeof(DraftableCardDefinition)),
             new KeyValuePair<string, Type>("assembly_line_decks.json", typeof(DraftableCardCatalog)),
             new KeyValuePair<string, Type>("audio.json", typeof(AudioSlotDefinition)),
+            new KeyValuePair<string, Type>("contracts.json", typeof(GolemFactory.Contracts.ContractDefinition)),
         };
 
         private const BindingFlags FieldFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;

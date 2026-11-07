@@ -38,6 +38,12 @@ namespace GolemFactory.UI
         void Open(CartSpot spot);
     }
 
+    /// <summary>The City Office's notice (docs/contracts-design.md §2), as [E] at the office needs it.</summary>
+    public interface IContractScreen : IScreen
+    {
+        void Open();
+    }
+
     /// <summary>The Workbench, as the interactor's [E] at a golem needs it.</summary>
     public interface IWorkbenchScreen : IScreen, IWorkbenchTarget
     {

@@ -347,7 +347,17 @@ namespace GolemFactory.Tests.Tutorial
             {
                 world.Advance(1f / 30f);
             }
-            Assert.AreEqual("copper", StepId(world), $"the heap burns Slag ({carrier.StallReason} {carrier.StallResourceId})");
+            Assert.AreEqual("contract", StepId(world), $"the heap burns Slag ({carrier.StallReason} {carrier.StallResourceId})");
+
+            // The City Office has opened with the first smelter (contracts-design §6): taking its
+            // contract is the step, not finishing it.
+            Assert.AreEqual(TownSquare.OfficeCell, world.Tutorial.TargetCell);
+            Assert.AreEqual(GolemFactory.Contracts.ContractState.Posted, world.Contracts.State, "a contract is up");
+            world.Advance(1f / 30f);
+            Assert.AreEqual("contract", StepId(world), "posted is not taken");
+            Assert.IsTrue(world.Contracts.Accept());
+            world.Advance(1f / 30f);
+            Assert.AreEqual("copper", StepId(world), "taken");
 
             // --- Chapter 6: belts, and a label ------------------------------------------------------
             // Add a Copper Ore cart on its marked spot, wait for its trickle, take one by hand.

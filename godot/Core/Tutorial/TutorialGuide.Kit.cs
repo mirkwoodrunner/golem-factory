@@ -336,6 +336,20 @@ namespace GolemFactory.Tutorial
             ["program-zeppelin"] = () => PerformPlan("program-zeppelin"),
             ["launch"] = () => Zeppelin?.SetPlacement(ZeppelinSpot, CopperFacing),
             ["mast-collect"] = () => Collect(MastBuilding),
+            // Walks to the office's door, takes the contract on its notice as a click there does, and
+            // walks back: chapter 10's first step is walking into the square.
+            ["contract"] = () =>
+            {
+                Compat.Vector3 back = _world.Interactor.Position;
+                _world.Interactor.Teleport(new Compat.Vector3(TownSquare.OfficeCell.x, TownSquare.OfficeCell.y - 1, 0f));
+                _world.Contracts.Settle();
+                Contracts.ContractRow take = _world.ContractPanel.Rows().FirstOrDefault(r => r.Action == Contracts.ContractAction.Accept);
+                if (take != null)
+                {
+                    _world.ContractPanel.Press(take);
+                }
+                _world.Interactor.Teleport(back);
+            },
             ["tower-visit"] = () =>
                 _world.Interactor.Teleport(new Compat.Vector3(TownSquare.TowerCentre.x, TownSquare.TowerCentre.y - 3, 0f)),
             ["frame-section"] = () => MakeGood("AssembleFrameSection", ItemType.FrameSection, 12),

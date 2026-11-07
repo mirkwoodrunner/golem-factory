@@ -316,7 +316,10 @@ namespace GolemFactory.Nodes
                 var mark = new ColorRect
                 {
                     Name = "Mark",
-                    Color = Ugui.ToGodot(GolemMoodPalette.Badge(entry.NoSteam ? GolemMood.Starved : GolemMood.Stalled)),
+                    // A contract's note is plain ink, never a stop's red or blue (contracts-design §5).
+                    Color = entry.IsNote
+                        ? ManagementScreen.DimInk
+                        : Ugui.ToGodot(GolemMoodPalette.Badge(entry.NoSteam ? GolemMood.Starved : GolemMood.Stalled)),
                     MouseFilter = Control.MouseFilterEnum.Ignore,
                 };
                 TopLeft(mark, 8f, 8f, 6f, 24f);
@@ -329,8 +332,11 @@ namespace GolemFactory.Nodes
                 TopLeft(when, 22f, 21f, 560f, 16f);
                 button.AddChild(when);
                 string id = entry.GolemId;
-                button.TooltipText = "Click to look at it";
-                button.Pressed += () => LookAt(id);
+                if (!entry.IsNote)
+                {
+                    button.TooltipText = "Click to look at it";
+                    button.Pressed += () => LookAt(id);
+                }
                 AlertRows.Add(button);
                 _alerts.AddChild(button);
             }
@@ -432,9 +438,8 @@ namespace GolemFactory.Nodes
             plate.TooltipText = MarketReadout.Tooltip(row);
         }
 
-        /// <summary>"2 min ago · out of steam · stopped for 0:42".</summary>
-        private static string WhenLine(AlertEntry entry, float now) =>
-            $"{AlertLog.When(entry, now)} · {(entry.NoSteam ? "out of steam" : "stuck")} · {AlertLog.For(entry, now)}";
+        /// <summary>"2 min ago · out of steam · stopped for 0:42", or a contract note's.</summary>
+        private static string WhenLine(AlertEntry entry, float now) => AlertLog.Line(entry, now);
 
         /// <summary>Takes the camera to a golem and closes the screen, so the player sees it.</summary>
         public void LookAt(string golemId)

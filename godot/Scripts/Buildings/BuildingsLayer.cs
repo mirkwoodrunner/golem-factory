@@ -42,6 +42,9 @@ namespace GolemFactory.Nodes
 
         public override void _EnterTree() => AddToGroup(GroupName);
 
+        /// <summary>The City Office's view, or null with no office.</summary>
+        public CityOfficeView Office { get; private set; }
+
         /// <summary>The short effects (dust, sparks, puffs, pops): one layer, above everything standing.</summary>
         public FxLayer Fx { get; private set; }
 
@@ -70,6 +73,12 @@ namespace GolemFactory.Nodes
             if (sandbox.ClockTowerBuilding != null)
             {
                 OnPlaced(sandbox.ClockTowerBuilding);
+            }
+            // The City Office beside it (docs/contracts-design.md §1), drawn by its own view.
+            if (sandbox.CityOfficeBuilding != null)
+            {
+                Office = new CityOfficeView(sandbox.Contracts, Fx);
+                AddChild(Office);
             }
             _started = true;
         }

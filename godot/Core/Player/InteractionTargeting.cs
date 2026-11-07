@@ -32,7 +32,11 @@ namespace GolemFactory.Player
 
         // An empty supply-cart spot (docs/supply-design.md §2): E opens the cart panel there.
         // Appended, last in the tie-break, so a cart's own marker (Harvest) always wins its tile.
-        Supply = 6
+        Supply = 6,
+
+        // The City Office in the town square (docs/contracts-design.md §1): E opens its notice.
+        // Appended, last: a golem delivering beside it is the one the player means on a tie.
+        Office = 7
     }
 
     /// <summary>
@@ -115,7 +119,8 @@ namespace GolemFactory.Player
             IReadOnlyList<Vector3> golems,
             IReadOnlyList<Vector3> boilers = null,
             IReadOnlyList<Vector3> depots = null,
-            IReadOnlyList<Vector3> spots = null)
+            IReadOnlyList<Vector3> spots = null,
+            IReadOnlyList<Vector3> offices = null)
         {
             InteractionPick best = InteractionPick.None;
             // Evaluated in enum order with a strict less-than, so an exact distance tie keeps
@@ -128,6 +133,7 @@ namespace GolemFactory.Player
             Consider(origin, boilers, InteractionKind.Refuel, ref best);
             Consider(origin, depots, InteractionKind.Sort, ref best);
             Consider(origin, spots, InteractionKind.Supply, ref best);
+            Consider(origin, offices, InteractionKind.Office, ref best);
             return best;
         }
 
@@ -189,6 +195,7 @@ namespace GolemFactory.Player
                 // fits into the pack. The label moved to the crate screen.
                 case InteractionKind.Sort: return "Collect from";
                 case InteractionKind.Supply: return "Add a cart at";
+                case InteractionKind.Office: return "Open";
                 default: return "";
             }
         }

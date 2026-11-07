@@ -7,6 +7,7 @@ using GolemFactory.Blueprints;
 using GolemFactory.Buildings;
 using GolemFactory.ClockTower;
 using GolemFactory.Compat;
+using GolemFactory.Contracts;
 using GolemFactory.Data;
 using GolemFactory.Diagnostics;
 using GolemFactory.Economy;
@@ -82,6 +83,13 @@ namespace GolemFactory.World
         /// <summary>The cart panel's rules (docs/supply-design.md §2).</summary>
         public SupplyPanel SupplyPanel => _supplyPanel ??= new SupplyPanel(Supply, () => Wallet, item => TechTree.Ledger.HasItem(item));
         private SupplyPanel _supplyPanel;
+
+        /// <summary>The City Office's notice: its lines and rows, and what a click does.</summary>
+        public ContractPanel ContractPanel => _contractPanel ??= new ContractPanel(Contracts);
+        private ContractPanel _contractPanel;
+
+        /// <summary>Hands [E] at the office its notice. Null keeps one already handed over.</summary>
+        public void ConfigureContractScreen(IContractScreen screen) => Interactor.ConfigureContractScreen(screen);
         /// <summary>The build menu: every placeable the player may place.</summary>
         public IReadOnlyList<PlaceableEntry> Placeables { get; private set; } = new List<PlaceableEntry>();
 
@@ -98,6 +106,18 @@ namespace GolemFactory.World
 
         /// <summary>The Clock Tower, standing on its site in the town square; null in a world without one.</summary>
         public PlaceableBuilding ClockTowerBuilding { get; private set; }
+
+        /// <summary>
+        /// The City Office's contracts (docs/contracts-design.md): one at a time, from
+        /// <c>data/contracts.json</c>, opened in chapter 5. None in Creative (invariant 12).
+        /// </summary>
+        public ContractBoard Contracts { get; private set; }
+
+        /// <summary>The office's crate: golems, belts and the Crate screen fill the contract through it.</summary>
+        public CityOfficeCrate OfficeCrate { get; private set; }
+
+        /// <summary>The office in the square, a fixture like the tower; null without one.</summary>
+        public PlaceableBuilding CityOfficeBuilding { get; private set; }
         public List<ResourceNodeMarker> Markers { get; } = new List<ResourceNodeMarker>();
         public HandCrankBench StarterBench { get; private set; }
         public GolemConstructionStation StarterStation { get; private set; }
@@ -241,6 +261,7 @@ namespace GolemFactory.World
 
             WireBuildMode();
             RaiseClockTower();
+            RaiseCityOffice();
 
             if (setup.starterStation != null)
             {
@@ -265,6 +286,7 @@ namespace GolemFactory.World
             WireProgression(setup.assemblyLine);
             WireAudio();
             EventBus.ClockTowerStageCompleted += OnTowerStageCompleted;
+            EventBus.Contract += OnContract;
             if (Creative)
             {
                 OpenEverything();
@@ -410,6 +432,7 @@ namespace GolemFactory.World
             Interactor.Detach();
             Audio.Detach();
             EventBus.ClockTowerStageCompleted -= OnTowerStageCompleted;
+            EventBus.Contract -= OnContract;
         }
 
         // --- Creative Mode (docs/menus-design.md §9) ------------------------------------------
@@ -475,6 +498,15 @@ namespace GolemFactory.World
         /// <summary>Whether <see cref="Dispose"/> has run.</summary>
         public bool Disposed { get; private set; }
 
+        // The overview's alerts log a contract posted and done (docs/contracts-design.md §5).
+        private void OnContract(ContractEvent e)
+        {
+            if (e.Kind != ContractEventKind.Accepted && Alerts != null)
+            {
+                Alerts.Log.Note(Alerts.Seconds, ContractText.Alert(e));
+            }
+        }
+
         private void OnTowerStageCompleted(ClockTowerStageCompletedEvent e)
         {
             if (!Restoring)
@@ -529,6 +561,7 @@ namespace GolemFactory.World
             Interactor.ConfigureAffordance(null);
             Interactor.ConfigureWorld(() => Markers, InteractableBuildings, () => _golems);
             Interactor.ConfigureSupply(() => Supply);
+            Interactor.ConfigureOffice(Contracts, OfficeCrate, TownSquare.OfficeCells());
             Interactor.ConfigureBuildMode(Build);
             Interactor.ConfigureGolemPlacement(Grid, new Vector2(1f, 1f));
             Interactor.ConfigureScreenCoordinator(Screens);
@@ -606,6 +639,7 @@ namespace GolemFactory.World
             SaveData data = SaveLoadService.CaptureState(Buffers, Patents, live, Build.Buildings);
             data.progress = CaptureProgress();
             data.supply = Supply.Capture();
+            data.contracts = Contracts?.Capture();
             data.meta = CaptureMeta(live.Count, data.buildings.Count, autosaveReason);
             data.creative = Creative;
             SaveFileIO.WriteToFile(data, path);
@@ -695,6 +729,8 @@ namespace GolemFactory.World
 
             RestoreProgress(data.progress);
             bool migrated = RestoreSupply(data.supply, data.market);
+            // After the Ledger and the tower: a save without contracts posts its first one if it can.
+            Contracts?.Restore(data.contracts);
 
             IGolemRespawner respawner = _stationTemplate != null ? new StationGolemRespawner(_stationTemplate) : null;
             SaveLoadService.RestoreReport report = SaveLoadService.RestoreState(
@@ -988,6 +1024,38 @@ namespace GolemFactory.World
             _authoredBuildings.Add(tower);
         }
 
+        /// <summary>
+        /// The City Office beside the tower (docs/contracts-design.md §1): a fixture, not in the
+        /// build menu and refused by the wrecking bar. Its crate's endpoint is on every footprint
+        /// cell, so a golem or a belt can deliver from any side; until a contract is taken, it takes
+        /// nothing. It is not an interactable building: E opens its notice and I its crate, through
+        /// the interactor's office (<see cref="PlayerInteractor.ConfigureOffice"/>), so E never
+        /// collects from it as from a depot.
+        /// </summary>
+        private void RaiseCityOffice()
+        {
+            ClockTowerSite site = ClockTower.Site;
+            Contracts = new ContractBoard(
+                Definitions?.Contracts.Values,
+                item => TechTree.Ledger.HasItem(item),
+                () => site.IsComplete ? site.StageCount : site.IsOpen ? site.StageIndex + 1 : 0,
+                () => Wallet,
+                () => Supply,
+                (int)System.Math.Round(Clock.TicksPerSecond),
+                enabled: !Creative);
+            Clock.Register(Contracts);
+            OfficeCrate = new CityOfficeCrate(Contracts);
+
+            var office = new PlaceableBuilding { name = "CityOffice" };
+            Build.RegisterFixture(office, TownSquare.OfficeCell, TownSquare.OfficeCells());
+            var endpoint = new StorageBufferEndpoint(Contracts.OfficeBuffer);
+            foreach (Vector2Int cell in TownSquare.OfficeCells())
+            {
+                Endpoints.Register(cell, endpoint);
+            }
+            CityOfficeBuilding = office;
+        }
+
         /// <summary>What opens the tower's site: the factory has built one of these.</summary>
         public const string ZeppelinChassis = Progression.TechTreeCatalog.ChassisZeppelin;
 
@@ -1252,6 +1320,9 @@ namespace GolemFactory.World
             Alerts?.Update(seconds);
             AssemblyLine?.Tick(seconds);
             TechTree.Update(_realSeconds);
+            // After the Ledger's poll, so a contract posts the frame its good is first seen; and
+            // every frame, so goods put in by hand count while the clock is paused.
+            Contracts?.Settle();
             Tutorial?.Update();
             Audio.Update(seconds, Clock, _golems, Steam.LastEvaluatedWorkingCount);
         }

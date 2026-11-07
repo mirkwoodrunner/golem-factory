@@ -76,7 +76,8 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   every priced thing formats its shortfall through `ConstructionCostPolicy.FormatShortfall`,
   passing the wallet so it reads the cap.
 - **Goods spent are what the factory uses up** (`ConsumptionTally`, fed by `EventBus.Consumed`):
-  a recipe's inputs, Coke burned, Slag voided, a recycler's intake, the tower's deliveries. A new
+  a recipe's inputs, Coke burned, Slag voided, a recycler's intake, the tower's and the City
+  Office's deliveries. A new
   place that destroys goods publishes it; moving goods, prices and the hand crank never do.
 - **The Ledger's live rate is fresh production** (`ProductionTally`, series `"Produced"`), not a
   buffer's level.

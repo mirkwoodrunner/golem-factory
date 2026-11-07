@@ -6900,5 +6900,43 @@
       "FxLayer"
     ],
     "source": "public/images/S7/"
+  },
+  "city_office.png": {
+    "set": "contracts",
+    "kind": "standing",
+    "size": [
+      192,
+      176
+    ],
+    "pivot": [
+      0.5,
+      0.017
+    ],
+    "footRow": 173,
+    "owner": "generated:generate_office_art.py",
+    "palette": "bible",
+    "readers": [
+      "CityOfficeView",
+      "ContractScreen"
+    ]
+  },
+  "city_office_closed.png": {
+    "set": "contracts",
+    "kind": "standing",
+    "size": [
+      192,
+      176
+    ],
+    "pivot": [
+      0.5,
+      0.017
+    ],
+    "footRow": 173,
+    "owner": "generated:generate_office_art.py",
+    "palette": "bible",
+    "readers": [
+      "CityOfficeView",
+      "ContractScreen"
+    ]
   }
 }

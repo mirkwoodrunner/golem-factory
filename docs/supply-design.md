@@ -116,8 +116,8 @@ Crate screen does its readout.
 
 A cart's prompt on the street reads "Coal cart · 84 of 200 · +60 a minute". It has no order key.
 
-**A contract can grant a rung** (`contracts-design.md`, to come): the cart's next Rate or Capacity
-rung for nothing. It never skips a rung, and a cart at the top gains nothing.
+**A contract can grant a rung** (`contracts-design.md` §4, §12; `SupplyStreet.GiveRung`): the cart's next Rate or Capacity
+rung for nothing, recorded as paid nothing. It never skips a rung, and a cart at the top gains nothing.
 
 ## 3. Rate, capacity and price
 

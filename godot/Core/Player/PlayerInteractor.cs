@@ -134,6 +134,14 @@ namespace GolemFactory.Player
         private ISupplyScreen _supplyScreen;
         private CartSpot[] _spots = new CartSpot[0];
         private Vector3[] _spotPositions = new Vector3[0];
+
+        // The City Office (docs/contracts-design.md §1): one interactable, reached from whichever
+        // footprint cell is nearest the player. Optional: with no board, nothing here.
+        private Contracts.ContractBoard _contracts;
+        private Contracts.CityOfficeCrate _officeCrate;
+        private Vector2Int[] _officeCells = new Vector2Int[0];
+        private IContractScreen _contractScreen;
+        private Vector3[] _officePositions = new Vector3[0];
         private HandCrankBench[] _benches = new HandCrankBench[0];
         private Vector2Int[] _boilerCells = new Vector2Int[0];
         private Vector2Int[] _depotCells = new Vector2Int[0];
@@ -260,6 +268,19 @@ namespace GolemFactory.Player
 
         /// <summary>The cart panel. Null keeps one already handed over.</summary>
         public void ConfigureSupplyScreen(ISupplyScreen screen) => _supplyScreen = screen ?? _supplyScreen;
+
+        /// <summary>The City Office: its board, its crate, and its footprint. A disabled board (Creative) is no office.</summary>
+        public void ConfigureOffice(Contracts.ContractBoard board, Contracts.CityOfficeCrate crate, IEnumerable<Vector2Int> cells)
+        {
+            bool live = board != null && board.Enabled;
+            _contracts = live ? board : null;
+            _officeCrate = live ? crate : null;
+            _officeCells = live && cells != null ? new List<Vector2Int>(cells).ToArray() : new Vector2Int[0];
+            _officePositions = new Vector3[_officeCells.Length > 0 ? 1 : 0];
+        }
+
+        /// <summary>The office's notice. Null keeps one already handed over.</summary>
+        public void ConfigureContractScreen(IContractScreen screen) => _contractScreen = screen ?? _contractScreen;
 
         /// <summary>What exists to interact with. Unity found all of this with FindObjectsByType.</summary>
         public void ConfigureWorld(
@@ -436,6 +457,28 @@ namespace GolemFactory.Player
             {
                 _spotPositions[i] = _spots[i] != null && _spots[i].IsEmpty ? SpotPosition(_spots[i]) : Parked;
             }
+            if (_officePositions.Length > 0)
+            {
+                _officePositions[0] = OfficePosition();
+            }
+        }
+
+        // The footprint cell nearest the player, so E reaches the office from any side.
+        private Vector3 OfficePosition()
+        {
+            Vector3 best = Parked;
+            float bestSqr = float.PositiveInfinity;
+            foreach (Vector2Int cell in _officeCells)
+            {
+                Vector3 at = CellCentre(cell);
+                float sqr = (at - Position).sqrMagnitude;
+                if (sqr < bestSqr)
+                {
+                    bestSqr = sqr;
+                    best = at;
+                }
+            }
+            return best;
         }
 
         private static Vector3 SpotPosition(CartSpot spot) => new Vector3(spot.Cell.x, spot.Cell.y, 0f);
@@ -832,7 +875,11 @@ namespace GolemFactory.Player
             }
             // [I] opens a crate whatever E would do there: put into an empty one, label a full one.
             // A cart's panel opens the same way.
-            if ((pick.Kind == InteractionKind.Sort || IsCartMarker(target)) && CurrentAffordance != InteractionAffordance.OutOfRange)
+            // The office's crate only once its contract is taken: before that it takes nothing.
+            bool officeTakes = pick.Kind == InteractionKind.Office && CurrentAffordance == InteractionAffordance.Ready
+                && _contracts?.State == Contracts.ContractState.Accepted;
+            if (((pick.Kind == InteractionKind.Sort || IsCartMarker(target)) && CurrentAffordance != InteractionAffordance.OutOfRange)
+                || officeTakes)
             {
                 detail = InteractionTargeting.AppendDetail(detail, "[" + InventoryKeyLabel + "] open");
             }
@@ -862,7 +909,7 @@ namespace GolemFactory.Player
             FillPositions();
             return InteractionTargeting.SelectNearest(
                 Position, _nodePositions, _stationPositions, _golemPositions, _boilerPositions, _depotPositions,
-                _spotPositions);
+                _spotPositions, _officePositions);
         }
 
         private object ResolveTarget(InteractionPick pick, out Vector3 position)
@@ -889,6 +936,9 @@ namespace GolemFactory.Player
                 case InteractionKind.Supply when i >= 0 && i < _spots.Length:
                     position = _spotPositions[i];
                     return _spots[i];
+                case InteractionKind.Office when i == 0 && _officeCrate != null:
+                    position = _officePositions[0];
+                    return _officeCrate;
                 default:
                     return null;
             }
@@ -918,6 +968,9 @@ namespace GolemFactory.Player
                 }
                 case InteractionKind.Refuel:
                     return BoilerRefuelPolicy.AmountToLoad(StockpileCoke, room: RoomIn(target)) <= 0;
+                case InteractionKind.Office:
+                    // Roped off until the first contract posts (contracts-design §1).
+                    return _contracts == null || !_contracts.IsOpen;
                 case InteractionKind.Sort:
                 {
                     List<string> held = ((ICrate)target).Buffer?.HeldGoods();
@@ -971,6 +1024,10 @@ namespace GolemFactory.Player
                 case InteractionKind.Supply:
                     targetName = "this spot";
                     detail = "roped off";
+                    break;
+                case InteractionKind.Office:
+                    targetName = Contracts.ContractText.OfficeName;
+                    detail = Contracts.ContractText.Prompt(_contracts);
                     break;
                 case InteractionKind.Refuel:
                 {
@@ -1054,6 +1111,8 @@ namespace GolemFactory.Player
                     return TryCollect(target as ICrate);
                 case InteractionKind.Supply:
                     return TryOpenSupply(target as CartSpot);
+                case InteractionKind.Office:
+                    return TryOpenOffice();
                 default:
                     LastStatusMessage = "Nothing in range to interact with.";
                     return false;
@@ -1116,6 +1175,26 @@ namespace GolemFactory.Player
             return false;
         }
 
+        /// <summary>
+        /// E at the City Office: its notice. Refused while it is roped off, saying when it opens.
+        /// </summary>
+        public bool TryOpenOffice()
+        {
+            if (_contracts == null || _contractScreen == null)
+            {
+                LastStatusMessage = "Nothing to open here.";
+                return false;
+            }
+            if (!_contracts.IsOpen)
+            {
+                LastStatusMessage = Contracts.ContractText.Closed(_contracts);
+                Popup(_officePositions.Length > 0 ? _officePositions[0] : Position, "Roped off", InteractionPopupKind.Refused);
+                return false;
+            }
+            _contractScreen.Open();
+            return true;
+        }
+
         /// <summary>Opens the cart panel on a spot, empty or with its cart.</summary>
         public bool TryOpenSupply(CartSpot spot)
         {
@@ -1156,12 +1235,21 @@ namespace GolemFactory.Player
             return nearest;
         }
 
-        /// <summary>The nearest crate (depot or mast) within <paramref name="range"/>, or null.</summary>
+        /// <summary>The nearest crate (depot, mast or the open City Office's) within <paramref name="range"/>, or null.</summary>
         private ICrate SelectNearestCrate(float range)
         {
             FillPositions();
             ICrate nearest = null;
             float bestSqr = range * range;
+            if (_officePositions.Length > 0 && _contracts != null && _contracts.IsOpen)
+            {
+                float sqr = (_officePositions[0] - Position).sqrMagnitude;
+                if (sqr <= bestSqr)
+                {
+                    bestSqr = sqr;
+                    nearest = _officeCrate;
+                }
+            }
             for (int i = 0; i < _depots.Length; i++)
             {
                 float sqr = (_depotPositions[i] - Position).sqrMagnitude;

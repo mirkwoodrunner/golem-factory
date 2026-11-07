@@ -1702,6 +1702,16 @@ namespace GolemFactory.Tutorial
                 spot: () => CarrierSpot,
                 spotFacing: () => CarrierFacing),
 
+            // The City Office opens with the first smelter (docs/contracts-design.md §6). Its check
+            // is a contract taken, not finished: contracts are optional (invariant 9).
+            new TutorialStep(
+                "contract", "Take a contract",
+                "The city has work for you. Walk down the street to the City Office in the town square, beside "
+                + "the Clock Tower's site, press [[interact]] and take the contract. Fill it however you like: by hand, "
+                + "from stock, or with a line. There is no deadline; finish quickly for a bonus.",
+                w => w.Contracts.State == Contracts.ContractState.Accepted || w.Contracts.Done.Count > 0,
+                w => TownSquare.OfficeCell),
+
             // --- Chapter 6: belts, and a label ---------------------------------------------------
             // The playtest script's belt and labelled-depot items (F, I2): a belt carries goods a
             // golem pushes onto it, a golem must take them off its end, and a label sorts.

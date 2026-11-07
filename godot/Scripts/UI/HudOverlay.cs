@@ -62,6 +62,12 @@ namespace GolemFactory.Nodes
         public const string CreativeHeadline = "Creative world";
         public const string CreativeNote = "Every card and building is yours, and nothing costs a thing. Your pack refills itself. No guide, no Clock Tower.";
 
+        private Control _contract;
+        private Label _contractText;
+
+        /// <summary>The HUD's contract line as drawn, empty while none is up; for scenarios.</summary>
+        public string ContractLine => _contract != null && _contract.Visible ? _contractText.Text : "";
+
         /// <summary>The tower panel's headline as drawn, for scenarios.</summary>
         public string TowerHeadline => _headline?.Text ?? "";
 
@@ -114,6 +120,14 @@ namespace GolemFactory.Nodes
             tower.AddChild(_headline);
             tower.AddChild(_demand);
             tower.AddChild(_starved);
+
+            // The contract under it (docs/contracts-design.md §5), shown while one is up. Plain
+            // ink: a contract is never an alarm.
+            _contract = Ugui.Place(Ugui.Rect("ContractLine", Plate), 1f, 1f, 1f, 1f, -12f, -164f, 320f, 26f, 1f, 1f);
+            _root.AddChild(_contract);
+            _contractText = Ugui.Place(Ugui.Text("ContractText", "", 13, ManagementScreen.ItemNameInk), 0f, 0f, 1f, 1f, 0f, 0f, -16f, -4f);
+            _contractText.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+            _contract.AddChild(_contractText);
 
             BuildControlBar();
         }
@@ -237,6 +251,10 @@ namespace GolemFactory.Nodes
             // Labelled: "0 Coke - 0/min - idle" alone did not say it was the boilers' fuel (G10).
             _gauge.Text = "Boiler fuel  " + SteamGaugeUtility.Format(reading);
             _gauge.AddThemeColorOverride("font_color", reading.IsLow ? Coral : reading.HasCountdown ? Amber : Dim);
+
+            string contract = GolemFactory.Contracts.ContractText.HudLine(_world.Sandbox.Contracts);
+            _contractText.Text = contract;
+            _contract.Visible = contract.Length > 0;
 
             if (_world.Sandbox.Creative)
             {

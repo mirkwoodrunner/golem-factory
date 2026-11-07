@@ -1,8 +1,8 @@
 # City contracts
 
-**Status: proposed 2026-11-06, not yet approved. Phase 8's second part** (`docs/roadmap.md`),
-after supply carts (`docs/supply-design.md`). Written before the code, like the other Phase 8
-docs, with its invariants first.
+**Status: built 2026-11-07. Phase 8's second part** (`docs/roadmap.md`), after supply carts
+(`docs/supply-design.md`). Written before the code, like the other Phase 8 docs, with its
+invariants first; §12 records what the build decided.
 
 ## What's already decided
 
@@ -196,8 +196,8 @@ condition holds, nothing delivered.
 names its requester; goods and cart rungs as rewards; any source counts, for contracts and the
 tower.
 
-**Still open:** the sequence's numbers (amounts, par times, rewards). Invented when the data is
-written; the playthrough judges them.
+**Written with the data (2026-11-07):** the sequence's numbers, eighteen contracts in
+`data/contracts.json` (§12). The playthrough judges them.
 
 ## 11. The Clock Tower: any source counts (amends `progression-design.md` §7)
 
@@ -234,3 +234,39 @@ fresh window, `RecordFreshProduction`, `ClockTowerProgress.EffectiveRate`, the r
 column and the holder's subscription are gone; `ClockTowerFreshProductionSignalTests` became
 `ClockTowerAnySourceTests` (the Assemble signal still pins the Ledger's "made"). The measured
 stage times are unchanged: their tests fed delivery and fresh production at the same rate.
+
+## 12. As built (2026-11-07)
+
+- **Core:** `Core/Contracts/` holds `ContractDefinition` (the data), `ContractBoard`
+  (`SandboxWorld.Contracts`, ticked on the clock), `CityOfficeCrate`, `ContractPanel` (the
+  notice's lines, rows and presses) and `ContractText` (every player line). Tests:
+  `Core.Tests/Contracts/ContractTests.cs`.
+- **The office** stands three cells wide and two deep, east of the tower on its rows, three
+  cells clear of it (`TownSquare.OfficeOrigin`), a fixture like the tower. Its art is
+  generated (`Tools/Art/generate_office_art.py`: `city_office.png`, and
+  `city_office_closed.png` with the cart spot's mahogany rope). It isn't an interactable
+  building: the interactor has its own kind (`InteractionKind.Office`), so E opens the notice
+  and I opens its crate, and E never collects from it as from a depot.
+- **The office's crate** is a `StorageBuffer` whose room is the contract's
+  (`StorageBuffer.RoomLimit`), published on all six footprint cells. Golems, belts and the
+  Crate screen all stop at what is still needed, with no special case; the board takes and
+  spends what lands every tick and every frame (a hand delivery counts while paused), and before
+  a save. Before the contract is taken it takes nothing.
+- **When contracts come:** each contract posts once the Ledger has seen every good in its
+  `postWhenSeen`, which always names every good it asks (a test pins it), and, when set, once
+  its tower stage has started (stage 1 is the rope coming down). The office opens with the
+  first: Slag seen, the first smelter's byproduct.
+- **Rewards:** a rung reward names its cart's good ("a Rate rung on a Coal cart"), and the
+  player picks which cart of that good. `SupplyStreet.GiveRung` records nothing as paid, so a
+  removal refunds nothing of it. §4's raw-cost test counts goods only: a given rung can never be
+  turned into goods.
+- **Saves:** the par is saved as ticks elapsed, not a start tick, since a load starts the
+  clock's count again.
+- **What the player sees:** the prompt follows the game's form, `City Office  -  City Watch ·
+  34 of 40 Iron Plate`; the HUD line sits under the tower panel; the alerts log posted and done
+  as notes in plain ink (`AlertLog.Note`), which no click follows. A completion rings the
+  claim chime; a good counted pops over the door and a contract done glints.
+- **The guide:** step `contract`, the last of chapter 5. The kit walks to the office, takes
+  the contract and walks back.
+- **The `contracts` scenario** covers §9 with real input; frames `contracts-roped`,
+  `contracts-office`, `contracts-notice`, `contracts-taken`, `contracts-reward`, `contracts-next`.

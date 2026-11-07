@@ -195,6 +195,17 @@ Current scenarios:
   buys a Rate rung. Saved to Slot 1, removed for half its price (the rope again), and loaded with
   two clicks: the cart is back at its rung, with one marker. Captures `supply-spot`,
   `supply-street`, `supply-cart`.
+- `contracts` (Sandbox): city contracts (`docs/contracts-design.md` §9) with real keys and
+  clicks. W walks up to the City Office: roped off, its prompt greyed, E refused with when it
+  opens. Slag seen, the first contract posts and the rope comes down; E opens the notice (no
+  id drawn) and a click takes it, the bonus counting down in plain words, the HUD and the
+  prompt showing it. I opens the office's crate: a click puts one Iron Plate in, a Shift-click
+  all the pack holds; a golem hauling from a depot fills the rest within par. The reward is in
+  the pack, the bonus rung on the shelf; a Coal cart added, a click on the notice gives it the
+  rung for nothing. The next contract posts and is taken, five delivered, saved to Slot 1,
+  five more, loaded with two clicks: five again. Captures `contracts-roped`,
+  `contracts-office`, `contracts-notice`, `contracts-taken`, `contracts-reward`,
+  `contracts-next`.
 
 **A scenario that reloads the scene** implements `IReloadingScenario` (or derives from
 `StepScenario`, which does): the runner of the new scene hands it back (`Resumed`), and it finds

@@ -266,6 +266,37 @@ namespace GolemFactory.Events
         }
     }
 
+    // What happened to a City Office contract (docs/contracts-design.md §5): the overview's alerts
+    // log it, and a completion rings. Never a failure: a contract has none (invariant 1).
+    public enum ContractEventKind
+    {
+        Posted = 0,
+        Accepted = 1,
+        Completed = 2,
+    }
+
+    public readonly struct ContractEvent
+    {
+        public readonly ContractEventKind Kind;
+
+        /// <summary>The contract's definition name, for tests and saves; never printed.</summary>
+        public readonly string ContractName;
+
+        /// <summary>Who asked, as the player reads it.</summary>
+        public readonly string Requester;
+
+        /// <summary>For a completion: whether it was within its par, so the bonus was earned.</summary>
+        public readonly bool BonusEarned;
+
+        public ContractEvent(ContractEventKind kind, string contractName, string requester, bool bonusEarned = false)
+        {
+            Kind = kind;
+            ContractName = contractName;
+            Requester = requester;
+            BonusEarned = bonusEarned;
+        }
+    }
+
     // A Clock Tower stage finished (docs/progression-design.md §7). Fired once per stage, on
     // the tick the stage's progress reaches 100 %.
     //
@@ -329,6 +360,7 @@ namespace GolemFactory.Events
         public static event Action<ItemAssembledEvent> ItemAssembled;
         public static event Action<ItemConsumedEvent> ItemConsumed;
         public static event Action<ClockTowerStageCompletedEvent> ClockTowerStageCompleted;
+        public static event Action<ContractEvent> Contract;
         public static event Action<WorldInteractablesChangedEvent> WorldInteractablesChanged;
 
         /// <summary>
@@ -339,7 +371,7 @@ namespace GolemFactory.Events
         public static int ListenerCount =>
             Count(TickAdvanced) + Count(ThresholdCrossed) + Count(GolemCompleted) + Count(GolemStalled)
             + Count(GolemResumed) + Count(GolemTriggerFired) + Count(ItemAssembled) + Count(ItemConsumed)
-            + Count(ClockTowerStageCompleted) + Count(WorldInteractablesChanged);
+            + Count(ClockTowerStageCompleted) + Count(WorldInteractablesChanged) + Count(Contract);
 
         private static int Count(Delegate handlers) => handlers?.GetInvocationList().Length ?? 0;
 
@@ -360,6 +392,7 @@ namespace GolemFactory.Events
             }
         }
         public static void Publish(ClockTowerStageCompletedEvent e) => ClockTowerStageCompleted?.Invoke(e);
+        public static void Publish(ContractEvent e) => Contract?.Invoke(e);
         public static void Publish(WorldInteractablesChangedEvent e) => WorldInteractablesChanged?.Invoke(e);
     }
 }

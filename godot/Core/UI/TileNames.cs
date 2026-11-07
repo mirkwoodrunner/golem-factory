@@ -62,6 +62,10 @@ namespace GolemFactory.UI
             {
                 return "Pneumatic Post";
             }
+            if (bufferId == Contracts.ContractBoard.OfficeBufferId)
+            {
+                return "the City Office";
+            }
             return bufferId != null ? "Crate " + Cell(cell) : endpoint.DisplayName;
         }
 

@@ -25,6 +25,12 @@ namespace GolemFactory.Overview
         public float EndedAt { get; internal set; } = float.NaN;
 
         public bool Open => float.IsNaN(EndedAt);
+
+        /// <summary>
+        /// A note, not a stop: a contract posted or done (docs/contracts-design.md §5). No golem,
+        /// never open, never red.
+        /// </summary>
+        public bool IsNote { get; internal set; }
     }
 
     /// <summary>
@@ -91,6 +97,32 @@ namespace GolemFactory.Overview
                 }
             }
         }
+
+        /// <summary>
+        /// Logs a note at the player's <paramref name="seconds"/>: a moment, not a stop, so it is
+        /// over as it is written and only ever ages out.
+        /// </summary>
+        public void Note(float seconds, string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+            _entries.Insert(0, new AlertEntry { Text = text, IsNote = true, StartedAt = seconds, EndedAt = seconds });
+            for (int i = _entries.Count - 1; i >= 0 && _entries.Count > MaxEntries; i--)
+            {
+                if (!_entries[i].Open)
+                {
+                    _entries.RemoveAt(i);
+                }
+            }
+        }
+
+        /// <summary>"2 min ago · out of steam · stopped for 0:42", or a note's "2 min ago · City Office".</summary>
+        public static string Line(AlertEntry entry, float now) =>
+            entry.IsNote
+                ? $"{When(entry, now)} · City Office"
+                : $"{When(entry, now)} · {(entry.NoSteam ? "out of steam" : "stuck")} · {For(entry, now)}";
 
         /// <summary>"2 min ago" for when it stopped.</summary>
         public static string When(AlertEntry entry, float now) => ProductionChart.Ago(now - entry.StartedAt);

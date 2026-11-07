@@ -53,6 +53,12 @@ namespace GolemFactory.Save
         public List<SupplyCartEntry> supply;
 
         /// <summary>
+        /// The City Office's contracts (docs/contracts-design.md §7). Null in a save from before
+        /// contracts: the sequence then starts at its first contract, nothing delivered.
+        /// </summary>
+        public ContractsEntry contracts;
+
+        /// <summary>
         /// What a save slot shows about this save (docs/menus-design.md §7): when it was written,
         /// where the guide was, how big the factory is. Null in a save from before slots; a slot
         /// then falls back to the file's own time. Nothing here is read back into the world.
@@ -64,6 +70,34 @@ namespace GolemFactory.Save
         /// Creative, which were all campaign games. A load refuses a save of the other kind.
         /// </summary>
         public bool creative;
+    }
+
+    /// <summary>
+    /// The contract board: the contracts done (by name, in order) and which earned their bonus,
+    /// the one on the notice and how far it has got, and the rewards waiting on the shelf. The
+    /// par is saved as ticks elapsed, since the clock's tick count starts again at a load.
+    /// </summary>
+    [Serializable]
+    public sealed class ContractsEntry
+    {
+        public List<string> done = new List<string>();
+        public List<string> bonusEarned = new List<string>();
+
+        /// <summary>The contract on the notice, or null while the office waits.</summary>
+        public string current;
+
+        /// <summary><c>Contracts.ContractState</c> by value: 0 waiting, 1 posted, 2 taken.</summary>
+        public int state;
+
+        public long elapsedTicks;
+        public List<string> deliveredItems = new List<string>();
+        public List<int> deliveredCounts = new List<int>();
+        public List<string> shelfItems = new List<string>();
+        public List<int> shelfCounts = new List<int>();
+        public List<string> shelfRungItems = new List<string>();
+
+        /// <summary><c>Contracts.ContractRungKind</c> by value: 1 Rate, 2 Capacity.</summary>
+        public List<int> shelfRungKinds = new List<int>();
     }
 
     /// <summary>A save's summary for its slot: display only, never restored.</summary>
