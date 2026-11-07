@@ -158,7 +158,7 @@ namespace GolemFactory.UI
             }
             string why = golem.StallReason == StallReason.BeltFull ? target + " is full"
                 : feeders != null && feeders.Count > 0 ? BringIt(feeders)
-                : facts.TruckloadOnTheWay ? "a truckload is on its way"
+                : facts.SourceRefills ? "its cart is refilling"
                 : source + " is empty";
             return head + " · " + why;
         }
@@ -245,7 +245,7 @@ namespace GolemFactory.UI
             switch (golem.StallReason)
             {
                 case StallReason.NodeEmpty:
-                    return $"Order a truckload: {KeyNames.Interact} at the stall.";
+                    return "Nothing refills it: stand it at a cart.";
                 case StallReason.BeltFull:
                     return $"Collect it with {KeyNames.Interact}, or stand a golem that hauls from it.";
                 case StallReason.BufferEmpty:

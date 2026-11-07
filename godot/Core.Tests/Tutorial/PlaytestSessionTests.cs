@@ -246,15 +246,17 @@ namespace GolemFactory.Tests.Tutorial
         [Test]
         public void ThePhaseThreeQuestions_AreAskedWhereTheFullPlaythroughSays()
         {
-            // testscript/full-playthrough.md, "The questions" (its `market` is `market-late`).
+            // testscript/full-playthrough.md, "The questions" (its market question is `carts-late`).
             var after = PlaytestSession.Questions.ToDictionary(q => q.Id, q => q.AfterStepId);
             Assert.AreEqual("copper-ingot", after["coal-share"]);
-            Assert.AreEqual("post", after["market-late"]);
+            Assert.AreEqual("post", after["carts-late"]);
             Assert.AreEqual("aether-cell", after["lens-glass"]);
             Assert.AreEqual("done", after["overclocker"]);
             Assert.AreEqual("done", after["stage-rate"]);
             Assert.AreEqual("done", after["whole-run"]);
-            Assert.AreEqual("program-coker", after["market"], "chapter 3's market question keeps its saved name");
+            Assert.AreEqual("program-coker", after["carts"], "chapter 3's market question, after the Coal cart's rung");
+            Assert.IsFalse(after.ContainsKey("market") || after.ContainsKey("market-late"),
+                "the truckload questions' ids aren't reused: a save that answered them must be asked these");
         }
 
         [Test]

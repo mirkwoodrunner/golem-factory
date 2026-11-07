@@ -31,11 +31,11 @@ namespace GolemFactory.Tests.EditMode
             { "frame-section", "MainspringOverclocker" },
         };
 
-        /// <summary>The truckloads a step has the player order, by step id.</summary>
-        private static readonly Dictionary<string, string> TruckloadOrdered = new Dictionary<string, string>
+        /// <summary>The carts and rungs a step has the player buy, by step id (supply-design §6).</summary>
+        private static readonly Dictionary<string, string> CartBought = new Dictionary<string, string>
         {
-            { "coal", "CoalNode" }, { "coal-order", "CoalNode" }, { "copper", "CopperOreNode" },
-            { "zinc-ingot", "ZincOreNode" }, { "aether-cell", "AetherNode" },
+            { "coal", "cart Coal" }, { "coal-order", "cart Coal rate 1" }, { "copper", "cart CopperOre" },
+            { "zinc-ingot", "cart ZincOre" }, { "aether-cell", "cart Aether" },
         };
 
         /// <summary>The Assembly Line tab's purchases a step makes, by step id.</summary>
@@ -65,9 +65,9 @@ namespace GolemFactory.Tests.EditMode
                 {
                     path.Add((s, "chassis " + chassis, list.Find("chassis " + chassis).Lines));
                 }
-                if (TruckloadOrdered.TryGetValue(step.Id, out string stall))
+                if (CartBought.TryGetValue(step.Id, out string cart))
                 {
-                    path.Add((s, "truckload " + stall, list.Find("truckload " + stall).Lines));
+                    path.Add((s, cart, list.Find(cart).Lines));
                 }
                 if (Purchased.TryGetValue(step.Id, out string bought))
                 {
@@ -117,7 +117,7 @@ namespace GolemFactory.Tests.EditMode
 
         /// <summary>
         /// Every price that opens in chapters 1-4, as tuning-data-spec §8 and §4.3 set them (the
-        /// Presser at its new price, the truckloads at their new sizes). Nothing there is raised
+        /// Presser at its new price, the carts at supply-design §3's). Nothing there is raised
         /// for the pack's rungs (invariant 2): a later raise must edit this table and say why.
         /// </summary>
         private static readonly Dictionary<string, string> ChaptersOneToFour = new Dictionary<string, string>
@@ -155,16 +155,16 @@ namespace GolemFactory.Tests.EditMode
             { "placeable ScrapRecyclerPrefab", "Scrap:20 IronPlate:10" },
             { "placeable SlagHeapPrefab", "Scrap:20 IronPlate:10" },
             { "placeable SteamPipePrefab", "IronPlate:1" },
-            // §4.3: bigger truckloads, the same price per unit.
-            { "truckload AetherNode", "Scrap:80" },
-            { "truckload CoalNode", "Scrap:30" },
-            { "truckload CoalNodeWest", "Scrap:30" },
-            { "truckload CopperOreNode", "Scrap:60" },
-            { "truckload CopperOreNodeEast", "Scrap:60" },
-            { "truckload ScrapNode", "" },
-            { "truckload ScrapNodeWest", "" },
-            { "truckload ZincOreNode", "Scrap:60" },
-            { "truckload ZincOreNodeEast", "Scrap:60" },
+            // docs/supply-design.md §3: the carts and rungs that open by chapter 4. Copper Ore's
+            // cart opens with its price's goods, before chapter 6 asks for it (user, 2026-11-06).
+            { "cart Coal", "Scrap:80" },
+            // The Coal rung chapter 3 teaches, lowered so chapter 3 fits its ceiling (§6).
+            { "cart Coal capacity 1", "IronPlate:5 Gear:2" },
+            { "cart Coal rate 1", "IronPlate:10 Gear:5" },
+            { "cart CopperOre", "IronPlate:60 Gear:20" },
+            { "cart Scrap", "Scrap:60" },
+            { "cart Scrap capacity 1", "IronPlate:20 Gear:5" },
+            { "cart Scrap rate 1", "IronPlate:40 Gear:10" },
         };
 
         private static string Text(IReadOnlyList<RecipeIngredient> price) =>

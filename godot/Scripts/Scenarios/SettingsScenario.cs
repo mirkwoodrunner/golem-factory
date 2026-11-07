@@ -191,8 +191,8 @@ namespace GolemFactory.Nodes.Scenarios
             Do("the guide's step 1 names the new key", () =>
                 _guide.BodyText.Contains("Press G to take Scrap; hold G to keep") ? null : $"guide reads '{_guide.BodyText}'");
 
-            SandboxSetup.NodeEntry scrap = _world.Setup.nodes.Single(n => n.id == "ScrapNode");
-            Do("walk up to the Scrap stall", () =>
+            Compat.Vector2Int scrap = _world.Setup.HomeSpot(ItemType.Scrap).Value;
+            Do("walk up to the Scrap cart", () =>
             {
                 _player.TeleportTo(new CoreVector3(scrap.x, scrap.y + 1f, 0f));
                 return null;
@@ -207,6 +207,8 @@ namespace GolemFactory.Nodes.Scenarios
             Do("press G (now Use)", () => { Tap(Key.G); return null; });
             Do("G harvested one", () =>
                 Pack(ItemType.Scrap) == _scrapBefore + 1 ? null : $"pack went {_scrapBefore} -> {Pack(ItemType.Scrap)}");
+            // Away from the cart: I there opens the cart's own panel, not the pack.
+            Do("step off the street", () => { _player.TeleportTo(new CoreVector3(0f, 0f, 0f)); return null; });
             Do("press I", () => { Tap(Key.I); return null; });
             Do("the Pack screen's hint names I", () =>
                 _pack.IsOpen && _pack.HintText.Contains("press I to fill") ? null : $"open {_pack.IsOpen}, hint '{_pack.HintText}'");

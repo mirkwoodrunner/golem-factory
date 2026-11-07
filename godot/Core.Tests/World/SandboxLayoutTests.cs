@@ -99,20 +99,20 @@ namespace GolemFactory.Tests.World
         }
 
         [Test]
-        public void NoPropBlocksAStallOrItsApproach()
+        public void NoPropBlocksACartSpotOrItsApproach()
         {
-            // The stalls stand on one street row; their approach tiles flank them. §3.2's
-            // extractor cap needs those open, and a barrel there would halve a stall silently.
+            // The carts stand on one street row; their approach tiles flank them. §3.2's
+            // extractor cap needs those open, and a barrel there would halve a cart silently.
             SandboxSetup setup = SandboxSetupTests.LoadReal();
             var props = new HashSet<(int, int)>(SandboxLayout.Props().Select(p => ((int)p.Anchor.x, (int)p.Anchor.y)));
-            foreach (SandboxSetup.NodeEntry node in setup.nodes)
+            foreach (SandboxSetup.SpotEntry spot in setup.supply.spots)
             {
                 for (int dx = -1; dx <= 1; dx++)
                 {
                     for (int dy = -1; dy <= 1; dy++)
                     {
-                        Assert.IsFalse(props.Contains((node.x + dx, node.y + dy)),
-                            $"a prop stands at or beside {node.id}'s stall");
+                        Assert.IsFalse(props.Contains((spot.x + dx, spot.y + dy)),
+                            $"a prop stands at or beside the spot at x {spot.x}");
                     }
                 }
             }

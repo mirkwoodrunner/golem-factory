@@ -13,7 +13,7 @@ namespace GolemFactory.Nodes.Scenarios
     /// The step-by-step guide's panel, against the real scene (G10). Core's TutorialGuideTests
     /// walk the steps themselves; this checks what the player sees:
     /// <list type="bullet">
-    ///   <item>The guide opens on step 1, and its arrow points off screen toward the Scrap stall,
+    ///   <item>The guide opens on step 1, and its arrow points off screen toward the Scrap cart,
     ///   from the screen's edge.</item>
     ///   <item>Gathering advances it and the progress line follows.</item>
     ///   <item>The Boiler step outlines the build menu's Boiler row.</item>
@@ -114,20 +114,20 @@ namespace GolemFactory.Nodes.Scenarios
                     ? null
                     : $"plate {_panel.Plate.Visible}, '{_panel.TitleText}', '{_panel.ProgressText}'");
             Do("capture the guide panel", () => { ScenarioCapture.Shot(_tree.Root, "screen-guide-panel"); return null; });
-            Do("its arrow points at the Scrap stall from the screen's edge", () =>
+            Do("its arrow points at the Scrap cart from the screen's edge", () =>
             {
                 if (!_panel.Arrow.Visible || !_panel.OffScreen)
                 {
                     return $"arrow visible {_panel.Arrow.Visible}, off screen {_panel.OffScreen}";
                 }
-                SandboxSetup.NodeEntry stall = _world.Setup.nodes.Single(n => n.id == "ScrapNode");
+                CoreVector2Int stall = _world.Setup.HomeSpot(ItemType.Scrap).Value;
                 Vector2 target = _tree.Root.GetCanvasTransform() * GridConversions.CellToWorld(new CoreVector2Int(stall.x, stall.y));
                 Vector2 centre = _tree.Root.GetVisibleRect().GetCenter();
                 Vector2 pointing = Vector2.Right.Rotated(_panel.Arrow.Rotation);
                 float aim = pointing.Dot((target - centre).Normalized());
                 if (aim < 0.95f)
                 {
-                    return $"arrow points {pointing}, the stall is toward {(target - centre).Normalized()}";
+                    return $"arrow points {pointing}, the cart is toward {(target - centre).Normalized()}";
                 }
                 Rect2 arrow = new Rect2(_panel.Arrow.Position, _panel.Arrow.Size);
                 if (!_tree.Root.GetVisibleRect().Encloses(arrow))
@@ -139,13 +139,13 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return $"the arrow sits on the build bar at {arrow}";
                 }
-                _log.Add("step 1 'Gather Scrap', arrow at the screen edge pointing at the Scrap stall");
+                _log.Add("step 1 'Gather Scrap', arrow at the screen edge pointing at the Scrap cart");
                 return null;
             });
 
             Do("gather Scrap", () => { Give(ItemType.Scrap, 20); return null; });
-            Do("the guide moves on to Coal", () =>
-                _panel.TitleText == "Buy Coal" && _panel.ProgressText == "Coal  0 / 5" ? null : $"'{_panel.TitleText}', '{_panel.ProgressText}'");
+            Do("the guide moves on to the Coal cart", () =>
+                _panel.TitleText == "Buy a Coal cart" && _panel.ProgressText == "Add the Coal cart" ? null : $"'{_panel.TitleText}', '{_panel.ProgressText}'");
             Do("make the Coal, Coke and Iron Plate", () =>
             {
                 Give(ItemType.Coal, 5);
@@ -168,8 +168,8 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
 
-            // Walk down to the market street: the Boiler step marks its tile beside the Scrap stall.
-            Do("walk to the Scrap stall", () =>
+            // Walk down to the market street: the Boiler step marks its tile beside the Scrap cart.
+            Do("walk to the Scrap cart", () =>
             {
                 var at = _world.Interactor.Position;
                 var goal = new Vector2(_world.Tutorial.GolemSpot.x + 1.5f, _world.Tutorial.GolemSpot.y + 2.5f);
@@ -198,7 +198,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "the arrow still points off screen";
                 }
-                _log.Add($"Boiler tile {spot} marked beside the Scrap stall, arrow over it");
+                _log.Add($"Boiler tile {spot} marked beside the Scrap cart, arrow over it");
                 return null;
             });
 

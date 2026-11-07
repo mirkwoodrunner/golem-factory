@@ -18,7 +18,7 @@ using GolemFactory.World;
 
 namespace GolemFactory.Tests.Supply
 {
-    /// <summary>docs/supply-design.md: the street's supply carts, step 1 (the eight new spots).</summary>
+    /// <summary>docs/supply-design.md: the street's supply carts (West and East are two of its far spots).</summary>
     public class SupplyStreetTests
     {
         private static readonly Vector2Int West = new Vector2Int(-20, -16);
@@ -54,7 +54,7 @@ namespace GolemFactory.Tests.Supply
 
         private SupplyCart AddCoal(Vector2Int cell)
         {
-            See(ItemType.Coal);
+            See(ItemType.Scrap); // a cart opens once its price's goods are seen
             CrateWorld.Give(_world, ItemType.Scrap, 80);
             Assert.IsTrue(Street.Add(Spot(cell), ItemType.Coal).Done);
             return Spot(cell).Cart;
@@ -72,15 +72,14 @@ namespace GolemFactory.Tests.Supply
         // --- The street as authored -------------------------------------------------------------
 
         [Test]
-        public void TheStreet_HasEightSpots_AtItsEnds_AndNineStallsUnmoved()
+        public void TheStreet_HasSeventeenSpots_AllRopedButTheScrapCart()
         {
-            CollectionAssert.AreEquivalent(
-                new[] { -32, -28, -24, -20, 20, 24, 28, 32 }, Street.Spots.Select(s => s.Cell.x));
-            Assert.IsTrue(Street.Spots.All(s => s.Cell.y == -16 && s.IsEmpty), "every spot roped off at the start");
+            CollectionAssert.AreEqual(Enumerable.Range(0, 17).Select(i => -32 + 4 * i), Street.Spots.Select(s => s.Cell.x));
+            Assert.IsTrue(Street.Spots.All(s => s.Cell.y == -16), "one row");
+            Assert.AreEqual(new[] { -8 }, Street.Spots.Where(s => !s.IsEmpty).Select(s => s.Cell.x).ToArray(),
+                "the starting Scrap cart, and every other spot roped off");
             Assert.IsTrue(Street.Spots.All(s => FloorLayout.IsInsideWorld(s.Cell)), "every spot is on the street");
-            Assert.AreEqual(9, _world.Markers.Count, "the nine stalls, and no cart yet");
-            Assert.IsTrue(Street.Spots.All(s => _world.Markers.All(m => (int)m.Position.x != s.Cell.x)),
-                "no spot sits on a stall");
+            Assert.AreEqual(1, _world.Markers.Count, "a marker for the one cart");
         }
 
         [Test]
@@ -108,13 +107,17 @@ namespace GolemFactory.Tests.Supply
             _world.TechTree.Ledger.Clear();
             Assert.IsEmpty(Street.Offers());
             Assert.AreEqual("Nothing to sell here yet.", _world.SupplyPanel.Status(Spot(West)));
-            See(ItemType.Coal);
+            See(ItemType.Scrap);
             See(ItemType.Scrap);
             CollectionAssert.AreEqual(new[] { ItemType.Scrap, ItemType.Coal }, Street.Offers().Select(l => l.ItemType));
 
+            // Copper Ore's cart is priced in Iron Plate and Gear: it opens once those are seen.
             SupplyResult unseen = Street.Add(Spot(West), ItemType.CopperOre);
             Assert.IsFalse(unseen.Done);
-            Assert.AreEqual("Requires: Copper Ore", unseen.Message);
+            Assert.AreEqual("Requires: Iron Plate", unseen.Message);
+            See(ItemType.IronPlate);
+            See(ItemType.Gear);
+            CollectionAssert.Contains(Street.Offers().Select(l => l.ItemType).ToList(), ItemType.CopperOre, "its price is seen");
             Assert.IsTrue(Spot(West).IsEmpty);
         }
 
@@ -137,7 +140,7 @@ namespace GolemFactory.Tests.Supply
         [Test]
         public void ARefusedAdd_TakesNothing_AndSaysWhatIsShort()
         {
-            See(ItemType.Coal);
+            See(ItemType.Scrap);
             Empty(ItemType.Scrap);
             CrateWorld.Give(_world, ItemType.Scrap, 50);
 
@@ -153,7 +156,7 @@ namespace GolemFactory.Tests.Supply
         public void ASpotWithABuildingOnIt_RefusesACart()
         {
             CrateWorld.PlaceDepot(_world, West);
-            See(ItemType.Coal);
+            See(ItemType.Scrap);
             CrateWorld.Give(_world, ItemType.Scrap, 80);
             int scrap = Pack(ItemType.Scrap);
 
@@ -225,7 +228,7 @@ namespace GolemFactory.Tests.Supply
             SupplyResult rate = Street.UpgradeRate(Spot(West));
             Assert.IsTrue(rate.Done, rate.Message);
             Assert.AreEqual("Coal cart: 60 a minute.", rate.Message);
-            Assert.AreEqual(plate - 40, Pack(ItemType.IronPlate));
+            Assert.AreEqual(plate - 10, Pack(ItemType.IronPlate), "the Coal ladder's rung 1");
             Assert.IsTrue(Street.UpgradeCapacity(Spot(West)).Done);
             Assert.AreEqual(200, cart.Capacity);
 
@@ -261,13 +264,13 @@ namespace GolemFactory.Tests.Supply
 
             Assert.IsTrue(result.Done, result.Message);
             Assert.AreEqual(scrap + 40, Pack(ItemType.Scrap), "half of 80");
-            Assert.AreEqual(plate + 20, Pack(ItemType.IronPlate), "half of 40");
-            Assert.AreEqual(gear + 5, Pack(ItemType.Gear), "half of 10");
+            Assert.AreEqual(plate + 5, Pack(ItemType.IronPlate), "half of 10");
+            Assert.AreEqual(gear + 2, Pack(ItemType.Gear), "half of 5, rounded down");
             Assert.AreEqual(coal + 60, Pack(ItemType.Coal), "the stock comes back too");
             Assert.IsTrue(Spot(West).IsEmpty);
             Assert.IsFalse(_world.Endpoints.TryGetEndpoint(West, out _));
             Assert.IsFalse(_world.Nodes.TryGetNode(Spot(West).NodeId, out _));
-            Assert.AreEqual(9, _world.Markers.Count);
+            Assert.AreEqual(1, _world.Markers.Count, "only the starting Scrap cart's");
         }
 
         [Test]
@@ -297,11 +300,11 @@ namespace GolemFactory.Tests.Supply
             SupplyCart cart = AddCoal(West);
             CrateWorld.Give(_world, ItemType.IronPlate, 60);
             CrateWorld.Give(_world, ItemType.Gear, 15);
-            Assert.IsTrue(Street.UpgradeRate(Spot(West)).Done, "40 Plate + 10 Gear");
-            Assert.IsTrue(Street.UpgradeCapacity(Spot(West)).Done, "20 Plate + 5 Gear");
+            Assert.IsTrue(Street.UpgradeRate(Spot(West)).Done, "10 Plate + 5 Gear");
+            Assert.IsTrue(Street.UpgradeCapacity(Spot(West)).Done, "5 Plate + 2 Gear");
             List<RecipeIngredient> half = SupplyStreet.HalfRefund(cart);
-            Assert.AreEqual(7, half.Single(h => h.itemType == ItemType.Gear).quantity, "15 Gear paid, 7 back");
-            Assert.AreEqual(30, half.Single(h => h.itemType == ItemType.IronPlate).quantity);
+            Assert.AreEqual(7, half.Single(h => h.itemType == ItemType.IronPlate).quantity, "15 Plate paid, 7 back");
+            Assert.AreEqual(3, half.Single(h => h.itemType == ItemType.Gear).quantity, "7 Gear paid, 3 back");
             Assert.AreEqual(40, half.Single(h => h.itemType == ItemType.Scrap).quantity);
         }
 
@@ -348,27 +351,27 @@ namespace GolemFactory.Tests.Supply
             // What a removal halves now: the Scrap cart's price and the rung, not the Coal's price.
             List<RecipeIngredient> half = SupplyStreet.HalfRefund(now);
             Assert.AreEqual(30, half.Single(h => h.itemType == ItemType.Scrap).quantity);
-            Assert.AreEqual(20, half.Single(h => h.itemType == ItemType.IronPlate).quantity);
+            Assert.AreEqual(5, half.Single(h => h.itemType == ItemType.IronPlate).quantity, "half the Coal rung's 10 Plate");
             Assert.AreNotSame(coal, now);
         }
 
         [Test]
         public void AKeptGood_KeepsItsLastCart()
         {
-            Street.PlaceStartingCart(East, ItemType.Scrap);
-            SupplyCart start = Spot(East).Cart;
+            // The world's own starting cart (§1), at the guide's Scrap spot.
+            var home = new Vector2Int(-8, -16);
+            SupplyCart start = Spot(home).Cart;
             See(ItemType.Scrap);
             Assert.AreEqual(start.Capacity, start.Stock, "a starting cart starts full");
-            See(ItemType.Coal);
 
-            Assert.AreEqual("The street needs one Scrap cart.", Street.Remove(Spot(East)).Message);
-            Assert.AreEqual("The street needs one Scrap cart.", Street.Change(Spot(East), ItemType.Coal).Message);
+            Assert.AreEqual("The street needs one Scrap cart.", Street.Remove(Spot(home)).Message);
+            Assert.AreEqual("The street needs one Scrap cart.", Street.Change(Spot(home), ItemType.Coal).Message);
 
             CrateWorld.Give(_world, ItemType.Scrap, 60);
             Assert.IsTrue(Street.Add(Spot(West), ItemType.Scrap).Done);
             Empty(ItemType.Scrap);
             start.Node.RestoreQuantity(0);
-            Assert.IsTrue(Street.Remove(Spot(East)).Done, "with a second Scrap cart, the first can go");
+            Assert.IsTrue(Street.Remove(Spot(home)).Done, "with a second Scrap cart, the first can go");
             Assert.AreEqual("The street needs one Scrap cart.", Street.Remove(Spot(West)).Message);
         }
 
@@ -407,8 +410,8 @@ namespace GolemFactory.Tests.Supply
             Assert.AreEqual(1, _world.Markers.Count(m => m.NodeId == Spot(West).NodeId), "one marker, not two");
 
             SaveData data = SaveFileIO.ReadFromFile(path);
-            Assert.AreEqual(1, data.supply.Count);
-            Assert.IsFalse(data.market.stallIds.Contains(Spot(West).NodeId), "a cart is never saved as a stall");
+            Assert.AreEqual(2, data.supply.Count, "the starting Scrap cart and the Coal cart");
+            Assert.IsNull(data.market, "carts are never saved as stalls");
         }
 
         [Test]
@@ -422,10 +425,13 @@ namespace GolemFactory.Tests.Supply
             data.supply = null;
             SaveFileIO.WriteToFile(data, path);
 
+            data.market = null; // and no stalls either: SupplyMigrationTests has those
+            SaveFileIO.WriteToFile(data, path);
+
             StringAssert.StartsWith("Loaded", _world.LoadFrom(path));
 
-            Assert.IsTrue(Street.Spots.All(s => s.IsEmpty));
-            Assert.AreEqual(9, _world.Markers.Count);
+            Assert.AreEqual(new[] { -8 }, Street.Spots.Where(s => !s.IsEmpty).Select(s => s.Cell.x).ToArray(), "the starting cart alone");
+            Assert.AreEqual(1, _world.Markers.Count);
         }
 
         // --- Creative ---------------------------------------------------------------------------
@@ -453,12 +459,35 @@ namespace GolemFactory.Tests.Supply
             }
         }
 
+        [Test]
+        public void Creative_CartsStayInfinite_AcrossALoad()
+        {
+            // A Creative cart saves no stock; a load must not make it a finite, empty one.
+            SandboxWorld creative = CreativeTests.Compose(creative: true);
+            try
+            {
+                Assert.IsTrue(creative.Supply.Add(creative.Supply.SpotAt(West), ItemType.Coal).Done);
+                string path = Path.Combine(_folder, "creative.json");
+                Directory.CreateDirectory(_folder);
+                creative.SaveTo(path);
+
+                StringAssert.StartsWith("Loaded", creative.LoadFrom(path));
+
+                Assert.IsTrue(creative.Supply.SpotAt(West).Cart.IsInfinite, "the Coal cart");
+                Assert.IsTrue(creative.Supply.SpotAt(new Vector2Int(-8, -16)).Cart.IsInfinite, "the starting Scrap cart");
+            }
+            finally
+            {
+                creative.Dispose();
+            }
+        }
+
         // --- The panel and the keys -----------------------------------------------------------
 
         [Test]
         public void ThePanel_ListsWhatASpotOffers_AndWhatACartCanDo()
         {
-            See(ItemType.Coal);
+            See(ItemType.Scrap);
             See(ItemType.Scrap);
             Empty(ItemType.Scrap);
             CrateWorld.Give(_world, ItemType.Scrap, 70);
@@ -486,7 +515,7 @@ namespace GolemFactory.Tests.Supply
         {
             AddCoal(West);
             _world.TechTree.Ledger.Clear();
-            See(ItemType.Coal);
+            See(ItemType.Scrap);
             SupplyRow rate = _world.SupplyPanel.Rows(Spot(West)).First(r => r.Action == SupplyAction.Rate);
             Assert.IsFalse(rate.Enabled);
             Assert.AreEqual("Requires: Iron Plate, Gear", rate.Price);

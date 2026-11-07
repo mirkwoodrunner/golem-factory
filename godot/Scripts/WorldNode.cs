@@ -36,7 +36,7 @@ namespace GolemFactory.Nodes
 
         /// <summary>
         /// Whether to compose the full Sandbox from <c>res://data/sandbox.json</c> and
-        /// <c>placeables.json</c>: stalls, market, buffer policy, bounds, starter bench and
+        /// <c>placeables.json</c>: the street's carts, buffer policy, bounds, starter bench and
         /// station, the build menu. On in Sandbox.tscn; off in test scenes (LoopSlice) that
         /// author their own world on bare belts and a clock.
         /// </summary>
@@ -67,7 +67,6 @@ namespace GolemFactory.Nodes
         /// <summary>The applied setup, or null when <see cref="ApplySandboxSetup"/> is off.</summary>
         public SandboxSetup Setup => Sandbox?.Setup;
 
-        public TruckloadMarket Market => Sandbox?.Market;
 
         /// <summary>The room's live extent (Floor Expansion grows it northward).</summary>
         public FloorBounds Bounds => Sandbox?.Bounds ?? new FloorBounds();

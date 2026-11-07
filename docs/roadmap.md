@@ -453,9 +453,14 @@ Factorio's breadth.
 0. **Supply carts** (`docs/supply-design.md`, approved 2026-11-06): the market street becomes
    carts the player adds, upgrades and removes on roped-off spots, each restocking at a rate.
    Truckloads and hand orders go. First, because contracts and endless play assume a factory that
-   runs without the player at the stalls. **Step 1 is in:** carts on eight new spots at the
-   street's ends (±20 to ±32), beside the nine stalls (`SupplyStreet`, the `supply` scenario).
-   Next: step 2, the nine stalls become spots and truckloads go.
+   runs without the player at the stalls. **Steps 1 and 2 are in:** seventeen spots on the
+   street, one starting Scrap cart, no truckloads (`SupplyStreet`, the `supply` scenario). The
+   guide buys the Coal cart in chapter 1 and its Rate rung in chapter 3; an old save's stalls
+   load as carts. A cart is offered once the Ledger has seen its price's goods (user's call). The
+   Coal Rate rung was lowered to 10 Iron Plate + 5 Gear so chapter 3 fits: floors 6:06 for
+   chapters 1–4 (chapter 3 2:06 of 2:20), 1:19:44 for the full run (chapter 8 28:27 of 30:00,
+   from 23:05). Holding E repeats a harvest again: at 60 fps it had taken two goods and stopped.
+   Next: step 3, the overview's market view and goods spent.
 1. **City contracts** (decision 12): requests that fill the gaps between tower stages, and give
    the Artificer's flexible half of the tabletop design a job. Open-ended, with a bonus for
    speed (decision 13). Proposed in `docs/contracts-design.md` (2026-11-06): a City Office in the

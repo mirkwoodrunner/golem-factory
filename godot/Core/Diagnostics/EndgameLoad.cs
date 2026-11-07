@@ -29,7 +29,7 @@ namespace GolemFactory.Diagnostics
     /// and the Core benchmark profile the same factory.
     ///
     /// <para>
-    /// <b>The layout.</b> The street: eight Scavengers extract from eight stalls (y −16) into
+    /// <b>The layout.</b> The street: eight Scavengers extract from eight carts (y −16) into
     /// crates in front (y −14), on one boiler. The workshop, y 5–19: nine rows of golems facing
     /// east, crate between each pair (x −11..9), so each golem's target crate is the next one's
     /// source: a chain, ordered so a golem's feeder can usually push the good it wants, as a
@@ -39,11 +39,11 @@ namespace GolemFactory.Diagnostics
     /// </para>
     ///
     /// <para>
-    /// <b>Not Creative Mode.</b> The spec asked for it so the stalls never empty, but Creative
+    /// <b>Not Creative Mode.</b> The spec asked for it so the carts never empty, but Creative
     /// Mode is chosen when the world is composed (<c>sandbox.json</c>), and the perf scenario runs
-    /// the real one. Creative Mode does nothing else (it leaves steam burn and crates alone:
-    /// <c>SandboxSetup.RegisterNodes</c> and the market are its only readers), so the load gives
-    /// each stall it uses a truckload of a million instead: the same effect.
+    /// the real one. Each cart is bought at its old stall's place (the starting Scrap cart is
+    /// already there) and given a million of its good instead: the same effect. A load never
+    /// clamps, so the cart simply holds more than its capacity and doesn't trickle.
     /// </para>
     /// </summary>
     public static class EndgameLoad
@@ -110,7 +110,7 @@ namespace GolemFactory.Diagnostics
             ["Z"] = new RoleDef { Role = Zeppelin, Chassis = Zep, Launch = true, Hauls = new[] { (ItemType.Coke, 4) } },
         };
 
-        /// <summary>The street's stalls, west to east, an extractor each.</summary>
+        /// <summary>The street's carts, west to east, an extractor each: the old stalls' places.</summary>
         public static readonly int[] StallColumns = { -16, -12, -8, -4, 0, 4, 8, 12 };
 
         public const int StallRow = -16;
@@ -168,9 +168,15 @@ namespace GolemFactory.Diagnostics
             }
             foreach (int x in StallColumns)
             {
-                ResourceNodeMarker stall = world.Markers.First(m => (int)Math.Round(m.Position.x) == x && (int)Math.Round(m.Position.y) == StallRow);
-                world.Nodes.TryGetNode(stall.NodeId, out ResourceNode node);
-                node?.Deliver(1000000);
+                Supply.CartSpot spot = world.Supply.SpotAt(new Vector2Int(x, StallRow));
+                Require(spot != null, $"no cart spot at x {x}");
+                if (spot.IsEmpty)
+                {
+                    string good = world.Setup.supply.legacyStalls.First(s => s.x == x && s.y == StallRow).itemType;
+                    Supply.SupplyResult added = world.GrantCart(spot.Cell, good);
+                    Require(added.Done, $"cart at x {x}: {added.Message}");
+                }
+                spot.Cart.Node.Deliver(1000000);
 
                 Place(world, load, "SteamPipePrefab", new Vector2Int(x + 1, golemRow), Facing.North);
                 Place(world, load, "SteamPipePrefab", new Vector2Int(x + 1, crateRow), Facing.North);

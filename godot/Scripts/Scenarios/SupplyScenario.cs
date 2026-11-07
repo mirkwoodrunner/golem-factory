@@ -11,8 +11,11 @@ using CoreVector2Int = GolemFactory.Compat.Vector2Int;
 namespace GolemFactory.Nodes.Scenarios
 {
     /// <summary>
-    /// The street's supply carts (docs/supply-design.md), step 1, with real keys and clicks:
+    /// The street's supply carts (docs/supply-design.md), with real keys and clicks:
     /// <list type="number">
+    ///   <item>The guide (§6): held E takes Scrap at the starting Scrap cart; the guide asks for a
+    ///   Coal cart and marks its spot; walking there with D, E and a click add it, and E takes 5
+    ///   Coal as it fills, which moves the guide on to Coke.</item>
     ///   <item>Walking with S and A to the spot at x = −20: the prompt offers to add a cart, and E
     ///   opens the cart panel on it, listing the carts the Ledger allows.</item>
     ///   <item>A click adds a Coal cart: the price leaves the pack, the rope becomes the Coal
@@ -26,6 +29,13 @@ namespace GolemFactory.Nodes.Scenarios
     public sealed class SupplyScenario : StepScenario
     {
         private static readonly CoreVector2Int SpotCell = new CoreVector2Int(-20, -16);
+
+        private CoreVector2Int ScrapHome => Sandbox.Setup.HomeSpot(ItemType.Scrap).Value;
+        private CoreVector2Int CoalHome => Sandbox.Setup.HomeSpot(ItemType.Coal).Value;
+        private GolemFactory.Tutorial.TutorialGuide Guide => Sandbox.Tutorial;
+        private CartLadder CoalLadder => Sandbox.Supply.TryGetLadder(ItemType.Coal, out CartLadder l) ? l : null;
+        private int Line(System.Collections.Generic.IEnumerable<GolemFactory.PunchCards.RecipeIngredient> price, string item) =>
+            price.Where(p => p.itemType == item).Sum(p => p.quantity);
 
         private WorldNode World => WorldNode.Find(Runner);
         private SandboxWorld Sandbox => World.Sandbox;
@@ -45,10 +55,9 @@ namespace GolemFactory.Nodes.Scenarios
             GameSettingsStore.ResetForScenario(Tree.Root);
             Do("no saves", () => { ScenarioSaves.Clear(); return null; });
             Wait(0.5);
+            PlanGuide();
             Do("goods for a cart and a rung", () =>
             {
-                Sandbox.TechTree.Ledger.RecordItem(ItemType.Coal);
-                Sandbox.TechTree.Ledger.RecordItem(ItemType.Scrap);
                 foreach ((string item, int n) in new[] { (ItemType.Scrap, 100), (ItemType.IronPlate, 40), (ItemType.Gear, 10) })
                 {
                     Sandbox.Buffers.Deposit(Sandbox.StockpileBufferId, item, n);
@@ -67,6 +76,107 @@ namespace GolemFactory.Nodes.Scenarios
         }
 
         protected override void Cleanup() => ScenarioSaves.Clear();
+
+        // --- 0. The guide's Coal cart --------------------------------------------------------------
+
+        private void PlanGuide()
+        {
+            // Playtest mode asks its first question before anything else; a card up is modal.
+            Do("answer the playtest's first question", () =>
+            {
+                var playtest = Tree.Root.FindChild("Playtest", true, false) as PlaytestNode;
+                if (playtest?.Card.Visible == true)
+                {
+                    Click(playtest.Options.GetChildren().OfType<Button>().First());
+                }
+                return null;
+            });
+            Do("the card is down", () =>
+                (Tree.Root.FindChild("Playtest", true, false) as PlaytestNode)?.Card.Visible == true ? "the card is still up" : null);
+            Do("the guide asks for Scrap, at the starting Scrap cart", () =>
+            {
+                Sandbox.Clock.Play();
+                if (Guide?.Current?.Id != "scrap" || Guide.TargetCell != ScrapHome)
+                {
+                    return $"guide on '{Guide?.Current?.Id}', pointing at {Guide?.TargetCell}";
+                }
+                SupplyCart scrap = Sandbox.Supply.SpotAt(ScrapHome).Cart;
+                return scrap?.ItemType == ItemType.Scrap && scrap.Stock == scrap.Capacity ? null : "no full Scrap cart at the start";
+            });
+            Do("S down to the street", () => { Press(Key.S, true); return null; });
+            Until("on the street", 10, () => Hands.Position.y <= ScrapHome.y + 1.2f ? null : $"at y {Hands.Position.y:0.0}");
+            Do("A to the Scrap cart", () => { Press(Key.S, false); Press(Key.A, true); return null; });
+            Until("at the Scrap cart", 10, () => Hands.Position.x <= ScrapHome.x + 0.3f ? null : $"at x {Hands.Position.x:0.0}");
+            Do("stop, and hold E", () =>
+            {
+                Press(Key.A, false);
+                if (Hands.CurrentPick.Kind != InteractionKind.Harvest || !Hands.CurrentPrompt.Contains("Scrap cart"))
+                {
+                    return $"pick {Hands.CurrentPick.Kind}, prompt '{Hands.CurrentPrompt}'";
+                }
+                Press(Key.E, true);
+                return null;
+            });
+            Until("the guide moves on to the Coal cart", 20, () =>
+                Guide.Current?.Id == "coal" ? null : $"'{Guide.Current?.Id}', Scrap {Pack(ItemType.Scrap)}, prompt '{Hands.CurrentPrompt}'");
+            Do("let go: the step marks the Coal spot and names the cart's price", () =>
+            {
+                Press(Key.E, false);
+                int price = Line(CoalLadder.AddPrice, ItemType.Scrap);
+                if (Guide.Current.Spot != CoalHome || !Guide.Current.Body.Contains($"add a Coal cart ({price} Scrap)"))
+                {
+                    return $"marks {Guide.Current.Spot}, reads '{Guide.Current.Body}'";
+                }
+                // The Scrap the cart's price wants beyond the step's 20, as a player would hold E for it.
+                Sandbox.Buffers.Deposit(Sandbox.StockpileBufferId, ItemType.Scrap, price);
+                return null;
+            });
+            Wait(0.5); // the Ledger catches up with the Scrap
+            Do("D to the marked spot", () => { Press(Key.D, true); return null; });
+            Until("at the Coal spot", 10, () => Hands.Position.x >= CoalHome.x - 0.3f ? null : $"at x {Hands.Position.x:0.0}");
+            Do("stop: the guide points here", () =>
+            {
+                Press(Key.D, false);
+                ScenarioCapture.Shot(Runner.GetViewport(), "supply-guide");
+                return Guide.TargetCell == CoalHome && Hands.CurrentPick.Kind == InteractionKind.Supply
+                    ? null : $"guide at {Guide.TargetCell}, pick {Hands.CurrentPick.Kind}";
+            });
+            Do("E opens the panel", () => { Tap(Key.E); return null; });
+            Do("click Coal cart", () =>
+            {
+                if (!Panel.IsOpen || Panel.Spot?.Cell != CoalHome)
+                {
+                    return $"panel open {Panel.IsOpen} on {Panel.Spot?.Cell}";
+                }
+                Click(Panel.Button(SupplyAction.Add, ItemType.Coal));
+                return null;
+            });
+            Do("a Coal cart on the marked spot; Escape", () =>
+            {
+                if (Sandbox.Supply.SpotAt(CoalHome).Cart?.ItemType != ItemType.Coal)
+                {
+                    return "no Coal cart: " + Panel.Status;
+                }
+                Tap(Key.Escape);
+                return null;
+            });
+            Do("the mark is gone", () => Guide.Current.Id == "coal" && Guide.Current.Spot == null && Guide.Current.ProgressText(Sandbox) == "Coal  0 / 5"
+                ? null : $"'{Guide.Current.Id}', marks {Guide.Current.Spot}, '{Guide.Current.ProgressText(Sandbox)}'");
+            for (int i = 0; i < 5; i++)
+            {
+                Until($"Coal {i + 1} has trickled in", 10, () => Sandbox.Supply.SpotAt(CoalHome).Cart.Stock >= 1 ? null : "the cart is empty");
+                Do($"E takes Coal {i + 1}", () => { Tap(Key.E); return null; });
+            }
+            Do("five Coal: the guide moves on to Coke", () =>
+            {
+                if (Guide.Current?.Id != "coke")
+                {
+                    return $"'{Guide.Current?.Id}', Coal {Pack(ItemType.Coal)}";
+                }
+                Log($"the guide's Coal cart: held E took Scrap at the starting cart, the mark led to {CoalHome}, E and a click added the cart, E took 5 Coal as it filled");
+                return null;
+            });
+        }
 
         // --- 1. To the spot ---------------------------------------------------------------------
 
@@ -99,10 +209,13 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return $"open {Panel.IsOpen}, '{Panel.Title}'";
                 }
+                // Every cart whose price the Ledger has seen (the pack holds the Rate rung's Plate
+                // and Gear, so Copper Ore's cart is offered too), in the street's order.
                 string[] offered = Panel.Rows.Select(r => r.row.Label).ToArray();
-                if (!offered.SequenceEqual(new[] { "Scrap cart", "Coal cart" }))
+                string[] expected = Sandbox.Supply.Offers().Select(l => SupplyText.CartName(l.ItemType)).ToArray();
+                if (!offered.SequenceEqual(expected) || !offered.Contains("Coal cart"))
                 {
-                    return "offers " + string.Join(", ", offered);
+                    return "offers " + string.Join(", ", offered) + "; the street offers " + string.Join(", ", expected);
                 }
                 ScenarioCapture.Shot(Runner.GetViewport(), "supply-spot");
                 return null;
@@ -119,7 +232,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "no Coal cart: " + Panel.Status;
                 }
-                if (Pack(ItemType.Scrap) != _scrap - 80)
+                if (Pack(ItemType.Scrap) != _scrap - Line(CoalLadder.AddPrice, ItemType.Scrap))
                 {
                     return $"Scrap {_scrap} -> {Pack(ItemType.Scrap)}";
                 }
@@ -164,7 +277,7 @@ namespace GolemFactory.Nodes.Scenarios
             });
             Do("60 a minute, for its price", () =>
             {
-                if (Spot.Cart.RatePerMinute != 60 || Pack(ItemType.IronPlate) != _plate - 40)
+                if (Spot.Cart.RatePerMinute != 60 || Pack(ItemType.IronPlate) != _plate - Line(CoalLadder.RateCosts[0], ItemType.IronPlate))
                 {
                     return $"rate {Spot.Cart.RatePerMinute}, Plate {_plate} -> {Pack(ItemType.IronPlate)}: {Panel.Status}";
                 }
@@ -205,7 +318,7 @@ namespace GolemFactory.Nodes.Scenarios
             });
             Do("half back, and the rope again", () =>
             {
-                if (!Spot.IsEmpty || Pack(ItemType.Scrap) != _scrap + 40 || Pack(ItemType.Coal) <= _coal)
+                if (!Spot.IsEmpty || Pack(ItemType.Scrap) != _scrap + Line(CoalLadder.AddPrice, ItemType.Scrap) / 2 || Pack(ItemType.Coal) <= _coal)
                 {
                     return $"empty {Spot.IsEmpty}, Scrap {_scrap} -> {Pack(ItemType.Scrap)}, Coal {_coal} -> {Pack(ItemType.Coal)}: {Panel.Status}";
                 }

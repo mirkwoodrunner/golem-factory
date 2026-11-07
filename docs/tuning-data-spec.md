@@ -128,6 +128,11 @@ playthrough's `coal-share` question, not a reason to raise the burn now.
 
 ## 4. The market: prices and truckloads
 
+> **Replaced by `docs/supply-design.md` §3 (Phase 8):** truckloads are gone, and so is §17 Q3's
+> "standing order" remedy. Raw goods come from supply carts with rates, capacities and rung
+> prices; `StreetCoverageTests` pins that the street covers stages 1 and 4. This section is the
+> truckload market's record.
+
 ### 4.1 The finding
 
 A stall holds what its truckloads brought, and every truckload is one [E] at the stall, one in

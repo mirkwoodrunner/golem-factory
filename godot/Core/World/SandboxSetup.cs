@@ -23,23 +23,6 @@ namespace GolemFactory.World
     /// </summary>
     public sealed class SandboxSetup
     {
-        public sealed class NodeEntry
-        {
-            public string id;
-            public string itemType;
-            public string sprite;
-            public int x;
-            public int y;
-        }
-
-        public sealed class MarketEntry
-        {
-            public string nodeId;
-            public List<RecipeIngredient> price = new List<RecipeIngredient>();
-            public int truckloadSize;
-            public int deliveryTicks;
-        }
-
         /// <summary>
         /// The supply street (docs/supply-design.md): the spots carts can stand on, the carts the
         /// world starts with, and each good's ladder of prices, rates and capacities.
@@ -49,6 +32,18 @@ namespace GolemFactory.World
             public List<SpotEntry> spots = new List<SpotEntry>();
             public List<StartingCart> startingCarts = new List<StartingCart>();
             public List<CartLadderEntry> carts = new List<CartLadderEntry>();
+
+            /// <summary>The nine stalls before carts (§5): a save that names one gets a cart there.</summary>
+            public List<LegacyStall> legacyStalls = new List<LegacyStall>();
+        }
+
+        /// <summary>A stall from before carts: its id in old saves, its place and its good.</summary>
+        public sealed class LegacyStall
+        {
+            public string id;
+            public int x;
+            public int y;
+            public string itemType;
         }
 
         public sealed class SpotEntry
@@ -160,14 +155,10 @@ namespace GolemFactory.World
         /// every step, and keeps a report. Needs <see cref="tutorial"/>.
         /// </summary>
         public bool playtest;
-        public string freeStallSeedNode;
-        public int freeStallSeedQuantity;
         public Point playerStart = new Point();
         public Expansion floorExpansion;
         public WorkbenchRoster workbench;
         public AssemblyLineSetup assemblyLine;
-        public List<NodeEntry> nodes = new List<NodeEntry>();
-        public List<MarketEntry> market = new List<MarketEntry>();
         public SupplySetup supply;
         public Placement starterBench;
         public Placement starterStation;
@@ -179,29 +170,6 @@ namespace GolemFactory.World
         };
 
         public static SandboxSetup Parse(string json) => JsonSerializer.Deserialize<SandboxSetup>(json, Options);
-
-        public GameMode Mode => new GameMode(creativeMode);
-
-        /// <summary>
-        /// Registers every starting node. In Creative Mode a stall never runs dry; otherwise
-        /// every stall starts EMPTY and is stocked by ordering truckloads -- except the free scrap
-        /// stall, seeded once so the player's first minutes are not spent waiting on a cart they
-        /// cannot yet afford (SandboxBootstrap.RegisterStartingNodes, unchanged).
-        /// </summary>
-        public void RegisterNodes(ResourceNodeRegistry registry)
-        {
-            int startingStock = creativeMode ? ResourceNode.Infinite : 0;
-            foreach (NodeEntry node in nodes)
-            {
-                registry.Register(new ResourceNode(node.id, node.itemType, startingStock));
-            }
-
-            if (!creativeMode && !string.IsNullOrEmpty(freeStallSeedNode)
-                && registry.TryGetNode(freeStallSeedNode, out ResourceNode seeded))
-            {
-                seeded.Deliver(freeStallSeedQuantity);
-            }
-        }
 
         /// <summary>
         /// Crates are the default, capped per type; the pack and the Post store are overrides,
@@ -217,17 +185,6 @@ namespace GolemFactory.World
                 buffers.SetCapacity(stockpileBufferId, packCapacityPerType);
             }
             buffers.SetCapacity(SandboxWorld.PostBufferId, postCapacityPerType);
-        }
-
-        /// <summary>The truckload market with every stall's offer -- ManagerHolders' TruckloadMarketHolder.</summary>
-        public TruckloadMarket BuildMarket(ResourceNodeRegistry nodeRegistry)
-        {
-            var built = new TruckloadMarket(nodeRegistry, Mode);
-            foreach (MarketEntry entry in market)
-            {
-                built.AddOffer(new MarketOffer(entry.nodeId, entry.price, entry.truckloadSize, entry.deliveryTicks));
-            }
-            return built;
         }
 
         /// <summary>The supply street with its spots, ladders and starting carts.</summary>
@@ -264,6 +221,20 @@ namespace GolemFactory.World
             {
                 street.PlaceStartingCart(new Vector2Int(cart.x, cart.y), cart.itemType);
             }
+        }
+
+        /// <summary>Where a good's first cart goes (§6): the starting cart's spot for a starting
+        /// good, else the old stall of that good nearest the centre. The guide marks it.</summary>
+        public Vector2Int? HomeSpot(string itemType)
+        {
+            StartingCart start = supply?.startingCarts?.FirstOrDefault(c => c.itemType == itemType);
+            if (start != null)
+            {
+                return new Vector2Int(start.x, start.y);
+            }
+            LegacyStall stall = supply?.legacyStalls?.Where(s => s.itemType == itemType)
+                .OrderBy(s => Math.Abs(s.x)).ThenBy(s => s.x).FirstOrDefault();
+            return stall == null ? (Vector2Int?)null : new Vector2Int(stall.x, stall.y);
         }
 
         public static Vector2Int CellOf(Placement placement) => new Vector2Int(placement.x, placement.y);

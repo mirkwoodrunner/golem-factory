@@ -110,13 +110,6 @@ namespace GolemFactory.Player
         private GridMap _gridMap;
         private GridCoordinateConverter _converter = new GridCoordinateConverter(new Vector2(1f, 1f));
 
-        // The market (progression-design §13.2). Optional: with no market wired, a stall is
-        // harvested and never ordered from.
-        private TruckloadMarket _market;
-        private Func<long> _currentTick = () => 0;
-        private StorageBufferRegistry _marketWallet;
-        private string _marketWalletBufferId = "FactoryStockpile";
-
         // Where things stand on screen, when the scene knows better than the grid. Unity read
         // every interactable's transform.position, which is NOT always its cell -- a carried
         // golem rides with the player -- so the scene can answer for any object; null means
@@ -287,18 +280,6 @@ namespace GolemFactory.Player
         /// </summary>
         public void ConfigurePositions(Func<object, Vector3?> positionOf) => _positionOf = positionOf;
 
-        public void ConfigureMarket(
-            TruckloadMarket market, Func<long> currentTick, StorageBufferRegistry wallet, string walletBufferId)
-        {
-            _market = market;
-            _currentTick = currentTick ?? (() => 0);
-            _marketWallet = wallet;
-            if (!string.IsNullOrEmpty(walletBufferId))
-            {
-                _marketWalletBufferId = walletBufferId;
-            }
-        }
-
         /// <summary>
         /// The build mode this interactor defers the shared R key to. Optional: with none
         /// wired, R always reaches a bench or a golem.
@@ -467,67 +448,6 @@ namespace GolemFactory.Player
                 _golemPositions[i] = golem != null && !golem.IsRemoved ? PositionOf(golem) : Parked;
             }
         }
-
-        // --- The market ----------------------------------------------------------------------------
-
-        /// <summary>
-        /// Orders one truckload from the stall a marker trades for. Reached only when the stall
-        /// is EMPTY, which makes harvest and order share one key without ever being ambiguous: a
-        /// stall with stock is something you take from, a stall without is something you buy from.
-        /// </summary>
-        public bool TryOrderTruckload(ResourceNodeMarker marker)
-        {
-            if (marker == null || _market == null)
-            {
-                LastStatusMessage = "Nothing to order here.";
-                return false;
-            }
-
-            if (!_market.TryGetOffer(marker.NodeId, out MarketOffer offer))
-            {
-                LastStatusMessage = "This stall is not trading.";
-                return false;
-            }
-
-            MarketOrderResult result = _market.TryOrder(
-                marker.NodeId, _marketWallet, _marketWalletBufferId, _currentTick(), _postBufferId);
-
-            switch (result)
-            {
-                case MarketOrderResult.Ordered:
-                    LastStatusMessage = $"Ordered {offer.TruckloadSize} {marker.ItemType}; the cart is on its way.";
-                    Popup(marker.Position, "Ordered", InteractionPopupKind.Gain);
-                    return true;
-
-                case MarketOrderResult.AlreadyInTransit:
-                    LastStatusMessage = "That cart is already on the road.";
-                    Popup(marker.Position, "En route", InteractionPopupKind.Refused);
-                    return false;
-
-                case MarketOrderResult.CannotAfford:
-                    // Names the shortfall, exactly as a refused chassis or building does.
-                    LastStatusMessage = ConstructionCostPolicy.FormatShortfall(MarketWallet, offer.Price);
-                    Popup(marker.Position, "Can't pay", InteractionPopupKind.Refused);
-                    return false;
-
-                default:
-                    LastStatusMessage = "This stall never runs dry.";
-                    return false;
-            }
-        }
-
-        private PlayerWallet MarketWallet =>
-            _marketWallet == null ? null : new PlayerWallet(_marketWallet, _marketWalletBufferId, _postBufferId);
-
-        /// <summary>
-        /// Whether this stall would take an order right now: a market is wired, it trades this
-        /// node, and it has no cart already on the road.
-        /// </summary>
-        public bool CanOrderFrom(ResourceNodeMarker marker) =>
-            marker != null
-            && _market != null
-            && _market.TryGetOffer(marker.NodeId, out _)
-            && !_market.IsInTransit(marker.NodeId);
 
         // --- R and G -------------------------------------------------------------------------------
 
@@ -916,7 +836,6 @@ namespace GolemFactory.Player
             {
                 detail = InteractionTargeting.AppendDetail(detail, "[" + InventoryKeyLabel + "] open");
             }
-            string verb = DescribeMarketStall(pick, target, ref detail);
 
             // [G] AND [R] ACT ON THE NEAREST GOLEM, NOT ON THE WINNER OF THE [E] PICK, and the two
             // differ at exactly the moment the player most needs to be told the keys exist. A
@@ -934,7 +853,7 @@ namespace GolemFactory.Player
             }
 
             CurrentPrompt = InteractionTargeting.BuildPrompt(
-                pick.Kind, targetName, detail, CurrentAffordance, KeyNames.Interact, verb);
+                pick.Kind, targetName, detail, CurrentAffordance, KeyNames.Interact);
             PromptPosition = targetPosition;
         }
 
@@ -989,13 +908,6 @@ namespace GolemFactory.Player
                 case InteractionKind.Harvest:
                 {
                     var marker = (ResourceNodeMarker)target;
-                    // An empty stall with a cart already on the road is genuinely unavailable; an
-                    // empty stall you can order from is not, it is the other half of the market.
-                    if (marker.IsDepleted && CanOrderFrom(marker))
-                    {
-                        return false;
-                    }
-
                     if (!marker.IsDepleted && PackRoomFor(marker.ItemType) <= 0)
                     {
                         packFull = true;
@@ -1029,31 +941,6 @@ namespace GolemFactory.Player
         private StorageBuffer Pack => _stockpile?.GetOrCreate(_stockpileBufferId);
 
         private PlayerWallet Wallet => _stockpile == null ? null : new PlayerWallet(_stockpile, _stockpileBufferId, _postBufferId);
-
-        /// <summary>
-        /// An EMPTY market stall's caption (G10, at the user's call). [E] there orders a
-        /// truckload, so the line names that and its price -- "Harvest Copper Ore - depleted"
-        /// described an action the key would not take. With a cart already on the road the key
-        /// does nothing, and the line says why instead of "depleted". Returns the verb to use,
-        /// or null to keep the kind's own; a stall with stock is untouched.
-        /// </summary>
-        private string DescribeMarketStall(InteractionPick pick, object target, ref string detail)
-        {
-            if (pick.Kind != InteractionKind.Harvest || !(target is ResourceNodeMarker marker) || !marker.IsDepleted
-                || _market == null || !_market.TryGetOffer(marker.NodeId, out MarketOffer offer))
-            {
-                return null;
-            }
-
-            if (_market.IsInTransit(marker.NodeId))
-            {
-                detail = "cart on its way";
-                return null;
-            }
-
-            detail = ConstructionCostPolicy.FormatCost(offer.Price);
-            return "Order a truckload of";
-        }
 
         private static int RoomIn(object boiler) => (boiler as PlaceableBoiler)?.Boiler?.CokeRoom ?? 0;
 
@@ -1155,15 +1042,7 @@ namespace GolemFactory.Player
             {
                 case InteractionKind.Harvest:
                 {
-                    // ONE KEY, TWO ACTIONS, decided by the stall rather than by a mode: full
-                    // stalls are harvested, empty ones are ordered from.
-                    var marker = target as ResourceNodeMarker;
-                    if (marker != null && marker.IsDepleted && CanOrderFrom(marker))
-                    {
-                        return TryOrderTruckload(marker);
-                    }
-
-                    return TryHarvest(marker);
+                    return TryHarvest(target as ResourceNodeMarker);
                 }
                 case InteractionKind.Construct:
                     return TryOpenConstruction(target as GolemConstructionStation);
@@ -1384,6 +1263,11 @@ namespace GolemFactory.Player
 
         private float _harvestHoldSeconds;
 
+        // When, in held seconds, the next repeat is due. Kept, not worked out from the frame
+        // before: worked out each frame, it stayed one interval ahead of a 60 fps hold forever,
+        // and holding [E] took two goods and stopped.
+        private float _nextHarvestAt;
+
         /// <summary>
         /// Holding [E] on a stocked stall keeps harvesting, so the opening minutes are not sixty
         /// taps. Called once per frame; the first press is still <see cref="Interact"/>'s. It only
@@ -1395,6 +1279,7 @@ namespace GolemFactory.Player
             if (!held || justPressed)
             {
                 _harvestHoldSeconds = 0f;
+                _nextHarvestAt = HarvestRepeatDelay;
                 return 0;
             }
 
@@ -1405,21 +1290,18 @@ namespace GolemFactory.Player
             if (marker == null || marker.IsDepleted)
             {
                 _harvestHoldSeconds = 0f;
+                _nextHarvestAt = HarvestRepeatDelay;
                 return 0;
             }
 
-            float before = _harvestHoldSeconds;
             _harvestHoldSeconds += deltaTime;
-            if (_harvestHoldSeconds < HarvestRepeatDelay)
+            if (_nextHarvestAt < HarvestRepeatDelay)
             {
-                return 0;
+                _nextHarvestAt = HarvestRepeatDelay;
             }
 
             int made = 0;
-            float next = before < HarvestRepeatDelay
-                ? HarvestRepeatDelay
-                : before + HarvestRepeatInterval;
-            while (next <= _harvestHoldSeconds)
+            while (_nextHarvestAt <= _harvestHoldSeconds)
             {
                 if (!TryHarvest(marker))
                 {
@@ -1427,7 +1309,7 @@ namespace GolemFactory.Player
                 }
 
                 made++;
-                next += HarvestRepeatInterval;
+                _nextHarvestAt += HarvestRepeatInterval;
             }
 
             return made;

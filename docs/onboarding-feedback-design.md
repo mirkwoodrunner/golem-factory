@@ -192,6 +192,11 @@ every outline; the `tutorial` scenario checks it (§8).
 
 ## 3. Grey for waiting, red for stuck (decision 5)
 
+> **Phase 8 (`docs/supply-design.md` §4):** "a truckload on its way" below became "the cart
+> behind refills itself" (`StallFacts.SourceRefills`, read through `SupplyStreet.Refills`). An
+> empty supply cart is waited on, grey: "Waiting for Coal · its cart is refilling". The fix line
+> for a node nothing refills reads "Nothing refills it: stand it at a cart."
+
 ### 3.1 The definition
 
 A stalled golem is **waiting** when something already in the factory will clear its stall

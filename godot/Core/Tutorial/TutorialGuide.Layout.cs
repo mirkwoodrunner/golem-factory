@@ -53,6 +53,7 @@ namespace GolemFactory.Tutorial
         private bool _planDirty = true;
         private bool _planWired;
         private int _planNorthExtent = int.MinValue;
+        private int _planStreet = int.MinValue;
 
         /// <summary>Bumped each time the plan is recomputed, so a step can cache its marks.</summary>
         internal int PlanVersion
@@ -78,12 +79,15 @@ namespace GolemFactory.Tutorial
                     _world.Build.ConnectedShapesChanged += () => _planDirty = true;
                 }
                 // Buildable ground changes with Floor Expansion (and a load that restores fewer
-                // rows) without any building event, so the floor's extent is part of the key.
+                // rows) without any building event, so the floor's extent is part of the key; the
+                // street's carts anchor the lines beside them, so its version is too.
                 int north = _world.Bounds?.NorthExtent ?? 0;
-                if (_planDirty || _plan == null || north != _planNorthExtent)
+                int street = _world.Supply?.Version ?? 0;
+                if (_planDirty || _plan == null || north != _planNorthExtent || street != _planStreet)
                 {
                     _planDirty = false;
                     _planNorthExtent = north;
+                    _planStreet = street;
                     _buildOrder = null;
                     _plan = ComputePlan();
                     _planVersion++;
@@ -118,17 +122,18 @@ namespace GolemFactory.Tutorial
             return building != null && _buildOrder.TryGetValue(building, out int index) ? index : int.MaxValue;
         }
 
-        // The stalls are fixed by sandbox.json for the life of the world, so this is built once.
+        // The street's spots are fixed by sandbox.json for the life of the world, so this is built
+        // once. A spot is never planned on, cart or not: a cart may stand there yet.
         private HashSet<Vector2Int> _stallCells;
 
         private bool IsStallCell(Vector2Int cell)
         {
             _stallCells ??= new HashSet<Vector2Int>(
-                (_world.Setup?.nodes ?? new List<World.SandboxSetup.NodeEntry>()).Select(n => new Vector2Int(n.x, n.y)));
+                (_world.Supply?.Spots ?? new List<Supply.CartSpot>()).Select(s => s.Cell));
             return _stallCells.Contains(cell);
         }
 
-        /// <summary>A tile a golem or a new building can use: on the ground, no building, no stall.</summary>
+        /// <summary>A tile a golem or a new building can use: on the ground, no building, no cart spot.</summary>
         private bool Open(Vector2Int cell) =>
             !_world.Grid.IsOccupied(cell) && _world.Build.IsCellBuildable(cell) && !IsStallCell(cell);
 

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using GolemFactory.Buildings;
@@ -62,15 +62,14 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
-        public void TheSandboxStartsTheGuide_OnItsFirstStep_PointingAtTheScrapStall()
+        public void TheSandboxStartsTheGuide_OnItsFirstStep_PointingAtTheScrapCart()
         {
             SandboxWorld world = Compose();
 
             Assert.IsNotNull(world.Tutorial, "sandbox.json turns the guide on");
             Assert.IsTrue(world.Tutorial.IsShowing);
             Assert.AreEqual("scrap", StepId(world));
-            SandboxSetup.NodeEntry stall = world.Setup.nodes.Single(n => n.id == "ScrapNode");
-            Assert.AreEqual(new Vector2Int(stall.x, stall.y), world.Tutorial.TargetCell);
+            Assert.AreEqual(Home(world, ItemType.Scrap), world.Tutorial.TargetCell);
             Assert.AreEqual("Scrap  0 / 20", world.Tutorial.Progress);
         }
 
@@ -204,17 +203,13 @@ namespace GolemFactory.Tests.Tutorial
             }
             Assert.AreEqual("coal-order", StepId(world));
 
-            // Order the truckload at the stall, as the player does, and wait for the cart.
-            SandboxSetup.NodeEntry coalStall = world.Setup.nodes.Single(n => n.id == "CoalNode");
-            Give(world, ItemType.Scrap, 100);
-            world.Interactor.Position = new Compat.Vector3(coalStall.x, coalStall.y + 1f, 0f);
-            world.Interactor.Poll();
-            Assert.IsTrue(world.Interactor.Interact(), "ordered: " + world.Interactor.LastStatusMessage);
-            for (int frame = 0; frame < 600 && StepId(world) == "coal-order"; frame++)
-            {
-                world.Advance(1f / 30f);
-            }
-            Assert.AreEqual("program-coker", StepId(world), "the cart arrived");
+            // The Coal cart's first Rate rung (supply-design §6). This test gave its chapter 1 Coal
+            // rather than buying the cart, so the cart comes now; the rung is what finishes the step.
+            Vector2Int coalSpot = Home(world, ItemType.Coal);
+            Assert.IsTrue(world.GrantCart(coalSpot, ItemType.Coal).Done);
+            Assert.AreEqual("coal-order", StepId(world), "a cart alone doesn't do it");
+            Assert.IsTrue(world.GrantRateRung(coalSpot).Done);
+            Assert.AreEqual("program-coker", StepId(world), "the rung did");
 
             coker.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
             Assert.IsTrue(coker.Program.TryAddAppendage(defs.Appendages["ExtractScrap"]));
@@ -222,7 +217,7 @@ namespace GolemFactory.Tests.Tutorial
             Assert.IsTrue(coker.Program.TryAddAppendage(defs.Appendages["PushOutput"]));
             Assert.AreEqual("work-coker", StepId(world));
 
-            // Coal stall behind, the new boiler in front -- and steam from the FIRST boiler, along
+            // Coal cart behind, the new boiler in front -- and steam from the FIRST boiler, along
             // the pipes, because the new one starts with no Coke at all.
             PlaceableBoiler boiler2 = world.Build.Buildings.Single(b => !b.IsRemoved && b.Cell == world.Tutorial.Boiler2Spot).GetPart<PlaceableBoiler>();
             Assert.AreEqual(0, boiler2.Boiler.CokeStock, "precondition: the new boiler starts empty");
@@ -355,13 +350,13 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual("copper", StepId(world), $"the heap burns Slag ({carrier.StallReason} {carrier.StallResourceId})");
 
             // --- Chapter 6: belts, and a label ------------------------------------------------------
-            // Order Copper at the stall, wait for the cart, take one by hand.
-            SandboxSetup.NodeEntry copperStall = world.Setup.nodes.Single(n => n.id == "CopperOreNode");
-            Give(world, ItemType.Scrap, 100);
-            world.Interactor.Position = new Compat.Vector3(copperStall.x, copperStall.y + 1f, 0f);
-            world.Interactor.Poll();
-            Assert.IsTrue(world.Interactor.Interact(), "ordered Copper: " + world.Interactor.LastStatusMessage);
-            for (int frame = 0; frame < 600 && !world.Nodes.TryGetNode("CopperOreNode", out var n) | (n != null && n.RemainingQuantity == 0); frame++)
+            // Add a Copper Ore cart on its marked spot, wait for its trickle, take one by hand.
+            Vector2Int copperSpot = Home(world, ItemType.CopperOre);
+            Assert.AreEqual(copperSpot, world.Tutorial.Current.Spot, "the step marks the spot");
+            Assert.IsTrue(world.GrantCart(copperSpot, ItemType.CopperOre).Done);
+            Assert.IsNull(world.Tutorial.Current.Spot, "a cart stands: nothing left to mark");
+            world.Interactor.Position = new Compat.Vector3(copperSpot.x, copperSpot.y + 1f, 0f);
+            for (int frame = 0; frame < 600 && world.Supply.SpotAt(copperSpot).Cart.Stock == 0; frame++)
             {
                 world.Advance(1f / 30f);
             }
@@ -643,18 +638,16 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual("boiler", StepId(world));
             world.Buffers.TryWithdraw(world.StockpileBufferId, ItemType.Scrap, 20);
 
-            SandboxSetup.NodeEntry stall = world.Setup.nodes.Single(n => n.id == "ScrapNode");
-            Assert.AreEqual(new Vector2Int(stall.x, stall.y), world.Tutorial.TargetCell);
+            Assert.AreEqual(Home(world, ItemType.Scrap), world.Tutorial.TargetCell);
         }
 
         [Test]
-        public void TheFirstGolemsLayout_IsMarkedBesideTheScrapStall()
+        public void TheFirstGolemsLayout_IsMarkedBesideTheScrapCart()
         {
             SandboxWorld world = Compose();
-            SandboxSetup.NodeEntry stall = world.Setup.nodes.Single(n => n.id == "ScrapNode");
-            var s = new Vector2Int(stall.x, stall.y);
+            Vector2Int s = Home(world, ItemType.Scrap);
 
-            // depot / golem + boiler / stall, the golem facing the depot.
+            // depot / golem + boiler / cart, the golem facing the depot.
             Assert.AreEqual(s + new Vector2Int(0, 1), world.Tutorial.GolemSpot);
             Assert.AreEqual(s + new Vector2Int(0, 2), world.Tutorial.DepotSpot);
             Assert.AreEqual(s + new Vector2Int(1, 1), world.Tutorial.BoilerSpot);
@@ -771,13 +764,75 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
-        public void ClaimCoking_PointsAtTheCoalStall_WhileShortOfItsCoal()
+        public void TheCoalStep_MarksItsSpot_QuotesTheCartsPrice_AndPointsAtScrapWhileShort()
+        {
+            // docs/supply-design.md §6: chapter 1 buys a Coal cart on the marked spot.
+            SandboxWorld world = Compose();
+            Give(world, ItemType.Scrap, 20);
+            Assert.AreEqual("coal", StepId(world));
+            world.Supply.TryGetLadder(ItemType.Coal, out GolemFactory.Supply.CartLadder coal);
+            int price = coal.AddPrice.Single(p => p.itemType == ItemType.Scrap).quantity;
+
+            StringAssert.Contains($"add a Coal cart ({price} Scrap)", world.Tutorial.Current.Body, "the price is the data's");
+            Assert.LessOrEqual(world.Tutorial.Current.Body.Length, 240);
+            Assert.AreEqual(Home(world, ItemType.Coal), world.Tutorial.Current.Spot, "the spot is marked");
+            Assert.AreEqual(Home(world, ItemType.Scrap), world.Tutorial.TargetCell, "short of its Scrap: the Scrap cart first");
+            Assert.AreEqual("Add the Coal cart", world.Tutorial.Progress);
+
+            Give(world, ItemType.Scrap, price);
+            world.Tutorial.Update();
+            Assert.AreEqual(Home(world, ItemType.Coal), world.Tutorial.TargetCell, "enough Scrap: the spot");
+
+            world.TechTree.Poll(); // the Ledger has seen the Scrap, as it has a moment later in play
+            GolemFactory.Supply.SupplyResult added = world.Supply.Add(world.Supply.SpotAt(Home(world, ItemType.Coal)), ItemType.Coal);
+            Assert.IsTrue(added.Done, added.Message);
+            world.Tutorial.Update();
+            Assert.IsNull(world.Tutorial.Current.Spot, "a cart stands: nothing left to mark");
+            Assert.AreEqual("Coal  0 / 5", world.Tutorial.Progress);
+            Give(world, ItemType.Coal, 5);
+            Assert.AreEqual("coke", StepId(world));
+        }
+
+        [Test]
+        public void TheCoalStep_MarksTheNearestEmptySpot_WhenAnotherCartStandsOnItsOwn()
+        {
+            SandboxWorld world = Compose();
+            Assert.IsTrue(world.GrantCart(Home(world, ItemType.Coal), ItemType.Scrap).Done, "a Scrap cart on the Coal spot");
+            Give(world, ItemType.Scrap, 100);
+            Assert.AreEqual("coal", StepId(world));
+
+            Assert.AreEqual(new Vector2Int(0, -16), world.Tutorial.Current.Spot, "the nearest empty spot to x -4");
+            Assert.AreEqual(new Vector2Int(0, -16), world.Tutorial.TargetCell);
+        }
+
+        [Test]
+        public void TheCoalUpgradeStep_IsDoneByTheRateRung_AndQuotesItsPrice()
+        {
+            SandboxWorld world = Compose();
+            GoTo(world, "coal-order");
+            world.Supply.TryGetLadder(ItemType.Coal, out GolemFactory.Supply.CartLadder coal);
+            string body = world.Tutorial.Current.Body;
+            foreach (RecipeIngredient line in coal.RateCosts[0])
+            {
+                StringAssert.Contains($"{line.quantity} {ItemTiers.DisplayName(line.itemType)}", body);
+            }
+            StringAssert.Contains($"{coal.Rates[1]} Coal a minute, not {coal.Rates[0]}", body);
+            Assert.LessOrEqual(body.Length, 240);
+
+            Assert.IsTrue(world.GrantCart(Home(world, ItemType.Coal), ItemType.Coal).Done);
+            Assert.AreEqual("coal-order", StepId(world), "a cart at rung 0 doesn't do it");
+            Assert.AreEqual(Home(world, ItemType.Coal), world.Tutorial.TargetCell);
+            Assert.IsTrue(world.GrantRateRung(Home(world, ItemType.Coal)).Done);
+            Assert.AreEqual("program-coker", StepId(world));
+        }
+
+        [Test]
+        public void ClaimCoking_PointsAtTheCoalCart_WhileShortOfItsCoal()
         {
             SandboxWorld world = Compose();
             GoTo(world, "coking-card");
-            SandboxSetup.NodeEntry coal = world.Setup.nodes.Single(n => n.id == "CoalNode");
 
-            Assert.AreEqual(new Vector2Int(coal.x, coal.y), world.Tutorial.TargetCell, "chapter 1 cranked every Coal into Coke");
+            Assert.AreEqual(Home(world, ItemType.Coal), world.Tutorial.TargetCell, "chapter 1 cranked every Coal into Coke");
             Assert.AreEqual("Coal  0 / 4", world.Tutorial.Progress, "the card's claimCost");
             StringAssert.Contains("Coal", world.Tutorial.Current.Body);
 
@@ -819,8 +874,8 @@ namespace GolemFactory.Tests.Tutorial
             {
                 Place(world, "SteamPipePrefab", pipe.x, pipe.y);
             }
-            Assert.IsTrue(world.Nodes.TryGetNode("CoalNode", out ResourceNode coalStall));
-            coalStall.Deliver(40);
+            Assert.IsTrue(world.GrantCart(Home(world, ItemType.Coal), ItemType.Coal).Done);
+            world.Supply.SpotAt(Home(world, ItemType.Coal)).Cart.Node.Deliver(40);
 
             // Chapter 1's few Coke long burned: both boilers dry, and the coker can never make
             // the first Coke that would fuel them.
@@ -1209,7 +1264,7 @@ namespace GolemFactory.Tests.Tutorial
             GoTo(world, "boiler2");
 
             Assert.AreNotEqual(paved, world.Tutorial.Boiler2Spot, "the marks moved off the pipe");
-            Vector2Int coal = new Vector2Int(world.Setup.nodes.Single(n => n.id == "CoalNode").x, world.Setup.nodes.Single(n => n.id == "CoalNode").y);
+            Vector2Int coal = Home(world, ItemType.Coal);
             Vector2Int step = world.Tutorial.CokerSpot - coal;
             Assert.AreEqual(world.Tutorial.CokerSpot + step, world.Tutorial.Boiler2Spot, "a straight line from the stall");
             Assert.AreEqual("", world.Tutorial.Notice);
@@ -1219,7 +1274,7 @@ namespace GolemFactory.Tests.Tutorial
         public void WhenNoLineIsFree_TheMarkedTileIsNamed()
         {
             SandboxWorld world = Plenty();
-            Vector2Int coal = new Vector2Int(world.Setup.nodes.Single(n => n.id == "CoalNode").x, world.Setup.nodes.Single(n => n.id == "CoalNode").y);
+            Vector2Int coal = Home(world, ItemType.Coal);
             PaveWherePossible(world, Sides.Select(d => coal + d * 2).ToArray()); // every boiler tile
             GoTo(world, "boiler2");
 
@@ -1231,8 +1286,8 @@ namespace GolemFactory.Tests.Tutorial
         public void WhenNoGolemTileIsFree_TheBuildingOnItIsNamed()
         {
             SandboxWorld world = Plenty();
-            Vector2Int coal = new Vector2Int(world.Setup.nodes.Single(n => n.id == "CoalNode").x, world.Setup.nodes.Single(n => n.id == "CoalNode").y);
-            PaveWherePossible(world, Sides.Select(d => coal + d).ToArray()); // every tile beside the stall
+            Vector2Int coal = Home(world, ItemType.Coal);
+            PaveWherePossible(world, Sides.Select(d => coal + d).ToArray()); // every tile beside the cart
             GoTo(world, "work-coker");
 
             StringAssert.StartsWith("A Steam Pipe is on the golem's tile", world.Tutorial.Notice);
@@ -1240,18 +1295,15 @@ namespace GolemFactory.Tests.Tutorial
 
         // --- Round 3: a chapter built its own way still finishes, and later marks follow it ----
 
-        private static Vector2Int StallOf(SandboxWorld world, string id)
-        {
-            SandboxSetup.NodeEntry node = world.Setup.nodes.Single(n => n.id == id);
-            return new Vector2Int(node.x, node.y);
-        }
+        /// <summary>The spot the guide marks for a good's cart (the starting Scrap cart's, for Scrap).</summary>
+        private static Vector2Int Home(SandboxWorld world, string item) => world.Setup.HomeSpot(item).Value;
 
         [Test]
         public void ChapterOne_OnAnotherSideOfTheStall_ByWhereTheDepotGoes()
         {
             SandboxWorld world = Plenty();
             TutorialGuide guide = world.Tutorial;
-            Vector2Int scrap = StallOf(world, "ScrapNode");
+            Vector2Int scrap = Home(world, ItemType.Scrap);
             Place(world, "BoilerPrefab", guide.BoilerSpot.x, guide.BoilerSpot.y);
             GoTo(world, "depot");
 
@@ -1272,7 +1324,7 @@ namespace GolemFactory.Tests.Tutorial
         {
             SandboxWorld world = Plenty();
             TutorialGuide guide = world.Tutorial;
-            Vector2Int coal = StallOf(world, "CoalNode");
+            Vector2Int coal = Home(world, ItemType.Coal);
             Place(world, "BoilerPrefab", guide.BoilerSpot.x, guide.BoilerSpot.y);
             GoTo(world, "boiler2");
 
@@ -1319,7 +1371,7 @@ namespace GolemFactory.Tests.Tutorial
             // marked the first golem's own tile.
             SandboxWorld world = Plenty();
             TutorialGuide guide = world.Tutorial;
-            Vector2Int scrap = StallOf(world, "ScrapNode");
+            Vector2Int scrap = Home(world, ItemType.Scrap);
             Place(world, "BoilerPrefab", guide.BoilerSpot.x, guide.BoilerSpot.y);
             Place(world, "DepotPrefab", scrap.x + 2, scrap.y);
             Assert.AreEqual(Facing.East, guide.GolemFacing, "precondition: chapter 1 east");
@@ -1336,15 +1388,15 @@ namespace GolemFactory.Tests.Tutorial
         {
             SandboxWorld world = Plenty();
             TutorialGuide guide = world.Tutorial;
-            Vector2Int coal = StallOf(world, "CoalNode");
+            Vector2Int coal = Home(world, ItemType.Coal);
             Place(world, "BoilerPrefab", guide.BoilerSpot.x, guide.BoilerSpot.y);
             Place(world, "BoilerPrefab", coal.x + 2, coal.y);
             Assert.AreEqual(Facing.East, guide.CokerFacing, "precondition: the coal line runs east");
 
-            var stalls = new System.Collections.Generic.HashSet<Vector2Int>(world.Setup.nodes.Select(n => new Vector2Int(n.x, n.y)));
+            var stalls = new System.Collections.Generic.HashSet<Vector2Int>(world.Supply.Spots.Select(s => s.Cell));
             foreach (Vector2Int tile in new[] { guide.SmelterSpot, guide.SmeltInSpot, guide.SmeltOutSpot, guide.CarrierSpot, guide.SlagHeapSpot })
             {
-                Assert.IsFalse(stalls.Contains(tile), $"chapter 5 marked {tile}, a stall");
+                Assert.IsFalse(stalls.Contains(tile), $"chapter 5 marked {tile}, a cart spot");
                 Assert.IsFalse(world.Grid.IsOccupied(tile), $"chapter 5 marked {tile}, which is built on");
             }
         }
@@ -1376,7 +1428,7 @@ namespace GolemFactory.Tests.Tutorial
             // is a SECOND boiler, and chapter 3's pipes join the two.
             SandboxWorld world = Plenty();
             TutorialGuide guide = world.Tutorial;
-            Vector2Int coal = StallOf(world, "CoalNode");
+            Vector2Int coal = Home(world, ItemType.Coal);
             Place(world, "BoilerPrefab", coal.x, coal.y + 2);
             GoTo(world, "boiler2");
 
@@ -1391,7 +1443,7 @@ namespace GolemFactory.Tests.Tutorial
             // hand-drawn pipe beside the default boiler tile would join nothing.
             SandboxWorld world = Plenty();
             TutorialGuide guide = world.Tutorial;
-            Vector2Int scrap = StallOf(world, "ScrapNode");
+            Vector2Int scrap = Home(world, ItemType.Scrap);
             Place(world, "BoilerPrefab", scrap.x - 1, scrap.y + 1);
             Place(world, "DepotPrefab", guide.DepotSpot.x, guide.DepotSpot.y);
             Assert.AreEqual(Facing.North, guide.GolemFacing, "precondition: chapter 1 as marked");

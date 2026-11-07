@@ -165,6 +165,22 @@ namespace GolemFactory.Nodes
 
         // --- Construction ---------------------------------------------------------------------
 
+        /// <summary>The price column's usual width, and the most a long line may take from the words beside it.</summary>
+        private const float PriceColumn = 230f, PriceColumnMost = 330f;
+
+        /// <summary>
+        /// Wide enough for the price on one line where it can be: a removal's "returns ..." lists
+        /// every good it gives back, and wrapped it split "2 / Gear" across lines. Past the most,
+        /// it wraps.
+        /// </summary>
+        private static float PriceWidth(Label price)
+        {
+            Font font = price.GetThemeFont("font");
+            int size = price.GetThemeFontSize("font_size");
+            float wide = font == null ? 0f : font.GetStringSize(price.Text, HorizontalAlignment.Left, -1, size).X + 6f;
+            return Mathf.Clamp(wide, PriceColumn, PriceColumnMost);
+        }
+
         private Button RowButton(SupplyRow row)
         {
             var button = new Button { Name = "Row", CustomMinimumSize = new Vector2(0f, 44f), FocusMode = Control.FocusModeEnum.None };
@@ -196,7 +212,7 @@ namespace GolemFactory.Nodes
             line.AddChild(ManagementScreen.Flex(words));
             Label price = Ugui.Text("Price", row.Price ?? "", 13, row.Enabled ? ManagementScreen.QuantityInk : ManagementScreen.DimInk, align: 4, bold: row.Enabled);
             price.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            line.AddChild(ManagementScreen.Fixed(price, 230f));
+            line.AddChild(ManagementScreen.Fixed(price, PriceWidth(price)));
 
             if (!row.Enabled)
             {

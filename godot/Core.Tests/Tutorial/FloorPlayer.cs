@@ -28,9 +28,9 @@ namespace GolemFactory.Tests.Tutorial
     /// <c>FullRunFloorTests</c>, so both measure the same player.
     ///
     /// <list type="bullet">
-    /// <item>Raw goods (the stalls' goods) are harvested at [E]'s hold rate, taken from crates the
-    ///   golems fill, and an empty stall waits for its truckload: Scrap's free, the others paid
-    ///   with earned Scrap, one in transit per stall.</item>
+    /// <item>Raw goods (the carts' goods) are harvested at [E]'s hold rate, taken from crates the
+    ///   golems fill, and an empty cart waits for its trickle. A good with no cart yet gets one on
+    ///   its marked spot, paid with earned goods (docs/supply-design.md §6).</item>
     /// <item>Chapters 1-7: one-input goods (Coke, Iron Plate, Glass, Gear, Copper Wire) are taken
     ///   from crates golems have filled, else cranked at the bench; Iron Plate also from the
     ///   guide's smelter, kept fed. Slag comes from the smelter's crate, its carrier turned away
@@ -180,9 +180,16 @@ namespace GolemFactory.Tests.Tutorial
                     Assert.IsTrue(_w.Interactor.TryRefuelBoiler(Boilers().First()), _w.Interactor.LastStatusMessage);
                     return;
                 case "coal-order":
-                    Acquire(ItemType.Scrap, OfferPrice("CoalNode"));
-                    Assert.IsTrue(_w.Interactor.TryOrderTruckload(Marker("CoalNode")), _w.Interactor.LastStatusMessage);
+                {
+                    // Chapter 3's upgrade: the Coal cart's first Rate rung, paid with earned goods.
+                    GolemFactory.Supply.CartSpot coal = CartSpot(ItemType.Coal);
+                    Assert.IsNotNull(coal, "a Coal cart stands since chapter 1");
+                    AcquireAll(GolemFactory.Supply.SupplyStreet.NextRateCost(coal.Cart).ToList());
+                    _w.TechTree.Poll();
+                    GolemFactory.Supply.SupplyResult upgraded = _w.Supply.UpgradeRate(coal);
+                    Assert.IsTrue(upgraded.Done, upgraded.Message);
                     return;
+                }
                 case "copper": Acquire(ItemType.CopperOre, 1); return;
                 case "collect":
                     CollectWhenFilled(_w.Build.Buildings.First(b => !b.IsRemoved && b.Cell == _w.Tutorial.DepotSpot), ItemType.Scrap);
@@ -328,6 +335,9 @@ namespace GolemFactory.Tests.Tutorial
                 case "coking-card": return CardCost("AssembleCoking");
                 case "r4-card": return CardCost("AssembleIronSmelting");
                 case "zeppelin-card": return CardCost("ZeppelinFreightLoader");
+                // Chapter 8's carts, bought by the kit before it makes the good.
+                case "zinc-ingot": return CartPriceIfNone(ItemType.ZincOre);
+                case "aether-cell": return CartPriceIfNone(ItemType.Aether);
                 default: return Enumerable.Empty<RecipeIngredient>();
             }
         }
@@ -351,7 +361,28 @@ namespace GolemFactory.Tests.Tutorial
 
         private static int Line(IEnumerable<RecipeIngredient> cost, string good) => cost.Where(c => c.itemType == good).Sum(c => c.quantity);
 
-        private int OfferPrice(string stall) => _w.Market.TryGetOffer(stall, out MarketOffer offer) ? offer.Price.Sum(c => c.quantity) : 0;
+        /// <summary>The spot of this good's cart, its marked spot first; null with none.</summary>
+        private GolemFactory.Supply.CartSpot CartSpot(string good)
+        {
+            Vector2Int? home = _w.Setup.HomeSpot(good);
+            return _w.Supply.Spots.Where(s => s.Cart?.ItemType == good).OrderBy(s => s.Cell == home ? 0 : 1).FirstOrDefault();
+        }
+
+        /// <summary>What adding this good's cart costs, or nothing once one stands.</summary>
+        private IEnumerable<RecipeIngredient> CartPriceIfNone(string good) =>
+            CartSpot(good) == null && _w.Supply.TryGetLadder(good, out GolemFactory.Supply.CartLadder ladder)
+                ? ladder.AddPrice
+                : Enumerable.Empty<RecipeIngredient>();
+
+        /// <summary>Buys this good's cart on its marked spot, paid with goods earned first, as the panel's Add would.</summary>
+        private void BuyCart(string good)
+        {
+            List<RecipeIngredient> price = CartPriceIfNone(good).ToList();
+            AcquireAll(price);
+            _w.TechTree.Poll(); // the Ledger sees the price's goods, as it would a moment later
+            GolemFactory.Supply.SupplyResult added = _w.Supply.Add(_w.Supply.SpotAt(_w.Setup.HomeSpot(good).Value), good);
+            Assert.IsTrue(added.Done, $"a {good} cart: {added.Message}");
+        }
 
         private void CollectWhenFilled(PlaceableBuilding building, string good)
         {
@@ -389,7 +420,7 @@ namespace GolemFactory.Tests.Tutorial
 
         private HashSet<string> _raw;
 
-        private HashSet<string> Raw => _raw ??= new HashSet<string>(_w.Setup.nodes.Select(n => n.itemType));
+        private HashSet<string> Raw => _raw ??= new HashSet<string>(_w.Setup.supply.carts.Select(c => c.itemType));
 
         private readonly HashSet<string> _acquiring = new HashSet<string>();
 
@@ -444,8 +475,9 @@ namespace GolemFactory.Tests.Tutorial
             EnsurePlateLine();
             hasLine = _lines.TryGetValue(recipe.name, out made) && made.Count > 0;
             // A good whose first line is being paid for (a line's own price needs it), or a
-            // chore's Coke before any Coke line stands, is cranked: a chore never builds a line.
-            if (crankable && ((!hasLine && (_acquiring.Contains(good) || _inChore)) || _bootstrapping))
+            // chore's Coke, is cranked. A chore never builds a line, nor waits on one: a boiler
+            // running dry may be what powers the Coke line, and waiting on it never ends.
+            if (crankable && ((!hasLine && _acquiring.Contains(good)) || _inChore || _bootstrapping))
             {
                 Crank(good, quantity);
                 return;
@@ -523,26 +555,14 @@ namespace GolemFactory.Tests.Tutorial
                 {
                     return;
                 }
+                if (CartSpot(good) == null)
+                {
+                    BuyCart(good);
+                }
                 ResourceNodeMarker stocked = _w.Markers.FirstOrDefault(m => m.ItemType == good && !m.IsDepleted);
                 if (stocked == null)
                 {
-                    if (good == ItemType.Scrap)
-                    {
-                        // Free carts: both Scrap stalls, whenever they're empty.
-                        foreach (ResourceNodeMarker empty in _w.Markers.Where(m => m.ItemType == good && !_w.Market.IsInTransit(m.NodeId)))
-                        {
-                            _w.Interactor.TryOrderTruckload(empty);
-                        }
-                    }
-                    else if (!_w.Markers.Any(m => m.ItemType == good && _w.Market.IsInTransit(m.NodeId)))
-                    {
-                        // One paid cart at a time, at the offer's price.
-                        // The guide's own stall for the good (CoalNode, not CoalNodeWest).
-                        ResourceNodeMarker stall = _w.Markers.Where(m => m.ItemType == good)
-                            .OrderBy(m => m.NodeId.EndsWith("West") || m.NodeId.EndsWith("East") ? 1 : 0).First();
-                        Acquire(ItemType.Scrap, OfferPrice(stall.NodeId));
-                        Assert.IsTrue(_w.Interactor.TryOrderTruckload(stall), _w.Interactor.LastStatusMessage);
-                    }
+                    // Every cart of the good is empty: wait for its trickle.
                     at = null;
                     Step();
                     continue;
@@ -1226,8 +1246,8 @@ namespace GolemFactory.Tests.Tutorial
 
         /// <summary>
         /// One frame. Before it, the chores any attentive player does whatever the step: top up a
-        /// boiler about to run dry while golems stand on the floor (with Coke they earn), and
-        /// reorder a free Scrap stall that has emptied.
+        /// boiler about to run dry while golems stand on the floor (with Coke they earn). Carts
+        /// refill themselves.
         /// </summary>
         public void Step()
         {
@@ -1245,10 +1265,6 @@ namespace GolemFactory.Tests.Tutorial
                         _w.Interactor.TryRefuelBoiler(boiler);
                         bench.IsCranking = wasCranking;
                     }
-                }
-                foreach (ResourceNodeMarker empty in _w.Markers.Where(m => m.ItemType == ItemType.Scrap && m.IsDepleted && !_w.Market.IsInTransit(m.NodeId)))
-                {
-                    _w.Interactor.TryOrderTruckload(empty);
                 }
                 _inChore = false;
             }

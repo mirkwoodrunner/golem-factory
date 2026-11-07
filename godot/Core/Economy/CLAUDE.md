@@ -40,12 +40,18 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   id directly, and never charge a crate. Harvesting and collecting fill the pack only, and check
   its room before taking. A part that builds its own wallet takes the Post's id too (an optional
   `postBufferId`), or it spends from the pack alone.
-- **Supply carts** (`Core/Supply/`, docs/supply-design.md) are `ResourceNode`s on the street's
-  spots, so golems and hands take from them as from a stall. `SupplyStreet` owns them: add, the
-  Rate and Capacity rungs, change and remove all charge or refund through the wallet (a removal
-  refunds half, rounded down per good, with the stock, or is refused whole). A cart is saved in
-  `SaveData.supply`, never as a stall in `SaveData.market`. Its trickle is whole numbers on the
-  clock. Its node id (`Cart(x,y)`) is never shown; `SupplyText` says what the player reads.
+- **Every raw good comes from a supply cart** (`Core/Supply/`, docs/supply-design.md): a
+  `ResourceNode` on one of the street's seventeen spots, so golems and hands take from it as from
+  any node. There is no truckload market and no per-load price. `SupplyStreet` owns the carts:
+  add, the Rate and Capacity rungs, change and remove all charge or refund through the wallet (a
+  removal refunds half, rounded down per good, with the stock, or is refused whole). **A cart is
+  offered once the Ledger has seen every good its add price names** (the user's call: a raw good
+  is never seen before its cart). The starting Scrap cart's good is kept: its last cart can't go.
+  A cart is saved in `SaveData.supply`; `SaveData.market` is only read, to migrate an old save's
+  nine stalls into carts (`SupplyMigration`, `supply.legacyStalls`, said once). Its trickle is
+  whole numbers on the clock, and an empty cart that refills reads grey, not red
+  (`SupplyStreet.Refills`). Its node id (`Cart(x,y)`) is never shown; `SupplyText` says what the
+  player reads. The kit, scenarios and tests add carts with `SandboxWorld.GrantCart`.
 - **The Pneumatic Post** is one registry buffer, `SandboxWorld.PostBufferId` ("PneumaticPost"),
   200 of each good, there from the start. A Post crate (`PneumaticPostPrefab`) is a depot whose
   `bufferId` is that id, so every Post crate opens onto it and golems reach it like any crate.

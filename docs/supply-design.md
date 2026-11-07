@@ -1,6 +1,6 @@
 # Supply carts: a market street you build
 
-**Status: approved 2026-11-06; step 1 built (§8). Phase 8's first part** (`docs/roadmap.md`),
+**Status: approved 2026-11-06; steps 1 and 2 built (§8). Phase 8's first part** (`docs/roadmap.md`),
 before city contracts and endless play, because both assume a factory that runs without the
 player at the stalls. Written before the code, like `pack-upgrades-design.md`.
 
@@ -63,9 +63,12 @@ A pass that touches carts, spots or the street keeps all of these. Each gets a t
    if the pack can't hold the refund and the stock together.
 7. **Upgrades stay with the cart.** A load restores every spot exactly: its cart, good, rungs,
    stock and accumulator, through `RestoreQuantity`, never clamping.
-8. **A good is offered once the Ledger has seen it.** An empty spot lists only those goods. Every
-   price shows before it can be paid: a line naming a good the Ledger hasn't seen reads
-   `Requires: <good>`, greyed.
+8. **A cart is offered once the Ledger has seen every good its add price names** (the user's
+   call of 2026-11-06, at step 2: a raw good is never seen before its first cart, so the good
+   itself can't open it). An empty spot lists only those carts: Scrap and Coal from the start,
+   Copper Ore with Iron Plate and Gear (chapter 3, before chapter 6 asks for it), Zinc Ore with
+   Copper Ingot, Aether with Brass and Casing. Every rung's price shows before it can be paid: a
+   line naming a good the Ledger hasn't seen reads `Requires: <good>`, greyed.
 9. **The game can't be soft-locked.** The starting Scrap cart can't be removed or changed while it
    is the only Scrap cart, so Scrap always comes in. Every price is ultimately paid from Scrap.
 10. **Priced in existing goods.** No new good, tier or currency (roadmap decision 1).
@@ -146,12 +149,15 @@ first needed and climbing a tier per rung:
 | Cart | Offered from | Add | Rate 1 | Rate 2 | Rate 3 |
 |---|---|---|---|---|---|
 | Scrap | the start | 60 Scrap | 40 Iron Plate + 10 Gear | 40 Copper Ingot + 20 Brass | 20 Casing + 4 Mainspring |
-| Coal | chapter 1 (`coal`) | 80 Scrap | 40 Iron Plate + 10 Gear | 40 Copper Ingot + 20 Brass | 20 Casing + 4 Mainspring |
-| Copper Ore | chapter 6 (`copper`) | 60 Iron Plate + 20 Gear | 40 Copper Ingot + 20 Gear | 20 Brass + 10 Casing | 20 Casing + 4 Mainspring |
+| Coal | chapter 1 (`coal`) | 80 Scrap | 10 Iron Plate + 5 Gear | 40 Copper Ingot + 20 Brass | 20 Casing + 4 Mainspring |
+| Copper Ore | chapter 3, asked for in chapter 6 (`copper`) | 60 Iron Plate + 20 Gear | 40 Copper Ingot + 20 Gear | 20 Brass + 10 Casing | 20 Casing + 4 Mainspring |
 | Zinc Ore | chapter 8 (`zinc-ingot`) | 40 Iron Plate + 30 Copper Ingot | 20 Brass + 10 Casing | 20 Casing + 4 Mainspring | 10 Mainspring + 4 Aether Cell |
 | Aether | chapter 8 (`aether-cell`) | 20 Brass + 10 Casing | 20 Casing + 4 Mainspring | 10 Mainspring + 4 Aether Cell | 20 Mainspring + 8 Aether Cell |
 
-- A Capacity rung costs the matching Rate rung's goods at half the quantities.
+- A Capacity rung costs the matching Rate rung's goods at half the quantities, rounded down.
+- **Coal's first Rate rung is lower than the table's pattern** (10 Iron Plate + 5 Gear, not 40 +
+  10): chapter 3 teaches it, and at 40 + 10 chapter 3's floor was 3:31 against its 2:20 ceiling.
+  At 10 + 5 it is 2:06.
 - Every cart of a good costs the same: the second Coal cart costs what the first did.
 - Every line fits the pack reachable when it opens: 100 from the start, 150 from chapter 7.
 
@@ -159,10 +165,12 @@ first needed and climbing a tier per rung:
 Zinc Ore a minute (`tuning-data-spec.md` §4.2). At the top rates that's one Scrap cart, three Coal,
 one Copper Ore and one Zinc Ore: six spots of seventeen. But a cart gives only what two
 extractors pull, so at the Scavenger's 120 a minute it's three Scrap, four Coal, one Copper Ore
-and one Zinc Ore: nine. **Stage 4 is the real limit.** It needs about 302 Scrap, 856 Coal (steam upkeep at ~96 golems
-included), 153 Copper Ore, 69 Zinc Ore and 7 Aether a minute (`progression-design.md` §7). Pulled
-at 120 a cart that's three Scrap, eight Coal, two Copper Ore, one Zinc Ore and one Aether: fifteen
-of seventeen spots. Extractors with Repeat pull more than 120, so it isn't a wall, but it's tight.
+and one Zinc Ore: nine. **Stage 4 is the real limit.** This doc first estimated it at 856 Coal a
+minute and fifteen spots, with steam upkeep at 6 Coke a golem; a working golem burns 3
+(`SteamNetwork`), and `StreetCoverageTests` computes it from the data: 192 Scrap, 495 Coal (96
+golems' Coke included), 153 Copper Ore, 68 Zinc Ore and 7 Aether a minute. Pulled at 120 a cart
+that's two Scrap, five Coal, two Copper Ore, one Zinc Ore and one Aether: eleven of seventeen
+spots.
 A test pins that **the street's spots at the top rungs, pulled at two Scavengers each, cover stage
 4's raw demand**. If the playthrough finds it too tight, the street gains spots before the rates
 rise.
@@ -203,7 +211,8 @@ Every step keeps its `Id` (a renamed `Id` breaks saves) and its check where it s
 
 **`coal`'s new text**, built from the offer and under 240 characters: "Coal comes by cart. At the
 marked spot, press E and add a Coal cart (80 Scrap). It fills by itself: press E at it to take 5
-Coal." The kit grants the price, adds the cart and grants 5 Coal.
+Coal." The kit grants the price, adds the cart and grants 5 Coal. The step marks the spot until a
+Coal cart stands, and points at the Scrap cart while the player is short of the price.
 
 **Chapter 3 teaches an upgrade, on the Coal cart.** Coal rather than Scrap, because chapter 3 is
 where Coal starts to run short: its coking Presser extracts from the Coal cart and makes 27 Coke a
@@ -211,18 +220,20 @@ minute, nearly all of the cart's 30, with the player still taking Coal by hand. 
 it to 60. Scrap isn't short yet in chapter 3: its cart gives 120 a minute.
 
 - **Check:** the Coal cart's Rate rung is at least 1.
-- **Text** (built from the offer, under 240 characters): "Your coker will eat nearly all the Coal
-  your cart brings. At the Coal cart, press E and buy Rate (40 Iron Plate + 10 Gear): twice the
-  Coal."
+- **Text** (built from the ladder, under 240 characters): "Your coker will eat nearly all the Coal
+  your cart brings. At the Coal cart, press I and buy Rate (10 Iron Plate + 5 Gear): 60 Coal a
+  minute, not 30." I, because E at a cart takes from it (§2).
 - **Kit action:** grant the rung's price and buy it.
-- **What it costs chapter 3:** 40 Iron Plate, which the first Presser's crate is making by then,
-  and 10 Gears, about 32 s at the bench. Chapter 3's floor is 1:22, and its ceiling is 2:20.
+- **What it costs chapter 3:** 10 Iron Plate and 5 Gears, about 44 s of the floor player's time.
+  Chapter 3's floor went from 1:22 to 2:06, under its 2:20 ceiling.
 
 **What it costs chapter 1.** 80 Scrap where the truckload cost 30, which the full Scrap cart pays
 at once. The cart's 30 a minute gives the step's 5 Coal in 10 s, against the truckload's 9 s
 delivery. The spot is the Coal stall's place today, so the walk is the same. Chapters 1–4's floor
-(`ChaptersOneToFourFloorTests`) is measured again with carts, and each chapter must stay under two
-thirds of its budget, as Phase 3 required.
+(`ChaptersOneToFourFloorTests`), measured again with carts: 6:06, chapter 1 1:33 (was 1:26),
+chapter 3 2:06 (was 1:22), each under two thirds of its budget. The full run's floor is 1:19:44
+(was 1:15:23); chapter 8 is the tightest, 28:27 of 30:00 (was 23:05), because the floor player
+buys one cart of each good and never upgrades it past chapter 3.
 
 ## 7. What it amends
 
@@ -247,11 +258,18 @@ truckload market before they replace it.
    (`cart_spot.png`, `generate_supply_art.py`, mahogany rope rather than red); `CartSpotView`; the
    `SupplyScreen`; E and I at spots and carts; the `supply` scenario. The nine stalls still sell
    truckloads, and no cart is there at the start.
-2. **The switch:** the nine stalls' places become spots, the starting Scrap cart, truckloads and
-   hand orders retired, an old save's stalls migrated into carts (§5), the guide's steps (§6) and
-   the floor tests measured again, the stage 4 coverage test.
+2. **Done (2026-11-06): the switch.** Seventeen spots (`sandbox.json` `supply.spots`), the
+   starting Scrap cart at x −8, no `nodes` or `market` in the data; `TruckloadMarket` and
+   `GameMode` deleted, with the interactor's order path. An old save's stalls load as carts
+   (`SupplyMigration`, `supply.legacyStalls`, its notice said once); a save from step 1 has carts
+   and isn't touched. The guide's `coal`, `coal-order`, `copper`, `zinc-ingot` and `aether-cell`
+   (§6), each cart's spot its old stall's nearest the centre (`SandboxSetup.HomeSpot`); the
+   floor tests measured again (above); `StreetCoverageTests`. An empty cart that refills reads
+   grey (`StallFacts.SourceRefills`). The playtest's two truckload questions are `carts` and
+   `carts-late`, new ids.
 3. The overview's market view, and goods spent on the graph.
-4. The docs it amends (§7) and the folder rules, completed with step 2.
+4. Done with step 2: the docs it amends (§7) carry a note where they describe truckloads, and
+   the folder rules and testscripts describe carts.
 
 ## 9. Tests and the scenario
 

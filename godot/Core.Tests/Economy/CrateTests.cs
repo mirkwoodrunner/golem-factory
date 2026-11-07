@@ -171,21 +171,21 @@ namespace GolemFactory.Tests.EditMode
         // --- Harvest -------------------------------------------------------------------------------
 
         [Test]
-        public void HarvestStopsAtThePacksCap_AndTheStallKeepsItsUnit()
+        public void HarvestStopsAtThePacksCap_AndTheCartKeepsItsUnit()
         {
             SandboxWorld world = Compose();
-            SandboxSetup.NodeEntry stall = world.Setup.nodes.Single(n => n.id == "ScrapNode");
-            Assert.IsTrue(world.Nodes.TryGetNode("ScrapNode", out ResourceNode node));
+            Vector2Int stall = world.Setup.HomeSpot(ItemType.Scrap).Value;
+            ResourceNode node = world.Supply.SpotAt(stall).Cart.Node;
             Give(world, ItemType.Scrap, 100);
             int stock = node.RemainingQuantity;
 
-            StandAt(world, new Vector2Int(stall.x, stall.y));
+            StandAt(world, stall);
             Assert.AreEqual(InteractionKind.Harvest, world.Interactor.CurrentPick.Kind);
             Assert.AreEqual(InteractionAffordance.Unavailable, world.Interactor.CurrentAffordance);
             StringAssert.Contains("pack full", world.Interactor.CurrentPrompt);
 
             Assert.IsFalse(world.Interactor.Interact());
-            Assert.AreEqual(stock, node.RemainingQuantity, "the stall keeps the unit: nothing is lost");
+            Assert.AreEqual(stock, node.RemainingQuantity, "the cart keeps the unit: nothing is lost");
             Assert.AreEqual(100, Pack(world, ItemType.Scrap));
 
             Assert.IsTrue(world.Wallet.TryCharge(new[] { new RecipeIngredient(ItemType.Scrap, 1) }));

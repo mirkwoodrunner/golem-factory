@@ -174,10 +174,18 @@ namespace GolemFactory.Tests.EditMode
             {
                 Add("card " + card.name, ClaimPrice(card));
             }
-            foreach (string stall in world.Market.StallIds)
+            // The street's carts (docs/supply-design.md §3): each good's add price, and every rung.
+            foreach (SandboxSetup.CartLadderEntry cart in world.Setup.supply.carts)
             {
-                world.Market.TryGetOffer(stall, out MarketOffer offer);
-                Add("truckload " + stall, offer.Price);
+                Add("cart " + cart.itemType, cart.add);
+                for (int n = 0; n < cart.rateCosts.Count; n++)
+                {
+                    Add($"cart {cart.itemType} rate {n + 1}", cart.rateCosts[n]);
+                }
+                for (int n = 0; n < cart.capacityCosts.Count; n++)
+                {
+                    Add($"cart {cart.itemType} capacity {n + 1}", cart.capacityCosts[n]);
+                }
             }
             Add("assembly bays", world.AssemblyBay.UpgradeCost);
             List<List<RecipeIngredient>> purchases = world.Setup.floorExpansion.purchases;

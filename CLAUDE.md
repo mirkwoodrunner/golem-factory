@@ -107,7 +107,7 @@ Retry it. Never discard its stderr and carry on, or the commit runs on an empty 
 ## The world is built from rules at load
 
 `Sandbox.tscn` is mostly empty. `ShellNode` builds walls, props and sconces from `Core/World/SandboxLayout`, and
-`SandboxNode` builds the stalls and the starter bench from `data/sandbox.json` (via `WorldNode.Setup`). Change the room
+`SandboxNode` draws the street's cart spots and the starter bench from `data/sandbox.json` (via `WorldNode.Setup`). Change the room
 in Core, where `SandboxLayoutTests` pins it to Unity's numbers. Don't hand-place walls in the scene. Sprite pivots,
 Unity's import pivots, live in `Scripts/World/SpritePivots`.
 

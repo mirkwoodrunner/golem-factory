@@ -167,6 +167,9 @@ namespace GolemFactory.Supply
 
         public bool Creative { get; }
         public int TicksPerMinute { get; }
+
+        /// <summary>Bumped whenever a cart comes, goes or changes, so a reader can cache around it.</summary>
+        public int Version { get; private set; }
         public IReadOnlyList<CartSpot> Spots => _spots;
         public IEnumerable<SupplyCart> Carts => _spots.Where(s => s.Cart != null).Select(s => s.Cart);
 
@@ -199,8 +202,13 @@ namespace GolemFactory.Supply
 
         public CartSpot SpotOf(string nodeId) => _spots.FirstOrDefault(s => s.NodeId == nodeId);
 
-        /// <summary>Whether this node id is one of the street's carts, not a stall.</summary>
+        /// <summary>Whether this node id is one of the street's carts.</summary>
         public bool IsCart(string nodeId) => _spots.Any(s => s.Cart != null && s.NodeId == nodeId);
+
+        /// <summary>Whether this node id is a cart that refills itself: an empty one is waited
+        /// on, grey, not a stall the player must fix (§4).</summary>
+        public bool Refills(string nodeId) =>
+            SpotOf(nodeId)?.Cart is SupplyCart cart && !cart.IsInfinite && cart.RatePerMinute > 0;
 
         /// <summary>
         /// A cart the world starts with (§1), free, at rung 0 and full. Its good is kept: the
@@ -222,10 +230,17 @@ namespace GolemFactory.Supply
 
         // --- What a spot offers ------------------------------------------------------------------
 
-        /// <summary>The goods an empty spot offers (invariant 8): every ladder whose good the
-        /// Ledger has seen, in the game's canonical order.</summary>
+        /// <summary>The carts an empty spot offers (invariant 8, the user's call of 2026-11-06):
+        /// every ladder whose add price names only goods the Ledger has seen, in the game's
+        /// canonical order. A raw good is never seen before its first cart, so the price opens it:
+        /// Coal's Scrap from the start, Zinc Ore's Copper Ingot in chapter 8.</summary>
         public IReadOnlyList<CartLadder> Offers() =>
-            ItemTiers.CanonicalOrder.Where(i => _ladders.ContainsKey(i) && _seen(i)).Select(i => _ladders[i]).ToList();
+            ItemTiers.CanonicalOrder.Where(i => _ladders.ContainsKey(i) && Unseen(_ladders[i].AddPrice) == null)
+                .Select(i => _ladders[i]).ToList();
+
+        /// <summary>The first good in a price the Ledger hasn't seen, or null.</summary>
+        private string Unseen(IEnumerable<RecipeIngredient> price) =>
+            price.Where(p => p.quantity > 0 && !_seen(p.itemType)).Select(p => p.itemType).FirstOrDefault();
 
         /// <summary>The next Rate rung's price, or null at the top.</summary>
         public static IReadOnlyList<RecipeIngredient> NextRateCost(SupplyCart cart) =>
@@ -264,9 +279,9 @@ namespace GolemFactory.Supply
             {
                 return SupplyResult.Refused("No cart sells that.");
             }
-            if (!_seen(itemType))
+            if (Unseen(ladder.AddPrice) is string unseen)
             {
-                return SupplyResult.Refused("Requires: " + ItemTiers.DisplayName(itemType));
+                return SupplyResult.Refused("Requires: " + ItemTiers.DisplayName(unseen));
             }
             if (_occupied(spot.Cell))
             {
@@ -332,9 +347,9 @@ namespace GolemFactory.Supply
             {
                 return SupplyResult.Refused("No cart sells that.");
             }
-            if (!_seen(itemType))
+            if (Unseen(ladder.AddPrice) is string unseen)
             {
-                return SupplyResult.Refused("Requires: " + ItemTiers.DisplayName(itemType));
+                return SupplyResult.Refused("Requires: " + ItemTiers.DisplayName(unseen));
             }
             if (IsLastKept(cart))
             {
@@ -476,7 +491,7 @@ namespace GolemFactory.Supply
                 SupplyCart cart = Place(spot, ladder);
                 cart.RateRung = Math.Max(0, Math.Min(entry.rateRung, ladder.TopRateRung));
                 cart.CapacityRung = Math.Max(0, Math.Min(entry.capacityRung, ladder.TopCapacityRung));
-                cart.Node.RestoreQuantity(entry.stock);
+                cart.Node.RestoreQuantity(entry.stock); // an infinite (Creative) node stays infinite
                 cart.Accumulator = entry.accumulator < 0 ? 0 : entry.accumulator;
                 cart.RecordAdd(entry.addPaid);
                 cart.RecordRung(entry.rungsPaid);
@@ -519,6 +534,10 @@ namespace GolemFactory.Supply
             spot.Cart = null;
         }
 
-        private static void RaiseChanged() => EventBus.Publish(new WorldInteractablesChangedEvent("supply cart"));
+        private void RaiseChanged()
+        {
+            Version++;
+            EventBus.Publish(new WorldInteractablesChangedEvent("supply cart"));
+        }
     }
 }

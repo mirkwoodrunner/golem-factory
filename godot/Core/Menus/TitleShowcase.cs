@@ -14,7 +14,7 @@ namespace GolemFactory.Menus
     /// watches but cannot touch. It is built the way the playtest kit builds a chapter -- the
     /// guide's own steps performed with the player's verbs -- so it is exactly the workshop a
     /// player has after <see cref="Chapters"/> chapters, and it changes whenever the guide does.
-    /// Then <see cref="Keep"/> keeps it running: the script orders the stalls' truckloads, stokes
+    /// Then <see cref="Keep"/> keeps it running: the script fills low carts, stokes
     /// the boilers and empties full crates, as a player would, so no golem ever stops while the
     /// title is up. The world is thrown away when a game starts; nothing here is ever saved.
     /// </summary>
@@ -26,7 +26,7 @@ namespace GolemFactory.Menus
         /// <summary>How often <see cref="Keep"/> looks at the stocks, in seconds of game time.</summary>
         public const float KeepEverySeconds = 1f;
 
-        /// <summary>A stall is restocked below this many goods; a truckload's worth arrives.</summary>
+        /// <summary>A cart is filled to its capacity below this many goods.</summary>
         public const int StallLow = 20;
 
         /// <summary>A boiler is stoked to full below this much Coke.</summary>
@@ -100,7 +100,7 @@ namespace GolemFactory.Menus
         }
 
         /// <summary>
-        /// Restocks low stalls, stokes low boilers, empties full crates, and tops up the crate
+        /// Fills low carts, stokes low boilers, empties full crates, and tops up the crate
         /// behind every Haul with its good, at once. Ahead of need: waiting for a golem to stop
         /// first showed it red until the next look.
         /// </summary>
@@ -132,14 +132,13 @@ namespace GolemFactory.Menus
                 }
             }
 
-            foreach (ResourceNode node in _world.Nodes.Nodes)
+            // A cart refills itself, but slower than a showcase's golems pull.
+            foreach (Supply.SupplyCart cart in _world.Supply.Carts)
             {
-                if (node.RemainingQuantity != ResourceNode.Infinite && node.RemainingQuantity < StallLow)
+                if (!cart.IsInfinite && cart.Stock < StallLow)
                 {
-                    int truckload = _world.Market != null && _world.Market.TryGetOffer(node.NodeId, out Economy.MarketOffer offer)
-                        ? offer.TruckloadSize
-                        : StallLow * 2;
-                    node.Deliver(truckload);
+                    cart.Node.Deliver(cart.Capacity - cart.Stock);
+                    cart.Marker.RefreshVisualState();
                 }
             }
             foreach (PlaceableBuilding building in _world.Build.Buildings)

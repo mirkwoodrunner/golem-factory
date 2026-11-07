@@ -39,14 +39,16 @@ namespace GolemFactory.Save
         public ProgressEntry progress;
 
         /// <summary>
-        /// The market street: what each stall holds and the carts on the road (Phase 3
-        /// critique). Null in a save written before it, and a load then leaves the street as it is.
+        /// The truckload market's stalls and the carts on their road, from a save written before
+        /// supply carts. Never written now: a load reads it once, to turn each stall into a cart
+        /// (docs/supply-design.md §5, <c>Supply.SupplyMigration</c>).
         /// </summary>
         public MarketEntry market;
 
         /// <summary>
         /// The street's supply carts (docs/supply-design.md §5): one entry per spot with a cart.
-        /// Null in a save written before carts, and a load then leaves the street's spots empty.
+        /// Null in a save written before carts: a load then migrates its stalls, or, with none,
+        /// starts the street as a new game does.
         /// </summary>
         public List<SupplyCartEntry> supply;
 
@@ -93,11 +95,6 @@ namespace GolemFactory.Save
     }
 
     /// <summary>
-    /// The stalls' stock and the truckloads in flight, as parallel lists like
-    /// <see cref="BufferEntry"/>. A truckload keeps the ticks it still has to travel, since a
-    /// save keeps no tick count.
-    /// </summary>
-    /// <summary>
     /// One supply cart: its spot, its good, its two rungs, its stock and the trickle's remainder,
     /// and what was paid for it, which a removal refunds half of.
     /// </summary>
@@ -115,6 +112,10 @@ namespace GolemFactory.Save
         public List<RecipeIngredient> rungsPaid = new List<RecipeIngredient>();
     }
 
+    /// <summary>
+    /// A pre-cart save's stalls' stock and the truckloads in flight, as parallel lists like
+    /// <see cref="BufferEntry"/>. Read only by the migration to carts.
+    /// </summary>
     [Serializable]
     public sealed class MarketEntry
     {

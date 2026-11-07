@@ -762,6 +762,10 @@ the alerts strip tells you exactly which tile.*
 
 ## 10. Soft-lock audit
 
+> **Phase 8 (`docs/supply-design.md` invariant 9):** the free Scrap stall is gone. The rule is
+> kept by the starting Scrap cart instead: it refills itself, and the street's last Scrap cart
+> can't be removed or changed, so Scrap always comes in.
+
 | Risk | Status |
 |---|---|
 | **Chassis cost circularity** | **Clear.** Verified in §6: Scavenger/Presser cost hand-obtainable goods; Hauler costs only Presser output; Overclocker and Zeppelin cost only Hauler output. |
@@ -950,6 +954,9 @@ text and a reader can see what changed after it.
 
 ### 13.1 The market street extends east and west (amends §3.2)
 
+> **Amended by `docs/supply-design.md` §1 (Phase 8):** the street runs to ±34 with seventeen
+> cart spots on the one row, x −32 to 32.
+
 §3.2 wants **~8 node sites at endgame**. The street as built is the workshop's width (25 cells) and
 holds five stalls at a four-cell pitch, with no room for three more.
 
@@ -970,6 +977,11 @@ What the decision costs, accepted knowingly:
   bound added in the backlog pass.
 
 ### 13.2 The market sells full truckloads, and Creative Mode bypasses it (amends §5.1)
+
+> **Replaced by `docs/supply-design.md` (Phase 8):** there are no truckloads and no price per
+> load. Every raw good comes from a supply cart the player adds on a spot, which refills itself
+> at its rate up to its capacity; the market's cost is per cart and per rung. Creative Mode's
+> carts cost nothing and never run out. What follows is the truckload market's record.
 
 `docs/game-design.md` promises "full truckload shipments" and the street shipped as five `Infinite`
 `ResourceNode`s: buying from a trader was presentation, and extraction was byte-for-byte what it

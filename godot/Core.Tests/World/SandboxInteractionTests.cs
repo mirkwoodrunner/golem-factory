@@ -30,80 +30,67 @@ namespace GolemFactory.Tests.World
             world.Interactor.Poll();
         }
 
-        private static SandboxSetup.NodeEntry Stall(SandboxWorld world, string id) =>
-            world.Setup.nodes.Single(n => n.id == id);
-
-        /// <summary>What a Coal truckload costs in Scrap, read from the market's offer.</summary>
-        private static int CoalPrice(SandboxWorld world) =>
-            world.Market.TryGetOffer("CoalNode", out MarketOffer offer) ? offer.Price.Single().quantity : 0;
+        /// <summary>Where a good's first cart stands: the starting Scrap cart, or the spot the guide marks.</summary>
+        private static Vector2Int Home(SandboxWorld world, string item) => world.Setup.HomeSpot(item).Value;
 
         [Test]
-        public void AtTheFreeScrapStall_EOffersAHarvest_AndHarvests()
+        public void AtTheStartingScrapCart_EOffersAHarvest_AndHarvests()
         {
             SandboxWorld world = Compose();
-            SandboxSetup.NodeEntry stall = Stall(world, "ScrapNode");
-            StandAt(world, new Vector2Int(stall.x, stall.y));
+            StandAt(world, Home(world, ItemType.Scrap));
 
             Assert.AreEqual(InteractionAffordance.Ready, world.Interactor.CurrentAffordance);
-            StringAssert.Contains("[E]", world.Interactor.CurrentPrompt);
-            StringAssert.Contains("Scrap", world.Interactor.CurrentPrompt);
+            StringAssert.StartsWith("[E]  Harvest Scrap cart  -  200 of 200", world.Interactor.CurrentPrompt);
 
             Assert.IsTrue(world.Interactor.Interact(), world.Interactor.LastStatusMessage);
             Assert.AreEqual(1, world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.Scrap));
         }
 
+        // docs/supply-design.md §2: an empty cart has nothing to take, and nothing to order;
+        // its line says how it fills and that [I] opens it.
         [Test]
-        public void AtAnEmptyStall_EOrdersATruckload_WhenTheWalletCovers()
+        public void AnEmptyCart_GreysItsHarvest_AndSaysHowItFills()
         {
             SandboxWorld world = Compose();
-            SandboxSetup.NodeEntry coal = Stall(world, "CoalNode");
-            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, CoalPrice(world));
-            StandAt(world, new Vector2Int(coal.x, coal.y));
-
-            Assert.AreNotEqual(InteractionAffordance.Hidden, world.Interactor.CurrentAffordance);
-            Assert.IsTrue(world.Interactor.Interact(), world.Interactor.LastStatusMessage);
-            Assert.AreEqual(0, world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.Scrap), "the Coal truckload's price was paid");
-        }
-
-        // G10, at the user's call: an empty stall's caption names what [E] does there.
-        [Test]
-        public void AnEmptyStall_OffersATruckloadAndItsPrice_NotAHarvest()
-        {
-            SandboxWorld world = Compose();
-            SandboxSetup.NodeEntry copper = Stall(world, "CopperOreNode");
-            StandAt(world, new Vector2Int(copper.x, copper.y));
-
-            Assert.AreEqual(InteractionAffordance.Ready, world.Interactor.CurrentAffordance);
-            Assert.IsTrue(world.Market.TryGetOffer("CopperOreNode", out MarketOffer offer));
-            Assert.AreEqual($"[E]  Order a truckload of Copper Ore  -  {offer.Price.Single().quantity} Scrap", world.Interactor.CurrentPrompt);
-        }
-
-        [Test]
-        public void WithTheCartOnTheRoad_TheStallSaysSo_AndOffersNoKey()
-        {
-            SandboxWorld world = Compose();
-            SandboxSetup.NodeEntry coal = Stall(world, "CoalNode");
-            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, CoalPrice(world));
-            StandAt(world, new Vector2Int(coal.x, coal.y));
-            Assert.IsTrue(world.Interactor.Interact(), "precondition: ordered");
-            world.Interactor.Poll();
+            Assert.IsTrue(world.GrantCart(Home(world, ItemType.Coal), ItemType.Coal).Done);
+            StandAt(world, Home(world, ItemType.Coal));
 
             Assert.AreEqual(InteractionAffordance.Unavailable, world.Interactor.CurrentAffordance);
-            Assert.AreEqual("Coal  -  cart on its way", world.Interactor.CurrentPrompt);
+            StringAssert.Contains("Coal cart  -  0 of 100", world.Interactor.CurrentPrompt);
+            StringAssert.Contains("+30 a minute", world.Interactor.CurrentPrompt);
+            StringAssert.Contains("[I] open", world.Interactor.CurrentPrompt);
+            StringAssert.DoesNotContain("truckload", world.Interactor.CurrentPrompt);
+            Assert.IsFalse(world.Interactor.Interact(), "nothing to take");
         }
 
         [Test]
-        public void AStallWithStock_StillOffersAHarvest_UnderItsEnglishName()
+        public void ACartWithStock_OffersAHarvest_UnderItsEnglishName()
         {
             SandboxWorld world = Compose();
-            SandboxSetup.NodeEntry copper = Stall(world, "CopperOreNode");
-            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 100);
-            StandAt(world, new Vector2Int(copper.x, copper.y));
-            Assert.IsTrue(world.Interactor.Interact(), "precondition: ordered");
-            world.Market.Tick(1_000_000); // the cart arrives
-            world.Interactor.Poll();
+            Vector2Int copper = Home(world, ItemType.CopperOre);
+            Assert.IsTrue(world.GrantCart(copper, ItemType.CopperOre).Done);
+            world.Supply.SpotAt(copper).Cart.Node.Deliver(10);
+            StandAt(world, copper);
 
-            StringAssert.StartsWith("[E]  Harvest Copper Ore  -  ", world.Interactor.CurrentPrompt);
+            StringAssert.StartsWith("[E]  Harvest Copper Ore cart  -  10 of 100", world.Interactor.CurrentPrompt);
+        }
+
+        [Test]
+        public void HoldingE_AtTheScrapCart_KeepsTaking_WhileItRefills()
+        {
+            // At 60 frames a second, as the game holds it: each repeat was once worked out from the
+            // frame before, stayed an interval ahead, and the hold took two goods and stopped.
+            SandboxWorld world = Compose();
+            world.Clock.Play();
+            StandAt(world, Home(world, ItemType.Scrap));
+            Assert.IsTrue(world.Interactor.Interact());
+            for (int frame = 0; frame < 180; frame++)
+            {
+                world.Advance(1f / 60f);
+                world.Interactor.Poll();
+                world.Interactor.HoldHarvest(1f / 60f, true, false);
+            }
+            Assert.GreaterOrEqual(world.Buffers.GetQuantity(world.StockpileBufferId, ItemType.Scrap), 18, "three seconds held: one, then one every 0.15 s");
         }
 
         [Test]
@@ -112,8 +99,8 @@ namespace GolemFactory.Tests.World
             SandboxWorld world = Compose();
             var popups = new List<InteractionPopup>();
             world.Interactor.PopupRaised += popups.Add;
-            SandboxSetup.NodeEntry stall = Stall(world, "ScrapNode");
-            StandAt(world, new Vector2Int(stall.x, stall.y));
+            Vector2Int stall = Home(world, ItemType.Scrap);
+            StandAt(world, stall);
 
             world.Interactor.Interact();
 

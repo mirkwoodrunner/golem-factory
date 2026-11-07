@@ -5,17 +5,18 @@ Paths here are relative to `godot/` unless they say otherwise.
 
 Current scenarios:
 - `world` (Sandbox): the shell matches `SandboxLayout`, its tint and seven sconces are
-  `LightingRules`', all nine stalls publish endpoints, and
+  `LightingRules`', every cart on the street (the starting Scrap cart) publishes its endpoint, and
   the player walks down the street and through the town square to its far kerb and back,
   with the camera following.
 - `build` (Sandbox): every placeable placed through the real build menu and cursor with
   synthetic mouse and key events, then drag runs, Escape, and a demolition that restores the
   pack exactly.
-- `interact` (Sandbox): the player's `[E]`, hold-`[E]`, and `[G]` at a stall, an empty stall,
+- `interact` (Sandbox): the player's `[E]`, hold-`[E]`, and `[G]` at the starting Scrap cart,
   the bench and the station, using real key and mouse events. Cranking the bench shows the
   Artificer's crank frame facing it and the bench's turning wheel; letting go stands.
 - `golems` (Sandbox): every chassis built, and every `AppendageActionType` run on real steam:
-  extract, haul, push, load, assemble plus repeat, refine, and freight. A golem out of steam
+  extract (from the Scrap cart, and a Coal cart added on its spot), haul, push, load, assemble
+  plus repeat, refine, and freight. A golem out of steam
   must stall and wear its badge. Each boiler glows by `LightingRules.BoilerGlow`, and one
   run dry goes dark a frame later; every pipe wears its `_hot` picture exactly while it carries
   steam (`LightingRules.PipeHot`), so that boiler's run goes cold and a loose pipe never warms. Each golem draws its own chassis's frame for what it is doing,
@@ -23,7 +24,7 @@ Current scenarios:
 - `golem-motion` (Sandbox): every chassis at its signature verb on steam, side by side on the
   street and zoomed in, with stocks fed and drained so none stops. Each body must make its
   work motion (`Core/Golems/GolemWorkMotion`): the Presser stamps, the Overclocker stamps and
-  glows, the Scavenger tugs at the Scrap stall, the Hauler heaves and lunges, the Zeppelin
+  glows, the Scavenger tugs at the Scrap cart, the Hauler heaves and lunges, the Zeppelin
   crouches and hops. Each also picks its stroke's three work frames (`Core/Golems/GolemFrames`),
   and a chassis with no frame files draws its south base throughout. It is also the fixture for
   capturing the motions with `--write-movie`.
@@ -46,9 +47,9 @@ Current scenarios:
   It saves into Slot 1, so every save after the first and every load takes its second press.
   Writes only `user://scenario-saves`, never the player's saves.
 - `tutorial` (Sandbox): the step-by-step guide's panel.
-  - It opens on step 1, with the arrow pinned to the screen edge toward the Scrap stall and
+  - It opens on step 1, with the arrow pinned to the screen edge toward the Scrap cart and
     clear of the HUD bars.
-  - Gathering advances it, and the Boiler step outlines its build-menu row.
+  - Gathering advances it to "Buy a Coal cart", and the Boiler step outlines its build-menu row.
   - F1 hides and shows it, it steps aside over Management, and Skip guide puts it away.
   - In the Workbench on "Program it", it sits clear of the sockets, the lever, the vault and
     the hint's frames.
@@ -74,7 +75,8 @@ Current scenarios:
   "2/5 Scrap"; facing bare floor, pushing into a full crate (red) and off the steam grid (blue)
   are counted; a straining golem wears no badge; a golem set to haul from the full crate turns
   its feeder grey; carrying the feeder away (G) turns the waiting golem red at once; a stuck
-  golem's [E] prompt names its problem; an empty Coal stall is red until a truckload is ordered.
+  golem's [E] prompt names its problem; an extractor at a new, empty Coal cart waits grey, because
+  the cart refills itself.
   Every badge, the strip and the prompt read in player names (`UI/PlayerText.RawIdIn`), and
   no two badges overlap.
 - `hover` (Sandbox, the same street): the real pointer on a golem's cell, or the cell above its
@@ -123,7 +125,7 @@ Current scenarios:
   (`docs/menus-design.md` §4). A key button listens; Tab, a digit and Shift are refused and it
   keeps listening, E and Escape never close the screen mid-capture, F binds Use, F for Carry
   swaps Use to G, and Escape or a tab change cancels. Then the rebind is live: the InputMap, the
-  guide's step 1, the Pack hint, and at the Scrap stall "[G] Harvest" with G harvesting and E
+  guide's step 1, the Pack hint, and at the Scrap cart "[G] Harvest" with G harvesting and E
   not. Reset keys restores E. UI scale 1.5 by a click on the track is kept but held at 1 in a
   1280x720 window, let through at 1920x1080 (the camera frames the same cells), and a 1024x576
   window is fitted to 0.8; every tab button stays on screen at each. The toggles take, the saved
@@ -184,7 +186,7 @@ Current scenarios:
   Left shows the campaign's (none), Right comes back, Enter loads the world with its depot. A
   campaign game greys a Creative save copied among its slots and refuses to load it. Captures
   `creative`, `creative-load`.
-- `supply` (Sandbox): supply carts (`docs/supply-design.md`, step 1) with real keys and clicks.
+- `supply` (Sandbox): supply carts (`docs/supply-design.md`) with real keys and clicks.
   S and A walk to the spot at x = −20, drawn as its rope; the prompt offers a cart and E opens the
   panel, listing the carts the Ledger allows. A click adds a Coal cart for its price and the rope
   becomes the Coal cart; it fills on the clock; E takes from it; I opens its panel and a click

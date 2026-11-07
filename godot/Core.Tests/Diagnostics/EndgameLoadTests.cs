@@ -86,7 +86,7 @@ namespace GolemFactory.Tests.EditMode
             EndgameLoadResult load = EndgameLoad.Build(world);
             load.Starve();
             Advance(world, load, 200);
-            var bare = new StallFactsProbe(() => world.Golems, world.Endpoints, world.Belts, () => world.Market);
+            var bare = new StallFactsProbe(() => world.Golems, world.Endpoints, world.Belts, id => world.Supply.Refills(id));
             int fed = 0;
             foreach (GolemEntity golem in world.Golems)
             {

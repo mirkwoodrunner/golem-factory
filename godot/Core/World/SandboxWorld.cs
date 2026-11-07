@@ -75,7 +75,6 @@ namespace GolemFactory.World
         public FloorBounds Bounds { get; private set; } = new FloorBounds();
         public DefinitionSet Definitions { get; private set; }
         public SandboxSetup Setup { get; private set; }
-        public TruckloadMarket Market { get; private set; }
 
         /// <summary>The street's supply carts (docs/supply-design.md); never null once composed.</summary>
         public SupplyStreet Supply { get; private set; }
@@ -203,14 +202,6 @@ namespace GolemFactory.World
 
             // SandboxBootstrap.Start, in its order.
             setup.ApplyBufferPolicy(Buffers);
-            setup.RegisterNodes(Nodes);
-            foreach (SandboxSetup.NodeEntry entry in setup.nodes)
-            {
-                var marker = new ResourceNodeMarker { Position = new Vector3(entry.x, entry.y, 0f) };
-                marker.Configure(Nodes, entry.id);
-                marker.RegisterAsSpatialEndpoint(Endpoints, UnitCells);
-                Markers.Add(marker);
-            }
 
             // Steam ticks on the simulation clock: Coke burns per unit of work, so the burn has
             // to follow Play/Pause and the speed multiplier.
@@ -242,8 +233,7 @@ namespace GolemFactory.World
                 _authoredBuildings.Add(bench);
             }
 
-            Market = setup.BuildMarket(Nodes);
-            Clock.Register(Market);
+            // The market street: every raw good comes from a cart (docs/supply-design.md).
             Supply = setup.BuildSupply(
                 Nodes, Endpoints, UnitCells, Markers, () => Wallet, item => TechTree.Ledger.HasItem(item),
                 (int)System.Math.Round(60f * Clock.TicksPerSecond), cell => Grid.IsOccupied(cell));
@@ -537,7 +527,6 @@ namespace GolemFactory.World
             Interactor.ConfigureAffordance(null);
             Interactor.ConfigureWorld(() => Markers, InteractableBuildings, () => _golems);
             Interactor.ConfigureSupply(() => Supply);
-            Interactor.ConfigureMarket(Market, () => Clock.CurrentTick, Buffers, _stockpileBufferId);
             Interactor.ConfigureBuildMode(Build);
             Interactor.ConfigureGolemPlacement(Grid, new Vector2(1f, 1f));
             Interactor.ConfigureScreenCoordinator(Screens);
@@ -614,7 +603,6 @@ namespace GolemFactory.World
             List<GolemEntity> live = LiveGolems();
             SaveData data = SaveLoadService.CaptureState(Buffers, Patents, live, Build.Buildings);
             data.progress = CaptureProgress();
-            data.market = CaptureMarket();
             data.supply = Supply.Capture();
             data.meta = CaptureMeta(live.Count, data.buildings.Count, autosaveReason);
             data.creative = Creative;
@@ -704,8 +692,7 @@ namespace GolemFactory.World
         {
 
             RestoreProgress(data.progress);
-            RestoreSupply(data.supply);
-            RestoreMarket(data.market);
+            bool migrated = RestoreSupply(data.supply, data.market);
 
             IGolemRespawner respawner = _stationTemplate != null ? new StationGolemRespawner(_stationTemplate) : null;
             SaveLoadService.RestoreReport report = SaveLoadService.RestoreState(
@@ -737,6 +724,12 @@ namespace GolemFactory.World
                 Interactor.Announce(CratesMigrationNotice);
                 status += " " + CratesMigrationNotice;
             }
+            // A save from before carts (supply-design §5): its stalls are carts now. Said once.
+            if (migrated)
+            {
+                Interactor.Announce(SupplyMigration.Notice);
+                status += " " + SupplyMigration.Notice;
+            }
             return status;
         }
 
@@ -750,64 +743,23 @@ namespace GolemFactory.World
         private string _claimUserId;
 
         /// <summary>
-        /// The stalls' stock and the carts on the road. A load restores them with the pack, so
-        /// a truckload paid for before a save arrives after loading it, even on a fresh launch,
-        /// and one ordered after the save does not arrive on top of its refunded price.
+        /// The street's carts as the save left them. A save from before carts has none: its
+        /// stalls become carts on their places (§5), and one with no stalls either starts the
+        /// street as a new game does. Returns whether stalls were migrated.
         /// </summary>
-        private MarketEntry CaptureMarket()
-        {
-            var market = new MarketEntry();
-            foreach (ResourceNode node in Nodes.Nodes)
-            {
-                // A supply cart is saved with its spot (data.supply), never as a stall.
-                if (node.RemainingQuantity != ResourceNode.Infinite && !Supply.IsCart(node.NodeId))
-                {
-                    market.stallIds.Add(node.NodeId);
-                    market.stallStocks.Add(node.RemainingQuantity);
-                }
-            }
-            if (Market != null)
-            {
-                foreach ((string nodeId, int quantity, long ticksLeft) in Market.CartsOnTheRoad(Clock.CurrentTick))
-                {
-                    market.cartStallIds.Add(nodeId);
-                    market.cartQuantities.Add(quantity);
-                    market.cartTicksLeft.Add(ticksLeft);
-                }
-            }
-            return market;
-        }
-
-        /// <summary>
-        /// The street's carts as the save left them. A save from before carts has none: the
-        /// street goes back to its starting carts, as a new game has.
-        /// </summary>
-        private void RestoreSupply(List<SupplyCartEntry> carts)
+        private bool RestoreSupply(List<SupplyCartEntry> carts, MarketEntry market)
         {
             Supply.Restore(carts ?? new List<SupplyCartEntry>());
-            if (carts == null)
+            bool migrate = carts == null && SupplyMigration.HasStalls(market);
+            if (migrate)
+            {
+                Supply.Restore(SupplyMigration.CartsFor(market, Setup.supply?.legacyStalls));
+            }
+            else if (carts == null)
             {
                 Setup.PlaceStartingCarts(Supply);
             }
-        }
-
-        private void RestoreMarket(MarketEntry market)
-        {
-            if (market == null)
-            {
-                return; // a save from before the street was saved: leave it as it is
-            }
-            for (int i = 0; i < market.stallIds.Count && i < market.stallStocks.Count; i++)
-            {
-                if (Nodes.TryGetNode(market.stallIds[i], out ResourceNode node))
-                {
-                    node.RestoreQuantity(market.stallStocks[i]);
-                }
-            }
-            int carts = System.Math.Min(market.cartStallIds.Count,
-                System.Math.Min(market.cartQuantities.Count, market.cartTicksLeft.Count));
-            Market?.RestoreCarts(Enumerable.Range(0, carts)
-                .Select(i => (market.cartStallIds[i], market.cartQuantities[i], market.cartTicksLeft[i])), Clock.CurrentTick);
+            return migrate;
         }
 
         private ProgressEntry CaptureProgress()
@@ -933,6 +885,49 @@ namespace GolemFactory.World
 
         /// <summary>Hands [E] at a spot and [I] at a cart the cart panel. Null keeps one already handed over.</summary>
         public void ConfigureSupplyScreen(ISupplyScreen screen) => Interactor.ConfigureSupplyScreen(screen);
+
+        /// <summary>
+        /// Adds a cart through the street with its price granted first, into the pack and then
+        /// the Post, as the playtest kit grants a building's (<c>PlaceGranted</c>). For the kit,
+        /// the scenarios, the endgame load and tests; play pays with <see cref="SupplyStreet.Add"/>.
+        /// The Ledger is polled after the grant, so the price's goods count as seen at once.
+        /// </summary>
+        public SupplyResult GrantCart(Vector2Int cell, string itemType)
+        {
+            CartSpot spot = Supply.SpotAt(cell);
+            if (spot == null || !spot.IsEmpty || !Supply.TryGetLadder(itemType, out CartLadder ladder))
+            {
+                return SupplyResult.Refused("No empty spot there, or no cart sells that."); // nothing granted
+            }
+            GrantToWallet(ladder.AddPrice);
+            TechTree.Poll();
+            return Supply.Add(spot, itemType);
+        }
+
+        /// <summary>The next Rate rung for the cart on <paramref name="cell"/>, its price granted first (as <see cref="GrantCart"/>).</summary>
+        public SupplyResult GrantRateRung(Vector2Int cell)
+        {
+            CartSpot spot = Supply.SpotAt(cell);
+            if (spot?.Cart == null || SupplyStreet.NextRateCost(spot.Cart) is not IReadOnlyList<RecipeIngredient> cost)
+            {
+                return SupplyResult.Refused("No rung to buy.");
+            }
+            GrantToWallet(cost);
+            TechTree.Poll();
+            return Supply.UpgradeRate(spot);
+        }
+
+        private void GrantToWallet(IEnumerable<RecipeIngredient> cost)
+        {
+            foreach (RecipeIngredient line in cost ?? Enumerable.Empty<RecipeIngredient>())
+            {
+                int put = Buffers.Deposit(_stockpileBufferId, line.itemType, line.quantity);
+                if (put < line.quantity)
+                {
+                    Buffers.Deposit(PostBufferId, line.itemType, line.quantity - put);
+                }
+            }
+        }
 
         /// <summary>
         /// What the Pack and Crate screens show and what their clicks do: rows, transfers through
@@ -1116,7 +1111,7 @@ namespace GolemFactory.World
         /// stuck (red) (docs/onboarding-feedback-design.md §3.2).
         /// </summary>
         public StallFactsProbe StallFacts =>
-            _stallFacts ??= new StallFactsProbe(() => _golems, Endpoints, Belts, () => Market) { Frame = () => PresentationFrame };
+            _stallFacts ??= new StallFactsProbe(() => _golems, Endpoints, Belts, id => Supply.Refills(id)) { Frame = () => PresentationFrame };
 
         private StallFactsProbe _stallFacts;
 

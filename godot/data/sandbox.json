@@ -15,8 +15,6 @@
   "beltCellsPerSecond": 1.0,
   "tutorial": true,
   "playtest": true,
-  "freeStallSeedNode": "ScrapNode",
-  "freeStallSeedQuantity": 60,
   "playerStart": { "x": 0, "y": 0 },
   "assemblyLine": { "deck": "AssemblyLineDeck", "slots": 3, "claimUserId": "LocalPlayer", "gateWorkbench": true },
   "workbench": {
@@ -61,32 +59,21 @@
       [{ "itemType": "IronPlate", "quantity": 250 }, { "itemType": "Mainspring", "quantity": 6 }, { "itemType": "AetherCell", "quantity": 4 }, { "itemType": "Casing", "quantity": 30 }]
     ]
   },
-  "nodes": [
-    { "id": "ScrapNodeWest", "itemType": "Scrap", "sprite": "stall_scrap", "x": -16, "y": -16 },
-    { "id": "CoalNodeWest", "itemType": "Coal", "sprite": "stall_coal", "x": -12, "y": -16 },
-    { "id": "ScrapNode", "itemType": "Scrap", "sprite": "stall_scrap", "x": -8, "y": -16 },
-    { "id": "CoalNode", "itemType": "Coal", "sprite": "stall_coal", "x": -4, "y": -16 },
-    { "id": "CopperOreNode", "itemType": "CopperOre", "sprite": "stall_copper_ore", "x": 0, "y": -16 },
-    { "id": "ZincOreNode", "itemType": "ZincOre", "sprite": "stall_zinc_ore", "x": 4, "y": -16 },
-    { "id": "AetherNode", "itemType": "Aether", "sprite": "stall_aether", "x": 8, "y": -16 },
-    { "id": "CopperOreNodeEast", "itemType": "CopperOre", "sprite": "stall_copper_ore", "x": 12, "y": -16 },
-    { "id": "ZincOreNodeEast", "itemType": "ZincOre", "sprite": "stall_zinc_ore", "x": 16, "y": -16 }
-  ],
-  "market": [
-    { "nodeId": "ScrapNode", "price": [], "truckloadSize": 100, "deliveryTicks": 60 },
-    { "nodeId": "ScrapNodeWest", "price": [], "truckloadSize": 100, "deliveryTicks": 60 },
-    { "nodeId": "CoalNode", "price": [{ "itemType": "Scrap", "quantity": 30 }], "truckloadSize": 120, "deliveryTicks": 90 },
-    { "nodeId": "CoalNodeWest", "price": [{ "itemType": "Scrap", "quantity": 30 }], "truckloadSize": 120, "deliveryTicks": 90 },
-    { "nodeId": "CopperOreNode", "price": [{ "itemType": "Scrap", "quantity": 60 }], "truckloadSize": 120, "deliveryTicks": 120 },
-    { "nodeId": "CopperOreNodeEast", "price": [{ "itemType": "Scrap", "quantity": 60 }], "truckloadSize": 120, "deliveryTicks": 120 },
-    { "nodeId": "ZincOreNode", "price": [{ "itemType": "Scrap", "quantity": 60 }], "truckloadSize": 120, "deliveryTicks": 120 },
-    { "nodeId": "ZincOreNodeEast", "price": [{ "itemType": "Scrap", "quantity": 60 }], "truckloadSize": 120, "deliveryTicks": 120 },
-    { "nodeId": "AetherNode", "price": [{ "itemType": "Scrap", "quantity": 80 }], "truckloadSize": 40, "deliveryTicks": 150 }
-  ],
   "supply": {
-    "_doc": "docs/supply-design.md. Spots on the stall row; a good's cart is offered once the Ledger has seen it.",
-    "spots": [{ "x": -32, "y": -16 }, { "x": -28, "y": -16 }, { "x": -24, "y": -16 }, { "x": -20, "y": -16 }, { "x": 20, "y": -16 }, { "x": 24, "y": -16 }, { "x": 28, "y": -16 }, { "x": 32, "y": -16 }],
-    "startingCarts": [],
+    "_doc": "docs/supply-design.md. Seventeen spots on the street's row; a good's cart is offered once the Ledger has seen every good its add price names.",
+    "spots": [{ "x": -32, "y": -16 }, { "x": -28, "y": -16 }, { "x": -24, "y": -16 }, { "x": -20, "y": -16 }, { "x": -16, "y": -16 }, { "x": -12, "y": -16 }, { "x": -8, "y": -16 }, { "x": -4, "y": -16 }, { "x": 0, "y": -16 }, { "x": 4, "y": -16 }, { "x": 8, "y": -16 }, { "x": 12, "y": -16 }, { "x": 16, "y": -16 }, { "x": 20, "y": -16 }, { "x": 24, "y": -16 }, { "x": 28, "y": -16 }, { "x": 32, "y": -16 }],
+    "startingCarts": [{ "x": -8, "y": -16, "itemType": "Scrap" }],
+    "legacyStalls": [
+      { "id": "ScrapNodeWest", "x": -16, "y": -16, "itemType": "Scrap" },
+      { "id": "CoalNodeWest", "x": -12, "y": -16, "itemType": "Coal" },
+      { "id": "ScrapNode", "x": -8, "y": -16, "itemType": "Scrap" },
+      { "id": "CoalNode", "x": -4, "y": -16, "itemType": "Coal" },
+      { "id": "CopperOreNode", "x": 0, "y": -16, "itemType": "CopperOre" },
+      { "id": "ZincOreNode", "x": 4, "y": -16, "itemType": "ZincOre" },
+      { "id": "AetherNode", "x": 8, "y": -16, "itemType": "Aether" },
+      { "id": "CopperOreNodeEast", "x": 12, "y": -16, "itemType": "CopperOre" },
+      { "id": "ZincOreNodeEast", "x": 16, "y": -16, "itemType": "ZincOre" }
+    ],
     "carts": [
       {
         "itemType": "Scrap",
@@ -110,12 +97,12 @@
         "rates": [30, 60, 120, 180],
         "capacities": [100, 200, 300, 400],
         "rateCosts": [
-          [{"itemType": "IronPlate", "quantity": 40}, {"itemType": "Gear", "quantity": 10}],
+          [{"itemType": "IronPlate", "quantity": 10}, {"itemType": "Gear", "quantity": 5}],
           [{"itemType": "CopperIngot", "quantity": 40}, {"itemType": "Brass", "quantity": 20}],
           [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}]
         ],
         "capacityCosts": [
-          [{"itemType": "IronPlate", "quantity": 20}, {"itemType": "Gear", "quantity": 5}],
+          [{"itemType": "IronPlate", "quantity": 5}, {"itemType": "Gear", "quantity": 2}],
           [{"itemType": "CopperIngot", "quantity": 20}, {"itemType": "Brass", "quantity": 10}],
           [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}]
         ]

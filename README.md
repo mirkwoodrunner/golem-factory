@@ -28,7 +28,7 @@ To run the rules' unit tests without the engine: `dotnet test godot/GolemFactory
 | Input | Action |
 |---|---|
 | `W` `A` `S` `D` | Move |
-| `E` | Interact: **tap** to harvest a stall, order a truckload from an empty one, fuel a boiler, label a depot, or program a golem. **Hold** at the Hand-Crank Bench to crank. |
+| `E` | Interact: **tap** to take from a cart, add a cart on a roped-off spot, fuel a boiler, label a depot, or program a golem. **Hold** at the Hand-Crank Bench to crank. |
 | `R` | Turn the build ghost, the golem you're carrying, the golem you're standing by, or the bench's recipe |
 | `G` | Pick up the golem you're standing by; press again to set it down on the outlined tile |
 | `1`-`9`, `0`, `-`, `=` | Pick a build-menu tile; `X` is Demolish |

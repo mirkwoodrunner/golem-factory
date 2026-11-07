@@ -7,13 +7,12 @@ using GolemFactory.World;
 namespace GolemFactory.Nodes
 {
     /// <summary>
-    /// Populates the world from the applied <see cref="SandboxSetup"/>: the market stalls and the
-    /// starter Hand-Crank Bench -- what Unity authored into Sandbox.unity by hand and wired in
-    /// SandboxBootstrap.Start.
+    /// Populates the world from the applied <see cref="SandboxSetup"/>: the market street's cart
+    /// spots and the starter Hand-Crank Bench.
     ///
     /// <para>
-    /// Each stall is a Core <see cref="ResourceNodeMarker"/> publishing its node on its cell,
-    /// which is what lets a golem standing beside it ExtractFromNode; node identity is the cart
+    /// Each cart is a Core <see cref="ResourceNodeMarker"/> publishing its node on its cell,
+    /// which is what lets a golem standing beside it ExtractFromNode; its good is the cart
     /// SPRITE (root CLAUDE.md -- a tint never survives Play). The bench is a real building with
     /// a <see cref="HandCrankBench"/>, configured with every recipe (it filters to the crankable
     /// ones itself) and ticked by the clock. Since G5 all of that is built by Core's
@@ -43,15 +42,6 @@ namespace GolemFactory.Nodes
             {
                 GD.PushWarning("SandboxNode: WorldNode.ApplySandboxSetup is off, so there is nothing to populate.");
                 return;
-            }
-
-            // The stalls are Core markers the world already registered and published; this
-            // only draws them.
-            foreach (SandboxSetup.NodeEntry entry in setup.nodes)
-            {
-                var node = new Node2D { Name = entry.id, Position = GridConversions.CellToWorld(new Vector2I(entry.x, entry.y)) };
-                node.AddChild(SpritePivots.Make(entry.sprite));
-                AddChild(node);
             }
 
             // The supply street's spots (docs/supply-design.md §1), each drawn as its rope or its

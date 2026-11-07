@@ -184,10 +184,10 @@ namespace GolemFactory.Tests.EditMode
             public readonly TileNames Names;
             public readonly List<string> Lines = new List<string>();
 
-            public Street(System.Func<TruckloadMarket> market = null)
+            public Street(System.Func<string, bool> refills = null)
             {
                 Belts.Configure(new GolemFactory.Belts.ConveyorSystem(), Endpoints, 4);
-                Probe = new StallFactsProbe(() => Golems, Endpoints, Belts, market);
+                Probe = new StallFactsProbe(() => Golems, Endpoints, Belts, refills);
                 Names = new TileNames(Endpoints);
             }
 
@@ -338,23 +338,18 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void ATruckloadComing_NamesNoFeeder()
+        public void ARefillingCart_NamesNoFeeder()
         {
-            var nodes = new ResourceNodeRegistry();
-            var node = new ResourceNode("CoalNode", ItemType.Coal, 0);
-            nodes.Register(node);
-            var market = new TruckloadMarket(nodes, new GameMode(false));
-            market.AddOffer(new MarketOffer("CoalNode", new List<RecipeIngredient>(), 1, 5));
-            var street = new Street(() => market);
+            var node = new ResourceNode("Cart(0,0)", ItemType.Coal, 0);
+            var street = new Street(id => id == "Cart(0,0)");
             street.Endpoints.Register(new Vector2Int(0, 0), new ResourceNodeEndpoint(node));
             GolemEntity golem = street.Golem(Scavenger, 1, new Vector2Int(0, 1));
             golem.Program.appendages[0] = new AppendageActionDefinition { name = "ExtractScrap", actionType = AppendageActionType.ExtractFromNode, durationTicks = 1 };
             golem.Program.SetItemTypeAt(0, "");
             golem.Tick(0);
-            Assert.AreEqual(MarketOrderResult.Ordered, market.TryOrder("CoalNode", null, null, 0));
 
             Assert.AreEqual(GolemMood.Waiting, golem.Mood);
-            Assert.AreEqual("Waiting for Coal · a truckload is on its way", street.State(golem));
+            Assert.AreEqual("Waiting for Coal · its cart is refilling", street.State(golem));
         }
 
         [Test]

@@ -173,7 +173,7 @@ namespace GolemFactory.Nodes.Scenarios
         private ICrate _haulFrom, _haulTo;
 
         // Keep every golem busy: the stampers never run out of Coal or fill with Coke, the
-        // Scavenger's stall never empties, the Hauler's crate behind stays stocked and the one in
+        // Scavenger's cart never empties, the Hauler's crate behind stays stocked and the one in
         // front emptied, and the Scavenger's haul and the Zeppelin's cargo are cleared.
         private void Feed()
         {
@@ -182,7 +182,7 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 _haulTo.Buffer.TryWithdraw(ItemType.Scrap, _haulTo.Buffer.GetQuantity(ItemType.Scrap));
             }
-            if (_world.Nodes.TryGetNode("ScrapNode", out ResourceNode scrap) && scrap.RemainingQuantity < 20)
+            if (_world.Supply.SpotAt(_world.Setup.HomeSpot(ItemType.Scrap).Value)?.Cart?.Node is ResourceNode scrap && scrap.RemainingQuantity < 20)
             {
                 scrap.Deliver(20);
             }

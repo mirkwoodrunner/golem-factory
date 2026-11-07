@@ -11,7 +11,7 @@ namespace GolemFactory.Nodes.Scenarios
     ///
     /// <list type="number">
     ///   <item>The shell holds exactly SandboxLayout's walls, sconces and props.</item>
-    ///   <item>Every stall publishes its node on its own cell, so a golem beside it can extract.</item>
+    ///   <item>Every cart publishes its node on its own cell, so a golem beside it can extract.</item>
     ///   <item>Walking south, the player reaches the street's far end and is stopped by the world
     ///   clamp; walking north again, they are back inside the workshop.</item>
     ///   <item>The camera has followed: once the player stops, it settles on them.</item>
@@ -75,12 +75,11 @@ namespace GolemFactory.Nodes.Scenarios
                 return;
             }
 
-            var unpublished = world.Setup.nodes
-                .Where(n => !world.Endpoints.HasEndpoint(new CoreVector2Int(n.x, n.y)))
-                .Select(n => n.id).ToList();
-            if (sandbox.Markers.Count != world.Setup.nodes.Count || unpublished.Count > 0)
+            var carts = world.Sandbox.Supply.Spots.Where(s => !s.IsEmpty).ToList();
+            var unpublished = carts.Where(s => !world.Endpoints.HasEndpoint(s.Cell)).Select(s => s.Cell.ToString()).ToList();
+            if (carts.Count == 0 || sandbox.Markers.Count != carts.Count || unpublished.Count > 0)
             {
-                _staticFailure = $"stalls: {sandbox.Markers.Count} built, unpublished: {string.Join(", ", unpublished)}";
+                _staticFailure = $"carts: {carts.Count} on the street, {sandbox.Markers.Count} markers, unpublished: {string.Join(", ", unpublished)}";
                 return;
             }
 
@@ -91,7 +90,7 @@ namespace GolemFactory.Nodes.Scenarios
                 return;
             }
 
-            _staticReport = $"{walls} walls, {props} props, 7 sconces lit by LightingRules, {sandbox.Markers.Count} stalls published, {_standingChecked} standing sprites sort at their feet";
+            _staticReport = $"{walls} walls, {props} props, 7 sconces lit by LightingRules, {sandbox.Markers.Count} carts published, {_standingChecked} standing sprites sort at their feet";
             _player.ScriptedMove = new Vector2(0f, -1f);
         }
 
