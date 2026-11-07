@@ -10,14 +10,12 @@ using GolemFactory.World;
 
 namespace GolemFactory.Tests.EditMode
 {
-    // The fresh-production signal (docs/progression-design.md §7). ItemAssembledEvent is the one
-    // thing in the game that says "this good came into existence just now", and it is what the
-    // Clock Tower's multiplier is floored by. Without it a warehouse drain is indistinguishable
-    // from a running factory.
-    //
-    // Two claims are pinned here: that a golem finishing an Assemble publishes it (including for
-    // the byproduct), and that a golem merely MOVING goods does not.
-    public class ClockTowerFreshProductionSignalTests
+    // Any source counts at the Clock Tower (docs/contracts-design.md §11), and the fresh-production
+    // signal that used to floor it. ItemAssembledEvent is still the one thing in the game that
+    // says "this good came into existence just now" (the Ledger's "made" counts it), so a golem
+    // finishing an Assemble publishes it, byproduct included, and a golem merely MOVING goods does
+    // not. What changed: goods moved out of stock into the tower now build it.
+    public class ClockTowerAnySourceTests
     {
         private const string Slag = "Slag";
 
@@ -148,12 +146,11 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void MovingGoodsIsNotProducingThem()
+        public void GoodsFromStock_AreNotProducedButStillBuildTheTower()
         {
-            // THE distinction the hoard-blitz rule rests on. A Haul-and-Push logistics golem
-            // shifts goods that already existed; if that counted as fresh production, emptying a
-            // warehouse into the tower would earn the full x3 multiplier and the exploit would be
-            // wide open again.
+            // A Haul-and-Push logistics golem shifts goods that already existed: no Assemble, so
+            // nothing is made. The tower counts them anyway, the user's call (contracts-design
+            // §11): "The freshly made rule doesn't make sense."
             AppendageActionDefinition haul = Asset<AppendageActionDefinition>();
             haul.actionType = AppendageActionType.Haul;
             haul.inputItemType = ItemType.FrameSection;
@@ -188,10 +185,8 @@ namespace GolemFactory.Tests.EditMode
 
             Assert.AreEqual(0, _heard.Count, "no Assemble ran, so nothing was produced");
             Assert.Greater(site.DeliveryRatePerMinute(ItemType.FrameSection), 0,
-                "but goods really did arrive at the tower");
-            Assert.AreEqual(0, site.FreshProductionRatePerMinute(ItemType.FrameSection));
-            Assert.AreEqual(0L, site.ProgressUnits,
-                "delivery alone earns the tower nothing at all");
+                "goods really did arrive at the tower");
+            Assert.Greater(site.ProgressUnits, 0L, "and goods from stock build it");
         }
 
         [Test]

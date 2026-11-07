@@ -595,9 +595,8 @@ namespace GolemFactory.Tests.Tutorial
             {
                 if (second % 10 == 0)
                 {
-                    // A line that MAKES them: the tower counts only fresh production, so a
-                    // stockpile fed to it builds nothing (ClockTowerSite's fresh-production rule).
-                    EventBus.Publish(new ItemAssembledEvent("FrameLine", ItemType.FrameSection, 1, world.Clock.CurrentTick));
+                    // Any source counts (docs/contracts-design.md §11): these come from nowhere
+                    // but the test's hand, and still build the Foundation.
                     Assert.IsTrue(tower.TryGive(new Belts.ItemStack { ItemType = ItemType.FrameSection }), $"second {second}: the tower takes it");
                 }
                 for (int frame = 0; frame < 30; frame++)

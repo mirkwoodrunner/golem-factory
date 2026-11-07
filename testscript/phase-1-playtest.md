@@ -132,7 +132,8 @@ The guide never sends you to these. Each one is a judgement call that only a per
   workshop? Is anything standing where you wanted to build?
 - **The Clock Tower** waits in the town square south of the street, roped off until you build a
   Zeppelin, and its picture grows with every stage you complete. Is it a goal worth the whole
-  factory? Each stage wants a steady **rate** of freshly made goods, not a pile of them.
+  factory? Each stage wants a steady **rate** of goods; a pile you kept counts too, but no faster
+  than three times the rate.
 - **Demolish (X)** refunds the full cost, plus what the building held, a crate's goods included.
   That is settled, not a tuning question. Did moving things around ever feel punishing anyway?
 

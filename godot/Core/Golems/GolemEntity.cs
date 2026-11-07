@@ -864,8 +864,8 @@ namespace GolemFactory.Golems
         private void CompleteStep(AppendageActionDefinition step)
         {
             // A Repeat iteration finishing IS the borrowed Assemble finishing, products,
-            // ItemAssembledEvent and all -- the Clock Tower's fresh-production window must
-            // count a repeated batch exactly as it counts a single one.
+            // ItemAssembledEvent and all -- the Ledger's "made" must count a repeated batch
+            // exactly as it counts a single one.
             if (step.actionType == AppendageActionType.Repeat)
             {
                 if (_repeatedAssemble != null)
@@ -904,16 +904,12 @@ namespace GolemFactory.Golems
                 // in one step (progression-design §2, Consequence 3).
                 _inventory.AddOutput(recipe.outputItemType, recipe.outputQuantity);
 
-                // FRESH PRODUCTION (progression-design §7). This is the exact moment a good comes
-                // into existence, and it is the only such moment in the game: Haul and Push move
-                // goods that already existed, which is precisely what the Clock Tower's
-                // hoard-blitz rule has to be able to tell apart from making them. Published here
-                // rather than at Begin because nothing exists until the recipe has actually run
-                // its duration -- crediting at withdrawal would let a stalled 120-tick
-                // Chronometer Core count as production it never completed.
-                //
-                // The tick rides along so the tower's 60 s windows stay keyed to simulation time
-                // rather than to whenever a listener happened to hear about it.
+                // FRESH PRODUCTION. This is the exact moment a good comes into existence, and it
+                // is the only such moment in the game: Haul and Push move goods that already
+                // existed. The Ledger's "made" counts it (ProductionTally). Published here rather
+                // than at Begin because nothing exists until the recipe has actually run its
+                // duration -- crediting at withdrawal would let a stalled 120-tick Chronometer
+                // Core count as production it never completed.
                 EventBus.Publish(new ItemAssembledEvent(
                     golemId, recipe.outputItemType, recipe.outputQuantity, _currentTick));
 

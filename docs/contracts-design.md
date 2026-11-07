@@ -229,4 +229,8 @@ were made or where they were kept.
 - The tower's measured stage times (`tuning-data-spec.md` §18) are checked again; with no stock
   they're the same, since fresh output and delivery were equal there.
 
-It's built with contracts, as its own commit, before the office.
+It's built with contracts, as its own commit, before the office. **Built 2026-11-07**: the
+fresh window, `RecordFreshProduction`, `ClockTowerProgress.EffectiveRate`, the readout's Fresh
+column and the holder's subscription are gone; `ClockTowerFreshProductionSignalTests` became
+`ClockTowerAnySourceTests` (the Assemble signal still pins the Ledger's "made"). The measured
+stage times are unchanged: their tests fed delivery and fresh production at the same rate.

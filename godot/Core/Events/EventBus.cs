@@ -210,25 +210,15 @@ namespace GolemFactory.Events
         public GolemResumedEvent(string golemId) => GolemId = golemId;
     }
 
-    // FRESH PRODUCTION (docs/progression-design.md §7). Published the moment an Assemble step
-    // actually completes and its product lands in the golem's output stock -- once for the
-    // output and, separately, once for the byproduct, because R4 producing Slag is genuinely
-    // fresh Slag and the Clock Tower has to be able to say so.
+    // FRESH PRODUCTION. Published the moment an Assemble step actually completes and its product
+    // lands in the golem's output stock -- once for the output and, separately, once for the
+    // byproduct, because R4 producing Slag is genuinely fresh Slag. The Ledger's "made" and the
+    // overview's graph count it (ProductionTally). The Clock Tower used to cap a stage at this
+    // rate; it no longer does, any source counts there (docs/contracts-design.md §11).
     //
-    // THIS EXISTS FOR EXACTLY ONE REASON: it is the signal that closes the hoard-blitz hole.
-    // The tower's multiplier is min(deliveryRate, freshProductionRate) over 60 s windows, and
-    // without a "something was genuinely made just now" signal a warehouse dump is
-    // indistinguishable from a running factory -- a player could over-produce stage-4 goods
-    // during stages 1-3 and unload at 3x to finish the climax in three minutes.
-    //
-    // ONLY Assemble publishes this. Not Haul, not Push (those move goods that already existed,
-    // which is the very thing being guarded against), and not the legacy id-routed Refine,
-    // which §1.3 superseded and which nothing new is built on.
-    //
-    // Carries the TICK rather than letting the listener stamp its own. The Clock Tower's
-    // windows are tick-keyed for determinism, and a listener that stamped arrivals with
-    // "whatever tick I last saw" would shift a production event by the gap between the golem's
-    // Tick and the tower's -- reproducible, but for no reason when the producer already knows.
+    // ONLY Assemble publishes this. Not Haul, not Push (those move goods that already existed),
+    // and not the legacy id-routed Refine, which §1.3 superseded and which nothing new is built
+    // on. Carries the tick its golem completed on.
     public readonly struct ItemAssembledEvent
     {
         public readonly string GolemId;

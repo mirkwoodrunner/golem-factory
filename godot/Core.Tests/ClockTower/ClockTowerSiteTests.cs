@@ -82,24 +82,16 @@ namespace GolemFactory.Tests.EditMode
         private sealed class Supply
         {
             public readonly Dictionary<string, int> DeliveryRates = new Dictionary<string, int>();
-            public readonly Dictionary<string, int> FreshRates = new Dictionary<string, int>();
 
-            public static Supply At(ClockTowerStageDefinition stage, int deliveryMultiple, int freshMultiple)
+            public static Supply At(ClockTowerStageDefinition stage, int deliveryMultiple)
             {
                 var supply = new Supply();
                 foreach (StageDemand demand in stage.demands)
                 {
                     supply.DeliveryRates[demand.itemType] = demand.ratePerMinute * deliveryMultiple;
-                    supply.FreshRates[demand.itemType] = demand.ratePerMinute * freshMultiple;
                 }
 
                 return supply;
-            }
-
-            public Supply WithFresh(string itemType, int ratePerMinute)
-            {
-                FreshRates[itemType] = ratePerMinute;
-                return this;
             }
 
             public Supply WithDelivery(string itemType, int ratePerMinute)
@@ -109,7 +101,7 @@ namespace GolemFactory.Tests.EditMode
             }
         }
 
-        // Fills both 60 s windows before the tower is ever ticked, so the run below starts from a
+        // Fills the 60 s windows before the tower is ever ticked, so the run below starts from a
         // SATURATED steady state. §7's nominal duration is the time at exactly 1x supply, and a
         // rate measured over a rolling minute cannot read 1x until it has had a minute to
         // measure -- a real factory spends that minute spinning up, and a test that folded the
@@ -130,15 +122,6 @@ namespace GolemFactory.Tests.EditMode
                 if (units > 0)
                 {
                     site.RecordDelivery(line.Key, units, tick);
-                }
-            }
-
-            foreach (KeyValuePair<string, int> line in supply.FreshRates)
-            {
-                int units = UnitsDueOnTick(tick, line.Value);
-                if (units > 0)
-                {
-                    site.RecordFreshProduction(line.Key, units, tick);
                 }
             }
         }
@@ -187,7 +170,7 @@ namespace GolemFactory.Tests.EditMode
         {
             ClockTowerStageDefinition stage = Stage1();
             ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 1, 1);
+            Supply supply = Supply.At(stage, 1);
             Preload(site, supply);
 
             Assert.AreEqual(3600, TicksToAdvance(site, supply, 8000));
@@ -198,7 +181,7 @@ namespace GolemFactory.Tests.EditMode
         {
             ClockTowerStageDefinition stage = Stage2();
             ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 1, 1);
+            Supply supply = Supply.At(stage, 1);
             Preload(site, supply);
 
             Assert.AreEqual(4800, TicksToAdvance(site, supply, 9000));
@@ -209,7 +192,7 @@ namespace GolemFactory.Tests.EditMode
         {
             ClockTowerStageDefinition stage = Stage3();
             ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 1, 1);
+            Supply supply = Supply.At(stage, 1);
             Preload(site, supply);
 
             Assert.AreEqual(4800, TicksToAdvance(site, supply, 9000));
@@ -220,7 +203,7 @@ namespace GolemFactory.Tests.EditMode
         {
             ClockTowerStageDefinition stage = Stage4();
             ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 1, 1);
+            Supply supply = Supply.At(stage, 1);
             Preload(site, supply);
 
             Assert.AreEqual(6000, TicksToAdvance(site, supply, 11000));
@@ -235,7 +218,7 @@ namespace GolemFactory.Tests.EditMode
             // surplus is rewarded." This is the whole decision the phase hands the player.
             ClockTowerStageDefinition stage = Stage1();
             ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 3, 3);
+            Supply supply = Supply.At(stage, 3);
             Preload(site, supply);
 
             Assert.AreEqual(1200, TicksToAdvance(site, supply, 8000));
@@ -247,68 +230,30 @@ namespace GolemFactory.Tests.EditMode
         {
             ClockTowerStageDefinition stage = Stage1();
             ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 5, 5);
+            Supply supply = Supply.At(stage, 5);
             Preload(site, supply);
 
             Assert.AreEqual(1200, TicksToAdvance(site, supply, 8000),
                 "five times demand finishes no faster than three times");
         }
 
-        // --- THE HOARD-BLITZ HOLE ----------------------------------------------------------------
+        // --- Any source counts (docs/contracts-design.md §11) --------------------------------------
 
         [Test]
-        public void HoardBlitz_DeliveringFromAWarehouseCannotOutrunFreshProduction()
+        public void AStockpile_UnloadedAtTriple_FinishesAStageInAThird_NeverFaster()
         {
-            // THE EXPLOIT THIS CLOSES, in the design's own words: "a player could over-produce
-            // stage-4 goods during stages 1-3 and then unload at 3x to finish the climax in
-            // three minutes."
-            //
-            // Delivery here is a genuine, sustained 3x -- a warehouse emptying into the tower at
-            // triple the demand rate, which on delivery alone would earn the full x3 multiplier
-            // and finish stage 4 in 200 seconds. Fresh Assemble output is only 1x, because the
-            // factory is not actually making any more than it needs. The multiplier must
-            // therefore be 1x and the stage must take its full nominal ten minutes.
-            //
-            // The 60-unit meter clamp does NOT close this on its own: the clamp caps banked
-            // STOCK credit, and a sustained warehouse drain is a delivery RATE, which the clamp
-            // never sees. Only min(delivery, fresh) catches it.
+            // The user's call: goods from stock count like a line's output. What still holds is
+            // the 3x cap: a stockpile stage-4 dump at ten times the demand still takes a third of
+            // the nominal ten minutes, and the 60-unit meter keeps it from banking more.
             ClockTowerStageDefinition stage = Stage4();
             ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 3, 1);
+            Supply supply = Supply.At(stage, 10);
             Preload(site, supply);
 
-            Assert.AreEqual(6000, TicksToAdvance(site, supply, 11000),
-                "three times the DELIVERY at one times production is a x1 stage");
-            Assert.AreEqual(1000, site.StageMultiplierMilli);
-        }
-
-        [Test]
-        public void HoardBlitz_AStockpileStillSmoothsAProductionDipItDoesNotRaiseTheCeiling()
-        {
-            // The other half of the same rule, and the reason it is min() rather than "fresh
-            // production only": a warehouse is allowed to COVER a shortfall. Delivery at 1x
-            // against production of 3x still earns exactly 1x -- neither number alone decides.
-            ClockTowerStageDefinition stage = Stage1();
-            ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 1, 3);
-            Preload(site, supply);
-
-            Assert.AreEqual(3600, TicksToAdvance(site, supply, 8000));
-        }
-
-        [Test]
-        public void FreshProduction_WithNoAssembleOutputAtAll_FreezesTheStageEvenAtFloodDelivery()
-        {
-            // A pure warehouse dump with nothing being made behind it earns nothing at all.
-            ClockTowerStageDefinition stage = Stage1();
-            ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 3, 3);
-            supply.FreshRates.Clear();
-            Preload(site, supply);
-
-            Assert.AreEqual(-1, TicksToAdvance(site, supply, 2000));
-            Assert.AreEqual(0, site.ProgressUnits);
-            Assert.AreEqual(0, site.StageMultiplierMilli);
+            Assert.AreEqual(2000, TicksToAdvance(site, supply, 11000),
+                "a third of 6000 ticks, however much is delivered");
+            Assert.AreEqual(3000, site.StageMultiplierMilli);
+            Assert.LessOrEqual(site.MeterUnits(ItemType.ChronometerCore), SupplyPressureMeter.CapUnits);
         }
 
         // --- The weakest line gates ---------------------------------------------------------------
@@ -320,9 +265,8 @@ namespace GolemFactory.Tests.EditMode
             // run." Great Cog at triple rate buys nothing while Frame Section runs at one.
             ClockTowerStageDefinition stage = Stage2();
             ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 3, 3)
-                .WithDelivery(ItemType.FrameSection, 3)
-                .WithFresh(ItemType.FrameSection, 3);
+            Supply supply = Supply.At(stage, 3)
+                .WithDelivery(ItemType.FrameSection, 3);
             Preload(site, supply);
 
             Assert.AreEqual(4800, TicksToAdvance(site, supply, 9000));
@@ -337,7 +281,7 @@ namespace GolemFactory.Tests.EditMode
             // GolemEntity.BeginAssemble uses for naming the first short ingredient.
             ClockTowerStageDefinition stage = Stage2();
             ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 1, 1);
+            Supply supply = Supply.At(stage, 1);
             Preload(site, supply);
 
             TicksToAdvance(site, supply, 10);
@@ -355,7 +299,7 @@ namespace GolemFactory.Tests.EditMode
             // fail, only take longer; this is the assertion that pins the rubric-5 guarantee.
             ClockTowerStageDefinition stage = Stage1();
             ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 1, 1);
+            Supply supply = Supply.At(stage, 1);
             Preload(site, supply);
 
             long tick = ClockTowerProgress.SupplyWindowTicks;
@@ -396,9 +340,8 @@ namespace GolemFactory.Tests.EditMode
             // Frame Section flows; Great Cog was never delivered at all, so its meter starts and
             // stays empty. That is the state a player arrives in when the Mechanism chain has
             // not been built yet -- stage 2's whole introduction.
-            Supply supply = Supply.At(stage, 1, 1);
+            Supply supply = Supply.At(stage, 1);
             supply.DeliveryRates.Remove(ItemType.GreatCog);
-            supply.FreshRates.Remove(ItemType.GreatCog);
             Preload(site, supply);
 
             long tick = ClockTowerProgress.SupplyWindowTicks;
@@ -446,20 +389,20 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void ARopedOffSite_StillAgesItsProductionWindows()
+        public void ARopedOffSite_StillAgesItsWindows()
         {
-            // Fresh production is recorded while the rope is up; untrimmed, a whole game of it
-            // read as one minute's rate the moment the rope came down.
+            // Untrimmed while the rope is up, a window read old deliveries as this minute's rate
+            // the moment the rope came down.
             var site = new ClockTowerSite();
             site.SetStages(AllStages());
             bool open = false;
             site.OpenWhen = () => open;
 
-            site.RecordFreshProduction(ItemType.FrameSection, 50, 0);
+            site.RecordDelivery(ItemType.FrameSection, 50, 0);
             site.Tick(ClockTowerProgress.SupplyWindowTicks * 3);
             open = true;
 
-            Assert.AreEqual(0, site.FreshProductionRatePerMinute(ItemType.FrameSection),
+            Assert.AreEqual(0, site.DeliveryRatePerMinute(ItemType.FrameSection),
                 "three minutes ago is not this minute");
         }
 
@@ -486,10 +429,6 @@ namespace GolemFactory.Tests.EditMode
                 supply.DeliveryRates[ItemType.AetherConduit] = 9;
                 supply.DeliveryRates[ItemType.Lens] = 72;
                 supply.DeliveryRates[ItemType.ChronometerCore] = 6;
-                foreach (KeyValuePair<string, int> line in supply.DeliveryRates)
-                {
-                    supply.FreshRates[line.Key] = line.Value;
-                }
 
                 Preload(site, supply);
 
@@ -592,20 +531,17 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(4, site.DeliveryRatePerMinute(ItemType.FrameSection));
             Assert.AreEqual(4, site.MeterUnits(ItemType.FrameSection),
                 "one meter unit per unit delivered");
-            Assert.AreEqual(0, site.FreshProductionRatePerMinute(ItemType.FrameSection),
-                "delivering is not producing");
         }
 
         // --- Readout ----------------------------------------------------------------------------------
 
         [Test]
-        public void BuildReading_ReportsAllFourColumnsPerDemandedItem()
+        public void BuildReading_ReportsEachColumnPerDemandedItem()
         {
             ClockTowerStageDefinition stage = Stage1();
             ClockTowerSite site = SiteFor(stage);
 
-            // Delivery ahead of production: the exact state §8's fourth column exists for.
-            Supply supply = Supply.At(stage, 3, 1);
+            Supply supply = Supply.At(stage, 3);
             Preload(site, supply);
 
             long tick = ClockTowerProgress.SupplyWindowTicks;
@@ -622,9 +558,7 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(ItemType.FrameSection, row.ItemType);
             Assert.AreEqual(6, row.RequiredPerMinute);
             Assert.AreEqual(18, row.DeliveredPerMinute);
-            Assert.AreEqual(6, row.FreshPerMinute);
-            Assert.AreEqual(1000, row.MultiplierMilli,
-                "capped by fresh production, not by delivery -- the whole point of the column");
+            Assert.AreEqual(3000, row.MultiplierMilli, "what is delivered counts, up to 3x");
         }
 
         [Test]
@@ -634,7 +568,7 @@ namespace GolemFactory.Tests.EditMode
             // perturb the simulation it is reporting on.
             ClockTowerStageDefinition stage = Stage1();
             ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 1, 1);
+            Supply supply = Supply.At(stage, 1);
             Preload(site, supply);
 
             long tick = ClockTowerProgress.SupplyWindowTicks;

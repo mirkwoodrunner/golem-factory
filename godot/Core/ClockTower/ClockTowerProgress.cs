@@ -11,9 +11,10 @@ namespace GolemFactory.ClockTower
     /// <para>
     /// §7 in one block:
     /// <code>
-    /// effectiveRate_i        = min( deliveryRate_i , freshProductionRate_i )   // 60 s windows
-    /// stageProgressPerSecond = min over i of clamp(effectiveRate_i / demandRate_i, 0, 3)
+    /// stageProgressPerSecond = min over i of clamp(deliveryRate_i / demandRate_i, 0, 3)   // 60 s windows
     /// </code>
+    /// Any source counts: a stockpile fed to the tower counts like a line's output
+    /// (docs/contracts-design.md §11; the fresh-production floor was removed at the user's call).
     /// Progress scales with delivered rate and is capped at 3x, so a factory running triple the
     /// demand finishes a stage in a third of the time; it is gated by the weakest line, so every
     /// line has to run; and if any supply-pressure meter empties, progress is zero -- frozen,
@@ -83,28 +84,9 @@ namespace GolemFactory.ClockTower
         }
 
         /// <summary>
-        /// §7's <c>effectiveRate_i = min(deliveryRate_i, freshProductionRate_i)</c>.
-        ///
-        /// <para>
-        /// THE <c>min</c> IS THE ANTI-HOARD RULE, not an optimisation. The 60-unit meter clamp
-        /// caps how much *stock* credit a delivery can bank, but delivering out of a warehouse
-        /// is still a delivery rate -- so on delivery alone a player could stockpile stage-4
-        /// goods through stages 1-3 and unload at 3x to finish the climax in three minutes.
-        /// Taking the smaller of the two means a stockpile can smooth a dip (delivery covers a
-        /// production hiccup) but can never raise the multiplier above what the factory is
-        /// genuinely making right now.
-        /// </para>
-        /// </summary>
-        public static int EffectiveRate(int deliveryRatePerMinute, int freshRatePerMinute)
-        {
-            int delivery = deliveryRatePerMinute > 0 ? deliveryRatePerMinute : 0;
-            int fresh = freshRatePerMinute > 0 ? freshRatePerMinute : 0;
-            return delivery < fresh ? delivery : fresh;
-        }
-
-        /// <summary>
-        /// One line's <c>clamp(effectiveRate / demandRate, 0, 3)</c>, in
-        /// <see cref="ProgressScale"/> units.
+        /// One line's <c>clamp(deliveryRate / demandRate, 0, 3)</c>, in
+        /// <see cref="ProgressScale"/> units. A stockpile unloaded at 3x still takes a third of a
+        /// stage's nominal time at best, never less.
         ///
         /// <para>
         /// Clamped BEFORE the division, on the integer rate, so the 3x cap is exact rather than

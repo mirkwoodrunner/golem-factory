@@ -12,8 +12,8 @@ namespace GolemFactory.Buildings
     ///
     /// <para>
     /// Unity held a <c>ClockTowerSiteHolder</c>; this holds the <see cref="ClockTowerSite"/> it
-    /// owned. The holder's other two jobs -- ticking the site and feeding it fresh production
-    /// from <c>ItemAssembled</c> -- belong to whoever owns the site in the scene.
+    /// owned. The holder's other job, ticking the site, belongs to whoever owns the site in the
+    /// scene.
     /// </para>
     /// </summary>
     public sealed class PlaceableClockTower : IBuildingPart

@@ -206,8 +206,7 @@ namespace GolemFactory.Tests.Tutorial
                     return;
                 case "stage1":
                     // tuning-data-spec §15.4: the one exception. Stage 1's floor is its nominal
-                    // time: the tower is fed 6 a minute, each one fresh production, as a line
-                    // built for that rate would. Building it is the player's design, timed by the
+                    // time: the tower is fed 6 a minute, as a line built for that rate would. Building it is the player's design, timed by the
                     // human run.
                     FeedTheFoundation();
                     return;
@@ -409,7 +408,6 @@ namespace GolemFactory.Tests.Tutorial
                 if (Now - started >= next)
                 {
                     next += interval;
-                    EventBus.Publish(new ItemAssembledEvent("FloorFrameLine", demand.itemType, 1, _w.Clock.CurrentTick));
                     Assert.IsTrue(tower.TryGive(new ItemStack { ItemType = demand.itemType }), "the tower takes it");
                 }
                 Step();

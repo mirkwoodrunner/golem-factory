@@ -1971,7 +1971,7 @@ namespace GolemFactory.Tutorial
             // --- Chapter 10: the Clock Tower ------------------------------------------------------------
             // The endgame (G10, the user's call): the tower in the town square, roped off until a
             // Zeppelin flew, now open. It is built in stages, each demanding a steady RATE of a
-            // megaproject good rather than a pile of it.
+            // megaproject good; goods kept in stock count too (docs/contracts-design.md §11).
 
             new TutorialStep(
                 "tower-visit", "The town square",
@@ -1996,9 +1996,9 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "stage1", "Lay the Foundation",
-                "The tower builds at the rate you feed it, and it only counts Frame Sections your line is making "
-                + $"now: a pile emptied into it builds nothing. Short of {StageOneRate} a minute it still builds, just "
-                + "slower. Keep the line running until the Foundation is laid.",
+                $"The tower builds at the rate you feed it: {StageOneRate} Frame Sections a minute lays it in its time, "
+                + "and up to three times that lays it faster. Frame Sections you kept count as well as fresh ones. "
+                + $"Short of {StageOneRate} a minute it still builds, just slower. Keep it fed until the Foundation is laid.",
                 w => TowerSite.StageIndex >= 1 || TowerSite.IsComplete,
                 w => TownSquare.TowerCentre,
                 w => ClockTower.ClockTowerReadout.FormatHeadline(TowerSite.BuildReading())),

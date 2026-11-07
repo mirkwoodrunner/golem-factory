@@ -7,7 +7,8 @@ namespace GolemFactory.Economy
     /// Every good golems have assembled, counted (docs/crates-design.md §4.5). The Ledger's live
     /// rate used to read the stockpile, which every golem filled; with crates, a line's output
     /// lands in its own crate and the pack measures only the player's hands. Fresh production is
-    /// <see cref="ItemAssembledEvent"/>, the signal the Clock Tower counts, so the rate reads it.
+    /// <see cref="ItemAssembledEvent"/>, published the moment an Assemble completes, so the rate
+    /// reads it.
     ///
     /// <para>
     /// The counts are monotone, so the world samples them into the rate tracker under

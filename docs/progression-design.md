@@ -29,7 +29,7 @@ passed. Revision 3 is a tightening pass fixing two must-fix defects and a set of
 | The Overclocker had no verb — one chassis got a spatial ability and the other got a number | **§6**: Overclocker alone may hold **`Repeat`**, re-running its `Assemble` N times from one Haul batch. Competes for a slot against a third input type on the same chassis. |
 | Extractor rate omitted its `Push` step (240/min stated, **150** actual); coker stated 50/min, **35** actual | Corrected throughout §3.2, §7, §9. Node cap is 300/min, and stage 4 needs ~8 extractors across ~8 sites — which *strengthens* the go-further-out pressure. |
 | The Workbench had no decisions left — recipe + chassis fully determined the program | **§2**: `Haul` quantity is **player-set** (1–12). Batch size trades Push/Haul overhead against held stock and buffer pressure, and the right answer differs per line. |
-| Hoard-blitz hole: the multiplier read delivery rate, and delivering from a warehouse *is* a delivery rate | **§7**: multiplier derives from `min(deliveryRate, freshProductionRate)` over a 60 s window. |
+| Hoard-blitz hole: the multiplier read delivery rate, and delivering from a warehouse *is* a delivery rate | **§7**: multiplier derived from `min(deliveryRate, freshProductionRate)` over a 60 s window. **Withdrawn 2026-11-06** at the user's call: any source counts (`contracts-design.md` §11). |
 | Phase 2's blackout was an ambush | **§8**: Boiler fuel gauge with a countdown and a 25 % alert. |
 
 **Relationship to the other docs:**
@@ -263,8 +263,8 @@ brings `Repeat`: batch an assembly four times off one haul, at the cost of the s
 carried a third ingredient. The Zeppelin opens four-input recipes and the **Freight Link** — the
 only way to move goods between non-adjacent tiles, which converts eight scattered node sites from
 belt-corridor problems into remote outposts. And the game ends at the **Clock Tower**: four stages
-whose progress scales with *freshly produced* delivered rate, so a factory running at three times
-the demand finishes three times faster, while a warehouse buys sixty seconds and no more. Stage 4
+whose progress scales with delivered rate, so a factory running at three times the demand finishes
+three times faster; a stockpile counts too, but never faster than 3×. Stage 4
 demands roughly **1,390 raw units per minute — about 23 per second — against a player's
 hand-gathering ceiling of well under one.**
 
@@ -277,7 +277,7 @@ hand-gathering ceiling of well under one.**
 | 3 | **Steam & Scale** | Build a coal line that outgrows its own consumption; expand to a second node site | Floor Expansion; Bay upgrades; multi-site belt + pipe corridors | Aether-Hauler (80 Iron Plate + 40 Gear + 30 Coke) | **Growth has a running price you feel per golem.** 6 Coke/min each against a coker's 35, so every four golems needs another coker — the coal line becomes ~40 % of the factory, and nodes cap at 2 extractors so scale also means distance. | 35–45 min |
 | 4 | **The Metal Lines** | Aether-Hauler; all eight 2-input recipes; the Aether line | Smelting, Brass, Casing, Lens, Mainspring, Aether Cell; Slag Heap; carrier golems | Overclocker (2 Mainspring + 20 Brass + 24 Casing + 12 Gear) | **Convergence and disposal.** Multiple input types must reach one tile through four faces — spend chassis slots on carriers to buy back faces. And Slag now backs up: route it every cycle or the iron line stalls. | 50–60 min |
 | 5 | **The Great Works** | Overclocker, then the Zeppelin; Mechanisms and remote outposts | 3-input recipes; `Repeat`; 4-input recipes; **Freight Link + Freight Mast** | The Clock Tower | **Remote logistics, and batch vs. breadth.** The Freight Link turns distant nodes into self-contained outposts. On the Overclocker, `Repeat` and a third ingredient compete for the same slot. | 50–60 min |
-| 6 | **The Clock Tower** | Four stages of rate-scaled delivery | The tower site | — (win) | **Sustained rate, and whether to over-build.** Progress scales with fresh production up to 3×, so tripling a line genuinely finishes a stage in a third of the time. | 60–80 min |
+| 6 | **The Clock Tower** | Four stages of rate-scaled delivery | The tower site | — (win) | **Sustained rate, and whether to over-build.** Progress scales with delivered rate up to 3×, so tripling a line genuinely finishes a stage in a third of the time. | 60–80 min |
 
 **Total ≈ 4 h 15 m – 5 h 20 m.**
 
@@ -538,8 +538,7 @@ Per demanded item the site tracks a **supply-pressure meter**: `+1` per unit del
 `−rate/60` per second, clamped to `[0, 60]`.
 
 ```
-effectiveRate_i        = min( deliveryRate_i , freshProductionRate_i )     // 60 s rolling windows
-stageProgressPerSecond = min over demanded items of  clamp(effectiveRate_i / demandRate_i, 0, 3)
+stageProgressPerSecond = min over demanded items of  clamp(deliveryRate_i / demandRate_i, 0, 3)   // 60 s rolling windows
 ```
 
 - Progress **scales with delivered rate**, capped at 3×. A factory running 3× the demand finishes a
@@ -547,13 +546,11 @@ stageProgressPerSecond = min over demanded items of  clamp(effectiveRate_i / dem
 - Progress is **gated by the weakest line** (`min` across items), so all lines must run.
 - If any meter hits **0**, progress is `0` — frozen, never negative. An alert names the starved
   item; the HUD shows the deficit in items/min.
-- **`freshProductionRate` closes the hoard-blitz hole.** The 60-unit clamp caps *stock* credit, but
-  delivering from a warehouse is still a delivery rate, so a player could over-produce stage-4 goods
-  during stages 1–3 and then unload at 3× to finish the climax in three minutes. Deriving the
-  multiplier from the smaller of delivery and **fresh `Assemble` output over the last 60 s** means a
-  stockpile can smooth a dip but can never raise the multiplier. (The exploit was partly
-  self-limiting — the `min()` gate means capacity diverted to stockpiling slows the current stage —
-  so this is protecting the climax's drama more than its difficulty.)
+- **Any source counts** (amended 2026-11-06, `contracts-design.md` §11). The rate was once
+  `min(deliveryRate, freshProductionRate)`, so a stockpile couldn't raise the multiplier; the user's
+  call removed it ("The freshly made rule doesn't make sense"). A stockpile unloaded at 3× now
+  finishes a stage in a third of its nominal time, never faster, and the 60-unit clamp still caps
+  banked credit.
 
 Stages cannot fail — only take longer. That is the rubric-5 guarantee.
 
@@ -662,7 +659,7 @@ Every one extends something that exists.
 | "How long until the lights go out?" | **Boiler fuel gauge**: current Coke, burn rate, and a countdown (`240 Coke · 24/min · 10:00 left`), with an alert at 25 %. Phase 2's blackout must be a deadline the player watches approach, not an ambush — and with proportional burn the countdown responds live to every golem placed. |
 | "Why can't I claim that?" | Assembly Line panel greys locked cards with `Requires: <prerequisite>`. |
 | "Why is this golem stopped?" | Existing stall diagnostics, extended with: the specific short ingredient **and amount** for `Assemble`; `NoSteam` naming the nearest pipe gap; `OutputFull` naming the blocked item type. |
-| "Why is my rate low?" | Existing per-buffer per-minute readouts, plus `Required / Delivered / Fresh / ×multiplier` during a tower stage — four columns because a player whose multiplier is capped by *fresh production* rather than delivery needs to see exactly that. |
+| "Why is my rate low?" | Existing per-buffer per-minute readouts, plus `Required / Delivered / ×multiplier` during a tower stage (the Fresh column went with the fresh-production rule, `contracts-design.md` §11). |
 | "Why can't I put this card on this golem?" | Workbench greys it: `Needs 5 slots (3 inputs) — this chassis has 4`. |
 | "How much coke am I burning?" | HUD line: `Golems 96 · Powered 92 · Upkeep 576 Coke/min · Smelting 206 · Net −14`. **The most important new readout in the game** — it is how the player perceives that growth has a price. |
 | "Where is my Slag going?" | HUD line: `Slag 96/min → Glass 32 · Voided 64 (16 Coke/min)`. |
@@ -884,9 +881,8 @@ resolved. No stat checks, no multipliers on other golems.
 
 ### 7. The Clock Tower demands sustained throughput — **PASS**
 Stage 1 alone needs ~63 golems against a Phase-5 exit of ~44, and every stage requires +9 to +19
-more. Progress **scales with rate** to 3×, so over-building is rewarded. The hoard-blitz hole is
-closed by taking `min(delivery, fresh production)` over 60 s windows, so a warehouse can smooth a
-dip but never raise the multiplier.
+more. Progress **scales with rate** to 3×, so over-building is rewarded. (The hoard-blitz guard,
+`min(delivery, fresh production)`, was withdrawn on 2026-11-06: a stockpile counts, up to 3×.)
 
 ### 8. Legibility — **PASS**, conditional on §8's surfaces landing
 Existing infrastructure does most of it. The additions are eight readouts, of which the **fuel

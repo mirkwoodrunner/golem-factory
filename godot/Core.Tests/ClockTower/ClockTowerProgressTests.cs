@@ -54,16 +54,6 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(ClockTowerProgress.ProgressScale / 2L, ClockTowerProgress.ScaledRatio(3, 6));
         }
 
-        [Test]
-        public void EffectiveRate_TakesTheSmallerOfDeliveryAndFreshProduction()
-        {
-            // §7's anti-hoard rule in one line. A warehouse can smooth a production dip
-            // (delivery 9 covering fresh 6 still only counts 6) but can never raise the number.
-            Assert.AreEqual(6, ClockTowerProgress.EffectiveRate(9, 6));
-            Assert.AreEqual(6, ClockTowerProgress.EffectiveRate(6, 9));
-            Assert.AreEqual(0, ClockTowerProgress.EffectiveRate(60, 0));
-        }
-
         // --- Nominal durations -----------------------------------------------------------------
 
         [TestCase(360, 3600)]
