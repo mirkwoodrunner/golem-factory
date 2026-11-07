@@ -115,6 +115,9 @@ p95), so the tick isn't the limit; drawing and the per-frame readouts may be.
   holds, and no further (invariant 6). If 160 doesn't hold, the cap is what does, after the
   obvious optimisations.
 - **The contract plateau** (§1.1) and the civic works' rates are sized to that cap.
+- **Measured (2026-11-07, `performance-report-endless.md`):** the budget holds at 96 golems after
+  staggering mood reads; at 160 it doesn't (p95 17.7 ms flowing, 20.9 starved, 22.8 hover). The
+  cap waits on the user's call: optimise further, or cap at what holds now (about 100).
 
 ## 5. Build order
 

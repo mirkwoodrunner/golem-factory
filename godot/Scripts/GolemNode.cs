@@ -176,6 +176,9 @@ namespace GolemFactory.Nodes
         private Sprite2D _dropTile;
         private Sprite2D _dropArrow;
         private GolemMood _rawMood = (GolemMood)(-1);
+        private int _ownState;
+        private static int _nextMoodSlot;
+        private readonly int _moodSlot = _nextMoodSlot++;
         private float _rawHeld;
         private bool _shakePending;
         private bool _wasStopped;
@@ -613,7 +616,14 @@ namespace GolemFactory.Nodes
         {
             // The classified mood has a stopwatch of its own; what is DRAWN is the presented one
             // (GolemMoodRules.Presented), so Waiting's 2 s dwell covers the tint as well as the badge.
-            GolemMood raw = Entity.Mood;
+            // Re-classified at once when the golem's own state changes, else on its turn every few
+            // frames (GolemMoodRules.ReclassifyEveryFrames): a stalled golem's mood reads its
+            // neighbours, which at 160 golems every frame cost more than the frame had.
+            int own = GolemMoodRules.OwnStateSignature(Entity);
+            GolemMood raw = (int)_rawMood >= 0 && !GolemMoodRules.ShouldReclassify((long)Engine.GetProcessFrames(), _moodSlot, own != _ownState)
+                ? _rawMood
+                : Entity.Mood;
+            _ownState = own;
             if (raw != _rawMood)
             {
                 _rawMood = raw;

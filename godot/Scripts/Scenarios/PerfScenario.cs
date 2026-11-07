@@ -74,6 +74,12 @@ namespace GolemFactory.Nodes.Scenarios
         private Func<Vector2> _pointer;
         private int _starveWait;
 
+        /// <summary>
+        /// <c>-- --scenario perf --perf-load=endless</c>: the larger load endless play is measured
+        /// at (docs/endless-design.md §4), its report written to <c>user://perf-report-endless.md</c>.
+        /// </summary>
+        public static bool Endless => OS.GetCmdlineUserArgs().Contains("--perf-load=endless");
+
         public void Begin(ScenarioRunner runner)
         {
             _tree = runner.GetTree();
@@ -88,7 +94,7 @@ namespace GolemFactory.Nodes.Scenarios
 
             try
             {
-                _load = EndgameLoad.Build(_world);
+                _load = EndgameLoad.Build(_world, Endless ? EndgameLoadSpec.Endless : null);
             }
             catch (Exception e)
             {
@@ -447,7 +453,7 @@ namespace GolemFactory.Nodes.Scenarios
             md.AppendLine("```").AppendLine();
             md.AppendLine(failures.Count == 0 ? "Verdict: PASS" : "Verdict: FAIL · " + string.Join("; ", failures));
 
-            using FileAccess file = FileAccess.Open("user://perf-report.md", FileAccess.ModeFlags.Write);
+            using FileAccess file = FileAccess.Open(Endless ? "user://perf-report-endless.md" : "user://perf-report.md", FileAccess.ModeFlags.Write);
             file?.StoreString(md.ToString());
         }
     }

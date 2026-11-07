@@ -167,6 +167,50 @@ namespace GolemFactory.Golems
         /// True for the moods that mean the golem has stopped and will not restart on its own.
         /// The two that are drawn loud, shaken on entry, and counted by the alerts strip.
         /// </summary>
+        /// <summary>
+        /// How often a view re-classifies a golem whose own state hasn't changed, in frames
+        /// (docs/endless-design.md §4). Classifying a stalled golem reads its neighbours' facts,
+        /// which costs more the more golems there are; at 160 golems, every golem every frame was
+        /// 8.7 ms a starved frame. A golem's own change (its state, stall, place, facing, being
+        /// carried, its program) re-classifies it at once; only a neighbour's change, such as its
+        /// feeder carried away, waits, at most this many frames (67 ms at 60 fps).
+        /// </summary>
+        public const int ReclassifyEveryFrames = 4;
+
+        /// <summary>
+        /// Whether a view re-reads a golem's mood on <paramref name="frame"/>: at once when
+        /// <paramref name="ownStateChanged"/>, else on the golem's turn, staggered by
+        /// <paramref name="slot"/> so the reads spread evenly over the frames.
+        /// </summary>
+        public static bool ShouldReclassify(long frame, int slot, bool ownStateChanged) =>
+            ownStateChanged || (frame + (slot & 0x7fffffff)) % ReclassifyEveryFrames == 0;
+
+        /// <summary>
+        /// What a golem's own state is, for <see cref="ShouldReclassify"/>: a change here means
+        /// its mood may have changed whatever its neighbours did.
+        /// </summary>
+        public static int OwnStateSignature(GolemEntity golem)
+        {
+            if (golem == null)
+            {
+                return 0;
+            }
+            unchecked
+            {
+                int h = (int)(golem.Program?.State ?? GolemState.Idle);
+                h = h * 31 + (int)golem.StallReason;
+                h = h * 31 + (golem.StallResourceId?.GetHashCode() ?? 0);
+                h = h * 31 + golem.Cell.x;
+                h = h * 31 + golem.Cell.y;
+                h = h * 31 + (int)golem.Facing;
+                h = h * 31 + (golem.IsHeld ? 1 : 0);
+                h = h * 31 + (golem.HasRunnableProgram ? 1 : 0);
+                h = h * 31 + (golem.Program?.appendages.Count ?? 0);
+                h = h * 31 + (golem.Program?.CurrentStepIndex ?? 0);
+                h = h * 31 + golem.Inventory.FullestTypeUnits;
+                return h;
+            }
+        }
         public static bool IsStopped(GolemMood mood) =>
             mood == GolemMood.Stalled || mood == GolemMood.Starved;
 

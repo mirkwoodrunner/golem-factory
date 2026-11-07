@@ -18,6 +18,12 @@ namespace GolemFactory.Diagnostics
         public int Golems = 96;
         public int BeltItems = 500;
         public int Boilers = 12;
+
+        /// <summary>
+        /// The larger load endless play is measured at (docs/endless-design.md §4): 160 golems,
+        /// 800 belt items and 20 boilers, the whole floor bought.
+        /// </summary>
+        public static EndgameLoadSpec Endless => new EndgameLoadSpec { Golems = 160, BeltItems = 800, Boilers = 20 };
     }
 
     /// <summary>
@@ -194,6 +200,11 @@ namespace GolemFactory.Diagnostics
 
         private static void BuildWorkshop(SandboxWorld world, EndgameLoadResult load, int golems)
         {
+            if (golems > ChainRows(Rows.Length))
+            {
+                BuildLargeWorkshop(world, load, golems);
+                return;
+            }
             var golemRows = new List<int>();
             int built = 0;
             for (int band = 0; golemRows.Count < Rows.Length; band++)
@@ -230,40 +241,121 @@ namespace GolemFactory.Diagnostics
 
             for (int r = 0; r < Rows.Length; r++)
             {
-                int y = golemRows[r];
-                string[] row = Rows[r];
-                for (int i = 0; i < row.Length && built < golems; i++, built++)
+                BuildChainRow(world, load, Rows[r], golemRows[r], golems, ref built);
+            }
+        }
+
+        /// <summary>Golems the first <paramref name="rows"/> chain rows hold.</summary>
+        private static int ChainRows(int rows) => Rows.Take(rows).Sum(r => r.Length);
+
+        /// <summary>
+        /// Past the 96-golem layout (endless-design §4): the same chains, repeated, on every band the
+        /// whole floor holds. North of the starter buildings, bands every three rows from
+        /// <see cref="FirstBand"/> to the floor's north edge; then south of them, two bands from
+        /// <see cref="SouthBand"/>. One steam network: each band's pipe row, joined by the column at
+        /// <see cref="PipeColumn"/>, with a boiler at each golem row's east end and, past those, at the
+        /// pipe rows' west ends.
+        /// </summary>
+        private static void BuildLargeWorkshop(SandboxWorld world, EndgameLoadResult load, int golems)
+        {
+            var bands = new List<int>();
+            for (int y = FirstBand; y + 1 <= world.Bounds.NorthExtent; y += 3)
+            {
+                bands.Add(y);
+            }
+            bands.Add(SouthBand);
+            bands.Add(SouthBand + 3);
+
+            var golemRows = new List<int>();
+            var pipeRows = new List<int>();
+            foreach (int y in bands)
+            {
+                pipeRows.Add(y + 1);
+                golemRows.Add(y);
+                if (y + 2 <= world.Bounds.NorthExtent)
                 {
-                    RoleDef role = Roles[row[i]];
-                    int x = ChainWest + 1 + 2 * i;
-                    var source = new Vector2Int(x - 1, y);
-                    var target = new Vector2Int(x + 1, y);
-
-                    PlaceableBuilding sourceCrate = load.BuildingOn(source) ?? Place(world, load, "DepotPrefab", source, Facing.North);
-                    string carried = PreviousPush(world, row, i);
-                    load.Feed(sourceCrate.GetPart<ICrate>(), role.Hauls.Select(h => h.good ?? carried));
-                    if (role.Launch)
-                    {
-                        load.OutputOnly.Add(Place(world, load, "FreightMastPrefab", target, Facing.North).GetPart<ICrate>());
-                    }
-                    else if (load.BuildingOn(target) == null)
-                    {
-                        PlaceableBuilding crate = Place(world, load, "DepotPrefab", target, Facing.North);
-                        if (i == row.Length - 1)
-                        {
-                            load.OutputOnly.Add(crate.GetPart<ICrate>());
-                        }
-                    }
-
-                    GolemEntity golem = Construct(world, role.Chassis);
-                    golem.SetPlacement(new Vector2Int(x, y), Facing.East);
-                    Program(world, golem, "AlwaysOnCore", Steps(role, carried));
-                    if (role.Launch)
-                    {
-                        golem.BindToNearestMast();
-                    }
-                    load.Add(role.Role, golem);
+                    golemRows.Add(y + 2);
                 }
+            }
+            int rows = 0;
+            while (rows < golemRows.Count && RowCapacity(rows) < golems)
+            {
+                rows++;
+            }
+            Require(RowCapacity(rows) >= golems, $"the floor holds {RowCapacity(golemRows.Count)} chain golems, wanted {golems}");
+            golemRows = golemRows.Take(rows).ToList();
+            pipeRows = pipeRows.Where(p => golemRows.Any(r => System.Math.Abs(r - p) == 1)).ToList();
+
+            foreach (int y in pipeRows)
+            {
+                for (int x = ChainWest; x <= PipeColumn; x++)
+                {
+                    Place(world, load, "SteamPipePrefab", new Vector2Int(x, y), Facing.North);
+                }
+            }
+            for (int y = pipeRows.Min() + 1; y < pipeRows.Max(); y++)
+            {
+                if (!pipeRows.Contains(y))
+                {
+                    Place(world, load, "SteamPipePrefab", new Vector2Int(PipeColumn, y), Facing.North);
+                }
+            }
+
+            var boilers = golemRows.Select(y => new Vector2Int(PipeColumn - 1, y))
+                .Concat(pipeRows.Select(y => new Vector2Int(ChainWest - 1, y))).ToList();
+            int needed = (golems + SteamNetwork.MaxGolemsPerBoiler - 1) / SteamNetwork.MaxGolemsPerBoiler;
+            Require(boilers.Count >= needed, $"room for {boilers.Count} boilers, wanted {needed}");
+            foreach (Vector2Int cell in boilers.Take(needed))
+            {
+                Place(world, load, "BoilerPrefab", cell, Facing.North);
+            }
+
+            int built = 0;
+            for (int r = 0; r < golemRows.Count; r++)
+            {
+                BuildChainRow(world, load, Rows[r % Rows.Length], golemRows[r], golems, ref built);
+            }
+        }
+
+        /// <summary>Golems the first <paramref name="rows"/> rows of the repeated chains hold.</summary>
+        private static int RowCapacity(int rows) => Enumerable.Range(0, rows).Sum(r => Rows[r % Rows.Length].Length);
+
+        /// <summary>The second band group, south of the starter station and bench: rows −10 to −5.</summary>
+        public const int SouthBand = -10;
+
+        private static void BuildChainRow(SandboxWorld world, EndgameLoadResult load, string[] row, int y, int golems, ref int built)
+        {
+            for (int i = 0; i < row.Length && built < golems; i++, built++)
+            {
+                RoleDef role = Roles[row[i]];
+                int x = ChainWest + 1 + 2 * i;
+                var source = new Vector2Int(x - 1, y);
+                var target = new Vector2Int(x + 1, y);
+
+                PlaceableBuilding sourceCrate = load.BuildingOn(source) ?? Place(world, load, "DepotPrefab", source, Facing.North);
+                string carried = PreviousPush(world, row, i);
+                load.Feed(sourceCrate.GetPart<ICrate>(), role.Hauls.Select(h => h.good ?? carried));
+                if (role.Launch)
+                {
+                    load.OutputOnly.Add(Place(world, load, "FreightMastPrefab", target, Facing.North).GetPart<ICrate>());
+                }
+                else if (load.BuildingOn(target) == null)
+                {
+                    PlaceableBuilding crate = Place(world, load, "DepotPrefab", target, Facing.North);
+                    if (i == row.Length - 1)
+                    {
+                        load.OutputOnly.Add(crate.GetPart<ICrate>());
+                    }
+                }
+
+                GolemEntity golem = Construct(world, role.Chassis);
+                golem.SetPlacement(new Vector2Int(x, y), Facing.East);
+                Program(world, golem, "AlwaysOnCore", Steps(role, carried));
+                if (role.Launch)
+                {
+                    golem.BindToNearestMast();
+                }
+                load.Add(role.Role, golem);
             }
         }
 

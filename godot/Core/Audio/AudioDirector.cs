@@ -137,8 +137,15 @@ namespace GolemFactory.Audio
         /// chimes, and the loops' levels. <paramref name="seconds"/> is real time;
         /// <paramref name="workingGolems"/> is what steam powered this tick.
         /// </summary>
+        private long _updates;
+
+        // Stalled golems whose stall has been classified since they last ran: a new stall is
+        // classified at once, so its chime is never late; after that, on the golem's turn.
+        private readonly HashSet<GolemEntity> _classified = new HashSet<GolemEntity>();
+
         public void Update(float seconds, SimulationClock clock, IReadOnlyList<GolemEntity> golems, int workingGolems)
         {
+            _updates++;
             _now += seconds;
             bool running = clock != null && clock.State == ClockState.Running;
             float fraction = running ? clock.TickFraction : 0f;
@@ -166,7 +173,7 @@ namespace GolemFactory.Audio
                     }
                     count++;
                     HearWork(golem, fraction);
-                    HearMood(golem);
+                    HearMood(golem, i);
                 }
                 if (_beats.Count > count * 2 + 8)
                 {
@@ -203,16 +210,23 @@ namespace GolemFactory.Audio
         /// flickering between red and grey, chimes once. A chime the copy cap drops isn't
         /// retried: that golem's stall is heard as the one already ringing.
         /// </summary>
-        private void HearMood(GolemEntity golem)
+        private void HearMood(GolemEntity golem, int slot)
         {
             // Only a stalled program can be red, so the mood is classified only for those.
             GolemState state = golem.Program?.State ?? GolemState.Idle;
             if (state == GolemState.Running)
             {
                 _chimed.Remove(golem);
+                _classified.Remove(golem);
                 return;
             }
-            if (state != GolemState.Stalled)
+            if (state != GolemState.Stalled || _chimed.Contains(golem))
+            {
+                return;
+            }
+            // Classified on the golem's turn, as the views do (GolemMoodRules.ReclassifyEveryFrames):
+            // a chime a few frames late is the same chime.
+            if (!GolemMoodRules.ShouldReclassify(_updates, slot, _classified.Add(golem)))
             {
                 return;
             }
@@ -231,6 +245,7 @@ namespace GolemFactory.Audio
                 {
                     _beats.Remove(golem);
                     _chimed.Remove(golem);
+                    _classified.Remove(golem);
                 }
             }
         }
