@@ -109,6 +109,10 @@ namespace GolemFactory.Contracts
             {
                 return "you make " + ItemTiers.DisplayName(good);
             }
+            if (board.WaitingForTowerComplete)
+            {
+                return "the Clock Tower stands";
+            }
             int stage = board.WaitingForTowerStage;
             if (stage == 1)
             {

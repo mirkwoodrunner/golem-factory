@@ -164,6 +164,9 @@ namespace GolemFactory.World
         public AssemblyLineSetup assemblyLine;
         public SupplySetup supply;
 
+        /// <summary>Endless play's generated contracts (docs/endless-design.md §1.1).</summary>
+        public GolemFactory.Contracts.EndlessContractsSetup endlessContracts;
+
         /// <summary>The bays' campaign top and endless play's tiers (docs/endless-design.md §2, §4).</summary>
         public AssemblyBaysSetup assemblyBays;
 

@@ -65,6 +65,9 @@ namespace GolemFactory.Contracts
         /// <summary>And, when above 0, once this Clock Tower stage has started.</summary>
         public int postWhenTowerStage;
 
+        /// <summary>And, when set, once the Clock Tower stands: endless play's generated contracts.</summary>
+        public bool postWhenTowerComplete;
+
         /// <summary>How many of <paramref name="itemType"/> it asks for; 0 for a good it doesn't.</summary>
         public int Asked(string itemType) => asks.Where(a => a.itemType == itemType).Sum(a => a.quantity);
 

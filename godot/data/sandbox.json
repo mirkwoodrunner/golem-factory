@@ -12,6 +12,28 @@
     { "capacityPerType": 300, "endless": true, "cost": [{ "itemType": "Mechanism", "quantity": 10 }, { "itemType": "Regulator", "quantity": 4 }] },
     { "capacityPerType": 350, "endless": true, "cost": [{ "itemType": "Mechanism", "quantity": 20 }, { "itemType": "Regulator", "quantity": 8 }] }
   ],
+  "endlessContracts": {
+    "_doc": "Contracts after the authored sequence (docs/endless-design.md §1.1): a formula, one at a time, once the Clock Tower stands. Contract k asks goods[k % 10] and goods[(k + offset) % 10] for a share of a raw-goods budget that grows over growthContracts and then holds at plateauRaw; its reward is rewardShare of that in rewardGoods[k % 5]; its bonus is an endless cart rung for the first rungBonuses, then bonusShare in goods. {goods} in a line is the asked goods.",
+    "goods": ["Casing", "Lens", "Mainspring", "AetherCell", "Mechanism", "Regulator", "FrameSection", "GreatCog", "AetherConduit", "ChronometerCore"],
+    "secondOffset": 3,
+    "firstShare": 0.6,
+    "plateauRaw": 3300,
+    "growthContracts": 8,
+    "parSecondsFirst": 300,
+    "parSecondsPlateau": 600,
+    "rewardGoods": ["Casing", "Mainspring", "Mechanism", "Regulator", "Lens"],
+    "rewardShare": 0.5,
+    "bonusShare": 0.25,
+    "rungBonuses": 20,
+    "rungGoods": ["Scrap", "Coal", "CopperOre", "ZincOre", "Aether"],
+    "requesters": [
+      { "name": "City Watch", "lines": ["The watch-houses in every ward want {goods}.", "New patrol posts across the river need {goods}."] },
+      { "name": "Tramway Company", "lines": ["The tram line to the docks needs {goods}.", "The tram depot is rebuilding, and asks for {goods}."] },
+      { "name": "Bellfounders", "lines": ["A new carillon for the cathedral wants {goods}.", "The foundry's new furnace needs {goods}."] },
+      { "name": "Lamplighters' Guild", "lines": ["The lamps on the new boulevards want {goods}.", "The harbour lights need {goods} before the fogs come."] },
+      { "name": "Observatory", "lines": ["The new star dome wants {goods}.", "The orrery's next wing needs {goods}."] }
+    ]
+  },
   "assemblyBays": {
     "_doc": "The campaign's bays top out at campaignTopSlots; endless play (docs/endless-design.md §2) adds one tier per endless price, to the golem cap of 112 (docs/performance-report-endless.md).",
     "campaignTopSlots": 100,

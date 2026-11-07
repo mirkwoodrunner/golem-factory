@@ -87,6 +87,18 @@ namespace GolemFactory.Contracts
 
         public bool Enabled { get; }
 
+        /// <summary>
+        /// Endless play's contracts after the authored sequence (docs/endless-design.md §1.1); null
+        /// ends the sequence with its last authored contract.
+        /// </summary>
+        public ContractGenerator Generator { get; set; }
+
+        /// <summary>Whether the Clock Tower stands, for a generated contract's condition.</summary>
+        public Func<bool> TowerComplete { get; set; }
+
+        /// <summary>Generated contracts done: the next one's index.</summary>
+        public int GeneratedDone => _done.Count(n => ContractGenerator.TryIndexOf(n, out _));
+
         public IReadOnlyList<ContractDefinition> Sequence => _sequence;
 
         /// <summary>The office's crate: takes only what the taken contract still needs (§1).</summary>
@@ -150,13 +162,24 @@ namespace GolemFactory.Contracts
         }
 
         /// <summary>The next contract in the sequence while none is posted, or null when the sequence is done.</summary>
-        public ContractDefinition Next => Current ?? _sequence.FirstOrDefault(c => !_done.Contains(c.name));
+        public ContractDefinition Next =>
+            Current ?? _sequence.FirstOrDefault(c => !_done.Contains(c.name)) ?? Generator?.Generate(GeneratedDone);
 
         /// <summary>
         /// The first thing the next contract is waiting for: a good the Ledger hasn't seen
         /// ("Brass"), or a tower stage. Null when it could post now, or when there is none.
         /// </summary>
         public string WaitingForGood => Current != null ? null : Next?.postWhenSeen.FirstOrDefault(g => !_seen(g));
+
+        /// <summary>Whether the next contract waits for the Clock Tower to stand (a generated one).</summary>
+        public bool WaitingForTowerComplete
+        {
+            get
+            {
+                ContractDefinition next = Current != null ? null : Next;
+                return next != null && next.postWhenTowerComplete && TowerComplete?.Invoke() != true;
+            }
+        }
 
         public int WaitingForTowerStage
         {
@@ -256,7 +279,8 @@ namespace GolemFactory.Contracts
             contract != null
             && contract.postWhenSeen.All(_seen)
             && contract.asks.All(a => _seen(a.itemType))
-            && (contract.postWhenTowerStage <= 0 || _towerStageStarted() >= contract.postWhenTowerStage);
+            && (contract.postWhenTowerStage <= 0 || _towerStageStarted() >= contract.postWhenTowerStage)
+            && (!contract.postWhenTowerComplete || TowerComplete?.Invoke() == true);
 
         /// <summary>Takes the posted contract: from now its crate takes goods and its par runs.</summary>
         public bool Accept()
@@ -432,12 +456,13 @@ namespace GolemFactory.Contracts
             if (entry != null)
             {
                 var known = new HashSet<string>(_sequence.Select(c => c.name), StringComparer.Ordinal);
-                _done.AddRange(entry.done.Where(known.Contains).Distinct());
+                _done.AddRange(entry.done.Where(n => known.Contains(n) || (Generator != null && ContractGenerator.TryIndexOf(n, out _))).Distinct());
                 foreach (string name in entry.bonusEarned.Where(_done.Contains))
                 {
                     _bonusEarned.Add(name);
                 }
-                ContractDefinition current = _sequence.FirstOrDefault(c => c.name == entry.current);
+                ContractDefinition current = _sequence.FirstOrDefault(c => c.name == entry.current)
+                    ?? (Generator != null && ContractGenerator.TryIndexOf(entry.current, out int k) ? Generator.Generate(k) : null);
                 if (current != null && !_done.Contains(current.name) && entry.state != (int)ContractState.Waiting)
                 {
                     Current = current;

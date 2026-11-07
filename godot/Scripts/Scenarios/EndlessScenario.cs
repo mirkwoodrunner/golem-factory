@@ -21,6 +21,8 @@ namespace GolemFactory.Nodes.Scenarios
     ///   <item>The tower complete: the Assembly Line tab's bay row takes two Upgrade clicks to the
     ///   golem cap of 112, then says so; the Pack row's Upgrade makes the pack 300.</item>
     ///   <item>A Coal cart at rung 3: I opens its panel, and a click buys rung 4.</item>
+    ///   <item>The authored contracts done: E at the City Office shows the first generated
+    ///   contract (docs/endless-design.md §1.1), and a click takes it.</item>
     /// </list>
     /// Writes only <c>user://scenario-saves</c> and <c>user://scenario-settings.cfg</c>.
     /// </summary>
@@ -74,6 +76,7 @@ namespace GolemFactory.Nodes.Scenarios
             PlanBeforeTheTower();
             PlanTheBays();
             PlanTheCart();
+            PlanGeneratedContracts();
         }
 
         protected override void Cleanup() => ScenarioSaves.Clear();
@@ -191,6 +194,51 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 Tap(Key.Escape);
                 Log($"bays 100 -> 112 (the golem cap) and the pack 250 -> 300 through the Assembly Line tab, a Coal cart to rung 4 ({_coal.Cart.RatePerMinute} a minute) through its panel");
+                return null;
+            });
+        }
+
+        private void PlanGeneratedContracts()
+        {
+            Do("every authored contract done; the player at the office's door", () =>
+            {
+                foreach (string good in ItemTiers.CanonicalOrder)
+                {
+                    Sandbox.TechTree.Ledger.RecordItem(good);
+                }
+                Sandbox.Contracts.Restore(new Save.ContractsEntry { done = Sandbox.Contracts.Sequence.Select(c => c.name).ToList() });
+                Hands.Teleport(new CoreVector3(TownSquare.OfficeCell.x, TownSquare.OfficeCell.y - 1, 0f));
+                return null;
+            });
+            Until("the first generated contract posts", 2, () =>
+                Sandbox.Contracts.Current?.name == Contracts.ContractGenerator.NamePrefix + "1" ? null : $"current {Sandbox.Contracts.Current?.name}");
+            Wait(0.3);
+            Do("E opens its notice", () => { Tap(Key.E); return null; });
+            Do("who asks, and what, from the formula", () =>
+            {
+                ContractScreen notice = ContractScreen.Find(Runner);
+                Contracts.ContractDefinition c = Sandbox.Contracts.Current;
+                if (!notice.IsOpen || notice.Title != c.requester || notice.Words != c.words)
+                {
+                    return $"open {notice.IsOpen}, '{notice.Title}', '{notice.Words}'";
+                }
+                string id = notice.DrawnText.Select(PlayerText.RawIdIn).FirstOrDefault(t => t != null);
+                if (id != null)
+                {
+                    return "an id on the notice: " + id;
+                }
+                ScenarioCapture.Shot(Runner.GetViewport(), "endless-contract");
+                Click(notice.Button(Contracts.ContractAction.Accept));
+                return null;
+            });
+            Do("taken", () =>
+            {
+                if (Sandbox.Contracts.State != Contracts.ContractState.Accepted)
+                {
+                    return "state " + Sandbox.Contracts.State;
+                }
+                Tap(Key.Escape);
+                Log($"the first generated contract ({Sandbox.Contracts.Current.requester}: {Contracts.ContractText.Goods(Sandbox.Contracts.Current.asks)}) posted after the authored ones and was taken at the office");
                 return null;
             });
         }

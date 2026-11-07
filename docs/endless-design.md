@@ -62,6 +62,16 @@ formula, still one at a time:
   the rotation, not from ever-bigger numbers.
 - **Rewards** are endless rungs (§2) while any are left, then goods.
 
+**Built (2026-11-07):** `Contracts/ContractGenerator`, set by `sandbox.json`'s
+`endlessContracts`. Contract k (named `Endless_k`, what a save keeps) asks `goods[k % 10]` and
+`goods[(k + 3) % 10]`, 60:40, for a raw-goods budget that grows over the first eight and holds at
+3,300 (a quarter of what stage 4's demand already asks in ten minutes). Its reward is half that
+in Casing, Mainspring, Mechanism, Regulator or Lens; the first twenty bonuses are the carts'
+endless rungs (each good's Rate, then its Capacity), then a quarter in goods. Each posts once
+the tower stands; before that the office says "once the Clock Tower stands". At the plateau a
+single good asks up to 330, which is what the pack's 300 and 350 rungs carry in one trip.
+Tests: `Core.Tests/Contracts/GeneratedContractTests`; the `endless` scenario takes the first.
+
 ### 1.2 Civic works (§6 Q1: yes, after generated contracts)
 
 Contracts ask for amounts. **Civic works** ask for a **rate**, as the tower does: a new project in

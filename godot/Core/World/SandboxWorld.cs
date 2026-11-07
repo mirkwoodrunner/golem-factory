@@ -1055,6 +1055,10 @@ namespace GolemFactory.World
                 () => Supply,
                 (int)System.Math.Round(Clock.TicksPerSecond),
                 enabled: !Creative);
+            Contracts.Generator = Setup?.endlessContracts == null || Definitions == null
+                ? null
+                : new ContractGenerator(Setup.endlessContracts, Definitions.Recipes.Values);
+            Contracts.TowerComplete = () => site.IsComplete;
             Clock.Register(Contracts);
             OfficeCrate = new CityOfficeCrate(Contracts);
 
