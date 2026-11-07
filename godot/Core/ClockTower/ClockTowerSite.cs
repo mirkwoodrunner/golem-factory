@@ -283,6 +283,17 @@ namespace GolemFactory.ClockTower
 
         public bool IsOpen => OpenWhen == null || OpenWhen();
 
+        /// <summary>
+        /// Whether a finished stage is the Clock Tower's (<see cref="ClockTowerStageCompletedEvent"/>:
+        /// the fanfare, the camera's event, the autosave, the Ledger). False for a civic work's site
+        /// (docs/endless-design.md §1.2), which runs the same machinery and says so only through
+        /// <see cref="StageCompleted"/>.
+        /// </summary>
+        public bool PublishesTowerEvents { get; set; } = true;
+
+        /// <summary>A stage finished: its number, its name, whether it was the last, and the tick.</summary>
+        public event Action<int, string, bool, long> StageCompleted;
+
         /// <summary>What the rope's sign says while the site is closed.</summary>
         public string ClosedReason { get; set; } = "roped off";
 
@@ -527,8 +538,12 @@ namespace GolemFactory.ClockTower
                 CompletedTick = tick;
             }
 
-            EventBus.Publish(new ClockTowerStageCompletedEvent(
-                completed.stageNumber, completed.stageName, isFinal, tick));
+            if (PublishesTowerEvents)
+            {
+                EventBus.Publish(new ClockTowerStageCompletedEvent(
+                    completed.stageNumber, completed.stageName, isFinal, tick));
+            }
+            StageCompleted?.Invoke(completed.stageNumber, completed.stageName, isFinal, tick);
         }
 
         // --- Readout --------------------------------------------------------------------------

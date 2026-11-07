@@ -470,10 +470,16 @@ Factorio's breadth.
    beside the tower: eighteen contracts in `data/contracts.json`, one at a time, opening with
    the first smelter in chapter 5 (the guide's `contract` step). It is filled from any source
    through its crate, its bonus earned within par, its rewards goods and cart rungs, saved, and
-   covered by the `contracts` scenario (§12). Next: endless play.
-2. **Endless play after the tower** (decision 1). Approved in `docs/endless-design.md` (2026-11-06): generated contracts that level
-   off, endless rungs on the pack, carts and bays, civic works in the square, no more floor, and a
-   golem cap set by measuring the frame budget at 160 golems.
+   covered by the `contracts` scenario (§12).
+2. **Endless play after the tower** (decision 1). **Done (2026-11-07)**, `docs/endless-design.md`:
+   the frame budget measured (`performance-report-endless.md`): 160 golems didn't hold, so after
+   optimising the mood and stall-facts reads and the nodes' per-frame work, the golem cap is 112,
+   where it holds. Endless rungs on the pack (300, 350), carts (rungs 4, 5) and bays (to 112),
+   opened by the tower; generated contracts after the authored eighteen, levelling off; the last
+   stage's banner pointing at the City Office and the overview's running totals; and the civic
+   works (the Tramway, the Observatory, the Great Bell) on the tower's machinery, drawn by one
+   placeholder site until their art is commissioned. The `endless` scenario covers each.
+   Phase 8 is done.
 
 Waiting: a second map region, and selling golems to the city.
 

@@ -58,6 +58,9 @@ namespace GolemFactory.Save
         /// </summary>
         public ContractsEntry contracts;
 
+        /// <summary>The civic works (docs/endless-design.md §1.2). Null in an older save: the first work, from its start.</summary>
+        public CivicEntry civic;
+
         /// <summary>
         /// What a save slot shows about this save (docs/menus-design.md §7): when it was written,
         /// where the guide was, how big the factory is. Null in a save from before slots; a slot
@@ -98,6 +101,16 @@ namespace GolemFactory.Save
 
         /// <summary><c>Contracts.ContractRungKind</c> by value: 1 Rate, 2 Capacity.</summary>
         public List<int> shelfRungKinds = new List<int>();
+    }
+
+    /// <summary>The civic works: the one under way by name, works built, and its stage and progress.</summary>
+    [Serializable]
+    public sealed class CivicEntry
+    {
+        public string work;
+        public int worksBuilt;
+        public int stageIndex;
+        public long progressUnits;
     }
 
     /// <summary>A save's summary for its slot: display only, never restored.</summary>

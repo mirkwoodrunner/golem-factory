@@ -279,6 +279,7 @@ namespace GolemFactory.Audio
             _attached = true;
             EventBus.ClockTowerStageCompleted += OnStageCompleted;
             EventBus.Contract += OnContract;
+            EventBus.CivicStageCompleted += OnCivicStage;
         }
 
         public void Detach()
@@ -290,9 +291,14 @@ namespace GolemFactory.Audio
             _attached = false;
             EventBus.ClockTowerStageCompleted -= OnStageCompleted;
             EventBus.Contract -= OnContract;
+            EventBus.CivicStageCompleted -= OnCivicStage;
         }
 
         private void OnStageCompleted(ClockTowerStageCompletedEvent e) => Play(AudioRules.TowerFanfare);
+
+        // A civic stage built rings the claim chime too, from the same slot: the tower's fanfare
+        // stays the tower's.
+        private void OnCivicStage(CivicStageCompletedEvent e) => Play(AudioRules.Claim);
 
         // A contract done rings the claim chime (docs/contracts-design.md §5): a reward earned,
         // from an existing slot. Posting and taking one are quiet.

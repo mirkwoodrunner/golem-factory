@@ -48,8 +48,8 @@ namespace GolemFactory.UI
                     return "Slag Heap " + Cell(cell);
                 case ScrapRecyclerEndpoint _:
                     return "Scrap Recycler " + Cell(cell);
-                case ClockTowerInputEndpoint _:
-                    return "the Clock Tower";
+                case ClockTowerInputEndpoint tower:
+                    return tower.DisplayName == "Clock Tower" ? "the Clock Tower" : tower.DisplayName;
             }
 
             if (_masts != null && _masts.Contains(cell))

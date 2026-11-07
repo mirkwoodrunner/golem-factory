@@ -53,6 +53,11 @@ namespace GolemFactory.Nodes
 
         /// <summary>The tower's stage banner's text while it shows; empty otherwise.</summary>
         public string BannerText => _banner.Visible ? _bannerText.Text : "";
+
+        /// <summary>The line under the last stage's banner, while it shows; empty otherwise.</summary>
+        public string BannerNext => _banner.Visible && _bannerSub.Visible ? _bannerSub.Text : "";
+
+        private Label _bannerSub;
         public string GaugeText => _gauge.Text;
         public string TickText => _tick.Text;
         public Button PlayPauseButton => _playPause;
@@ -105,6 +110,13 @@ namespace GolemFactory.Nodes
             _banner.MouseFilter = Control.MouseFilterEnum.Ignore;
             _bannerText = Ugui.Fill(Ugui.Text("Text", "", 22, Amber, align: 2, bold: true));
             _banner.AddChild(_bannerText);
+            // The last stage's banner is the game's end screen: under it, where the game goes on
+            // (docs/endless-design.md §3).
+            _bannerSub = Ugui.Fill(Ugui.Text("Next", GolemFactory.Contracts.ContractText.EndlessInvitation, 13, ManagementScreen.ItemNameInk, align: 2));
+            _bannerSub.OffsetTop = 38f;
+            _bannerSub.OffsetBottom = -4f;
+            _bannerSub.Visible = false;
+            _banner.AddChild(_bannerSub);
             _banner.Visible = false;
             _root.AddChild(_banner);
 
@@ -239,6 +251,9 @@ namespace GolemFactory.Nodes
             if (_banner.Visible)
             {
                 _bannerText.Text = Player.TowerBanner.Text(camera.TowerStageNumber, camera.TowerStageName);
+                bool last = camera.TowerStageNumber >= _world.Sandbox.ClockTower.Site.StageCount;
+                _bannerSub.Visible = last;
+                _bannerText.OffsetBottom = last ? -24f : 0f;
             }
 
             // The two readouts refresh on Unity's 0.25 s interval rather than every frame.
@@ -269,6 +284,18 @@ namespace GolemFactory.Nodes
                 return;
             }
             ClockTowerReading tower = _world.Sandbox.ClockTower.Site.BuildReading();
+            // Once the tower stands, the panel follows the civic work under way, as it followed the
+            // tower's stage (docs/endless-design.md §3).
+            Civic.CivicWorks civic = _world.Sandbox.Civic;
+            if (tower.IsComplete && civic != null && civic.IsOpen)
+            {
+                ClockTowerReading work = civic.Site.BuildReading();
+                _headline.Text = Civic.CivicText.Headline(civic, work);
+                _headline.AddThemeColorOverride("font_color", Amber);
+                _demand.Text = ClockTowerReadout.FormatDemandTable(work);
+                _starved.Text = Civic.CivicText.Starved(civic, work);
+                return;
+            }
             _headline.Text = ClockTowerReadout.FormatHeadline(tower);
             _headline.AddThemeColorOverride("font_color", tower.IsComplete ? Win : tower.HasActiveStage ? Amber : Dim);
             _demand.Text = tower.IsComplete

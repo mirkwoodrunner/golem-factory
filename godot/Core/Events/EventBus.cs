@@ -297,6 +297,25 @@ namespace GolemFactory.Events
         }
     }
 
+    // A civic work's stage built (docs/endless-design.md §1.2): the overview's alerts log it and a
+    // chime rings. Never the tower's event, whose listeners (fanfare, camera, autosave, Ledger)
+    // belong to the tower alone.
+    public readonly struct CivicStageCompletedEvent
+    {
+        public readonly string WorkName;
+        public readonly int StageNumber;
+        public readonly string StageName;
+        public readonly bool WorkFinished;
+
+        public CivicStageCompletedEvent(string workName, int stageNumber, string stageName, bool workFinished)
+        {
+            WorkName = workName;
+            StageNumber = stageNumber;
+            StageName = stageName;
+            WorkFinished = workFinished;
+        }
+    }
+
     // A Clock Tower stage finished (docs/progression-design.md §7). Fired once per stage, on
     // the tick the stage's progress reaches 100 %.
     //
@@ -361,6 +380,7 @@ namespace GolemFactory.Events
         public static event Action<ItemConsumedEvent> ItemConsumed;
         public static event Action<ClockTowerStageCompletedEvent> ClockTowerStageCompleted;
         public static event Action<ContractEvent> Contract;
+        public static event Action<CivicStageCompletedEvent> CivicStageCompleted;
         public static event Action<WorldInteractablesChangedEvent> WorldInteractablesChanged;
 
         /// <summary>
@@ -371,7 +391,8 @@ namespace GolemFactory.Events
         public static int ListenerCount =>
             Count(TickAdvanced) + Count(ThresholdCrossed) + Count(GolemCompleted) + Count(GolemStalled)
             + Count(GolemResumed) + Count(GolemTriggerFired) + Count(ItemAssembled) + Count(ItemConsumed)
-            + Count(ClockTowerStageCompleted) + Count(WorldInteractablesChanged) + Count(Contract);
+            + Count(ClockTowerStageCompleted) + Count(WorldInteractablesChanged) + Count(Contract)
+            + Count(CivicStageCompleted);
 
         private static int Count(Delegate handlers) => handlers?.GetInvocationList().Length ?? 0;
 
@@ -393,6 +414,7 @@ namespace GolemFactory.Events
         }
         public static void Publish(ClockTowerStageCompletedEvent e) => ClockTowerStageCompleted?.Invoke(e);
         public static void Publish(ContractEvent e) => Contract?.Invoke(e);
+        public static void Publish(CivicStageCompletedEvent e) => CivicStageCompleted?.Invoke(e);
         public static void Publish(WorldInteractablesChangedEvent e) => WorldInteractablesChanged?.Invoke(e);
     }
 }

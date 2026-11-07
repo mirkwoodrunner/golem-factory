@@ -74,6 +74,28 @@ namespace GolemFactory.World
             cell.x >= TowerOrigin.x && cell.x < TowerOrigin.x + TowerSize
             && cell.y >= TowerOrigin.y && cell.y < TowerOrigin.y + TowerSize;
 
+        // --- The civic works site (docs/endless-design.md §1.2) ---------------------------------
+
+        /// <summary>
+        /// The civic works' 3x3 site: west of the tower on its rows, three cells clear of it, the
+        /// City Office's mirror, so a delivery line fits between them.
+        /// </summary>
+        public static readonly Vector2Int CivicOrigin = new Vector2Int(TowerOrigin.x - 3 - TowerSize, TowerOrigin.y);
+
+        /// <summary>The site's centre cell: where it is drawn from.</summary>
+        public static Vector2Int CivicCentre => CivicOrigin + new Vector2Int(1, 1);
+
+        public static IEnumerable<Vector2Int> CivicCells()
+        {
+            for (int y = 0; y < TowerSize; y++)
+            {
+                for (int x = 0; x < TowerSize; x++)
+                {
+                    yield return CivicOrigin + new Vector2Int(x, y);
+                }
+            }
+        }
+
         // --- The City Office (docs/contracts-design.md §1) -------------------------------------
 
         /// <summary>The office's footprint: three cells wide, two deep.</summary>

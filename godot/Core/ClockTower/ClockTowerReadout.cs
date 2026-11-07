@@ -214,11 +214,11 @@ namespace GolemFactory.ClockTower
             return FormatStarvedAlert(reading.StarvedItemType, reading.StarvedDeficitPerMinute);
         }
 
-        public static string FormatStarvedAlert(string itemType, int deficitPerMinute)
+        public static string FormatStarvedAlert(string itemType, int deficitPerMinute, string siteName = "Clock Tower")
         {
             string item = string.IsNullOrEmpty(itemType) ? "goods" : itemType;
 
-            string text = "[!] Clock Tower starved of " + item;
+            string text = "[!] " + siteName + " starved of " + item;
             if (deficitPerMinute > 0)
             {
                 text += " - needs " + deficitPerMinute.ToString(CultureInfo.InvariantCulture) +

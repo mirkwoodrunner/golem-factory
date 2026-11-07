@@ -1,6 +1,7 @@
 # Endless play after the Clock Tower
 
-**Status: approved by the user on 2026-11-06 with every recommendation in §6 as written. Phase 8's third part** (`docs/roadmap.md`),
+**Status: built 2026-11-07** (each section says what was built; the civic works' art is the user's
+to commission). **Approved by the user on 2026-11-06 with every recommendation in §6 as written. Phase 8's third part** (`docs/roadmap.md`),
 after supply carts (`docs/supply-design.md`) and city contracts (`docs/contracts-design.md`),
 which it builds on. Written before the code, with its invariants first.
 
@@ -88,6 +89,18 @@ Each completed stage changes the square's picture, as the tower's stages do. It 
 works and their stages, drawn through the existing pipeline (`art-pipeline-design.md`). Whether and
 when that art is made is the user's call.
 
+**Built (2026-11-07), Core and a placeholder:** `Civic/CivicWorks` on `SandboxWorld.Civic`, the
+works in `data/civic_works.json` (2, 3 and 3 stages, sized like the tower's: 480 to 720 s, the
+tower's goods, Lens, Regulator, Casing, Brass). A second `ClockTowerSite` with
+`PublishesTowerEvents` off runs each work's stages, so the meter, the min, the 3x cap and any
+source all hold, and a stage built publishes `CivicStageCompletedEvent` (the alerts' note, the
+claim chime, a glint), never the tower's event. The site is a 3x3 fixture west of the tower
+(`TownSquare.CivicOrigin`), roped off until the tower stands. Its picture is one generated
+placeholder for every work and stage (`Tools/Art/generate_civic_art.py`: `civic_site.png`,
+`civic_site_closed.png`) until the works' art is commissioned. Saved in `SaveData.civic`; none in
+Creative. Tests: `Core.Tests/Civic/CivicWorksTests`; the `endless` scenario builds the Tramway's
+first stage.
+
 ## 2. Room to grow
 
 The campaign's ladders end. Endless play adds one or two rungs to each, priced in Tier 4–5 goods,
@@ -122,9 +135,11 @@ from each cart, golems that do more, carts upgraded rather than added.
 - **The HUD's tower panel**, once the tower is complete, shows the current civic work (if any) the
   way it showed the tower's stage.
 
-**Built (2026-11-07):** there is no separate end screen; the win is the HUD's tower panel, which
-under "Clock Tower complete" now says "The city has more work for you: the City Office, beside
-the tower." (`ContractText.EndlessInvitation`). The overview's running totals sit under the map
+**Built (2026-11-07):** there is no separate end screen; the win is the last stage's banner,
+which now says under "Stage 4 complete · The Chronometer": "The city has more work for you: the
+City Office, beside the tower." (`ContractText.EndlessInvitation`). The tower's panel then
+follows the civic work under way ("The Tramway 1/2 - 42% - x1.00"), or says the same line once
+every work stands. The overview's running totals sit under the map
 (`Overview/RunTotals`, `SandboxWorld.RunTotalsLine`): goods made since the game began (saved as
 `progress.goodsMadeEver`; an older save counts from its load) and contracts done; civic stages
 join it with the civic works.

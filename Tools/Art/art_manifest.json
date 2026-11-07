@@ -6938,5 +6938,41 @@
       "CityOfficeView",
       "ContractScreen"
     ]
+  },
+  "civic_site.png": {
+    "set": "civic",
+    "kind": "standing",
+    "size": [
+      192,
+      200
+    ],
+    "pivot": [
+      0.5,
+      0.015
+    ],
+    "footRow": 197,
+    "owner": "generated:generate_civic_art.py",
+    "palette": "bible",
+    "readers": [
+      "CivicSiteView"
+    ]
+  },
+  "civic_site_closed.png": {
+    "set": "civic",
+    "kind": "standing",
+    "size": [
+      192,
+      200
+    ],
+    "pivot": [
+      0.5,
+      0.015
+    ],
+    "footRow": 197,
+    "owner": "generated:generate_civic_art.py",
+    "palette": "bible",
+    "readers": [
+      "CivicSiteView"
+    ]
   }
 }

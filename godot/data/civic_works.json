@@ -1,0 +1,140 @@
+{
+  "Civic1_Tramway": {
+    "order": 1,
+    "workName": "The Tramway",
+    "stages": [
+      {
+        "stageName": "The Rails",
+        "nominalSeconds": 480,
+        "demands": [
+          {
+            "itemType": "FrameSection",
+            "ratePerMinute": 4
+          },
+          {
+            "itemType": "Casing",
+            "ratePerMinute": 20
+          }
+        ]
+      },
+      {
+        "stageName": "The Trams",
+        "nominalSeconds": 600,
+        "demands": [
+          {
+            "itemType": "Mechanism",
+            "ratePerMinute": 6
+          },
+          {
+            "itemType": "FrameSection",
+            "ratePerMinute": 4
+          }
+        ]
+      }
+    ]
+  },
+  "Civic2_Observatory": {
+    "order": 2,
+    "workName": "The Observatory",
+    "stages": [
+      {
+        "stageName": "The Dome",
+        "nominalSeconds": 480,
+        "demands": [
+          {
+            "itemType": "Lens",
+            "ratePerMinute": 24
+          },
+          {
+            "itemType": "Regulator",
+            "ratePerMinute": 2
+          }
+        ]
+      },
+      {
+        "stageName": "The Great Lens",
+        "nominalSeconds": 600,
+        "demands": [
+          {
+            "itemType": "AetherConduit",
+            "ratePerMinute": 3
+          },
+          {
+            "itemType": "Lens",
+            "ratePerMinute": 12
+          }
+        ]
+      },
+      {
+        "stageName": "The Star Engine",
+        "nominalSeconds": 600,
+        "demands": [
+          {
+            "itemType": "Regulator",
+            "ratePerMinute": 4
+          },
+          {
+            "itemType": "AetherConduit",
+            "ratePerMinute": 3
+          },
+          {
+            "itemType": "Lens",
+            "ratePerMinute": 12
+          }
+        ]
+      }
+    ]
+  },
+  "Civic3_GreatBell": {
+    "order": 3,
+    "workName": "The Great Bell",
+    "stages": [
+      {
+        "stageName": "The Belfry",
+        "nominalSeconds": 480,
+        "demands": [
+          {
+            "itemType": "GreatCog",
+            "ratePerMinute": 2
+          },
+          {
+            "itemType": "Brass",
+            "ratePerMinute": 30
+          }
+        ]
+      },
+      {
+        "stageName": "The Bell",
+        "nominalSeconds": 600,
+        "demands": [
+          {
+            "itemType": "ChronometerCore",
+            "ratePerMinute": 1
+          },
+          {
+            "itemType": "GreatCog",
+            "ratePerMinute": 2
+          }
+        ]
+      },
+      {
+        "stageName": "The Carillon",
+        "nominalSeconds": 720,
+        "demands": [
+          {
+            "itemType": "GreatCog",
+            "ratePerMinute": 3
+          },
+          {
+            "itemType": "ChronometerCore",
+            "ratePerMinute": 2
+          },
+          {
+            "itemType": "Brass",
+            "ratePerMinute": 30
+          }
+        ]
+      }
+    ]
+  }
+}

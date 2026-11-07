@@ -3,12 +3,14 @@ using Godot;
 using GolemFactory.Buildings;
 using GolemFactory.Diagnostics;
 using GolemFactory.Economy;
+using GolemFactory.Events;
 using GolemFactory.Menus;
 using GolemFactory.Player;
 using GolemFactory.PunchCards;
 using GolemFactory.Supply;
 using GolemFactory.UI;
 using GolemFactory.World;
+using GolemFactory.Nodes;
 using CoreVector3 = GolemFactory.Compat.Vector3;
 
 namespace GolemFactory.Nodes.Scenarios
@@ -23,6 +25,8 @@ namespace GolemFactory.Nodes.Scenarios
     ///   <item>A Coal cart at rung 3: I opens its panel, and a click buys rung 4.</item>
     ///   <item>The authored contracts done: E at the City Office shows the first generated
     ///   contract (docs/endless-design.md §1.1), and a click takes it.</item>
+    ///   <item>The civic works' site is open; the HUD follows the Tramway; its first stage's goods
+    ///   delivered to the site build it, and the panel moves on to the next.</item>
     /// </list>
     /// Writes only <c>user://scenario-saves</c> and <c>user://scenario-settings.cfg</c>.
     /// </summary>
@@ -77,6 +81,7 @@ namespace GolemFactory.Nodes.Scenarios
             PlanTheBays();
             PlanTheCart();
             PlanGeneratedContracts();
+            PlanCivicWorks();
         }
 
         protected override void Cleanup() => ScenarioSaves.Clear();
@@ -241,11 +246,24 @@ namespace GolemFactory.Nodes.Scenarios
                 Log($"the first generated contract ({Sandbox.Contracts.Current.requester}: {Contracts.ContractText.Goods(Sandbox.Contracts.Current.asks)}) posted after the authored ones and was taken at the office");
                 return null;
             });
-            Until("the won tower's panel points at the office", 1, () =>
+            Do("the last stage completes, as it does in play", () =>
+            {
+                ClockTower.ClockTowerSite tower = Sandbox.ClockTower.Site;
+                EventBus.Publish(new ClockTowerStageCompletedEvent(tower.StageCount, "The Chronometer", true, Sandbox.Clock.CurrentTick));
+                return null;
+            });
+            Until("its banner, the end screen, points at the office", 15, () =>
             {
                 var hud = Tree.Root.FindChild("Hud", true, false) as HudOverlay;
-                return hud.TowerDetail == Contracts.ContractText.EndlessInvitation ? null : $"panel '{hud.TowerDetail}'";
+                if (hud.BannerNext != Contracts.ContractText.EndlessInvitation)
+                {
+                    return $"banner '{hud.BannerText}' / '{hud.BannerNext}'";
+                }
+                return null;
             });
+            Do("look at it", () => { ScenarioCapture.Shot(Runner.GetViewport(), "endless-won"); return null; });
+            Until("the banner has gone", 20, () =>
+                (Tree.Root.FindChild("Hud", true, false) as HudOverlay).BannerText == "" ? null : "still showing");
             Do("Tab", () => { Tap(Key.Tab); return null; });
             Do("click Overview", () => { Click(Management.TabButtons[ManagementTab.Overview]); return null; });
             Until("the running totals, over the whole game", 1, () =>
@@ -258,6 +276,63 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 ScenarioCapture.Shot(Runner.GetViewport(), "endless-overview");
                 Tap(Key.Escape);
+                return null;
+            });
+        }
+
+        private void PlanCivicWorks()
+        {
+            HudOverlay Hud() => Tree.Root.FindChild("Hud", true, false) as HudOverlay;
+            Do("at the civic works site", () =>
+            {
+                Hands.Teleport(new CoreVector3(TownSquare.CivicCentre.x, TownSquare.CivicCentre.y - 3, 0f));
+                return null;
+            });
+            Until("open, and the HUD follows the Tramway", 2, () =>
+            {
+                var layer = Tree.GetFirstNodeInGroup(BuildingsLayer.GroupName) as BuildingsLayer;
+                if (layer?.Civic == null || layer.Civic.SpritePath != CivicSiteView.OpenSprite)
+                {
+                    return "drawn as " + layer?.Civic?.SpritePath;
+                }
+                return Hud().TowerHeadline.StartsWith("The Tramway 1/2 - ") ? null : $"HUD '{Hud().TowerHeadline}'";
+            });
+            Do("the stage nearly built; its goods delivered to the site, as a golem pushes", () =>
+            {
+                ClockTower.ClockTowerSite site = Sandbox.Civic.Site;
+                site.RestoreProgress(0, site.ActiveStage.RequiredProgressUnits() - 1, false);
+                if (!Sandbox.Endpoints.TryGetEndpoint(TownSquare.CivicCentre, out IItemEndpoint endpoint))
+                {
+                    return "no endpoint on the site";
+                }
+                foreach (ClockTower.StageDemand demand in site.ActiveStage.demands)
+                {
+                    for (int i = 0; i < demand.ratePerMinute; i++)
+                    {
+                        if (!endpoint.TryGive(new Belts.ItemStack { ItemType = demand.itemType }))
+                        {
+                            return "the site refused " + demand.itemType;
+                        }
+                    }
+                }
+                ScenarioCapture.Shot(Runner.GetViewport(), "endless-civic");
+                return null;
+            });
+            Until("the Rails built: the panel moves on to the Trams", 3, () =>
+            {
+                if (Sandbox.Civic.StagesBuilt != 1)
+                {
+                    return $"stages built {Sandbox.Civic.StagesBuilt}";
+                }
+                if (!Hud().TowerHeadline.StartsWith("The Tramway 2/2 - "))
+                {
+                    return $"HUD '{Hud().TowerHeadline}'";
+                }
+                if (!Sandbox.RunTotalsLine.EndsWith("1 civic stage built"))
+                {
+                    return "totals '" + Sandbox.RunTotalsLine + "'";
+                }
+                Log("the civic works site opened with the tower; the Tramway's first stage was built from deliveries to it, and the HUD moved on to its second");
                 return null;
             });
         }

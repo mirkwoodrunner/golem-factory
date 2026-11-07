@@ -5,6 +5,7 @@ using GolemFactory.Audio;
 using GolemFactory.Belts;
 using GolemFactory.Blueprints;
 using GolemFactory.Buildings;
+using GolemFactory.Civic;
 using GolemFactory.ClockTower;
 using GolemFactory.Compat;
 using GolemFactory.Contracts;
@@ -118,6 +119,15 @@ namespace GolemFactory.World
 
         /// <summary>The office in the square, a fixture like the tower; null without one.</summary>
         public PlaceableBuilding CityOfficeBuilding { get; private set; }
+
+        /// <summary>
+        /// The civic works after the tower (docs/endless-design.md §1.2): three works in stages, on
+        /// the tower's machinery, at a site west of it. None in Creative (invariant 10).
+        /// </summary>
+        public CivicWorks Civic { get; private set; }
+
+        /// <summary>The civic works' site in the square, a fixture; null without one.</summary>
+        public PlaceableBuilding CivicBuilding { get; private set; }
         public List<ResourceNodeMarker> Markers { get; } = new List<ResourceNodeMarker>();
         public HandCrankBench StarterBench { get; private set; }
         public GolemConstructionStation StarterStation { get; private set; }
@@ -273,6 +283,7 @@ namespace GolemFactory.World
             WireBuildMode();
             RaiseClockTower();
             RaiseCityOffice();
+            RaiseCivicSite();
 
             if (setup.starterStation != null)
             {
@@ -298,6 +309,7 @@ namespace GolemFactory.World
             WireAudio();
             EventBus.ClockTowerStageCompleted += OnTowerStageCompleted;
             EventBus.Contract += OnContract;
+            EventBus.CivicStageCompleted += OnCivicStage;
             if (Creative)
             {
                 OpenEverything();
@@ -444,6 +456,7 @@ namespace GolemFactory.World
             Audio.Detach();
             EventBus.ClockTowerStageCompleted -= OnTowerStageCompleted;
             EventBus.Contract -= OnContract;
+            EventBus.CivicStageCompleted -= OnCivicStage;
         }
 
         // --- Creative Mode (docs/menus-design.md §9) ------------------------------------------
@@ -515,6 +528,15 @@ namespace GolemFactory.World
             if (e.Kind != ContractEventKind.Accepted && Alerts != null)
             {
                 Alerts.Log.Note(Alerts.Seconds, ContractText.Alert(e));
+            }
+        }
+
+        // The overview's alerts log a civic stage built (docs/endless-design.md §3).
+        private void OnCivicStage(CivicStageCompletedEvent e)
+        {
+            if (Alerts != null)
+            {
+                Alerts.Log.Note(Alerts.Seconds, CivicText.Built(e));
             }
         }
 
@@ -651,6 +673,7 @@ namespace GolemFactory.World
             data.progress = CaptureProgress();
             data.supply = Supply.Capture();
             data.contracts = Contracts?.Capture();
+            data.civic = Civic?.Capture();
             data.meta = CaptureMeta(live.Count, data.buildings.Count, autosaveReason);
             data.creative = Creative;
             SaveFileIO.WriteToFile(data, path);
@@ -742,6 +765,7 @@ namespace GolemFactory.World
             bool migrated = RestoreSupply(data.supply, data.market);
             // After the Ledger and the tower: a save without contracts posts its first one if it can.
             Contracts?.Restore(data.contracts);
+            Civic?.Restore(data.civic);
 
             IGolemRespawner respawner = _stationTemplate != null ? new StationGolemRespawner(_stationTemplate) : null;
             SaveLoadService.RestoreReport report = SaveLoadService.RestoreState(
@@ -1077,6 +1101,25 @@ namespace GolemFactory.World
         }
 
         /// <summary>
+        /// The civic works' site (docs/endless-design.md §1.2): a fixture west of the tower, every
+        /// footprint cell taking deliveries for the stage under way, roped off until the tower stands.
+        /// </summary>
+        private void RaiseCivicSite()
+        {
+            ClockTowerSite tower = ClockTower.Site;
+            Civic = new CivicWorks(Definitions?.CivicWorks.Values, () => tower.IsComplete, enabled: !Creative);
+            Clock.Register(Civic);
+            var site = new PlaceableBuilding { name = "CivicWorksSite" };
+            Build.RegisterFixture(site, TownSquare.CivicCentre, TownSquare.CivicCells());
+            var endpoint = new ClockTowerInputEndpoint(Civic.Site, CivicWorks.SiteName);
+            foreach (Vector2Int cell in TownSquare.CivicCells())
+            {
+                Endpoints.Register(cell, endpoint);
+            }
+            CivicBuilding = site;
+        }
+
+        /// <summary>
         /// Endless play (docs/endless-design.md): not a mode but what follows the Clock Tower. Its
         /// rungs on the pack, the carts and the bays are offered once the tower stands, and in
         /// Creative, where every rung is free.
@@ -1382,7 +1425,8 @@ namespace GolemFactory.World
         private long _goodsMadeBefore;
 
         /// <summary>The overview's running totals line.</summary>
-        public string RunTotalsLine => Overview.RunTotals.Text(GoodsMadeEver, Contracts?.Done.Count ?? 0);
+        public string RunTotalsLine => Overview.RunTotals.Text(GoodsMadeEver, Contracts?.Done.Count ?? 0,
+            Civic != null && Civic.Works.Count > 0 && EndlessOpen && !Creative ? Civic.StagesBuilt : -1);
 
         /// <summary>An hour of what the factory made and spent, for the overview's graph (docs/menus-design.md §8).</summary>
         public Overview.ProductionHistory History { get; } = new Overview.ProductionHistory();

@@ -42,6 +42,9 @@ namespace GolemFactory.Nodes
 
         public override void _EnterTree() => AddToGroup(GroupName);
 
+        /// <summary>The civic works site's view, or null with none.</summary>
+        public CivicSiteView Civic { get; private set; }
+
         /// <summary>The City Office's view, or null with no office.</summary>
         public CityOfficeView Office { get; private set; }
 
@@ -79,6 +82,12 @@ namespace GolemFactory.Nodes
             {
                 Office = new CityOfficeView(sandbox.Contracts, Fx);
                 AddChild(Office);
+            }
+            // The civic works' site west of it (docs/endless-design.md §1.2).
+            if (sandbox.CivicBuilding != null)
+            {
+                Civic = new CivicSiteView(sandbox.Civic, Fx);
+                AddChild(Civic);
             }
             _started = true;
         }

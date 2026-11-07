@@ -212,9 +212,11 @@ Current scenarios:
   cap of 112, which the row then says; the Pack row's Upgrade makes the pack 300; I at a Coal
   cart at rung 3 and a click on Rate buy rung 4 in Regulators. With every authored contract
   done, the first generated one posts; E at the City Office shows it (no id) and a click takes
-  it. The won tower's HUD panel points at the office, and the Overview tab's running totals
-  match the world's. Captures `endless-rungs`, `endless-cart`, `endless-contract`,
-  `endless-overview`.
+  it. The last stage's banner points at the office, and the Overview tab's running totals
+  match the world's. At the civic works site (open, drawn open), the HUD follows the Tramway; its
+  first stage's goods pushed into the site build it, and the HUD moves on to its second.
+  Captures `endless-rungs`, `endless-cart`, `endless-contract`, `endless-won`,
+  `endless-overview`, `endless-civic`.
 - `perf` also takes `--perf-golems=N` (a load of N golems in the endgame's proportions) and
   `--perf-load=endless` (160), for measuring the golem cap (`docs/performance-report-endless.md`).
 

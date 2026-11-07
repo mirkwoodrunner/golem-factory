@@ -35,6 +35,7 @@ GENERATORS = [
     "generate_hud_art.py",
     "generate_supply_art.py",
     "generate_office_art.py",
+    "generate_civic_art.py",
 ]
 
 # Sprites whose committed version was drawn by hand over the generated placeholder, so the
