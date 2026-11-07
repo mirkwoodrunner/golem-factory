@@ -241,6 +241,25 @@ namespace GolemFactory.Nodes.Scenarios
                 Log($"the first generated contract ({Sandbox.Contracts.Current.requester}: {Contracts.ContractText.Goods(Sandbox.Contracts.Current.asks)}) posted after the authored ones and was taken at the office");
                 return null;
             });
+            Until("the won tower's panel points at the office", 1, () =>
+            {
+                var hud = Tree.Root.FindChild("Hud", true, false) as HudOverlay;
+                return hud.TowerDetail == Contracts.ContractText.EndlessInvitation ? null : $"panel '{hud.TowerDetail}'";
+            });
+            Do("Tab", () => { Tap(Key.Tab); return null; });
+            Do("click Overview", () => { Click(Management.TabButtons[ManagementTab.Overview]); return null; });
+            Until("the running totals, over the whole game", 1, () =>
+            {
+                OverviewTab overview = Management.Overview;
+                string expected = Sandbox.RunTotalsLine;
+                if (overview == null || overview.Totals != expected || !expected.Contains(Sandbox.Contracts.Done.Count + " contracts done"))
+                {
+                    return $"totals '{overview?.Totals}', expected '{expected}'";
+                }
+                ScenarioCapture.Shot(Runner.GetViewport(), "endless-overview");
+                Tap(Key.Escape);
+                return null;
+            });
         }
     }
 }

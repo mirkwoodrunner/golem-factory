@@ -68,6 +68,9 @@ namespace GolemFactory.Nodes
         /// <summary>The HUD's contract line as drawn, empty while none is up; for scenarios.</summary>
         public string ContractLine => _contract != null && _contract.Visible ? _contractText.Text : "";
 
+        /// <summary>The tower panel's lines under the headline, as drawn, for scenarios.</summary>
+        public string TowerDetail => _demand?.Text ?? "";
+
         /// <summary>The tower panel's headline as drawn, for scenarios.</summary>
         public string TowerHeadline => _headline?.Text ?? "";
 
@@ -268,7 +271,9 @@ namespace GolemFactory.Nodes
             ClockTowerReading tower = _world.Sandbox.ClockTower.Site.BuildReading();
             _headline.Text = ClockTowerReadout.FormatHeadline(tower);
             _headline.AddThemeColorOverride("font_color", tower.IsComplete ? Win : tower.HasActiveStage ? Amber : Dim);
-            _demand.Text = ClockTowerReadout.FormatDemandTable(tower);
+            _demand.Text = tower.IsComplete
+                ? GolemFactory.Contracts.ContractText.EndlessInvitation
+                : ClockTowerReadout.FormatDemandTable(tower);
             _starved.Text = ClockTowerReadout.FormatStarvedAlert(tower);
         }
     }

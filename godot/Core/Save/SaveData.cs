@@ -174,6 +174,12 @@ namespace GolemFactory.Save
         public List<string> ledgerBuildings = new List<string>();
         public List<string> ledgerCards = new List<string>();
         public int ledgerTowerStages;
+
+        /// <summary>
+        /// Every good golems have made since the game began (docs/endless-design.md §3): the
+        /// overview's running total. Absent in an older save, so 0: that game counts from its load.
+        /// </summary>
+        public long goodsMadeEver;
         public int floorNorthExtent;
         public int assemblyBayTier = 1;
 

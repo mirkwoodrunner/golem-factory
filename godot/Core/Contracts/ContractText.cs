@@ -15,6 +15,9 @@ namespace GolemFactory.Contracts
     {
         public const string OfficeName = "City Office";
 
+        /// <summary>The won tower's panel (docs/endless-design.md §3): the game goes on, at the office.</summary>
+        public const string EndlessInvitation = "The city has more work for you: the City Office, beside the tower.";
+
         /// <summary>"34 of 60 Glass".</summary>
         public static string Progress(ContractBoard board, RecipeIngredient ask) =>
             $"{Clamp(board.Delivered(ask.itemType), ask.quantity)} of {ask.quantity} {ItemTiers.DisplayName(ask.itemType)}";

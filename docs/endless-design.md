@@ -122,6 +122,13 @@ from each cart, golems that do more, carts upgraded rather than added.
 - **The HUD's tower panel**, once the tower is complete, shows the current civic work (if any) the
   way it showed the tower's stage.
 
+**Built (2026-11-07):** there is no separate end screen; the win is the HUD's tower panel, which
+under "Clock Tower complete" now says "The city has more work for you: the City Office, beside
+the tower." (`ContractText.EndlessInvitation`). The overview's running totals sit under the map
+(`Overview/RunTotals`, `SandboxWorld.RunTotalsLine`): goods made since the game began (saved as
+`progress.goodsMadeEver`; an older save counts from its load) and contracts done; civic stages
+join it with the civic works.
+
 ## 4. A factory that still runs
 
 The frame budget was measured at **96 golems, 500 belt items and 12 boilers**

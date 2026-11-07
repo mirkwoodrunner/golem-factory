@@ -816,6 +816,7 @@ namespace GolemFactory.World
             var progress = new ProgressEntry
             {
                 ledgerTowerStages = TechTree.Ledger.CompletedTowerStages,
+                goodsMadeEver = GoodsMadeEver,
                 floorNorthExtent = Bounds.NorthExtent,
                 assemblyBayTier = AssemblyBay.Tier,
                 packUpgradeTier = PackUpgrade.Tier,
@@ -862,6 +863,9 @@ namespace GolemFactory.World
             progress.ledgerBuildings.ForEach(x => ledger.RecordBuilding(x));
             progress.ledgerCards.ForEach(x => ledger.RecordClaimedCard(x));
             ledger.RecordCompletedTowerStages(progress.ledgerTowerStages);
+            // The running total carries on from the save's: what this session made before the load
+            // was the abandoned game's.
+            _goodsMadeBefore = progress.goodsMadeEver - SessionGoodsMade;
 
             if (AssemblyLine != null)
             {
@@ -1369,6 +1373,16 @@ namespace GolemFactory.World
         /// §4), beside <see cref="Production"/>.
         /// </summary>
         public ConsumptionTally Consumption { get; } = new ConsumptionTally();
+
+        /// <summary>Every good golems have made since the game began, over saves (docs/endless-design.md §3).</summary>
+        public long GoodsMadeEver => _goodsMadeBefore + SessionGoodsMade;
+
+        private long SessionGoodsMade => Production.Totals.Values.Sum(n => (long)n);
+
+        private long _goodsMadeBefore;
+
+        /// <summary>The overview's running totals line.</summary>
+        public string RunTotalsLine => Overview.RunTotals.Text(GoodsMadeEver, Contracts?.Done.Count ?? 0);
 
         /// <summary>An hour of what the factory made and spent, for the overview's graph (docs/menus-design.md §8).</summary>
         public Overview.ProductionHistory History { get; } = new Overview.ProductionHistory();

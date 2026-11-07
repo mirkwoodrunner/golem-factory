@@ -68,6 +68,11 @@ namespace GolemFactory.Nodes
         public MapView Map { get; private set; }
         public GraphView Graph { get; private set; }
         public string Summary => _summary?.Text ?? "";
+
+        /// <summary>The running totals under the map, as drawn (docs/endless-design.md §3).</summary>
+        public string Totals => _totals?.Text ?? "";
+
+        private Label _totals;
         public IReadOnlyDictionary<HistoryRange, Button> RangeButtons => _rangeButtons;
         public IReadOnlyDictionary<ChartMeasure, Button> MeasureButtons => _measureButtons;
         public IReadOnlyDictionary<OverviewPanel, Button> PanelButtons => _panelButtons;
@@ -89,8 +94,12 @@ namespace GolemFactory.Nodes
             TopLeft(_summary, 150f, 12f, 480f, 20f);
             _root.AddChild(_summary);
             Map = new MapView(this) { Name = "Map" };
-            TopLeft(Map, 16f, 36f, 620f, 560f);
+            // 24 px short of the tab's foot, for the running totals under it (endless-design §3).
+            TopLeft(Map, 16f, 36f, 620f, 536f);
             _root.AddChild(Map);
+            _totals = Ugui.Text("Totals", "", 12, ManagementScreen.ItemNameInk);
+            TopLeft(_totals, 16f, 576f, 620f, 18f);
+            _root.AddChild(_totals);
 
             _productionHeading = Header("ProductionHeading", Chart.Heading, 660f, 10f);
             float x = 1264f - 2f * 84f - 8f - 16f - 2f * 72f - 8f;
@@ -161,6 +170,7 @@ namespace GolemFactory.Nodes
         {
             Map.Model = FactoryMap.Compose(_world);
             _summary.Text = Map.Model.Summary;
+            _totals.Text = _world.RunTotalsLine;
             Map.QueueRedraw();
             Chart.Refresh();
             Graph.QueueRedraw();
