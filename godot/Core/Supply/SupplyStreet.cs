@@ -39,10 +39,22 @@ namespace GolemFactory.Supply
             CapacityCosts = capacityCosts ?? new List<IReadOnlyList<RecipeIngredient>>();
         }
 
+        /// <summary>
+        /// The rungs the campaign offers past rung 0; the rest are endless play's
+        /// (docs/endless-design.md §2), offered once <see cref="EndlessOpen"/> says so.
+        /// </summary>
+        public int CampaignRungs { get; set; } = int.MaxValue;
+
+        /// <summary>Whether endless play's rungs are offered; null offers none of them.</summary>
+        public Func<bool> EndlessOpen { get; set; }
+
         /// <summary>How many rungs there are past rung 0: as many as both the rates and their
-        /// prices name, so a ladder with a missing price simply ends early.</summary>
-        public int TopRateRung => Math.Min(Rates.Count - 1, RateCosts.Count);
-        public int TopCapacityRung => Math.Min(Capacities.Count - 1, CapacityCosts.Count);
+        /// prices name, so a ladder with a missing price simply ends early; and before endless
+        /// play, no more than the campaign's.</summary>
+        public int TopRateRung => Offered(Math.Min(Rates.Count - 1, RateCosts.Count));
+        public int TopCapacityRung => Offered(Math.Min(Capacities.Count - 1, CapacityCosts.Count));
+
+        private int Offered(int top) => EndlessOpen?.Invoke() == true ? top : Math.Min(top, CampaignRungs);
     }
 
     /// <summary>A place on the street where a cart can stand (§1).</summary>
@@ -301,6 +313,9 @@ namespace GolemFactory.Supply
             RaiseChanged();
             return SupplyResult.Ok($"Added a {ItemTiers.DisplayName(itemType)} cart.");
         }
+
+        /// <summary>Every good's ladder, in no order.</summary>
+        public IEnumerable<CartLadder> Ladders => _ladders.Values;
 
         public SupplyResult UpgradeRate(CartSpot spot) => Upgrade(spot, rate: true, given: false);
 

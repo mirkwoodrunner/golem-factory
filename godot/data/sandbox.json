@@ -8,8 +8,18 @@
   "packUpgrades": [
     { "capacityPerType": 150, "cost": [{ "itemType": "IronPlate", "quantity": 60 }, { "itemType": "Gear", "quantity": 30 }] },
     { "capacityPerType": 200, "cost": [{ "itemType": "IronPlate", "quantity": 40 }, { "itemType": "Brass", "quantity": 20 }] },
-    { "capacityPerType": 250, "cost": [{ "itemType": "IronPlate", "quantity": 60 }, { "itemType": "Casing", "quantity": 10 }, { "itemType": "Mainspring", "quantity": 4 }] }
+    { "capacityPerType": 250, "cost": [{ "itemType": "IronPlate", "quantity": 60 }, { "itemType": "Casing", "quantity": 10 }, { "itemType": "Mainspring", "quantity": 4 }] },
+    { "capacityPerType": 300, "endless": true, "cost": [{ "itemType": "Mechanism", "quantity": 10 }, { "itemType": "Regulator", "quantity": 4 }] },
+    { "capacityPerType": 350, "endless": true, "cost": [{ "itemType": "Mechanism", "quantity": 20 }, { "itemType": "Regulator", "quantity": 8 }] }
   ],
+  "assemblyBays": {
+    "_doc": "The campaign's bays top out at campaignTopSlots; endless play (docs/endless-design.md §2) adds one tier per endless price, to the golem cap of 112 (docs/performance-report-endless.md).",
+    "campaignTopSlots": 100,
+    "endless": [
+      [{"itemType": "Mechanism", "quantity": 10}, {"itemType": "GreatCog", "quantity": 2}],
+      [{"itemType": "Mechanism", "quantity": 20}, {"itemType": "GreatCog", "quantity": 4}]
+    ]
+  },
   "postCapacityPerType": 200,
   "startingNorthExtent": 12,
   "beltCellsPerSecond": 1.0,
@@ -77,82 +87,107 @@
     "carts": [
       {
         "itemType": "Scrap",
+        "campaignRungs": 3,
         "add": [{"itemType": "Scrap", "quantity": 60}],
-        "rates": [120, 180, 240, 300],
-        "capacities": [200, 300, 400, 500],
+        "rates": [120, 180, 240, 300, 360, 420],
+        "capacities": [200, 300, 400, 500, 600, 700],
         "rateCosts": [
           [{"itemType": "IronPlate", "quantity": 40}, {"itemType": "Gear", "quantity": 10}],
           [{"itemType": "CopperIngot", "quantity": 40}, {"itemType": "Brass", "quantity": 20}],
-          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}]
+          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}],
+          [{"itemType": "Regulator", "quantity": 4}, {"itemType": "Casing", "quantity": 20}],
+          [{"itemType": "ChronometerCore", "quantity": 2}, {"itemType": "Regulator", "quantity": 4}]
         ],
         "capacityCosts": [
           [{"itemType": "IronPlate", "quantity": 20}, {"itemType": "Gear", "quantity": 5}],
           [{"itemType": "CopperIngot", "quantity": 20}, {"itemType": "Brass", "quantity": 10}],
-          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}]
+          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}],
+          [{"itemType": "Regulator", "quantity": 2}, {"itemType": "Casing", "quantity": 10}],
+          [{"itemType": "ChronometerCore", "quantity": 1}, {"itemType": "Regulator", "quantity": 2}]
         ]
       },
       {
         "itemType": "Coal",
+        "campaignRungs": 3,
         "add": [{"itemType": "Scrap", "quantity": 80}],
-        "rates": [30, 60, 120, 180],
-        "capacities": [100, 200, 300, 400],
+        "rates": [30, 60, 120, 180, 240, 300],
+        "capacities": [100, 200, 300, 400, 500, 600],
         "rateCosts": [
           [{"itemType": "IronPlate", "quantity": 10}, {"itemType": "Gear", "quantity": 5}],
           [{"itemType": "CopperIngot", "quantity": 40}, {"itemType": "Brass", "quantity": 20}],
-          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}]
+          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}],
+          [{"itemType": "Regulator", "quantity": 4}, {"itemType": "Casing", "quantity": 20}],
+          [{"itemType": "ChronometerCore", "quantity": 2}, {"itemType": "Regulator", "quantity": 4}]
         ],
         "capacityCosts": [
           [{"itemType": "IronPlate", "quantity": 5}, {"itemType": "Gear", "quantity": 2}],
           [{"itemType": "CopperIngot", "quantity": 20}, {"itemType": "Brass", "quantity": 10}],
-          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}]
+          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}],
+          [{"itemType": "Regulator", "quantity": 2}, {"itemType": "Casing", "quantity": 10}],
+          [{"itemType": "ChronometerCore", "quantity": 1}, {"itemType": "Regulator", "quantity": 2}]
         ]
       },
       {
         "itemType": "CopperOre",
+        "campaignRungs": 3,
         "add": [{"itemType": "IronPlate", "quantity": 60}, {"itemType": "Gear", "quantity": 20}],
-        "rates": [30, 60, 120, 180],
-        "capacities": [100, 200, 300, 400],
+        "rates": [30, 60, 120, 180, 240, 300],
+        "capacities": [100, 200, 300, 400, 500, 600],
         "rateCosts": [
           [{"itemType": "CopperIngot", "quantity": 40}, {"itemType": "Gear", "quantity": 20}],
           [{"itemType": "Brass", "quantity": 20}, {"itemType": "Casing", "quantity": 10}],
-          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}]
+          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}],
+          [{"itemType": "Regulator", "quantity": 4}, {"itemType": "Casing", "quantity": 20}],
+          [{"itemType": "ChronometerCore", "quantity": 2}, {"itemType": "Regulator", "quantity": 4}]
         ],
         "capacityCosts": [
           [{"itemType": "CopperIngot", "quantity": 20}, {"itemType": "Gear", "quantity": 10}],
           [{"itemType": "Brass", "quantity": 10}, {"itemType": "Casing", "quantity": 5}],
-          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}]
+          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}],
+          [{"itemType": "Regulator", "quantity": 2}, {"itemType": "Casing", "quantity": 10}],
+          [{"itemType": "ChronometerCore", "quantity": 1}, {"itemType": "Regulator", "quantity": 2}]
         ]
       },
       {
         "itemType": "ZincOre",
+        "campaignRungs": 3,
         "add": [{"itemType": "IronPlate", "quantity": 40}, {"itemType": "CopperIngot", "quantity": 30}],
-        "rates": [30, 60, 120, 180],
-        "capacities": [100, 200, 300, 400],
+        "rates": [30, 60, 120, 180, 240, 300],
+        "capacities": [100, 200, 300, 400, 500, 600],
         "rateCosts": [
           [{"itemType": "Brass", "quantity": 20}, {"itemType": "Casing", "quantity": 10}],
           [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}],
-          [{"itemType": "Mainspring", "quantity": 10}, {"itemType": "AetherCell", "quantity": 4}]
+          [{"itemType": "Mainspring", "quantity": 10}, {"itemType": "AetherCell", "quantity": 4}],
+          [{"itemType": "Regulator", "quantity": 4}, {"itemType": "Casing", "quantity": 20}],
+          [{"itemType": "ChronometerCore", "quantity": 2}, {"itemType": "Regulator", "quantity": 4}]
         ],
         "capacityCosts": [
           [{"itemType": "Brass", "quantity": 10}, {"itemType": "Casing", "quantity": 5}],
           [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}],
-          [{"itemType": "Mainspring", "quantity": 5}, {"itemType": "AetherCell", "quantity": 2}]
+          [{"itemType": "Mainspring", "quantity": 5}, {"itemType": "AetherCell", "quantity": 2}],
+          [{"itemType": "Regulator", "quantity": 2}, {"itemType": "Casing", "quantity": 10}],
+          [{"itemType": "ChronometerCore", "quantity": 1}, {"itemType": "Regulator", "quantity": 2}]
         ]
       },
       {
         "itemType": "Aether",
+        "campaignRungs": 3,
         "add": [{"itemType": "Brass", "quantity": 20}, {"itemType": "Casing", "quantity": 10}],
-        "rates": [10, 20, 40, 60],
-        "capacities": [40, 80, 120, 160],
+        "rates": [10, 20, 40, 60, 80, 100],
+        "capacities": [40, 80, 120, 160, 200, 240],
         "rateCosts": [
           [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}],
           [{"itemType": "Mainspring", "quantity": 10}, {"itemType": "AetherCell", "quantity": 4}],
-          [{"itemType": "Mainspring", "quantity": 20}, {"itemType": "AetherCell", "quantity": 8}]
+          [{"itemType": "Mainspring", "quantity": 20}, {"itemType": "AetherCell", "quantity": 8}],
+          [{"itemType": "Regulator", "quantity": 4}, {"itemType": "Casing", "quantity": 20}],
+          [{"itemType": "ChronometerCore", "quantity": 2}, {"itemType": "Regulator", "quantity": 4}]
         ],
         "capacityCosts": [
           [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}],
           [{"itemType": "Mainspring", "quantity": 5}, {"itemType": "AetherCell", "quantity": 2}],
-          [{"itemType": "Mainspring", "quantity": 10}, {"itemType": "AetherCell", "quantity": 4}]
+          [{"itemType": "Mainspring", "quantity": 10}, {"itemType": "AetherCell", "quantity": 4}],
+          [{"itemType": "Regulator", "quantity": 2}, {"itemType": "Casing", "quantity": 10}],
+          [{"itemType": "ChronometerCore", "quantity": 1}, {"itemType": "Regulator", "quantity": 2}]
         ]
       }
     ]

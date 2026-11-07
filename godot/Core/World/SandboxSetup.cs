@@ -68,6 +68,9 @@ namespace GolemFactory.World
             public List<int> capacities = new List<int>();
             public List<List<RecipeIngredient>> rateCosts = new List<List<RecipeIngredient>>();
             public List<List<RecipeIngredient>> capacityCosts = new List<List<RecipeIngredient>>();
+
+            /// <summary>The rungs the campaign offers; the rest wait for endless play (0: every rung).</summary>
+            public int campaignRungs;
         }
 
         public sealed class Placement
@@ -160,6 +163,18 @@ namespace GolemFactory.World
         public WorkbenchRoster workbench;
         public AssemblyLineSetup assemblyLine;
         public SupplySetup supply;
+
+        /// <summary>The bays' campaign top and endless play's tiers (docs/endless-design.md §2, §4).</summary>
+        public AssemblyBaysSetup assemblyBays;
+
+        public sealed class AssemblyBaysSetup
+        {
+            /// <summary>The most slots the campaign's tiers reach; 0 leaves them uncapped.</summary>
+            public int campaignTopSlots;
+
+            /// <summary>One price per endless tier, each six more slots: up to the golem cap.</summary>
+            public List<List<RecipeIngredient>> endless = new List<List<RecipeIngredient>>();
+        }
         public Placement starterBench;
         public Placement starterStation;
 
@@ -207,7 +222,10 @@ namespace GolemFactory.World
                 street.AddLadder(new CartLadder(
                     cart.itemType, cart.add, cart.rates, cart.capacities,
                     cart.rateCosts.Select(c => (IReadOnlyList<RecipeIngredient>)c).ToList(),
-                    cart.capacityCosts.Select(c => (IReadOnlyList<RecipeIngredient>)c).ToList()));
+                    cart.capacityCosts.Select(c => (IReadOnlyList<RecipeIngredient>)c).ToList())
+                {
+                    CampaignRungs = cart.campaignRungs > 0 ? cart.campaignRungs : int.MaxValue,
+                });
             }
             PlaceStartingCarts(street);
             return street;

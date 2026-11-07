@@ -100,7 +100,9 @@ namespace GolemFactory.Tests.EditMode
         {
             PriceList list = PriceList.Play();
             IReadOnlyList<PackUpgradeRung> rungs = list.Rungs;
-            for (int k = 0; k < rungs.Count; k++)
+            // The campaign's rungs. Endless play's (300, 350) are needed by its generated
+            // contracts, filled by hand from the pack: GeneratedContractTests pins that.
+            for (int k = 0; k < rungs.Count && !rungs[k].endless; k++)
             {
                 int below = k == 0 ? list.World.Setup.packCapacityPerType : rungs[k - 1].capacityPerType;
                 int cap = rungs[k].capacityPerType;

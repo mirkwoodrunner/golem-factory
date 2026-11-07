@@ -234,6 +234,13 @@ namespace GolemFactory.World
                 FloorExpansion.ConfigureCost(setup.floorExpansion.purchases, setup.floorExpansion.rowsPerPurchase);
             }
             PackUpgrade.Configure(Buffers, _stockpileBufferId, PostBufferId, setup.packCapacityPerType, setup.packUpgrades);
+            PackUpgrade.EndlessOpen = () => EndlessOpen;
+            if (setup.assemblyBays != null)
+            {
+                AssemblyBay.ConfigureTiers(setup.assemblyBays.campaignTopSlots,
+                    setup.assemblyBays.endless.Select(c => (IReadOnlyList<RecipeIngredient>)c));
+            }
+            AssemblyBay.EndlessOpen = () => EndlessOpen;
 
             // Ticked whether or not a tower is built: an unbuilt tower accrues nothing.
             // EMPTY, as ManagerHolders.prefab's site holder was (stages: []): the site stays
@@ -258,6 +265,10 @@ namespace GolemFactory.World
                 Nodes, Endpoints, UnitCells, Markers, () => Wallet, item => TechTree.Ledger.HasItem(item),
                 (int)System.Math.Round(60f * Clock.TicksPerSecond), cell => Grid.IsOccupied(cell));
             Clock.Register(Supply);
+            foreach (CartLadder ladder in Supply.Ladders)
+            {
+                ladder.EndlessOpen = () => EndlessOpen;
+            }
 
             WireBuildMode();
             RaiseClockTower();
@@ -1056,6 +1067,13 @@ namespace GolemFactory.World
             }
             CityOfficeBuilding = office;
         }
+
+        /// <summary>
+        /// Endless play (docs/endless-design.md): not a mode but what follows the Clock Tower. Its
+        /// rungs on the pack, the carts and the bays are offered once the tower stands, and in
+        /// Creative, where every rung is free.
+        /// </summary>
+        public bool EndlessOpen => Creative || ClockTower.Site.IsComplete;
 
         /// <summary>What opens the tower's site: the factory has built one of these.</summary>
         public const string ZeppelinChassis = Progression.TechTreeCatalog.ChassisZeppelin;

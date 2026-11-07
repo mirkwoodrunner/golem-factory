@@ -91,6 +91,15 @@ offered once stage 4 completes:
 | Floor Expansion | six purchases (`MaxNorthExtent`) | §6 Q3 | Frame Section + Great Cog |
 | Street spots | 17 (`supply-design.md` §1) | none: the street is full | — |
 
+**Built (2026-11-07):** `SandboxWorld.EndlessOpen` (the tower complete, or Creative) opens
+every endless rung; there is no switch. In `data/sandbox.json`: the pack's `endless` rungs, 300
+(10 Mechanism + 4 Regulator) and 350 (20 + 8); each cart's `campaignRungs: 3` and two more Rate
+and Capacity rungs (rung 4 in Regulators and Casing, rung 5 in Chronometer Cores and
+Regulators); `assemblyBays`, the campaign's top at 100 slots and two endless tiers (Mechanism +
+Great Cog) to the golem cap of 112. Before the tower the bay row says "more once the Clock Tower
+stands"; at the cap, "the most the city allows". Tests: `Core.Tests/Economy/EndlessRungTests`;
+the `endless` scenario.
+
 **Land is the hard limit.** The floor stops at `MaxNorthExtent` and the street at ±34. More land is
 the second region, which waits (roadmap). So endless growth is mostly **density and rates**: more
 from each cart, golems that do more, carts upgraded rather than added.

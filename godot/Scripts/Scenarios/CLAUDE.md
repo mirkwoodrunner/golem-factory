@@ -206,6 +206,14 @@ Current scenarios:
   five more, loaded with two clicks: five again. Captures `contracts-roped`,
   `contracts-office`, `contracts-notice`, `contracts-taken`, `contracts-reward`,
   `contracts-next`.
+- `endless` (Sandbox): endless play (`docs/endless-design.md`) with real keys and clicks. Before
+  the tower, the bays at 100 say "more once the Clock Tower stands" with no button and the pack
+  offers nothing past 250. The tower complete, two Upgrade clicks on the bay row reach the golem
+  cap of 112, which the row then says; the Pack row's Upgrade makes the pack 300; I at a Coal
+  cart at rung 3 and a click on Rate buy rung 4 in Regulators. Captures `endless-rungs`,
+  `endless-cart`.
+- `perf` also takes `--perf-golems=N` (a load of N golems in the endgame's proportions) and
+  `--perf-load=endless` (160), for measuring the golem cap (`docs/performance-report-endless.md`).
 
 **A scenario that reloads the scene** implements `IReloadingScenario` (or derives from
 `StepScenario`, which does): the runner of the new scene hands it back (`Resumed`), and it finds

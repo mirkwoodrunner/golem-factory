@@ -9,6 +9,9 @@ namespace GolemFactory.Economy
     {
         public int capacityPerType;
         public List<RecipeIngredient> cost = new List<RecipeIngredient>();
+
+        /// <summary>An endless play rung (docs/endless-design.md §2): offered only once the Clock Tower stands.</summary>
+        public bool endless;
     }
 
     /// <summary>
@@ -43,7 +46,28 @@ namespace GolemFactory.Economy
             _rungs = rungs ?? new PackUpgradeRung[0];
         }
 
-        public bool IsMaxed => Tier >= _rungs.Count;
+        /// <summary>
+        /// Whether endless play's rungs are offered: the tower complete, or Creative
+        /// (docs/endless-design.md §2). Null, as in a bare test, offers none of them.
+        /// </summary>
+        public Func<bool> EndlessOpen { get; set; }
+
+        /// <summary>The rungs on offer: every campaign rung, and the endless ones once they open.</summary>
+        public int OfferedRungs
+        {
+            get
+            {
+                bool open = EndlessOpen?.Invoke() == true;
+                int n = 0;
+                while (n < _rungs.Count && (open || !_rungs[n].endless))
+                {
+                    n++;
+                }
+                return n;
+            }
+        }
+
+        public bool IsMaxed => Tier >= OfferedRungs;
 
         /// <summary>The pack's live cap, or <see cref="StorageBuffer.Unlimited"/>.</summary>
         public int CapacityPerType => Pack?.CapacityPerType ?? StorageBuffer.Unlimited;

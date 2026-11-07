@@ -92,6 +92,7 @@ namespace GolemFactory.Nodes.Scenarios
                 ["creative"] = () => new CreativeScenario(),
                 ["supply"] = () => new SupplyScenario(),
                 ["contracts"] = () => new ContractsScenario(),
+                ["endless"] = () => new EndlessScenario(),
             };
 
         [Export] public NodePath StationPath { get; set; }

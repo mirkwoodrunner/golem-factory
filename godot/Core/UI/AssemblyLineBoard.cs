@@ -143,7 +143,19 @@ namespace GolemFactory.UI
 
             // FIRST, above the cards: the cap decides whether a claimed card can ever be put on
             // a golem, so a player who cannot build is looking for this line.
-            if (_bay != null)
+            if (_bay != null && _bay.IsMaxed)
+            {
+                // The golem cap (endless-design §4), or the campaign's top before the tower: the
+                // row says so rather than offering a button that always refuses.
+                rows.Add(new AssemblyLineRow
+                {
+                    Kind = AssemblyLineRowKind.Bay,
+                    Text = AssemblyBayRowPolicy.FormatOccupancy(_bay.OccupiedSlots, _bay.MaxGolemSlots)
+                           + "  ·  " + (_bay.MaxGolemSlots >= _bay.GolemCap ? "the most the city allows" : "more once the Clock Tower stands"),
+                    Bright = !_bay.HasFreeSlot,
+                });
+            }
+            else if (_bay != null)
             {
                 IReadOnlyList<RecipeIngredient> cost = _bay.UpgradeCost;
                 rows.Add(new AssemblyLineRow

@@ -161,6 +161,12 @@ namespace GolemFactory.Diagnostics
                 Grant(world, world.FloorExpansion.NextCost());
                 Require(world.FloorExpansion.TryPurchaseExpansion(), "floor: " + world.FloorExpansion.LastStatusMessage);
             }
+            // A load past the golem cap measures where the cap should be (endless-design §4): the
+            // bays are uncapped for it, as they were before the cap existed.
+            if (spec.Golems + world.AssemblyBay.OccupiedSlots > world.AssemblyBay.GolemCap)
+            {
+                world.AssemblyBay.ConfigureTiers(0, null);
+            }
             while (world.AssemblyBay.MaxGolemSlots < spec.Golems + world.AssemblyBay.OccupiedSlots)
             {
                 Grant(world, world.AssemblyBay.UpgradeCost);
