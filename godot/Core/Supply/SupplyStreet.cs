@@ -67,12 +67,16 @@ namespace GolemFactory.Supply
         private readonly List<RecipeIngredient> _addPaid = new List<RecipeIngredient>();
         private readonly List<RecipeIngredient> _rungsPaid = new List<RecipeIngredient>();
 
-        internal SupplyCart(CartLadder ladder, ResourceNode node, ResourceNodeMarker marker)
+        internal SupplyCart(CartLadder ladder, ResourceNode node, ResourceNodeMarker marker, int ticksPerSecond)
         {
             Ladder = ladder;
             Node = node;
             Marker = marker;
+            Flow = new CartFlow(ticksPerSecond);
         }
+
+        /// <summary>Its goods in and out over the last minute, for the market view. A new cart starts a new count.</summary>
+        public CartFlow Flow { get; }
 
         public CartLadder Ladder { get; internal set; }
         public string ItemType => Ladder.ItemType;
@@ -430,25 +434,33 @@ namespace GolemFactory.Supply
                 {
                     continue;
                 }
-                if (cart.Stock >= cart.Capacity)
-                {
-                    continue; // full: the accumulator holds (invariant 2)
-                }
-                cart.Accumulator += cart.RatePerMinute;
-                int whole = (int)(cart.Accumulator / TicksPerMinute);
-                if (whole <= 0)
-                {
-                    continue;
-                }
-                cart.Accumulator -= (long)whole * TicksPerMinute;
-                int room = cart.Capacity - cart.Stock;
-                cart.Node.Deliver(Math.Min(whole, room));
-                if (cart.Stock >= cart.Capacity)
-                {
-                    cart.Accumulator = 0;
-                }
-                cart.Marker.RefreshVisualState();
+                int before = cart.Stock;
+                cart.Flow.Tick(before, Trickle(cart));
             }
+        }
+
+        /// <summary>One tick of a cart's trickle; what it brought.</summary>
+        private int Trickle(SupplyCart cart)
+        {
+            if (cart.Stock >= cart.Capacity)
+            {
+                return 0; // full: the accumulator holds (invariant 2)
+            }
+            cart.Accumulator += cart.RatePerMinute;
+            int whole = (int)(cart.Accumulator / TicksPerMinute);
+            if (whole <= 0)
+            {
+                return 0;
+            }
+            cart.Accumulator -= (long)whole * TicksPerMinute;
+            int brought = Math.Min(whole, cart.Capacity - cart.Stock);
+            cart.Node.Deliver(brought);
+            if (cart.Stock >= cart.Capacity)
+            {
+                cart.Accumulator = 0;
+            }
+            cart.Marker.RefreshVisualState();
+            return brought;
         }
 
         // --- Saves ------------------------------------------------------------------------------
@@ -511,7 +523,7 @@ namespace GolemFactory.Supply
             marker.Configure(_nodes, spot.NodeId);
             marker.RegisterAsSpatialEndpoint(_endpoints, _cells);
             _markers?.Add(marker);
-            var cart = new SupplyCart(ladder, node, marker);
+            var cart = new SupplyCart(ladder, node, marker, Math.Max(1, TicksPerMinute / 60));
             spot.Cart = cart;
             return cart;
         }

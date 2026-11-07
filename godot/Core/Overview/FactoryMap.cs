@@ -17,10 +17,13 @@ namespace GolemFactory.Overview
         Steam,
         Machine,
         Station,
-        Stall,
+        Cart,
         Tower,
         Golem,
         Player,
+
+        // Appended: an empty cart spot on the street, drawn as an outline.
+        Spot,
     }
 
     /// <summary>A block of cells: its south-west cell and its size.</summary>
@@ -81,8 +84,8 @@ namespace GolemFactory.Overview
 
     /// <summary>
     /// The factory at a glance (docs/menus-design.md §8): the workshop's floor and the street
-    /// in front of it, everything the player built, the stalls, the tower, every golem by its
-    /// mood, and the player. Composed fresh from the world whenever the map is drawn; it holds
+    /// in front of it, everything the player built, the carts and the empty spots on the street
+    /// (docs/supply-design.md §4), the tower, every golem by its mood, and the player. Composed fresh from the world whenever the map is drawn; it holds
     /// nothing of its own.
     /// </summary>
     public sealed class FactoryMap
@@ -120,7 +123,14 @@ namespace GolemFactory.Overview
             foreach (ResourceNodeMarker marker in world.Markers)
             {
                 Vector2Int cell = cells.WorldToCell(marker.Position);
-                map._marks.Add(new MapMark(MapMarkKind.Stall, cell, names.Name(cell)));
+                map._marks.Add(new MapMark(MapMarkKind.Cart, cell, names.Name(cell)));
+            }
+            foreach (Supply.CartSpot spot in world.Supply?.Spots ?? new List<Supply.CartSpot>())
+            {
+                if (spot.IsEmpty)
+                {
+                    map._marks.Add(new MapMark(MapMarkKind.Spot, spot.Cell, "Empty cart spot " + TileNames.Cell(spot.Cell)));
+                }
             }
             map._marks.Add(new MapMark(MapMarkKind.Tower, TownSquare.TowerOrigin, "the Clock Tower", TownSquare.TowerSize));
             foreach (PlaceableBuilding building in world.AuthoredBuildings.Concat(world.Build.Buildings))

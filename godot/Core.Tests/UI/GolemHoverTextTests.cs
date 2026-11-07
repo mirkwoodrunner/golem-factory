@@ -141,7 +141,7 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual("Freight Mast (9,1)", names.Name(new Vector2Int(9, 1)));
             Assert.AreEqual("Pneumatic Post", names.Name(new Vector2Int(5, 5)));
             Assert.AreEqual("Belt (0,-12)", names.Name(new Vector2Int(0, -12)));
-            Assert.AreEqual("Copper Ore stall", names.Name(new Vector2Int(7, 7)));
+            Assert.AreEqual("Copper Ore cart", names.Name(new Vector2Int(7, 7)));
             Assert.AreEqual("the floor at (3,2)", names.Name(new Vector2Int(3, 2)));
         }
 

@@ -262,7 +262,7 @@ namespace GolemFactory.UI
                 case StallReason.OutputFull:
                     return "Give " + Good(golem.StallResourceId) + " a crate, a heap or a carrier.";
                 case StallReason.NodeCrowded:
-                    return $"Move it to another stall ({KeyNames.Carry}).";
+                    return $"Move it to another cart ({KeyNames.Carry}).";
                 case StallReason.FilterMismatch:
                     return $"Relabel the crate ({KeyNames.Inventory}), or send " + Good(golem.StallResourceId) + " elsewhere.";
                 default:

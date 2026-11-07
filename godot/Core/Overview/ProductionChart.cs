@@ -6,36 +6,49 @@ using GolemFactory.Economy;
 
 namespace GolemFactory.Overview
 {
-    /// <summary>A row of the graph's legend: a good made in the range, its average, and its line if shown.</summary>
+    /// <summary>
+    /// A row of the graph's legend, which is also its table view: a good made or spent in the
+    /// range, both its averages, and its line if shown.
+    /// </summary>
     public readonly struct ChartRow
     {
         public readonly string ItemType;
         public readonly string Name;
 
-        /// <summary>"24 a min", the range's average.</summary>
-        public readonly string RateText;
+        /// <summary>The range's averages, goods a minute.</summary>
+        public readonly float Made;
+        public readonly float Spent;
 
         /// <summary>The colour slot of its line, 0-based, or -1 when it isn't drawn.</summary>
         public readonly int Slot;
 
-        public ChartRow(string itemType, string name, string rateText, int slot)
+        public ChartRow(string itemType, string name, float made, float spent, int slot)
         {
             ItemType = itemType;
             Name = name;
-            RateText = rateText;
+            Made = made;
+            Spent = spent;
             Slot = slot;
         }
 
         public bool Shown => Slot >= 0;
+
+        /// <summary>The legend's columns: "18", "0.5", "0".</summary>
+        public string MadeText => ProductionChart.Number(Made);
+        public string SpentText => ProductionChart.Number(Spent);
+
+        /// <summary>"18 a min", the made average.</summary>
+        public string RateText => ProductionChart.RateText(Made);
     }
 
     /// <summary>
-    /// The production graph's state (docs/menus-design.md §8): its range, which goods are drawn,
-    /// and each one's colour. At most <see cref="MaxLines"/> lines, so every line can carry its
-    /// name at its end. The legend lists every good made in the range with its average, and
-    /// clicking a row draws or hides its line. A good keeps its colour while it is drawn: hiding
-    /// one frees its slot without repainting the rest, and changing the range changes nothing
-    /// but the time axis.
+    /// The production graph's state (docs/menus-design.md §8): its range, whether it draws
+    /// goods made or goods spent (docs/supply-design.md §4), which goods are drawn, and each
+    /// one's colour. At most <see cref="MaxLines"/> lines, so every line can carry its name at
+    /// its end. The legend lists every good made or spent in the range with both averages, and
+    /// clicking a row draws or hides its line. A good keeps its colour while it is drawn:
+    /// hiding one frees its slot without repainting the rest, and changing the range or the
+    /// measure changes nothing but what the lines count.
     /// </summary>
     public sealed class ProductionChart
     {
@@ -52,14 +65,18 @@ namespace GolemFactory.Overview
 
         public HistoryRange Range { get; set; } = HistoryRange.TenMinutes;
 
+        /// <summary>What the lines count. The legend shows both, whichever is drawn.</summary>
+        public ChartMeasure Measure { get; set; } = ChartMeasure.Made;
+
         /// <summary>The goods drawn, in slot order (an empty slot is skipped).</summary>
         public IEnumerable<string> Shown => _slots.Where(s => s != null);
 
         public int SlotOf(string itemType) => Array.IndexOf(_slots, itemType);
 
         /// <summary>
-        /// Catches up with the history: the first time anything has been made, the most-made
-        /// goods take the slots. After that only the player's clicks change what is drawn.
+        /// Catches up with the history: the first time anything has been made or spent, the
+        /// most-made goods take the slots (then the most spent). After that only the player's
+        /// clicks change what is drawn.
         /// </summary>
         public void Refresh()
         {
@@ -101,12 +118,13 @@ namespace GolemFactory.Overview
             return true;
         }
 
-        /// <summary>Every good made in the range, and any drawn but no longer made, most made first.</summary>
+        /// <summary>Every good made or spent in the range, and any drawn but no longer either, most made first.</summary>
         public IReadOnlyList<ChartRow> Rows()
         {
             List<string> goods = _history.Goods(Range).ToList();
             goods.AddRange(Shown.Where(s => !goods.Contains(s)));
-            return goods.Select(g => new ChartRow(g, ItemTiers.DisplayName(g), RateText(_history.Average(g, Range)), SlotOf(g))).ToList();
+            return goods.Select(g => new ChartRow(g, ItemTiers.DisplayName(g),
+                _history.Average(g, Range, ChartMeasure.Made), _history.Average(g, Range, ChartMeasure.Spent), SlotOf(g))).ToList();
         }
 
         /// <summary>The y axis's top: the highest drawn point, rounded up to a round number; at least 10.</summary>
@@ -115,7 +133,7 @@ namespace GolemFactory.Overview
             float max = 0f;
             foreach (string good in Shown)
             {
-                foreach (float rate in _history.Rates(good, Range))
+                foreach (float rate in Rates(good))
                 {
                     if (!float.IsNaN(rate) && rate > max)
                     {
@@ -144,14 +162,17 @@ namespace GolemFactory.Overview
         }
 
         /// <summary>"24 a min"; below ten with one decimal, "0.5 a min".</summary>
-        public static string RateText(float perMinute)
+        public static string RateText(float perMinute) => Number(perMinute) + " a min";
+
+        /// <summary>"24"; below ten with one decimal, "0.5"; "0" for nothing.</summary>
+        public static string Number(float perMinute)
         {
             CultureInfo c = CultureInfo.InvariantCulture;
             if (perMinute <= 0f)
             {
-                return "0 a min";
+                return "0";
             }
-            return (perMinute < 10f ? perMinute.ToString("0.#", c) : Math.Round(perMinute).ToString("0", c)) + " a min";
+            return perMinute < 10f ? perMinute.ToString("0.#", c) : Math.Round(perMinute).ToString("0", c);
         }
 
         /// <summary>The time under point <paramref name="point"/> of <see cref="ProductionHistory.Points"/>: "now", "40 s ago", "12 min ago".</summary>
@@ -175,18 +196,27 @@ namespace GolemFactory.Overview
 
         public static string RangeName(HistoryRange range) => range == HistoryRange.Hour ? "1 hour" : "10 min";
 
-        /// <summary>What the hover says over point <paramref name="point"/>: its time and each drawn good's rate there.</summary>
+        public static string MeasureName(ChartMeasure measure) => measure == ChartMeasure.Spent ? "Spent" : "Made";
+
+        /// <summary>The graph's heading: "Goods made a minute", "Goods spent a minute".</summary>
+        public string Heading => "Goods " + MeasureName(Measure).ToLowerInvariant() + " a minute";
+
+        /// <summary>
+        /// What the hover says over point <paramref name="point"/>: its time and what it counts
+        /// ("40 s ago · spent"), then each drawn good's rate there.
+        /// </summary>
         public IReadOnlyList<string> HoverLines(int point)
         {
-            var lines = new List<string> { TimeAt(point) };
+            var lines = new List<string> { TimeAt(point) + " · " + MeasureName(Measure).ToLowerInvariant() };
             foreach (string good in Shown)
             {
-                float rate = _history.Rates(good, Range)[point];
+                float rate = Rates(good)[point];
                 lines.Add(ItemTiers.DisplayName(good) + "  " + (float.IsNaN(rate) ? "not yet recorded" : RateText(rate)));
             }
             return lines;
         }
 
-        public float[] Rates(string itemType) => _history.Rates(itemType, Range);
+        /// <summary>The good's rates in the measure drawn.</summary>
+        public float[] Rates(string itemType) => _history.Rates(itemType, Range, Measure);
     }
 }

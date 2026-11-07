@@ -11,13 +11,21 @@ using CoreVector2Int = GolemFactory.Compat.Vector2Int;
 
 namespace GolemFactory.Nodes
 {
+    /// <summary>The overview's lower panel: the alerts, or the market (docs/supply-design.md §4).</summary>
+    public enum OverviewPanel
+    {
+        Alerts,
+        Market,
+    }
+
     /// <summary>
     /// Management's Overview tab (docs/menus-design.md §8): the factory at a glance. The map of
-    /// the workshop and the street, every golem by its mood; what the factory has made over ten
-    /// minutes or an hour; and every time a golem stopped. A golem picked on the map or in the
+    /// the workshop and the street, every golem by its mood; what the factory has made or spent
+    /// over ten minutes or an hour; and, below, every time a golem stopped or the market's carts
+    /// with their stock and flow (docs/supply-design.md §4). A golem picked on the map or in the
     /// alerts takes the camera to it, and the screen closes so the player can see it. The rules
-    /// are Core's (<see cref="FactoryMap"/>, <see cref="ProductionChart"/>, <see cref="AlertLog"/>);
-    /// this draws them and feeds clicks.
+    /// are Core's (<see cref="FactoryMap"/>, <see cref="ProductionChart"/>, <see cref="AlertLog"/>,
+    /// <see cref="MarketReadout"/>); this draws them and feeds clicks.
     /// </summary>
     public sealed partial class OverviewTab : IManagementTab
     {
@@ -35,10 +43,18 @@ namespace GolemFactory.Nodes
         private Label _summary;
         private VBoxContainer _legend;
         private VBoxContainer _alerts;
+        private VBoxContainer _market;
+        private Control _marketHead;
+        private Label _productionHeading;
+        private Label _panelHeading;
         private string _renderedLegend;
         private string _renderedAlerts;
+        private string _renderedMarket;
         private double _sinceRefresh = RefreshSeconds;
+        private ulong _lastFrame;
         private readonly Dictionary<HistoryRange, Button> _rangeButtons = new Dictionary<HistoryRange, Button>();
+        private readonly Dictionary<ChartMeasure, Button> _measureButtons = new Dictionary<ChartMeasure, Button>();
+        private readonly Dictionary<OverviewPanel, Button> _panelButtons = new Dictionary<OverviewPanel, Button>();
 
         public OverviewTab(SandboxWorld world, Action close)
         {
@@ -53,10 +69,16 @@ namespace GolemFactory.Nodes
         public GraphView Graph { get; private set; }
         public string Summary => _summary?.Text ?? "";
         public IReadOnlyDictionary<HistoryRange, Button> RangeButtons => _rangeButtons;
+        public IReadOnlyDictionary<ChartMeasure, Button> MeasureButtons => _measureButtons;
+        public IReadOnlyDictionary<OverviewPanel, Button> PanelButtons => _panelButtons;
+        public OverviewPanel Panel { get; private set; } = OverviewPanel.Alerts;
+        public string ProductionHeading => _productionHeading?.Text ?? "";
+        public string PanelHeading => _panelHeading?.Text ?? "";
 
-        /// <summary>The legend's rows by good, and the alerts' rows newest first, as drawn.</summary>
+        /// <summary>The legend's rows by good, the alerts' rows newest first, and the market's rows west to east, as drawn.</summary>
         public Dictionary<string, Button> LegendRows { get; } = new Dictionary<string, Button>();
         public List<Button> AlertRows { get; } = new List<Button>();
+        public List<Control> MarketRows { get; } = new List<Control>();
 
         public Control Build()
         {
@@ -70,36 +92,59 @@ namespace GolemFactory.Nodes
             TopLeft(Map, 16f, 36f, 620f, 560f);
             _root.AddChild(Map);
 
-            Header("ProductionHeading", "Production · goods a minute", 660f, 10f);
-            float rangeX = 1264f - 2f * 84f - 8f;
+            _productionHeading = Header("ProductionHeading", Chart.Heading, 660f, 10f);
+            float x = 1264f - 2f * 84f - 8f - 16f - 2f * 72f - 8f;
+            foreach (ChartMeasure measure in new[] { ChartMeasure.Made, ChartMeasure.Spent })
+            {
+                ChartMeasure captured = measure;
+                _measureButtons[measure] = Switch(measure + "Button", ProductionChart.MeasureName(measure), x, 8f, 72f, () => SetMeasure(captured));
+                x += 80f;
+            }
+            x += 16f;
             foreach (HistoryRange range in new[] { HistoryRange.TenMinutes, HistoryRange.Hour })
             {
-                Button button = ManagementScreen.PlateButton(range + "Button", ManagementScreen.Ui + "Hud/hud_button.png",
-                    Colors.White, ProductionChart.RangeName(range), 12, ManagementScreen.SelectedTabLabel, bold: true);
-                button.MouseDefaultCursorShape = Control.CursorShape.PointingHand;
-                TopLeft(button, rangeX, 8f, 84f, 24f);
-                rangeX += 92f;
                 HistoryRange captured = range;
-                button.Pressed += () => SetRange(captured);
-                _rangeButtons[range] = button;
-                _root.AddChild(button);
+                _rangeButtons[range] = Switch(range + "Button", ProductionChart.RangeName(range), x, 8f, 84f, () => SetRange(captured));
+                x += 92f;
             }
             Graph = new GraphView(this) { Name = "Graph" };
             TopLeft(Graph, 660f, 38f, 390f, 262f);
             _root.AddChild(Graph);
-            _legend = List("Legend", 1062f, 38f, 202f, 262f);
+            // The legend's two columns, named once above them: it is the graph's table view.
+            ColumnHead("MadeHead", "made", 1062f + 202f - 6f - LegendColumn * 2f - 6f, 38f, LegendColumn);
+            ColumnHead("SpentHead", "spent", 1062f + 202f - 6f - LegendColumn, 38f, LegendColumn);
+            _legend = List("Legend", 1062f, 56f, 202f, 244f);
 
-            Header("AlertsHeading", "Alerts · every time a golem stopped", 660f, 316f);
+            _panelHeading = Header("PanelHeading", "", 660f, 316f);
+            x = 1264f - 2f * 84f - 8f;
+            foreach (OverviewPanel panel in new[] { OverviewPanel.Alerts, OverviewPanel.Market })
+            {
+                OverviewPanel captured = panel;
+                _panelButtons[panel] = Switch(panel + "Button", panel.ToString(), x, 314f, 84f, () => ShowPanel(captured));
+                x += 92f;
+            }
             _alerts = List("Alerts", 660f, 342f, 604f, 254f);
-            ShowRange();
+            _marketHead = MarketLine(null);
+            TopLeft(_marketHead, 660f, 342f, 604f, 20f);
+            _root.AddChild(_marketHead);
+            _market = List("Market", 660f, 364f, 604f, 232f);
+            ShowSwitches();
             return _root;
         }
 
+        private const float LegendColumn = 40f;
+
         public void Refresh(ManagementTab active)
         {
-            if (active != ManagementTab.Overview)
+            ulong frame = Engine.GetProcessFrames();
+            bool reopened = frame > _lastFrame + 1; // a frame went by without this: the screen was closed
+            _lastFrame = frame;
+            if (active != ManagementTab.Overview || reopened)
             {
                 _sinceRefresh = RefreshSeconds; // fresh the moment it is shown
+            }
+            if (active != ManagementTab.Overview)
+            {
                 return;
             }
             _sinceRefresh += _root.GetProcessDeltaTime();
@@ -121,23 +166,56 @@ namespace GolemFactory.Nodes
             Graph.QueueRedraw();
             RefreshLegend();
             RefreshAlerts();
+            RefreshMarket();
         }
 
         private void SetRange(HistoryRange range)
         {
             Chart.Range = range;
-            ShowRange();
+            ShowSwitches();
             RefreshNow();
         }
 
-        private void ShowRange()
+        private void SetMeasure(ChartMeasure measure)
+        {
+            Chart.Measure = measure;
+            ShowSwitches();
+            RefreshNow();
+        }
+
+        /// <summary>Shows the alerts or the market below the graph.</summary>
+        public void ShowPanel(OverviewPanel panel)
+        {
+            Panel = panel;
+            ShowSwitches();
+            RefreshNow();
+        }
+
+        private void ShowSwitches()
         {
             foreach (KeyValuePair<HistoryRange, Button> pair in _rangeButtons)
             {
-                bool lit = pair.Key == Chart.Range;
-                pair.Value.SelfModulate = lit ? ManagementScreen.SelectedTab : new Color(0.34f, 0.30f, 0.26f, 1f);
-                pair.Value.GetNode<Label>("Label").AddThemeColorOverride("font_color", lit ? ManagementScreen.SelectedTabLabel : ManagementScreen.ItemNameInk);
+                Light(pair.Value, pair.Key == Chart.Range);
             }
+            foreach (KeyValuePair<ChartMeasure, Button> pair in _measureButtons)
+            {
+                Light(pair.Value, pair.Key == Chart.Measure);
+            }
+            foreach (KeyValuePair<OverviewPanel, Button> pair in _panelButtons)
+            {
+                Light(pair.Value, pair.Key == Panel);
+            }
+            _productionHeading.Text = Chart.Heading;
+            bool market = Panel == OverviewPanel.Market;
+            _alerts.GetParent<Control>().Visible = !market;
+            _market.GetParent<Control>().Visible = market;
+            _marketHead.Visible = market;
+        }
+
+        private static void Light(Button button, bool lit)
+        {
+            button.SelfModulate = lit ? ManagementScreen.SelectedTab : new Color(0.34f, 0.30f, 0.26f, 1f);
+            button.GetNode<Label>("Label").AddThemeColorOverride("font_color", lit ? ManagementScreen.SelectedTabLabel : ManagementScreen.ItemNameInk);
         }
 
         // --- The legend: every good made, its average, and its line -----------------------------
@@ -147,7 +225,7 @@ namespace GolemFactory.Nodes
             IReadOnlyList<ChartRow> rows = Chart.Rows();
             // Rebuilt only when the rows themselves change; a rate is written in place, so a
             // row is never swapped out from under a click.
-            var signature = new StringBuilder(Chart.Range.ToString()).Append('\n');
+            var signature = new StringBuilder(Chart.Range.ToString()).Append(Chart.Measure).Append('\n');
             foreach (ChartRow row in rows)
             {
                 signature.Append(row.ItemType).Append('|').Append(row.Slot).Append('\n');
@@ -156,9 +234,10 @@ namespace GolemFactory.Nodes
             {
                 foreach (ChartRow row in rows)
                 {
-                    if (LegendRows.TryGetValue(row.ItemType, out Button drawn) && drawn.FindChild("Rate", true, false) is Label rate)
+                    if (LegendRows.TryGetValue(row.ItemType, out Button drawn))
                     {
-                        rate.Text = row.RateText;
+                        drawn.GetNode<Label>("Line/Made").Text = row.MadeText;
+                        drawn.GetNode<Label>("Line/Spent").Text = row.SpentText;
                     }
                 }
                 return;
@@ -168,13 +247,14 @@ namespace GolemFactory.Nodes
             LegendRows.Clear();
             if (rows.Count == 0)
             {
-                _legend.AddChild(Message("Nothing made in the last " + ProductionChart.RangeName(Chart.Range) + ". A golem that Assembles shows here."));
+                _legend.AddChild(Message("Nothing made or spent in the last " + ProductionChart.RangeName(Chart.Range) + ". A golem that Assembles shows here."));
                 return;
             }
             foreach (ChartRow row in rows)
             {
                 Button button = RowButton("Row", 26f);
                 HBoxContainer line = ManagementScreen.RowLine(button);
+                line.Name = "Line";
                 var swatch = new ColorRect
                 {
                     Name = "Swatch",
@@ -185,7 +265,9 @@ namespace GolemFactory.Nodes
                 };
                 line.AddChild(swatch);
                 line.AddChild(ManagementScreen.Flex(Ugui.Text("Name", row.Name, 12, row.Shown ? ManagementScreen.ItemNameInk : ManagementScreen.DimInk)));
-                line.AddChild(ManagementScreen.Fixed(Ugui.Text("Rate", row.RateText, 12, ManagementScreen.QuantityInk, align: 4), 64f));
+                bool made = Chart.Measure == ChartMeasure.Made;
+                line.AddChild(ManagementScreen.Fixed(Ugui.Text("Made", row.MadeText, 12, made ? ManagementScreen.QuantityInk : ManagementScreen.DimInk, align: 4, bold: made), LegendColumn));
+                line.AddChild(ManagementScreen.Fixed(Ugui.Text("Spent", row.SpentText, 12, made ? ManagementScreen.DimInk : ManagementScreen.QuantityInk, align: 4, bold: !made), LegendColumn));
                 string good = row.ItemType;
                 button.TooltipText = row.Shown ? "Click to hide its line" : "Click to draw its line (four at most)";
                 button.Pressed += () =>
@@ -254,6 +336,102 @@ namespace GolemFactory.Nodes
             }
         }
 
+        // --- The market ------------------------------------------------------------------------
+
+        private void RefreshMarket()
+        {
+            if (Panel != OverviewPanel.Market)
+            {
+                _panelHeading.Text = "Alerts · every time a golem stopped";
+                return;
+            }
+            _panelHeading.Text = "Market · " + MarketReadout.Summary(_world.Supply);
+            IReadOnlyList<MarketRow> rows = MarketReadout.Rows(_world.Supply);
+            // Rebuilt only when a cart comes, goes or changes its good; the numbers are written in place.
+            var signature = new StringBuilder();
+            foreach (MarketRow row in rows)
+            {
+                signature.Append(row.Cell.x).Append(',').Append(row.Cell.y).Append('|').Append(row.ItemType).Append('\n');
+            }
+            if (signature.ToString() != _renderedMarket)
+            {
+                _renderedMarket = signature.ToString();
+                Clear(_market);
+                MarketRows.Clear();
+                foreach (MarketRow row in rows)
+                {
+                    Control line = MarketLine(row);
+                    MarketRows.Add(line);
+                    _market.AddChild(line);
+                }
+            }
+            for (int i = 0; i < rows.Count && i < MarketRows.Count; i++)
+            {
+                WriteMarket(MarketRows[i], rows[i]);
+            }
+        }
+
+        /// <summary>A market row, or with no row the column heads above them.</summary>
+        private static Control MarketLine(MarketRow? row)
+        {
+            var plate = new Panel
+            {
+                Name = row == null ? "MarketHead" : "Cart",
+                CustomMinimumSize = new Vector2(0f, row == null ? 20f : 28f),
+                MouseFilter = row == null ? Control.MouseFilterEnum.Ignore : Control.MouseFilterEnum.Stop,
+            };
+            plate.AddThemeStyleboxOverride("panel", row == null ? new StyleBoxEmpty() : new StyleBoxFlat { BgColor = ManagementScreen.RowTint });
+            HBoxContainer line = ManagementScreen.RowLine(plate);
+            line.Name = "Line";
+            Color head = ManagementScreen.DimInk;
+            if (row is MarketRow r)
+            {
+                var icon = new TextureRect
+                {
+                    Name = "Icon",
+                    Texture = ItemIcons.Load(r.ItemType),
+                    CustomMinimumSize = new Vector2(22f, 22f),
+                    ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                    StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                    SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+                    MouseFilter = Control.MouseFilterEnum.Ignore,
+                };
+                line.AddChild(icon);
+            }
+            else
+            {
+                line.AddChild(ManagementScreen.Fixed(new Control { Name = "Icon", MouseFilter = Control.MouseFilterEnum.Ignore }, 22f));
+            }
+            line.AddChild(ManagementScreen.Flex(Ugui.Text("Name", row?.Name ?? "Cart", row == null ? 11 : 13, row == null ? head : ManagementScreen.ItemNameInk)));
+            var track = new Control { Name = "Bar", CustomMinimumSize = new Vector2(90f, 8f), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter, MouseFilter = Control.MouseFilterEnum.Ignore };
+            if (row != null)
+            {
+                track.AddChild(Ugui.Fill(Ugui.Rect("Track", ManagementScreen.BarTrack)));
+                track.AddChild(Ugui.Place(Ugui.Rect("Fill", ManagementScreen.CapacityFill), 0f, 0f, 0f, 1f));
+            }
+            line.AddChild(track);
+            line.AddChild(ManagementScreen.Fixed(Ugui.Text("Holds", row == null ? "holds" : "", row == null ? 11 : 12, row == null ? head : ManagementScreen.QuantityInk, align: 4), 92f));
+            line.AddChild(ManagementScreen.Fixed(Ugui.Text("In", row == null ? "in a min" : "", row == null ? 11 : 12, row == null ? head : ManagementScreen.ItemNameInk, align: 4), 64f));
+            line.AddChild(ManagementScreen.Fixed(Ugui.Text("Out", row == null ? "out a min" : "", row == null ? 11 : 12, row == null ? head : ManagementScreen.ItemNameInk, align: 4), 64f));
+            line.AddChild(ManagementScreen.Fixed(Ugui.Text("State", "", 12, head), 118f));
+            return plate;
+        }
+
+        private static void WriteMarket(Control plate, MarketRow row)
+        {
+            plate.GetNode<Label>("Line/Holds").Text = row.Holds;
+            plate.GetNode<Label>("Line/In").Text = row.State == MarketReadout.Endless ? "" : ProductionChart.Number(row.In);
+            plate.GetNode<Label>("Line/Out").Text = row.State == MarketReadout.Endless ? "" : ProductionChart.Number(row.Out);
+            Label state = plate.GetNode<Label>("Line/State");
+            state.Text = row.State == MarketReadout.Endless ? "" : row.State;
+            // Short is a fact, not an alarm (§4): amber and in words, never red.
+            state.AddThemeColorOverride("font_color", row.Short ? ManagementScreen.NearFullFill : ManagementScreen.DimInk);
+            Control fill = plate.GetNode<Control>("Line/Bar/Fill");
+            fill.AnchorRight = Mathf.Clamp(row.Fill, 0f, 1f);
+            fill.OffsetRight = 0f;
+            plate.TooltipText = MarketReadout.Tooltip(row);
+        }
+
         /// <summary>"2 min ago · out of steam · stopped for 0:42".</summary>
         private static string WhenLine(AlertEntry entry, float now) =>
             $"{AlertLog.When(entry, now)} · {(entry.NoSteam ? "out of steam" : "stuck")} · {AlertLog.For(entry, now)}";
@@ -269,11 +447,31 @@ namespace GolemFactory.Nodes
 
         // --- Builders --------------------------------------------------------------------------
 
-        private void Header(string name, string text, float x, float y)
+        private Label Header(string name, string text, float x, float y)
         {
             Label label = Ugui.Text(name, text, 15, ManagementScreen.HeaderInk, bold: true);
             TopLeft(label, x, y, 420f, 22f);
             _root.AddChild(label);
+            return label;
+        }
+
+        private void ColumnHead(string name, string text, float x, float y, float width)
+        {
+            Label label = Ugui.Text(name, text, 11, ManagementScreen.DimInk, align: 4);
+            TopLeft(label, x, y, width, 18f);
+            _root.AddChild(label);
+        }
+
+        /// <summary>One of the tab's switches (made or spent, the range, alerts or market): lit while chosen.</summary>
+        private Button Switch(string name, string text, float x, float y, float width, Action pressed)
+        {
+            Button button = ManagementScreen.PlateButton(name, ManagementScreen.Ui + "Hud/hud_button.png",
+                Colors.White, text, 12, ManagementScreen.SelectedTabLabel, bold: true);
+            button.MouseDefaultCursorShape = Control.CursorShape.PointingHand;
+            TopLeft(button, x, y, width, 24f);
+            button.Pressed += pressed;
+            _root.AddChild(button);
+            return button;
         }
 
         private VBoxContainer List(string name, float x, float y, float width, float height)
@@ -493,8 +691,11 @@ namespace GolemFactory.Nodes
                     case MapMarkKind.Station:
                         DrawRect(rect, Station);
                         break;
-                    case MapMarkKind.Stall:
+                    case MapMarkKind.Cart:
                         DrawRect(rect, Stall);
+                        break;
+                    case MapMarkKind.Spot:
+                        DrawRect(rect.Grow(-s * 0.15f), Stall with { A = 0.55f }, false, 1f);
                         break;
                     case MapMarkKind.Tower:
                         DrawRect(rect, Tower);

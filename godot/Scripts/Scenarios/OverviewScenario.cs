@@ -21,7 +21,10 @@ namespace GolemFactory.Nodes.Scenarios
     ///   <item>The pointer names a golem on the map; a click closes the screen with the camera on
     ///   it, and walking brings the camera back.</item>
     ///   <item>The graph draws what was made; the pointer reads a point; a legend row hides and
-    ///   redraws its line in the same colour; the range buttons switch the time axis.</item>
+    ///   redraws its line in the same colour; the range buttons switch the time axis; Spent
+    ///   draws what was used up, the same goods in the same colours, and the legend has both.</item>
+    ///   <item>Market shows every cart on the street with its stock and flow, west to east, the
+    ///   Scrap cart taken from by the Scavengers; Alerts brings the alerts back.</item>
     ///   <item>Boilers run dry: the map rings the stopped golems and the alerts list them, still
     ///   stopped; stoked again, each says how long it was stopped; a click on one looks at it.</item>
     /// </list>
@@ -41,6 +44,7 @@ namespace GolemFactory.Nodes.Scenarios
         private int _hiddenSlot;
         private string _lookedAt;
         private Button _row;
+        private Dictionary<string, int> _slots;
 
         protected override void Plan()
         {
@@ -168,16 +172,19 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return $"{Tab.LegendRows.Count} legend rows for {rows.Count} goods";
                 }
-                PointAt(Tab.Graph.GlobalPointAt(ProductionHistory.Points - 1));
                 return null;
             });
-            Do("the pointer reads the newest point", () =>
+            // Pointed at every frame until it reads: a windowed run's warp reaches the OS cursor,
+            // whose own motion can land after the scenario's and take the hover away.
+            Until("the pointer reads the newest point", 1, () =>
             {
+                PointAt(Tab.Graph.GlobalPointAt(ProductionHistory.Points - 1));
                 IReadOnlyList<string> lines = Tab.Graph.HoverLines;
-                if (lines.Count != Tab.Chart.Shown.Count() + 1 || lines[0] != "now" || lines.Skip(1).Any(l => !l.Contains(" a min")))
-                {
-                    return "the pointer reads " + string.Join(" / ", lines);
-                }
+                return lines.Count == Tab.Chart.Shown.Count() + 1 && lines[0] == "now · made" && lines.Skip(1).All(l => l.Contains(" a min"))
+                    ? null : "the pointer reads " + string.Join(" / ", lines);
+            });
+            Do("hide a line", () =>
+            {
                 _hidden = Tab.Chart.Shown.First();
                 _hiddenSlot = Tab.Chart.SlotOf(_hidden);
                 Click(Tab.LegendRows[_hidden]);
@@ -212,6 +219,110 @@ namespace GolemFactory.Nodes.Scenarios
                     return "range " + Tab.Chart.Range;
                 }
                 Log($"the graph: {string.Join(", ", Tab.Chart.Shown.Select(Economy.ItemTiers.DisplayName))}; a legend click hid and redrew a line in its colour; 1 hour and 10 min");
+                _slots = Tab.Chart.Shown.ToDictionary(g => g, g => Tab.Chart.SlotOf(g));
+                Click(Tab.MeasureButtons[ChartMeasure.Spent]);
+                return null;
+            });
+            Do("spent: the same lines, what was used up", () =>
+            {
+                if (Tab.Chart.Measure != ChartMeasure.Spent || Tab.ProductionHeading != "Goods spent a minute")
+                {
+                    return $"{Tab.Chart.Measure}, heading '{Tab.ProductionHeading}'";
+                }
+                if (_slots.Any(p => Tab.Chart.SlotOf(p.Key) != p.Value))
+                {
+                    return "a line changed colour";
+                }
+                // Coal is never made, only spent: by the coker.
+                ChartRow coal = Tab.Chart.Rows().FirstOrDefault(r => r.ItemType == Economy.ItemType.Coal);
+                if (coal.ItemType == null || coal.Made != 0f || coal.Spent <= 0f)
+                {
+                    return coal.ItemType == null ? "Coal isn't in the legend" : $"Coal made {coal.Made}, spent {coal.Spent}";
+                }
+                Button row = Tab.LegendRows[Economy.ItemType.Coal];
+                if (row.GetNode<Label>("Line/Spent").Text != coal.SpentText || row.GetNode<Label>("Line/Made").Text != "0")
+                {
+                    return "Coal's row reads " + row.GetNode<Label>("Line/Made").Text + " / " + row.GetNode<Label>("Line/Spent").Text;
+                }
+                return null;
+            });
+            Until("the pointer reads spent", 1, () =>
+            {
+                PointAt(Tab.Graph.GlobalPointAt(ProductionHistory.Points - 1));
+                string first = Tab.Graph.HoverLines.FirstOrDefault() ?? "";
+                return first == "now · spent" ? null : "the pointer reads " + first;
+            });
+            Do("capture spent, then Made", () =>
+            {
+                ScenarioCapture.Shot(Runner.GetViewport(), "overview-spent");
+                Click(Tab.MeasureButtons[ChartMeasure.Made]);
+                return null;
+            });
+            Do("made again", () =>
+            {
+                if (Tab.Chart.Measure != ChartMeasure.Made || Tab.ProductionHeading != "Goods made a minute")
+                {
+                    return Tab.Chart.Measure + ", " + Tab.ProductionHeading;
+                }
+                Log($"spent: Coal {Tab.Chart.Rows().First(r => r.ItemType == Economy.ItemType.Coal).SpentText} a min, made 0; the lines kept their colours");
+                Click(Tab.PanelButtons[OverviewPanel.Market]);
+                return null;
+            });
+            Do("the market: every cart, west to east", () =>
+            {
+                if (Tab.Panel != OverviewPanel.Market || !Tab.PanelHeading.StartsWith("Market · "))
+                {
+                    return $"{Tab.Panel}, heading '{Tab.PanelHeading}'";
+                }
+                IReadOnlyList<MarketRow> rows = MarketReadout.Rows(Sandbox.Supply);
+                if (rows.Count != Sandbox.Supply.Carts.Count() || Tab.MarketRows.Count != rows.Count)
+                {
+                    return $"{Tab.MarketRows.Count} rows drawn, {rows.Count} carts";
+                }
+                if (Tab.AlertRows.Count > 0 && Tab.AlertRows[0].IsVisibleInTree())
+                {
+                    return "the alerts still show";
+                }
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    string name = Tab.MarketRows[i].GetNode<Label>("Line/Name").Text;
+                    string holds = Tab.MarketRows[i].GetNode<Label>("Line/Holds").Text;
+                    if (name != rows[i].Name || holds != rows[i].Holds || PlayerText.RawIdIn(name + holds) != null)
+                    {
+                        return $"row {i} reads '{name}', '{holds}'";
+                    }
+                }
+                int scrap = rows.ToList().FindIndex(r => r.ItemType == Economy.ItemType.Scrap);
+                if (scrap < 0 || rows[scrap].Out <= 0f)
+                {
+                    return "the Scrap cart isn't taken from";
+                }
+                if (Tab.MarketRows[scrap].GetNode<Label>("Line/Out").Text != ProductionChart.Number(rows[scrap].Out))
+                {
+                    return "the Scrap cart's out reads " + Tab.MarketRows[scrap].GetNode<Label>("Line/Out").Text;
+                }
+                PointAt(Tab.MarketRows[scrap].GetGlobalRect().GetCenter());
+                return null;
+            });
+            Do("its tooltip names its rate", () =>
+            {
+                string tip = Tab.MarketRows.First(r => r.GetNode<Label>("Line/Name").Text == "Scrap cart").TooltipText;
+                if (!tip.StartsWith("It brings "))
+                {
+                    return "the tooltip reads " + tip;
+                }
+                ScenarioCapture.Shot(Runner.GetViewport(), "overview-market");
+                Log($"the market: {Tab.PanelHeading}; " + string.Join(", ", MarketReadout.Rows(Sandbox.Supply)
+                    .Select(r => $"{r.Name} {r.Holds} in {ProductionChart.Number(r.In)} out {ProductionChart.Number(r.Out)} {r.State}")));
+                Click(Tab.PanelButtons[OverviewPanel.Alerts]);
+                return null;
+            });
+            Do("alerts again", () =>
+            {
+                if (Tab.Panel != OverviewPanel.Alerts || Tab.MarketRows.Any(r => r.IsVisibleInTree()))
+                {
+                    return "the market still shows";
+                }
                 Tap(Key.Escape);
                 return null;
             });

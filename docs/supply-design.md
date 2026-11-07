@@ -1,6 +1,6 @@
 # Supply carts: a market street you build
 
-**Status: approved 2026-11-06; steps 1 and 2 built (§8). Phase 8's first part** (`docs/roadmap.md`),
+**Status: approved 2026-11-06; built (§8). Phase 8's first part** (`docs/roadmap.md`),
 before city contracts and endless play, because both assume a factory that runs without the
 player at the stalls. Written before the code, like `pack-upgrades-design.md`.
 
@@ -181,7 +181,27 @@ rise.
   starved warning, because then the player must act (an upgrade, or another cart).
 - **A roped spot's sign** says "Add a cart here", and the goods it can offer.
 - **The overview** gets a market view: each cart, its stock, and its rate in and out. That needs
-  Phase 7's missing "goods spent" on the graph.
+  Phase 7's missing "goods spent" on the graph. Built in step 3, with these calls:
+  - **Goods spent is what the factory uses up**, the counterpart of goods made: a recipe's
+    inputs when an Assemble or Refine begins, the Coke a boiler burns, the Slag a heap voids and
+    its Coke, what a recycler takes and its Coke, and what the tower is delivered
+    (`ItemConsumedEvent`, `ConsumptionTally`). Not a price the player pays, not the hand crank,
+    and not moving a good: "made" counts golems' Assembles only, so "spent" counts the factory's
+    own work only, and the two compare.
+  - **The graph switches between Made and Spent** (one axis, one measure at a time). The lines
+    are the same goods in the same colours either way; the legend, its table view, shows both
+    averages in two columns. A good only ever spent (Coal) is listed and can be drawn.
+  - **The market view is the overview's lower panel**, beside the alerts (Alerts and Market
+    switch it): every cart west to east, its stock and capacity with a bar, its goods in and
+    out a minute over the last minute (`CartFlow`, on the clock, not saved), and what is happening
+    to it: full, filling, keeping up, running down, or empty and refilling. In and out within a
+    tenth of its rate read as keeping up. Running down and empty are amber words, never red:
+    the player waits on a cart (§4). Its tooltip gives the rung's rate and, when short, the fix.
+  - **What a cart gives is read from its stock**: a fall since the last tick is goods taken,
+    by golems or hands alike, so no taker needs a hook. A rise outside the trickle (only a
+    load, the kit or the title's showcase tops one up) is seen at the next tick.
+  - **The map draws the street's empty spots** as outlines, and names a cart a cart: "Coal cart"
+    on the map, in the hover card and the alerts (`TileNames`), where step 2 left "Coal stall".
 
 ## 5. Saves
 
@@ -267,7 +287,13 @@ truckload market before they replace it.
    floor tests measured again (above); `StreetCoverageTests`. An empty cart that refills reads
    grey (`StallFacts.SourceRefills`). The playtest's two truckload questions are `carts` and
    `carts-late`, new ids.
-3. The overview's market view, and goods spent on the graph.
+3. **Done (2026-11-06): the overview's market view, and goods spent on the graph** (§4).
+   `ConsumptionTally` beside `ProductionTally`, the history's second measure, the chart's
+   Made / Spent switch and two-column legend, `CartFlow` on each cart, `Overview/MarketReadout`
+   and the tab's Alerts / Market panel. The `overview` scenario clicks Spent and Market. The
+   tab now redraws the moment it reopens (it showed the map from before it closed for up to
+   half a second), and the scenario's graph pointer is re-sent each frame until it reads (a
+   windowed run's cursor warp lost it, on the last commit too).
 4. Done with step 2: the docs it amends (§7) carry a note where they describe truckloads, and
    the folder rules and testscripts describe carts.
 

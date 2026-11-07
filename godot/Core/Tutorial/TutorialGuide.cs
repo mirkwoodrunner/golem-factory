@@ -392,7 +392,7 @@ namespace GolemFactory.Tutorial
                     if (_world.Belts.TryGetBelt(spot, out PlacedBelt belt) && belt.Facing != CopperFacing)
                     {
                         return $"A belt on the run points {Way(belt.Facing)}, and the run must point {Way(CopperFacing)}, "
-                            + "away from the stall. Click it to take it up (full refund) and drag the run again from the stall's end.";
+                            + "away from the cart. Click it to take it up (full refund) and drag the run again from the cart's end.";
                     }
                 }
             }
@@ -1534,7 +1534,7 @@ namespace GolemFactory.Tutorial
                 programTarget: g => g == SecondScavenger),
 
             new TutorialStep(
-                "depot3", "A depot beside the stall",
+                "depot3", "A depot beside the cart",
                 "Your new Scavenger needs a crate to fill, like your first one has. Build a Depot on the marked "
                 + "tile, two tiles out from another side of the Scrap cart. The new Scavenger will stand on the "
                 + "empty tile between them.",

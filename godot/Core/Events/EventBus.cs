@@ -258,6 +258,24 @@ namespace GolemFactory.Events
         }
     }
 
+    // A good used up by the factory (docs/supply-design.md §4, the overview's "goods spent"):
+    // a recipe's inputs when an Assemble or Refine begins, Coke a boiler burns, Slag a heap
+    // voids and the Coke it burns doing it, what a recycler takes and the Coke it burns, and
+    // what the Clock Tower is delivered. The counterpart of ItemAssembledEvent: like it, only
+    // the factory's own work counts, never the player's hands, the hand crank or a price paid.
+    // Moving a good (Haul, Extract, Push, a belt) spends nothing.
+    public readonly struct ItemConsumedEvent
+    {
+        public readonly string ItemType;
+        public readonly int Quantity;
+
+        public ItemConsumedEvent(string itemType, int quantity)
+        {
+            ItemType = itemType;
+            Quantity = quantity;
+        }
+    }
+
     // A Clock Tower stage finished (docs/progression-design.md §7). Fired once per stage, on
     // the tick the stage's progress reaches 100 %.
     //
@@ -319,6 +337,7 @@ namespace GolemFactory.Events
         public static event Action<GolemResumedEvent> GolemResumed;
         public static event Action<GolemTriggerFiredEvent> GolemTriggerFired;
         public static event Action<ItemAssembledEvent> ItemAssembled;
+        public static event Action<ItemConsumedEvent> ItemConsumed;
         public static event Action<ClockTowerStageCompletedEvent> ClockTowerStageCompleted;
         public static event Action<WorldInteractablesChangedEvent> WorldInteractablesChanged;
 
@@ -329,7 +348,7 @@ namespace GolemFactory.Events
         /// </summary>
         public static int ListenerCount =>
             Count(TickAdvanced) + Count(ThresholdCrossed) + Count(GolemCompleted) + Count(GolemStalled)
-            + Count(GolemResumed) + Count(GolemTriggerFired) + Count(ItemAssembled)
+            + Count(GolemResumed) + Count(GolemTriggerFired) + Count(ItemAssembled) + Count(ItemConsumed)
             + Count(ClockTowerStageCompleted) + Count(WorldInteractablesChanged);
 
         private static int Count(Delegate handlers) => handlers?.GetInvocationList().Length ?? 0;
@@ -341,6 +360,15 @@ namespace GolemFactory.Events
         public static void Publish(GolemResumedEvent e) => GolemResumed?.Invoke(e);
         public static void Publish(GolemTriggerFiredEvent e) => GolemTriggerFired?.Invoke(e);
         public static void Publish(ItemAssembledEvent e) => ItemAssembled?.Invoke(e);
+
+        /// <summary>Publishes a use of <paramref name="quantity"/>; nothing for none.</summary>
+        public static void Consumed(string itemType, int quantity)
+        {
+            if (quantity > 0 && !string.IsNullOrEmpty(itemType))
+            {
+                ItemConsumed?.Invoke(new ItemConsumedEvent(itemType, quantity));
+            }
+        }
         public static void Publish(ClockTowerStageCompletedEvent e) => ClockTowerStageCompleted?.Invoke(e);
         public static void Publish(WorldInteractablesChangedEvent e) => WorldInteractablesChanged?.Invoke(e);
     }

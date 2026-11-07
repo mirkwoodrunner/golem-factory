@@ -170,7 +170,7 @@ namespace GolemFactory.Tests.Overview
             busier.Refresh();
             Assert.AreEqual(20f, busier.AxisTop(), "18 a min rounds up to 20");
             IReadOnlyList<string> hover = chart.HoverLines(ProductionHistory.Points - 1);
-            Assert.AreEqual("now", hover[0]);
+            Assert.AreEqual("now · made", hover[0], "the time, and what the lines count");
             StringAssert.StartsWith("Gear  ", hover[1]);
         }
     }
@@ -238,7 +238,7 @@ namespace GolemFactory.Tests.Overview
         }
 
         [Test]
-        public void TheMap_ShowsEverythingBuilt_EveryGolem_TheStalls_TheTowerAndThePlayer()
+        public void TheMap_ShowsEverythingBuilt_EveryGolem_TheCartsAndSpots_TheTowerAndThePlayer()
         {
             SandboxWorld world = Staged();
             try
@@ -248,8 +248,10 @@ namespace GolemFactory.Tests.Overview
                 Assert.AreEqual(golems.Count, map.Marks.Count(m => m.Kind == MapMarkKind.Golem));
                 int built = world.Build.Buildings.Count(b => !b.IsRemoved) + world.AuthoredBuildings.Count(b => !b.IsFixture); // the tower is its own mark
                 Assert.AreEqual(built, map.Marks.Count(m => m.Kind != MapMarkKind.Golem && m.Kind != MapMarkKind.Player
-                    && m.Kind != MapMarkKind.Stall && m.Kind != MapMarkKind.Tower));
-                Assert.AreEqual(world.Markers.Count, map.Marks.Count(m => m.Kind == MapMarkKind.Stall));
+                    && m.Kind != MapMarkKind.Cart && m.Kind != MapMarkKind.Spot && m.Kind != MapMarkKind.Tower));
+                Assert.AreEqual(world.Supply.Carts.Count(), map.Marks.Count(m => m.Kind == MapMarkKind.Cart));
+                Assert.AreEqual(world.Supply.Spots.Count - world.Supply.Carts.Count(), map.Marks.Count(m => m.Kind == MapMarkKind.Spot));
+                Assert.IsTrue(map.Marks.Where(m => m.Kind == MapMarkKind.Cart).All(m => m.Label.EndsWith(" cart")), "a cart is named a cart");
                 Assert.AreEqual(1, map.Marks.Count(m => m.Kind == MapMarkKind.Tower));
                 Assert.AreEqual(1, map.Marks.Count(m => m.Kind == MapMarkKind.Player));
                 Assert.IsTrue(map.Marks.Any(m => m.Kind == MapMarkKind.Belt), "the kit laid a belt");

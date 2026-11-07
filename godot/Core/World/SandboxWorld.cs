@@ -308,6 +308,7 @@ namespace GolemFactory.World
             TechTree.ConfigureFloorBounds(Bounds);
             TechTree.Attach();
             Production.Attach();
+            Consumption.Attach();
 
             if (setup == null || string.IsNullOrEmpty(setup.deck) || !Definitions.Decks.TryGetValue(setup.deck, out DraftableCardCatalog deck))
             {
@@ -405,6 +406,7 @@ namespace GolemFactory.World
             ClockTower.Detach();
             TechTree.Detach();
             Production.Detach();
+            Consumption.Detach();
             Interactor.Detach();
             Audio.Detach();
             EventBus.ClockTowerStageCompleted -= OnTowerStageCompleted;
@@ -1241,7 +1243,7 @@ namespace GolemFactory.World
                 Throughput.Sample(_realSeconds, Buffers);
                 Production.Sample(_realSeconds, Throughput);
             }
-            History.Record(_realSeconds, Production.Totals);
+            History.Record(_realSeconds, Production.Totals, Consumption.Totals);
             if (Creative && (_untilRefill -= seconds) <= 0f)
             {
                 _untilRefill = CreativeRefillSeconds;
@@ -1267,7 +1269,13 @@ namespace GolemFactory.World
         /// </summary>
         public ProductionTally Production { get; } = new ProductionTally();
 
-        /// <summary>An hour of what the factory made, for the overview's graph (docs/menus-design.md §8).</summary>
+        /// <summary>
+        /// Every good the factory has used up: the overview's "goods spent" (docs/supply-design.md
+        /// §4), beside <see cref="Production"/>.
+        /// </summary>
+        public ConsumptionTally Consumption { get; } = new ConsumptionTally();
+
+        /// <summary>An hour of what the factory made and spent, for the overview's graph (docs/menus-design.md §8).</summary>
         public Overview.ProductionHistory History { get; } = new Overview.ProductionHistory();
 
         /// <summary>The HUD's alerts strip. Null on the bare (slice) world.</summary>

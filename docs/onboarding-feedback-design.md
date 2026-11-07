@@ -276,7 +276,7 @@ the root and a line of grey behind it reads as one fault with one fix, the same 
 | `MissingItem` at a Haul, Extract or Load | the source is fed with that good | nothing will bring it | as `BufferEmpty` |
 | `MissingItem` at an Assemble | never | its hold won't refill: only Hauls fill it, and they come before (§12.1) | raise the Haul's batch, then ENGAGE again |
 | `NoSteam` | never: it stays `Starved`, blue | | the steam cause (`SteamShortage`), as today |
-| `NodeCrowded` | never | a third golem at a two-golem seam | move it to another stall |
+| `NodeCrowded` | never | a third golem at a two-golem seam | move it to another cart |
 | `FilterMismatch` | never | the crate's label refuses its load | relabel the crate (I) or reroute the good |
 
 Two reasons that look like waiting are stuck, with reasons. A full crate that only the player

@@ -173,10 +173,12 @@ Current scenarios:
   the summary matches. The pointer names a golem; a click closes the screen with the camera on
   it, and walking brings it back. The graph draws at most four lines and the legend lists every
   good; the pointer reads the newest point; a legend click hides a line and a second draws it
-  back in its colour; 1 hour and 10 min switch the range. The boilers run dry: the map rings
+  back in its colour; 1 hour and 10 min switch the range. Spent draws the same lines in the same
+  colours, Coal in the legend spent but never made; Market lists every cart west to east, the
+  Scrap cart taken from, with its tooltip; Alerts brings them back. The boilers run dry: the map rings
   the stopped golems and the alerts list them, still stopped; stoked, each says how long; a
   click on one (scrolled to) looks at it. Captures `overview`, `overview-look`, `overview-hour`,
-  `overview-alerts`.
+  `overview-spent`, `overview-market`, `overview-alerts`.
 - `creative` (Sandbox, across reloads): Creative Mode (`docs/menus-design.md` §9) with real keys
   and clicks. The title offers Creative ("Build freely"); Down and Enter start a Creative world
   with no guide, the HUD's panel reading "Creative world", the pack full of every good, every

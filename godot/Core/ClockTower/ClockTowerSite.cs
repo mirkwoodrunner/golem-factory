@@ -378,6 +378,7 @@ namespace GolemFactory.ClockTower
 
             WindowFor(_delivered, itemType).Record(tick, quantity);
             MeterFor(itemType).Credit(quantity);
+            EventBus.Consumed(itemType, quantity);
             _started = true;
             _fedThisStage = true;
             return quantity;

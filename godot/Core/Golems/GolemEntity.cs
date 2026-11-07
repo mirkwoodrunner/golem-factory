@@ -1742,6 +1742,7 @@ namespace GolemFactory.Golems
             for (int i = 0; i < ingredients.Count; i++)
             {
                 _inventory.TryConsumeInput(ingredients[i].itemType, ingredients[i].quantity);
+                EventBus.Consumed(ingredients[i].itemType, ingredients[i].quantity);
             }
 
             return StallReason.None;
@@ -1777,6 +1778,7 @@ namespace GolemFactory.Golems
                 blockedResourceId = step.sourceId;
                 return StallReason.BufferEmpty;
             }
+            EventBus.Consumed(step.inputItemType, 1);
 
             return StallReason.None;
         }

@@ -9,7 +9,7 @@ namespace GolemFactory.UI
 {
     /// <summary>
     /// What the player calls the thing on a tile (docs/onboarding-feedback-design.md §4.3):
-    /// "Crate (3,4)", "Freight Mast (9,1)", "Belt (0,-12)", "Scrap stall", "the floor at (3,2)".
+    /// "Crate (3,4)", "Freight Mast (9,1)", "Belt (0,-12)", "Scrap cart", "the floor at (3,2)".
     /// Named from what stands there and its cell, never from an id: ids are keys
     /// ("Belt(0,-12)#3") and a key on screen reads as a bug. Cells print as (x,y) in Core's
     /// frame, no space, as the crate headers do.
@@ -39,7 +39,7 @@ namespace GolemFactory.UI
                 case null:
                     return "the floor at " + Cell(cell);
                 case ResourceNodeEndpoint node:
-                    return node.Node != null ? ItemTiers.DisplayName(node.Node.ItemType) + " stall" : "a stall";
+                    return node.Node != null ? ItemTiers.DisplayName(node.Node.ItemType) + " cart" : "a cart";
                 case BeltSegmentEndpoint _:
                     return "Belt " + Cell(cell);
                 case BoilerFuelEndpoint _:

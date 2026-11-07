@@ -197,6 +197,7 @@ namespace GolemFactory.Buildings
 
             PendingPoints += PointsFor(itemType);
             TotalRecycled++;
+            Events.EventBus.Consumed(itemType, 1);
 
             // A `while`, not an `if`: a tier-5 good is 13 points and buys three whole Scrap at
             // once. An `if` would bank the surplus and hand out one, which is not the ratio.
@@ -206,6 +207,7 @@ namespace GolemFactory.Buildings
             {
                 PendingPoints -= PointsPerScrap;
                 CokeStock -= CokePerScrap;
+                Events.EventBus.Consumed(Economy.ItemType.Coke, CokePerScrap);
                 ScrapStock++;
             }
 

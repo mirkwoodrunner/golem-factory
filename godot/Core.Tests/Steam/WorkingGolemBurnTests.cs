@@ -82,6 +82,8 @@ namespace GolemFactory.Tests.Steam
             Assert.AreNotEqual(GolemState.Stalled, golem.Program.State, $"precondition: working, not stalled ({golem.StallReason})");
             Assert.AreEqual(SteamGaugeUtility.CokePerMinutePerGolem, 100 - boiler.CokeStock, 1,
                 "about 3 Coke in a minute of work");
+            Assert.AreEqual(100 - boiler.CokeStock, world.Consumption.Totals[ItemType.Coke],
+                "every Coke burned is spent (docs/supply-design.md §4)");
         }
     }
 }

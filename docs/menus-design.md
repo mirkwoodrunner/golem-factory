@@ -198,8 +198,8 @@ camera's `LookAt` and `SandboxWorld.FocusGolem` take the camera to a picked gole
 | 8 | The rows are rebuilt only when an entry or a good comes, goes or ends; the times and rates are written in place. | Rebuilt every second, a row could be swapped out between the press and the release of a click. |
 | 9 | The hover card names a working golem's step as the Workbench does ("Push Output"), not by its id. | The map's labels found it: the card printed "PushOutput". |
 
-**Not yet:** the graph shows goods made, not goods spent; the map doesn't pan or zoom (the
-whole world fits); a stop's history isn't kept across a load.
+**Not yet:** the map doesn't pan or zoom (the whole world fits); a stop's history isn't kept
+across a load. (Goods spent and the market view came with Phase 8: `docs/supply-design.md` §4.)
 
 ## 9. Step 6: Creative Mode (done 2026-11-05)
 
