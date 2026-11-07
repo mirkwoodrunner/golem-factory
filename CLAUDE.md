@@ -34,6 +34,7 @@ Read the docs before making design calls, not just the code:
 - `docs/supply-design.md` -- Phase 8: supply carts on the market street. §0: invariants.
 - `docs/contracts-design.md` -- Phase 8: city contracts (built, §12), and the tower's any-source rule (§11).
 - `docs/endless-design.md` -- Phase 8: endless play after the Clock Tower.
+- `docs/region-design.md` -- the second region, the Docks: east of the street, from chapter 9.
 - `docs/steam-deck-design.md` -- running on the Steam Deck (not a store release); planned, not started.
 - `docs/performance-report-template.md` -- the endgame profile's spec; `-phase3.md` is a run.
 - `docs/open-items.md` -- the backlog: open decisions, known gaps, deliberate scope cuts.

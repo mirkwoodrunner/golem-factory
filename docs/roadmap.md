@@ -481,7 +481,10 @@ Factorio's breadth.
    placeholder site until their art is commissioned. The `endless` scenario covers each.
    Phase 8 is done.
 
-Waiting: a second map region, and selling golems to the city.
+**Next (2026-11-07): a second region, the Docks** (`docs/region-design.md`, approved with the
+user's answers): east of the street, opening at the Zeppelin in chapter 9. Waiting: selling golems
+to the city; the Steam Deck (`steam-deck-design.md` §8 holds the user's answers: native gamepad
+support, a Deck on hand, the viewport chosen from frames).
 
 ## Phase 9: What release asks of development
 

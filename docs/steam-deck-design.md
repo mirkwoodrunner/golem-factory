@@ -327,7 +327,16 @@ Fill these in while doing the work, so a later session doesn't repeat a finding.
 
 ## 8. Decisions
 
-_Empty. Answer §2's D1 to D5 here, with a date, when work starts._
+Asked 2026-11-07 (the user chose the second map region to build first; the Deck waits for it):
+
+- **D1: (b) native gamepad support now**, so the game plays without a mouse. Built and tested on
+  Windows with scenario-driven pad events; the Deck itself checks it.
+- **The owner has a Deck.** The device steps (D1's launch, D2, D3's readability, D8, D9, D10) are
+  prepared for the owner to run, and their findings recorded in §7.
+- **D3: decide from frames**: every screen captured under `keep`, `expand` and a 1280×800 base, then
+  picked by looking.
+- D2, D4 and D5 take the recommendations: Game Mode with Desktop Mode as a fallback; the pad works
+  on Windows too; touch emulates the mouse and nothing more.
 
 ## 9. If it ever becomes a store release
 
