@@ -83,6 +83,93 @@
     { "nodeId": "ZincOreNodeEast", "price": [{ "itemType": "Scrap", "quantity": 60 }], "truckloadSize": 120, "deliveryTicks": 120 },
     { "nodeId": "AetherNode", "price": [{ "itemType": "Scrap", "quantity": 80 }], "truckloadSize": 40, "deliveryTicks": 150 }
   ],
+  "supply": {
+    "_doc": "docs/supply-design.md. Spots on the stall row; a good's cart is offered once the Ledger has seen it.",
+    "spots": [{ "x": -32, "y": -16 }, { "x": -28, "y": -16 }, { "x": -24, "y": -16 }, { "x": -20, "y": -16 }, { "x": 20, "y": -16 }, { "x": 24, "y": -16 }, { "x": 28, "y": -16 }, { "x": 32, "y": -16 }],
+    "startingCarts": [],
+    "carts": [
+      {
+        "itemType": "Scrap",
+        "add": [{"itemType": "Scrap", "quantity": 60}],
+        "rates": [120, 180, 240, 300],
+        "capacities": [200, 300, 400, 500],
+        "rateCosts": [
+          [{"itemType": "IronPlate", "quantity": 40}, {"itemType": "Gear", "quantity": 10}],
+          [{"itemType": "CopperIngot", "quantity": 40}, {"itemType": "Brass", "quantity": 20}],
+          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}]
+        ],
+        "capacityCosts": [
+          [{"itemType": "IronPlate", "quantity": 20}, {"itemType": "Gear", "quantity": 5}],
+          [{"itemType": "CopperIngot", "quantity": 20}, {"itemType": "Brass", "quantity": 10}],
+          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}]
+        ]
+      },
+      {
+        "itemType": "Coal",
+        "add": [{"itemType": "Scrap", "quantity": 80}],
+        "rates": [30, 60, 120, 180],
+        "capacities": [100, 200, 300, 400],
+        "rateCosts": [
+          [{"itemType": "IronPlate", "quantity": 40}, {"itemType": "Gear", "quantity": 10}],
+          [{"itemType": "CopperIngot", "quantity": 40}, {"itemType": "Brass", "quantity": 20}],
+          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}]
+        ],
+        "capacityCosts": [
+          [{"itemType": "IronPlate", "quantity": 20}, {"itemType": "Gear", "quantity": 5}],
+          [{"itemType": "CopperIngot", "quantity": 20}, {"itemType": "Brass", "quantity": 10}],
+          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}]
+        ]
+      },
+      {
+        "itemType": "CopperOre",
+        "add": [{"itemType": "IronPlate", "quantity": 60}, {"itemType": "Gear", "quantity": 20}],
+        "rates": [30, 60, 120, 180],
+        "capacities": [100, 200, 300, 400],
+        "rateCosts": [
+          [{"itemType": "CopperIngot", "quantity": 40}, {"itemType": "Gear", "quantity": 20}],
+          [{"itemType": "Brass", "quantity": 20}, {"itemType": "Casing", "quantity": 10}],
+          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}]
+        ],
+        "capacityCosts": [
+          [{"itemType": "CopperIngot", "quantity": 20}, {"itemType": "Gear", "quantity": 10}],
+          [{"itemType": "Brass", "quantity": 10}, {"itemType": "Casing", "quantity": 5}],
+          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}]
+        ]
+      },
+      {
+        "itemType": "ZincOre",
+        "add": [{"itemType": "IronPlate", "quantity": 40}, {"itemType": "CopperIngot", "quantity": 30}],
+        "rates": [30, 60, 120, 180],
+        "capacities": [100, 200, 300, 400],
+        "rateCosts": [
+          [{"itemType": "Brass", "quantity": 20}, {"itemType": "Casing", "quantity": 10}],
+          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}],
+          [{"itemType": "Mainspring", "quantity": 10}, {"itemType": "AetherCell", "quantity": 4}]
+        ],
+        "capacityCosts": [
+          [{"itemType": "Brass", "quantity": 10}, {"itemType": "Casing", "quantity": 5}],
+          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}],
+          [{"itemType": "Mainspring", "quantity": 5}, {"itemType": "AetherCell", "quantity": 2}]
+        ]
+      },
+      {
+        "itemType": "Aether",
+        "add": [{"itemType": "Brass", "quantity": 20}, {"itemType": "Casing", "quantity": 10}],
+        "rates": [10, 20, 40, 60],
+        "capacities": [40, 80, 120, 160],
+        "rateCosts": [
+          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}],
+          [{"itemType": "Mainspring", "quantity": 10}, {"itemType": "AetherCell", "quantity": 4}],
+          [{"itemType": "Mainspring", "quantity": 20}, {"itemType": "AetherCell", "quantity": 8}]
+        ],
+        "capacityCosts": [
+          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}],
+          [{"itemType": "Mainspring", "quantity": 5}, {"itemType": "AetherCell", "quantity": 2}],
+          [{"itemType": "Mainspring", "quantity": 10}, {"itemType": "AetherCell", "quantity": 4}]
+        ]
+      }
+    ]
+  },
   "starterBench": { "x": 0, "y": 3, "recipes": "all" },
   "starterStation": { "x": 3, "y": -1, "facing": "North", "roster": "all" }
 }

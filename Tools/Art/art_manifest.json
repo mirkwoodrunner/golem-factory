@@ -730,6 +730,25 @@
     ],
     "partialAlpha": true
   },
+  "cart_spot.png": {
+    "set": "supply",
+    "kind": "standing",
+    "size": [
+      96,
+      120
+    ],
+    "pivot": [
+      0.5,
+      0.025
+    ],
+    "footRow": 117,
+    "owner": "generated:generate_supply_art.py",
+    "palette": "bible",
+    "readers": [
+      "CartSpotView",
+      "SpritePivots"
+    ]
+  },
   "chassis_aether_hauler.png": {
     "set": "S1",
     "kind": "standing",

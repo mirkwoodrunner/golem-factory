@@ -1,6 +1,6 @@
 # Supply carts: a market street you build
 
-**Status: proposed 2026-11-06, not yet approved. Phase 8's first part** (`docs/roadmap.md`),
+**Status: approved 2026-11-06; step 1 built (§8). Phase 8's first part** (`docs/roadmap.md`),
 before city contracts and endless play, because both assume a factory that runs without the
 player at the stalls. Written before the code, like `pack-upgrades-design.md`.
 
@@ -45,10 +45,10 @@ A pass that touches carts, spots or the street keeps all of these. Each gets a t
 1. **A cart is a source to everything downstream.** It is a `ResourceNode` with a marker. Golems
    extract from it under the two-extractor cap (§3.2), the player harvests it with E, and its
    depletion tint works. No golem rule, card or endpoint changes.
-2. **The trickle is deterministic and whole.** A rate is goods a minute. Each tick adds thousandths
-   of a good to an accumulator on the `SimulationClock`, and whole goods move into the cart's
-   stock. Integer math, no floats. Stock never trickles past capacity; the accumulator holds while
-   the cart is full.
+2. **The trickle is deterministic and whole.** A rate is goods a minute. Each tick adds the rate
+   to an accumulator on the `SimulationClock`, and a whole good moves into the cart's stock for
+   every ticks-a-minute it holds (600 at 10 ticks a second). Integer math, no floats. Stock never
+   trickles past capacity; a full cart's accumulator is emptied and holds.
 3. **No price per good.** Raw goods cost the carts and their upgrades, nothing per load.
 4. **Every cost goes through the wallet** (`PlayerWallet.TryCharge`, pack then Post), and a refused
    charge takes nothing. **Every price fits the pack reachable when it opens**
@@ -98,8 +98,10 @@ rope and the sign.
 
 ## 2. At a spot
 
-E at a spot opens a small panel where the cart stands. Its rules (rows, prices, refusals) live in
-Core; the panel is drawn by the screens' builder, like the Crate screen.
+**E at an empty spot opens the cart panel. At a cart, E takes from it, as at a stall, and I
+opens its panel**, as I opens a crate's screen (the prompt says "[I] open"). Its rules (rows,
+prices, refusals) live in Core (`SupplyPanel`); the panel (`SupplyScreen`) only draws them, as the
+Crate screen does its readout.
 
 - **An empty spot: Add.** A row for each raw good the Ledger has seen, each with that good's cart
   price. The cart arrives empty and starts to trickle.
@@ -236,14 +238,20 @@ thirds of its budget, as Phase 3 required.
 
 ## 8. Build order
 
-1. Core: the cart (a `ResourceNode` with a trickle), the spots, the ladders from `sandbox.json`,
-   add, change, remove and the rungs through the wallet, the save and its migration. Tests first.
-2. The street: the wider bounds and floor, the spots, the rope and sign, a cart's sprite by good.
-3. The panel at a spot, and the prompts.
-4. The guide's steps (§6), and the floor tests measured again.
-5. The overview's market view, and goods spent on the graph.
-6. The `supply` scenario with real keys and clicks, then frames looked at.
-7. The docs it amends (§7) and the folder rules.
+Each step leaves the game whole, with every scenario passing, so the carts arrive beside the
+truckload market before they replace it.
+
+1. **Done (2026-11-06): carts on the eight new spots, beside the nine stalls.** Core's
+   `SupplyStreet` (spots, ladders from `sandbox.json`'s `supply`, add, rungs, change, remove for
+   half, the trickle, saves) and `SupplyPanel`; the street widened to ±34; the roped spot's sprite
+   (`cart_spot.png`, `generate_supply_art.py`, mahogany rope rather than red); `CartSpotView`; the
+   `SupplyScreen`; E and I at spots and carts; the `supply` scenario. The nine stalls still sell
+   truckloads, and no cart is there at the start.
+2. **The switch:** the nine stalls' places become spots, the starting Scrap cart, truckloads and
+   hand orders retired, an old save's stalls migrated into carts (§5), the guide's steps (§6) and
+   the floor tests measured again, the stage 4 coverage test.
+3. The overview's market view, and goods spent on the graph.
+4. The docs it amends (§7) and the folder rules, completed with step 2.
 
 ## 9. Tests and the scenario
 

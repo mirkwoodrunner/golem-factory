@@ -68,8 +68,17 @@ namespace GolemFactory.World
         /// walk distances are on the Director's do-not-tune list, and shifting them to make a
         /// symmetric eight would have retuned §9's manual era as a side effect.
         /// </para>
+        ///
+        /// <para>
+        /// THIRTY-FOUR since supply carts (docs/supply-design.md §1): eight more spots on the same
+        /// row and pitch (x = ±20, ±24, ±28, ±32), seventeen in all, still with two cells of
+        /// margin at each end. The nine stalls don't move.
+        /// </para>
         /// </summary>
-        public const int StreetHalfExtent = 18;
+        public const int StreetHalfExtent = 34;
+
+        /// <summary>The outermost spot on the stall row, either side.</summary>
+        public const int OutermostSpot = 32;
 
         /// <summary>
         /// How far north the workshop reaches, in cells. Equal to <see cref="HalfExtent"/> for

@@ -184,6 +184,13 @@ Current scenarios:
   Left shows the campaign's (none), Right comes back, Enter loads the world with its depot. A
   campaign game greys a Creative save copied among its slots and refuses to load it. Captures
   `creative`, `creative-load`.
+- `supply` (Sandbox): supply carts (`docs/supply-design.md`, step 1) with real keys and clicks.
+  S and A walk to the spot at x = −20, drawn as its rope; the prompt offers a cart and E opens the
+  panel, listing the carts the Ledger allows. A click adds a Coal cart for its price and the rope
+  becomes the Coal cart; it fills on the clock; E takes from it; I opens its panel and a click
+  buys a Rate rung. Saved to Slot 1, removed for half its price (the rope again), and loaded with
+  two clicks: the cart is back at its rung, with one marker. Captures `supply-spot`,
+  `supply-street`, `supply-cart`.
 
 **A scenario that reloads the scene** implements `IReloadingScenario` (or derives from
 `StepScenario`, which does): the runner of the new scene hands it back (`Resumed`), and it finds

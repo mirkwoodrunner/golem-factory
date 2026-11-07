@@ -1,4 +1,5 @@
 using GolemFactory.Buildings;
+using GolemFactory.Supply;
 
 namespace GolemFactory.UI
 {
@@ -29,6 +30,12 @@ namespace GolemFactory.UI
     public interface ICrateScreen : IScreen
     {
         void Open(ICrate crate);
+    }
+
+    /// <summary>The cart panel (docs/supply-design.md §2), as [E] at an empty spot and [I] at a cart need it.</summary>
+    public interface ISupplyScreen : IScreen
+    {
+        void Open(CartSpot spot);
     }
 
     /// <summary>The Workbench, as the interactor's [E] at a golem needs it.</summary>

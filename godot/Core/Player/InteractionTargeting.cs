@@ -28,7 +28,11 @@ namespace GolemFactory.Player
         // Refuel was, and it belongs at this end of the order for a stronger reason than the
         // boiler does: a golem almost always stands beside the depot it pushes into, and a crate
         // that beat that golem on a distance tie would make it unprogrammable.
-        Sort = 5
+        Sort = 5,
+
+        // An empty supply-cart spot (docs/supply-design.md §2): E opens the cart panel there.
+        // Appended, last in the tie-break, so a cart's own marker (Harvest) always wins its tile.
+        Supply = 6
     }
 
     /// <summary>
@@ -110,7 +114,8 @@ namespace GolemFactory.Player
             IReadOnlyList<Vector3> stations,
             IReadOnlyList<Vector3> golems,
             IReadOnlyList<Vector3> boilers = null,
-            IReadOnlyList<Vector3> depots = null)
+            IReadOnlyList<Vector3> depots = null,
+            IReadOnlyList<Vector3> spots = null)
         {
             InteractionPick best = InteractionPick.None;
             // Evaluated in enum order with a strict less-than, so an exact distance tie keeps
@@ -122,6 +127,7 @@ namespace GolemFactory.Player
             // whole pre-existing targeting suite) picks exactly what it always did.
             Consider(origin, boilers, InteractionKind.Refuel, ref best);
             Consider(origin, depots, InteractionKind.Sort, ref best);
+            Consider(origin, spots, InteractionKind.Supply, ref best);
             return best;
         }
 
@@ -186,6 +192,7 @@ namespace GolemFactory.Player
                 // Sort keeps its value and now means "a crate" (crates-design §4.2): E takes what
                 // fits into the pack. The label moved to the crate screen.
                 case InteractionKind.Sort: return "Collect from";
+                case InteractionKind.Supply: return "Add a cart at";
                 default: return "";
             }
         }

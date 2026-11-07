@@ -33,6 +33,7 @@ GENERATORS = [
     "generate_tech_tree_art.py",
     "generate_clock_tower_art.py",
     "generate_hud_art.py",
+    "generate_supply_art.py",
 ]
 
 # Sprites whose committed version was drawn by hand over the generated placeholder, so the

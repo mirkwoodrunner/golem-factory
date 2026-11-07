@@ -28,6 +28,10 @@ namespace GolemFactory.Nodes
         public HandCrankBench StarterBench => _world?.Sandbox.StarterBench;
 
         private WorldNode _world;
+        private readonly List<CartSpotView> _spotViews = new List<CartSpotView>();
+
+        /// <summary>The supply street's spots as drawn, in the street's order.</summary>
+        public IReadOnlyList<CartSpotView> SpotViews => _spotViews;
 
         public override void _EnterTree() => AddToGroup(GroupName);
 
@@ -48,6 +52,19 @@ namespace GolemFactory.Nodes
                 var node = new Node2D { Name = entry.id, Position = GridConversions.CellToWorld(new Vector2I(entry.x, entry.y)) };
                 node.AddChild(SpritePivots.Make(entry.sprite));
                 AddChild(node);
+            }
+
+            // The supply street's spots (docs/supply-design.md §1), each drawn as its rope or its
+            // cart. Kept by spot, never found by name.
+            foreach (Supply.CartSpot spot in _world.Sandbox.Supply.Spots)
+            {
+                var view = new CartSpotView(spot)
+                {
+                    Name = "CartSpot",
+                    Position = GridConversions.CellToWorld(new Vector2I(spot.Cell.x, spot.Cell.y)),
+                };
+                AddChild(view);
+                _spotViews.Add(view);
             }
 
             if (setup.starterBench != null)

@@ -19,6 +19,7 @@ using GolemFactory.PunchCards;
 using GolemFactory.Save;
 using GolemFactory.Simulation;
 using GolemFactory.Steam;
+using GolemFactory.Supply;
 using GolemFactory.UI;
 
 namespace GolemFactory.World
@@ -75,6 +76,13 @@ namespace GolemFactory.World
         public DefinitionSet Definitions { get; private set; }
         public SandboxSetup Setup { get; private set; }
         public TruckloadMarket Market { get; private set; }
+
+        /// <summary>The street's supply carts (docs/supply-design.md); never null once composed.</summary>
+        public SupplyStreet Supply { get; private set; }
+
+        /// <summary>The cart panel's rules (docs/supply-design.md §2).</summary>
+        public SupplyPanel SupplyPanel => _supplyPanel ??= new SupplyPanel(Supply, () => Wallet, item => TechTree.Ledger.HasItem(item));
+        private SupplyPanel _supplyPanel;
         /// <summary>The build menu: every placeable the player may place.</summary>
         public IReadOnlyList<PlaceableEntry> Placeables { get; private set; } = new List<PlaceableEntry>();
 
@@ -236,6 +244,10 @@ namespace GolemFactory.World
 
             Market = setup.BuildMarket(Nodes);
             Clock.Register(Market);
+            Supply = setup.BuildSupply(
+                Nodes, Endpoints, UnitCells, Markers, () => Wallet, item => TechTree.Ledger.HasItem(item),
+                (int)System.Math.Round(60f * Clock.TicksPerSecond), cell => Grid.IsOccupied(cell));
+            Clock.Register(Supply);
 
             WireBuildMode();
             RaiseClockTower();
@@ -524,6 +536,7 @@ namespace GolemFactory.World
             Interactor.ConfigurePost(PostBufferId);
             Interactor.ConfigureAffordance(null);
             Interactor.ConfigureWorld(() => Markers, InteractableBuildings, () => _golems);
+            Interactor.ConfigureSupply(() => Supply);
             Interactor.ConfigureMarket(Market, () => Clock.CurrentTick, Buffers, _stockpileBufferId);
             Interactor.ConfigureBuildMode(Build);
             Interactor.ConfigureGolemPlacement(Grid, new Vector2(1f, 1f));
@@ -602,6 +615,7 @@ namespace GolemFactory.World
             SaveData data = SaveLoadService.CaptureState(Buffers, Patents, live, Build.Buildings);
             data.progress = CaptureProgress();
             data.market = CaptureMarket();
+            data.supply = Supply.Capture();
             data.meta = CaptureMeta(live.Count, data.buildings.Count, autosaveReason);
             data.creative = Creative;
             SaveFileIO.WriteToFile(data, path);
@@ -690,6 +704,7 @@ namespace GolemFactory.World
         {
 
             RestoreProgress(data.progress);
+            RestoreSupply(data.supply);
             RestoreMarket(data.market);
 
             IGolemRespawner respawner = _stationTemplate != null ? new StationGolemRespawner(_stationTemplate) : null;
@@ -744,7 +759,8 @@ namespace GolemFactory.World
             var market = new MarketEntry();
             foreach (ResourceNode node in Nodes.Nodes)
             {
-                if (node.RemainingQuantity != ResourceNode.Infinite)
+                // A supply cart is saved with its spot (data.supply), never as a stall.
+                if (node.RemainingQuantity != ResourceNode.Infinite && !Supply.IsCart(node.NodeId))
                 {
                     market.stallIds.Add(node.NodeId);
                     market.stallStocks.Add(node.RemainingQuantity);
@@ -760,6 +776,19 @@ namespace GolemFactory.World
                 }
             }
             return market;
+        }
+
+        /// <summary>
+        /// The street's carts as the save left them. A save from before carts has none: the
+        /// street goes back to its starting carts, as a new game has.
+        /// </summary>
+        private void RestoreSupply(List<SupplyCartEntry> carts)
+        {
+            Supply.Restore(carts ?? new List<SupplyCartEntry>());
+            if (carts == null)
+            {
+                Setup.PlaceStartingCarts(Supply);
+            }
         }
 
         private void RestoreMarket(MarketEntry market)
@@ -901,6 +930,9 @@ namespace GolemFactory.World
         /// </summary>
         public void ConfigureInventoryScreens(IPackScreen pack, ICrateScreen crate) =>
             Interactor.ConfigureInventory(pack, crate);
+
+        /// <summary>Hands [E] at a spot and [I] at a cart the cart panel. Null keeps one already handed over.</summary>
+        public void ConfigureSupplyScreen(ISupplyScreen screen) => Interactor.ConfigureSupplyScreen(screen);
 
         /// <summary>
         /// What the Pack and Crate screens show and what their clicks do: rows, transfers through

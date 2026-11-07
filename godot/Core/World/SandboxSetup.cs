@@ -1,8 +1,11 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using GolemFactory.Compat;
 using GolemFactory.Economy;
 using GolemFactory.PunchCards;
+using GolemFactory.Supply;
 
 namespace GolemFactory.World
 {
@@ -35,6 +38,41 @@ namespace GolemFactory.World
             public List<RecipeIngredient> price = new List<RecipeIngredient>();
             public int truckloadSize;
             public int deliveryTicks;
+        }
+
+        /// <summary>
+        /// The supply street (docs/supply-design.md): the spots carts can stand on, the carts the
+        /// world starts with, and each good's ladder of prices, rates and capacities.
+        /// </summary>
+        public sealed class SupplySetup
+        {
+            public List<SpotEntry> spots = new List<SpotEntry>();
+            public List<StartingCart> startingCarts = new List<StartingCart>();
+            public List<CartLadderEntry> carts = new List<CartLadderEntry>();
+        }
+
+        public sealed class SpotEntry
+        {
+            public int x;
+            public int y;
+        }
+
+        public sealed class StartingCart
+        {
+            public int x;
+            public int y;
+            public string itemType;
+        }
+
+        /// <summary>One good's cart: its price, and rung 0 then each rung's rate, capacity and price.</summary>
+        public sealed class CartLadderEntry
+        {
+            public string itemType;
+            public List<RecipeIngredient> add = new List<RecipeIngredient>();
+            public List<int> rates = new List<int>();
+            public List<int> capacities = new List<int>();
+            public List<List<RecipeIngredient>> rateCosts = new List<List<RecipeIngredient>>();
+            public List<List<RecipeIngredient>> capacityCosts = new List<List<RecipeIngredient>>();
         }
 
         public sealed class Placement
@@ -130,6 +168,7 @@ namespace GolemFactory.World
         public AssemblyLineSetup assemblyLine;
         public List<NodeEntry> nodes = new List<NodeEntry>();
         public List<MarketEntry> market = new List<MarketEntry>();
+        public SupplySetup supply;
         public Placement starterBench;
         public Placement starterStation;
 
@@ -189,6 +228,42 @@ namespace GolemFactory.World
                 built.AddOffer(new MarketOffer(entry.nodeId, entry.price, entry.truckloadSize, entry.deliveryTicks));
             }
             return built;
+        }
+
+        /// <summary>The supply street with its spots, ladders and starting carts.</summary>
+        public SupplyStreet BuildSupply(
+            ResourceNodeRegistry nodes, SpatialEndpointRegistry endpoints, GridCoordinateConverter cells,
+            List<ResourceNodeMarker> markers, Func<PlayerWallet> wallet, Func<string, bool> seen,
+            int ticksPerMinute, Func<Vector2Int, bool> occupied)
+        {
+            var street = new SupplyStreet(nodes, endpoints, cells, markers, wallet, seen, creativeMode, ticksPerMinute, occupied);
+            if (supply == null)
+            {
+                return street;
+            }
+            foreach (SpotEntry spot in supply.spots)
+            {
+                street.AddSpot(new Vector2Int(spot.x, spot.y));
+            }
+            foreach (CartLadderEntry cart in supply.carts)
+            {
+                street.AddLadder(new CartLadder(
+                    cart.itemType, cart.add, cart.rates, cart.capacities,
+                    cart.rateCosts.Select(c => (IReadOnlyList<RecipeIngredient>)c).ToList(),
+                    cart.capacityCosts.Select(c => (IReadOnlyList<RecipeIngredient>)c).ToList()));
+            }
+            PlaceStartingCarts(street);
+            return street;
+        }
+
+        /// <summary>The carts the world starts with, on their spots: a new game, or a load of a
+        /// save from before carts.</summary>
+        public void PlaceStartingCarts(SupplyStreet street)
+        {
+            foreach (StartingCart cart in supply?.startingCarts ?? new List<StartingCart>())
+            {
+                street.PlaceStartingCart(new Vector2Int(cart.x, cart.y), cart.itemType);
+            }
         }
 
         public static Vector2Int CellOf(Placement placement) => new Vector2Int(placement.x, placement.y);

@@ -40,6 +40,12 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   id directly, and never charge a crate. Harvesting and collecting fill the pack only, and check
   its room before taking. A part that builds its own wallet takes the Post's id too (an optional
   `postBufferId`), or it spends from the pack alone.
+- **Supply carts** (`Core/Supply/`, docs/supply-design.md) are `ResourceNode`s on the street's
+  spots, so golems and hands take from them as from a stall. `SupplyStreet` owns them: add, the
+  Rate and Capacity rungs, change and remove all charge or refund through the wallet (a removal
+  refunds half, rounded down per good, with the stock, or is refused whole). A cart is saved in
+  `SaveData.supply`, never as a stall in `SaveData.market`. Its trickle is whole numbers on the
+  clock. Its node id (`Cart(x,y)`) is never shown; `SupplyText` says what the player reads.
 - **The Pneumatic Post** is one registry buffer, `SandboxWorld.PostBufferId` ("PneumaticPost"),
   200 of each good, there from the start. A Post crate (`PneumaticPostPrefab`) is a depot whose
   `bufferId` is that id, so every Post crate opens onto it and golems reach it like any crate.

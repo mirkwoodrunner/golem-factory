@@ -10,6 +10,7 @@ using GolemFactory.Events;
 using GolemFactory.Golems;
 using GolemFactory.PunchCards;
 using GolemFactory.Steam;
+using GolemFactory.Supply;
 using GolemFactory.UI;
 using GolemFactory.World;
 
@@ -133,6 +134,13 @@ namespace GolemFactory.Player
         private GolemEntity[] _golems = new GolemEntity[0];
         private PlaceableBoiler[] _boilers = new PlaceableBoiler[0];
         private ICrate[] _depots = new ICrate[0];
+
+        // The supply street (docs/supply-design.md): its empty spots are interactables of their
+        // own; a bought cart is a marker like a stall. Optional: with no street, nothing here.
+        private Func<SupplyStreet> _supply;
+        private ISupplyScreen _supplyScreen;
+        private CartSpot[] _spots = new CartSpot[0];
+        private Vector3[] _spotPositions = new Vector3[0];
         private HandCrankBench[] _benches = new HandCrankBench[0];
         private Vector2Int[] _boilerCells = new Vector2Int[0];
         private Vector2Int[] _depotCells = new Vector2Int[0];
@@ -254,6 +262,12 @@ namespace GolemFactory.Player
             _crateScreen = crateScreen ?? _crateScreen;
         }
 
+        /// <summary>The supply street, whose empty spots [E] opens and whose carts [I] opens.</summary>
+        public void ConfigureSupply(Func<SupplyStreet> supply) => _supply = supply;
+
+        /// <summary>The cart panel. Null keeps one already handed over.</summary>
+        public void ConfigureSupplyScreen(ISupplyScreen screen) => _supplyScreen = screen ?? _supplyScreen;
+
         /// <summary>What exists to interact with. Unity found all of this with FindObjectsByType.</summary>
         public void ConfigureWorld(
             Func<IEnumerable<ResourceNodeMarker>> markers,
@@ -335,6 +349,8 @@ namespace GolemFactory.Player
         {
             _nodeMarkers = Snapshot(_markerSource);
             _golems = Snapshot(_golemSource);
+            _spots = _supply?.Invoke()?.Spots.Where(s => s.IsEmpty).ToArray() ?? new CartSpot[0];
+            _spotPositions = Resize(_spotPositions, _spots.Length);
 
             var stations = new List<GolemConstructionStation>();
             var boilers = new List<PlaceableBoiler>();
@@ -434,7 +450,14 @@ namespace GolemFactory.Player
             {
                 _depotPositions[i] = _depots[i] != null ? Resolve(_depots[i], _depotCells[i]) : Parked;
             }
+            // A spot stands where its cart would: a cart's marker sits on the cell's own point.
+            for (int i = 0; i < _spots.Length; i++)
+            {
+                _spotPositions[i] = _spots[i] != null && _spots[i].IsEmpty ? SpotPosition(_spots[i]) : Parked;
+            }
         }
+
+        private static Vector3 SpotPosition(CartSpot spot) => new Vector3(spot.Cell.x, spot.Cell.y, 0f);
 
         private void FillGolemPositions()
         {
@@ -888,7 +911,8 @@ namespace GolemFactory.Player
                 detail = "pack full";
             }
             // [I] opens a crate whatever E would do there: put into an empty one, label a full one.
-            if (pick.Kind == InteractionKind.Sort && CurrentAffordance != InteractionAffordance.OutOfRange)
+            // A cart's panel opens the same way.
+            if ((pick.Kind == InteractionKind.Sort || IsCartMarker(target)) && CurrentAffordance != InteractionAffordance.OutOfRange)
             {
                 detail = InteractionTargeting.AppendDetail(detail, "[" + InventoryKeyLabel + "] open");
             }
@@ -918,7 +942,8 @@ namespace GolemFactory.Player
         {
             FillPositions();
             return InteractionTargeting.SelectNearest(
-                Position, _nodePositions, _stationPositions, _golemPositions, _boilerPositions, _depotPositions);
+                Position, _nodePositions, _stationPositions, _golemPositions, _boilerPositions, _depotPositions,
+                _spotPositions);
         }
 
         private object ResolveTarget(InteractionPick pick, out Vector3 position)
@@ -942,6 +967,9 @@ namespace GolemFactory.Player
                 case InteractionKind.Sort when i >= 0 && i < _depots.Length:
                     position = _depotPositions[i];
                     return _depots[i];
+                case InteractionKind.Supply when i >= 0 && i < _spots.Length:
+                    position = _spotPositions[i];
+                    return _spots[i];
                 default:
                     return null;
             }
@@ -1045,8 +1073,18 @@ namespace GolemFactory.Player
                     // "Copper Ore", not "CopperOre": a caption is English, not an id.
                     targetName = string.IsNullOrEmpty(itemType) ? marker.NodeId : ItemTiers.DisplayName(itemType);
                     detail = ResourceNodeVisualState.DescribeRemaining(marker.RemainingQuantity);
+                    SupplyCart cart = _supply?.Invoke()?.SpotOf(marker.NodeId)?.Cart;
+                    if (cart != null)
+                    {
+                        targetName += " cart";
+                        detail = SupplyText.Holding(cart);
+                    }
                     break;
                 }
+                case InteractionKind.Supply:
+                    targetName = "this spot";
+                    detail = "roped off";
+                    break;
                 case InteractionKind.Refuel:
                 {
                     var boiler = (PlaceableBoiler)target;
@@ -1135,6 +1173,8 @@ namespace GolemFactory.Player
                     return TryRefuelBoiler(target as PlaceableBoiler);
                 case InteractionKind.Sort:
                     return TryCollect(target as ICrate);
+                case InteractionKind.Supply:
+                    return TryOpenSupply(target as CartSpot);
                 default:
                     LastStatusMessage = "Nothing in range to interact with.";
                     return false;
@@ -1177,6 +1217,11 @@ namespace GolemFactory.Player
         /// </summary>
         public bool OpenInventory()
         {
+            CartSpot spot = SelectNearestSpot(_interactRange);
+            if (spot != null && _supplyScreen != null)
+            {
+                return TryOpenSupply(spot);
+            }
             ICrate crate = SelectNearestCrate(_interactRange);
             if (crate != null && _crateScreen != null)
             {
@@ -1190,6 +1235,46 @@ namespace GolemFactory.Player
             }
             LastStatusMessage = "No inventory screen available.";
             return false;
+        }
+
+        /// <summary>Opens the cart panel on a spot, empty or with its cart.</summary>
+        public bool TryOpenSupply(CartSpot spot)
+        {
+            if (spot == null || _supplyScreen == null)
+            {
+                LastStatusMessage = "Nothing to open here.";
+                return false;
+            }
+            _supplyScreen.Open(spot);
+            return true;
+        }
+
+        private bool IsCartMarker(object target) =>
+            target is ResourceNodeMarker marker && _supply?.Invoke()?.IsCart(marker.NodeId) == true;
+
+        /// <summary>
+        /// The nearest spot within <paramref name="range"/>, by a cart's marker or an empty spot's
+        /// place, or null: what [I] opens on the street.
+        /// </summary>
+        private CartSpot SelectNearestSpot(float range)
+        {
+            SupplyStreet street = _supply?.Invoke();
+            if (street == null)
+            {
+                return null;
+            }
+            CartSpot nearest = null;
+            float bestSqr = range * range;
+            foreach (CartSpot spot in street.Spots)
+            {
+                float sqr = (SpotPosition(spot) - Position).sqrMagnitude;
+                if (sqr <= bestSqr)
+                {
+                    bestSqr = sqr;
+                    nearest = spot;
+                }
+            }
+            return nearest;
         }
 
         /// <summary>The nearest crate (depot or mast) within <paramref name="range"/>, or null.</summary>

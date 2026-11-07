@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using GolemFactory.PunchCards;
 
 namespace GolemFactory.Save
 {
@@ -42,6 +43,12 @@ namespace GolemFactory.Save
         /// critique). Null in a save written before it, and a load then leaves the street as it is.
         /// </summary>
         public MarketEntry market;
+
+        /// <summary>
+        /// The street's supply carts (docs/supply-design.md §5): one entry per spot with a cart.
+        /// Null in a save written before carts, and a load then leaves the street's spots empty.
+        /// </summary>
+        public List<SupplyCartEntry> supply;
 
         /// <summary>
         /// What a save slot shows about this save (docs/menus-design.md §7): when it was written,
@@ -90,6 +97,24 @@ namespace GolemFactory.Save
     /// <see cref="BufferEntry"/>. A truckload keeps the ticks it still has to travel, since a
     /// save keeps no tick count.
     /// </summary>
+    /// <summary>
+    /// One supply cart: its spot, its good, its two rungs, its stock and the trickle's remainder,
+    /// and what was paid for it, which a removal refunds half of.
+    /// </summary>
+    [Serializable]
+    public sealed class SupplyCartEntry
+    {
+        public int x;
+        public int y;
+        public string itemType;
+        public int rateRung;
+        public int capacityRung;
+        public int stock;
+        public long accumulator;
+        public List<RecipeIngredient> addPaid = new List<RecipeIngredient>();
+        public List<RecipeIngredient> rungsPaid = new List<RecipeIngredient>();
+    }
+
     [Serializable]
     public sealed class MarketEntry
     {

@@ -29,11 +29,11 @@ namespace GolemFactory.Tests.World
         [TestCase("WallWest", 33)]
         [TestCase("WallNorth", 25)]
         [TestCase("SkirtSouth", 25)]
-        [TestCase("KerbStreet", 20)] // 37 in Unity's Sandbox, less the 17 the town square opens (G10)
+        [TestCase("KerbStreet", 52)] // 69 since supply carts widened the street (37 in Unity), less the 17 the square opens
         [TestCase("SquareEast", TownSquare.Depth)]
         [TestCase("SquareWest", TownSquare.Depth)]
         [TestCase("KerbSquare", 2 * TownSquare.HalfExtent + 1)]
-        [TestCase("WallShoulder", 12)]
+        [TestCase("WallShoulder", 44)] // 22 a side since supply carts (6 in Unity)
         [TestCase("WallPost", 2)]
         public void WallCountsMatchUnitysSandbox(string kind, int expected)
         {
@@ -61,7 +61,7 @@ namespace GolemFactory.Tests.World
         [TestCase("WallNorth_0", 0f, 12.5f)]
         [TestCase("WallNorth_4", 4f, 12.5f)]
         [TestCase("WallEast_0", 12.5f, 0f)]
-        [TestCase("WallEast_-20", 18.5f, -20f)]
+        [TestCase("WallEast_-20", 34.5f, -20f)] // the street's east end, at ±34 since supply carts
         [TestCase("WallWest_12", -12.5f, 12f)]
         [TestCase("SkirtSouth_0", 0f, -12.5f)]
         [TestCase("KerbStreet_-18", -18f, -20.5f)]
