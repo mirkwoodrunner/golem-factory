@@ -23,7 +23,23 @@ namespace GolemFactory.Diagnostics
         /// The larger load endless play is measured at (docs/endless-design.md §4): 160 golems,
         /// 800 belt items and 20 boilers, the whole floor bought.
         /// </summary>
-        public static EndgameLoadSpec Endless => new EndgameLoadSpec { Golems = 160, BeltItems = 800, Boilers = 20 };
+        public static EndgameLoadSpec Endless => ForGolems(160);
+
+        /// <summary>
+        /// A load of <paramref name="golems"/> golems, in proportion to the endgame's: five belt items
+        /// a golem, and the boilers the layout lays (one on the street, one per eight workshop
+        /// golems), for measuring where the budget holds between 96 and 160.
+        /// </summary>
+        public static EndgameLoadSpec ForGolems(int golems)
+        {
+            int workshop = golems - EndgameLoad.StallColumns.Length;
+            return new EndgameLoadSpec
+            {
+                Golems = golems,
+                BeltItems = 5 * golems,
+                Boilers = 1 + (workshop + Steam.SteamNetwork.MaxGolemsPerBoiler - 1) / Steam.SteamNetwork.MaxGolemsPerBoiler,
+            };
+        }
     }
 
     /// <summary>

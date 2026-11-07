@@ -539,6 +539,11 @@ namespace GolemFactory.Nodes
 
         // Two steam puffs, one each side of the feet, reused for every stamp.
         private const string PuffSprite = "res://art/fx_steam_puff.png";
+
+        // Asked once: a file lookup per golem per frame was a measurable share of the frame at
+        // 160 golems (docs/performance-report-endless.md).
+        private static bool? _puffArtExists;
+        private static bool PuffArtExists => _puffArtExists ??= ResourceLoader.Exists(PuffSprite);
         private readonly Sprite2D[] _puffs = new Sprite2D[2];
         private float _puffAge = GolemWorkMotion.PuffSeconds;
         private bool _wasImpact;
@@ -568,7 +573,7 @@ namespace GolemFactory.Nodes
             }
 
             // No puff art yet (it is to come from ComfyUI): the stamp still squashes, without puffs.
-            if (!ResourceLoader.Exists(PuffSprite))
+            if (!PuffArtExists)
             {
                 return;
             }

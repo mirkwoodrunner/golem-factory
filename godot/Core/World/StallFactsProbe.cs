@@ -65,6 +65,7 @@ namespace GolemFactory.World
 
         private bool _indexed;
         private long _indexFrame;
+        private long _indexEpoch = -1;
 
         // What each golem looked like when the indices were built, in roster order.
         private readonly List<IndexedGolem> _indexedAs = new List<IndexedGolem>();
@@ -151,10 +152,16 @@ namespace GolemFactory.World
         {
             IEnumerable<GolemEntity> golems = _golems?.Invoke() ?? Enumerable.Empty<GolemEntity>();
             long? frame = Frame?.Invoke();
-            if (frame.HasValue && _indexed && _indexFrame == frame.Value && !IndexStale(golems))
+            // Within a frame the index stands until a golem's layout changes (GolemLayout): the
+            // per-read walk over every golem made a starved frame cost the square of the golem
+            // count (endless-design §4). Each new frame still rebuilds it whole.
+            if (frame.HasValue && _indexed && _indexFrame == frame.Value
+                && (_indexEpoch == GolemLayout.Epoch || !IndexStale(golems)))
             {
+                _indexEpoch = GolemLayout.Epoch;
                 return;
             }
+            _indexEpoch = GolemLayout.Epoch;
             _indexed = frame.HasValue;
             _indexFrame = frame ?? 0;
             _indexedAs.Clear();

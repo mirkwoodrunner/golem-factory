@@ -901,6 +901,7 @@ namespace GolemFactory.World
             if (golem != null && !_golems.Contains(golem))
             {
                 _golems.Add(golem);
+                GolemLayout.Changed();
                 Interactor.RefreshInteractables();
             }
         }
@@ -1267,6 +1268,7 @@ namespace GolemFactory.World
 
         private void OnGolemSpawned(GolemEntity golem)
         {
+            GolemLayout.Changed();
             if (!_golems.Contains(golem))
             {
                 _golems.Add(golem);

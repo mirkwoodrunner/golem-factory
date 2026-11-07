@@ -340,6 +340,8 @@ namespace GolemFactory.Nodes
             _sprite.Offset = new Vector2(-ClockTowerArt.CanvasWidth / 2f, -ClockTowerArt.CanvasHeight);
         }
 
+        private bool _pipeHot;
+
         private bool PipeIsHot()
         {
             SandboxWorld sandbox = _world.Sandbox;
@@ -398,8 +400,16 @@ namespace GolemFactory.Nodes
         }
 
         /// <summary>The landing, the coming down, a crate's bump and the tower's reveal, on the sprite.</summary>
+        // True once the building stands still at its own size and colour: nothing to update
+        // until a landing, a bump, a reveal or a demolition starts one again.
+        private bool _feelSettled;
+
         private void UpdateFeel(float delta)
         {
+            if (_feelSettled && _landAge < 0f && _bumpAge < 0f && _revealAge < 0f && _demolishAge < 0f)
+            {
+                return;
+            }
             if (_world?.Sandbox != null && !_world.Sandbox.Motion.Squash)
             {
                 // Reduced motion: a building is simply there, and simply gone.
@@ -414,6 +424,7 @@ namespace GolemFactory.Nodes
                     _sprite.Scale = Vector2.One;
                 }
                 _sprite.Modulate = Colors.White;
+                _feelSettled = true;
                 return;
             }
             if (_demolishAge >= 0f)
@@ -466,6 +477,11 @@ namespace GolemFactory.Nodes
             if (!IsFloorTile)
             {
                 _sprite.Scale = new Vector2(sx, sy);
+            }
+            _feelSettled = (_landAge < 0f || _landAge >= FeelRules.PlaceSeconds) && _bumpAge < 0f && _revealAge < 0f;
+            if (_feelSettled && _landAge >= FeelRules.PlaceSeconds)
+            {
+                _landAge = -1f;
             }
         }
 
@@ -554,7 +570,14 @@ namespace GolemFactory.Nodes
             }
             if (_pipe != null)
             {
-                RefreshShape(); // hot or cold follows the boilers' Coke, which no shape change reports
+                // Hot or cold follows the boilers' Coke, which no shape change reports: the
+                // picture is refreshed when it turns (a shape change refreshes it already).
+                bool hot = PipeIsHot();
+                if (hot != _pipeHot)
+                {
+                    _pipeHot = hot;
+                    RefreshShape();
+                }
             }
             if (_belt?.Segment != null)
             {

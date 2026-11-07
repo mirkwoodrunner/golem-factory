@@ -80,6 +80,16 @@ namespace GolemFactory.Nodes.Scenarios
         /// </summary>
         public static bool Endless => OS.GetCmdlineUserArgs().Contains("--perf-load=endless");
 
+        /// <summary><c>--perf-golems=N</c>: a load of N golems in the endgame's proportions (<see cref="EndgameLoadSpec.ForGolems"/>).</summary>
+        public static int? Golems
+        {
+            get
+            {
+                string arg = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--perf-golems="));
+                return arg != null && int.TryParse(arg.Substring("--perf-golems=".Length), out int n) ? n : (int?)null;
+            }
+        }
+
         public void Begin(ScenarioRunner runner)
         {
             _tree = runner.GetTree();
@@ -94,7 +104,7 @@ namespace GolemFactory.Nodes.Scenarios
 
             try
             {
-                _load = EndgameLoad.Build(_world, Endless ? EndgameLoadSpec.Endless : null);
+                _load = EndgameLoad.Build(_world, Golems is int n ? EndgameLoadSpec.ForGolems(n) : Endless ? EndgameLoadSpec.Endless : null);
             }
             catch (Exception e)
             {
@@ -453,7 +463,7 @@ namespace GolemFactory.Nodes.Scenarios
             md.AppendLine("```").AppendLine();
             md.AppendLine(failures.Count == 0 ? "Verdict: PASS" : "Verdict: FAIL · " + string.Join("; ", failures));
 
-            using FileAccess file = FileAccess.Open(Endless ? "user://perf-report-endless.md" : "user://perf-report.md", FileAccess.ModeFlags.Write);
+            using FileAccess file = FileAccess.Open(Golems is int g ? $"user://perf-report-{g}.md" : Endless ? "user://perf-report-endless.md" : "user://perf-report.md", FileAccess.ModeFlags.Write);
             file?.StoreString(md.ToString());
         }
     }

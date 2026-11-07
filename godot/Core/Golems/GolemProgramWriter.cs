@@ -67,6 +67,7 @@ namespace GolemFactory.Golems
                 }
             }
             program.logicCore = logicCore;
+            GolemLayout.Changed();
             program.CurrentStepIndex = 0;
             program.StepProgressTicks = 0;
             program.State = GolemState.Idle;

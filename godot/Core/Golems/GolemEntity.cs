@@ -311,6 +311,7 @@ namespace GolemFactory.Golems
         {
             cell = placedCell;
             facing = placedFacing;
+            GolemLayout.Changed();
             // The steam grid is keyed by cell, so moving a golem has to move its registration or
             // it keeps drawing power from wherever it used to stand. RegisterConsumer is
             // idempotent and re-sorts only when the cell actually changed. NOT while held: R
@@ -338,6 +339,7 @@ namespace GolemFactory.Golems
         public void SetFacing(Facing placedFacing)
         {
             facing = placedFacing;
+            GolemLayout.Changed();
             ReleaseNodeClaim();
         }
 
@@ -419,6 +421,7 @@ namespace GolemFactory.Golems
             }
             Detach();
             IsRemoved = true;
+            GolemLayout.Changed();
         }
 
         private void OnGolemCompletedForSignal(GolemCompletedEvent e)
@@ -441,6 +444,7 @@ namespace GolemFactory.Golems
         public void SetHeld(bool held)
         {
             IsHeld = held;
+            GolemLayout.Changed();
             // A held golem stops costing Coke. Its Cell is stale by definition -- it is in the
             // player's hands, not on the tile its routing names -- so leaving it registered
             // would have a boiler paying upkeep for a golem that is not standing anywhere, and
@@ -1331,7 +1335,20 @@ namespace GolemFactory.Golems
         /// built closer later changes nothing, and no per-tick search can make two identical
         /// factories diverge.
         /// </summary>
-        public Vector2Int? BoundMastCell { get; private set; }
+        public Vector2Int? BoundMastCell
+        {
+            get => _boundMast;
+            private set
+            {
+                if (_boundMast != value)
+                {
+                    _boundMast = value;
+                    GolemLayout.Changed();
+                }
+            }
+        }
+
+        private Vector2Int? _boundMast;
 
         private FreightMastRegistry _mastRegistry;
 
