@@ -492,7 +492,8 @@ Factorio's breadth.
 street, opening at the Zeppelin in chapter 9, its rows bought north, a quay of eight cart spots,
 and the `docks` scenario. Off-screen nodes skip their animation; re-measured, the golem cap stays
 112 (`performance-report-endless.md` §5). After the tower the Docks are room to spread out, not to
-grow (`endless-design.md` §2). Waiting: selling golems to the city; the Steam Deck
+grow (`endless-design.md` §2). Selling golems to the city is built (`golem-sales-design.md`).
+Waiting: the Steam Deck
 (`steam-deck-design.md` §8 holds the user's answers: native gamepad support, a Deck on hand, the
 viewport chosen from frames).
 
