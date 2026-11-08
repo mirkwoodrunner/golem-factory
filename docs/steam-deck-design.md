@@ -132,6 +132,8 @@ slow.
    device that reports a small, dense screen.
 4. **Touch.** Per D5, enable `input_devices/pointing/emulate_mouse_from_touch` if wanted.
 
+5. **The accessibility pass** (§10) runs on the same frames.
+
 **Exit:** every screen is readable at 1280×800 on the Deck itself, judged by the owner, not by a frame alone.
 
 ### D4. Native gamepad: the model (2 days)
@@ -324,6 +326,7 @@ Fill these in while doing the work, so a later session doesn't repeat a finding.
 - **Export log (D1):** exact preset, runtime pack source, errors met and fixes.
 - **Display readings (D3):** the stretch mode chosen, per-screen legibility notes.
 - **Performance runs (D8):** where the numbers are stored.
+- **Accessibility pass (§10):** each row's reading on the device, and the calls made.
 
 ## 8. Decisions
 
@@ -345,3 +348,31 @@ mono build checked against it), a Steam Deck Verified pass (default controller l
 text and glyph legibility at 1280×800, no launcher or login the pad can't drive, proper suspend), cloud saves
 (Phase 9's one-folder save), and Steam's Linux runtime container (Sniper) compatibility. This doc's D1 to D10
 are the foundation of all of it.
+
+## 10. Accessibility pass before the Deck
+
+A checklist to run with D3's frames and again at D10, adapted from Claude Code Game Studios'
+accessibility audit (MIT). Each row says where the game stands today (checked 2026-11-07) and which
+phase picks it up. "Call" marks a row that needs the user's decision before anyone builds it.
+
+| Item | Today | Lands in |
+|---|---|---|
+| **Text readable** at 1280×800, at arm's length | 12 to 14 px on the 1280×720 layout: the same ratio as the checklist's "18 px at 1080p", which is a monitor's figure, not a 7" screen's at 40 cm. The UI scale (1 to 2) can't rise at 1280×800 until screens reflow (`menus-design.md` §4, call 6; `open-items.md` §3). | D3: the owner judges on the device |
+| **Contrast**: text 4.5:1 and controls 3:1 against what's behind them | Not measured. | D3: measure each ink against its plate from the `Ugui` colours, as `menus-design.md` §5 measured the colour-blind pairs |
+| **High-contrast mode** | None. | **Call**, once the contrast numbers are in |
+| **Colour never the only cue** | Done: source tiles striped, moods in words on their badges, card families in words (`menus-design.md` §5). | — |
+| **Colour-blind marks, reduced motion** | Done (`menus-design.md` §5). | — |
+| **Separate volumes** | Done: Master, Music, Effects and a mute (`audio-design.md` §5). There's no speech, so no dialogue slider or subtitles. | — |
+| **Every sound that tells you something can also be seen** | Done: the stall chime with the red mood and its alert, the claim chime with the glint and the note, the fanfare with the banner (`audio-design.md`'s slot table, `contracts-design.md` §12). | Check again for any sound added later |
+| **Mono audio** | None: effects pan by position. | **Call** (low): the Deck's speakers are close together |
+| **Remapping** | Eight keyboard actions rebind (`menus-design.md` §4). On the Deck, Steam Input remaps every control at the system level (D2). | D4 adds the pad bindings in code |
+| **No required chords** | Shift-click in the Pack and Crate screens (`InventoryPanel`). | D6 gives the pad a trigger for it; check a mouse-only player has a way too |
+| **No long holds without an alternative** | E is held for a crank's whole length (twice the recipe's time, `HandCrankRules`) and to keep harvesting. There's no toggle. | **Call**: a "tap to start, tap to stop" setting; A on a pad is the same hold |
+| **Pause at any time** | A button on the HUD's bar only; no key. | D4's `Pause` action, with a keyboard key as well as Start (D4.2: every verb gets both) |
+| **Adjustable speed, nothing timed** | Done: 0.5× to 4× (`ClockReadout.SpeedPresets`); contracts and the tower never fail (`contracts-design.md` §0). | — |
+| **The current goal always to hand** | Done: the guide's panel; F1 hides it and brings it back. | D6: B dismisses it on a pad |
+| **Everything reachable without a pointer** | No: the screens are mouse-driven. | D6. Its `ui_*` focus also gives keyboard-only play, so test it with the arrow keys too |
+| **Hover-only information** | The `Straining` mood and the tooltips need a pointer. | D5.2 and D6.4 |
+| **Touch** | Not handled. | D5's decision: emulate the mouse, nothing more |
+
+Record the results in §7, under "Accessibility pass (§10)".
