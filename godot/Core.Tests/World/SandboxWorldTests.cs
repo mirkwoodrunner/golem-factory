@@ -173,14 +173,17 @@ namespace GolemFactory.Tests.World
         }
 
         [Test]
-        public void TheWorldTicksTheMarketTheBenchAndTheSteam()
+        public void TheWorldTicksTheCartsTheBenchAndTheSteam()
         {
             SandboxWorld world = Compose();
-            Assert.IsNotNull(world.Market);
+            Assert.IsNotNull(world.Supply);
             Assert.IsNotNull(world.StarterBench);
+            GolemFactory.Supply.SupplyCart scrap = world.Supply.Carts.Single();
+            Assert.IsTrue(world.Nodes.TryExtract(scrap.Node.NodeId, out _));
             world.Clock.Play();
             world.Advance(1f);
             Assert.That(world.Clock.CurrentTick, Is.GreaterThan(0));
+            Assert.AreEqual(scrap.Capacity, scrap.Stock, "the Scrap cart trickled back to full");
         }
 
         [Test]

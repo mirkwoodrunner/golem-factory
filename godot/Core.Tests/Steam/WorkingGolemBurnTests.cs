@@ -26,8 +26,8 @@ namespace GolemFactory.Tests.Steam
             world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 100);
             world.Buffers.Deposit(world.StockpileBufferId, ItemType.IronPlate, 10);
 
-            // Beside the Scrap stall, as the guide lays it out: stall behind, depot in front.
-            SandboxSetup.NodeEntry stall = world.Setup.nodes.Single(n => n.id == "ScrapNode");
+            // Beside the Scrap cart, as the guide lays it out: cart behind, depot in front.
+            Vector2Int stall = world.Setup.HomeSpot(ItemType.Scrap).Value;
             var golemCell = new Vector2Int(stall.x, stall.y + 1);
             world.Build.SetActivePrefab(world.Placeables.Single(p => p.Key == "BoilerPrefab").Prefab);
             world.Build.PlaceOrRemove(golemCell + new Vector2Int(1, 0));
@@ -82,6 +82,8 @@ namespace GolemFactory.Tests.Steam
             Assert.AreNotEqual(GolemState.Stalled, golem.Program.State, $"precondition: working, not stalled ({golem.StallReason})");
             Assert.AreEqual(SteamGaugeUtility.CokePerMinutePerGolem, 100 - boiler.CokeStock, 1,
                 "about 3 Coke in a minute of work");
+            Assert.AreEqual(100 - boiler.CokeStock, world.Consumption.Totals[ItemType.Coke],
+                "every Coke burned is spent (docs/supply-design.md §4)");
         }
     }
 }

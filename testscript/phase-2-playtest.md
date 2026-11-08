@@ -16,9 +16,8 @@ sections apply here unchanged.
 
 1. **A player who has never played Golem Factory.** Not the developer, and not someone who
    watched a session. Tell them only: "Follow the guide. Think aloud if you like."
-2. **A fresh game.** Move `save.json` out of the user folder
-   (`%APPDATA%\Godot\app_userdata\Golem Factory\`) and put it back afterwards, so the guide
-   starts at step 1. Playtest mode on
+2. **A fresh game.** Choose New game on the title, so the guide starts at step 1; the saves in
+   their slots are left alone. Playtest mode on
    (`"playtest": true` in `godot/data/sandbox.json`), so the report writes.
 3. **No F9 in chapters 1–4.** The report records every kit use; a kit use before chapter 5 voids
    the timing, but the session's notes still count.

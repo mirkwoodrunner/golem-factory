@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using Godot;
 using GolemFactory.Buildings;
 using GolemFactory.Golems;
@@ -71,7 +72,7 @@ namespace GolemFactory.Nodes
                 }
                 string cost = UI.ConstructionCostPolicy.FormatCost(chassis.cost);
                 return Station.CanAfford(chassis)
-                    ? $"[E] Build a {chassis.name} ({cost})"
+                    ? $"[{KeyNames.Interact}] Build a {chassis.name} ({cost})"
                     : $"Can't afford a {chassis.name} ({cost})";
             }
         }

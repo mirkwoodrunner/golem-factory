@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using GolemFactory.PunchCards;
 
 namespace GolemFactory.Save
 {
@@ -38,16 +39,129 @@ namespace GolemFactory.Save
         public ProgressEntry progress;
 
         /// <summary>
-        /// The market street: what each stall holds and the carts on the road (Phase 3
-        /// critique). Null in a save written before it, and a load then leaves the street as it is.
+        /// The truckload market's stalls and the carts on their road, from a save written before
+        /// supply carts. Never written now: a load reads it once, to turn each stall into a cart
+        /// (docs/supply-design.md §5, <c>Supply.SupplyMigration</c>).
         /// </summary>
         public MarketEntry market;
+
+        /// <summary>
+        /// The street's supply carts (docs/supply-design.md §5): one entry per spot with a cart.
+        /// Null in a save written before carts: a load then migrates its stalls, or, with none,
+        /// starts the street as a new game does.
+        /// </summary>
+        public List<SupplyCartEntry> supply;
+
+        /// <summary>
+        /// The City Office's contracts (docs/contracts-design.md §7). Null in a save from before
+        /// contracts: the sequence then starts at its first contract, nothing delivered.
+        /// </summary>
+        public ContractsEntry contracts;
+
+        /// <summary>The civic works (docs/endless-design.md §1.2). Null in an older save: the first work, from its start.</summary>
+        public CivicEntry civic;
+
+        /// <summary>
+        /// What a save slot shows about this save (docs/menus-design.md §7): when it was written,
+        /// where the guide was, how big the factory is. Null in a save from before slots; a slot
+        /// then falls back to the file's own time. Nothing here is read back into the world.
+        /// </summary>
+        public MetaEntry meta;
+
+        /// <summary>
+        /// A Creative world's save (docs/menus-design.md §9). Absent, false, in every save before
+        /// Creative, which were all campaign games. A load refuses a save of the other kind.
+        /// </summary>
+        public bool creative;
     }
 
     /// <summary>
-    /// The stalls' stock and the truckloads in flight, as parallel lists like
-    /// <see cref="BufferEntry"/>. A truckload keeps the ticks it still has to travel, since a
-    /// save keeps no tick count.
+    /// The contract board: the contracts done (by name, in order) and which earned their bonus,
+    /// the one on the notice and how far it has got, and the rewards waiting on the shelf. The
+    /// par is saved as ticks elapsed, since the clock's tick count starts again at a load.
+    /// </summary>
+    [Serializable]
+    public sealed class ContractsEntry
+    {
+        public List<string> done = new List<string>();
+        public List<string> bonusEarned = new List<string>();
+
+        /// <summary>The contract on the notice, or null while the office waits.</summary>
+        public string current;
+
+        /// <summary><c>Contracts.ContractState</c> by value: 0 waiting, 1 posted, 2 taken.</summary>
+        public int state;
+
+        public long elapsedTicks;
+        public List<string> deliveredItems = new List<string>();
+        public List<int> deliveredCounts = new List<int>();
+        public List<string> shelfItems = new List<string>();
+        public List<int> shelfCounts = new List<int>();
+        public List<string> shelfRungItems = new List<string>();
+
+        /// <summary><c>Contracts.ContractRungKind</c> by value: 1 Rate, 2 Capacity.</summary>
+        public List<int> shelfRungKinds = new List<int>();
+    }
+
+    /// <summary>The civic works: the one under way by name, works built, and its stage and progress.</summary>
+    [Serializable]
+    public sealed class CivicEntry
+    {
+        public string work;
+        public int worksBuilt;
+        public int stageIndex;
+        public long progressUnits;
+    }
+
+    /// <summary>A save's summary for its slot: display only, never restored.</summary>
+    [Serializable]
+    public sealed class MetaEntry
+    {
+        /// <summary>
+        /// When it was written, in UTC and the round-trip format ("o"): the file's own time
+        /// changes when the file is copied, this doesn't.
+        /// </summary>
+        public string savedAtUtc;
+
+        /// <summary>Written by the game, not the player: on quit, or when a tower stage completes.</summary>
+        public bool autosave;
+
+        /// <summary>Why an autosave was made ("on quit", "Tower stage 2 complete"); empty for the player's own.</summary>
+        public string reason;
+
+        /// <summary>The guide's chapter and its title, or 0 when the guide is finished or put away.</summary>
+        public int chapter;
+        public string chapterTitle;
+
+        public int golems;
+        public int buildings;
+
+        /// <summary>Clock Tower stages completed, and whether the tower stands.</summary>
+        public int towerStagesDone;
+        public bool towerComplete;
+    }
+
+    /// <summary>
+    /// One supply cart: its spot, its good, its two rungs, its stock and the trickle's remainder,
+    /// and what was paid for it, which a removal refunds half of.
+    /// </summary>
+    [Serializable]
+    public sealed class SupplyCartEntry
+    {
+        public int x;
+        public int y;
+        public string itemType;
+        public int rateRung;
+        public int capacityRung;
+        public int stock;
+        public long accumulator;
+        public List<RecipeIngredient> addPaid = new List<RecipeIngredient>();
+        public List<RecipeIngredient> rungsPaid = new List<RecipeIngredient>();
+    }
+
+    /// <summary>
+    /// A pre-cart save's stalls' stock and the truckloads in flight, as parallel lists like
+    /// <see cref="BufferEntry"/>. Read only by the migration to carts.
     /// </summary>
     [Serializable]
     public sealed class MarketEntry
@@ -73,6 +187,15 @@ namespace GolemFactory.Save
         public List<string> ledgerBuildings = new List<string>();
         public List<string> ledgerCards = new List<string>();
         public int ledgerTowerStages;
+
+        /// <summary>
+        /// Every good golems have made since the game began (docs/endless-design.md §3): the
+        /// overview's running total. Absent in an older save, so 0: that game counts from its load.
+        /// </summary>
+        public long goodsMadeEver;
+
+        /// <summary>Rows bought north of the Docks' opening floor (docs/region-design.md). Absent in an older save: 0.</summary>
+        public int docksRows;
         public int floorNorthExtent;
         public int assemblyBayTier = 1;
 

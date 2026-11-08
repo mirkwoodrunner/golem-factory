@@ -18,6 +18,28 @@ namespace GolemFactory.Diagnostics
         public int Golems = 96;
         public int BeltItems = 500;
         public int Boilers = 12;
+
+        /// <summary>
+        /// The larger load endless play is measured at (docs/endless-design.md §4): 160 golems,
+        /// 800 belt items and 20 boilers, the whole floor bought.
+        /// </summary>
+        public static EndgameLoadSpec Endless => ForGolems(160);
+
+        /// <summary>
+        /// A load of <paramref name="golems"/> golems, in proportion to the endgame's: five belt items
+        /// a golem, and the boilers the layout lays (one on the street, one per eight workshop
+        /// golems), for measuring where the budget holds between 96 and 160.
+        /// </summary>
+        public static EndgameLoadSpec ForGolems(int golems)
+        {
+            int workshop = golems - EndgameLoad.StallColumns.Length;
+            return new EndgameLoadSpec
+            {
+                Golems = golems,
+                BeltItems = 5 * golems,
+                Boilers = 1 + (workshop + Steam.SteamNetwork.MaxGolemsPerBoiler - 1) / Steam.SteamNetwork.MaxGolemsPerBoiler,
+            };
+        }
     }
 
     /// <summary>
@@ -29,7 +51,7 @@ namespace GolemFactory.Diagnostics
     /// and the Core benchmark profile the same factory.
     ///
     /// <para>
-    /// <b>The layout.</b> The street: eight Scavengers extract from eight stalls (y −16) into
+    /// <b>The layout.</b> The street: eight Scavengers extract from eight carts (y −16) into
     /// crates in front (y −14), on one boiler. The workshop, y 5–19: nine rows of golems facing
     /// east, crate between each pair (x −11..9), so each golem's target crate is the next one's
     /// source: a chain, ordered so a golem's feeder can usually push the good it wants, as a
@@ -39,11 +61,11 @@ namespace GolemFactory.Diagnostics
     /// </para>
     ///
     /// <para>
-    /// <b>Not Creative Mode.</b> The spec asked for it so the stalls never empty, but Creative
+    /// <b>Not Creative Mode.</b> The spec asked for it so the carts never empty, but Creative
     /// Mode is chosen when the world is composed (<c>sandbox.json</c>), and the perf scenario runs
-    /// the real one. Creative Mode does nothing else (it leaves steam burn and crates alone:
-    /// <c>SandboxSetup.RegisterNodes</c> and the market are its only readers), so the load gives
-    /// each stall it uses a truckload of a million instead: the same effect.
+    /// the real one. Each cart is bought at its old stall's place (the starting Scrap cart is
+    /// already there) and given a million of its good instead: the same effect. A load never
+    /// clamps, so the cart simply holds more than its capacity and doesn't trickle.
     /// </para>
     /// </summary>
     public static class EndgameLoad
@@ -110,7 +132,7 @@ namespace GolemFactory.Diagnostics
             ["Z"] = new RoleDef { Role = Zeppelin, Chassis = Zep, Launch = true, Hauls = new[] { (ItemType.Coke, 4) } },
         };
 
-        /// <summary>The street's stalls, west to east, an extractor each.</summary>
+        /// <summary>The street's carts, west to east, an extractor each: the old stalls' places.</summary>
         public static readonly int[] StallColumns = { -16, -12, -8, -4, 0, 4, 8, 12 };
 
         public const int StallRow = -16;
@@ -139,8 +161,20 @@ namespace GolemFactory.Diagnostics
                 Grant(world, world.FloorExpansion.NextCost());
                 Require(world.FloorExpansion.TryPurchaseExpansion(), "floor: " + world.FloorExpansion.LastStatusMessage);
             }
+            // A load past the golem cap measures where the cap should be (endless-design §4): the
+            // bays are uncapped for it, as they were before the cap existed.
+            if (spec.Golems + world.AssemblyBay.OccupiedSlots > world.AssemblyBay.GolemCap)
+            {
+                world.AssemblyBay.ConfigureTiers(0, null);
+            }
             while (world.AssemblyBay.MaxGolemSlots < spec.Golems + world.AssemblyBay.OccupiedSlots)
             {
+                // The campaign's tiers stop short of the cap until the tower stands; a load measures
+                // the frame, not the progression, so it lifts them too.
+                if (world.AssemblyBay.IsMaxed)
+                {
+                    world.AssemblyBay.ConfigureTiers(0, null);
+                }
                 Grant(world, world.AssemblyBay.UpgradeCost);
                 Require(world.AssemblyBay.TryUpgrade(world.Buffers, world.StockpileBufferId, SandboxWorld.PostBufferId), "bay upgrade");
             }
@@ -168,9 +202,15 @@ namespace GolemFactory.Diagnostics
             }
             foreach (int x in StallColumns)
             {
-                ResourceNodeMarker stall = world.Markers.First(m => (int)Math.Round(m.Position.x) == x && (int)Math.Round(m.Position.y) == StallRow);
-                world.Nodes.TryGetNode(stall.NodeId, out ResourceNode node);
-                node?.Deliver(1000000);
+                Supply.CartSpot spot = world.Supply.SpotAt(new Vector2Int(x, StallRow));
+                Require(spot != null, $"no cart spot at x {x}");
+                if (spot.IsEmpty)
+                {
+                    string good = world.Setup.supply.legacyStalls.First(s => s.x == x && s.y == StallRow).itemType;
+                    Supply.SupplyResult added = world.GrantCart(spot.Cell, good);
+                    Require(added.Done, $"cart at x {x}: {added.Message}");
+                }
+                spot.Cart.Node.Deliver(1000000);
 
                 Place(world, load, "SteamPipePrefab", new Vector2Int(x + 1, golemRow), Facing.North);
                 Place(world, load, "SteamPipePrefab", new Vector2Int(x + 1, crateRow), Facing.North);
@@ -188,6 +228,11 @@ namespace GolemFactory.Diagnostics
 
         private static void BuildWorkshop(SandboxWorld world, EndgameLoadResult load, int golems)
         {
+            if (golems > ChainRows(Rows.Length))
+            {
+                BuildLargeWorkshop(world, load, golems);
+                return;
+            }
             var golemRows = new List<int>();
             int built = 0;
             for (int band = 0; golemRows.Count < Rows.Length; band++)
@@ -224,40 +269,121 @@ namespace GolemFactory.Diagnostics
 
             for (int r = 0; r < Rows.Length; r++)
             {
-                int y = golemRows[r];
-                string[] row = Rows[r];
-                for (int i = 0; i < row.Length && built < golems; i++, built++)
+                BuildChainRow(world, load, Rows[r], golemRows[r], golems, ref built);
+            }
+        }
+
+        /// <summary>Golems the first <paramref name="rows"/> chain rows hold.</summary>
+        private static int ChainRows(int rows) => Rows.Take(rows).Sum(r => r.Length);
+
+        /// <summary>
+        /// Past the 96-golem layout (endless-design §4): the same chains, repeated, on every band the
+        /// whole floor holds. North of the starter buildings, bands every three rows from
+        /// <see cref="FirstBand"/> to the floor's north edge; then south of them, two bands from
+        /// <see cref="SouthBand"/>. One steam network: each band's pipe row, joined by the column at
+        /// <see cref="PipeColumn"/>, with a boiler at each golem row's east end and, past those, at the
+        /// pipe rows' west ends.
+        /// </summary>
+        private static void BuildLargeWorkshop(SandboxWorld world, EndgameLoadResult load, int golems)
+        {
+            var bands = new List<int>();
+            for (int y = FirstBand; y + 1 <= world.Bounds.NorthExtent; y += 3)
+            {
+                bands.Add(y);
+            }
+            bands.Add(SouthBand);
+            bands.Add(SouthBand + 3);
+
+            var golemRows = new List<int>();
+            var pipeRows = new List<int>();
+            foreach (int y in bands)
+            {
+                pipeRows.Add(y + 1);
+                golemRows.Add(y);
+                if (y + 2 <= world.Bounds.NorthExtent)
                 {
-                    RoleDef role = Roles[row[i]];
-                    int x = ChainWest + 1 + 2 * i;
-                    var source = new Vector2Int(x - 1, y);
-                    var target = new Vector2Int(x + 1, y);
-
-                    PlaceableBuilding sourceCrate = load.BuildingOn(source) ?? Place(world, load, "DepotPrefab", source, Facing.North);
-                    string carried = PreviousPush(world, row, i);
-                    load.Feed(sourceCrate.GetPart<ICrate>(), role.Hauls.Select(h => h.good ?? carried));
-                    if (role.Launch)
-                    {
-                        load.OutputOnly.Add(Place(world, load, "FreightMastPrefab", target, Facing.North).GetPart<ICrate>());
-                    }
-                    else if (load.BuildingOn(target) == null)
-                    {
-                        PlaceableBuilding crate = Place(world, load, "DepotPrefab", target, Facing.North);
-                        if (i == row.Length - 1)
-                        {
-                            load.OutputOnly.Add(crate.GetPart<ICrate>());
-                        }
-                    }
-
-                    GolemEntity golem = Construct(world, role.Chassis);
-                    golem.SetPlacement(new Vector2Int(x, y), Facing.East);
-                    Program(world, golem, "AlwaysOnCore", Steps(role, carried));
-                    if (role.Launch)
-                    {
-                        golem.BindToNearestMast();
-                    }
-                    load.Add(role.Role, golem);
+                    golemRows.Add(y + 2);
                 }
+            }
+            int rows = 0;
+            while (rows < golemRows.Count && RowCapacity(rows) < golems)
+            {
+                rows++;
+            }
+            Require(RowCapacity(rows) >= golems, $"the floor holds {RowCapacity(golemRows.Count)} chain golems, wanted {golems}");
+            golemRows = golemRows.Take(rows).ToList();
+            pipeRows = pipeRows.Where(p => golemRows.Any(r => System.Math.Abs(r - p) == 1)).ToList();
+
+            foreach (int y in pipeRows)
+            {
+                for (int x = ChainWest; x <= PipeColumn; x++)
+                {
+                    Place(world, load, "SteamPipePrefab", new Vector2Int(x, y), Facing.North);
+                }
+            }
+            for (int y = pipeRows.Min() + 1; y < pipeRows.Max(); y++)
+            {
+                if (!pipeRows.Contains(y))
+                {
+                    Place(world, load, "SteamPipePrefab", new Vector2Int(PipeColumn, y), Facing.North);
+                }
+            }
+
+            var boilers = golemRows.Select(y => new Vector2Int(PipeColumn - 1, y))
+                .Concat(pipeRows.Select(y => new Vector2Int(ChainWest - 1, y))).ToList();
+            int needed = (golems + SteamNetwork.MaxGolemsPerBoiler - 1) / SteamNetwork.MaxGolemsPerBoiler;
+            Require(boilers.Count >= needed, $"room for {boilers.Count} boilers, wanted {needed}");
+            foreach (Vector2Int cell in boilers.Take(needed))
+            {
+                Place(world, load, "BoilerPrefab", cell, Facing.North);
+            }
+
+            int built = 0;
+            for (int r = 0; r < golemRows.Count; r++)
+            {
+                BuildChainRow(world, load, Rows[r % Rows.Length], golemRows[r], golems, ref built);
+            }
+        }
+
+        /// <summary>Golems the first <paramref name="rows"/> rows of the repeated chains hold.</summary>
+        private static int RowCapacity(int rows) => Enumerable.Range(0, rows).Sum(r => Rows[r % Rows.Length].Length);
+
+        /// <summary>The second band group, south of the starter station and bench: rows −10 to −5.</summary>
+        public const int SouthBand = -10;
+
+        private static void BuildChainRow(SandboxWorld world, EndgameLoadResult load, string[] row, int y, int golems, ref int built)
+        {
+            for (int i = 0; i < row.Length && built < golems; i++, built++)
+            {
+                RoleDef role = Roles[row[i]];
+                int x = ChainWest + 1 + 2 * i;
+                var source = new Vector2Int(x - 1, y);
+                var target = new Vector2Int(x + 1, y);
+
+                PlaceableBuilding sourceCrate = load.BuildingOn(source) ?? Place(world, load, "DepotPrefab", source, Facing.North);
+                string carried = PreviousPush(world, row, i);
+                load.Feed(sourceCrate.GetPart<ICrate>(), role.Hauls.Select(h => h.good ?? carried));
+                if (role.Launch)
+                {
+                    load.OutputOnly.Add(Place(world, load, "FreightMastPrefab", target, Facing.North).GetPart<ICrate>());
+                }
+                else if (load.BuildingOn(target) == null)
+                {
+                    PlaceableBuilding crate = Place(world, load, "DepotPrefab", target, Facing.North);
+                    if (i == row.Length - 1)
+                    {
+                        load.OutputOnly.Add(crate.GetPart<ICrate>());
+                    }
+                }
+
+                GolemEntity golem = Construct(world, role.Chassis);
+                golem.SetPlacement(new Vector2Int(x, y), Facing.East);
+                Program(world, golem, "AlwaysOnCore", Steps(role, carried));
+                if (role.Launch)
+                {
+                    golem.BindToNearestMast();
+                }
+                load.Add(role.Role, golem);
             }
         }
 

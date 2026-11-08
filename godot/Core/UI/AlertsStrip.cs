@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using GolemFactory.Diagnostics;
 using GolemFactory.Golems;
+using GolemFactory.Overview;
 
 namespace GolemFactory.UI
 {
@@ -53,6 +54,12 @@ namespace GolemFactory.UI
         /// </summary>
         public TileNames Names { get; set; }
 
+        /// <summary>Every stop so far, newest first (docs/menus-design.md §8), fed by each reconcile.</summary>
+        public AlertLog Log { get; } = new AlertLog();
+
+        /// <summary>The player's seconds since the strip began: the log's clock.</summary>
+        public float Seconds { get; private set; }
+
         /// <summary>Golems stalled but waiting on the factory (grey), as of the last reconcile.</summary>
         public int WaitingCount { get; private set; }
 
@@ -63,6 +70,7 @@ namespace GolemFactory.UI
         /// <summary>Per frame (real time): reconcile on the interval.</summary>
         public void Update(float seconds)
         {
+            Seconds += seconds;
             _untilReconcile -= seconds;
             if (_untilReconcile <= 0f)
             {
@@ -103,6 +111,15 @@ namespace GolemFactory.UI
             }
             _tracker.Reconcile(_snapshots);
             WaitingCount = waiting;
+            Log.Observe(Seconds, _snapshots, Describe);
+        }
+
+        /// <summary>A stop's sentence, as the strip would say it, in player names when it can.</summary>
+        private string Describe(StallSnapshot stall)
+        {
+            GolemEntity golem = Find(stall.GolemId);
+            string description = golem != null && Names != null ? StallDiagnostics.Describe(golem, stall, Names) : null;
+            return description ?? StallDiagnostics.ComposeStripText(1, stall);
         }
 
         private GolemEntity Find(string golemId)

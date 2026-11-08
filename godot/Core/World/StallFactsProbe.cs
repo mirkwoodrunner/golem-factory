@@ -17,7 +17,7 @@ namespace GolemFactory.World
     /// <summary>
     /// Reads the facts a stalled golem's triage needs from the world around it
     /// (docs/onboarding-feedback-design.md §3.2): does something feed the tile behind it, drain
-    /// the tile in front, is a truckload on its way. Presentation-side and read-only; it runs
+    /// the tile in front, does the cart behind refill itself. Presentation-side and read-only; it runs
     /// only for a stalled golem, so a running factory pays nothing.
     ///
     /// <para>
@@ -31,15 +31,16 @@ namespace GolemFactory.World
         private readonly Func<IEnumerable<GolemEntity>> _golems;
         private readonly SpatialEndpointRegistry _endpoints;
         private readonly BeltNetwork _belts;
-        private readonly Func<TruckloadMarket> _market;
+        private readonly Func<string, bool> _refills;
 
+        /// <param name="refills">Whether a node id is a cart that refills itself; null, none does.</param>
         public StallFactsProbe(Func<IEnumerable<GolemEntity>> golems, SpatialEndpointRegistry endpoints,
-            BeltNetwork belts, Func<TruckloadMarket> market = null)
+            BeltNetwork belts, Func<string, bool> refills = null)
         {
             _golems = golems;
             _endpoints = endpoints;
             _belts = belts;
-            _market = market;
+            _refills = refills;
         }
 
         /// <summary>
@@ -64,6 +65,7 @@ namespace GolemFactory.World
 
         private bool _indexed;
         private long _indexFrame;
+        private long _indexEpoch = -1;
 
         // What each golem looked like when the indices were built, in roster order.
         private readonly List<IndexedGolem> _indexedAs = new List<IndexedGolem>();
@@ -150,10 +152,16 @@ namespace GolemFactory.World
         {
             IEnumerable<GolemEntity> golems = _golems?.Invoke() ?? Enumerable.Empty<GolemEntity>();
             long? frame = Frame?.Invoke();
-            if (frame.HasValue && _indexed && _indexFrame == frame.Value && !IndexStale(golems))
+            // Within a frame the index stands until a golem's layout changes (GolemLayout): the
+            // per-read walk over every golem made a starved frame cost the square of the golem
+            // count (endless-design §4). Each new frame still rebuilds it whole.
+            if (frame.HasValue && _indexed && _indexFrame == frame.Value
+                && (_indexEpoch == GolemLayout.Epoch || !IndexStale(golems)))
             {
+                _indexEpoch = GolemLayout.Epoch;
                 return;
             }
+            _indexEpoch = GolemLayout.Epoch;
             _indexed = frame.HasValue;
             _indexFrame = frame ?? 0;
             _indexedAs.Clear();
@@ -220,12 +228,12 @@ namespace GolemFactory.World
             string wanted = WantedGood(golem, step, source);
 
             bool sourceGives = Gives(source);
-            bool truckload = source is ResourceNodeEndpoint node && node.Node != null &&
-                             (_market?.Invoke()?.IsInTransit(node.Node.NodeId) ?? false);
+            bool refills = source is ResourceNodeEndpoint node && node.Node != null &&
+                           (_refills?.Invoke(node.Node.NodeId) ?? false);
             return new StallFacts(action, sourceGives,
                 sourceGives && IsFed(golem, source, wanted),
                 IsDrained(golem, target),
-                truckload,
+                refills,
                 wanted);
         }
 

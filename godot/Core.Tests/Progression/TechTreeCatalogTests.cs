@@ -575,9 +575,11 @@ namespace GolemFactory.Tests.EditMode
 
             SandboxSetup setup = World.SandboxSetupTests.LoadReal();
             string[] counts = { "zero", "one", "two", "three", "four", "five", "six", "seven" };
+            // The campaign's ladder: the Ledger node is the campaign's (endless rungs come after the tower).
+            List<PackUpgradeRung> campaign = setup.packUpgrades.Where(r => !r.endless).ToList();
             Assert.AreEqual(
-                $"Carries {setup.packCapacityPerType} · up to {setup.packUpgrades.Last().capacityPerType} in "
-                + $"{counts[setup.packUpgrades.Count]} upgrades",
+                $"Carries {setup.packCapacityPerType} · up to {campaign.Last().capacityPerType} in "
+                + $"{counts[campaign.Count]} upgrades",
                 Node("pack.upgrades").Detail);
             StringAssert.StartsWith(
                 $"+{setup.floorExpansion.rowsPerPurchase} rows · {counts[setup.floorExpansion.purchases.Count]} purchases",

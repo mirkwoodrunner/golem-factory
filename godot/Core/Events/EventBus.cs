@@ -210,25 +210,15 @@ namespace GolemFactory.Events
         public GolemResumedEvent(string golemId) => GolemId = golemId;
     }
 
-    // FRESH PRODUCTION (docs/progression-design.md §7). Published the moment an Assemble step
-    // actually completes and its product lands in the golem's output stock -- once for the
-    // output and, separately, once for the byproduct, because R4 producing Slag is genuinely
-    // fresh Slag and the Clock Tower has to be able to say so.
+    // FRESH PRODUCTION. Published the moment an Assemble step actually completes and its product
+    // lands in the golem's output stock -- once for the output and, separately, once for the
+    // byproduct, because R4 producing Slag is genuinely fresh Slag. The Ledger's "made" and the
+    // overview's graph count it (ProductionTally). The Clock Tower used to cap a stage at this
+    // rate; it no longer does, any source counts there (docs/contracts-design.md §11).
     //
-    // THIS EXISTS FOR EXACTLY ONE REASON: it is the signal that closes the hoard-blitz hole.
-    // The tower's multiplier is min(deliveryRate, freshProductionRate) over 60 s windows, and
-    // without a "something was genuinely made just now" signal a warehouse dump is
-    // indistinguishable from a running factory -- a player could over-produce stage-4 goods
-    // during stages 1-3 and unload at 3x to finish the climax in three minutes.
-    //
-    // ONLY Assemble publishes this. Not Haul, not Push (those move goods that already existed,
-    // which is the very thing being guarded against), and not the legacy id-routed Refine,
-    // which §1.3 superseded and which nothing new is built on.
-    //
-    // Carries the TICK rather than letting the listener stamp its own. The Clock Tower's
-    // windows are tick-keyed for determinism, and a listener that stamped arrivals with
-    // "whatever tick I last saw" would shift a production event by the gap between the golem's
-    // Tick and the tower's -- reproducible, but for no reason when the producer already knows.
+    // ONLY Assemble publishes this. Not Haul, not Push (those move goods that already existed),
+    // and not the legacy id-routed Refine, which §1.3 superseded and which nothing new is built
+    // on. Carries the tick its golem completed on.
     public readonly struct ItemAssembledEvent
     {
         public readonly string GolemId;
@@ -255,6 +245,74 @@ namespace GolemFactory.Events
             Quantity = quantity;
             Tick = tick;
             IsByproduct = isByproduct;
+        }
+    }
+
+    // A good used up by the factory (docs/supply-design.md §4, the overview's "goods spent"):
+    // a recipe's inputs when an Assemble or Refine begins, Coke a boiler burns, Slag a heap
+    // voids and the Coke it burns doing it, what a recycler takes and the Coke it burns, and
+    // what the Clock Tower is delivered. The counterpart of ItemAssembledEvent: like it, only
+    // the factory's own work counts, never the player's hands, the hand crank or a price paid.
+    // Moving a good (Haul, Extract, Push, a belt) spends nothing.
+    public readonly struct ItemConsumedEvent
+    {
+        public readonly string ItemType;
+        public readonly int Quantity;
+
+        public ItemConsumedEvent(string itemType, int quantity)
+        {
+            ItemType = itemType;
+            Quantity = quantity;
+        }
+    }
+
+    // What happened to a City Office contract (docs/contracts-design.md §5): the overview's alerts
+    // log it, and a completion rings. Never a failure: a contract has none (invariant 1).
+    public enum ContractEventKind
+    {
+        Posted = 0,
+        Accepted = 1,
+        Completed = 2,
+    }
+
+    public readonly struct ContractEvent
+    {
+        public readonly ContractEventKind Kind;
+
+        /// <summary>The contract's definition name, for tests and saves; never printed.</summary>
+        public readonly string ContractName;
+
+        /// <summary>Who asked, as the player reads it.</summary>
+        public readonly string Requester;
+
+        /// <summary>For a completion: whether it was within its par, so the bonus was earned.</summary>
+        public readonly bool BonusEarned;
+
+        public ContractEvent(ContractEventKind kind, string contractName, string requester, bool bonusEarned = false)
+        {
+            Kind = kind;
+            ContractName = contractName;
+            Requester = requester;
+            BonusEarned = bonusEarned;
+        }
+    }
+
+    // A civic work's stage built (docs/endless-design.md §1.2): the overview's alerts log it and a
+    // chime rings. Never the tower's event, whose listeners (fanfare, camera, autosave, Ledger)
+    // belong to the tower alone.
+    public readonly struct CivicStageCompletedEvent
+    {
+        public readonly string WorkName;
+        public readonly int StageNumber;
+        public readonly string StageName;
+        public readonly bool WorkFinished;
+
+        public CivicStageCompletedEvent(string workName, int stageNumber, string stageName, bool workFinished)
+        {
+            WorkName = workName;
+            StageNumber = stageNumber;
+            StageName = stageName;
+            WorkFinished = workFinished;
         }
     }
 
@@ -319,8 +377,24 @@ namespace GolemFactory.Events
         public static event Action<GolemResumedEvent> GolemResumed;
         public static event Action<GolemTriggerFiredEvent> GolemTriggerFired;
         public static event Action<ItemAssembledEvent> ItemAssembled;
+        public static event Action<ItemConsumedEvent> ItemConsumed;
         public static event Action<ClockTowerStageCompletedEvent> ClockTowerStageCompleted;
+        public static event Action<ContractEvent> Contract;
+        public static event Action<CivicStageCompletedEvent> CivicStageCompleted;
         public static event Action<WorldInteractablesChangedEvent> WorldInteractablesChanged;
+
+        /// <summary>
+        /// Every handler on the bus, for the test that a world leaves none behind
+        /// (SandboxWorld.Dispose): the bus is static, so a world that forgot to unsubscribe went
+        /// on reacting to the next world's events after a scene reload.
+        /// </summary>
+        public static int ListenerCount =>
+            Count(TickAdvanced) + Count(ThresholdCrossed) + Count(GolemCompleted) + Count(GolemStalled)
+            + Count(GolemResumed) + Count(GolemTriggerFired) + Count(ItemAssembled) + Count(ItemConsumed)
+            + Count(ClockTowerStageCompleted) + Count(WorldInteractablesChanged) + Count(Contract)
+            + Count(CivicStageCompleted);
+
+        private static int Count(Delegate handlers) => handlers?.GetInvocationList().Length ?? 0;
 
         public static void Publish(TickAdvancedEvent e) => TickAdvanced?.Invoke(e);
         public static void Publish(ThresholdCrossedEvent e) => ThresholdCrossed?.Invoke(e);
@@ -329,7 +403,18 @@ namespace GolemFactory.Events
         public static void Publish(GolemResumedEvent e) => GolemResumed?.Invoke(e);
         public static void Publish(GolemTriggerFiredEvent e) => GolemTriggerFired?.Invoke(e);
         public static void Publish(ItemAssembledEvent e) => ItemAssembled?.Invoke(e);
+
+        /// <summary>Publishes a use of <paramref name="quantity"/>; nothing for none.</summary>
+        public static void Consumed(string itemType, int quantity)
+        {
+            if (quantity > 0 && !string.IsNullOrEmpty(itemType))
+            {
+                ItemConsumed?.Invoke(new ItemConsumedEvent(itemType, quantity));
+            }
+        }
         public static void Publish(ClockTowerStageCompletedEvent e) => ClockTowerStageCompleted?.Invoke(e);
+        public static void Publish(ContractEvent e) => Contract?.Invoke(e);
+        public static void Publish(CivicStageCompletedEvent e) => CivicStageCompleted?.Invoke(e);
         public static void Publish(WorldInteractablesChangedEvent e) => WorldInteractablesChanged?.Invoke(e);
     }
 }

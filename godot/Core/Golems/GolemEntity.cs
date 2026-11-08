@@ -311,6 +311,7 @@ namespace GolemFactory.Golems
         {
             cell = placedCell;
             facing = placedFacing;
+            GolemLayout.Changed();
             // The steam grid is keyed by cell, so moving a golem has to move its registration or
             // it keeps drawing power from wherever it used to stand. RegisterConsumer is
             // idempotent and re-sorts only when the cell actually changed. NOT while held: R
@@ -338,6 +339,7 @@ namespace GolemFactory.Golems
         public void SetFacing(Facing placedFacing)
         {
             facing = placedFacing;
+            GolemLayout.Changed();
             ReleaseNodeClaim();
         }
 
@@ -419,6 +421,7 @@ namespace GolemFactory.Golems
             }
             Detach();
             IsRemoved = true;
+            GolemLayout.Changed();
         }
 
         private void OnGolemCompletedForSignal(GolemCompletedEvent e)
@@ -441,6 +444,7 @@ namespace GolemFactory.Golems
         public void SetHeld(bool held)
         {
             IsHeld = held;
+            GolemLayout.Changed();
             // A held golem stops costing Coke. Its Cell is stale by definition -- it is in the
             // player's hands, not on the tile its routing names -- so leaving it registered
             // would have a boiler paying upkeep for a golem that is not standing anywhere, and
@@ -864,8 +868,8 @@ namespace GolemFactory.Golems
         private void CompleteStep(AppendageActionDefinition step)
         {
             // A Repeat iteration finishing IS the borrowed Assemble finishing, products,
-            // ItemAssembledEvent and all -- the Clock Tower's fresh-production window must
-            // count a repeated batch exactly as it counts a single one.
+            // ItemAssembledEvent and all -- the Ledger's "made" must count a repeated batch
+            // exactly as it counts a single one.
             if (step.actionType == AppendageActionType.Repeat)
             {
                 if (_repeatedAssemble != null)
@@ -904,16 +908,12 @@ namespace GolemFactory.Golems
                 // in one step (progression-design §2, Consequence 3).
                 _inventory.AddOutput(recipe.outputItemType, recipe.outputQuantity);
 
-                // FRESH PRODUCTION (progression-design §7). This is the exact moment a good comes
-                // into existence, and it is the only such moment in the game: Haul and Push move
-                // goods that already existed, which is precisely what the Clock Tower's
-                // hoard-blitz rule has to be able to tell apart from making them. Published here
-                // rather than at Begin because nothing exists until the recipe has actually run
-                // its duration -- crediting at withdrawal would let a stalled 120-tick
-                // Chronometer Core count as production it never completed.
-                //
-                // The tick rides along so the tower's 60 s windows stay keyed to simulation time
-                // rather than to whenever a listener happened to hear about it.
+                // FRESH PRODUCTION. This is the exact moment a good comes into existence, and it
+                // is the only such moment in the game: Haul and Push move goods that already
+                // existed. The Ledger's "made" counts it (ProductionTally). Published here rather
+                // than at Begin because nothing exists until the recipe has actually run its
+                // duration -- crediting at withdrawal would let a stalled 120-tick Chronometer
+                // Core count as production it never completed.
                 EventBus.Publish(new ItemAssembledEvent(
                     golemId, recipe.outputItemType, recipe.outputQuantity, _currentTick));
 
@@ -1335,7 +1335,20 @@ namespace GolemFactory.Golems
         /// built closer later changes nothing, and no per-tick search can make two identical
         /// factories diverge.
         /// </summary>
-        public Vector2Int? BoundMastCell { get; private set; }
+        public Vector2Int? BoundMastCell
+        {
+            get => _boundMast;
+            private set
+            {
+                if (_boundMast != value)
+                {
+                    _boundMast = value;
+                    GolemLayout.Changed();
+                }
+            }
+        }
+
+        private Vector2Int? _boundMast;
 
         private FreightMastRegistry _mastRegistry;
 
@@ -1742,6 +1755,7 @@ namespace GolemFactory.Golems
             for (int i = 0; i < ingredients.Count; i++)
             {
                 _inventory.TryConsumeInput(ingredients[i].itemType, ingredients[i].quantity);
+                EventBus.Consumed(ingredients[i].itemType, ingredients[i].quantity);
             }
 
             return StallReason.None;
@@ -1777,6 +1791,7 @@ namespace GolemFactory.Golems
                 blockedResourceId = step.sourceId;
                 return StallReason.BufferEmpty;
             }
+            EventBus.Consumed(step.inputItemType, 1);
 
             return StallReason.None;
         }

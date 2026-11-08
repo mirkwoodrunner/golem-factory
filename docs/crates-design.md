@@ -264,7 +264,8 @@ The invariants that were here are now §0. Checking the design against the code 
    are registry buffers, so it already does.
 3. **The Ledger's rates come from `ItemAssembledEvent`, not `GolemCompletedEvent`.** The old row
    named `GolemCompletedEvent`, which carries only a golem id. `ItemAssembledEvent` carries the
-   good, the quantity and the tick, and is the same fresh-production signal the Clock Tower uses.
+   good, the quantity and the tick. (The Clock Tower read it too, until any source counted there:
+   `contracts-design.md` §11.)
 4. **There is no HUD inventory in the Sandbox.** The old row "HUD inventory: the stockpile → the
    pack" has nothing to change: the only stock views are Management's Inventory tab, the
    construction panel's stock line and the build menu's tooltips. The pack gets its own screen
@@ -532,8 +533,7 @@ Checked and kept, with the reasons:
   stay in the golem's stock.
 - **The Ledger's rates count no extraction and no bench craft.** A Ledger rate belongs to a
   recipe node, and extraction has none, so an extraction-only line has no rate that could read
-  zero. A bench craft is the player's hands, not the factory's production, which matches the
-  Clock Tower's rule for fresh goods.
+  zero. A bench craft is the player's hands, not the factory's production.
 - **A depot with an explicit `bufferId`** (a Post crate, or a test's `FactoryStockpile`) does not
   own its buffer. Demolishing it refunds its cost only, and neither `RefundFor` nor
   `StorageBufferRegistry.Remove` touches the shared buffer.

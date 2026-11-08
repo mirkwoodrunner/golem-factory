@@ -17,9 +17,9 @@ namespace GolemFactory.ClockTower
     ///
     /// <para>
     /// THE CLAMP AT 60 IS THE ANTI-HOARD CAP on *stock*: no matter how much a player dumps in
-    /// at once, only a minute's worth of pressure is ever banked. It is not the whole anti-hoard
-    /// rule, though -- delivering out of a warehouse is still a delivery rate, which is what
-    /// <c>ClockTowerProgress.EffectiveRate</c>'s fresh-production floor exists to close.
+    /// at once, only a minute's worth of pressure is ever banked. Delivering out of a warehouse
+    /// is still a delivery rate, and since docs/contracts-design.md §11 that counts: a stockpile
+    /// runs a stage at 3x at best, never instantly.
     /// </para>
     /// </summary>
     public sealed class SupplyPressureMeter

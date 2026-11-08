@@ -4,26 +4,19 @@ using System.Globalization;
 namespace GolemFactory.ClockTower
 {
     /// <summary>
-    /// One demanded item's row of §8's readout: <c>Required / Delivered / Fresh / xmultiplier</c>.
-    ///
-    /// <para>
-    /// FOUR COLUMNS, NOT THREE, and the design says why in one sentence: "a player whose
-    /// multiplier is capped by *fresh production* rather than delivery needs to see exactly
-    /// that". Collapsing Delivered and Fresh into the effective rate would hide the single most
-    /// confusing state the tower can be in -- a full input buffer, goods arriving, and the bar
-    /// crawling, because the factory is emptying a warehouse rather than making anything.
-    /// </para>
+    /// One demanded item's row of §8's readout: <c>Required / Delivered / xmultiplier</c>. The
+    /// Fresh column went with the fresh-production rule (docs/contracts-design.md §11): what is
+    /// delivered is what counts.
     /// </summary>
     public readonly struct ClockTowerDemandReading
     {
         public ClockTowerDemandReading(
-            string itemType, int requiredPerMinute, int deliveredPerMinute, int freshPerMinute,
+            string itemType, int requiredPerMinute, int deliveredPerMinute,
             int multiplierMilli, int meterUnits, bool isStarved)
         {
             ItemType = itemType;
             RequiredPerMinute = requiredPerMinute;
             DeliveredPerMinute = deliveredPerMinute;
-            FreshPerMinute = freshPerMinute;
             MultiplierMilli = multiplierMilli;
             MeterUnits = meterUnits;
             IsStarved = isStarved;
@@ -37,10 +30,7 @@ namespace GolemFactory.ClockTower
         /// <summary>Units pushed into the tower over the last 60 s.</summary>
         public int DeliveredPerMinute { get; }
 
-        /// <summary>Units genuinely Assembled anywhere in the factory over the last 60 s.</summary>
-        public int FreshPerMinute { get; }
-
-        /// <summary>This line's own <c>clamp(effective/demand, 0, 3)</c>, in thousandths.</summary>
+        /// <summary>This line's own <c>clamp(delivered/demand, 0, 3)</c>, in thousandths.</summary>
         public int MultiplierMilli { get; }
 
         /// <summary>The supply-pressure meter, in whole units of <c>[0, 60]</c>.</summary>
@@ -49,10 +39,7 @@ namespace GolemFactory.ClockTower
         /// <summary>True when this line's meter has bottomed out and is freezing the stage.</summary>
         public bool IsStarved { get; }
 
-        /// <summary>
-        /// How many more items per minute this line needs. Measured against DELIVERY, because
-        /// the meter is fed by deliveries and by nothing else.
-        /// </summary>
+        /// <summary>How many more items per minute this line needs.</summary>
         public int DeficitPerMinute =>
             RequiredPerMinute > DeliveredPerMinute ? RequiredPerMinute - DeliveredPerMinute : 0;
     }
@@ -133,8 +120,7 @@ namespace GolemFactory.ClockTower
     /// §12's self-assessment makes this load-bearing rather than polish: cut the legibility
     /// surfaces and "the economy becomes invisible". A stage bar that crawls with no explanation
     /// is the single worst state Phase 6 can present, because every possible cause -- a starved
-    /// line, a capped multiplier, a warehouse standing in for a factory -- looks identical from
-    /// the outside.
+    /// line, a short line, a capped multiplier -- looks identical from the outside.
     /// </para>
     ///
     /// <para>
@@ -147,8 +133,8 @@ namespace GolemFactory.ClockTower
     /// </summary>
     public static class ClockTowerReadout
     {
-        /// <summary>Column header for the four-column demand table.</summary>
-        public const string DemandHeader = "Item  Req / Del / Fresh  Mult";
+        /// <summary>Column header for the demand table.</summary>
+        public const string DemandHeader = "Item  Req / Del  Mult";
 
         /// <summary>
         /// The stage line: <c>Stage 1 Foundation - 42% - x1.00</c>, or the win, or nothing at all
@@ -178,8 +164,8 @@ namespace GolemFactory.ClockTower
         }
 
         /// <summary>
-        /// One demand row: <c>FrameSection  6 / 4 / 9  x0.66</c>. Required, then Delivered, then
-        /// Fresh, then this line's own multiplier.
+        /// One demand row: <c>FrameSection  6 / 4  x0.66</c>. Required, then Delivered, then this
+        /// line's own multiplier.
         /// </summary>
         public static string FormatDemandRow(ClockTowerDemandReading demand)
         {
@@ -188,7 +174,6 @@ namespace GolemFactory.ClockTower
             return item +
                    "  " + demand.RequiredPerMinute.ToString(CultureInfo.InvariantCulture) +
                    " / " + demand.DeliveredPerMinute.ToString(CultureInfo.InvariantCulture) +
-                   " / " + demand.FreshPerMinute.ToString(CultureInfo.InvariantCulture) +
                    "  " + FormatMultiplier(demand.MultiplierMilli);
         }
 
@@ -229,11 +214,11 @@ namespace GolemFactory.ClockTower
             return FormatStarvedAlert(reading.StarvedItemType, reading.StarvedDeficitPerMinute);
         }
 
-        public static string FormatStarvedAlert(string itemType, int deficitPerMinute)
+        public static string FormatStarvedAlert(string itemType, int deficitPerMinute, string siteName = "Clock Tower")
         {
             string item = string.IsNullOrEmpty(itemType) ? "goods" : itemType;
 
-            string text = "[!] Clock Tower starved of " + item;
+            string text = "[!] " + siteName + " starved of " + item;
             if (deficitPerMinute > 0)
             {
                 text += " - needs " + deficitPerMinute.ToString(CultureInfo.InvariantCulture) +

@@ -22,6 +22,9 @@ namespace GolemFactory.UI
         Waiting,
         More,
         Pack,
+
+        /// <summary>The Docks' floor (docs/region-design.md §1). Appended.</summary>
+        Docks,
     }
 
     /// <summary>One row of the Assembly Line tab, decided; the screen only lays it out.</summary>
@@ -96,6 +99,23 @@ namespace GolemFactory.UI
 
         public void ConfigureFloorExpansion(FloorExpansionService floor) => _floor = floor;
 
+        /// <summary>The Docks' floor rows, shown once the Docks are open.</summary>
+        public void ConfigureDocks(DocksExpansionService docks) => _docks = docks;
+
+        private DocksExpansionService _docks;
+
+        public bool ExtendDocks()
+        {
+            if (_docks == null)
+            {
+                Status = "No Docks in this scene.";
+                return false;
+            }
+            bool bought = _docks.TryPurchase();
+            Status = bought ? "" : _docks.LastStatusMessage;
+            return bought;
+        }
+
         public void ConfigurePackUpgrade(PackUpgradeService pack) => _pack = pack;
 
         /// <summary>
@@ -143,7 +163,19 @@ namespace GolemFactory.UI
 
             // FIRST, above the cards: the cap decides whether a claimed card can ever be put on
             // a golem, so a player who cannot build is looking for this line.
-            if (_bay != null)
+            if (_bay != null && _bay.IsMaxed)
+            {
+                // The golem cap (endless-design §4), or the campaign's top before the tower: the
+                // row says so rather than offering a button that always refuses.
+                rows.Add(new AssemblyLineRow
+                {
+                    Kind = AssemblyLineRowKind.Bay,
+                    Text = AssemblyBayRowPolicy.FormatOccupancy(_bay.OccupiedSlots, _bay.MaxGolemSlots)
+                           + "  ·  " + (_bay.MaxGolemSlots >= _bay.GolemCap ? "the most the city allows" : "more once the Clock Tower stands"),
+                    Bright = !_bay.HasFreeSlot,
+                });
+            }
+            else if (_bay != null)
             {
                 IReadOnlyList<RecipeIngredient> cost = _bay.UpgradeCost;
                 rows.Add(new AssemblyLineRow
@@ -153,7 +185,7 @@ namespace GolemFactory.UI
                            + "  ·  " + AssemblyBayRowPolicy.FormatUpgradeEffect(AssemblyBayStructure.SlotsPerUpgrade),
                     Bright = !_bay.HasFreeSlot,
                     CostText = AssemblyBayRowPolicy.FormatCost(cost),
-                    Affordable = AssemblyBayRowPolicy.CanAfford(StockpileOf, cost),
+                    Affordable = CanAfford(cost),
                     ButtonLabel = "Upgrade",
                 });
             }
@@ -173,6 +205,15 @@ namespace GolemFactory.UI
                     rows.Add(PricedRow(AssemblyLineRowKind.Floor, label + "  ·  +" + _floor.RowsPerPurchase + " rows north",
                         _floor.NextCost(), _floor.CanAfford(), "Extend"));
                 }
+            }
+
+            if (_docks?.Bounds != null && _docks.Bounds.DocksOpen)
+            {
+                string label = "Docks " + (Docks.East - Docks.West + 1) + "x" + (_docks.Bounds.DocksNorth - Docks.Bottom + 1);
+                rows.Add(_docks.CanExpand
+                    ? PricedRow(AssemblyLineRowKind.Docks, label + "  ·  +" + _docks.RowsPerPurchase + " rows north",
+                        _docks.NextCost(), _docks.CanAfford(), "Extend")
+                    : new AssemblyLineRow { Kind = AssemblyLineRowKind.Docks, Text = label + "  ·  fully extended" });
             }
 
             if (_pack != null && _pack.CapacityPerType > 0)
@@ -331,7 +372,8 @@ namespace GolemFactory.UI
         // The pack plus the Post: what the bay's charge (PlayerWallet.TryCharge) can spend.
         private int StockpileOf(string itemType) => _buffers == null ? 0 : new PlayerWallet(_buffers, _stockpile, _post).Quantity(itemType);
 
+        // What the charge (PlayerWallet.TryCharge) would take: Creative's waiver included.
         private bool CanAfford(IReadOnlyList<RecipeIngredient> price) =>
-            ConstructionCostPolicy.CanAfford(item => _buffers == null ? 0 : new PlayerWallet(_buffers, _wallet, _post).Quantity(item), price);
+            _buffers == null ? ConstructionCostPolicy.CanAfford(_ => 0, price) : new PlayerWallet(_buffers, _wallet, _post).CanAfford(price);
     }
 }

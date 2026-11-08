@@ -145,6 +145,8 @@ namespace GolemFactory.Steam
                 burned++;
             }
 
+            Events.EventBus.Consumed(Economy.ItemType.Coke, burned);
+
             // The `CokeStock > 0` guard is what keeps the stock off the floor: a boiler can
             // never pay with Coke it does not have. If it runs dry mid-crossing the leftover
             // accumulator STAYS -- it is upkeep genuinely incurred, and a later refuel settles

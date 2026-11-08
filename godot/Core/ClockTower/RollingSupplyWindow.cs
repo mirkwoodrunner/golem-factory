@@ -3,8 +3,8 @@ using System.Collections.Generic;
 namespace GolemFactory.ClockTower
 {
     /// <summary>
-    /// A rolling 60-second count of units, keyed by simulation tick -- one of the two windows
-    /// §7 asks for per demanded item (delivery, and fresh production).
+    /// A rolling 60-second count of units, keyed by simulation tick: the delivery window §7
+    /// asks for per demanded item.
     ///
     /// <para>
     /// FOLLOWS <c>Economy/BufferRateTracker</c>'s IDIOM -- a trimmed sample list, pruned strictly
@@ -13,7 +13,7 @@ namespace GolemFactory.ClockTower
     /// fits a slope through it, which is the right shape for "is this stock filling or draining"
     /// and the wrong shape here for two reasons. First, the tower needs a count of DISCRETE
     /// ARRIVAL EVENTS, not a level: nothing about the tower's input has a quantity to sample,
-    /// and fresh production has no stock at all, only a stream of completions. Second,
+    /// only a stream of deliveries. Second,
     /// BufferRateTracker is keyed on <c>Time.time</c> (a float, fed by a MonoBehaviour that
     /// exists to hand it <c>Time.time</c>), and the tower's arithmetic has to be reproducible
     /// tick for tick -- §1.4's determinism discipline. A float-keyed presentation-side sampler

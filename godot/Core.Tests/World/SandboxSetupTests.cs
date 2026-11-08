@@ -15,46 +15,41 @@ namespace GolemFactory.Tests.World
             SandboxSetup.Parse(File.ReadAllText(Path.Combine(AuthoredData.DataDirectory, "sandbox.json")));
 
         [Test]
-        public void TheRealSetupLoads_NineStallsEachWithAnOffer()
+        public void TheRealSetup_HasSeventeenSpots_AndStartsWithOneScrapCart()
         {
+            // docs/supply-design.md §1: seventeen spots at the four-cell pitch, x -32 to 32.
             SandboxSetup setup = LoadReal();
-            Assert.AreEqual(9, setup.nodes.Count);
-            CollectionAssert.AreEquivalent(
-                setup.nodes.Select(n => n.id), setup.market.Select(m => m.nodeId),
-                "every stall trades, and nothing trades that is not a stall");
+            CollectionAssert.AreEqual(Enumerable.Range(0, 17).Select(i => -32 + 4 * i), setup.supply.spots.Select(s => s.x));
+            Assert.IsTrue(setup.supply.spots.All(s => s.y == -16), "one row");
+            Assert.AreEqual(1, setup.supply.startingCarts.Count);
+            Assert.AreEqual(ItemType.Scrap, setup.supply.startingCarts[0].itemType);
+            Assert.AreEqual(-8, setup.supply.startingCarts[0].x, "where the guide's first step points");
             Assert.IsFalse(setup.creativeMode, "Sandbox ships in normal mode");
             Assert.IsTrue(setup.requireSteamPower, "Sandbox.unity turns steam power on");
         }
 
         [Test]
-        public void NormalMode_StallsStartEmptyExceptTheSeededScrapStall()
+        public void ANewWorld_HasOnlyTheStartingScrapCart_Full()
         {
-            SandboxSetup setup = LoadReal();
-            var registry = new ResourceNodeRegistry();
-            setup.RegisterNodes(registry);
-
-            foreach (SandboxSetup.NodeEntry node in setup.nodes)
-            {
-                Assert.IsTrue(registry.TryGetNode(node.id, out ResourceNode registered), node.id);
-                int expected = node.id == setup.freeStallSeedNode ? setup.freeStallSeedQuantity : 0;
-                Assert.AreEqual(expected, registered.RemainingQuantity, node.id);
-            }
-            Assert.AreEqual(60, setup.freeStallSeedQuantity);
+            SandboxWorld world = Tests.EditMode.CrateWorld.Compose();
+            Assert.AreEqual(1, world.Supply.Carts.Count());
+            GolemFactory.Supply.SupplyCart scrap = world.Supply.SpotAt(new GolemFactory.Compat.Vector2Int(-8, -16)).Cart;
+            Assert.AreEqual(ItemType.Scrap, scrap.ItemType);
+            Assert.AreEqual(scrap.Capacity, scrap.Stock, "it starts full (§1)");
+            Assert.AreEqual(1, world.Markers.Count, "no stalls beside it");
         }
 
         [Test]
-        public void CreativeMode_StallsNeverRunDry()
+        public void TheHomeSpots_AreTheOldStallsNearestTheCentre()
         {
+            // §6: the guide marks Coal at -4, Copper Ore at 0, Zinc Ore at 4 and Aether at 8.
             SandboxSetup setup = LoadReal();
-            setup.creativeMode = true;
-            var registry = new ResourceNodeRegistry();
-            setup.RegisterNodes(registry);
-
-            foreach (SandboxSetup.NodeEntry node in setup.nodes)
-            {
-                registry.TryGetNode(node.id, out ResourceNode registered);
-                Assert.AreEqual(ResourceNode.Infinite, registered.RemainingQuantity, node.id);
-            }
+            Assert.AreEqual(new GolemFactory.Compat.Vector2Int(-8, -16), setup.HomeSpot(ItemType.Scrap));
+            Assert.AreEqual(new GolemFactory.Compat.Vector2Int(-4, -16), setup.HomeSpot(ItemType.Coal));
+            Assert.AreEqual(new GolemFactory.Compat.Vector2Int(0, -16), setup.HomeSpot(ItemType.CopperOre));
+            Assert.AreEqual(new GolemFactory.Compat.Vector2Int(4, -16), setup.HomeSpot(ItemType.ZincOre));
+            Assert.AreEqual(new GolemFactory.Compat.Vector2Int(8, -16), setup.HomeSpot(ItemType.Aether));
+            Assert.IsNull(setup.HomeSpot(ItemType.Gear), "no cart sells it");
         }
 
         [Test]
@@ -71,36 +66,13 @@ namespace GolemFactory.Tests.World
         }
 
         [Test]
-        public void TheMarketOffersWhatTheStallsSell()
-        {
-            SandboxSetup setup = LoadReal();
-            var registry = new ResourceNodeRegistry();
-            setup.RegisterNodes(registry);
-            TruckloadMarket market = setup.BuildMarket(registry);
-
-            Assert.IsTrue(market.TryGetOffer("ScrapNode", out MarketOffer scrap));
-            Assert.AreEqual(0, scrap.Price.Count, "scrap is free");
-            // docs/tuning-data-spec.md §4.3: sized so stage 1 needs at most 8 orders a minute.
-            Assert.AreEqual(100, scrap.TruckloadSize);
-            Assert.AreEqual(60, scrap.DeliveryTicks);
-            Assert.IsTrue(market.TryGetOffer("CoalNode", out MarketOffer coal));
-            Assert.AreEqual(30, coal.Price.Single().quantity);
-            Assert.AreEqual(120, coal.TruckloadSize);
-            Assert.IsTrue(market.TryGetOffer("CopperOreNode", out MarketOffer copper));
-            Assert.AreEqual(60, copper.Price.Single().quantity);
-            Assert.AreEqual(120, copper.TruckloadSize);
-            Assert.IsTrue(market.TryGetOffer("AetherNode", out MarketOffer aether));
-            Assert.AreEqual(80, aether.Price.Single().quantity);
-            Assert.AreEqual(40, aether.TruckloadSize);
-        }
-
-        [Test]
-        public void EveryStallSpriteExists()
+        public void EveryCartsSpriteExists()
         {
             string art = Path.Combine(Path.GetDirectoryName(AuthoredData.DataDirectory), "art");
-            foreach (SandboxSetup.NodeEntry node in LoadReal().nodes)
+            FileAssert.Exists(Path.Combine(art, GolemFactory.Supply.SupplyArt.SpotSprite + ".png"));
+            foreach (SandboxSetup.CartLadderEntry cart in LoadReal().supply.carts)
             {
-                FileAssert.Exists(Path.Combine(art, node.sprite + ".png"), node.id);
+                FileAssert.Exists(Path.Combine(art, GolemFactory.Supply.SupplyArt.CartSprite(cart.itemType) + ".png"), cart.itemType);
             }
         }
     }

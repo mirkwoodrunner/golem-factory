@@ -3,8 +3,10 @@ Paths here are relative to `godot/` unless they say otherwise.
 
 # Authored data (`godot/data/*.json`)
 
-The chassis, logic cores, punch cards, recipes, Clock Tower stages and the Assembly Line
-deck, plus `placeables.json` (the build menu) and `sandbox.json` (the world's setup). **They
+The chassis, logic cores, punch cards, recipes, Clock Tower stages, the civic works
+(`civic_works.json`, endless play's projects after the tower), the City Office's
+contracts (`contracts.json`, run by `order`; a contract's name is what a save keeps) and the
+Assembly Line deck, plus `placeables.json` (the build menu) and `sandbox.json` (the world's setup). **They
 are hand-edited.** They were generated from Unity's assets until the G10 cutover; the
 converter is in git history at `unity-final`.
 

@@ -128,6 +128,11 @@ playthrough's `coal-share` question, not a reason to raise the burn now.
 
 ## 4. The market: prices and truckloads
 
+> **Replaced by `docs/supply-design.md` §3 (Phase 8):** truckloads are gone, and so is §17 Q3's
+> "standing order" remedy. Raw goods come from supply carts with rates, capacities and rung
+> prices; `StreetCoverageTests` pins that the street covers stages 1 and 4. This section is the
+> truckload market's record.
+
 ### 4.1 The finding
 
 A stall holds what its truckloads brought, and every truckload is one [E] at the stall, one in
@@ -634,8 +639,8 @@ keeps its name, its 10:00 assertion and gains §14's per-chapter ceilings.
   kit's own instant action, paid from earned goods, never granted: the same repayment rule as
   today's test.
 - **`stage1`** is the one exception: its floor is the stage's nominal 360 s. The test feeds the
-  tower's endpoint 6 Frame Sections a minute, each recorded as fresh production
-  (`ProductionTally`), and asserts the stage completes within 360 s + 1 s. Building a 6-a-minute
+  tower's endpoint 6 Frame Sections a minute (any source counts, `contracts-design.md` §11), and
+  asserts the stage completes within 360 s + 1 s. Building a 6-a-minute
   line is a player's design, timed only by the human run.
 - **Stuck:** a step that does not complete within 20 minutes of game time fails the test, naming
   the step and every golem's state, stall reason and resource (as `WaitToLeave` does now).
@@ -657,8 +662,8 @@ minute; asserts the sum ≤ 8.
 
 ### 15.6 New: `Core.Tests/ClockTower/ClockTowerPartialSupplyTests`
 
-`UnderSupply_StageTime_IsMeasured`: a `ClockTowerSite` on stage 1, fed Frame Sections as fresh
-production at an even spacing for 6, 3, 2 and 1 a minute; records the ticks to complete (or the
+`UnderSupply_StageTime_IsMeasured`: a `ClockTowerSite` on stage 1, delivered Frame Sections at an
+even spacing for 6, 3, 2 and 1 a minute; records the ticks to complete (or the
 progress after 4 hours of game time). It asserts only what the current rule guarantees (full
 supply completes in 360 s ± 1 s; any positive supply never loses progress) and prints the rest, so
 §10.1's (d/s)² reading is measured, not assumed. Its numbers go into §18.

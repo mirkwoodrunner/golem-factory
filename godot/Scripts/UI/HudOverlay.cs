@@ -53,11 +53,36 @@ namespace GolemFactory.Nodes
 
         /// <summary>The tower's stage banner's text while it shows; empty otherwise.</summary>
         public string BannerText => _banner.Visible ? _bannerText.Text : "";
+
+        /// <summary>The line under the last stage's banner, while it shows; empty otherwise.</summary>
+        public string BannerNext => _banner.Visible && _bannerSub.Visible ? _bannerSub.Text : "";
+
+        private Label _bannerSub;
         public string GaugeText => _gauge.Text;
         public string TickText => _tick.Text;
         public Button PlayPauseButton => _playPause;
         public Button SpeedButton(int i) => _speeds[i];
         public bool Showing => _root.Visible;
+
+        public const string CreativeHeadline = "Creative world";
+        public const string CreativeNote = "Every card and building is yours, and nothing costs a thing. Your pack refills itself. No guide, no Clock Tower.";
+
+        private Control _contract;
+        private Label _contractText;
+        private Control _region;
+        private Label _regionText;
+
+        /// <summary>The HUD's region plate as drawn, empty outside the Docks; for scenarios.</summary>
+        public string RegionLine => _region != null && _region.Visible ? _regionText.Text : "";
+
+        /// <summary>The HUD's contract line as drawn, empty while none is up; for scenarios.</summary>
+        public string ContractLine => _contract != null && _contract.Visible ? _contractText.Text : "";
+
+        /// <summary>The tower panel's lines under the headline, as drawn, for scenarios.</summary>
+        public string TowerDetail => _demand?.Text ?? "";
+
+        /// <summary>The tower panel's headline as drawn, for scenarios.</summary>
+        public string TowerHeadline => _headline?.Text ?? "";
 
         public override void _Ready()
         {
@@ -90,6 +115,13 @@ namespace GolemFactory.Nodes
             _banner.MouseFilter = Control.MouseFilterEnum.Ignore;
             _bannerText = Ugui.Fill(Ugui.Text("Text", "", 22, Amber, align: 2, bold: true));
             _banner.AddChild(_bannerText);
+            // The last stage's banner is the game's end screen: under it, where the game goes on
+            // (docs/endless-design.md §3).
+            _bannerSub = Ugui.Fill(Ugui.Text("Next", GolemFactory.Contracts.ContractText.EndlessInvitation, 13, ManagementScreen.ItemNameInk, align: 2));
+            _bannerSub.OffsetTop = 38f;
+            _bannerSub.OffsetBottom = -4f;
+            _bannerSub.Visible = false;
+            _banner.AddChild(_bannerSub);
             _banner.Visible = false;
             _root.AddChild(_banner);
 
@@ -108,6 +140,23 @@ namespace GolemFactory.Nodes
             tower.AddChild(_headline);
             tower.AddChild(_demand);
             tower.AddChild(_starved);
+
+            // The contract under it (docs/contracts-design.md §5), shown while one is up. Plain
+            // ink: a contract is never an alarm.
+            _contract = Ugui.Place(Ugui.Rect("ContractLine", Plate), 1f, 1f, 1f, 1f, -12f, -164f, 320f, 26f, 1f, 1f);
+            _root.AddChild(_contract);
+            _contractText = Ugui.Place(Ugui.Text("ContractText", "", 13, ManagementScreen.ItemNameInk), 0f, 0f, 1f, 1f, 0f, 0f, -16f, -4f);
+            _contractText.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+            _contract.AddChild(_contractText);
+
+            // The region's name while the player stands in the Docks (docs/region-design.md §5),
+            // top centre under the clock bar, clear of the alerts strip and the right-hand panels.
+            _region = Ugui.Place(Ugui.Rect("RegionPlate", Plate), 0.5f, 1f, 0.5f, 1f, 0f, -80f, 380f, 28f, 0.5f, 1f);
+            _root.AddChild(_region);
+            _regionText = Ugui.Place(Ugui.Text("RegionText", "", 15, Amber), 0f, 0f, 1f, 1f, 0f, 0f, 0f, 0f);
+            _regionText.HorizontalAlignment = HorizontalAlignment.Center;
+            _region.AddChild(_regionText);
+            _region.Visible = false;
 
             BuildControlBar();
         }
@@ -216,6 +265,9 @@ namespace GolemFactory.Nodes
             if (_banner.Visible)
             {
                 _bannerText.Text = Player.TowerBanner.Text(camera.TowerStageNumber, camera.TowerStageName);
+                bool last = camera.TowerStageNumber >= _world.Sandbox.ClockTower.Site.StageCount;
+                _bannerSub.Visible = last;
+                _bannerText.OffsetBottom = last ? -24f : 0f;
             }
 
             // The two readouts refresh on Unity's 0.25 s interval rather than every frame.
@@ -232,10 +284,41 @@ namespace GolemFactory.Nodes
             _gauge.Text = "Boiler fuel  " + SteamGaugeUtility.Format(reading);
             _gauge.AddThemeColorOverride("font_color", reading.IsLow ? Coral : reading.HasCountdown ? Amber : Dim);
 
+            string contract = GolemFactory.Contracts.ContractText.HudLine(_world.Sandbox.Contracts);
+            _contractText.Text = contract;
+            _contract.Visible = contract.Length > 0;
+
+            string region = GolemFactory.World.Docks.RegionName(_world.Sandbox.Interactor.PlayerCell, _world.Sandbox.Bounds.DocksNorth);
+            _regionText.Text = region;
+            _region.Visible = region.Length > 0;
+
+            if (_world.Sandbox.Creative)
+            {
+                // A Creative world has no tower to build toward (docs/menus-design.md §9): the
+                // panel says what kind of world this is instead.
+                _headline.Text = CreativeHeadline;
+                _demand.Text = CreativeNote;
+                _starved.Text = "";
+                return;
+            }
             ClockTowerReading tower = _world.Sandbox.ClockTower.Site.BuildReading();
+            // Once the tower stands, the panel follows the civic work under way, as it followed the
+            // tower's stage (docs/endless-design.md §3).
+            Civic.CivicWorks civic = _world.Sandbox.Civic;
+            if (tower.IsComplete && civic != null && civic.IsOpen)
+            {
+                ClockTowerReading work = civic.Site.BuildReading();
+                _headline.Text = Civic.CivicText.Headline(civic, work);
+                _headline.AddThemeColorOverride("font_color", Amber);
+                _demand.Text = ClockTowerReadout.FormatDemandTable(work);
+                _starved.Text = Civic.CivicText.Starved(civic, work);
+                return;
+            }
             _headline.Text = ClockTowerReadout.FormatHeadline(tower);
             _headline.AddThemeColorOverride("font_color", tower.IsComplete ? Win : tower.HasActiveStage ? Amber : Dim);
-            _demand.Text = ClockTowerReadout.FormatDemandTable(tower);
+            _demand.Text = tower.IsComplete
+                ? GolemFactory.Contracts.ContractText.EndlessInvitation
+                : ClockTowerReadout.FormatDemandTable(tower);
             _starved.Text = ClockTowerReadout.FormatStarvedAlert(tower);
         }
     }

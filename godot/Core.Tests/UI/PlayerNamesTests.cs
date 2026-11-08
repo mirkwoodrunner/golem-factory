@@ -74,7 +74,7 @@ namespace GolemFactory.Tests.EditMode
             {
                 Assert.IsNotNull(PlayerText.RawIdIn(raw), raw);
             }
-            foreach (string clean in new[] { "[!] Crate (2,-1) full", "Scavenger #4 stalled: Scrap stall is depleted",
+            foreach (string clean in new[] { "[!] Crate (2,-1) full", "Scavenger #4 stalled: Scrap cart is depleted",
                 "need 2 more Iron Plate", "TARGET  ·  Presser #2", "2/5 Scrap", "waiting for Copper Ore",
                 "action · 1t · from the tile behind", "Belt (0,-12)", "Freight Mast (9,1)", "Pneumatic Post",
                 "No golem needs you · 1 waiting for goods.", "ENGAGE" })
@@ -138,7 +138,7 @@ namespace GolemFactory.Tests.EditMode
             golem.Tick(0);
             Assert.AreEqual(StallReason.NodeEmpty, golem.StallReason);
             strip.Reconcile();
-            Assert.AreEqual("[!] Scavenger #4 stalled: Scrap stall is depleted", strip.Text);
+            Assert.AreEqual("[!] Scavenger #4 stalled: Scrap cart is depleted", strip.Text);
             Assert.IsNull(PlayerText.RawIdIn(strip.Text), strip.Text);
 
             var bare = new AlertsStrip(() => golems);

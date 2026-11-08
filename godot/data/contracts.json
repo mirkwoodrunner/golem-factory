@@ -1,0 +1,640 @@
+{
+  "C01_WatchBrackets": {
+    "order": 1,
+    "requester": "City Watch",
+    "words": "The night patrol's lanterns want new iron brackets before the winter.",
+    "asks": [
+      {
+        "itemType": "IronPlate",
+        "quantity": 40
+      }
+    ],
+    "parSeconds": 360,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "Gear",
+          "quantity": 15
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "Coal",
+      "rungKind": 1
+    },
+    "postWhenSeen": [
+      "Slag",
+      "IronPlate"
+    ]
+  },
+  "C02_TramStoves": {
+    "order": 2,
+    "requester": "Tramway Company",
+    "words": "The tram sheds are cold. Coke for the stoves, and gears for the points.",
+    "asks": [
+      {
+        "itemType": "Coke",
+        "quantity": 30
+      },
+      {
+        "itemType": "Gear",
+        "quantity": 10
+      }
+    ],
+    "parSeconds": 480,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "IronPlate",
+          "quantity": 20
+        },
+        {
+          "itemType": "Gear",
+          "quantity": 10
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "Coal",
+      "rungKind": 2
+    },
+    "postWhenSeen": [
+      "Slag",
+      "Coke",
+      "Gear"
+    ]
+  },
+  "C03_BellFrame": {
+    "order": 3,
+    "requester": "Bellfounders",
+    "words": "The great bell needs re-hanging: plate for its frame, and coke for the forge.",
+    "asks": [
+      {
+        "itemType": "IronPlate",
+        "quantity": 60
+      },
+      {
+        "itemType": "Coke",
+        "quantity": 20
+      }
+    ],
+    "parSeconds": 480,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "Gear",
+          "quantity": 30
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "CopperOre",
+      "rungKind": 1
+    },
+    "postWhenSeen": [
+      "CopperOre",
+      "IronPlate",
+      "Coke"
+    ]
+  },
+  "C04_TelescopeMount": {
+    "order": 4,
+    "requester": "Observatory",
+    "words": "A new mount for the telescope. Gears, and plenty of them.",
+    "asks": [
+      {
+        "itemType": "Gear",
+        "quantity": 40
+      }
+    ],
+    "parSeconds": 600,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "IronPlate",
+          "quantity": 40
+        },
+        {
+          "itemType": "Coke",
+          "quantity": 10
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "Scrap",
+      "rungKind": 2
+    },
+    "postWhenSeen": [
+      "CopperOre",
+      "Gear"
+    ]
+  },
+  "C05_GasMains": {
+    "order": 5,
+    "requester": "Lamplighters' Guild",
+    "words": "Copper for the new gas mains under Brass Row.",
+    "asks": [
+      {
+        "itemType": "CopperIngot",
+        "quantity": 30
+      }
+    ],
+    "parSeconds": 600,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "Gear",
+          "quantity": 20
+        },
+        {
+          "itemType": "IronPlate",
+          "quantity": 20
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "CopperOre",
+      "rungKind": 2
+    },
+    "postWhenSeen": [
+      "CopperIngot"
+    ]
+  },
+  "C06_TramFittings": {
+    "order": 6,
+    "requester": "Tramway Company",
+    "words": "Brass fittings for the new tram cars, polished or not.",
+    "asks": [
+      {
+        "itemType": "Brass",
+        "quantity": 30
+      }
+    ],
+    "parSeconds": 600,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "CopperIngot",
+          "quantity": 10
+        },
+        {
+          "itemType": "Gear",
+          "quantity": 15
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "ZincOre",
+      "rungKind": 1
+    },
+    "postWhenSeen": [
+      "Brass"
+    ]
+  },
+  "C07_GasLamps": {
+    "order": 7,
+    "requester": "Lamplighters' Guild",
+    "words": "The new gas lamps on Brass Row want glass, and plenty of it.",
+    "asks": [
+      {
+        "itemType": "Glass",
+        "quantity": 60
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 10
+      }
+    ],
+    "parSeconds": 600,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "Casing",
+          "quantity": 8
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "CopperOre",
+      "rungKind": 1
+    },
+    "postWhenSeen": [
+      "Glass",
+      "Brass"
+    ]
+  },
+  "C08_WatchClocks": {
+    "order": 8,
+    "requester": "City Watch",
+    "words": "Casings for the watch-house clocks, so every patrol keeps the same hour.",
+    "asks": [
+      {
+        "itemType": "Casing",
+        "quantity": 15
+      }
+    ],
+    "parSeconds": 720,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "Brass",
+          "quantity": 20
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "ZincOre",
+      "rungKind": 2
+    },
+    "postWhenSeen": [
+      "Casing"
+    ]
+  },
+  "C09_GreatTelescope": {
+    "order": 9,
+    "requester": "Observatory",
+    "words": "Lenses for the great telescope, and glass to spare for the dome.",
+    "asks": [
+      {
+        "itemType": "Lens",
+        "quantity": 12
+      },
+      {
+        "itemType": "Glass",
+        "quantity": 20
+      }
+    ],
+    "parSeconds": 720,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "Casing",
+          "quantity": 6
+        },
+        {
+          "itemType": "Glass",
+          "quantity": 10
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "Aether",
+      "rungKind": 1
+    },
+    "postWhenSeen": [
+      "Lens",
+      "Glass"
+    ]
+  },
+  "C10_Carillon": {
+    "order": 10,
+    "requester": "Bellfounders",
+    "words": "Mainsprings for the carillon's striking train, and casings to house them.",
+    "asks": [
+      {
+        "itemType": "Mainspring",
+        "quantity": 6
+      },
+      {
+        "itemType": "Casing",
+        "quantity": 10
+      }
+    ],
+    "parSeconds": 840,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "Mainspring",
+          "quantity": 4
+        },
+        {
+          "itemType": "Brass",
+          "quantity": 20
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "Scrap",
+      "rungKind": 1
+    },
+    "postWhenSeen": [
+      "Mainspring",
+      "Casing"
+    ]
+  },
+  "C11_Scaffold": {
+    "order": 11,
+    "requester": "Tramway Company",
+    "words": "Our cranes will lift the tower's scaffold, if you'll cast the casings for it.",
+    "asks": [
+      {
+        "itemType": "Casing",
+        "quantity": 20
+      },
+      {
+        "itemType": "IronPlate",
+        "quantity": 40
+      }
+    ],
+    "parSeconds": 840,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "FrameSection",
+          "quantity": 2
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "CopperOre",
+      "rungKind": 1
+    },
+    "postWhenSeen": [
+      "Casing",
+      "IronPlate",
+      "FrameSection"
+    ],
+    "postWhenTowerStage": 1
+  },
+  "C12_CityGates": {
+    "order": 12,
+    "requester": "City Watch",
+    "words": "The city gates want brass hinges and new gears before the tower's crowds come.",
+    "asks": [
+      {
+        "itemType": "Brass",
+        "quantity": 30
+      },
+      {
+        "itemType": "Gear",
+        "quantity": 20
+      }
+    ],
+    "parSeconds": 840,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "Mainspring",
+          "quantity": 4
+        },
+        {
+          "itemType": "Casing",
+          "quantity": 4
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "ZincOre",
+      "rungKind": 1
+    },
+    "postWhenSeen": [
+      "Brass",
+      "Gear",
+      "FrameSection"
+    ],
+    "postWhenTowerStage": 1
+  },
+  "C13_TowerChimes": {
+    "order": 13,
+    "requester": "Bellfounders",
+    "words": "Mechanisms for the tower's chimes, and gears for their drums.",
+    "asks": [
+      {
+        "itemType": "Mechanism",
+        "quantity": 4
+      },
+      {
+        "itemType": "Gear",
+        "quantity": 10
+      }
+    ],
+    "parSeconds": 900,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "Mainspring",
+          "quantity": 3
+        },
+        {
+          "itemType": "Brass",
+          "quantity": 10
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "Aether",
+      "rungKind": 2
+    },
+    "postWhenSeen": [
+      "Mechanism",
+      "Gear"
+    ],
+    "postWhenTowerStage": 2
+  },
+  "C14_TramWinders": {
+    "order": 14,
+    "requester": "Tramway Company",
+    "words": "Mainsprings to wind the new trams, and brass to case them.",
+    "asks": [
+      {
+        "itemType": "Mainspring",
+        "quantity": 6
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 20
+      }
+    ],
+    "parSeconds": 900,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "Mechanism",
+          "quantity": 2
+        },
+        {
+          "itemType": "Gear",
+          "quantity": 10
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "Scrap",
+      "rungKind": 1
+    },
+    "postWhenSeen": [
+      "Mainspring",
+      "Brass",
+      "Mechanism"
+    ],
+    "postWhenTowerStage": 2
+  },
+  "C15_StreetLights": {
+    "order": 15,
+    "requester": "Lamplighters' Guild",
+    "words": "Aether cells for the street lights, and wire to carry them.",
+    "asks": [
+      {
+        "itemType": "AetherCell",
+        "quantity": 6
+      },
+      {
+        "itemType": "CopperWire",
+        "quantity": 30
+      }
+    ],
+    "parSeconds": 960,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "Lens",
+          "quantity": 4
+        },
+        {
+          "itemType": "Brass",
+          "quantity": 10
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "Aether",
+      "rungKind": 1
+    },
+    "postWhenSeen": [
+      "AetherCell",
+      "CopperWire"
+    ],
+    "postWhenTowerStage": 3
+  },
+  "C16_StarCharts": {
+    "order": 16,
+    "requester": "Observatory",
+    "words": "Lenses for the star charts' projector, and brass for its frame.",
+    "asks": [
+      {
+        "itemType": "Lens",
+        "quantity": 20
+      },
+      {
+        "itemType": "Brass",
+        "quantity": 10
+      }
+    ],
+    "parSeconds": 960,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "AetherCell",
+          "quantity": 4
+        },
+        {
+          "itemType": "CopperWire",
+          "quantity": 10
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "CopperOre",
+      "rungKind": 2
+    },
+    "postWhenSeen": [
+      "Lens",
+      "Brass",
+      "AetherCell"
+    ],
+    "postWhenTowerStage": 3
+  },
+  "C17_WatchRegulators": {
+    "order": 17,
+    "requester": "City Watch",
+    "words": "Regulators for the watch-house clocks, so the city keeps the tower's time.",
+    "asks": [
+      {
+        "itemType": "Regulator",
+        "quantity": 4
+      },
+      {
+        "itemType": "Lens",
+        "quantity": 4
+      }
+    ],
+    "parSeconds": 1080,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "Mechanism",
+          "quantity": 2
+        },
+        {
+          "itemType": "Lens",
+          "quantity": 2
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "Aether",
+      "rungKind": 2
+    },
+    "postWhenSeen": [
+      "Regulator",
+      "Lens"
+    ],
+    "postWhenTowerStage": 4
+  },
+  "C18_Orrery": {
+    "order": 18,
+    "requester": "Observatory",
+    "words": "Mechanisms for the orrery, and wire for its lamps.",
+    "asks": [
+      {
+        "itemType": "Mechanism",
+        "quantity": 4
+      },
+      {
+        "itemType": "CopperWire",
+        "quantity": 6
+      }
+    ],
+    "parSeconds": 1080,
+    "reward": {
+      "goods": [
+        {
+          "itemType": "Regulator",
+          "quantity": 2
+        },
+        {
+          "itemType": "CopperWire",
+          "quantity": 10
+        }
+      ]
+    },
+    "bonus": {
+      "goods": [],
+      "rungGood": "ZincOre",
+      "rungKind": 2
+    },
+    "postWhenSeen": [
+      "Mechanism",
+      "CopperWire",
+      "Regulator"
+    ],
+    "postWhenTowerStage": 4
+  }
+}

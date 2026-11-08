@@ -105,6 +105,7 @@ namespace GolemFactory.Golems
 
             SyncQuantities();
             appendages.Add(appendage);
+            GolemLayout.Changed();
             appendageQuantities.Add(ClampQuantity(appendage.haulQuantity));
             appendageItemTypes.Add(appendage.inputItemType ?? "");
             return true;
@@ -147,6 +148,7 @@ namespace GolemFactory.Golems
 
             SyncQuantities();
             appendages.RemoveAt(index);
+            GolemLayout.Changed();
             appendageQuantities.RemoveAt(index);
             appendageItemTypes.RemoveAt(index);
         }

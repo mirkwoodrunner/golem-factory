@@ -25,15 +25,15 @@ namespace GolemFactory.Tests.World
         private static int CountPrefix(IEnumerable<LayoutPiece> pieces, string prefix) =>
             pieces.Count(p => p.Name.StartsWith(prefix + "_"));
 
-        [TestCase("WallEast", 33)]
+        [TestCase("WallEast", 25)] // 33, less the street's 8 rows the Docks' lane opens (region-design §1)
         [TestCase("WallWest", 33)]
         [TestCase("WallNorth", 25)]
         [TestCase("SkirtSouth", 25)]
-        [TestCase("KerbStreet", 20)] // 37 in Unity's Sandbox, less the 17 the town square opens (G10)
+        [TestCase("KerbStreet", 52)] // 69 since supply carts widened the street (37 in Unity), less the 17 the square opens
         [TestCase("SquareEast", TownSquare.Depth)]
         [TestCase("SquareWest", TownSquare.Depth)]
         [TestCase("KerbSquare", 2 * TownSquare.HalfExtent + 1)]
-        [TestCase("WallShoulder", 12)]
+        [TestCase("WallShoulder", 44)] // 22 a side since supply carts (6 in Unity)
         [TestCase("WallPost", 2)]
         public void WallCountsMatchUnitysSandbox(string kind, int expected)
         {
@@ -61,7 +61,8 @@ namespace GolemFactory.Tests.World
         [TestCase("WallNorth_0", 0f, 12.5f)]
         [TestCase("WallNorth_4", 4f, 12.5f)]
         [TestCase("WallEast_0", 12.5f, 0f)]
-        [TestCase("WallEast_-20", 18.5f, -20f)]
+        [TestCase("WallWest_-20", -34.5f, -20f)] // the street's west end, at ±34 since supply carts; its east end opens onto the Docks' lane
+        [TestCase("DocksLaneSouth_35", 35f, -20.5f)]
         [TestCase("WallWest_12", -12.5f, 12f)]
         [TestCase("SkirtSouth_0", 0f, -12.5f)]
         [TestCase("KerbStreet_-18", -18f, -20.5f)]
@@ -99,20 +100,20 @@ namespace GolemFactory.Tests.World
         }
 
         [Test]
-        public void NoPropBlocksAStallOrItsApproach()
+        public void NoPropBlocksACartSpotOrItsApproach()
         {
-            // The stalls stand on one street row; their approach tiles flank them. §3.2's
-            // extractor cap needs those open, and a barrel there would halve a stall silently.
+            // The carts stand on one street row; their approach tiles flank them. §3.2's
+            // extractor cap needs those open, and a barrel there would halve a cart silently.
             SandboxSetup setup = SandboxSetupTests.LoadReal();
             var props = new HashSet<(int, int)>(SandboxLayout.Props().Select(p => ((int)p.Anchor.x, (int)p.Anchor.y)));
-            foreach (SandboxSetup.NodeEntry node in setup.nodes)
+            foreach (SandboxSetup.SpotEntry spot in setup.supply.spots)
             {
                 for (int dx = -1; dx <= 1; dx++)
                 {
                     for (int dy = -1; dy <= 1; dy++)
                     {
-                        Assert.IsFalse(props.Contains((node.x + dx, node.y + dy)),
-                            $"a prop stands at or beside {node.id}'s stall");
+                        Assert.IsFalse(props.Contains((spot.x + dx, spot.y + dy)),
+                            $"a prop stands at or beside the spot at x {spot.x}");
                     }
                 }
             }

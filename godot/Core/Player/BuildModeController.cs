@@ -300,9 +300,7 @@ namespace GolemFactory.Player
 
             if (_placementBounds != null)
             {
-                return FloorLayout.IsInsideWorld(
-                    cell, _placementBounds.HalfExtent, _placementStreetDepth,
-                    FloorLayout.StreetHalfExtent, _placementBounds.NorthExtent);
+                return _placementBounds.IsGround(cell, _placementStreetDepth);
             }
 
             return FloorLayout.IsInsideWorld(cell, _placementHalfExtent, _placementStreetDepth);
@@ -535,7 +533,7 @@ namespace GolemFactory.Player
                 return true;
             }
 
-            return UI.ConstructionCostPolicy.CanAfford(ReadStock, _buildingPrefab.Cost);
+            return _wallet?.CanAfford(_buildingPrefab.Cost) ?? UI.ConstructionCostPolicy.CanAfford(ReadStock, _buildingPrefab.Cost);
         }
 
         private int ReadStock(string itemType) => _wallet?.Quantity(itemType) ?? 0;

@@ -65,11 +65,31 @@ call): built, reviewed, critiqued and tested. Done:
   their prices (7a79046). 1925 Core tests pass.
 
 **Resume here:**
+- **Phases 7 and 8 and the Docks are done** (2026-11-08), on `phase8/depth` (from `phase7/menus`),
+  with a design audit's findings fixed (`region-design.md` §7). Phases 5 and 6 went in as PR #61.
+  Next, at the user's go: selling golems to the city, or the Steam Deck
+  (`steam-deck-design.md`). Still to run by a person: the playtests below and
+  `testscript/endless-soak.md`.
+
 0. **Phase 6 (Game feel), on branch `phase6/feel` (from `phase5/audio`), built 2026-11-01.** The
    spec is `docs/game-feel-design.md`; the user's four decisions are its §7 (ComfyUI FX art,
    click the alert strip, fixed zoom levels, the tower's event skippable with the clock running).
-   Everything plays. The S7 FX art is rendered and installed (the user picked spark #6, dust
-   #7, glint #6). Left for done (§8): the user plays it and is happy with the feel.
+   Everything plays. The S7 FX art is installed. **Done** (2026-11-05, the user is happy with the feel).
+   **Phase 7 (`docs/menus-design.md`), branch `phase7/menus`, done:** step 1 (settings) is in
+   (`Core/Settings`, `GameSettingsStore`, the Settings tab, the `settings` scenario; the calls
+   made are `menus-design.md` §4). Step 2 (accessibility) is in too: Reduced motion
+   (`MotionPreference`) and the colour-blind stripes (`ColourMarks`), `menus-design.md` §5, the
+   `accessibility` scenario. Step 3 (the title screen) is in: the game opens on Continue, New
+   game, Settings and Quit over the guide's six-chapter workshop, kept running (`Core/Menus`,
+   `TitleScreen`, `menus-design.md` §6, the `title` scenario). Step 4 (save slots) is in: five
+   slots and an Autosave with pictures and summaries, autosave on quit and on a tower stage, Load
+   on the title, Quit to title (`SaveSlots`, `SaveSlotBoard`, `GameSaves`, `menus-design.md` §7,
+   the `slots` scenario). Step 5 (the factory overview) is in: a Management tab with the map,
+   the production graph and the alerts history (`Core/Overview`, `OverviewTab`,
+   `menus-design.md` §8, the `overview` scenario). Step 6 (Creative Mode) is in: a Creative
+   world from the title, everything unlocked and free, no guide or tower stage, its own save
+   slots, refused as a campaign load (`SandboxWorld.Creative`, `CostsWaived`, `menus-design.md`
+   §9, the `creative` scenario). **All six steps of Phase 7 are in.**
    **Phase 5 (Audio), on branch `phase5/audio` (from `phase4/art`), is done** (2026-11-01; the
    user approved the listening sheet). The spec is `docs/audio-design.md`; all four decisions are
    made (§9): CC0 recordings for the effects and ambience, synthesized music. Every slot plays at
@@ -194,7 +214,7 @@ call): built, reviewed, critiqued and tested. Done:
 `FloorPlayer`'s chapter 8 floor jumps around as prices change (`open-items.md` §3), so check
 any retune at neighbouring prices.
 
-Standing rules: tests and scenarios never write the player's real `save.json`; a renamed step `Id`
+Standing rules: tests and scenarios never write the player's saves (`user://saves`); a renamed step `Id`
 or definition name breaks saves.
 
 ## Decisions (2026-10-18)
@@ -436,17 +456,53 @@ Each addition gets its own design doc, like `crates-design.md`, with its invaria
 first. Additions grow along the game's identity (rigid, local, deterministic) rather than copying
 Factorio's breadth.
 
+0. **Supply carts** (`docs/supply-design.md`, approved 2026-11-06): the market street becomes
+   carts the player adds, upgrades and removes on roped-off spots, each restocking at a rate.
+   Truckloads and hand orders go. First, because contracts and endless play assume a factory that
+   runs without the player at the stalls. **Done: steps 1 to 3.** Seventeen spots on the
+   street, one starting Scrap cart, no truckloads (`SupplyStreet`, the `supply` scenario). The
+   guide buys the Coal cart in chapter 1 and its Rate rung in chapter 3; an old save's stalls
+   load as carts. A cart is offered once the Ledger has seen its price's goods (user's call). The
+   Coal Rate rung was lowered to 10 Iron Plate + 5 Gear so chapter 3 fits: floors 6:06 for
+   chapters 1–4 (chapter 3 2:06 of 2:20), 1:19:44 for the full run (chapter 8 28:27 of 30:00,
+   from 23:05). Holding E repeats a harvest again: at 60 fps it had taken two goods and stopped.
+   Step 3: the overview's graph switches between goods made and spent (what the factory uses
+   up), and its lower panel between the alerts and the market, every cart with its stock and
+   its goods in and out a minute.
 1. **City contracts** (decision 12): requests that fill the gaps between tower stages, and give
    the Artificer's flexible half of the tabletop design a job. Open-ended, with a bonus for
-   speed (decision 13).
-2. **Endless play after the tower** (decision 1).
+   speed (decision 13). **Done (2026-11-07):** first the tower's fresh-production rule went, so
+   any delivered good counts there (`contracts-design.md` §11). Then the City Office went up
+   beside the tower: eighteen contracts in `data/contracts.json`, one at a time, opening with
+   the first smelter in chapter 5 (the guide's `contract` step). It is filled from any source
+   through its crate, its bonus earned within par, its rewards goods and cart rungs, saved, and
+   covered by the `contracts` scenario (§12).
+2. **Endless play after the tower** (decision 1). **Done (2026-11-07)**, `docs/endless-design.md`:
+   the frame budget measured (`performance-report-endless.md`): 160 golems didn't hold, so after
+   optimising the mood and stall-facts reads and the nodes' per-frame work, the golem cap is 112,
+   where it holds. Endless rungs on the pack (300, 350), carts (rungs 4, 5) and bays (to 112),
+   opened by the tower; generated contracts after the authored eighteen, levelling off; the last
+   stage's banner pointing at the City Office and the overview's running totals; and the civic
+   works (the Tramway, the Observatory, the Great Bell) on the tower's machinery, drawn by one
+   placeholder site until their art is commissioned. The `endless` scenario covers each.
+   Phase 8 is done.
 
-Waiting: a second map region, and selling golems to the city.
+**A second region, the Docks, is done** (2026-11-08, `docs/region-design.md` §7): east of the
+street, opening at the Zeppelin in chapter 9, its rows bought north, a quay of eight cart spots,
+and the `docks` scenario. Off-screen nodes skip their animation; re-measured, the golem cap stays
+112 (`performance-report-endless.md` §5). After the tower the Docks are room to spread out, not to
+grow (`endless-design.md` §2). Waiting: selling golems to the city; the Steam Deck
+(`steam-deck-design.md` §8 holds the user's answers: native gamepad support, a Deck on hand, the
+viewport chosen from frames).
 
 ## Phase 9: What release asks of development
 
 Release itself isn't planned (decision 14). These shape the code, so they are kept in mind
 throughout rather than retrofitted:
+
+- **Steam Deck, as hardware only** (not the store): planned in `docs/steam-deck-design.md`, to
+  start after Phase 7. Its first two steps (a Linux export, a Steam Input template) need no game
+  changes. Native gamepad support is best built once Phase 7's menus exist.
 
 - **Text kept in data**, not strings in code, so a translation is a data change. The font's
   glyph rule (`font-glyphs` scenario) already constrains characters.

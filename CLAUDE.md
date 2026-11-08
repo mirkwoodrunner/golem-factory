@@ -30,12 +30,19 @@ Read the docs before making design calls, not just the code:
 - `docs/art-pipeline-design.md` -- Phase 4's how: ComfyUI workflow, sprites, user decisions (§9).
 - `docs/audio-design.md` -- Phase 5: sound slots, mix rules, placeholder sources, decisions (§9).
 - `docs/game-feel-design.md` -- Phase 6: effects, camera levels and alert pan, the tower's event (§7).
+- `docs/menus-design.md` -- Phase 7: settings, accessibility, title and saves, overview, Creative. §0, §4.
+- `docs/supply-design.md` -- Phase 8: supply carts on the market street. §0: invariants.
+- `docs/contracts-design.md` -- Phase 8: city contracts (built, §12), and the tower's any-source rule (§11).
+- `docs/endless-design.md` -- Phase 8: endless play after the Clock Tower.
+- `docs/region-design.md` -- the second region, the Docks: east of the street, from chapter 9.
+- `docs/steam-deck-design.md` -- running on the Steam Deck (not a store release); planned, not started.
 - `docs/performance-report-template.md` -- the endgame profile's spec; `-phase3.md` is a run.
 - `docs/open-items.md` -- the backlog: open decisions, known gaps, deliberate scope cuts.
 - `docs/godot-spike.md` -- what the port measured before it began.
 - `docs/history/` -- the Unity era (M0-M9, test ledger, MCP setup). History, not instructions.
 - `testscript/phase-1-playtest.md` -- how to run a playtest; the guide asks the questions.
 - `testscript/phase-2-playtest.md` -- chapters 1–4 without F9 in 15 minutes; run it first.
+- `testscript/endless-soak.md` -- two hours of endless play, sampled by `Tools/Soak/soak-sample.ps1`.
 
 ## Toolchain
 
@@ -60,7 +67,7 @@ Read the docs before making design calls, not just the code:
 **Folder rules** load only when you work in that folder; read the right one first when working on its area from
 elsewhere: `godot/Scripts/Scenarios/`, `godot/Scripts/UI/` (screens, `Ugui`), `godot/Core/` `Tutorial/` (guide, playtest
 kit), `Golems/`, `Simulation/` (the tick), `Buildings/` (wrecking bar), `Economy/` (cards, crates, pack), `ClockTower/`;
-`godot/data/`; `Tools/Art/` (art, AI images, hand-replaced sprites).
+`godot/data/`; `godot/Scenes/` (hand-written `.tscn`); `Tools/Art/` (art, AI images, hand-replaced sprites).
 
 ## Commands
 
@@ -78,13 +85,15 @@ G=".../Godot_v4.7.2-stable_mono_win64_console.exe"
 `--fixed-fps 60` makes every frame 1/60 s of game time, so headless runs are deterministic and as fast as the machine
 allows.
 
-**Scenes.** `Scenes/Sandbox.tscn` is the game world (the main scene). `Scenes/LoopSlice.tscn` is a small hand-built
+**Scenes.** `Scenes/Sandbox.tscn` is the game world (the main scene). It opens on the title
+screen (`docs/menus-design.md` §6), and starting a game reloads it; a scenario or `--demo` run
+opens straight on a new game. `Scenes/LoopSlice.tscn` is a small hand-built
 slice, kept as the `loop` scenario's fixture; run it by passing `res://Scenes/LoopSlice.tscn` before `--`.
 
 **Scenarios** (`Scripts/Scenarios/`) are the scene-level checks. `ScenarioRunner` is a node in each scene; `--
 --scenario <name>` runs one to a verdict, prints `[scenario <name>] PASS|FAIL …` and exits 0/1. An unknown name fails
 and lists the known ones. Current scenarios: `world`, `build`, `interact`, `golems`, `golem-motion`, `workbench`,
-`management`, `save`, `tutorial`, `playtest-kit`, `loop`, `inventory`, `moods`, `hover`, `font-glyphs`, `perf`, `art`, `audio`, `feel`; what
+`management`, `save`, `tutorial`, `playtest-kit`, `loop`, `inventory`, `moods`, `hover`, `font-glyphs`, `perf`, `art`, `audio`, `feel`, `settings`, `accessibility`, `title`, `slots`, `overview`, `creative`, `supply`, `contracts`, `endless`, `docks`; what
 each checks is in `godot/Scripts/Scenarios/CLAUDE.md`.
 
 To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scenarios`. `--demo` (alias `--spike-demo`)
@@ -100,7 +109,7 @@ Retry it. Never discard its stderr and carry on, or the commit runs on an empty 
 ## The world is built from rules at load
 
 `Sandbox.tscn` is mostly empty. `ShellNode` builds walls, props and sconces from `Core/World/SandboxLayout`, and
-`SandboxNode` builds the stalls and the starter bench from `data/sandbox.json` (via `WorldNode.Setup`). Change the room
+`SandboxNode` draws the street's cart spots and the starter bench from `data/sandbox.json` (via `WorldNode.Setup`). Change the room
 in Core, where `SandboxLayoutTests` pins it to Unity's numbers. Don't hand-place walls in the scene. Sprite pivots,
 Unity's import pivots, live in `Scripts/World/SpritePivots`.
 

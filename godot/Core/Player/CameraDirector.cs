@@ -4,12 +4,15 @@ using GolemFactory.Compat;
 
 namespace GolemFactory.Player
 {
-    /// <summary>What the camera is looking at: the player, a stopped golem, or the Clock Tower's event.</summary>
+    /// <summary>What the camera is looking at: the player, a stopped golem, the Clock Tower's event, or the title's workshop.</summary>
     public enum CameraFocus
     {
         Player,
         Alert,
         TowerEvent,
+
+        /// <summary>The workshop behind the title screen (docs/menus-design.md §6): a slow drift over it.</summary>
+        Showcase,
     }
 
     /// <summary>Where the Clock Tower's stage event is (docs/game-feel-design.md §3).</summary>
@@ -60,11 +63,31 @@ namespace GolemFactory.Player
         /// <summary>When in the reveal the new stage appears (after the bell has struck).</summary>
         public const float TowerRevealAt = 0.6f;
 
+        /// <summary>The title's view: Near, so the golems read at work.</summary>
+        public const int ShowcaseZoomLevel = 1;
+
+        /// <summary>
+        /// The title's drift around the workshop's middle, in cells either way, and the seconds
+        /// each sway takes: slow, and out of step, so it never visibly repeats.
+        /// </summary>
+        public const float ShowcaseDriftX = 1.5f;
+        public const float ShowcaseDriftY = 0.75f;
+        public const float ShowcaseSwayXSeconds = 47f;
+        public const float ShowcaseSwayYSeconds = 31f;
+
+        private float _showcaseClock;
+
         private readonly List<string> _alertOrder = new List<string>();
         private string _alertGolem;
         private float _eventClock;
 
         public int ZoomLevel { get; private set; } = DefaultZoomLevel;
+
+        /// <summary>
+        /// The player's Reduced motion (<see cref="World.MotionPreference"/>): with it the camera
+        /// cuts instead of gliding. <see cref="World.SandboxWorld"/> hands in its own.
+        /// </summary>
+        public World.MotionPreference Motion { get; set; } = new World.MotionPreference();
 
         /// <summary>The size the camera glides to.</summary>
         public float TargetSize => ZoomLevels[ZoomLevel];
@@ -82,6 +105,47 @@ namespace GolemFactory.Player
 
         /// <summary>True once the reveal has struck: the new stage shows from then on.</summary>
         public bool TowerRevealed { get; private set; }
+
+        /// <summary>The middle of the title's workshop, in cells, while <see cref="Focus"/> is Showcase.</summary>
+        public Vector2 ShowcaseCentre { get; private set; }
+
+        /// <summary>The title is up: the camera drifts over <paramref name="centre"/> at Near.</summary>
+        public void BeginShowcase(Vector2 centre)
+        {
+            Focus = CameraFocus.Showcase;
+            ShowcaseCentre = centre;
+            ZoomLevel = ShowcaseZoomLevel;
+            _showcaseClock = 0f;
+            _alertGolem = null;
+        }
+
+        /// <summary>One frame of the drift, in real seconds.</summary>
+        public void UpdateShowcase(float deltaTime)
+        {
+            if (Focus == CameraFocus.Showcase)
+            {
+                _showcaseClock += deltaTime;
+            }
+        }
+
+        /// <summary>
+        /// Where the title's camera looks this frame, in cells: the workshop's middle swaying
+        /// slowly; held still on Reduced motion.
+        /// </summary>
+        public Vector2 ShowcasePoint
+        {
+            get
+            {
+                if (!Motion.CameraGlides)
+                {
+                    return ShowcaseCentre;
+                }
+                const float tau = 2f * (float)Math.PI;
+                return new Vector2(
+                    ShowcaseCentre.x + ShowcaseDriftX * (float)Math.Sin(tau * _showcaseClock / ShowcaseSwayXSeconds),
+                    ShowcaseCentre.y + ShowcaseDriftY * (float)Math.Sin(tau * _showcaseClock / ShowcaseSwayYSeconds));
+            }
+        }
 
         /// <summary>
         /// One wheel notch: positive zooms in a level, negative out, clamped at the ends.
@@ -111,7 +175,7 @@ namespace GolemFactory.Player
 
         /// <summary>One frame of the zoom's glide toward its level.</summary>
         public float GlideZoom(float size, float deltaTime) =>
-            Approach(size, TargetSize, deltaTime, ZoomGlideSpeed);
+            Motion.CameraGlides ? Approach(size, TargetSize, deltaTime, ZoomGlideSpeed) : TargetSize;
 
         /// <summary>
         /// The alert strip was clicked: the camera goes to the next stopped golem, worst first
@@ -121,7 +185,7 @@ namespace GolemFactory.Player
         public string NextAlert(IReadOnlyList<string> stoppedWorstFirst)
         {
             if (TowerPhase == TowerEventPhase.GlideIn || TowerPhase == TowerEventPhase.Reveal ||
-                stoppedWorstFirst == null || stoppedWorstFirst.Count == 0)
+                Focus == CameraFocus.Showcase || stoppedWorstFirst == null || stoppedWorstFirst.Count == 0)
             {
                 return null;
             }
@@ -131,6 +195,23 @@ namespace GolemFactory.Player
             _alertGolem = stoppedWorstFirst[index % stoppedWorstFirst.Count];
             Focus = CameraFocus.Alert;
             return _alertGolem;
+        }
+
+        /// <summary>
+        /// The camera goes to one golem, as an alert's does, until the player walks: the
+        /// overview's map and alerts history pick one. Ignored, false, during the tower's
+        /// event and on the title.
+        /// </summary>
+        public bool LookAt(string golemId)
+        {
+            if (TowerPhase == TowerEventPhase.GlideIn || TowerPhase == TowerEventPhase.Reveal ||
+                Focus == CameraFocus.Showcase || string.IsNullOrEmpty(golemId))
+            {
+                return false;
+            }
+            _alertGolem = golemId;
+            Focus = CameraFocus.Alert;
+            return true;
         }
 
         /// <summary>
@@ -151,9 +232,16 @@ namespace GolemFactory.Player
             }
         }
 
-        /// <summary>A Clock Tower stage completed: the event begins (decision 4).</summary>
+        /// <summary>
+        /// A Clock Tower stage completed: the event begins (decision 4). Not over the title: its
+        /// camera stays on the workshop, and nobody is playing to be shown the stage.
+        /// </summary>
         public void BeginTowerEvent(int stageNumber, string stageName)
         {
+            if (Focus == CameraFocus.Showcase)
+            {
+                return;
+            }
             TowerStageNumber = stageNumber;
             TowerStageName = stageName;
             TowerPhase = TowerEventPhase.GlideIn;
@@ -210,10 +298,15 @@ namespace GolemFactory.Player
             return struck;
         }
 
-        /// <summary>How fast the camera moves this frame: following the player, or gliding to a focus.</summary>
-        public float GlideSpeed => Focus == CameraFocus.Player && TowerPhase != TowerEventPhase.GlideBack
-            ? CameraRigRules.FollowLerpSpeed
-            : FocusGlideSpeed;
+        /// <summary>
+        /// How fast the camera moves this frame: following the player, or gliding to a focus.
+        /// Infinite on Reduced motion: <see cref="CameraRigRules.Follow"/> then cuts to the target.
+        /// </summary>
+        public float GlideSpeed => !Motion.CameraGlides || Focus == CameraFocus.Showcase
+            ? float.PositiveInfinity // the showcase's drift is its own smooth path
+            : Focus == CameraFocus.Player && TowerPhase != TowerEventPhase.GlideBack
+                ? CameraRigRules.FollowLerpSpeed
+                : FocusGlideSpeed;
 
         private static float Approach(float value, float target, float deltaTime, float speed)
         {

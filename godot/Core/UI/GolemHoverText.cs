@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using System.Collections.Generic;
 using GolemFactory.Economy;
 using GolemFactory.Events;
@@ -103,7 +104,7 @@ namespace GolemFactory.UI
                 case GolemMood.Waiting:
                     return new HoverCard(title, Waiting(golem, facts, source, target, feeders), "", route);
                 case GolemMood.Unprogrammed:
-                    return new HoverCard(title, "No program · press E at it to open the Workbench", "", route);
+                    return new HoverCard(title, $"No program · press {KeyNames.Interact} at it to open the Workbench", "", route);
                 case GolemMood.Sleeping:
                     return new HoverCard(title, "Sleeping until its trigger: " + Trigger(golem.Program.logicCore), "", route);
                 default:
@@ -136,7 +137,7 @@ namespace GolemFactory.UI
             int index = golem.Program.CurrentStepIndex;
             AppendageActionDefinition step = golem.Program.CurrentStep;
             return "Working · step " + (index + 1) + " of " + golem.Program.appendages.Count +
-                   (step != null ? ", " + step.Label : "");
+                   (step != null ? ", " + WorkbenchDiagnostics.Humanize(step.Label) : ""); // the card as the Workbench names it, never its id
         }
 
         private static string Trigger(LogicCoreDefinition core)
@@ -157,7 +158,7 @@ namespace GolemFactory.UI
             }
             string why = golem.StallReason == StallReason.BeltFull ? target + " is full"
                 : feeders != null && feeders.Count > 0 ? BringIt(feeders)
-                : facts.TruckloadOnTheWay ? "a truckload is on its way"
+                : facts.SourceRefills ? "its cart is refilling"
                 : source + " is empty";
             return head + " · " + why;
         }
@@ -244,40 +245,40 @@ namespace GolemFactory.UI
             switch (golem.StallReason)
             {
                 case StallReason.NodeEmpty:
-                    return "Order a truckload: E at the stall.";
+                    return "Nothing refills it: stand it at a cart.";
                 case StallReason.BeltFull:
-                    return "Collect it with E, or stand a golem that hauls from it.";
+                    return $"Collect it with {KeyNames.Interact}, or stand a golem that hauls from it.";
                 case StallReason.BufferEmpty:
                 case StallReason.BeltEmpty:
                     return FillFix(good);
                 case StallReason.MissingItem:
                     return IsTake(golem) ? FillFix(good) : "Raise the Haul's batch, then ENGAGE again.";
                 case StallReason.NoSourceAtTile:
-                    return "Turn it (R) or move it (G).";
+                    return $"Turn it ({KeyNames.Rotate}) or move it ({KeyNames.Carry}).";
                 case StallReason.NoTargetAtTile:
-                    return "Turn it (R), or build a crate there.";
+                    return $"Turn it ({KeyNames.Rotate}), or build a crate there.";
                 case StallReason.InputFull:
-                    return "Change its program (E).";
+                    return $"Change its program ({KeyNames.Interact}).";
                 case StallReason.OutputFull:
                     return "Give " + Good(golem.StallResourceId) + " a crate, a heap or a carrier.";
                 case StallReason.NodeCrowded:
-                    return "Move it to another stall (G).";
+                    return $"Move it to another cart ({KeyNames.Carry}).";
                 case StallReason.FilterMismatch:
-                    return "Relabel the crate (I), or send " + Good(golem.StallResourceId) + " elsewhere.";
+                    return $"Relabel the crate ({KeyNames.Inventory}), or send " + Good(golem.StallResourceId) + " elsewhere.";
                 default:
-                    return "Reprogram it at the Workbench (E).";
+                    return $"Reprogram it at the Workbench ({KeyNames.Interact}).";
             }
         }
 
         private static string FillFix(string good) =>
             "Nothing fills it. Put " + (string.IsNullOrEmpty(good) ? "goods" : good) +
-            " in by hand (I), or stand a golem that pushes into it.";
+            $" in by hand ({KeyNames.Inventory}), or stand a golem that pushes into it.";
 
         private static string SteamFix(SteamShortage shortage)
         {
             switch (shortage)
             {
-                case SteamShortage.BoilerOutOfCoke: return "Fuel its boiler with Coke (E at the boiler).";
+                case SteamShortage.BoilerOutOfCoke: return $"Fuel its boiler with Coke ({KeyNames.Interact} at the boiler).";
                 case SteamShortage.BoilerAtCapacity: return "Build another boiler: this one already powers " + SteamNetwork.MaxGolemsPerBoiler + " golems.";
                 default: return "Lay a steam pipe to it from a lit boiler.";
             }

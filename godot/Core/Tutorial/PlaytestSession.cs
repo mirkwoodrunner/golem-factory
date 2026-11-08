@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -16,7 +17,10 @@ namespace GolemFactory.Tutorial
     public sealed class PlaytestQuestion
     {
         public string Id { get; }
-        public string Prompt { get; }
+        private readonly string _prompt;
+
+        /// <summary>The question, its key names and colour words filled (TextTokens).</summary>
+        public string Prompt => TextTokens.Fill(_prompt);
         public IReadOnlyList<string> Options { get; }
         public string AfterStepId { get; }
 
@@ -24,7 +28,7 @@ namespace GolemFactory.Tutorial
         {
             Id = id;
             AfterStepId = afterStepId;
-            Prompt = prompt;
+            _prompt = prompt;
             Options = options;
         }
     }
@@ -75,13 +79,15 @@ namespace GolemFactory.Tutorial
                 "Your first machine is running. How did the hand-gathering and cranking before it feel?",
                 "Miserable", "Long but fine", "About right", "Too short"),
             new PlaytestQuestion("walking", "coking-card",
-                "How much of that time was walking between the workshop and the stalls?",
+                "How much of that time was walking between the workshop and the carts?",
                 "Most of it", "About half", "Not much"),
             new PlaytestQuestion("carry", "gears",
                 "When you carried the golem, did the outline on the floor make it clear where it would land?",
                 "Clear", "Mostly", "I still guessed"),
-            new PlaytestQuestion("market", "program-coker",
-                "You bought Coal by the truckload. Does the market feel like an economy, or a toll booth?",
+            // New ids, not `market`: the truckload market those asked about is gone (supply-design
+            // §8), and a save that answered the old question must still be asked the new one.
+            new PlaytestQuestion("carts", "program-coker",
+                "You bought a Coal cart and its Rate. Does the market feel like an economy, or a toll booth?",
                 "An economy", "In between", "A toll booth"),
             new PlaytestQuestion("patent", "depot3",
                 "You stamped a patent onto a new golem. Did that feel obviously better than programming it again?",
@@ -113,7 +119,7 @@ namespace GolemFactory.Tutorial
                 "They helped", "Fine either way", "In my way (say where)"),
             // Phase 2's hint, turning, grey and red, and hover (testscript/phase-2-playtest.md).
             new PlaytestQuestion("turning", "r4-card",
-                "Turning golems with R: how did it go?",
+                "Turning golems with [[rotate]]: how did it go?",
                 "Easy", "Fiddly", "I turned the wrong one"),
             new PlaytestQuestion("grey-red", "r4-card",
                 "Waiting golems go grey, stuck ones red. Could you tell which needed you?",
@@ -129,7 +135,7 @@ namespace GolemFactory.Tutorial
                 "Burns too fast", "About right", "Too slow to matter"),
             // Phase 1's crates and pack (testscript/phase-1-playtest.md, "The questions").
             new PlaytestQuestion("collect", "gears",
-                "Collecting from the crate with E: did taking what fits feel easy, or like a chore?",
+                "Collecting from the crate with [[interact]]: did taking what fits feel easy, or like a chore?",
                 "Easy", "Fine", "A chore"),
             new PlaytestQuestion("pack-full", "coking-card",
                 "Did you fill your pack to 100 of something? Did \"pack full\" tell you what to do?",
@@ -160,13 +166,13 @@ namespace GolemFactory.Tutorial
                 "The Copper landed in the mast's crate. Did you find it?",
                 "Straight away", "Eventually", "No"),
             // Phase 3's full playthrough (testscript/full-playthrough.md, "The questions"). Its
-            // `market` is `market-late` here: chapter 3's `market` question already holds that
-            // saved name. The last three are about chapter 10 and the run, so they wait for the end.
+            // market question is `carts-late` (it was `market-late`, about truckloads). The last
+            // three are about chapter 10 and the run, so they wait for the end.
             new PlaytestQuestion("coal-share", "copper-ingot",
                 "How much of your factory was feeding the boilers?",
                 "About right", "Too much", "Hardly noticed it"),
-            new PlaytestQuestion("market-late", "post",
-                "Ordering truckloads at the stalls:",
+            new PlaytestQuestion("carts-late", "post",
+                "Keeping your carts stocked and upgraded:",
                 "Fine", "A chore", "I ran out a lot"),
             new PlaytestQuestion("lens-glass", "aether-cell",
                 "Was there enough Glass for your Lenses?",

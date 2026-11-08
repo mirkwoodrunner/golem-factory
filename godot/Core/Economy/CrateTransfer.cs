@@ -73,6 +73,10 @@ namespace GolemFactory.Economy
             {
                 return new TransferResult(itemType, 0, "This crate is for " + ItemTiers.DisplayName(label));
             }
+            if (crate is IIntakeCrate intake && intake.RefusalFor(itemType) is string refused)
+            {
+                return new TransferResult(itemType, 0, refused);
+            }
             return Plan(pack, to, itemType, want, "Crate full of " + ItemTiers.DisplayName(itemType));
         }
 

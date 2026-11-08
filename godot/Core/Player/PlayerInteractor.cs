@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +10,7 @@ using GolemFactory.Events;
 using GolemFactory.Golems;
 using GolemFactory.PunchCards;
 using GolemFactory.Steam;
+using GolemFactory.Supply;
 using GolemFactory.UI;
 using GolemFactory.World;
 
@@ -94,10 +96,9 @@ namespace GolemFactory.Player
         private ScreenCoordinator _screens;
         private IPackScreen _packScreen;
         private ICrateScreen _crateScreen;
-        private string _interactKeyLabel = "E";
 
         /// <summary>The key that opens the inventory, as a prompt names it.</summary>
-        public const string InventoryKeyLabel = "I";
+        public static string InventoryKeyLabel => KeyNames.Inventory;
 
         // Rotating an already-placed golem. "Golems cannot pivot" is a rule about *runtime
         // execution* -- nothing in a program may turn the golem mid-cycle -- not about the
@@ -108,13 +109,6 @@ namespace GolemFactory.Player
         // there. GridMap is the simulation truth for occupancy.
         private GridMap _gridMap;
         private GridCoordinateConverter _converter = new GridCoordinateConverter(new Vector2(1f, 1f));
-
-        // The market (progression-design §13.2). Optional: with no market wired, a stall is
-        // harvested and never ordered from.
-        private TruckloadMarket _market;
-        private Func<long> _currentTick = () => 0;
-        private StorageBufferRegistry _marketWallet;
-        private string _marketWalletBufferId = "FactoryStockpile";
 
         // Where things stand on screen, when the scene knows better than the grid. Unity read
         // every interactable's transform.position, which is NOT always its cell -- a carried
@@ -133,6 +127,21 @@ namespace GolemFactory.Player
         private GolemEntity[] _golems = new GolemEntity[0];
         private PlaceableBoiler[] _boilers = new PlaceableBoiler[0];
         private ICrate[] _depots = new ICrate[0];
+
+        // The supply street (docs/supply-design.md): its empty spots are interactables of their
+        // own; a bought cart is a marker like a stall. Optional: with no street, nothing here.
+        private Func<SupplyStreet> _supply;
+        private ISupplyScreen _supplyScreen;
+        private CartSpot[] _spots = new CartSpot[0];
+        private Vector3[] _spotPositions = new Vector3[0];
+
+        // The City Office (docs/contracts-design.md §1): one interactable, reached from whichever
+        // footprint cell is nearest the player. Optional: with no board, nothing here.
+        private Contracts.ContractBoard _contracts;
+        private Contracts.CityOfficeCrate _officeCrate;
+        private Vector2Int[] _officeCells = new Vector2Int[0];
+        private IContractScreen _contractScreen;
+        private Vector3[] _officePositions = new Vector3[0];
         private HandCrankBench[] _benches = new HandCrankBench[0];
         private Vector2Int[] _boilerCells = new Vector2Int[0];
         private Vector2Int[] _depotCells = new Vector2Int[0];
@@ -236,10 +245,9 @@ namespace GolemFactory.Player
         /// Wires the affordance separately from Configure, so a scene that wants no prompt
         /// simply never calls it.
         /// </summary>
-        public void ConfigureAffordance(IScreen managementScreen, string interactKeyLabel)
+        public void ConfigureAffordance(IScreen managementScreen)
         {
             _managementScreen = managementScreen;
-            _interactKeyLabel = interactKeyLabel;
         }
 
         /// <summary>
@@ -254,6 +262,25 @@ namespace GolemFactory.Player
             _packScreen = packScreen ?? _packScreen;
             _crateScreen = crateScreen ?? _crateScreen;
         }
+
+        /// <summary>The supply street, whose empty spots [E] opens and whose carts [I] opens.</summary>
+        public void ConfigureSupply(Func<SupplyStreet> supply) => _supply = supply;
+
+        /// <summary>The cart panel. Null keeps one already handed over.</summary>
+        public void ConfigureSupplyScreen(ISupplyScreen screen) => _supplyScreen = screen ?? _supplyScreen;
+
+        /// <summary>The City Office: its board, its crate, and its footprint. A disabled board (Creative) is no office.</summary>
+        public void ConfigureOffice(Contracts.ContractBoard board, Contracts.CityOfficeCrate crate, IEnumerable<Vector2Int> cells)
+        {
+            bool live = board != null && board.Enabled;
+            _contracts = live ? board : null;
+            _officeCrate = live ? crate : null;
+            _officeCells = live && cells != null ? new List<Vector2Int>(cells).ToArray() : new Vector2Int[0];
+            _officePositions = new Vector3[_officeCells.Length > 0 ? 1 : 0];
+        }
+
+        /// <summary>The office's notice. Null keeps one already handed over.</summary>
+        public void ConfigureContractScreen(IContractScreen screen) => _contractScreen = screen ?? _contractScreen;
 
         /// <summary>What exists to interact with. Unity found all of this with FindObjectsByType.</summary>
         public void ConfigureWorld(
@@ -273,18 +300,6 @@ namespace GolemFactory.Player
         /// its cell.
         /// </summary>
         public void ConfigurePositions(Func<object, Vector3?> positionOf) => _positionOf = positionOf;
-
-        public void ConfigureMarket(
-            TruckloadMarket market, Func<long> currentTick, StorageBufferRegistry wallet, string walletBufferId)
-        {
-            _market = market;
-            _currentTick = currentTick ?? (() => 0);
-            _marketWallet = wallet;
-            if (!string.IsNullOrEmpty(walletBufferId))
-            {
-                _marketWalletBufferId = walletBufferId;
-            }
-        }
 
         /// <summary>
         /// The build mode this interactor defers the shared R key to. Optional: with none
@@ -336,6 +351,10 @@ namespace GolemFactory.Player
         {
             _nodeMarkers = Snapshot(_markerSource);
             _golems = Snapshot(_golemSource);
+            // A spot that can't take a cart yet (the Docks' quay while shut) is no target.
+            SupplyStreet street = _supply?.Invoke();
+            _spots = street?.Spots.Where(s => s.IsEmpty && street.IsOpen(s)).ToArray() ?? new CartSpot[0];
+            _spotPositions = Resize(_spotPositions, _spots.Length);
 
             var stations = new List<GolemConstructionStation>();
             var boilers = new List<PlaceableBoiler>();
@@ -435,7 +454,36 @@ namespace GolemFactory.Player
             {
                 _depotPositions[i] = _depots[i] != null ? Resolve(_depots[i], _depotCells[i]) : Parked;
             }
+            // A spot stands where its cart would: a cart's marker sits on the cell's own point.
+            for (int i = 0; i < _spots.Length; i++)
+            {
+                _spotPositions[i] = _spots[i] != null && _spots[i].IsEmpty ? SpotPosition(_spots[i]) : Parked;
+            }
+            if (_officePositions.Length > 0)
+            {
+                _officePositions[0] = OfficePosition();
+            }
         }
+
+        // The footprint cell nearest the player, so E reaches the office from any side.
+        private Vector3 OfficePosition()
+        {
+            Vector3 best = Parked;
+            float bestSqr = float.PositiveInfinity;
+            foreach (Vector2Int cell in _officeCells)
+            {
+                Vector3 at = CellCentre(cell);
+                float sqr = (at - Position).sqrMagnitude;
+                if (sqr < bestSqr)
+                {
+                    bestSqr = sqr;
+                    best = at;
+                }
+            }
+            return best;
+        }
+
+        private static Vector3 SpotPosition(CartSpot spot) => new Vector3(spot.Cell.x, spot.Cell.y, 0f);
 
         private void FillGolemPositions()
         {
@@ -445,67 +493,6 @@ namespace GolemFactory.Player
                 _golemPositions[i] = golem != null && !golem.IsRemoved ? PositionOf(golem) : Parked;
             }
         }
-
-        // --- The market ----------------------------------------------------------------------------
-
-        /// <summary>
-        /// Orders one truckload from the stall a marker trades for. Reached only when the stall
-        /// is EMPTY, which makes harvest and order share one key without ever being ambiguous: a
-        /// stall with stock is something you take from, a stall without is something you buy from.
-        /// </summary>
-        public bool TryOrderTruckload(ResourceNodeMarker marker)
-        {
-            if (marker == null || _market == null)
-            {
-                LastStatusMessage = "Nothing to order here.";
-                return false;
-            }
-
-            if (!_market.TryGetOffer(marker.NodeId, out MarketOffer offer))
-            {
-                LastStatusMessage = "This stall is not trading.";
-                return false;
-            }
-
-            MarketOrderResult result = _market.TryOrder(
-                marker.NodeId, _marketWallet, _marketWalletBufferId, _currentTick(), _postBufferId);
-
-            switch (result)
-            {
-                case MarketOrderResult.Ordered:
-                    LastStatusMessage = $"Ordered {offer.TruckloadSize} {marker.ItemType}; the cart is on its way.";
-                    Popup(marker.Position, "Ordered", InteractionPopupKind.Gain);
-                    return true;
-
-                case MarketOrderResult.AlreadyInTransit:
-                    LastStatusMessage = "That cart is already on the road.";
-                    Popup(marker.Position, "En route", InteractionPopupKind.Refused);
-                    return false;
-
-                case MarketOrderResult.CannotAfford:
-                    // Names the shortfall, exactly as a refused chassis or building does.
-                    LastStatusMessage = ConstructionCostPolicy.FormatShortfall(MarketWallet, offer.Price);
-                    Popup(marker.Position, "Can't pay", InteractionPopupKind.Refused);
-                    return false;
-
-                default:
-                    LastStatusMessage = "This stall never runs dry.";
-                    return false;
-            }
-        }
-
-        private PlayerWallet MarketWallet =>
-            _marketWallet == null ? null : new PlayerWallet(_marketWallet, _marketWalletBufferId, _postBufferId);
-
-        /// <summary>
-        /// Whether this stall would take an order right now: a market is wired, it trades this
-        /// node, and it has no cart already on the road.
-        /// </summary>
-        public bool CanOrderFrom(ResourceNodeMarker marker) =>
-            marker != null
-            && _market != null
-            && _market.TryGetOffer(marker.NodeId, out _)
-            && !_market.IsInTransit(marker.NodeId);
 
         // --- R and G -------------------------------------------------------------------------------
 
@@ -572,7 +559,7 @@ namespace GolemFactory.Player
             Vector3 at = PositionOf(golem);
             CarriedGolem = golem;
             golem.SetHeld(true);
-            LastStatusMessage = $"Carrying {UI.GolemNames.Short(golem)}. [G] to set it down.";
+            LastStatusMessage = $"Carrying {UI.GolemNames.Short(golem)}. [{KeyNames.Carry}] to set it down.";
             Popup(at, "Carrying " + UI.GolemNames.Short(golem), InteractionPopupKind.Gain);
             return true;
         }
@@ -889,11 +876,15 @@ namespace GolemFactory.Player
                 detail = "pack full";
             }
             // [I] opens a crate whatever E would do there: put into an empty one, label a full one.
-            if (pick.Kind == InteractionKind.Sort && CurrentAffordance != InteractionAffordance.OutOfRange)
+            // A cart's panel opens the same way.
+            // The office's crate only once its contract is taken: before that it takes nothing.
+            bool officeTakes = pick.Kind == InteractionKind.Office && CurrentAffordance == InteractionAffordance.Ready
+                && _contracts?.State == Contracts.ContractState.Accepted;
+            if (((pick.Kind == InteractionKind.Sort || IsCartMarker(target)) && CurrentAffordance != InteractionAffordance.OutOfRange)
+                || officeTakes)
             {
                 detail = InteractionTargeting.AppendDetail(detail, "[" + InventoryKeyLabel + "] open");
             }
-            string verb = DescribeMarketStall(pick, target, ref detail);
 
             // [G] AND [R] ACT ON THE NEAREST GOLEM, NOT ON THE WINNER OF THE [E] PICK, and the two
             // differ at exactly the moment the player most needs to be told the keys exist. A
@@ -911,7 +902,7 @@ namespace GolemFactory.Player
             }
 
             CurrentPrompt = InteractionTargeting.BuildPrompt(
-                pick.Kind, targetName, detail, CurrentAffordance, _interactKeyLabel, verb);
+                pick.Kind, targetName, detail, CurrentAffordance, KeyNames.Interact);
             PromptPosition = targetPosition;
         }
 
@@ -919,7 +910,8 @@ namespace GolemFactory.Player
         {
             FillPositions();
             return InteractionTargeting.SelectNearest(
-                Position, _nodePositions, _stationPositions, _golemPositions, _boilerPositions, _depotPositions);
+                Position, _nodePositions, _stationPositions, _golemPositions, _boilerPositions, _depotPositions,
+                _spotPositions, _officePositions);
         }
 
         private object ResolveTarget(InteractionPick pick, out Vector3 position)
@@ -943,6 +935,12 @@ namespace GolemFactory.Player
                 case InteractionKind.Sort when i >= 0 && i < _depots.Length:
                     position = _depotPositions[i];
                     return _depots[i];
+                case InteractionKind.Supply when i >= 0 && i < _spots.Length:
+                    position = _spotPositions[i];
+                    return _spots[i];
+                case InteractionKind.Office when i == 0 && _officeCrate != null:
+                    position = _officePositions[0];
+                    return _officeCrate;
                 default:
                     return null;
             }
@@ -962,13 +960,6 @@ namespace GolemFactory.Player
                 case InteractionKind.Harvest:
                 {
                     var marker = (ResourceNodeMarker)target;
-                    // An empty stall with a cart already on the road is genuinely unavailable; an
-                    // empty stall you can order from is not, it is the other half of the market.
-                    if (marker.IsDepleted && CanOrderFrom(marker))
-                    {
-                        return false;
-                    }
-
                     if (!marker.IsDepleted && PackRoomFor(marker.ItemType) <= 0)
                     {
                         packFull = true;
@@ -979,6 +970,9 @@ namespace GolemFactory.Player
                 }
                 case InteractionKind.Refuel:
                     return BoilerRefuelPolicy.AmountToLoad(StockpileCoke, room: RoomIn(target)) <= 0;
+                case InteractionKind.Office:
+                    // Roped off until the first contract posts (contracts-design §1).
+                    return _contracts == null || !_contracts.IsOpen;
                 case InteractionKind.Sort:
                 {
                     List<string> held = ((ICrate)target).Buffer?.HeldGoods();
@@ -1003,31 +997,6 @@ namespace GolemFactory.Player
 
         private PlayerWallet Wallet => _stockpile == null ? null : new PlayerWallet(_stockpile, _stockpileBufferId, _postBufferId);
 
-        /// <summary>
-        /// An EMPTY market stall's caption (G10, at the user's call). [E] there orders a
-        /// truckload, so the line names that and its price -- "Harvest Copper Ore - depleted"
-        /// described an action the key would not take. With a cart already on the road the key
-        /// does nothing, and the line says why instead of "depleted". Returns the verb to use,
-        /// or null to keep the kind's own; a stall with stock is untouched.
-        /// </summary>
-        private string DescribeMarketStall(InteractionPick pick, object target, ref string detail)
-        {
-            if (pick.Kind != InteractionKind.Harvest || !(target is ResourceNodeMarker marker) || !marker.IsDepleted
-                || _market == null || !_market.TryGetOffer(marker.NodeId, out MarketOffer offer))
-            {
-                return null;
-            }
-
-            if (_market.IsInTransit(marker.NodeId))
-            {
-                detail = "cart on its way";
-                return null;
-            }
-
-            detail = ConstructionCostPolicy.FormatCost(offer.Price);
-            return "Order a truckload of";
-        }
-
         private static int RoomIn(object boiler) => (boiler as PlaceableBoiler)?.Boiler?.CokeRoom ?? 0;
 
         private int StockpileCoke => Wallet?.Quantity(ItemType.Coke) ?? 0;
@@ -1046,8 +1015,22 @@ namespace GolemFactory.Player
                     // "Copper Ore", not "CopperOre": a caption is English, not an id.
                     targetName = string.IsNullOrEmpty(itemType) ? marker.NodeId : ItemTiers.DisplayName(itemType);
                     detail = ResourceNodeVisualState.DescribeRemaining(marker.RemainingQuantity);
+                    SupplyCart cart = _supply?.Invoke()?.SpotOf(marker.NodeId)?.Cart;
+                    if (cart != null)
+                    {
+                        targetName += " cart";
+                        detail = SupplyText.Holding(cart);
+                    }
                     break;
                 }
+                case InteractionKind.Supply:
+                    targetName = "this spot";
+                    detail = "roped off";
+                    break;
+                case InteractionKind.Office:
+                    targetName = Contracts.ContractText.OfficeName;
+                    detail = Contracts.ContractText.Prompt(_contracts);
+                    break;
                 case InteractionKind.Refuel:
                 {
                     var boiler = (PlaceableBoiler)target;
@@ -1073,7 +1056,7 @@ namespace GolemFactory.Player
                     // Facing is in the caption because it is routing, not decoration, and this is
                     // the only place the player is told [R] and [G] exist at all.
                     detail = InteractionTargeting.AppendDetail(
-                        "faces " + FacingVisuals.Describe(golem.Facing) + " · [R] turn",
+                        "faces " + FacingVisuals.Describe(golem.Facing) + " · [" + KeyNames.Rotate + "] turn",
                         // No id: the golem is already this caption's subject.
                         InteractionTargeting.GolemHandlingHint(null, isCarrying));
                     // A stopped golem's problem leads, for a player without a mouse
@@ -1118,15 +1101,7 @@ namespace GolemFactory.Player
             {
                 case InteractionKind.Harvest:
                 {
-                    // ONE KEY, TWO ACTIONS, decided by the stall rather than by a mode: full
-                    // stalls are harvested, empty ones are ordered from.
-                    var marker = target as ResourceNodeMarker;
-                    if (marker != null && marker.IsDepleted && CanOrderFrom(marker))
-                    {
-                        return TryOrderTruckload(marker);
-                    }
-
-                    return TryHarvest(marker);
+                    return TryHarvest(target as ResourceNodeMarker);
                 }
                 case InteractionKind.Construct:
                     return TryOpenConstruction(target as GolemConstructionStation);
@@ -1136,6 +1111,10 @@ namespace GolemFactory.Player
                     return TryRefuelBoiler(target as PlaceableBoiler);
                 case InteractionKind.Sort:
                     return TryCollect(target as ICrate);
+                case InteractionKind.Supply:
+                    return TryOpenSupply(target as CartSpot);
+                case InteractionKind.Office:
+                    return TryOpenOffice();
                 default:
                     LastStatusMessage = "Nothing in range to interact with.";
                     return false;
@@ -1178,6 +1157,11 @@ namespace GolemFactory.Player
         /// </summary>
         public bool OpenInventory()
         {
+            CartSpot spot = SelectNearestSpot(_interactRange);
+            if (spot != null && _supplyScreen != null)
+            {
+                return TryOpenSupply(spot);
+            }
             ICrate crate = SelectNearestCrate(_interactRange);
             if (crate != null && _crateScreen != null)
             {
@@ -1193,12 +1177,81 @@ namespace GolemFactory.Player
             return false;
         }
 
-        /// <summary>The nearest crate (depot or mast) within <paramref name="range"/>, or null.</summary>
+        /// <summary>
+        /// E at the City Office: its notice. Refused while it is roped off, saying when it opens.
+        /// </summary>
+        public bool TryOpenOffice()
+        {
+            if (_contracts == null || _contractScreen == null)
+            {
+                LastStatusMessage = "Nothing to open here.";
+                return false;
+            }
+            if (!_contracts.IsOpen)
+            {
+                LastStatusMessage = Contracts.ContractText.Closed(_contracts);
+                Popup(_officePositions.Length > 0 ? _officePositions[0] : Position, "Roped off", InteractionPopupKind.Refused);
+                return false;
+            }
+            _contractScreen.Open();
+            return true;
+        }
+
+        /// <summary>Opens the cart panel on a spot, empty or with its cart.</summary>
+        public bool TryOpenSupply(CartSpot spot)
+        {
+            if (spot == null || _supplyScreen == null)
+            {
+                LastStatusMessage = "Nothing to open here.";
+                return false;
+            }
+            _supplyScreen.Open(spot);
+            return true;
+        }
+
+        private bool IsCartMarker(object target) =>
+            target is ResourceNodeMarker marker && _supply?.Invoke()?.IsCart(marker.NodeId) == true;
+
+        /// <summary>
+        /// The nearest spot within <paramref name="range"/>, by a cart's marker or an empty spot's
+        /// place, or null: what [I] opens on the street.
+        /// </summary>
+        private CartSpot SelectNearestSpot(float range)
+        {
+            SupplyStreet street = _supply?.Invoke();
+            if (street == null)
+            {
+                return null;
+            }
+            CartSpot nearest = null;
+            float bestSqr = range * range;
+            foreach (CartSpot spot in street.Spots)
+            {
+                float sqr = (SpotPosition(spot) - Position).sqrMagnitude;
+                if (sqr <= bestSqr)
+                {
+                    bestSqr = sqr;
+                    nearest = spot;
+                }
+            }
+            return nearest;
+        }
+
+        /// <summary>The nearest crate (depot, mast or the open City Office's) within <paramref name="range"/>, or null.</summary>
         private ICrate SelectNearestCrate(float range)
         {
             FillPositions();
             ICrate nearest = null;
             float bestSqr = range * range;
+            if (_officePositions.Length > 0 && _contracts != null && _contracts.IsOpen)
+            {
+                float sqr = (_officePositions[0] - Position).sqrMagnitude;
+                if (sqr <= bestSqr)
+                {
+                    bestSqr = sqr;
+                    nearest = _officeCrate;
+                }
+            }
             for (int i = 0; i < _depots.Length; i++)
             {
                 float sqr = (_depotPositions[i] - Position).sqrMagnitude;
@@ -1300,6 +1353,11 @@ namespace GolemFactory.Player
 
         private float _harvestHoldSeconds;
 
+        // When, in held seconds, the next repeat is due. Kept, not worked out from the frame
+        // before: worked out each frame, it stayed one interval ahead of a 60 fps hold forever,
+        // and holding [E] took two goods and stopped.
+        private float _nextHarvestAt;
+
         /// <summary>
         /// Holding [E] on a stocked stall keeps harvesting, so the opening minutes are not sixty
         /// taps. Called once per frame; the first press is still <see cref="Interact"/>'s. It only
@@ -1311,6 +1369,7 @@ namespace GolemFactory.Player
             if (!held || justPressed)
             {
                 _harvestHoldSeconds = 0f;
+                _nextHarvestAt = HarvestRepeatDelay;
                 return 0;
             }
 
@@ -1321,21 +1380,18 @@ namespace GolemFactory.Player
             if (marker == null || marker.IsDepleted)
             {
                 _harvestHoldSeconds = 0f;
+                _nextHarvestAt = HarvestRepeatDelay;
                 return 0;
             }
 
-            float before = _harvestHoldSeconds;
             _harvestHoldSeconds += deltaTime;
-            if (_harvestHoldSeconds < HarvestRepeatDelay)
+            if (_nextHarvestAt < HarvestRepeatDelay)
             {
-                return 0;
+                _nextHarvestAt = HarvestRepeatDelay;
             }
 
             int made = 0;
-            float next = before < HarvestRepeatDelay
-                ? HarvestRepeatDelay
-                : before + HarvestRepeatInterval;
-            while (next <= _harvestHoldSeconds)
+            while (_nextHarvestAt <= _harvestHoldSeconds)
             {
                 if (!TryHarvest(marker))
                 {
@@ -1343,7 +1399,7 @@ namespace GolemFactory.Player
                 }
 
                 made++;
-                next += HarvestRepeatInterval;
+                _nextHarvestAt += HarvestRepeatInterval;
             }
 
             return made;

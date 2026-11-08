@@ -16,13 +16,13 @@ are timed again here, but only the Phase 2 script's first-time player counts for
 
 1. **One player, any experience.** A player who has done the Phase 2 script is fine. Tell them:
    "Follow the guide to the end. Think aloud if you like. Don't press F9."
-2. **A fresh game.** Move `save.json` out of `%APPDATA%\Godot\app_userdata\Golem Factory\` and put
-   it back afterwards. Playtest mode on (`"playtest": true` in `godot/data/sandbox.json`), so the
+2. **A fresh game.** Choose New game on the title; the player's own saves stay in their slots.
+   Playtest mode on (`"playtest": true` in `godot/data/sandbox.json`), so the
    report writes.
 3. **No F9, anywhere.** A kit use voids the timing of that chapter and every chapter after it; the
    report's "Playtest kit" section lists each use. The notes still count.
-4. **Breaks are allowed between chapters.** Save (Tab, Save / Load), quit, and resume later with
-   Load. Each launch writes its own report (the previous one is archived as
+4. **Breaks are allowed between chapters.** Save into a slot (Tab, Save / Load), quit, and resume
+   later with Continue or Load on the title. Each launch writes its own report (the previous one is archived as
    `playtest-report-<date>-<time>.md`), so a run in three sittings leaves three reports. Note the
    sitting's chapters on each.
 5. **Don't help.** If asked, note the question and the step; answer only after **two full
@@ -39,9 +39,9 @@ add the sittings' chapter times by hand in the notes.
 
 | Ch. | Budget | What to watch |
 |---|---|---|
-| 1 | 5:00 | `coal`: the truckload now costs 30 Scrap. Did the player have it? |
+| 1 | 5:00 | `coal`: the Coal cart costs 80 Scrap, from the starting Scrap cart. Did they find the marked spot? |
 | 2 | 4:30 | The bench: the Presser now costs 10 Iron Plate + 5 Gear. How long did they crank? |
-| 3 | 3:30 | `pipes2`; the coker grey while it waits |
+| 3 | 3:30 | `pipes2`; `coal-order`, the Coal cart's Rate rung ([I] at the cart); the coker grey while it waits |
 | 4 | 2:00 | `turn`, `stall` |
 | 5 | 20:00 | The Hauler's price (20 Iron Plate + 10 Gear + 30 Coke, `tuning-data-spec.md` §18 correction 10): how did they make it? `work-smelter` (a full Slag slot stops it) |
 | 6 | 15:00 | `belts` pointing the right way; `copper-depot`'s label |
@@ -70,7 +70,7 @@ the report, what the player said, and what was on screen (a screenshot with the 
 | 4 | **A red golem nobody noticed for over a minute** | Count red golems at each chapter's end; ask which they had seen | Medium |
 | 5 | **The same guide text read three or more times** | They scroll back, re-read aloud, or hover F1 | Medium |
 | 6 | **A price they couldn't pay** that the guide asked for | "Upgrade your pack" or "Requires:" on something a step names | High: invariant 1 or 3 of the tuning spec |
-| 7 | **The market as a toll booth** | They stand at stalls pressing E for over a minute at a time, or say so. Count truckload orders in a five-minute window of chapters 8–10 | Medium: tuning spec §17 Q3 |
+| 7 | **The market as a toll booth** | They stand at carts pressing E for over a minute at a time, or say so. Count the carts they add and the rungs they buy in chapters 8–10 | Medium: supply-design.md §3 |
 | 8 | **The tower stalls** | The `stage1` headline reads "frozen" or "starved" for over a minute while they feed it | High: tuning spec §10.1 |
 | 9 | **Boilers dry** | A golem blue for steam for over a minute; the coal line can't keep up | Medium: tuning spec §3 |
 | 10 | **A crash, a hang, or an error** | The report's "Errors the game logged" | Highest |
@@ -103,14 +103,16 @@ the existing questions stay where they are.
 | Id | Asked at step | Question | Answers |
 |---|---|---|---|
 | `coal-share` | `copper-ingot` | How much of your factory was feeding the boilers? | About right · Too much · Hardly noticed it |
-| `market-late` | `post` | Ordering truckloads at the stalls: | Fine · A chore · I ran out a lot |
+| `carts-late` | `post` | Keeping your carts stocked and upgraded: | Fine · A chore · I ran out a lot |
 | `lens-glass` | `aether-cell` | Was there enough Glass for your Lenses? | Plenty · Just enough · Never enough |
 | `overclocker` | `done` | Did you use Repeat on the Overclocker? | Often · Tried it · Didn't know it existed |
 | `stage-rate` | `done` | How fast did the Foundation build at your rate? | Fair · Slow · It kept freezing |
 | `whole-run` | `done` | Which chapter dragged? | None · 5 · 6 · 7 · 8 · 9 · 10 |
 
-The ids are the questions' saved names, like a step's `Id`; don't rename one. `market-late` is
-not `market` because chapter 3's market question already holds that name (Phase 3 critique).
+The ids are the questions' saved names, like a step's `Id`; don't rename one. `carts-late`
+replaced `market-late` when supply carts replaced truckloads (docs/supply-design.md), with a new
+id so a save that answered the old question is asked the new one; chapter 3's `market` became
+`carts` the same way.
 
 ## After the run
 
@@ -139,7 +141,7 @@ Ch | time  | budget | over by | stuck steps (signal #) | notes
 
 Frame rate at the end:  p50 ___ ms   p95 ___ ms   worst ___ ms   golems ___   belt items ___
 Lowest FPS in the idle minute: ___
-Truckload orders in five minutes of chapter 8–10: ___
+Carts on the street at the end: ___   Rungs bought: ___
 ```
 
 ## Numbers to judge
@@ -147,7 +149,7 @@ Truckload orders in five minutes of chapter 8–10: ___
 | Number | Value | Lives in |
 |---|---|---|
 | Steam | 3 Coke a minute per working golem, 8 golems per boiler | `SteamNetwork` |
-| Truckloads | Scrap 100 free; Coal 120 for 30 Scrap; Copper and Zinc Ore 120 for 60; Aether 40 for 80 | `sandbox.json` `market` |
+| Supply carts | One Scrap cart to start (120 a minute, holds 200); Coal 80 Scrap; Copper Ore 60 Iron Plate + 20 Gear; each with Rate and Capacity rungs | `sandbox.json` `supply` (supply-design.md §3) |
 | Brass Presser | 60 Scrap + 10 Iron Plate + 5 Gear | `chassis.json` |
 | Aether-Hauler | 20 Iron Plate + 10 Gear + 30 Coke | `chassis.json` |
 | Lens | 3 Glass + 1 Brass | `recipes.json` R10 |

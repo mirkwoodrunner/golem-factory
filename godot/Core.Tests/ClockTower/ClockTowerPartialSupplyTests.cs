@@ -9,8 +9,8 @@ namespace GolemFactory.Tests.EditMode
     /// docs/tuning-data-spec.md §10.1 and §15.6: how long a stage takes when its line runs short
     /// of the demand. The guide's <c>stage1</c> text says "Short of 6 a minute it still builds,
     /// just slower", and §7 says progress "scales with delivered rate". Measured on the real
-    /// stage 1 (6 Frame Sections a minute, 360 s), fed as fresh production and delivered at an
-    /// even spacing, from windows already holding a minute at that rate.
+    /// stage 1 (6 Frame Sections a minute, 360 s), delivered at an even spacing, from windows
+    /// already holding a minute at that rate.
     /// </summary>
     public class ClockTowerPartialSupplyTests
     {
@@ -31,7 +31,6 @@ namespace GolemFactory.Tests.EditMode
             int units = UnitsDueOnTick(tick, ratePerMinute);
             if (units > 0)
             {
-                site.RecordFreshProduction(item, units, tick);
                 site.RecordDelivery(item, units, tick);
             }
         }

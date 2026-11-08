@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using System.Collections.Generic;
 using GolemFactory.Economy;
 
@@ -28,14 +29,14 @@ namespace GolemFactory.UI
 
         private static readonly Dictionary<string, string> Descriptions = new Dictionary<string, string>
         {
-            ["DepotPrefab"] = "A crate of 50 of each good: golems beside it push into it and haul out of it, and E collects.",
+            ["DepotPrefab"] = "A crate of 50 of each good: golems beside it push into it and haul out of it, and [[interact]] collects.",
             ["GolemConstructionStationPrefab"] = "Builds golems. Another one lets you build in a second place.",
             ["BeltPrefab"] = "Carries goods a cell at a time. Drag to lay a run.",
             ["BeltSplitterPrefab"] = "Hands goods out to every belt leading away from it, in turn.",
             ["BoilerPrefab"] = "Burns Coke to power the golems beside it and along its pipes.",
             ["SteamPipePrefab"] = "Carries a boiler's steam to the golems beside it. Drag to lay a run.",
             ["ClockTowerPrefab"] = "The great work: four stages fed by your whole factory.",
-            ["HandCrankBenchPrefab"] = "Crank simple recipes by hand. Hold E to crank, R to change recipe.",
+            ["HandCrankBenchPrefab"] = "Crank simple recipes by hand. Hold [[interact]] to crank, [[rotate]] to change recipe.",
             ["FreightMastPrefab"] = "A landing mast for Zeppelin freight between distant sites.",
             ["SlagHeapPrefab"] = "Burns Coke to get rid of Slag.",
             ["ScrapRecyclerPrefab"] = "Burns Coke to turn junk, Slag included, back into Scrap.",
@@ -61,7 +62,7 @@ namespace GolemFactory.UI
 
         /// <summary>One line on what the building is for, or "" for one this table has not met.</summary>
         public static string DescriptionFor(string placeableKey) =>
-            placeableKey != null && Descriptions.TryGetValue(placeableKey, out string text) ? text : "";
+            placeableKey != null && Descriptions.TryGetValue(placeableKey, out string text) ? TextTokens.Fill(text) : "";
 
         /// <summary>
         /// The hover card's cost line: "30 Scrap + 10 Iron Plate", "Free", or, short of it,

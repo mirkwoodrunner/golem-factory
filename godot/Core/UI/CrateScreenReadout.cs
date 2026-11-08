@@ -59,6 +59,9 @@ namespace GolemFactory.UI
         public const string ChoosingLabel = "Choose a label";
         public const string MastLabel = "A mast's crate takes no label";
 
+        /// <summary>The City Office's crate takes what its contract asks, so it has no label of its own.</summary>
+        public const string OfficeLabel = "The office takes what its contract asks";
+
         private readonly StorageBufferRegistry _buffers;
         private readonly string _packId;
         private readonly string _postId;
@@ -140,6 +143,10 @@ namespace GolemFactory.UI
             {
                 return "";
             }
+            if (crate is IIntakeCrate intake)
+            {
+                return intake.Title;
+            }
             if (!crate.OwnsBuffer)
             {
                 return PostTitle;
@@ -152,6 +159,10 @@ namespace GolemFactory.UI
 
         public static string CapLine(ICrate crate)
         {
+            if (crate is IIntakeCrate intake)
+            {
+                return intake.CapLine;
+            }
             int cap = crate?.Buffer?.CapacityPerType ?? 0;
             string each = cap > 0 ? cap + " of each good" : "any amount of each good";
             return crate != null && !crate.OwnsBuffer ? "Shared by every Post crate · " + each : "Holds " + each;
@@ -174,6 +185,10 @@ namespace GolemFactory.UI
         /// <summary>The label button: "Label: Copper Ore", "Choose a label" while picking, or a mast's.</summary>
         public static string LabelText(ICrate crate, bool picking)
         {
+            if (crate is IIntakeCrate)
+            {
+                return OfficeLabel;
+            }
             if (crate == null || !crate.CanLabel)
             {
                 return MastLabel;

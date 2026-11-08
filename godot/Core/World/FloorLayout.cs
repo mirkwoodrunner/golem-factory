@@ -68,8 +68,17 @@ namespace GolemFactory.World
         /// walk distances are on the Director's do-not-tune list, and shifting them to make a
         /// symmetric eight would have retuned §9's manual era as a side effect.
         /// </para>
+        ///
+        /// <para>
+        /// THIRTY-FOUR since supply carts (docs/supply-design.md §1): eight more spots on the same
+        /// row and pitch (x = ±20, ±24, ±28, ±32), seventeen in all, still with two cells of
+        /// margin at each end. The nine stalls don't move.
+        /// </para>
         /// </summary>
-        public const int StreetHalfExtent = 18;
+        public const int StreetHalfExtent = 34;
+
+        /// <summary>The outermost spot on the stall row, either side.</summary>
+        public const int OutermostSpot = 32;
 
         /// <summary>
         /// How far north the workshop reaches, in cells. Equal to <see cref="HalfExtent"/> for
@@ -454,7 +463,16 @@ namespace GolemFactory.World
 
         public static Vector3 ClampToFloor(
             Vector3 worldPosition, GridCoordinateConverter converter,
-            int halfExtent, int streetDepth, int northExtent)
+            int halfExtent, int streetDepth, int northExtent) =>
+            ClampToFloor(worldPosition, converter, halfExtent, streetDepth, northExtent, Docks.Closed);
+
+        /// <summary>
+        /// With the Docks (docs/region-design.md): while they are open (<paramref name="docksNorth"/>
+        /// not <see cref="Docks.Closed"/>), their lane and floor are two more rectangles to be nearest.
+        /// </summary>
+        public static Vector3 ClampToFloor(
+            Vector3 worldPosition, GridCoordinateConverter converter,
+            int halfExtent, int streetDepth, int northExtent, int docksNorth)
         {
             // BOUNDS THE WORLD, NOT THE ROOM, and that is the point of the split. The player buys
             // raw goods at stalls out on the street, so a clamp at the workshop's south wall would
@@ -507,6 +525,15 @@ namespace GolemFactory.World
             if ((cellFraction - inSquare).sqrMagnitude < (cellFraction - nearest).sqrMagnitude)
             {
                 nearest = inSquare;
+            }
+
+            if (docksNorth != Docks.Closed)
+            {
+                Vector2 inDocks = Docks.Nearest(cellFraction, docksNorth);
+                if ((cellFraction - inDocks).sqrMagnitude < (cellFraction - nearest).sqrMagnitude)
+                {
+                    nearest = inDocks;
+                }
             }
 
             return converter.CellFractionToWorld(nearest);

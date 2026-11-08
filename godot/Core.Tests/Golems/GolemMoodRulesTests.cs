@@ -181,5 +181,29 @@ namespace GolemFactory.Tests.EditMode
 
             Assert.AreEqual("zzz", GolemMoodRules.Caption(GolemMood.Sleeping));
         }
+
+        [Test]
+        public void AView_ReclassifiesEachGolemOnceEveryFewFrames_AndAtOnceWhenItsOwnStateChanges()
+        {
+            // docs/endless-design.md §4: staggered so the reads spread over the frames.
+            for (int slot = 0; slot < 9; slot++)
+            {
+                int reads = 0;
+                for (long frame = 100; frame < 100 + GolemMoodRules.ReclassifyEveryFrames; frame++)
+                {
+                    reads += GolemMoodRules.ShouldReclassify(frame, slot, false) ? 1 : 0;
+                }
+                Assert.AreEqual(1, reads, $"slot {slot}: once in every {GolemMoodRules.ReclassifyEveryFrames} frames");
+            }
+            Assert.IsTrue(GolemMoodRules.ShouldReclassify(101, 0, ownStateChanged: true), "its own change, at once");
+            Assert.IsTrue(GolemMoodRules.ShouldReclassify(3, -7, false) || GolemMoodRules.ShouldReclassify(4, -7, false)
+                || GolemMoodRules.ShouldReclassify(5, -7, false) || GolemMoodRules.ShouldReclassify(6, -7, false), "a negative slot still gets its turn");
+
+            var golem = new GolemEntity();
+            golem.Configure("G", null);
+            int before = GolemMoodRules.OwnStateSignature(golem);
+            golem.SetPlacement(new Compat.Vector2Int(2, 3), GolemFactory.World.Facing.East);
+            Assert.AreNotEqual(before, GolemMoodRules.OwnStateSignature(golem), "a move is its own change");
+        }
     }
 }

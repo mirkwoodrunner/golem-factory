@@ -31,6 +31,25 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
+        public void TheEndlessLoad_IsWhatItSays_AndRuns()
+        {
+            // docs/endless-design.md §4: the larger load the golem cap is measured at.
+            SandboxWorld world = Compose();
+            EndgameLoadSpec spec = EndgameLoadSpec.Endless;
+            EndgameLoadResult load = EndgameLoad.Build(world, spec);
+
+            Assert.AreEqual(160, load.Golems.Count);
+            Assert.AreEqual(20, load.Boilers.Count);
+            Assert.AreEqual(800, load.BeltItems);
+
+            world.Advance(0.1f);
+            Assert.AreEqual(160, load.Powered, "every golem powered after one tick");
+            Advance(world, load, 600);
+            Assert.GreaterOrEqual(load.BeltItems, 800, "the loops keep every item");
+            Assert.Less(load.Golems.Count(g => g.Program.State == GolemState.Stalled && g.Mood == GolemMood.Stalled), 16, "flowing, red: " + Stalls(load));
+        }
+
+        [Test]
         public void TheLoad_IsWhatItSays()
         {
             SandboxWorld world = Compose();
@@ -86,7 +105,7 @@ namespace GolemFactory.Tests.EditMode
             EndgameLoadResult load = EndgameLoad.Build(world);
             load.Starve();
             Advance(world, load, 200);
-            var bare = new StallFactsProbe(() => world.Golems, world.Endpoints, world.Belts, () => world.Market);
+            var bare = new StallFactsProbe(() => world.Golems, world.Endpoints, world.Belts, id => world.Supply.Refills(id));
             int fed = 0;
             foreach (GolemEntity golem in world.Golems)
             {

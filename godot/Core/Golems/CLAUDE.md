@@ -44,6 +44,12 @@ Paths here are relative to `godot/` unless they say otherwise.
   never by colouring a `StallReason` on its own. A golem with no facts source reads every stall
   but steam red, as before (steam is always blue, `Starved`). The view draws `GolemMoodRules.Presented` (Waiting only after its 2 s dwell);
   the alerts strip counts stopped golems only.
+- **A new way to move, turn, carry, remove or reprogram a golem calls `GolemLayout.Changed()`**
+  (`GolemEntity.SetPlacement`, `SetFacing`, `SetHeld`, `Remove`, a mast bound,
+  `GolemProgramWriter`, `GolemProgram`'s card add and remove do). Within a frame the probe
+  re-checks its index only when that count moves; a change it misses waits a frame at most.
+  Views re-classify a golem at once on its own change and otherwise every
+  `GolemMoodRules.ReclassifyEveryFrames` frames (`docs/performance-report-endless.md`).
 - **The probe indexes, it never caches an answer.** `StallFactsProbe` keeps, per presentation
   frame (`SandboxWorld.PresentationFrame`), who pushes into and takes from each store, rebuilt the
   moment a golem moves, turns, is carried or changes whether it runs; everything else is read

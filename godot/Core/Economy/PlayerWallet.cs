@@ -29,6 +29,16 @@ namespace GolemFactory.Economy
 
         public string PackId { get; }
 
+        /// <summary>Creative Mode: nothing is charged and nothing refunded (<see cref="StorageBufferRegistry.CostsWaived"/>).</summary>
+        public bool CostsWaived => _buffers != null && _buffers.CostsWaived;
+
+        /// <summary>
+        /// Whether <see cref="TryCharge"/> would take <paramref name="bundle"/>: what every "can I
+        /// afford it" asks, so the question and the charge can't disagree.
+        /// </summary>
+        public bool CanAfford(IReadOnlyList<RecipeIngredient> bundle) =>
+            CostsWaived || UI.ConstructionCostPolicy.CanAfford(Quantity, bundle);
+
         /// <summary>The pack's buffer: what harvesting and collecting fill, the player's hands.</summary>
         public StorageBuffer Pack => _buffers?.GetOrCreate(PackId);
 
@@ -54,7 +64,7 @@ namespace GolemFactory.Economy
         /// </summary>
         public bool TryCharge(IReadOnlyList<RecipeIngredient> bundle)
         {
-            if (bundle == null || bundle.Count == 0)
+            if (bundle == null || bundle.Count == 0 || CostsWaived)
             {
                 return true;
             }
@@ -103,9 +113,9 @@ namespace GolemFactory.Economy
         /// </summary>
         public string FirstMisfit(IReadOnlyList<RecipeIngredient> bundle)
         {
-            if (bundle == null)
+            if (bundle == null || CostsWaived)
             {
-                return null;
+                return null; // Creative: a refund is nothing, so nothing misfits
             }
             // Summed per good, as TryCharge sums a price: two lines of Scrap that each fit but
             // together don't must be refused, or Refund deposits one and clamps the other.
@@ -149,7 +159,9 @@ namespace GolemFactory.Economy
         /// </summary>
         public bool Refund(IReadOnlyList<RecipeIngredient> bundle)
         {
-            if (bundle == null || bundle.Count == 0)
+            // Creative: nothing was charged, so nothing comes back, and a demolition is never
+            // refused for a full pack.
+            if (bundle == null || bundle.Count == 0 || CostsWaived)
             {
                 return true;
             }
@@ -173,7 +185,7 @@ namespace GolemFactory.Economy
         /// </summary>
         public void Uncharge(IReadOnlyList<RecipeIngredient> bundle)
         {
-            if (bundle == null || _buffers == null)
+            if (bundle == null || _buffers == null || CostsWaived)
             {
                 return;
             }

@@ -16,6 +16,9 @@ namespace GolemFactory.UI
 
         /// <summary>Sound volumes and mute (docs/audio-design.md §5). Appended.</summary>
         Settings,
+
+        /// <summary>The factory at a glance (docs/menus-design.md §8). Appended; first on the bar.</summary>
+        Overview,
     }
 
     /// <summary>
@@ -47,6 +50,13 @@ namespace GolemFactory.UI
         }
 
         public void SelectTab(ManagementTab tab) => ActiveTab = tab;
+
+        /// <summary>The tab bar, left to right: the overview first, the rest as they always were.</summary>
+        public static readonly IReadOnlyList<ManagementTab> BarOrder = new[]
+        {
+            ManagementTab.Overview, ManagementTab.Inventory, ManagementTab.AssemblyLine, ManagementTab.Patents,
+            ManagementTab.SaveLoad, ManagementTab.TechTree, ManagementTab.Settings,
+        };
 
         /// <summary>Whether a tab's content is drawn: only the active one.</summary>
         public bool IsContentShown(ManagementTab tab) => tab == ActiveTab;

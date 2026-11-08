@@ -7,6 +7,7 @@ using GolemFactory.Buildings;
 using GolemFactory.Compat;
 using GolemFactory.Economy;
 using GolemFactory.Golems;
+using GolemFactory.Supply;
 using GolemFactory.World;
 
 namespace GolemFactory.Tutorial
@@ -124,7 +125,11 @@ namespace GolemFactory.Tutorial
         private Dictionary<string, Action> Performs => _performs ??= new Dictionary<string, Action>
         {
             ["scrap"] = () => Grant(ItemType.Scrap, 20),
-            ["coal"] = () => Grant(ItemType.Coal, 5),
+            ["coal"] = () =>
+            {
+                AddCartGranted(ItemType.Coal);
+                Grant(ItemType.Coal, 5); // what the cart gives in its first ten seconds
+            },
             ["coke"] = () => Grant(ItemType.Coke, 5),
             ["iron"] = () => Grant(ItemType.IronPlate, 10),
             ["boiler"] = () => PlaceGranted("BoilerPrefab", BoilerSpot, Facing.North),
@@ -167,13 +172,7 @@ namespace GolemFactory.Tutorial
                     PlaceGranted("SteamPipePrefab", cell, Facing.North);
                 }
             },
-            ["coal-order"] = () =>
-            {
-                if (_world.Nodes.TryGetNode("CoalNode", out ResourceNode node))
-                {
-                    node.Deliver(OfferSize("CoalNode")); // the truckload, without the wait
-                }
-            },
+            ["coal-order"] = () => UpgradeRateGranted(ItemType.Coal),
             ["program-coker"] = () => PerformPlan("program-coker"),
             ["work-coker"] = () =>
             {
@@ -247,10 +246,7 @@ namespace GolemFactory.Tutorial
             ["carrier-feed"] = () => Feed(SmeltOutSpot, ItemType.Coke, 10),
             ["copper"] = () =>
             {
-                if (_world.Nodes.TryGetNode("CopperOreNode", out ResourceNode node))
-                {
-                    node.Deliver(OfferSize("CopperOreNode"));
-                }
+                AddCartGranted(ItemType.CopperOre);
                 Grant(ItemType.CopperOre, 1);
             },
             ["belts"] = () =>
@@ -304,7 +300,11 @@ namespace GolemFactory.Tutorial
             ["load"] = () => _world.LoadFrom(KitSavePath),
             // Chapter 8's goals: claim the card, then the good, as its line would have made it.
             ["copper-ingot"] = () => MakeGood("AssembleCopperSmelting", ItemType.CopperIngot, 10),
-            ["zinc-ingot"] = () => MakeGood("AssembleZincSmelting", ItemType.ZincIngot, 5),
+            ["zinc-ingot"] = () =>
+            {
+                AddCartGranted(ItemType.ZincOre);
+                MakeGood("AssembleZincSmelting", ItemType.ZincIngot, 5);
+            },
             ["brass"] = () => MakeGood("AssembleBrassAlloying", ItemType.Brass, 20),
             ["casing"] = () => MakeGood("AssembleCasingPress", ItemType.Casing, 10),
             ["glass"] = () => MakeGood("AssembleGlassmaking", ItemType.Glass, 10),
@@ -317,7 +317,11 @@ namespace GolemFactory.Tutorial
                     PlaceGranted("PneumaticPostPrefab", cell, Facing.North);
                 }
             },
-            ["aether-cell"] = () => MakeGood("AssembleAetherContainment", ItemType.AetherCell, 2),
+            ["aether-cell"] = () =>
+            {
+                AddCartGranted(ItemType.Aether);
+                MakeGood("AssembleAetherContainment", ItemType.AetherCell, 2);
+            },
             ["zeppelin-card"] = () => Claim("ZeppelinFreightLoader"),
             ["freight-card"] = () => Claim("FreightLaunch"),
             ["zeppelin"] = () => BuildGolem("ZeppelinFreightLoader"),
@@ -332,6 +336,28 @@ namespace GolemFactory.Tutorial
             ["program-zeppelin"] = () => PerformPlan("program-zeppelin"),
             ["launch"] = () => Zeppelin?.SetPlacement(ZeppelinSpot, CopperFacing),
             ["mast-collect"] = () => Collect(MastBuilding),
+            // Walks to the office's door, takes the contract on its notice as a click there does, and
+            // walks back: chapter 10's first step is walking into the square.
+            ["contract"] = () =>
+            {
+                Compat.Vector3 back = _world.Interactor.Position;
+                _world.Interactor.Teleport(new Compat.Vector3(TownSquare.OfficeCell.x, TownSquare.OfficeCell.y - 1, 0f));
+                _world.Contracts.Settle();
+                Contracts.ContractRow take = _world.ContractPanel.Rows().FirstOrDefault(r => r.Action == Contracts.ContractAction.Accept);
+                if (take != null)
+                {
+                    _world.ContractPanel.Press(take);
+                }
+                _world.Interactor.Teleport(back);
+            },
+            // Walks through the gate onto the Docks and back to where it stood.
+            ["docks"] = () =>
+            {
+                Compat.Vector3 back = _world.Interactor.Position;
+                _world.Interactor.Teleport(new Compat.Vector3(Docks.West + 2, Docks.Bottom + 4, 0f));
+                _world.Tutorial.Update();
+                _world.Interactor.Teleport(back);
+            },
             ["tower-visit"] = () =>
                 _world.Interactor.Teleport(new Compat.Vector3(TownSquare.TowerCentre.x, TownSquare.TowerCentre.y - 3, 0f)),
             ["frame-section"] = () => MakeGood("AssembleFrameSection", ItemType.FrameSection, 12),
@@ -357,18 +383,14 @@ namespace GolemFactory.Tutorial
         };
 
         /// <summary>
-        /// Where the kit's save step saves: beside the player's save slot under its own name
-        /// ("kit-save.json"), else a temp file. Never the slot itself: F9 in chapter 7 used to
-        /// overwrite the player's own save with the kit's world, without a word (from review).
+        /// Where the kit's save step saves: in the save folder under its own name
+        /// (<see cref="Menus.SaveSlots.KitFileName"/>, which is no slot), else a temp file. Never a
+        /// slot: F9 in chapter 7 used to overwrite the player's own save with the kit's world,
+        /// without a word (from review).
         /// </summary>
-        private string KitSavePath => KitSavePathBeside(_world.DefaultSavePath)
-            ?? (_kitScratchSave ??= System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"golem-factory-kit-{System.Guid.NewGuid():N}.json"));
-
-        /// <summary>The kit's save file next to <paramref name="savePath"/>, or null without one.</summary>
-        public static string KitSavePathBeside(string savePath) =>
-            string.IsNullOrEmpty(savePath)
-                ? null
-                : System.IO.Path.Combine(System.IO.Path.GetDirectoryName(savePath) ?? "", "kit-" + System.IO.Path.GetFileName(savePath));
+        private string KitSavePath => _world.SaveFolder != null
+            ? System.IO.Path.Combine(_world.SaveFolder, Menus.SaveSlots.KitFileName)
+            : (_kitScratchSave ??= System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"golem-factory-kit-{System.Guid.NewGuid():N}.json"));
 
         private string _kitScratchSave;
 
@@ -403,6 +425,25 @@ namespace GolemFactory.Tutorial
             foreach (PunchCards.RecipeIngredient c in cost ?? Enumerable.Empty<PunchCards.RecipeIngredient>())
             {
                 Grant(c.itemType, c.quantity);
+            }
+        }
+
+        /// <summary>Adds this good's cart on its marked spot through the street, having paid
+        /// for it. Nothing if one already stands.</summary>
+        private void AddCartGranted(string item)
+        {
+            if (CartOf(item) == null && Home(item) is Vector2Int home)
+            {
+                _world.GrantCart(home, item);
+            }
+        }
+
+        /// <summary>Buys this good's cart its next Rate rung, having paid for it.</summary>
+        private void UpgradeRateGranted(string item)
+        {
+            if (CartSpotOf(item) is CartSpot spot)
+            {
+                _world.GrantRateRung(spot.Cell);
             }
         }
 

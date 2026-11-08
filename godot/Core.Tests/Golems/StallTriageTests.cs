@@ -18,8 +18,8 @@ namespace GolemFactory.Tests.EditMode
     public class StallTriageTests
     {
         private static StallFacts Facts(AppendageActionType action = AppendageActionType.Haul, bool gives = false,
-            bool fed = false, bool drained = false, bool truckload = false, string good = null) =>
-            new StallFacts(action, gives, fed, drained, truckload, good);
+            bool fed = false, bool drained = false, bool refills = false, string good = null) =>
+            new StallFacts(action, gives, fed, drained, refills, good);
 
         [Test]
         public void EveryStallReason_HasAnAnswer()
@@ -34,7 +34,7 @@ namespace GolemFactory.Tests.EditMode
         [Test]
         public void TheTable_BothWays()
         {
-            Assert.AreEqual(StallUrgency.Waiting, StallTriage.Urgency(StallReason.NodeEmpty, Facts(truckload: true)));
+            Assert.AreEqual(StallUrgency.Waiting, StallTriage.Urgency(StallReason.NodeEmpty, Facts(refills: true)));
             Assert.AreEqual(StallUrgency.Stuck, StallTriage.Urgency(StallReason.NodeEmpty, Facts()));
             Assert.AreEqual(StallUrgency.Waiting, StallTriage.Urgency(StallReason.BeltFull, Facts(drained: true)));
             Assert.AreEqual(StallUrgency.Stuck, StallTriage.Urgency(StallReason.BeltFull, Facts()));
@@ -51,7 +51,7 @@ namespace GolemFactory.Tests.EditMode
                 StallReason.NodeCrowded, StallReason.FilterMismatch })
             {
                 Assert.AreEqual(StallUrgency.Stuck,
-                    StallTriage.Urgency(never, Facts(gives: true, fed: true, drained: true, truckload: true)), never.ToString());
+                    StallTriage.Urgency(never, Facts(gives: true, fed: true, drained: true, refills: true)), never.ToString());
             }
         }
 
@@ -246,47 +246,51 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void AnEmptyStall_WithNoTruckloadComing_IsRed()
+        public void AnEmptyNode_ThatNothingRefills_IsRed()
         {
             var floor = new Floor();
             var node = new ResourceNode("CoalNode", ItemType.Coal, 0);
             floor.Endpoints.Register(new Vector2Int(0, 0), new ResourceNodeEndpoint(node));
-            var probe = new StallFactsProbe(() => floor.Golems, floor.Endpoints, floor.Belts, () => null);
+            var probe = new StallFactsProbe(() => floor.Golems, floor.Endpoints, floor.Belts, _ => false);
             GolemEntity golem = floor.Golem(new Vector2Int(0, 1), (AppendageActionType.ExtractFromNode, null), Push);
             golem.ConfigureStallFacts(probe.Read);
 
             golem.Tick(0);
             Assert.AreEqual(StallReason.NodeEmpty, golem.StallReason);
             Assert.AreEqual(GolemMood.Stalled, golem.Mood);
-            Assert.IsFalse(probe.Read(golem).TruckloadOnTheWay);
+            Assert.IsFalse(probe.Read(golem).SourceRefills);
         }
 
-        /// <summary>§7's "a truckload in transit": the same empty stall reads grey while its cart
-        /// is on the road, and red again once it lands and is emptied with none ordered.</summary>
+        /// <summary>
+        /// docs/supply-design.md §4: an empty cart reads as waiting, grey, because it refills
+        /// itself. The same node read by a probe that knows of no refill is red, above.
+        /// </summary>
         [Test]
-        public void AnEmptyStall_WithATruckloadOnItsWay_IsGrey()
+        public void AnEmptyCart_ThatRefillsItself_IsGrey()
         {
             var floor = new Floor();
-            var nodes = new ResourceNodeRegistry();
-            var node = new ResourceNode("CoalNode", ItemType.Coal, 0);
-            nodes.Register(node);
-            var market = new TruckloadMarket(nodes, new GameMode(false));
-            market.AddOffer(new MarketOffer("CoalNode", new List<RecipeIngredient>(), 1, 5));
+            var node = new ResourceNode("Cart(0,0)", ItemType.Coal, 0);
             floor.Endpoints.Register(new Vector2Int(0, 0), new ResourceNodeEndpoint(node));
-            var probe = new StallFactsProbe(() => floor.Golems, floor.Endpoints, floor.Belts, () => market);
+            var probe = new StallFactsProbe(() => floor.Golems, floor.Endpoints, floor.Belts, id => id == "Cart(0,0)");
             GolemEntity golem = floor.Golem(new Vector2Int(0, 1), (AppendageActionType.ExtractFromNode, null), Push);
             golem.ConfigureStallFacts(probe.Read);
 
             golem.Tick(0);
-            Assert.AreEqual(GolemMood.Stalled, golem.Mood, "nothing ordered");
+            Assert.AreEqual(StallReason.NodeEmpty, golem.StallReason);
+            Assert.IsTrue(probe.Read(golem).SourceRefills);
+            Assert.AreEqual(GolemMood.Waiting, golem.Mood, "the cart will clear it");
+        }
 
-            Assert.AreEqual(MarketOrderResult.Ordered, market.TryOrder("CoalNode", null, null, 0));
-            Assert.IsTrue(probe.Read(golem).TruckloadOnTheWay);
-            Assert.AreEqual(GolemMood.Waiting, golem.Mood, "a cart on the road will clear it");
-
-            market.Tick(5);
-            Assert.AreEqual(1, node.RemainingQuantity, "the cart landed");
-            Assert.IsFalse(probe.Read(golem).TruckloadOnTheWay);
+        /// <summary>The world's probe asks the street: a cart just added, empty, refills.</summary>
+        [Test]
+        public void TheWorld_ReadsAnEmptyNewCart_AsRefilling()
+        {
+            SandboxWorld world = CrateWorld.Compose();
+            var coal = new Vector2Int(-4, -16);
+            Assert.IsTrue(world.GrantCart(coal, ItemType.Coal).Done);
+            string id = world.Supply.SpotAt(coal).NodeId;
+            Assert.IsTrue(world.Supply.Refills(id));
+            Assert.IsFalse(world.Supply.Refills("Cart(99,99)"), "no cart there");
         }
 
         [Test]

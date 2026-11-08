@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using System.Collections.Generic;
 using GolemFactory.Compat;
 
@@ -27,7 +28,15 @@ namespace GolemFactory.Player
         // Refuel was, and it belongs at this end of the order for a stronger reason than the
         // boiler does: a golem almost always stands beside the depot it pushes into, and a crate
         // that beat that golem on a distance tie would make it unprogrammable.
-        Sort = 5
+        Sort = 5,
+
+        // An empty supply-cart spot (docs/supply-design.md §2): E opens the cart panel there.
+        // Appended, last in the tie-break, so a cart's own marker (Harvest) always wins its tile.
+        Supply = 6,
+
+        // The City Office in the town square (docs/contracts-design.md §1): E opens its notice.
+        // Appended, last: a golem delivering beside it is the one the player means on a tie.
+        Office = 7
     }
 
     /// <summary>
@@ -109,7 +118,9 @@ namespace GolemFactory.Player
             IReadOnlyList<Vector3> stations,
             IReadOnlyList<Vector3> golems,
             IReadOnlyList<Vector3> boilers = null,
-            IReadOnlyList<Vector3> depots = null)
+            IReadOnlyList<Vector3> depots = null,
+            IReadOnlyList<Vector3> spots = null,
+            IReadOnlyList<Vector3> offices = null)
         {
             InteractionPick best = InteractionPick.None;
             // Evaluated in enum order with a strict less-than, so an exact distance tie keeps
@@ -121,6 +132,8 @@ namespace GolemFactory.Player
             // whole pre-existing targeting suite) picks exactly what it always did.
             Consider(origin, boilers, InteractionKind.Refuel, ref best);
             Consider(origin, depots, InteractionKind.Sort, ref best);
+            Consider(origin, spots, InteractionKind.Supply, ref best);
+            Consider(origin, offices, InteractionKind.Office, ref best);
             return best;
         }
 
@@ -167,10 +180,6 @@ namespace GolemFactory.Player
         /// "Interact" -- because the whole point of the prompt is that the player knows what
         /// the key will do before pressing it.
         /// </summary>
-        // Only the first letter: "Order a truckload of" must not become "order A truckload".
-        private static string LowerFirst(string verb) =>
-            string.IsNullOrEmpty(verb) ? verb : char.ToLowerInvariant(verb[0]) + verb.Substring(1);
-
         public static string Verb(InteractionKind kind)
         {
             switch (kind)
@@ -185,6 +194,8 @@ namespace GolemFactory.Player
                 // Sort keeps its value and now means "a crate" (crates-design §4.2): E takes what
                 // fits into the pack. The label moved to the crate screen.
                 case InteractionKind.Sort: return "Collect from";
+                case InteractionKind.Supply: return "Add a cart at";
+                case InteractionKind.Office: return "Open";
                 default: return "";
             }
         }
@@ -218,10 +229,10 @@ namespace GolemFactory.Player
             {
                 // "Set down", not "drop": dropping is what happens to something you were not
                 // being careful with, and this places the golem on a chosen tile.
-                return "[G] set down";
+                return $"[{KeyNames.Carry}] set down";
             }
 
-            return string.IsNullOrEmpty(golemId) ? "[G] carry" : "[G] carry " + golemId;
+            return string.IsNullOrEmpty(golemId) ? $"[{KeyNames.Carry}] carry" : $"[{KeyNames.Carry}] carry " + golemId;
         }
 
         /// <summary>
@@ -245,20 +256,9 @@ namespace GolemFactory.Player
         /// </summary>
         /// <param name="detail">Optional trailing context (remaining quantity, cost, state).</param>
         public static string BuildPrompt(
-            InteractionKind kind, string targetName, string detail, InteractionAffordance affordance, string interactKey) =>
-            BuildPrompt(kind, targetName, detail, affordance, interactKey, null);
-
-        /// <summary>
-        /// As above, with the verb overridden: the same key can mean a different action on the
-        /// same target. An EMPTY market stall is the case -- [E] orders a truckload there, and a
-        /// caption saying "Harvest" described an action the key would not take (G10).
-        /// </summary>
-        public static string BuildPrompt(
-            InteractionKind kind, string targetName, string detail, InteractionAffordance affordance, string interactKey,
-            string verb)
+            InteractionKind kind, string targetName, string detail, InteractionAffordance affordance, string interactKey)
         {
-            bool overridden = !string.IsNullOrEmpty(verb);
-            verb = overridden ? verb : Verb(kind);
+            string verb = Verb(kind);
             if (kind == InteractionKind.None || affordance == InteractionAffordance.Hidden)
             {
                 return "";
@@ -271,7 +271,7 @@ namespace GolemFactory.Player
             {
                 // Only the verb is lowercased -- a target name is a proper noun ("Aether",
                 // "PlayerGolem-001") and lowercasing it made the line read as a typo.
-                return "Move closer to " + (overridden ? LowerFirst(verb) : verb.ToLowerInvariant()) + name + suffix;
+                return "Move closer to " + verb.ToLowerInvariant() + name + suffix;
             }
 
             if (affordance == InteractionAffordance.Unavailable)

@@ -730,6 +730,25 @@
     ],
     "partialAlpha": true
   },
+  "cart_spot.png": {
+    "set": "supply",
+    "kind": "standing",
+    "size": [
+      96,
+      120
+    ],
+    "pivot": [
+      0.5,
+      0.025
+    ],
+    "footRow": 117,
+    "owner": "generated:generate_supply_art.py",
+    "palette": "bible",
+    "readers": [
+      "CartSpotView",
+      "SpritePivots"
+    ]
+  },
   "chassis_aether_hauler.png": {
     "set": "S1",
     "kind": "standing",
@@ -6881,5 +6900,128 @@
       "FxLayer"
     ],
     "source": "public/images/S7/"
+  },
+  "city_office.png": {
+    "set": "contracts",
+    "kind": "standing",
+    "size": [
+      192,
+      176
+    ],
+    "pivot": [
+      0.5,
+      0.017
+    ],
+    "footRow": 173,
+    "owner": "generated:generate_office_art.py",
+    "palette": "bible",
+    "readers": [
+      "CityOfficeView",
+      "ContractScreen"
+    ]
+  },
+  "city_office_closed.png": {
+    "set": "contracts",
+    "kind": "standing",
+    "size": [
+      192,
+      176
+    ],
+    "pivot": [
+      0.5,
+      0.017
+    ],
+    "footRow": 173,
+    "owner": "generated:generate_office_art.py",
+    "palette": "bible",
+    "readers": [
+      "CityOfficeView",
+      "ContractScreen"
+    ]
+  },
+  "civic_site.png": {
+    "set": "civic",
+    "kind": "standing",
+    "size": [
+      192,
+      200
+    ],
+    "pivot": [
+      0.5,
+      0.015
+    ],
+    "footRow": 197,
+    "owner": "generated:generate_civic_art.py",
+    "palette": "bible",
+    "readers": [
+      "CivicSiteView"
+    ]
+  },
+  "civic_site_closed.png": {
+    "set": "civic",
+    "kind": "standing",
+    "size": [
+      192,
+      200
+    ],
+    "pivot": [
+      0.5,
+      0.015
+    ],
+    "footRow": 197,
+    "owner": "generated:generate_civic_art.py",
+    "palette": "bible",
+    "readers": [
+      "CivicSiteView"
+    ]
+  },
+  "docks_gate.png": {
+    "set": "docks",
+    "kind": "standing",
+    "size": [
+      128,
+      160
+    ],
+    "pivot": [
+      0.5,
+      0.019
+    ],
+    "footRow": 157,
+    "owner": "generated:generate_docks_art.py",
+    "palette": "bible",
+    "readers": [
+      "DocksGateView"
+    ]
+  },
+  "docks_gate_closed.png": {
+    "set": "docks",
+    "kind": "standing",
+    "size": [
+      128,
+      160
+    ],
+    "pivot": [
+      0.5,
+      0.019
+    ],
+    "footRow": 157,
+    "owner": "generated:generate_docks_art.py",
+    "palette": "bible",
+    "readers": [
+      "DocksGateView"
+    ]
+  },
+  "docks_water.png": {
+    "set": "docks",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "owner": "generated:generate_docks_art.py",
+    "palette": "bible",
+    "readers": [
+      "FloorLayer"
+    ]
   }
 }

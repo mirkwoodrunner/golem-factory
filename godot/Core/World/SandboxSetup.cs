@@ -1,8 +1,11 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using GolemFactory.Compat;
 using GolemFactory.Economy;
 using GolemFactory.PunchCards;
+using GolemFactory.Supply;
 
 namespace GolemFactory.World
 {
@@ -20,21 +23,54 @@ namespace GolemFactory.World
     /// </summary>
     public sealed class SandboxSetup
     {
-        public sealed class NodeEntry
+        /// <summary>
+        /// The supply street (docs/supply-design.md): the spots carts can stand on, the carts the
+        /// world starts with, and each good's ladder of prices, rates and capacities.
+        /// </summary>
+        public sealed class SupplySetup
+        {
+            public List<SpotEntry> spots = new List<SpotEntry>();
+            public List<StartingCart> startingCarts = new List<StartingCart>();
+            public List<CartLadderEntry> carts = new List<CartLadderEntry>();
+
+            /// <summary>The nine stalls before carts (§5): a save that names one gets a cart there.</summary>
+            public List<LegacyStall> legacyStalls = new List<LegacyStall>();
+        }
+
+        /// <summary>A stall from before carts: its id in old saves, its place and its good.</summary>
+        public sealed class LegacyStall
         {
             public string id;
+            public int x;
+            public int y;
             public string itemType;
-            public string sprite;
+        }
+
+        public sealed class SpotEntry
+        {
             public int x;
             public int y;
         }
 
-        public sealed class MarketEntry
+        public sealed class StartingCart
         {
-            public string nodeId;
-            public List<RecipeIngredient> price = new List<RecipeIngredient>();
-            public int truckloadSize;
-            public int deliveryTicks;
+            public int x;
+            public int y;
+            public string itemType;
+        }
+
+        /// <summary>One good's cart: its price, and rung 0 then each rung's rate, capacity and price.</summary>
+        public sealed class CartLadderEntry
+        {
+            public string itemType;
+            public List<RecipeIngredient> add = new List<RecipeIngredient>();
+            public List<int> rates = new List<int>();
+            public List<int> capacities = new List<int>();
+            public List<List<RecipeIngredient>> rateCosts = new List<List<RecipeIngredient>>();
+            public List<List<RecipeIngredient>> capacityCosts = new List<List<RecipeIngredient>>();
+
+            /// <summary>The rungs the campaign offers; the rest wait for endless play (0: every rung).</summary>
+            public int campaignRungs;
         }
 
         public sealed class Placement
@@ -122,14 +158,29 @@ namespace GolemFactory.World
         /// every step, and keeps a report. Needs <see cref="tutorial"/>.
         /// </summary>
         public bool playtest;
-        public string freeStallSeedNode;
-        public int freeStallSeedQuantity;
         public Point playerStart = new Point();
         public Expansion floorExpansion;
+
+        /// <summary>The Docks' floor rows (docs/region-design.md §1): two rows a purchase, at these prices.</summary>
+        public Expansion docks;
         public WorkbenchRoster workbench;
         public AssemblyLineSetup assemblyLine;
-        public List<NodeEntry> nodes = new List<NodeEntry>();
-        public List<MarketEntry> market = new List<MarketEntry>();
+        public SupplySetup supply;
+
+        /// <summary>Endless play's generated contracts (docs/endless-design.md §1.1).</summary>
+        public GolemFactory.Contracts.EndlessContractsSetup endlessContracts;
+
+        /// <summary>The bays' campaign top and endless play's tiers (docs/endless-design.md §2, §4).</summary>
+        public AssemblyBaysSetup assemblyBays;
+
+        public sealed class AssemblyBaysSetup
+        {
+            /// <summary>The most slots the campaign's tiers reach; 0 leaves them uncapped.</summary>
+            public int campaignTopSlots;
+
+            /// <summary>One price per endless tier, each six more slots: up to the golem cap.</summary>
+            public List<List<RecipeIngredient>> endless = new List<List<RecipeIngredient>>();
+        }
         public Placement starterBench;
         public Placement starterStation;
 
@@ -140,29 +191,6 @@ namespace GolemFactory.World
         };
 
         public static SandboxSetup Parse(string json) => JsonSerializer.Deserialize<SandboxSetup>(json, Options);
-
-        public GameMode Mode => new GameMode(creativeMode);
-
-        /// <summary>
-        /// Registers every starting node. In Creative Mode a stall never runs dry; otherwise
-        /// every stall starts EMPTY and is stocked by ordering truckloads -- except the free scrap
-        /// stall, seeded once so the player's first minutes are not spent waiting on a cart they
-        /// cannot yet afford (SandboxBootstrap.RegisterStartingNodes, unchanged).
-        /// </summary>
-        public void RegisterNodes(ResourceNodeRegistry registry)
-        {
-            int startingStock = creativeMode ? ResourceNode.Infinite : 0;
-            foreach (NodeEntry node in nodes)
-            {
-                registry.Register(new ResourceNode(node.id, node.itemType, startingStock));
-            }
-
-            if (!creativeMode && !string.IsNullOrEmpty(freeStallSeedNode)
-                && registry.TryGetNode(freeStallSeedNode, out ResourceNode seeded))
-            {
-                seeded.Deliver(freeStallSeedQuantity);
-            }
-        }
 
         /// <summary>
         /// Crates are the default, capped per type; the pack and the Post store are overrides,
@@ -180,15 +208,57 @@ namespace GolemFactory.World
             buffers.SetCapacity(SandboxWorld.PostBufferId, postCapacityPerType);
         }
 
-        /// <summary>The truckload market with every stall's offer -- ManagerHolders' TruckloadMarketHolder.</summary>
-        public TruckloadMarket BuildMarket(ResourceNodeRegistry nodeRegistry)
+        /// <summary>The supply street with its spots, ladders and starting carts.</summary>
+        public SupplyStreet BuildSupply(
+            ResourceNodeRegistry nodes, SpatialEndpointRegistry endpoints, GridCoordinateConverter cells,
+            List<ResourceNodeMarker> markers, Func<PlayerWallet> wallet, Func<string, bool> seen,
+            int ticksPerMinute, Func<Vector2Int, bool> occupied)
         {
-            var built = new TruckloadMarket(nodeRegistry, Mode);
-            foreach (MarketEntry entry in market)
+            var street = new SupplyStreet(nodes, endpoints, cells, markers, wallet, seen, creativeMode, ticksPerMinute, occupied);
+            if (supply == null)
             {
-                built.AddOffer(new MarketOffer(entry.nodeId, entry.price, entry.truckloadSize, entry.deliveryTicks));
+                return street;
             }
-            return built;
+            foreach (SpotEntry spot in supply.spots)
+            {
+                street.AddSpot(new Vector2Int(spot.x, spot.y));
+            }
+            foreach (CartLadderEntry cart in supply.carts)
+            {
+                street.AddLadder(new CartLadder(
+                    cart.itemType, cart.add, cart.rates, cart.capacities,
+                    cart.rateCosts.Select(c => (IReadOnlyList<RecipeIngredient>)c).ToList(),
+                    cart.capacityCosts.Select(c => (IReadOnlyList<RecipeIngredient>)c).ToList())
+                {
+                    CampaignRungs = cart.campaignRungs > 0 ? cart.campaignRungs : int.MaxValue,
+                });
+            }
+            PlaceStartingCarts(street);
+            return street;
+        }
+
+        /// <summary>The carts the world starts with, on their spots: a new game, or a load of a
+        /// save from before carts.</summary>
+        public void PlaceStartingCarts(SupplyStreet street)
+        {
+            foreach (StartingCart cart in supply?.startingCarts ?? new List<StartingCart>())
+            {
+                street.PlaceStartingCart(new Vector2Int(cart.x, cart.y), cart.itemType);
+            }
+        }
+
+        /// <summary>Where a good's first cart goes (§6): the starting cart's spot for a starting
+        /// good, else the old stall of that good nearest the centre. The guide marks it.</summary>
+        public Vector2Int? HomeSpot(string itemType)
+        {
+            StartingCart start = supply?.startingCarts?.FirstOrDefault(c => c.itemType == itemType);
+            if (start != null)
+            {
+                return new Vector2Int(start.x, start.y);
+            }
+            LegacyStall stall = supply?.legacyStalls?.Where(s => s.itemType == itemType)
+                .OrderBy(s => Math.Abs(s.x)).ThenBy(s => s.x).FirstOrDefault();
+            return stall == null ? (Vector2Int?)null : new Vector2Int(stall.x, stall.y);
         }
 
         public static Vector2Int CellOf(Placement placement) => new Vector2Int(placement.x, placement.y);

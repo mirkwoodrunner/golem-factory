@@ -289,7 +289,7 @@ namespace GolemFactory.Buildings
             // free chassis is still affordable against it -- the same zero-cost case
             // StorageBufferRegistry.TryWithdrawBundle guards, and StockOf answers 0 for it
             // rather than failing.
-            return ConstructionCostPolicy.CanAfford(StockOf, chassis.cost);
+            return Wallet.CanAfford(chassis.cost);
         }
 
         // Withdraws the chassis's cost, creates a bare-chassis golem (no logic core or

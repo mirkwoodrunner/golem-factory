@@ -63,8 +63,11 @@ namespace GolemFactory.Nodes
                 return;
             }
             _rendered = signature;
+            // Removed before they're freed: a freed row stays in the tree until the frame ends, and
+            // a new row named like it was silently renamed ("@Panel@710"), so "BayRow" found nothing.
             foreach (Node child in _rows.GetChildren())
             {
+                _rows.RemoveChild(child);
                 child.QueueFree();
             }
             foreach (AssemblyLineRow row in rows)
@@ -139,6 +142,9 @@ namespace GolemFactory.Nodes
                         break;
                     case AssemblyLineRowKind.Pack:
                         button.Pressed += () => _board.UpgradePack();
+                        break;
+                    case AssemblyLineRowKind.Docks:
+                        button.Pressed += () => _board.ExtendDocks();
                         break;
                 }
                 line.AddChild(button);

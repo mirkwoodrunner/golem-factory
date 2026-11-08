@@ -31,20 +31,20 @@ namespace GolemFactory.Golems
         /// <summary>Something other than this golem will take goods from the tile in front.</summary>
         public bool TargetDrained { get; }
 
-        /// <summary>The stall behind has a truckload on its way.</summary>
-        public bool TruckloadOnTheWay { get; }
+        /// <summary>The node behind is a supply cart that refills itself (docs/supply-design.md §4).</summary>
+        public bool SourceRefills { get; }
 
         /// <summary>The good the stalled step needs, or null (§4.3).</summary>
         public string WantedGood { get; }
 
         public StallFacts(AppendageActionType stalledAction, bool sourceGives, bool sourceFed,
-            bool targetDrained, bool truckloadOnTheWay, string wantedGood)
+            bool targetDrained, bool sourceRefills, string wantedGood)
         {
             StalledAction = stalledAction;
             SourceGives = sourceGives;
             SourceFed = sourceFed;
             TargetDrained = targetDrained;
-            TruckloadOnTheWay = truckloadOnTheWay;
+            SourceRefills = sourceRefills;
             WantedGood = wantedGood;
         }
 
@@ -68,7 +68,7 @@ namespace GolemFactory.Golems
             switch (reason)
             {
                 case StallReason.NodeEmpty:
-                    return facts.TruckloadOnTheWay ? StallUrgency.Waiting : StallUrgency.Stuck;
+                    return facts.SourceRefills ? StallUrgency.Waiting : StallUrgency.Stuck;
                 case StallReason.BeltFull:
                     return facts.TargetDrained ? StallUrgency.Waiting : StallUrgency.Stuck;
                 case StallReason.BeltEmpty:
@@ -77,7 +77,7 @@ namespace GolemFactory.Golems
                 case StallReason.MissingItem:
                     // At a take, the source may yet be fed with the good. At an Assemble the hold
                     // won't refill: only the Hauls before it fill it, and they have run (§3.3).
-                    return facts.IsTake && facts.SourceGives && (facts.SourceFed || facts.TruckloadOnTheWay)
+                    return facts.IsTake && facts.SourceGives && (facts.SourceFed || facts.SourceRefills)
                         ? StallUrgency.Waiting
                         : StallUrgency.Stuck;
                 case StallReason.None:

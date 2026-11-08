@@ -25,15 +25,15 @@ namespace GolemFactory.Nodes.Scenarios
     ///  y=0   ~ ~ ~ ~ ~ ~ ~ ~ ~ B1 ~ ~ ~ ~ ~ ~ ~ ~ ~                     pipes power row y=1
     ///  y=-14         D4              D5
     ///  y=-15      B2 G3^          B3 G4^                                (facing North)
-    ///  y=-16         [Scrap]         [Coal]                             market stalls
+    ///  y=-16         [Scrap]         [Coal]                             supply carts
     /// </code>
     ///
     /// <list type="bullet">
     ///   <item>G1 Scavenger: Haul Scrap from depot D1, Push onto the belt run.</item>
     ///   <item>G2 Brass Presser: Haul off the belt, LoadIntoBuffer into depot D2.</item>
-    ///   <item>G3 Scavenger: ExtractFromNode at the Scrap stall, Push into D4.</item>
-    ///   <item>G4 Mainspring Overclocker: ExtractFromNode at the Coal stall (stocked by a truckload
-    ///   the player ordered), Assemble R1 Coking, Repeat, Push Coke into D5.</item>
+    ///   <item>G3 Scavenger: ExtractFromNode at the starting Scrap cart, Push into D4.</item>
+    ///   <item>G4 Mainspring Overclocker: ExtractFromNode at a Coal cart (added on the street and
+    ///   filled), Assemble R1 Coking, Repeat, Push Coke into D5.</item>
     ///   <item>G5 Aether-Hauler: Refine (Scrap from the ScrapBuffer into the IronPlateBuffer).</item>
     ///   <item>G6 Zeppelin Freight Loader: Haul from D3, FreightLaunch to the mast M.</item>
     ///   <item>G7 Scavenger, deliberately out of steam: it must stall on NoSteam and its badge must
@@ -41,7 +41,7 @@ namespace GolemFactory.Nodes.Scenarios
     /// </list>
     ///
     /// The setup goes through the same Core calls the player's gestures reach (the build
-    /// controller, the interactor's refuel and truckload order, the construction panel's build);
+    /// controller, the interactor's refuel, the street's cart, the construction panel's build);
     /// the mouse and keys for those are the `build` and `interact` scenarios' job. Programs are
     /// written straight onto GolemProgram -- the Workbench that writes them is G7.
     /// </summary>
@@ -177,16 +177,17 @@ namespace GolemFactory.Nodes.Scenarios
             Place<PlaceableDepot>("DepotPrefab", -3, 1);
             Feed(Place<PlaceableDepot>("DepotPrefab", 4, 1), ItemType.Scrap, 50);
             Place<PlaceableFreightMast>("FreightMastPrefab", 7, 1);
-            Place<PlaceableDepot>("DepotPrefab", -8, -14);
+            _scrapCrate = Place<ICrate>("DepotPrefab", -8, -14);
             _cokeCrate = Place<PlaceableDepot>("DepotPrefab", -4, -14);
 
-            // The Coal stall starts empty in normal mode: order a truckload, as the player would.
-            ResourceNodeMarker coal = _world.Markers.Single(m => m.NodeId == "CoalNode");
-            Deposit(ItemType.Scrap, 100);
-            if (!_world.Interactor.TryOrderTruckload(coal))
+            // A Coal cart on its spot, as the player would add one, filled so G4 needn't wait.
+            Supply.SupplyResult coal = _world.GrantCart(_world.Setup.HomeSpot(ItemType.Coal).Value, ItemType.Coal);
+            if (!coal.Done)
             {
-                throw new InvalidOperationException("truckload: " + _world.Interactor.LastStatusMessage);
+                throw new InvalidOperationException("coal cart: " + coal.Message);
             }
+            Supply.SupplyCart coalCart = _world.Supply.SpotAt(_world.Setup.HomeSpot(ItemType.Coal).Value).Cart;
+            coalCart.Node.Deliver(coalCart.Capacity);
 
             // Build every chassis at the starter station, through the panel's own build.
             _panel.Open(_world.StarterStation);
@@ -221,11 +222,12 @@ namespace GolemFactory.Nodes.Scenarios
             // were written directly, so put the screen away.
             (_world.WorkbenchScreen as WorkbenchScreen)?.Close();
 
-            _scrapStallBefore = _world.Nodes.TryGetNode("ScrapNode", out ResourceNode node) ? node.RemainingQuantity : 0;
+            _scrapStallBefore = ScrapCartTaken();
             _cokeBefore = CokeMade;
         }
 
-        // G4 pushes its Coke into the crate in front of it, D5.
+        // G3 pushes its Scrap into D4; G4 pushes its Coke into the crate in front of it, D5.
+        private ICrate _scrapCrate;
         private PlaceableDepot _cokeCrate;
 
         private int CokeMade => _cokeCrate?.Buffer?.GetQuantity(ItemType.Coke) ?? 0;
@@ -325,6 +327,10 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void Deposit(string itemType, int quantity) => _world.Buffers.Deposit(_world.StockpileBufferId, itemType, quantity);
 
+        // What G3 has taken from the Scrap cart: what reached D4, in front of it. The cart's own
+        // stock can't say, because it refills while G3 takes.
+        private int ScrapCartTaken() => _scrapCrate?.Buffer?.TotalDeposited(ItemType.Scrap) ?? 0;
+
         // A late price can ask more than a base pack holds (the Freight Mast's 120 Iron Plate,
         // tuning-data-spec §8.1): the rest waits in the Post, which the wallet spends next.
         private void Pay(IEnumerable<RecipeIngredient> cost) => EndgameLoad.Grant(_world, cost);
@@ -359,10 +365,10 @@ namespace GolemFactory.Nodes.Scenarios
                 }
             }
 
-            int stallNow = _world.Nodes.TryGetNode("ScrapNode", out ResourceNode node) ? node.RemainingQuantity : 0;
-            if (stallNow >= _scrapStallBefore)
+            int stallNow = ScrapCartTaken();
+            if (stallNow <= _scrapStallBefore)
             {
-                problems.Add($"G3 took nothing from the Scrap stall ({_scrapStallBefore} -> {stallNow})");
+                problems.Add($"G3 took nothing from the Scrap cart ({_scrapStallBefore} -> {stallNow} taken)");
             }
             if (CokeMade < _cokeBefore + 3)
             {
@@ -432,7 +438,7 @@ namespace GolemFactory.Nodes.Scenarios
 
             string counts = string.Join(" ", new[] { "G1", "G2", "G3", "G4", "G5", "G6" }.Select(l => $"{l}={Cycles(l)}"));
             return new ScenarioResult(true,
-                $"5 chassis built, 8 action types run on steam: cycles {counts}; Scrap stall {_scrapStallBefore}->{stallNow}; " +
+                $"5 chassis built, 8 action types run on steam: cycles {counts}; Scrap cart gave {stallNow - _scrapStallBefore}; " +
                 $"Coke +{CokeMade - _cokeBefore}; Iron Plate {_world.Buffers.GetQuantity("IronPlateBuffer", ItemType.IronPlate)}; " +
                 $"G7 stalled NoSteam, badge '{g7View.BadgeText.Replace('\n', ' ')}'");
         }

@@ -42,6 +42,12 @@ namespace GolemFactory.Nodes
 
         public override void _EnterTree() => AddToGroup(GroupName);
 
+        /// <summary>The civic works site's view, or null with none.</summary>
+        public CivicSiteView Civic { get; private set; }
+
+        /// <summary>The City Office's view, or null with no office.</summary>
+        public CityOfficeView Office { get; private set; }
+
         /// <summary>The short effects (dust, sparks, puffs, pops): one layer, above everything standing.</summary>
         public FxLayer Fx { get; private set; }
 
@@ -70,6 +76,18 @@ namespace GolemFactory.Nodes
             if (sandbox.ClockTowerBuilding != null)
             {
                 OnPlaced(sandbox.ClockTowerBuilding);
+            }
+            // The City Office beside it (docs/contracts-design.md §1), drawn by its own view.
+            if (sandbox.CityOfficeBuilding != null)
+            {
+                Office = new CityOfficeView(sandbox.Contracts, Fx);
+                AddChild(Office);
+            }
+            // The civic works' site west of it (docs/endless-design.md §1.2).
+            if (sandbox.CivicBuilding != null)
+            {
+                Civic = new CivicSiteView(sandbox.Civic, Fx);
+                AddChild(Civic);
             }
             _started = true;
         }
@@ -153,6 +171,10 @@ namespace GolemFactory.Nodes
 
         /// <summary>True from its demolishing until it frees itself.</summary>
         public bool Demolishing => _demolishAge >= 0f;
+
+        /// <summary>The sprite's drawn scale and tint: a squash, a bump, the tower's swell and flash. For a scenario.</summary>
+        public Vector2 DrawnScale => _sprite.Scale;
+        public Color DrawnModulate => _sprite.Modulate;
 
         /// <summary>A pipe piece's picture while it carries steam (LightingRules.PipeHot).</summary>
         public static string HotPipe(string name) => name + "_hot";
@@ -327,6 +349,8 @@ namespace GolemFactory.Nodes
             _sprite.Offset = new Vector2(-ClockTowerArt.CanvasWidth / 2f, -ClockTowerArt.CanvasHeight);
         }
 
+        private bool _pipeHot;
+
         private bool PipeIsHot()
         {
             SandboxWorld sandbox = _world.Sandbox;
@@ -385,8 +409,33 @@ namespace GolemFactory.Nodes
         }
 
         /// <summary>The landing, the coming down, a crate's bump and the tower's reveal, on the sprite.</summary>
+        // True once the building stands still at its own size and colour: nothing to update
+        // until a landing, a bump, a reveal or a demolition starts one again.
+        private bool _feelSettled;
+
         private void UpdateFeel(float delta)
         {
+            if (_feelSettled && _landAge < 0f && _bumpAge < 0f && _revealAge < 0f && _demolishAge < 0f)
+            {
+                return;
+            }
+            if (_world?.Sandbox != null && !_world.Sandbox.Motion.Squash)
+            {
+                // Reduced motion: a building is simply there, and simply gone.
+                if (_demolishAge >= 0f)
+                {
+                    QueueFree();
+                    return;
+                }
+                _landAge = _bumpAge = _revealAge = -1f;
+                if (!IsFloorTile)
+                {
+                    _sprite.Scale = Vector2.One;
+                }
+                _sprite.Modulate = Colors.White;
+                _feelSettled = true;
+                return;
+            }
             if (_demolishAge >= 0f)
             {
                 _demolishAge += delta;
@@ -437,6 +486,11 @@ namespace GolemFactory.Nodes
             if (!IsFloorTile)
             {
                 _sprite.Scale = new Vector2(sx, sy);
+            }
+            _feelSettled = (_landAge < 0f || _landAge >= FeelRules.PlaceSeconds) && _bumpAge < 0f && _revealAge < 0f;
+            if (_feelSettled && _landAge >= FeelRules.PlaceSeconds)
+            {
+                _landAge = -1f;
             }
         }
 
@@ -501,6 +555,29 @@ namespace GolemFactory.Nodes
         public override void _Process(double delta)
         {
             using var perf = NodePerf.Measure("node.buildings");
+            // A boiler's glow and a pipe's heat are the steam's state, kept current on screen or
+            // off: both are cheap, and the `golems` scenario reads them anywhere.
+            if (_glow != null)
+            {
+                RefreshGlow();
+            }
+            if (_pipe != null)
+            {
+                // Hot or cold follows the boilers' Coke, which no shape change reports: the
+                // picture is refreshed when it turns (a shape change refreshes it already).
+                bool hot = PipeIsHot();
+                if (hot != _pipeHot)
+                {
+                    _pipeHot = hot;
+                    RefreshShape();
+                }
+            }
+            // Off screen, the animation skips (region-design §4) and catches up in view. A
+            // demolition still runs, so the building is gone when the camera comes back.
+            if (_demolishAge < 0f && !ViewRect.Shows(GlobalPosition))
+            {
+                return;
+            }
             UpdateFeel((float)delta);
             if (_crate != null)
             {
@@ -518,14 +595,6 @@ namespace GolemFactory.Nodes
             {
                 // The wheel turns while the bench makes progress (HandCrankBench.SpriteFor).
                 SetSprite(_bench.SpriteFor(_entry?.Sprite ?? "ghost_placeholder"), centred: false);
-            }
-            if (_glow != null)
-            {
-                RefreshGlow();
-            }
-            if (_pipe != null)
-            {
-                RefreshShape(); // hot or cold follows the boilers' Coke, which no shape change reports
             }
             if (_belt?.Segment != null)
             {

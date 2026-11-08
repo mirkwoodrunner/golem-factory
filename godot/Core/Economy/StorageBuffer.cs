@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -78,6 +79,13 @@ namespace GolemFactory.Economy
         public bool IsUnlimited => CapacityPerType == Unlimited;
 
         /// <summary>
+        /// A further limit on what each good may still take, or null for none: the City Office's
+        /// crate takes only what its contract still needs (docs/contracts-design.md §1). Read by
+        /// <see cref="RoomFor"/>, so a golem's push, a belt and the Crate screen all stop at it.
+        /// </summary>
+        public Func<string, int> RoomLimit { get; set; }
+
+        /// <summary>
         /// Units of <paramref name="itemType"/> this buffer would still accept.
         /// <see cref="int.MaxValue"/> when unlimited -- a genuine number rather than a second
         /// sentinel, so callers can clamp against it arithmetically without special-casing.
@@ -89,12 +97,11 @@ namespace GolemFactory.Economy
                 return 0;
             }
 
-            if (CapacityPerType == Unlimited)
+            int room = CapacityPerType == Unlimited ? int.MaxValue : CapacityPerType - GetQuantity(itemType);
+            if (RoomLimit != null)
             {
-                return int.MaxValue;
+                room = Math.Min(room, RoomLimit(itemType));
             }
-
-            int room = CapacityPerType - GetQuantity(itemType);
             return room > 0 ? room : 0;
         }
 

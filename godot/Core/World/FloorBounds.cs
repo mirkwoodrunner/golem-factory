@@ -65,6 +65,35 @@ namespace GolemFactory.World
             return previous;
         }
 
+        // --- The Docks (docs/region-design.md) -------------------------------------------------
+
+        /// <summary>What opens the Docks' gate; null keeps it shut (a bare test, a slice).</summary>
+        public System.Func<bool> DocksGate { get; set; }
+
+        public bool DocksOpen => DocksGate?.Invoke() == true;
+
+        /// <summary>Rows bought north of the Docks' opening floor.</summary>
+        public int DocksRows { get; private set; }
+
+        /// <summary>The Docks' north row, or <see cref="Docks.Closed"/> while the gate is shut.</summary>
+        public int DocksNorth => DocksOpen ? Docks.StartNorth + DocksRows : Docks.Closed;
+
+        /// <summary>A purchase or a load: the Docks' bought rows, within the land there is. Bumps <see cref="Version"/>.</summary>
+        public void RestoreDocks(int rows)
+        {
+            int target = System.Math.Max(0, System.Math.Min(rows, Docks.MaxNorth - Docks.StartNorth));
+            if (target != DocksRows)
+            {
+                DocksRows = target;
+                Version++;
+            }
+        }
+
+        /// <summary>Whether <paramref name="cell"/> is ground: the workshop, the street, the square, or the open Docks.</summary>
+        public bool IsGround(Compat.Vector2Int cell, int streetDepth = FloorLayout.StreetDepth) =>
+            FloorLayout.IsInsideWorld(cell, HalfExtent, streetDepth, FloorLayout.StreetHalfExtent, NorthExtent)
+            || Docks.Contains(cell, DocksNorth);
+
         /// <summary>Rows of expansion still available. Zero means the land has run out.</summary>
         public int RemainingRows => MaxNorthExtent - NorthExtent;
 

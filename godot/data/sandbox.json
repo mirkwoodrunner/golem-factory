@@ -8,15 +8,57 @@
   "packUpgrades": [
     { "capacityPerType": 150, "cost": [{ "itemType": "IronPlate", "quantity": 60 }, { "itemType": "Gear", "quantity": 30 }] },
     { "capacityPerType": 200, "cost": [{ "itemType": "IronPlate", "quantity": 40 }, { "itemType": "Brass", "quantity": 20 }] },
-    { "capacityPerType": 250, "cost": [{ "itemType": "IronPlate", "quantity": 60 }, { "itemType": "Casing", "quantity": 10 }, { "itemType": "Mainspring", "quantity": 4 }] }
+    { "capacityPerType": 250, "cost": [{ "itemType": "IronPlate", "quantity": 60 }, { "itemType": "Casing", "quantity": 10 }, { "itemType": "Mainspring", "quantity": 4 }] },
+    { "capacityPerType": 300, "endless": true, "cost": [{ "itemType": "Mechanism", "quantity": 10 }, { "itemType": "Regulator", "quantity": 4 }] },
+    { "capacityPerType": 350, "endless": true, "cost": [{ "itemType": "Mechanism", "quantity": 20 }, { "itemType": "Regulator", "quantity": 8 }] }
   ],
+  "docks": {
+    "_doc": "The Docks' floor (docs/region-design.md §1): two rows north a purchase, from y -4 to y 8. Priced in what a chapter 9 factory makes, within the pack it has then; each row costs more than the last, and every row less a cell than Floor Expansion's fifth, in raw goods (region-design §7).",
+    "rowsPerPurchase": 2,
+    "purchases": [
+      [{ "itemType": "IronPlate", "quantity": 80 }, { "itemType": "Brass", "quantity": 20 }],
+      [{ "itemType": "IronPlate", "quantity": 120 }, { "itemType": "Casing", "quantity": 15 }],
+      [{ "itemType": "IronPlate", "quantity": 100 }, { "itemType": "Brass", "quantity": 10 }, { "itemType": "Casing", "quantity": 15 }],
+      [{ "itemType": "Casing", "quantity": 25 }, { "itemType": "Mainspring", "quantity": 6 }],
+      [{ "itemType": "IronPlate", "quantity": 60 }, { "itemType": "Casing", "quantity": 20 }, { "itemType": "Mainspring", "quantity": 8 }],
+      [{ "itemType": "IronPlate", "quantity": 100 }, { "itemType": "Casing", "quantity": 15 }, { "itemType": "Mainspring", "quantity": 8 }, { "itemType": "AetherCell", "quantity": 4 }]
+    ]
+  },
+  "endlessContracts": {
+    "_doc": "Contracts after the authored sequence (docs/endless-design.md §1.1): a formula, one at a time, once the Clock Tower stands. Contract k asks goods[k % 10] and goods[(k + offset) % 10] for a share of a raw-goods budget that grows over growthContracts and then holds at plateauRaw; its reward is rewardShare of that in rewardGoods[k % 5]; its bonus is an endless cart rung for the first rungBonuses, then bonusShare in goods. {goods} in a line is the asked goods.",
+    "goods": ["Casing", "Lens", "Mainspring", "AetherCell", "Mechanism", "Regulator", "FrameSection", "GreatCog", "AetherConduit", "ChronometerCore"],
+    "secondOffset": 3,
+    "firstShare": 0.6,
+    "plateauRaw": 3300,
+    "growthContracts": 8,
+    "parSecondsFirst": 300,
+    "parSecondsPlateau": 600,
+    "rewardGoods": ["Casing", "Mainspring", "Mechanism", "Regulator", "Lens"],
+    "rewardShare": 0.5,
+    "bonusShare": 0.25,
+    "rungBonuses": 20,
+    "rungGoods": ["Scrap", "Coal", "CopperOre", "ZincOre", "Aether"],
+    "requesters": [
+      { "name": "City Watch", "lines": ["The watch-houses in every ward want {goods}.", "New patrol posts across the river need {goods}."] },
+      { "name": "Tramway Company", "lines": ["The tram line to the docks needs {goods}.", "The tram depot is rebuilding, and asks for {goods}."] },
+      { "name": "Bellfounders", "lines": ["A new carillon for the cathedral wants {goods}.", "The foundry's new furnace needs {goods}."] },
+      { "name": "Lamplighters' Guild", "lines": ["The lamps on the new boulevards want {goods}.", "The harbour lights need {goods} before the fogs come."] },
+      { "name": "Observatory", "lines": ["The new star dome wants {goods}.", "The orrery's next wing needs {goods}."] }
+    ]
+  },
+  "assemblyBays": {
+    "_doc": "The campaign's bays top out at campaignTopSlots; endless play (docs/endless-design.md §2) adds one tier per endless price, to the golem cap of 112 (docs/performance-report-endless.md).",
+    "campaignTopSlots": 100,
+    "endless": [
+      [{"itemType": "Mechanism", "quantity": 10}, {"itemType": "GreatCog", "quantity": 2}],
+      [{"itemType": "Mechanism", "quantity": 20}, {"itemType": "GreatCog", "quantity": 4}]
+    ]
+  },
   "postCapacityPerType": 200,
   "startingNorthExtent": 12,
   "beltCellsPerSecond": 1.0,
   "tutorial": true,
   "playtest": true,
-  "freeStallSeedNode": "ScrapNode",
-  "freeStallSeedQuantity": 60,
   "playerStart": { "x": 0, "y": 0 },
   "assemblyLine": { "deck": "AssemblyLineDeck", "slots": 3, "claimUserId": "LocalPlayer", "gateWorkbench": true },
   "workbench": {
@@ -61,28 +103,129 @@
       [{ "itemType": "IronPlate", "quantity": 250 }, { "itemType": "Mainspring", "quantity": 6 }, { "itemType": "AetherCell", "quantity": 4 }, { "itemType": "Casing", "quantity": 30 }]
     ]
   },
-  "nodes": [
-    { "id": "ScrapNodeWest", "itemType": "Scrap", "sprite": "stall_scrap", "x": -16, "y": -16 },
-    { "id": "CoalNodeWest", "itemType": "Coal", "sprite": "stall_coal", "x": -12, "y": -16 },
-    { "id": "ScrapNode", "itemType": "Scrap", "sprite": "stall_scrap", "x": -8, "y": -16 },
-    { "id": "CoalNode", "itemType": "Coal", "sprite": "stall_coal", "x": -4, "y": -16 },
-    { "id": "CopperOreNode", "itemType": "CopperOre", "sprite": "stall_copper_ore", "x": 0, "y": -16 },
-    { "id": "ZincOreNode", "itemType": "ZincOre", "sprite": "stall_zinc_ore", "x": 4, "y": -16 },
-    { "id": "AetherNode", "itemType": "Aether", "sprite": "stall_aether", "x": 8, "y": -16 },
-    { "id": "CopperOreNodeEast", "itemType": "CopperOre", "sprite": "stall_copper_ore", "x": 12, "y": -16 },
-    { "id": "ZincOreNodeEast", "itemType": "ZincOre", "sprite": "stall_zinc_ore", "x": 16, "y": -16 }
-  ],
-  "market": [
-    { "nodeId": "ScrapNode", "price": [], "truckloadSize": 100, "deliveryTicks": 60 },
-    { "nodeId": "ScrapNodeWest", "price": [], "truckloadSize": 100, "deliveryTicks": 60 },
-    { "nodeId": "CoalNode", "price": [{ "itemType": "Scrap", "quantity": 30 }], "truckloadSize": 120, "deliveryTicks": 90 },
-    { "nodeId": "CoalNodeWest", "price": [{ "itemType": "Scrap", "quantity": 30 }], "truckloadSize": 120, "deliveryTicks": 90 },
-    { "nodeId": "CopperOreNode", "price": [{ "itemType": "Scrap", "quantity": 60 }], "truckloadSize": 120, "deliveryTicks": 120 },
-    { "nodeId": "CopperOreNodeEast", "price": [{ "itemType": "Scrap", "quantity": 60 }], "truckloadSize": 120, "deliveryTicks": 120 },
-    { "nodeId": "ZincOreNode", "price": [{ "itemType": "Scrap", "quantity": 60 }], "truckloadSize": 120, "deliveryTicks": 120 },
-    { "nodeId": "ZincOreNodeEast", "price": [{ "itemType": "Scrap", "quantity": 60 }], "truckloadSize": 120, "deliveryTicks": 120 },
-    { "nodeId": "AetherNode", "price": [{ "itemType": "Scrap", "quantity": 80 }], "truckloadSize": 40, "deliveryTicks": 150 }
-  ],
+  "supply": {
+    "_doc": "docs/supply-design.md. Seventeen spots on the street's row; a good's cart is offered once the Ledger has seen every good its add price names.",
+    "spots": [{ "x": -32, "y": -16 }, { "x": -28, "y": -16 }, { "x": -24, "y": -16 }, { "x": -20, "y": -16 }, { "x": -16, "y": -16 }, { "x": -12, "y": -16 }, { "x": -8, "y": -16 }, { "x": -4, "y": -16 }, { "x": 0, "y": -16 }, { "x": 4, "y": -16 }, { "x": 8, "y": -16 }, { "x": 12, "y": -16 }, { "x": 16, "y": -16 }, { "x": 20, "y": -16 }, { "x": 24, "y": -16 }, { "x": 28, "y": -16 }, { "x": 32, "y": -16 }],
+    "startingCarts": [{ "x": -8, "y": -16, "itemType": "Scrap" }],
+    "legacyStalls": [
+      { "id": "ScrapNodeWest", "x": -16, "y": -16, "itemType": "Scrap" },
+      { "id": "CoalNodeWest", "x": -12, "y": -16, "itemType": "Coal" },
+      { "id": "ScrapNode", "x": -8, "y": -16, "itemType": "Scrap" },
+      { "id": "CoalNode", "x": -4, "y": -16, "itemType": "Coal" },
+      { "id": "CopperOreNode", "x": 0, "y": -16, "itemType": "CopperOre" },
+      { "id": "ZincOreNode", "x": 4, "y": -16, "itemType": "ZincOre" },
+      { "id": "AetherNode", "x": 8, "y": -16, "itemType": "Aether" },
+      { "id": "CopperOreNodeEast", "x": 12, "y": -16, "itemType": "CopperOre" },
+      { "id": "ZincOreNodeEast", "x": 16, "y": -16, "itemType": "ZincOre" }
+    ],
+    "carts": [
+      {
+        "itemType": "Scrap",
+        "campaignRungs": 3,
+        "add": [{"itemType": "Scrap", "quantity": 60}],
+        "rates": [120, 180, 240, 300, 360, 420],
+        "capacities": [200, 300, 400, 500, 600, 700],
+        "rateCosts": [
+          [{"itemType": "IronPlate", "quantity": 40}, {"itemType": "Gear", "quantity": 10}],
+          [{"itemType": "CopperIngot", "quantity": 40}, {"itemType": "Brass", "quantity": 20}],
+          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}],
+          [{"itemType": "Regulator", "quantity": 4}, {"itemType": "Casing", "quantity": 20}],
+          [{"itemType": "ChronometerCore", "quantity": 2}, {"itemType": "Regulator", "quantity": 4}]
+        ],
+        "capacityCosts": [
+          [{"itemType": "IronPlate", "quantity": 20}, {"itemType": "Gear", "quantity": 5}],
+          [{"itemType": "CopperIngot", "quantity": 20}, {"itemType": "Brass", "quantity": 10}],
+          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}],
+          [{"itemType": "Regulator", "quantity": 2}, {"itemType": "Casing", "quantity": 10}],
+          [{"itemType": "ChronometerCore", "quantity": 1}, {"itemType": "Regulator", "quantity": 2}]
+        ]
+      },
+      {
+        "itemType": "Coal",
+        "campaignRungs": 3,
+        "add": [{"itemType": "Scrap", "quantity": 80}],
+        "rates": [30, 60, 120, 180, 240, 300],
+        "capacities": [100, 200, 300, 400, 500, 600],
+        "rateCosts": [
+          [{"itemType": "IronPlate", "quantity": 10}, {"itemType": "Gear", "quantity": 5}],
+          [{"itemType": "CopperIngot", "quantity": 40}, {"itemType": "Brass", "quantity": 20}],
+          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}],
+          [{"itemType": "Regulator", "quantity": 4}, {"itemType": "Casing", "quantity": 20}],
+          [{"itemType": "ChronometerCore", "quantity": 2}, {"itemType": "Regulator", "quantity": 4}]
+        ],
+        "capacityCosts": [
+          [{"itemType": "IronPlate", "quantity": 5}, {"itemType": "Gear", "quantity": 2}],
+          [{"itemType": "CopperIngot", "quantity": 20}, {"itemType": "Brass", "quantity": 10}],
+          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}],
+          [{"itemType": "Regulator", "quantity": 2}, {"itemType": "Casing", "quantity": 10}],
+          [{"itemType": "ChronometerCore", "quantity": 1}, {"itemType": "Regulator", "quantity": 2}]
+        ]
+      },
+      {
+        "itemType": "CopperOre",
+        "campaignRungs": 3,
+        "add": [{"itemType": "IronPlate", "quantity": 60}, {"itemType": "Gear", "quantity": 20}],
+        "rates": [30, 60, 120, 180, 240, 300],
+        "capacities": [100, 200, 300, 400, 500, 600],
+        "rateCosts": [
+          [{"itemType": "CopperIngot", "quantity": 40}, {"itemType": "Gear", "quantity": 20}],
+          [{"itemType": "Brass", "quantity": 20}, {"itemType": "Casing", "quantity": 10}],
+          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}],
+          [{"itemType": "Regulator", "quantity": 4}, {"itemType": "Casing", "quantity": 20}],
+          [{"itemType": "ChronometerCore", "quantity": 2}, {"itemType": "Regulator", "quantity": 4}]
+        ],
+        "capacityCosts": [
+          [{"itemType": "CopperIngot", "quantity": 20}, {"itemType": "Gear", "quantity": 10}],
+          [{"itemType": "Brass", "quantity": 10}, {"itemType": "Casing", "quantity": 5}],
+          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}],
+          [{"itemType": "Regulator", "quantity": 2}, {"itemType": "Casing", "quantity": 10}],
+          [{"itemType": "ChronometerCore", "quantity": 1}, {"itemType": "Regulator", "quantity": 2}]
+        ]
+      },
+      {
+        "itemType": "ZincOre",
+        "campaignRungs": 3,
+        "add": [{"itemType": "IronPlate", "quantity": 40}, {"itemType": "CopperIngot", "quantity": 30}],
+        "rates": [30, 60, 120, 180, 240, 300],
+        "capacities": [100, 200, 300, 400, 500, 600],
+        "rateCosts": [
+          [{"itemType": "Brass", "quantity": 20}, {"itemType": "Casing", "quantity": 10}],
+          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}],
+          [{"itemType": "Mainspring", "quantity": 10}, {"itemType": "AetherCell", "quantity": 4}],
+          [{"itemType": "Regulator", "quantity": 4}, {"itemType": "Casing", "quantity": 20}],
+          [{"itemType": "ChronometerCore", "quantity": 2}, {"itemType": "Regulator", "quantity": 4}]
+        ],
+        "capacityCosts": [
+          [{"itemType": "Brass", "quantity": 10}, {"itemType": "Casing", "quantity": 5}],
+          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}],
+          [{"itemType": "Mainspring", "quantity": 5}, {"itemType": "AetherCell", "quantity": 2}],
+          [{"itemType": "Regulator", "quantity": 2}, {"itemType": "Casing", "quantity": 10}],
+          [{"itemType": "ChronometerCore", "quantity": 1}, {"itemType": "Regulator", "quantity": 2}]
+        ]
+      },
+      {
+        "itemType": "Aether",
+        "campaignRungs": 3,
+        "add": [{"itemType": "Brass", "quantity": 20}, {"itemType": "Casing", "quantity": 10}],
+        "rates": [10, 20, 40, 60, 80, 100],
+        "capacities": [40, 80, 120, 160, 200, 240],
+        "rateCosts": [
+          [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}],
+          [{"itemType": "Mainspring", "quantity": 10}, {"itemType": "AetherCell", "quantity": 4}],
+          [{"itemType": "Mainspring", "quantity": 20}, {"itemType": "AetherCell", "quantity": 8}],
+          [{"itemType": "Regulator", "quantity": 4}, {"itemType": "Casing", "quantity": 20}],
+          [{"itemType": "ChronometerCore", "quantity": 2}, {"itemType": "Regulator", "quantity": 4}]
+        ],
+        "capacityCosts": [
+          [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}],
+          [{"itemType": "Mainspring", "quantity": 5}, {"itemType": "AetherCell", "quantity": 2}],
+          [{"itemType": "Mainspring", "quantity": 10}, {"itemType": "AetherCell", "quantity": 4}],
+          [{"itemType": "Regulator", "quantity": 2}, {"itemType": "Casing", "quantity": 10}],
+          [{"itemType": "ChronometerCore", "quantity": 1}, {"itemType": "Regulator", "quantity": 2}]
+        ]
+      }
+    ]
+  },
   "starterBench": { "x": 0, "y": 3, "recipes": "all" },
   "starterStation": { "x": 3, "y": -1, "facing": "North", "roster": "all" }
 }

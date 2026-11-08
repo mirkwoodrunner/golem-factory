@@ -1,0 +1,184 @@
+# A second region: the Docks
+
+**Status: approved 2026-11-07 with the user's answers in §6; built (§7 records where the build
+differs from the proposal).** The roadmap's next depth addition
+after Phase 8 (decision 12: "a second region and selling golems wait"), chosen by the user on
+2026-11-07. Written before the code, like the Phase 8 docs, with its invariants first.
+
+## What's already decided
+
+- **Roadmap decision 1:** no new goods, tiers or currency. A region is land and layout, not
+  content that reopens the tuning checked twice.
+- **Endless play §2:** *land is the hard limit.* The floor stops at `MaxNorthExtent`, the street
+  at ±34, and "more land is the second region". Endless play grew mostly through density and
+  rates because of it.
+- **The golem cap is 112** (`performance-report-endless.md`): the largest factory whose frame
+  holds the budget, measured with the whole factory on screen.
+- **The Freight Link** (`progression-design.md` §6) exists to move goods between tiles no belt
+  joins: "remote outposts". A second region is the place it was meant for.
+
+## The idea in one paragraph
+
+East of the market street's end, through a gate, lies **the Docks**: a second floor the player
+buys, with a quay of its own cart spots where barges bring raw goods by water. In the campaign it
+holds what the tower's build-out has no room for in the workshop; after the tower, with the golem
+cap binding first, it is room to spread out (§7, the user's call of 2026-11-08). Goods cross between the two by Zeppelin, by belt along the
+street, by hand, or through the Pneumatic Post, whose crates open onto the one shared store in
+either region (§6 Q3). It opens when the factory builds its first Zeppelin, in chapter 9 (§6
+Q2), as the tower's rope comes down, so the campaign's last chapters have room to grow into.
+
+## 0. Invariants
+
+A pass that touches the Docks keeps all of these. Each gets a test in `Core.Tests` when built.
+
+1. **No new good, tier, recipe, chassis or currency** (decision 1). New buildings only where
+   §6 says (a gate, the quay's spots); new art for those only.
+2. **One world, one clock, one save.** The Docks are cells in the same `SandboxWorld`, ticked by
+   the same `SimulationClock`, saved in the same file. No scene switch, no loading screen.
+3. **Rules in Core, on `SandboxWorld`.** The region's bounds, gate and quay are Core, tested
+   without a scene; nodes only draw. A scenario covers each surface with real input.
+4. **The frame budget holds** (endless invariant 6). The cap is re-measured with the Docks built
+   out, with the camera in either region. It may only rise if the measurement says so.
+5. **Land stays finite and bought.** The Docks' floor is bought in rows like the workshop's,
+   through `PlayerWallet`; it has a hard edge.
+6. **Every price fits the pack reachable when it opens** (`PriceReachTests`).
+7. **Saves restore exactly and never clamp.** An older save has no Docks and loads as before.
+8. **Creative Mode** has the Docks open from the start, free, as it has every rung.
+9. **Text:** never an id, only the font's glyphs, every quoted amount built from the data.
+
+## 1. Where it is
+
+The world today is a cross: the workshop (x −12..12, y −12..24 at full extent), the street below
+it (x −34..34, eight rows), the town square below that. The Docks sit **east of the street's
+end**: a floor of their own starting at x 40, joined to the street by a short gated lane on the
+street's rows (x 35..39). The gate is a fixture, roped until the Docks open; once open it is
+walkable floor and buildable ground like the street.
+
+| Part | Cells (proposed) |
+|---|---|
+| The lane | x 35..39, the street's rows |
+| The Docks' floor | x 40..64, y −20..−4 to start; bought north in rows to y 8 |
+| The quay | the Docks' south edge, y −20: eight cart spots at x 44..60, pitch 2 |
+
+The camera follows the player there as it does down the street and into the square. The overview's
+map gains the Docks beside the workshop.
+
+## 2. What is different there
+
+Only layout, so the region asks for different factories rather than more content:
+
+- **The quay's barges** are supply carts (`supply-design.md`) on spots of their own, the same
+  ladders and prices, so a factory can feed itself at the Docks without hauling raw goods down
+  the street. Seventeen street spots plus eight quay spots.
+- **No starting steam.** The Docks have no boiler or pipe until the player builds them: a line
+  there pays its own steam, or a pipe is run down the street.
+- **Distance, with the Post as the way round it.** The quay is about 40 cells from the workshop's
+  front. A belt that far is a lot of belt; a Zeppelin and two masts do it in one launch; a Post
+  crate at each end moves goods through the shared store (the user's call, §6 Q3), at the Post's
+  own capacity.
+
+## 3. When it opens
+
+**When the factory has built a Zeppelin** (the user's call, §6 Q2): the same condition that brings
+down the Clock Tower's rope (`SandboxWorld.ZeppelinChassis` in the Ledger). The gate's rope says
+"opens once you build a Zeppelin". This lands mid-campaign, in chapter 9, so:
+
+- **The guide gains a step** in chapter 9, after the Zeppelin flies: walk through the gate to the
+  Docks. Its check is the player standing on the Docks' floor; the kit walks there and back. It
+  asks nothing to be built, so the region stays optional for the campaign (no later step needs it).
+- **The measured floors hold.** `FullRunFloorTests` carries the full run through chapter 10 within
+  each chapter's ceiling; the new step must keep chapter 9 inside its ceiling (a walk, no price).
+- **Prices fit the pack of chapter 9** (invariant 6): the Docks' first floor rows and the quay's
+  spots are priced in goods a chapter 9 factory makes, within the pack it has then.
+- Nothing before chapter 9 changes.
+
+## 4. The golem cap
+
+The cap was measured with the whole factory on screen. With two regions the camera shows one at a
+time, so the off-screen region's **drawing** costs nothing, but its golem and building nodes
+still run their per-frame work (about 2.4 ms and 1.9 ms at 160 golems). Proposed:
+
+1. Nodes off screen skip their per-frame presentation (frame choice, badge, animation) and catch
+   up when they come back into view; the simulation never skips.
+2. Re-measure with the Docks built out: a 112-golem workshop plus a Docks factory, the camera in
+   each. Raise the cap only to what holds (§6 Q4).
+
+## 5. Build order
+
+1. Core: the Docks' bounds and floor purchases, the lane and gate fixture, the quay's spots on
+   the supply street, opening when the tower stands; saves. Tests first.
+2. The shell: the Docks' floor, walls and quay drawn from Core's layout (as `ShellNode` does the
+   workshop), the gate's art (generated), the camera's bounds.
+3. Off-screen nodes skip presentation; the `perf` scenario's Docks load; the cap measured.
+4. The overview's map shows the Docks; the HUD's region name when the player crosses the gate.
+5. The guide's chapter 9 step and its kit action; the floors checked.
+6. A `docks` scenario with real input: walk through the gate, buy a row, add a barge, build a
+   line, launch a Zeppelin to the workshop, save and load. Frames looked at.
+7. The docs it amends (`endless-design.md` §2, `guide-chapters-design.md`, root `CLAUDE.md`'s
+   scenario list).
+
+## 7. As built
+
+- **Core:** `Core/World/Docks.cs` holds the layout (lane x 35..39 on y −20..−13, floor x 40..64
+  from y −20, opening at north −4 and bought to 8, two rows a purchase, six purchases in
+  `data/sandbox.json`'s `docks`) and `DocksExpansionService`. `FloorBounds` keeps the Docks' north
+  row (`Docks.Closed` while shut) and opens it through its `DocksGate`, which `SandboxWorld` wires
+  to the Ledger's Zeppelin (or Creative). Walking (`PlayerWalker.DocksNorth`), building
+  (`FloorBounds.IsGround`) and the clamp (`FloorLayout.ClampToFloor`) all read it. Saves keep
+  `progress.docksRows`; a save without it loads with the Docks shut until a Zeppelin is seen.
+- **The quay** is eight spots at x 43..64, **pitch 3**, not 2: a cart's art is wider than two
+  cells. They join the supply street's spots; `SupplyStreet.SpotOpen` refuses one ("Roped off
+  until the Docks open.") and the map, the spot views, the overview and the player's targeting
+  skip them while shut; the world refreshes the targets the frame the Docks open or grow.
+- **The gate is drawn only** (`DocksGateView`, open and roped pictures), never a fixture, so belts
+  and pipes run down the lane. It stands at the lane's mouth (x 35), where a player walking east
+  stops while it is roped. The lane is paved and kerbed from the start, its far end walled while
+  shut; walking and building there stay gated in Core. Open, the shell edges the Docks
+  (`SandboxLayout.DocksEdges`) and the floor paints them in cobbles over harbour water.
+- **The rows** are bought from the Assembly Line tab's Docks row (Extend), beside the floor's.
+- **The HUD** names the region in a plate at the top while the player stands on the Docks' floor.
+- **The guide's step** `docks` follows `mast-collect` in chapter 9; its check is standing on the
+  floor, and the kit walks there and back. Nothing after it needs the Docks.
+- **Off screen**, golem and building nodes skip their per-frame presentation (`ViewRect`, three
+  cells past the screen's edge); a carried, hovered or tile-showing golem never skips. The `perf`
+  scenario adds a `flowing-far` phase at the farthest zoom. Re-measured, **the cap stays 112**:
+  the p95s hold to 144, but single frames over 33.3 ms remain past 112
+  (`performance-report-endless.md` §5, with the three spikes fixed on the way).
+- **Not built:** step 6's Zeppelin launch between the regions is the existing mast and Zeppelin,
+  untouched; the `docks` scenario covers the walk, the barge, a row, and a save.
+
+**After the design audit (2026-11-08):**
+- **The gate says why it is shut.** A player at the street's east end sees "The Docks · open once
+  you build a Zeppelin" in the HUD's plate (`Docks.RegionName`), and the alerts log notes "The
+  Docks are open" the moment they open in play (not on a load that finds them open). The Ledger
+  has no Docks entry: the tower's carries the same condition.
+- **The rows' prices rise, and stay cheap** (the user's call). Each row costs more raw goods than
+  the last, and every row less a cell than Floor Expansion's fifth, in the game's raw costs
+  (`ContractGenerator.RawCosts`: Plate 1, Brass 3, Casing 7, Mainspring and Aether Cell 13): 140,
+  225, 235, 253, 304 and 361 for fifty cells, against Floor 5's 405. The walk is what the Docks
+  cost; `DocksTests` pins both rules.
+- **On screen they are carts.** The quay's spots are the street's own kind, named and drawn as
+  carts; "barges" stays this doc's word, and the guide says "eight more spots for carts".
+- **What they are for after the tower** is room to spread out, not to grow: the golem cap binds
+  first (`endless-design.md` §2).
+
+## 6. Questions for the user
+
+**Answered by the user, 2026-11-07:** 1 (a) the Docks; 2 (b) at the Zeppelin, mid-campaign;
+3 (b) yes, the Post reaches the Docks; 4 (a) re-measure the cap; 5 (a) generated placeholder art.
+
+1. **Where and what?** (a) *Recommended:* the Docks, a second floor east of the street through a
+   gated lane, with a quay of barge spots. (b) A second floor north of the workshop, through a back
+   door: simpler, no quay, closer, so no reason for Zeppelins. (c) An outpost reachable only by
+   Zeppelin (no walking there): the purest Freight Link use, but the player can't stand in it.
+2. **When does it open?** (a) *Recommended:* once the Clock Tower stands. (b) At the Zeppelin
+   (chapter 9), which needs a campaign retune and a guide chapter.
+3. **Does the Pneumatic Post reach the Docks?** (a) *Recommended:* no; Post crates are the
+   workshop's, so goods cross by Zeppelin, belt or hand, and distance means something. (b) Yes:
+   any Post crate opens onto the shared store, which makes moving goods between regions free.
+4. **The golem cap with two regions.** (a) *Recommended:* off-screen nodes skip presentation,
+   then re-measure and raise the cap only to what holds. (b) Keep 112 across both regions, no
+   measurement.
+5. **Art.** The Docks' floor, quay and gate need pictures. (a) *Recommended:* generated
+   placeholders from scripts, as the City Office and civic site were, until the user commissions
+   art. (b) Wait for commissioned art before building.

@@ -11,6 +11,9 @@ namespace GolemFactory.World
 
         public void Register(ResourceNode node) => _nodes[node.NodeId] = node;
 
+        /// <summary>Forgets a node: a supply cart taken off the street. False for an unknown id.</summary>
+        public bool Remove(string nodeId) => nodeId != null && _nodes.Remove(nodeId);
+
         /// <summary>Every node, in the order they were registered: what a save walks.</summary>
         public IEnumerable<ResourceNode> Nodes => _nodes.Values;
 

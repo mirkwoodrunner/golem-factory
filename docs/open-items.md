@@ -94,10 +94,25 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   now reads a `FilteredBufferEndpoint` as `BufferEmpty`, so both crates say "no input in
   Crate(3,4)".
 
+- **UI scale can't go above 1 on a 1280 x 720 or 1280 x 800 screen.** Every screen is laid out in
+  fixed pixels for a 1280 x 720 canvas, so the scale is capped where it would cut a screen off
+  (`menus-design.md` §4, call 6). Bigger text on the Steam Deck (`steam-deck-design.md` D3) needs
+  the screens to reflow first.
+- **Godot reports "7 resources still in use at exit"** at the end of every scenario run, on
+  `phase6/feel` as well. Harmless so far; not yet traced.
+- **No scenario flies a Zeppelin between the workshop and the Docks** (`region-design.md` §7).
+  The mast and the Freight Link are unchanged and covered by `golems`; the distance is not.
+- **The golem cap stays 112** with the Docks (`performance-report-endless.md` §5): the p95s hold to
+  144, but single frames past 33.3 ms remain. A render pass (batched belt cargo and buildings) is
+  the next gain, not more rules.
+- **The `perf` scenario's lighting check swung once**: flowing-1x less unlit render CPU p95 read
+  +2.86 ms on one windowed run and +0.4 ms on the next. Not reproduced, not explained.
+
 ## 4. Polish, none of it blocking
 
 - **The art is placeholder** throughout, and the Workbench's lever housing, display face and
-  card faces most of all.
+  card faces most of all. The City Office, the civic works' site and the Docks' gate and water are
+  generated placeholders, the user's to commission.
 - **The Inventory tab's order** (`crates-design.md` §4.7, §10.1.10): its headers read as words
   now ("Your pack", "Pneumatic Post", "Crate (3,-2)"), but `InventoryReadout` still sorts the
   buffers by id: crates, the pack, masts, then the Post. The spec asks for the pack
@@ -125,6 +140,8 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 
 ## 5. Deliberate cuts
 
+- **No gamepad and no Linux export yet** (roadmap decision 10). The plan to run on a Steam Deck is
+  `docs/steam-deck-design.md`; it has five decisions waiting (its §2).
 - No player collision; the player walks through buildings and golems.
 - A belt hands off only to another belt: getting goods into a depot needs a golem.
 - `Refine` stays id-routed rather than spatial, so an untyped take can't grab the wrong input.

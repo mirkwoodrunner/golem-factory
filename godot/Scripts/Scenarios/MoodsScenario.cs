@@ -177,13 +177,19 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
 
-            // 5. The Coal stall, empty: a golem extracting there is red; a truckload makes it grey.
-            Do("an extractor at the empty Coal stall", () =>
+            // 5. A Coal cart, just added and empty: a golem extracting there waits, grey, because
+            // the cart refills itself (docs/supply-design.md §4).
+            Do("an extractor at a new, empty Coal cart", () =>
             {
-                ResourceNodeMarker coal = World.Markers.Single(m => m.NodeId == "CoalNode");
-                // F moves there, rewritten as an extractor. No pipe reaches the stall, so it is
-                // taken off the steam grid: this step is about the stall, not the boiler.
-                Compat.Vector2Int at = new Compat.Vector2Int(coal.SpatialCell.x, coal.SpatialCell.y + 1);
+                Compat.Vector2Int spot = World.Setup.HomeSpot(Economy.ItemType.Coal).Value;
+                Supply.SupplyResult added = World.GrantCart(spot, Economy.ItemType.Coal);
+                if (!added.Done)
+                {
+                    return "coal cart: " + added.Message;
+                }
+                // F moves there, rewritten as an extractor. No pipe reaches the cart, so it is
+                // taken off the steam grid: this step is about the cart, not the boiler.
+                Compat.Vector2Int at = new Compat.Vector2Int(spot.x, spot.y + 1);
                 Data.DefinitionSet defs = World.Definitions;
                 F.Inventory.Clear();
                 GolemProgramWriter.TryWrite(F.Program, null, defs.LogicCores["AlwaysOnCore"],
@@ -193,17 +199,14 @@ namespace GolemFactory.Nodes.Scenarios
                 F.ConfigureSteam(null);
                 return null;
             });
-            Until("F red at the empty stall", 2.0, () => F.StallReason == Events.StallReason.NodeEmpty && F.Mood == GolemMood.Stalled ? null : $"{F.Mood} {F.StallReason}");
-            Do("order a truckload: F grey", () =>
+            Until("F grey at the empty cart, waiting for it to refill", 2.0, () =>
             {
-                ResourceNodeMarker coal = World.Markers.Single(m => m.NodeId == "CoalNode");
-                Deposit(Economy.ItemType.Scrap, 100);
-                if (!World.Interactor.TryOrderTruckload(coal))
+                if (F.StallReason != Events.StallReason.NodeEmpty || F.Mood != GolemMood.Waiting)
                 {
-                    return "truckload: " + World.Interactor.LastStatusMessage;
+                    return $"{F.Mood} {F.StallReason}";
                 }
-                Log.Add("Coal stall: red, then grey with a truckload on its way");
-                return F.Mood == GolemMood.Waiting ? null : $"F reads {F.Mood} with a truckload coming";
+                Log.Add("Coal cart: empty and refilling, so its extractor waits grey");
+                return null;
             });
         }
     }

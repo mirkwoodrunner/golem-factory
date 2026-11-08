@@ -39,8 +39,8 @@ namespace GolemFactory.Tests.EditMode
                     "stall site " + x + " must be on the street");
             }
 
-            // Two cells of margin at each end, so a stall is never flush against the boundary.
-            Assert.AreEqual(2, FloorLayout.StreetHalfExtent - 16);
+            // Two cells of margin at each end, so a cart is never flush against the boundary.
+            Assert.AreEqual(2, FloorLayout.StreetHalfExtent - FloorLayout.OutermostSpot);
         }
 
         [Test]

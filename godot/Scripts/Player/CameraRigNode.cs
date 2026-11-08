@@ -43,6 +43,12 @@ namespace GolemFactory.Nodes
         /// <summary>The world point the camera is gliding to this frame.</summary>
         public Vector2 Aim { get; private set; }
 
+        /// <summary>
+        /// Over the title (docs/menus-design.md §6): how far right of the screen's middle, in
+        /// screen pixels, the workshop's middle sits, so the menu on the left never covers it.
+        /// </summary>
+        public float ShowcaseScreenOffset { get; set; }
+
         public override void _Ready()
         {
             _target = TargetPath != null && !TargetPath.IsEmpty ? GetNode<Node2D>(TargetPath) : null;
@@ -99,6 +105,7 @@ namespace GolemFactory.Nodes
                 _director.PlayerMoved();
             }
             _director.UpdateTowerEvent(dt);
+            _director.UpdateShowcase(dt);
             FollowTarget(dt, _director.GlideSpeed, FocusPoint());
 
             if (_pendingZoom != 0f)
@@ -109,7 +116,8 @@ namespace GolemFactory.Nodes
             }
             if (!_pinned)
             {
-                float size = _director.GlideZoom(OrthographicSize, dt);
+                // The title's view is set, not glided to: it is the first thing on screen.
+                float size = _director.Focus == CameraFocus.Showcase ? _director.TargetSize : _director.GlideZoom(OrthographicSize, dt);
                 if (System.Math.Abs(size - OrthographicSize) > 0.0001f)
                 {
                     OrthographicSize = size;
@@ -143,6 +151,8 @@ namespace GolemFactory.Nodes
                         return _target?.GlobalPosition;
                     }
                     return GridConversions.CellToWorld(golem.Cell);
+                case CameraFocus.Showcase:
+                    return GridConversions.PointToWorld(_director.ShowcasePoint) - new Vector2(ShowcaseScreenOffset / Zoom.X, 0f);
                 case CameraFocus.TowerEvent:
                     // The tower's middle: its feet are the footprint's south edge, the picture
                     // stands ten cells tall.

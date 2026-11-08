@@ -32,7 +32,7 @@ the same folder before starting a new one. Send all of them.
 | Key | Does |
 |---|---|
 | **WASD** | Move |
-| **E** | Interact: **tap** to harvest a stall, order a truckload from an empty one, fuel a boiler, collect from a crate (a depot or a Freight Mast: you take what fits, the rest stays), or program a golem. **Hold** at a stall to keep harvesting, or at the Hand-Crank Bench to crank. |
+| **E** | Interact: **tap** to take from a cart, add a cart on a roped-off spot, fuel a boiler, collect from a crate (a depot or a Freight Mast: you take what fits, the rest stays), or program a golem. **Hold** at a stall to keep harvesting, or at the Hand-Crank Bench to crank. |
 | **I** | Your pack. Standing at a crate, the crate's screen instead: crate and pack side by side. Click a good to move one, Shift-click to move what fits. The crate's label is set here. **I**, **E** or **Escape** closes it. |
 | **R** | Turn the build ghost while holding a placeable, or the golem you are carrying. Otherwise, cycle the bench's recipe, or turn the golem you are standing by. |
 | **G** | Pick up the golem you stand by; press again to set it down. While you carry it, an outline on the floor shows the tile it will land on (red where it can't), with the tiles it will take from and push to. |
@@ -132,7 +132,8 @@ The guide never sends you to these. Each one is a judgement call that only a per
   workshop? Is anything standing where you wanted to build?
 - **The Clock Tower** waits in the town square south of the street, roped off until you build a
   Zeppelin, and its picture grows with every stage you complete. Is it a goal worth the whole
-  factory? Each stage wants a steady **rate** of freshly made goods, not a pile of them.
+  factory? Each stage wants a steady **rate** of goods; a pile you kept counts too, but no faster
+  than three times the rate.
 - **Demolish (X)** refunds the full cost, plus what the building held, a crate's goods included.
   That is settled, not a tuning question. Did moving things around ever feel punishing anyway?
 
@@ -155,8 +156,8 @@ which way in a note, or add it under the matching question in the report.
 | Number | Value |
 |---|---|
 | Coke burned per **working** golem | 3/min (an idle golem burns none) |
-| Truckload prices | Scrap free · Coal 10 · Copper/Zinc 20 · Aether 40 Scrap |
-| Truckload size and delay | 30–40 units · 40–120 ticks |
+| Supply carts | a Coal cart 80 Scrap · 30 a minute, holds 100 · the starting Scrap cart 120 a minute, holds 200 |
+| Cart upgrades | Rate and Capacity rungs, each priced in the next tier's goods (supply-design.md §3) |
 | Slag Heap | 1 Coke per 4 Slag |
 | Assembly Line card price | 4× the recipe's own inputs, decaying while it waits |
 | Golem bays | 10, then +6 per upgrade |

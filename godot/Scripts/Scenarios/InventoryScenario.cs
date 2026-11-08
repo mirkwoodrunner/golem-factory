@@ -214,21 +214,21 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
             int stall = 0;
-            SandboxSetup.NodeEntry scrap = _world.Setup.nodes.Single(n => n.id == "ScrapNode");
-            Do("walk to the Scrap stall", () =>
+            Compat.Vector2Int scrap = _world.Setup.HomeSpot(ItemType.Scrap).Value;
+            Do("walk to the Scrap cart", () =>
             {
                 stall = Stall();
                 Stand(scrap.x, scrap.y + 1f);
                 return null;
             });
             Do("press E", () => { Tap(Key.E); return null; });
-            Do("the harvest is refused and the stall keeps its unit", () =>
+            Do("the harvest is refused and the cart keeps its unit", () =>
             {
                 if (Stall() != stall || Pack(ItemType.Scrap) != 100)
                 {
                     return $"stall {stall} -> {Stall()}, pack {Pack(ItemType.Scrap)}";
                 }
-                _log.Add($"collect: E filled the pack to 100 and left 15; '{_prompt.Caption}' at the stall");
+                _log.Add($"collect: E filled the pack to 100 and left 15; '{_prompt.Caption}' at the cart");
                 return null;
             });
         }
@@ -697,7 +697,7 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void SetPack(string good, int quantity) => _world.Wallet.Pack.RestoreQuantity(good, quantity);
 
-        private int Stall() => _world.Nodes.TryGetNode("ScrapNode", out ResourceNode node) ? node.RemainingQuantity : -1;
+        private int Stall() => _world.Supply.SpotAt(_world.Setup.HomeSpot(ItemType.Scrap).Value)?.Cart?.Stock ?? -1;
 
         private void Snapshot() =>
             _totals = _depot.Buffer.Quantities.Keys.Union(_world.Wallet.Pack.Quantities.Keys)

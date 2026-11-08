@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using System.Collections.Generic;
 using Godot;
 using GolemFactory.Data;
@@ -108,6 +109,17 @@ namespace GolemFactory.Nodes
                 return;
             }
             _time += (float)delta;
+            // Off screen, a golem skips its picture, badge and motion (region-design §4): it catches
+            // up the frame it comes back into view. Never while carried, hovered or focused.
+            bool carried = _world.Setup != null && _world.Sandbox.Interactor.CarriedGolem == Entity;
+            if (!carried && !Hovered && !ShowTiles && !ViewRect.Shows(GridConversions.CellToWorld(Entity.Cell)))
+            {
+                if (_badge != null && _badge.Visible)
+                {
+                    _badge.Visible = false;
+                }
+                return;
+            }
             SyncToEntity();
             RefreshBadge((float)delta);
             Animate((float)delta);
@@ -135,12 +147,49 @@ namespace GolemFactory.Nodes
         private string _bodySprite;
         private Sprite2D _arrow;
         private Sprite2D _sourceTile;
+        private Sprite2D _sourceStripes;
+
+        /// <summary>Whether the source tile wears its colour-blind stripes: for a scenario.</summary>
+        public bool SourceStripesVisible => _sourceStripes != null && _sourceStripes.IsVisibleInTree();
+
+        // Dark teal ink: reads on the pale teal tile over any floor, lit or not.
+        private static readonly Color StripeInk = new Color(0.03f, 0.20f, 0.20f, 0.62f);
+        private static Texture2D _stripes;
+
+        /// <summary>
+        /// The source tile's stripes (Core's <see cref="ColourMarks.StripeAt"/>), inside the tile's
+        /// 3-pixel border so its outline still reads. Made once and shared by every golem.
+        /// </summary>
+        private static Texture2D StripeTexture()
+        {
+            if (_stripes != null)
+            {
+                return _stripes;
+            }
+            const int size = 64, border = 3;
+            Image image = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
+            for (int y = border; y < size - border; y++)
+            {
+                for (int x = border; x < size - border; x++)
+                {
+                    if (ColourMarks.StripeAt(x, y))
+                    {
+                        image.SetPixel(x, y, StripeInk);
+                    }
+                }
+            }
+            _stripes = ImageTexture.CreateFromImage(image);
+            return _stripes;
+        }
         private Sprite2D _targetTile;
         private Sprite2D _sourceArrow;
         private Sprite2D _targetArrow;
         private Sprite2D _dropTile;
         private Sprite2D _dropArrow;
         private GolemMood _rawMood = (GolemMood)(-1);
+        private int _ownState;
+        private static int _nextMoodSlot;
+        private readonly int _moodSlot = _nextMoodSlot++;
         private float _rawHeld;
         private bool _shakePending;
         private bool _wasStopped;
@@ -162,6 +211,7 @@ namespace GolemFactory.Nodes
         /// <summary>The body's lean, offset from its cell and tint as drawn -- for a scenario.</summary>
         public float DrawnSkew => _body.Skew;
         public Vector2 DrawnOffset => _body.Position;
+
         public Color DrawnModulate => _body.Modulate;
 
         /// <summary>Whether the mood badge is up, and what it says -- for a scenario.</summary>
@@ -226,6 +276,9 @@ namespace GolemFactory.Nodes
             _targetTile = MakeTile(TargetTint);
             _sourceArrow = MakeTileArrow(_sourceTile);
             _targetArrow = MakeTileArrow(_targetTile);
+            _sourceStripes = new Sprite2D { Name = "Stripes", Texture = StripeTexture(), Visible = false };
+            _sourceTile.AddChild(_sourceStripes);
+            _sourceTile.MoveChild(_sourceStripes, 0); // under the arrow
 
             // The landing outline while carried: the build ghost's tile and colours (red where
             // [G] would refuse), with the facing arrow on it as the build cursor draws one.
@@ -322,6 +375,53 @@ namespace GolemFactory.Nodes
         private static readonly Dictionary<(string stem, GolemFrameKey key), string> ResolvedFrames =
             new Dictionary<(string, GolemFrameKey), string>();
 
+        // Every body picture, loaded once and held: a golem first drawn mid-run (off screen until
+        // then, region-design §4) read and uploaded its frame inside a frame, a 20 ms hitch.
+        private static readonly Dictionary<string, Texture2D> BodyTextures = new Dictionary<string, Texture2D>();
+
+        /// <summary>How many body pictures are loaded and held, for a scenario.</summary>
+        public static int WarmBodyTextures => BodyTextures.Count;
+
+        /// <summary>
+        /// Resolves and loads every chassis's 28 frames (and the fallback) before the first golem
+        /// is drawn, so no frame ever reads a picture from disk. Called once by the world's node.
+        /// </summary>
+        public static void WarmFrames(IEnumerable<ChassisDefinition> chassis)
+        {
+            Body(GolemFrames.FallbackSprite);
+            foreach (ChassisDefinition c in chassis)
+            {
+                string stem = GolemFrames.Stem(c.chassisSprite);
+                foreach (Facing facing in Diagnostics.ArtGallery.Facings)
+                {
+                    foreach (GolemFrameKey key in Diagnostics.ArtGallery.FramesOf(facing))
+                    {
+                        Body(ResolveFrame(stem, key));
+                    }
+                }
+            }
+        }
+
+        private static string ResolveFrame(string stem, GolemFrameKey key)
+        {
+            if (!ResolvedFrames.TryGetValue((stem, key), out string sprite))
+            {
+                sprite = GolemFrames.Resolve(stem, key, name => ResourceLoader.Exists("res://art/" + name));
+                ResolvedFrames[(stem, key)] = sprite;
+            }
+            return sprite;
+        }
+
+        private static Texture2D Body(string sprite)
+        {
+            if (!BodyTextures.TryGetValue(sprite, out Texture2D texture))
+            {
+                texture = GD.Load<Texture2D>("res://art/" + sprite);
+                BodyTextures[sprite] = texture;
+            }
+            return texture;
+        }
+
         /// <summary>The frame GolemFrames picked this frame (a diagnostic for scenarios).</summary>
         public GolemFrameKey DrawnFrame { get; private set; }
 
@@ -358,17 +458,13 @@ namespace GolemFactory.Nodes
             GolemFrameKey key = PinnedFrame ?? GolemFrames.FrameFor(_mood, motion, phase, carried, _time, Entity.Facing);
             DrawnFrame = key;
 
-            if (!ResolvedFrames.TryGetValue((stem, key), out string sprite))
-            {
-                sprite = GolemFrames.Resolve(stem, key, name => ResourceLoader.Exists("res://art/" + name));
-                ResolvedFrames[(stem, key)] = sprite;
-            }
+            string sprite = ResolveFrame(stem, key);
             if (sprite == _bodySprite)
             {
                 return;
             }
             _bodySprite = sprite;
-            _body.Texture = GD.Load<Texture2D>("res://art/" + sprite);
+            _body.Texture = Body(sprite);
             GridConversions.StandOnCell(_body);
         }
 
@@ -404,7 +500,8 @@ namespace GolemFactory.Nodes
             {
                 _dropTile.GlobalPosition = GridConversions.CellToWorld(drop);
                 Compat.Color tint = BuildGhostVisuals.Evaluate(
-                    BuildGhostVisuals.Classify(hands.CarryDropBlocked, affordable: true), _time);
+                    BuildGhostVisuals.Classify(hands.CarryDropBlocked, affordable: true), _time,
+                    pulse: _world?.Sandbox?.Motion.Pulse ?? true);
                 _dropTile.Modulate = new Color(tint.r, tint.g, tint.b, tint.a);
                 _dropArrow.Rotation = GridConversions.FacingToRotation(Entity.Facing);
                 _dropArrow.Position = step * 0.28f;
@@ -415,6 +512,7 @@ namespace GolemFactory.Nodes
             GolemTileOverlay.Decision tiles = GolemTileOverlay.Decide(Hovered, ShowTiles, landing, carried, Entity.Cell);
             _sourceTile.Visible = tiles.Show;
             _targetTile.Visible = tiles.Show;
+            _sourceStripes.Visible = ColourMarks.Enabled; // shape as well as colour (menus-design §5)
             if (tiles.Show)
             {
                 _sourceTile.GlobalPosition = GridConversions.CellToWorld(FacingUtility.SourceCell(tiles.Cell, Entity.Facing));
@@ -441,6 +539,20 @@ namespace GolemFactory.Nodes
         {
             Compat.Color tint = GolemMoodPalette.Tint(_mood);
             _body.Modulate = new Color(tint.r, tint.g, tint.b, tint.a);
+
+            World.MotionPreference motion = _world?.Sandbox?.Motion;
+            if (motion != null && !motion.GolemSway)
+            {
+                // Reduced motion: the golem stands still on its cell. Its frames (ApplyFrame) still
+                // show what it is doing, and its tint and badge its mood.
+                _shakeLeft = 0f;
+                _body.Scale = Vector2.One;
+                _body.Skew = 0f;
+                _body.Position = Vector2.Zero;
+                bool impact = TryWorkPose(out GolemWorkMotion.Pose still) && still.Impact;
+                AnimatePuffs(delta, impact);
+                return;
+            }
 
             if (_shakeLeft > 0f)
             {
@@ -481,6 +593,11 @@ namespace GolemFactory.Nodes
 
         // Two steam puffs, one each side of the feet, reused for every stamp.
         private const string PuffSprite = "res://art/fx_steam_puff.png";
+
+        // Asked once: a file lookup per golem per frame was a measurable share of the frame at
+        // 160 golems (docs/performance-report-endless.md).
+        private static bool? _puffArtExists;
+        private static bool PuffArtExists => _puffArtExists ??= ResourceLoader.Exists(PuffSprite);
         private readonly Sprite2D[] _puffs = new Sprite2D[2];
         private float _puffAge = GolemWorkMotion.PuffSeconds;
         private bool _wasImpact;
@@ -504,9 +621,13 @@ namespace GolemFactory.Nodes
             }
             _wasImpact = impact;
             _puffAge += delta;
+            if (_world?.Sandbox?.Motion.Particles == false)
+            {
+                _puffAge = GolemWorkMotion.PuffSeconds; // no puffs on Reduced motion
+            }
 
             // No puff art yet (it is to come from ComfyUI): the stamp still squashes, without puffs.
-            if (!ResourceLoader.Exists(PuffSprite))
+            if (!PuffArtExists)
             {
                 return;
             }
@@ -554,7 +675,14 @@ namespace GolemFactory.Nodes
         {
             // The classified mood has a stopwatch of its own; what is DRAWN is the presented one
             // (GolemMoodRules.Presented), so Waiting's 2 s dwell covers the tint as well as the badge.
-            GolemMood raw = Entity.Mood;
+            // Re-classified at once when the golem's own state changes, else on its turn every few
+            // frames (GolemMoodRules.ReclassifyEveryFrames): a stalled golem's mood reads its
+            // neighbours, which at 160 golems every frame cost more than the frame had.
+            int own = GolemMoodRules.OwnStateSignature(Entity);
+            GolemMood raw = (int)_rawMood >= 0 && !GolemMoodRules.ShouldReclassify((long)Engine.GetProcessFrames(), _moodSlot, own != _ownState)
+                ? _rawMood
+                : Entity.Mood;
+            _ownState = own;
             if (raw != _rawMood)
             {
                 _rawMood = raw;

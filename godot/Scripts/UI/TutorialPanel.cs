@@ -1,3 +1,4 @@
+using GolemFactory.Settings;
 using System.Linq;
 using Godot;
 using GolemFactory.Tutorial;
@@ -43,6 +44,7 @@ namespace GolemFactory.Nodes
         private WorkbenchScreen _workbench;
         private CrateScreen _crateScreen;
         private int _renderedVersion = -1;
+        private int _renderedKeys = -1;
         private bool _docked;
         private float _time;
 
@@ -51,6 +53,7 @@ namespace GolemFactory.Nodes
         /// <summary>For scenarios.</summary>
         public Control Plate => _plate;
         public string TitleText => _title?.Text ?? "";
+        public string BodyText => _body?.Text ?? "";
         public string ProgressText => _progress?.Text ?? "";
 
         /// <summary>The note under the guide (what is in the way of a marked tile), as drawn.</summary>
@@ -270,9 +273,10 @@ namespace GolemFactory.Nodes
                 _fitted = false;
             }
 
-            if (guide.Version != _renderedVersion)
+            if (guide.Version != _renderedVersion || TextTokens.Version != _renderedKeys)
             {
                 _renderedVersion = guide.Version;
+                _renderedKeys = TextTokens.Version; // a rebind or the marks setting redraws the step's words
                 TutorialStep step = guide.Current;
                 int chapter = guide.ChapterOf(guide.Index);
                 _counter.Text = guide.KitRunning

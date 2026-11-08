@@ -7,13 +7,12 @@ using GolemFactory.World;
 namespace GolemFactory.Nodes
 {
     /// <summary>
-    /// Populates the world from the applied <see cref="SandboxSetup"/>: the market stalls and the
-    /// starter Hand-Crank Bench -- what Unity authored into Sandbox.unity by hand and wired in
-    /// SandboxBootstrap.Start.
+    /// Populates the world from the applied <see cref="SandboxSetup"/>: the market street's cart
+    /// spots and the starter Hand-Crank Bench.
     ///
     /// <para>
-    /// Each stall is a Core <see cref="ResourceNodeMarker"/> publishing its node on its cell,
-    /// which is what lets a golem standing beside it ExtractFromNode; node identity is the cart
+    /// Each cart is a Core <see cref="ResourceNodeMarker"/> publishing its node on its cell,
+    /// which is what lets a golem standing beside it ExtractFromNode; its good is the cart
     /// SPRITE (root CLAUDE.md -- a tint never survives Play). The bench is a real building with
     /// a <see cref="HandCrankBench"/>, configured with every recipe (it filters to the crankable
     /// ones itself) and ticked by the clock. Since G5 all of that is built by Core's
@@ -28,6 +27,13 @@ namespace GolemFactory.Nodes
         public HandCrankBench StarterBench => _world?.Sandbox.StarterBench;
 
         private WorldNode _world;
+        private readonly List<CartSpotView> _spotViews = new List<CartSpotView>();
+
+        /// <summary>The supply street's spots as drawn, in the street's order.</summary>
+        public IReadOnlyList<CartSpotView> SpotViews => _spotViews;
+
+        /// <summary>The Docks' gate, for a scenario.</summary>
+        public DocksGateView Gate { get; private set; }
 
         public override void _EnterTree() => AddToGroup(GroupName);
 
@@ -41,14 +47,26 @@ namespace GolemFactory.Nodes
                 return;
             }
 
-            // The stalls are Core markers the world already registered and published; this
-            // only draws them.
-            foreach (SandboxSetup.NodeEntry entry in setup.nodes)
+            // Every golem picture loaded before the first golem is drawn (GolemNode.WarmFrames).
+            GolemNode.WarmFrames(_world.Sandbox.Definitions.Chassis.Values);
+
+            // The supply street's spots (docs/supply-design.md §1), each drawn as its rope or its
+            // cart. Kept by spot, never found by name.
+            foreach (Supply.CartSpot spot in _world.Sandbox.Supply.Spots)
             {
-                var node = new Node2D { Name = entry.id, Position = GridConversions.CellToWorld(new Vector2I(entry.x, entry.y)) };
-                node.AddChild(SpritePivots.Make(entry.sprite));
-                AddChild(node);
+                var view = new CartSpotView(spot)
+                {
+                    Name = "CartSpot",
+                    Position = GridConversions.CellToWorld(new Vector2I(spot.Cell.x, spot.Cell.y)),
+                    IsOpen = _world.Sandbox.Supply.IsOpen,
+                };
+                AddChild(view);
+                _spotViews.Add(view);
             }
+
+            // The Docks' gate at the street's end (docs/region-design.md §1).
+            Gate = new DocksGateView(_world.Sandbox.Bounds) { Name = "DocksGate" };
+            AddChild(Gate);
 
             if (setup.starterBench != null)
             {

@@ -5,8 +5,10 @@ using GolemFactory.Audio;
 using GolemFactory.Belts;
 using GolemFactory.Blueprints;
 using GolemFactory.Buildings;
+using GolemFactory.Civic;
 using GolemFactory.ClockTower;
 using GolemFactory.Compat;
+using GolemFactory.Contracts;
 using GolemFactory.Data;
 using GolemFactory.Diagnostics;
 using GolemFactory.Economy;
@@ -19,6 +21,7 @@ using GolemFactory.PunchCards;
 using GolemFactory.Save;
 using GolemFactory.Simulation;
 using GolemFactory.Steam;
+using GolemFactory.Supply;
 using GolemFactory.UI;
 
 namespace GolemFactory.World
@@ -71,10 +74,26 @@ namespace GolemFactory.World
         /// <summary>The pack's cap ladder (docs/pack-upgrades-design.md): the Assembly Line tab's Pack row.</summary>
         public PackUpgradeService PackUpgrade { get; } = new PackUpgradeService();
 
+        /// <summary>The Docks' floor rows (docs/region-design.md §1).</summary>
+        public DocksExpansionService DocksExpansion { get; } = new DocksExpansionService();
+
         public FloorBounds Bounds { get; private set; } = new FloorBounds();
         public DefinitionSet Definitions { get; private set; }
         public SandboxSetup Setup { get; private set; }
-        public TruckloadMarket Market { get; private set; }
+
+        /// <summary>The street's supply carts (docs/supply-design.md); never null once composed.</summary>
+        public SupplyStreet Supply { get; private set; }
+
+        /// <summary>The cart panel's rules (docs/supply-design.md §2).</summary>
+        public SupplyPanel SupplyPanel => _supplyPanel ??= new SupplyPanel(Supply, () => Wallet, item => TechTree.Ledger.HasItem(item));
+        private SupplyPanel _supplyPanel;
+
+        /// <summary>The City Office's notice: its lines and rows, and what a click does.</summary>
+        public ContractPanel ContractPanel => _contractPanel ??= new ContractPanel(Contracts);
+        private ContractPanel _contractPanel;
+
+        /// <summary>Hands [E] at the office its notice. Null keeps one already handed over.</summary>
+        public void ConfigureContractScreen(IContractScreen screen) => Interactor.ConfigureContractScreen(screen);
         /// <summary>The build menu: every placeable the player may place.</summary>
         public IReadOnlyList<PlaceableEntry> Placeables { get; private set; } = new List<PlaceableEntry>();
 
@@ -91,6 +110,27 @@ namespace GolemFactory.World
 
         /// <summary>The Clock Tower, standing on its site in the town square; null in a world without one.</summary>
         public PlaceableBuilding ClockTowerBuilding { get; private set; }
+
+        /// <summary>
+        /// The City Office's contracts (docs/contracts-design.md): one at a time, from
+        /// <c>data/contracts.json</c>, opened in chapter 5. None in Creative (invariant 12).
+        /// </summary>
+        public ContractBoard Contracts { get; private set; }
+
+        /// <summary>The office's crate: golems, belts and the Crate screen fill the contract through it.</summary>
+        public CityOfficeCrate OfficeCrate { get; private set; }
+
+        /// <summary>The office in the square, a fixture like the tower; null without one.</summary>
+        public PlaceableBuilding CityOfficeBuilding { get; private set; }
+
+        /// <summary>
+        /// The civic works after the tower (docs/endless-design.md §1.2): three works in stages, on
+        /// the tower's machinery, at a site west of it. None in Creative (invariant 10).
+        /// </summary>
+        public CivicWorks Civic { get; private set; }
+
+        /// <summary>The civic works' site in the square, a fixture; null without one.</summary>
+        public PlaceableBuilding CivicBuilding { get; private set; }
         public List<ResourceNodeMarker> Markers { get; } = new List<ResourceNodeMarker>();
         public HandCrankBench StarterBench { get; private set; }
         public GolemConstructionStation StarterStation { get; private set; }
@@ -180,6 +220,8 @@ namespace GolemFactory.World
         private void Apply(SandboxSetup setup, IReadOnlyList<PlaceableEntry> placeables)
         {
             Setup = setup;
+            Creative = setup.creativeMode;
+            Buffers.CostsWaived = Creative;
             AllPlaceables = placeables ?? new List<PlaceableEntry>();
             Placeables = AllPlaceables.Where(p => !FixtureKeys.Contains(p.Key)).ToList();
             _stockpileBufferId = setup.stockpileBufferId;
@@ -193,14 +235,6 @@ namespace GolemFactory.World
 
             // SandboxBootstrap.Start, in its order.
             setup.ApplyBufferPolicy(Buffers);
-            setup.RegisterNodes(Nodes);
-            foreach (SandboxSetup.NodeEntry entry in setup.nodes)
-            {
-                var marker = new ResourceNodeMarker { Position = new Vector3(entry.x, entry.y, 0f) };
-                marker.Configure(Nodes, entry.id);
-                marker.RegisterAsSpatialEndpoint(Endpoints, UnitCells);
-                Markers.Add(marker);
-            }
 
             // Steam ticks on the simulation clock: Coke burns per unit of work, so the burn has
             // to follow Play/Pause and the speed multiplier.
@@ -213,6 +247,18 @@ namespace GolemFactory.World
                 FloorExpansion.ConfigureCost(setup.floorExpansion.purchases, setup.floorExpansion.rowsPerPurchase);
             }
             PackUpgrade.Configure(Buffers, _stockpileBufferId, PostBufferId, setup.packCapacityPerType, setup.packUpgrades);
+            // The Docks open with the first Zeppelin, as the tower's rope comes down (region-design §3);
+            // in Creative from the start.
+            Bounds.DocksGate = () => Creative || TechTree.Ledger.HasChassis(ZeppelinChassis);
+            DocksExpansion.Configure(Bounds, Buffers, _stockpileBufferId, PostBufferId,
+                setup.docks?.purchases.Select(c => (IReadOnlyList<RecipeIngredient>)c).ToList(), setup.docks?.rowsPerPurchase ?? 2);
+            PackUpgrade.EndlessOpen = () => EndlessOpen;
+            if (setup.assemblyBays != null)
+            {
+                AssemblyBay.ConfigureTiers(setup.assemblyBays.campaignTopSlots,
+                    setup.assemblyBays.endless.Select(c => (IReadOnlyList<RecipeIngredient>)c));
+            }
+            AssemblyBay.EndlessOpen = () => EndlessOpen;
 
             // Ticked whether or not a tower is built: an unbuilt tower accrues nothing.
             // EMPTY, as ManagerHolders.prefab's site holder was (stages: []): the site stays
@@ -232,11 +278,26 @@ namespace GolemFactory.World
                 _authoredBuildings.Add(bench);
             }
 
-            Market = setup.BuildMarket(Nodes);
-            Clock.Register(Market);
+            // The market street: every raw good comes from a cart (docs/supply-design.md).
+            Supply = setup.BuildSupply(
+                Nodes, Endpoints, UnitCells, Markers, () => Wallet, item => TechTree.Ledger.HasItem(item),
+                (int)System.Math.Round(60f * Clock.TicksPerSecond), cell => Grid.IsOccupied(cell));
+            Clock.Register(Supply);
+            foreach (CartLadder ladder in Supply.Ladders)
+            {
+                ladder.EndlessOpen = () => EndlessOpen;
+            }
+            // The quay's barges: eight spots of the street's own kind, open with the Docks.
+            foreach (Vector2Int cell in Docks.QuaySpots())
+            {
+                Supply.AddSpot(cell);
+            }
+            Supply.SpotOpen = spot => !Docks.IsQuaySpot(spot.Cell) || Bounds.DocksOpen;
 
             WireBuildMode();
             RaiseClockTower();
+            RaiseCityOffice();
+            RaiseCivicSite();
 
             if (setup.starterStation != null)
             {
@@ -261,7 +322,13 @@ namespace GolemFactory.World
             WireProgression(setup.assemblyLine);
             WireAudio();
             EventBus.ClockTowerStageCompleted += OnTowerStageCompleted;
-            if (setup.tutorial)
+            EventBus.Contract += OnContract;
+            EventBus.CivicStageCompleted += OnCivicStage;
+            if (Creative)
+            {
+                OpenEverything();
+            }
+            if (setup.tutorial && !setup.creativeMode)
             {
                 Tutorial = new Tutorial.TutorialGuide(this);
                 // The Workbench's next-drag hint follows the guide's program plans.
@@ -300,6 +367,7 @@ namespace GolemFactory.World
             TechTree.ConfigureFloorBounds(Bounds);
             TechTree.Attach();
             Production.Attach();
+            Consumption.Attach();
 
             if (setup == null || string.IsNullOrEmpty(setup.deck) || !Definitions.Decks.TryGetValue(setup.deck, out DraftableCardCatalog deck))
             {
@@ -333,6 +401,7 @@ namespace GolemFactory.World
             AssemblyLineBoard = new AssemblyLineBoard(AssemblyLine, Buffers, _stockpileBufferId, setup.claimUserId, PostBufferId);
             AssemblyLineBoard.ConfigureBays(AssemblyBay, _stockpileBufferId);
             AssemblyLineBoard.ConfigureFloorExpansion(FloorExpansion);
+            AssemblyLineBoard.ConfigureDocks(DocksExpansion);
             AssemblyLineBoard.ConfigurePackUpgrade(PackUpgrade);
             AssemblyLineBoard.ConfigureSeen(item => TechTree.Ledger.HasItem(item));
             AssemblyLineBoard.ConfigurePostShown(() => TechTree.Ledger.HasBuilding(TechTreeCatalog.BuildingPneumaticPost));
@@ -351,6 +420,22 @@ namespace GolemFactory.World
         /// </summary>
         public CameraDirector Camera { get; } = new CameraDirector();
 
+        /// <summary>
+        /// The player's Reduced motion (<see cref="MotionPreference"/>; docs/menus-design.md §5).
+        /// The camera reads it too. Set by the Godot layer from the player's settings.
+        /// </summary>
+        public MotionPreference Motion => Camera.Motion;
+
+        /// <summary>
+        /// The overview's map or alerts picked a golem: the camera goes to it, as the alerts
+        /// strip's click does. False for a golem that is gone.
+        /// </summary>
+        public bool FocusGolem(string golemId)
+        {
+            bool live = _golems.Any(g => g != null && !g.IsRemoved && g.GolemId == golemId);
+            return live && Camera.LookAt(golemId);
+        }
+
         /// <summary>The alert strip was clicked: the camera goes to the next stopped golem. Its id, or null with none.</summary>
         public string FocusNextAlert()
         {
@@ -358,11 +443,129 @@ namespace GolemFactory.World
             return Camera.NextAlert(Alerts?.Tracker.StallsWorstFirst());
         }
 
+        /// <summary>
+        /// Takes the world off the static <see cref="EventBus"/>: its golems, the guide, the
+        /// alerts, the tower, the tech tree, the tally, the hands and the sound. Called when its
+        /// scene goes (a new game or a load from the title reloads the scene,
+        /// docs/menus-design.md §6); without it the old world went on reacting to the new one's
+        /// events. The world is not used again after.
+        /// </summary>
+        public void Dispose()
+        {
+            if (Disposed)
+            {
+                return;
+            }
+            Disposed = true;
+            foreach (GolemEntity golem in _golems)
+            {
+                golem?.Detach();
+            }
+            Tutorial?.Detach();
+            Alerts?.Detach();
+            ClockTower.Detach();
+            TechTree.Detach();
+            Production.Detach();
+            Consumption.Detach();
+            Interactor.Detach();
+            Audio.Detach();
+            EventBus.ClockTowerStageCompleted -= OnTowerStageCompleted;
+            EventBus.Contract -= OnContract;
+            EventBus.CivicStageCompleted -= OnCivicStage;
+        }
+
+        // --- Creative Mode (docs/menus-design.md §9) ------------------------------------------
+
+        /// <summary>
+        /// A Creative world: costs waived (every wallet, through <see cref="StorageBufferRegistry.CostsWaived"/>),
+        /// every card claimed and every good, chassis and building seen, the pack kept full of
+        /// every good, no guide, and no tower stage. Set from the setup when the world is composed
+        /// and never changed: a save records it, and a load refuses the other kind.
+        /// </summary>
+        public bool Creative { get; private set; }
+
+        /// <summary>What the HUD's tower panel says in Creative.</summary>
+        public const string CreativeTowerReason = "is closed in Creative";
+
+        /// <summary>How often Creative tops the pack up, in the player's seconds.</summary>
+        public const float CreativeRefillSeconds = 1f;
+
+        private float _untilRefill;
+
+        private void OpenEverything()
+        {
+            if (AssemblyLine != null && _deck != null)
+            {
+                foreach (DraftableCardDefinition card in _deck.OpeningHand.Concat(_deck.Cards))
+                {
+                    AssemblyLine.GrantClaim(_claimUserId, card);
+                }
+            }
+            foreach (string item in ItemTiers.CanonicalOrder)
+            {
+                TechTree.Ledger.RecordItem(item);
+            }
+            foreach (string chassis in Definitions.Chassis.Keys)
+            {
+                TechTree.Ledger.RecordChassis(chassis);
+            }
+            // What the build menu places; not the tower (there is none in Creative) nor a bought floor row.
+            foreach (string building in Progression.TechTreeCatalog.AllBuildings.Where(b =>
+                b != Progression.TechTreeCatalog.BuildingClockTower && b != Progression.TechTreeCatalog.BuildingFloorExpansion))
+            {
+                TechTree.Ledger.RecordBuilding(building);
+            }
+            ClockTower.Site.OpenWhen = () => false;
+            ClockTower.Site.ClosedReason = CreativeTowerReason;
+            FillPack();
+        }
+
+        /// <summary>Every good the game has, to the pack's cap: Creative's way to feed a line by hand.</summary>
+        private void FillPack()
+        {
+            StorageBuffer pack = Wallet.Pack;
+            foreach (string item in ItemTiers.CanonicalOrder)
+            {
+                int missing = pack.CapacityPerType - pack.GetQuantity(item);
+                if (missing > 0 && pack.CapacityPerType != StorageBuffer.Unlimited)
+                {
+                    pack.Deposit(item, missing);
+                }
+            }
+        }
+
+        /// <summary>Whether <see cref="Dispose"/> has run.</summary>
+        public bool Disposed { get; private set; }
+
+        // The overview's alerts log a contract posted and done (docs/contracts-design.md §5).
+        private void OnContract(ContractEvent e)
+        {
+            if (e.Kind != ContractEventKind.Accepted && Alerts != null)
+            {
+                Alerts.Log.Note(Alerts.Seconds, ContractText.Alert(e));
+            }
+        }
+
+        // The overview's alerts log a civic stage built (docs/endless-design.md §3).
+        private void OnCivicStage(CivicStageCompletedEvent e)
+        {
+            if (Alerts != null)
+            {
+                Alerts.Log.Note(Alerts.Seconds, CivicText.Built(e));
+            }
+        }
+
         private void OnTowerStageCompleted(ClockTowerStageCompletedEvent e)
         {
             if (!Restoring)
             {
                 Camera.BeginTowerEvent(e.StageNumber, e.StageName);
+                // A stage is tens of minutes of the factory's output: worth an autosave
+                // (docs/menus-design.md §7). Taken by the scene between frames, not mid-tick.
+                if (SaveFolder != null)
+                {
+                    AutosaveDue = $"Tower stage {e.StageNumber} complete";
+                }
             }
         }
 
@@ -403,27 +606,18 @@ namespace GolemFactory.World
         {
             Interactor.Configure(InteractRange, Buffers, _stockpileBufferId, null, null);
             Interactor.ConfigurePost(PostBufferId);
-            Interactor.ConfigureAffordance(null, "E");
+            Interactor.ConfigureAffordance(null);
             Interactor.ConfigureWorld(() => Markers, InteractableBuildings, () => _golems);
-            Interactor.ConfigureMarket(Market, () => Clock.CurrentTick, Buffers, _stockpileBufferId);
+            Interactor.ConfigureSupply(() => Supply);
+            Interactor.ConfigureOffice(Contracts, OfficeCrate, TownSquare.OfficeCells());
             Interactor.ConfigureBuildMode(Build);
             Interactor.ConfigureGolemPlacement(Grid, new Vector2(1f, 1f));
             Interactor.ConfigureScreenCoordinator(Screens);
             Interactor.Attach();
         }
 
-        /// <summary>
-        /// Hands the player's [E] the screens it opens, once the scene has built them -- the
-        /// construction panel for a station, the Workbench for a golem (G7) and the Management
-        /// screen whose being open hides the prompt (G8). Null for one not built yet.
-        /// </summary>
         // --- Save and load (G9) ---------------------------------------------------------------
 
-        /// <summary>
-        /// The SaveLoad tab's Save: the stockpile and every buffer, the patent library, every
-        /// golem's program and placement, and every building the player placed. Returns the
-        /// status line Unity's SaveLoadPanel printed.
-        /// </summary>
         /// <summary>
         /// The Ledger's recipe pane (G10: on the world rather than the tab, so the guide can see a
         /// recipe was opened). The Godot Ledger tab draws this one.
@@ -438,23 +632,86 @@ namespace GolemFactory.World
         public int LoadsMade { get; private set; }
 
         /// <summary>
-        /// Where the SaveLoad tab saves -- set by the Godot layer (user://save.json, globalized) --
-        /// so the playtest kit's save step writes where the player's own Save does.
+        /// The folder the save slots live in (docs/menus-design.md §7) -- set by the Godot layer
+        /// (user://saves, globalized) -- so the autosave and the playtest kit's save step write
+        /// where the player's own saves are. Null for a world that never saves: the title's
+        /// showcase.
         /// </summary>
-        public string DefaultSavePath { get; set; }
+        public string SaveFolder { get; set; }
 
+        /// <summary>
+        /// Why an autosave is wanted, or null: a tower stage completed. The scene takes it
+        /// (<see cref="Autosave"/>) between frames. Never set while loading, or with no folder.
+        /// </summary>
+        public string AutosaveDue { get; private set; }
+
+        /// <summary>Autosaves made this session; they never count as the player's <see cref="SavesMade"/>.</summary>
+        public int AutosavesMade { get; private set; }
+
+        /// <summary>The clock a save's time is read from; a test fixes it.</summary>
+        public Func<DateTime> UtcNow { get; set; } = () => DateTime.UtcNow;
+
+        /// <summary>
+        /// The SaveLoad tab's Save: the stockpile and every buffer, the patent library, every
+        /// golem's program and placement, and every building the player placed, with the
+        /// summary its slot shows. Returns the status line Unity's SaveLoadPanel printed.
+        /// </summary>
         public string SaveTo(string path)
         {
             SavesMade++;
+            return Write(path, null);
+        }
+
+        /// <summary>
+        /// Writes the autosave slot (docs/menus-design.md §7): on quit, and when a tower stage
+        /// completes. It isn't the player saving, so the guide's Save step doesn't count it.
+        /// Returns the status line, or null for a world with no save folder.
+        /// </summary>
+        public string Autosave(string reason)
+        {
+            AutosaveDue = null;
+            if (SaveFolder == null)
+            {
+                return null;
+            }
+            AutosavesMade++;
+            return Write(Menus.SaveSlots.PathIn(SaveFolder, Menus.SaveSlots.AutosaveKey), reason ?? "");
+        }
+
+        private string Write(string path, string autosaveReason)
+        {
             // The guide's Save step is done by saving, so it moves on BEFORE the save records its
             // place: otherwise a load lands back on Save, and saving again loops (the kit did).
             Tutorial?.Settle();
             List<GolemEntity> live = LiveGolems();
             SaveData data = SaveLoadService.CaptureState(Buffers, Patents, live, Build.Buildings);
             data.progress = CaptureProgress();
-            data.market = CaptureMarket();
+            data.supply = Supply.Capture();
+            data.contracts = Contracts?.Capture();
+            data.civic = Civic?.Capture();
+            data.meta = CaptureMeta(live.Count, data.buildings.Count, autosaveReason);
+            data.creative = Creative;
             SaveFileIO.WriteToFile(data, path);
-            return $"Saved {live.Count} golems and {data.buildings.Count} buildings.";
+            return $"Saved {Count(live.Count, "golem")} and {Count(data.buildings.Count, "building")}.";
+        }
+
+        private MetaEntry CaptureMeta(int golems, int buildings, string autosaveReason)
+        {
+            bool guiding = Tutorial != null && Tutorial.IsShowing;
+            int chapter = guiding ? Tutorial.ChapterOf(Tutorial.Index) : 0;
+            ClockTowerSite site = ClockTower.Site;
+            return new MetaEntry
+            {
+                savedAtUtc = UtcNow().ToUniversalTime().ToString("o", System.Globalization.CultureInfo.InvariantCulture),
+                autosave = autosaveReason != null,
+                reason = autosaveReason ?? "",
+                chapter = chapter,
+                chapterTitle = guiding ? Tutorial.ChapterTitle(chapter) : "",
+                golems = golems,
+                buildings = buildings,
+                towerStagesDone = site.StageIndex, // stages done: it counts past the last
+                towerComplete = site.IsComplete,
+            };
         }
 
         /// <summary>
@@ -467,8 +724,14 @@ namespace GolemFactory.World
         /// </summary>
         public string LoadFrom(string path)
         {
-            LoadsMade++;
             SaveData data = SaveFileIO.ReadFromFile(path);
+            // Creative and campaign never mix (decision 2): a save of the other kind is refused
+            // untouched, and isn't a load the guide counts.
+            if (data != null && data.creative != Creative)
+            {
+                return WrongKind(data.creative);
+            }
+            LoadsMade++;
             if (data == null)
             {
                 return "No save file found.";
@@ -476,27 +739,48 @@ namespace GolemFactory.World
 
             // A load rebuilding the factory isn't the player placing and wrecking it: no sound,
             // and no landing or dust (Restoring).
+            return Quietly(() => Restore(data));
+        }
+
+        /// <summary>The refusal for a save of the other kind: "That save is a Creative world, ...".</summary>
+        public static string WrongKind(bool saveIsCreative) => saveIsCreative
+            ? "That save is a Creative world, and this is a campaign game: load it from the title."
+            : "That save is a campaign game, and this is a Creative world: load it from the title.";
+
+        /// <summary>
+        /// True while a load (or the title's showcase, docs/menus-design.md §6) rebuilds the world:
+        /// buildings appear and go without their landing or dust, and nothing pops up.
+        /// </summary>
+        public bool Restoring { get; private set; }
+
+        /// <summary>
+        /// Runs <paramref name="rebuild"/> as a load runs: silent, with <see cref="Restoring"/> set,
+        /// so a world built in one frame doesn't land, dust, ring and pop all at once.
+        /// </summary>
+        public T Quietly<T>(Func<T> rebuild)
+        {
+            bool wasSuppressed = Audio.Suppressed, wasRestoring = Restoring;
             Audio.Suppressed = true;
             Restoring = true;
             try
             {
-                return Restore(data);
+                return rebuild();
             }
             finally
             {
-                Audio.Suppressed = false;
-                Restoring = false;
+                Audio.Suppressed = wasSuppressed;
+                Restoring = wasRestoring;
             }
         }
-
-        /// <summary>True while a load rebuilds the world: buildings appear and go without their landing or dust.</summary>
-        public bool Restoring { get; private set; }
 
         private string Restore(SaveData data)
         {
 
             RestoreProgress(data.progress);
-            RestoreMarket(data.market);
+            bool migrated = RestoreSupply(data.supply, data.market);
+            // After the Ledger and the tower: a save without contracts posts its first one if it can.
+            Contracts?.Restore(data.contracts);
+            Civic?.Restore(data.civic);
 
             IGolemRespawner respawner = _stationTemplate != null ? new StationGolemRespawner(_stationTemplate) : null;
             SaveLoadService.RestoreReport report = SaveLoadService.RestoreState(
@@ -513,11 +797,11 @@ namespace GolemFactory.World
             }
 
             string golems = report.Skipped > 0
-                ? $"Loaded {report.Restored} golems, rebuilt {report.Respawned}, skipped {report.Skipped}"
-                : $"Loaded {report.Restored} golems, rebuilt {report.Respawned}";
+                ? $"Loaded {Count(report.Restored, "golem")}, rebuilt {report.Respawned}, skipped {report.Skipped}"
+                : $"Loaded {Count(report.Restored, "golem")}, rebuilt {report.Respawned}";
             string buildings = report.BuildingsSkipped > 0
-                ? $"{report.BuildingsRebuilt} buildings, {report.BuildingsSkipped} skipped"
-                : $"{report.BuildingsRebuilt} buildings";
+                ? $"{Count(report.BuildingsRebuilt, "building")}, {report.BuildingsSkipped} skipped"
+                : Count(report.BuildingsRebuilt, "building");
             string status = golems + "; " + buildings + ".";
 
             // A save from before crates (crates-design §7): its stockpile is the pack now, kept
@@ -528,8 +812,17 @@ namespace GolemFactory.World
                 Interactor.Announce(CratesMigrationNotice);
                 status += " " + CratesMigrationNotice;
             }
+            // A save from before carts (supply-design §5): its stalls are carts now. Said once.
+            if (migrated)
+            {
+                Interactor.Announce(SupplyMigration.Notice);
+                status += " " + SupplyMigration.Notice;
+            }
             return status;
         }
+
+        /// <summary>"1 golem", "3 golems".</summary>
+        private static string Count(int n, string noun) => n + " " + noun + (n == 1 ? "" : "s");
 
         public const string CratesMigrationNotice =
             "Crates are local now. Your depots start empty; everything you had is in your pack.";
@@ -538,50 +831,23 @@ namespace GolemFactory.World
         private string _claimUserId;
 
         /// <summary>
-        /// The stalls' stock and the carts on the road. A load restores them with the pack, so
-        /// a truckload paid for before a save arrives after loading it, even on a fresh launch,
-        /// and one ordered after the save does not arrive on top of its refunded price.
+        /// The street's carts as the save left them. A save from before carts has none: its
+        /// stalls become carts on their places (§5), and one with no stalls either starts the
+        /// street as a new game does. Returns whether stalls were migrated.
         /// </summary>
-        private MarketEntry CaptureMarket()
+        private bool RestoreSupply(List<SupplyCartEntry> carts, MarketEntry market)
         {
-            var market = new MarketEntry();
-            foreach (ResourceNode node in Nodes.Nodes)
+            Supply.Restore(carts ?? new List<SupplyCartEntry>());
+            bool migrate = carts == null && SupplyMigration.HasStalls(market);
+            if (migrate)
             {
-                if (node.RemainingQuantity != ResourceNode.Infinite)
-                {
-                    market.stallIds.Add(node.NodeId);
-                    market.stallStocks.Add(node.RemainingQuantity);
-                }
+                Supply.Restore(SupplyMigration.CartsFor(market, Setup.supply?.legacyStalls));
             }
-            if (Market != null)
+            else if (carts == null)
             {
-                foreach ((string nodeId, int quantity, long ticksLeft) in Market.CartsOnTheRoad(Clock.CurrentTick))
-                {
-                    market.cartStallIds.Add(nodeId);
-                    market.cartQuantities.Add(quantity);
-                    market.cartTicksLeft.Add(ticksLeft);
-                }
+                Setup.PlaceStartingCarts(Supply);
             }
-            return market;
-        }
-
-        private void RestoreMarket(MarketEntry market)
-        {
-            if (market == null)
-            {
-                return; // a save from before the street was saved: leave it as it is
-            }
-            for (int i = 0; i < market.stallIds.Count && i < market.stallStocks.Count; i++)
-            {
-                if (Nodes.TryGetNode(market.stallIds[i], out ResourceNode node))
-                {
-                    node.RestoreQuantity(market.stallStocks[i]);
-                }
-            }
-            int carts = System.Math.Min(market.cartStallIds.Count,
-                System.Math.Min(market.cartQuantities.Count, market.cartTicksLeft.Count));
-            Market?.RestoreCarts(Enumerable.Range(0, carts)
-                .Select(i => (market.cartStallIds[i], market.cartQuantities[i], market.cartTicksLeft[i])), Clock.CurrentTick);
+            return migrate;
         }
 
         private ProgressEntry CaptureProgress()
@@ -589,6 +855,8 @@ namespace GolemFactory.World
             var progress = new ProgressEntry
             {
                 ledgerTowerStages = TechTree.Ledger.CompletedTowerStages,
+                goodsMadeEver = GoodsMadeEver,
+                docksRows = Bounds.DocksRows,
                 floorNorthExtent = Bounds.NorthExtent,
                 assemblyBayTier = AssemblyBay.Tier,
                 packUpgradeTier = PackUpgrade.Tier,
@@ -635,6 +903,9 @@ namespace GolemFactory.World
             progress.ledgerBuildings.ForEach(x => ledger.RecordBuilding(x));
             progress.ledgerCards.ForEach(x => ledger.RecordClaimedCard(x));
             ledger.RecordCompletedTowerStages(progress.ledgerTowerStages);
+            // The running total carries on from the save's: what this session made before the load
+            // was the abandoned game's.
+            _goodsMadeBefore = progress.goodsMadeEver - SessionGoodsMade;
 
             if (AssemblyLine != null)
             {
@@ -648,6 +919,7 @@ namespace GolemFactory.World
 
             AssemblyBay.RestoreTier(progress.assemblyBayTier);
             FloorExpansion.Restore(progress.floorNorthExtent);
+            Bounds.RestoreDocks(progress.docksRows);
             PackUpgrade.Restore(progress.packUpgradeTier);
 
             // The tower on its site (G10), a fixture the building list never holds.
@@ -685,6 +957,7 @@ namespace GolemFactory.World
             if (golem != null && !_golems.Contains(golem))
             {
                 _golems.Add(golem);
+                GolemLayout.Changed();
                 Interactor.RefreshInteractables();
             }
         }
@@ -695,7 +968,7 @@ namespace GolemFactory.World
             WorkbenchScreen = workbench ?? WorkbenchScreen;
             ManagementScreen = management ?? ManagementScreen;
             Interactor.Configure(InteractRange, Buffers, _stockpileBufferId, ConstructionScreen, WorkbenchScreen);
-            Interactor.ConfigureAffordance(ManagementScreen, "E");
+            Interactor.ConfigureAffordance(ManagementScreen);
         }
 
         /// <summary>
@@ -704,6 +977,52 @@ namespace GolemFactory.World
         /// </summary>
         public void ConfigureInventoryScreens(IPackScreen pack, ICrateScreen crate) =>
             Interactor.ConfigureInventory(pack, crate);
+
+        /// <summary>Hands [E] at a spot and [I] at a cart the cart panel. Null keeps one already handed over.</summary>
+        public void ConfigureSupplyScreen(ISupplyScreen screen) => Interactor.ConfigureSupplyScreen(screen);
+
+        /// <summary>
+        /// Adds a cart through the street with its price granted first, into the pack and then
+        /// the Post, as the playtest kit grants a building's (<c>PlaceGranted</c>). For the kit,
+        /// the scenarios, the endgame load and tests; play pays with <see cref="SupplyStreet.Add"/>.
+        /// The Ledger is polled after the grant, so the price's goods count as seen at once.
+        /// </summary>
+        public SupplyResult GrantCart(Vector2Int cell, string itemType)
+        {
+            CartSpot spot = Supply.SpotAt(cell);
+            if (spot == null || !spot.IsEmpty || !Supply.TryGetLadder(itemType, out CartLadder ladder))
+            {
+                return SupplyResult.Refused("No empty spot there, or no cart sells that."); // nothing granted
+            }
+            GrantToWallet(ladder.AddPrice);
+            TechTree.Poll();
+            return Supply.Add(spot, itemType);
+        }
+
+        /// <summary>The next Rate rung for the cart on <paramref name="cell"/>, its price granted first (as <see cref="GrantCart"/>).</summary>
+        public SupplyResult GrantRateRung(Vector2Int cell)
+        {
+            CartSpot spot = Supply.SpotAt(cell);
+            if (spot?.Cart == null || SupplyStreet.NextRateCost(spot.Cart) is not IReadOnlyList<RecipeIngredient> cost)
+            {
+                return SupplyResult.Refused("No rung to buy.");
+            }
+            GrantToWallet(cost);
+            TechTree.Poll();
+            return Supply.UpgradeRate(spot);
+        }
+
+        private void GrantToWallet(IEnumerable<RecipeIngredient> cost)
+        {
+            foreach (RecipeIngredient line in cost ?? Enumerable.Empty<RecipeIngredient>())
+            {
+                int put = Buffers.Deposit(_stockpileBufferId, line.itemType, line.quantity);
+                if (put < line.quantity)
+                {
+                    Buffers.Deposit(PostBufferId, line.itemType, line.quantity - put);
+                }
+            }
+        }
 
         /// <summary>
         /// What the Pack and Crate screens show and what their clicks do: rows, transfers through
@@ -761,6 +1080,68 @@ namespace GolemFactory.World
             ClockTowerBuilding = tower;
             _authoredBuildings.Add(tower);
         }
+
+        /// <summary>
+        /// The City Office beside the tower (docs/contracts-design.md §1): a fixture, not in the
+        /// build menu and refused by the wrecking bar. Its crate's endpoint is on every footprint
+        /// cell, so a golem or a belt can deliver from any side; until a contract is taken, it takes
+        /// nothing. It is not an interactable building: E opens its notice and I its crate, through
+        /// the interactor's office (<see cref="PlayerInteractor.ConfigureOffice"/>), so E never
+        /// collects from it as from a depot.
+        /// </summary>
+        private void RaiseCityOffice()
+        {
+            ClockTowerSite site = ClockTower.Site;
+            Contracts = new ContractBoard(
+                Definitions?.Contracts.Values,
+                item => TechTree.Ledger.HasItem(item),
+                () => site.IsComplete ? site.StageCount : site.IsOpen ? site.StageIndex + 1 : 0,
+                () => Wallet,
+                () => Supply,
+                (int)System.Math.Round(Clock.TicksPerSecond),
+                enabled: !Creative);
+            Contracts.Generator = Setup?.endlessContracts == null || Definitions == null
+                ? null
+                : new ContractGenerator(Setup.endlessContracts, Definitions.Recipes.Values);
+            Contracts.TowerComplete = () => site.IsComplete;
+            Clock.Register(Contracts);
+            OfficeCrate = new CityOfficeCrate(Contracts);
+
+            var office = new PlaceableBuilding { name = "CityOffice" };
+            Build.RegisterFixture(office, TownSquare.OfficeCell, TownSquare.OfficeCells());
+            var endpoint = new StorageBufferEndpoint(Contracts.OfficeBuffer);
+            foreach (Vector2Int cell in TownSquare.OfficeCells())
+            {
+                Endpoints.Register(cell, endpoint);
+            }
+            CityOfficeBuilding = office;
+        }
+
+        /// <summary>
+        /// The civic works' site (docs/endless-design.md §1.2): a fixture west of the tower, every
+        /// footprint cell taking deliveries for the stage under way, roped off until the tower stands.
+        /// </summary>
+        private void RaiseCivicSite()
+        {
+            ClockTowerSite tower = ClockTower.Site;
+            Civic = new CivicWorks(Definitions?.CivicWorks.Values, () => tower.IsComplete, enabled: !Creative);
+            Clock.Register(Civic);
+            var site = new PlaceableBuilding { name = "CivicWorksSite" };
+            Build.RegisterFixture(site, TownSquare.CivicCentre, TownSquare.CivicCells());
+            var endpoint = new ClockTowerInputEndpoint(Civic.Site, CivicWorks.SiteName);
+            foreach (Vector2Int cell in TownSquare.CivicCells())
+            {
+                Endpoints.Register(cell, endpoint);
+            }
+            CivicBuilding = site;
+        }
+
+        /// <summary>
+        /// Endless play (docs/endless-design.md): not a mode but what follows the Clock Tower. Its
+        /// rungs on the pack, the carts and the bays are offered once the tower stands, and in
+        /// Creative, where every rung is free.
+        /// </summary>
+        public bool EndlessOpen => Creative || ClockTower.Site.IsComplete;
 
         /// <summary>What opens the tower's site: the factory has built one of these.</summary>
         public const string ZeppelinChassis = Progression.TechTreeCatalog.ChassisZeppelin;
@@ -887,7 +1268,7 @@ namespace GolemFactory.World
         /// stuck (red) (docs/onboarding-feedback-design.md §3.2).
         /// </summary>
         public StallFactsProbe StallFacts =>
-            _stallFacts ??= new StallFactsProbe(() => _golems, Endpoints, Belts, () => Market) { Frame = () => PresentationFrame };
+            _stallFacts ??= new StallFactsProbe(() => _golems, Endpoints, Belts, id => Supply.Refills(id)) { Frame = () => PresentationFrame };
 
         private StallFactsProbe _stallFacts;
 
@@ -973,6 +1354,7 @@ namespace GolemFactory.World
 
         private void OnGolemSpawned(GolemEntity golem)
         {
+            GolemLayout.Changed();
             if (!_golems.Contains(golem))
             {
                 _golems.Add(golem);
@@ -1002,10 +1384,27 @@ namespace GolemFactory.World
         }
 
         /// <summary>Advances the simulation by real seconds (WorldNode calls this every frame).</summary>
+        private int _docksNorthSeen = int.MaxValue; // never a north row, so the first Advance refreshes
+
         public void Advance(float seconds)
         {
             Clock.Advance(seconds);
             InvalidateStallFacts();
+
+            // The Docks open when the Ledger records a Zeppelin, with no event of their own: the
+            // quay's spots become targets the frame it happens (docs/region-design.md §2).
+            int docksNorth = Bounds.DocksNorth;
+            if (docksNorth != _docksNorthSeen)
+            {
+                // The moment they open in play, the city says so (a load that finds them open
+                // already, the first Advance, says nothing).
+                if (_docksNorthSeen == Docks.Closed && docksNorth != Docks.Closed)
+                {
+                    Alerts.Log.Note(Alerts.Seconds, Docks.OpenedNote);
+                }
+                _docksNorthSeen = docksNorth;
+                Interactor.RefreshInteractables();
+            }
 
             // Unity's BufferThroughputMonitor and AlertsPanel ran on Update in real time, not on
             // simulation ticks: the rate column reads "per minute of the player's time", and
@@ -1017,9 +1416,18 @@ namespace GolemFactory.World
                 Throughput.Sample(_realSeconds, Buffers);
                 Production.Sample(_realSeconds, Throughput);
             }
+            History.Record(_realSeconds, Production.Totals, Consumption.Totals);
+            if (Creative && (_untilRefill -= seconds) <= 0f)
+            {
+                _untilRefill = CreativeRefillSeconds;
+                FillPack();
+            }
             Alerts?.Update(seconds);
             AssemblyLine?.Tick(seconds);
             TechTree.Update(_realSeconds);
+            // After the Ledger's poll, so a contract posts the frame its good is first seen; and
+            // every frame, so goods put in by hand count while the clock is paused.
+            Contracts?.Settle();
             Tutorial?.Update();
             Audio.Update(seconds, Clock, _golems, Steam.LastEvaluatedWorkingCount);
         }
@@ -1036,6 +1444,26 @@ namespace GolemFactory.World
         /// buffers: the Ledger's live rate (docs/crates-design.md §4.5).
         /// </summary>
         public ProductionTally Production { get; } = new ProductionTally();
+
+        /// <summary>
+        /// Every good the factory has used up: the overview's "goods spent" (docs/supply-design.md
+        /// §4), beside <see cref="Production"/>.
+        /// </summary>
+        public ConsumptionTally Consumption { get; } = new ConsumptionTally();
+
+        /// <summary>Every good golems have made since the game began, over saves (docs/endless-design.md §3).</summary>
+        public long GoodsMadeEver => _goodsMadeBefore + SessionGoodsMade;
+
+        private long SessionGoodsMade => Production.Totals.Values.Sum(n => (long)n);
+
+        private long _goodsMadeBefore;
+
+        /// <summary>The overview's running totals line.</summary>
+        public string RunTotalsLine => Overview.RunTotals.Text(GoodsMadeEver, Contracts?.Done.Count ?? 0,
+            Civic != null && Civic.Works.Count > 0 && EndlessOpen && !Creative ? Civic.StagesBuilt : -1);
+
+        /// <summary>An hour of what the factory made and spent, for the overview's graph (docs/menus-design.md §8).</summary>
+        public Overview.ProductionHistory History { get; } = new Overview.ProductionHistory();
 
         /// <summary>The HUD's alerts strip. Null on the bare (slice) world.</summary>
         public AlertsStrip Alerts { get; private set; }

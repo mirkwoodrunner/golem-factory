@@ -124,7 +124,7 @@ namespace GolemFactory.Nodes
             // it: a ghost under the menu promises a click the menu will take.
             _ghost.Visible = BuildClickPolicy.ShouldPlace(Build.IsBuildToolActive, GetViewport().GuiGetHoveredControl() != null);
             _ghost.Position = GridConversions.CellToWorld(cell);
-            CoreColor tint = BuildGhostVisuals.Evaluate(Build.GhostStateFor(cell), (float)_time);
+            CoreColor tint = BuildGhostVisuals.Evaluate(Build.GhostStateFor(cell), (float)_time, _world.Sandbox.Motion.Pulse);
             _ghost.Modulate = new Color(tint.r, tint.g, tint.b, tint.a);
 
             // No arrow for the wrecking bar, nor for a splitter, which has no facing to show:

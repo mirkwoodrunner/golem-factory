@@ -28,6 +28,8 @@ namespace GolemFactory.Nodes
             "res://art/floor_tile_grate.png",
         };
 
+        private const string WaterPath = "res://art/docks_water.png";
+
         // The street's two cobbles, chosen by SandboxLayout.StreetTileVariant.
         private static readonly string[] StreetPaths =
         {
@@ -39,6 +41,60 @@ namespace GolemFactory.Nodes
         [Export] public bool PaintStreet { get; set; }
 
         private int[] _floorSources;
+        private int[] _streetSources;
+        private int _waterId;
+        private FloorBounds _bounds;
+        private int _docksPainted = Docks.Closed;
+
+        /// <summary>The Docks' north row as last painted, for a scenario.</summary>
+        public int DocksPainted => _docksPainted;
+
+        public override void _Process(double delta)
+        {
+            // The Docks open with the first Zeppelin and grow by purchase; their cobbles follow
+            // (docs/region-design.md §1). A read of one int a frame.
+            if (_bounds != null && PaintStreet && _bounds.DocksNorth != _docksPainted)
+            {
+                PaintDocks(_bounds.DocksNorth);
+            }
+        }
+
+        /// <summary>
+        /// Paints the Docks' lane and floor with the street's cobbles and the harbour water two rows
+        /// under the quay; erases them when a load closes or shrinks them.
+        /// </summary>
+        public void PaintDocks(int north)
+        {
+            if (_docksPainted != Docks.Closed)
+            {
+                foreach (CoreVector2Int cell in Docks.Cells(_docksPainted))
+                {
+                    if (!Docks.InLane(cell))
+                    {
+                        EraseCell(new Vector2I(cell.x, -cell.y));
+                    }
+                }
+                for (int x = Docks.LaneWest; x <= Docks.East; x++)
+                {
+                    EraseCell(new Vector2I(x, -(Docks.Bottom - 1)));
+                    EraseCell(new Vector2I(x, -(Docks.Bottom - 2)));
+                }
+            }
+            _docksPainted = north;
+            if (north == Docks.Closed)
+            {
+                return;
+            }
+            foreach (CoreVector2Int cell in Docks.Cells(north))
+            {
+                SetCell(new Vector2I(cell.x, -cell.y), _streetSources[SandboxLayout.StreetTileVariant(cell)], Vector2I.Zero);
+            }
+            for (int x = Docks.West; x <= Docks.East; x++)
+            {
+                SetCell(new Vector2I(x, -(Docks.Bottom - 1)), _waterId, Vector2I.Zero);
+                SetCell(new Vector2I(x, -(Docks.Bottom - 2)), _waterId, Vector2I.Zero);
+            }
+        }
 
         /// <summary>The floor's z. Everything drawn on the floor uses -1, above this.</summary>
         public const int FloorZ = -10;
@@ -48,8 +104,10 @@ namespace GolemFactory.Nodes
             var tileSet = new TileSet { TileSize = new Vector2I(GridConversions.CellPixels, GridConversions.CellPixels) };
             int[] sourceIds = AddSources(tileSet, TilePaths);
             int[] streetIds = AddSources(tileSet, StreetPaths);
+            _waterId = AddSources(tileSet, new[] { WaterPath })[0];
             TileSet = tileSet;
             _floorSources = sourceIds;
+            _streetSources = streetIds;
 
             // Z-index is global within a canvas layer, so the floor sits well below the -1 that
             // floor-level things use (belts, pipes, the build ghost, prop contact shadows).
@@ -62,6 +120,7 @@ namespace GolemFactory.Nodes
 
             WorldNode world = WorldNode.Find(this);
             FloorBounds bounds = world?.Bounds ?? new FloorBounds();
+            _bounds = world?.Setup != null ? bounds : null;
             PaintRows(-bounds.HalfExtent, bounds.NorthExtent, bounds.HalfExtent);
 
             // A Floor Expansion purchase announces exactly the rows it added; plank them.
@@ -76,6 +135,16 @@ namespace GolemFactory.Nodes
                 foreach (CoreVector2Int cell in FloorLayout.GetStreetCells())
                 {
                     SetCell(new Vector2I(cell.x, -cell.y), streetIds[SandboxLayout.StreetTileVariant(cell)], Vector2I.Zero);
+                }
+
+                // The Docks' lane, paved from the start: its gate is roped until they open.
+                for (int x = Docks.LaneWest; x < Docks.West; x++)
+                {
+                    for (int y = Docks.Bottom; y <= Docks.LaneTop; y++)
+                    {
+                        var lane = new CoreVector2Int(x, y);
+                        SetCell(new Vector2I(x, -y), streetIds[SandboxLayout.StreetTileVariant(lane)], Vector2I.Zero);
+                    }
                 }
 
                 // The town square, cobbled like the street it opens off.

@@ -30,6 +30,9 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   **Golems never reach the pack** (`FactoryStockpile`, id kept because saves name it; 100 of
   each, up to 250 by upgrade). A depot with an explicit `bufferId` publishes that buffer and doesn't own it: a Post
   crate, and how a test keeps the old behaviour.
+- **Creative Mode waives every cost at the wallet** (`StorageBufferRegistry.CostsWaived`,
+  docs/menus-design.md §9). Ask a wallet whether something is affordable (`PlayerWallet.CanAfford`),
+  never the stock directly, or Creative's waiver is missed.
 - **Every cost goes through `PlayerWallet.TryCharge`** (pack first, then the Post store);
   refunds through `Refund`, **into the pack only, never the Post**, after `FirstMisfit` says they
   fit (a demolition or a dismantle the pack can't hold is refused, Post or no Post). Only a
@@ -37,6 +40,18 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   id directly, and never charge a crate. Harvesting and collecting fill the pack only, and check
   its room before taking. A part that builds its own wallet takes the Post's id too (an optional
   `postBufferId`), or it spends from the pack alone.
+- **Every raw good comes from a supply cart** (`Core/Supply/`, docs/supply-design.md): a
+  `ResourceNode` on one of the street's seventeen spots, so golems and hands take from it as from
+  any node. There is no truckload market and no per-load price. `SupplyStreet` owns the carts:
+  add, the Rate and Capacity rungs, change and remove all charge or refund through the wallet (a
+  removal refunds half, rounded down per good, with the stock, or is refused whole). **A cart is
+  offered once the Ledger has seen every good its add price names** (the user's call: a raw good
+  is never seen before its cart). The starting Scrap cart's good is kept: its last cart can't go.
+  A cart is saved in `SaveData.supply`; `SaveData.market` is only read, to migrate an old save's
+  nine stalls into carts (`SupplyMigration`, `supply.legacyStalls`, said once). Its trickle is
+  whole numbers on the clock, and an empty cart that refills reads grey, not red
+  (`SupplyStreet.Refills`). Its node id (`Cart(x,y)`) is never shown; `SupplyText` says what the
+  player reads. The kit, scenarios and tests add carts with `SandboxWorld.GrantCart`.
 - **The Pneumatic Post** is one registry buffer, `SandboxWorld.PostBufferId` ("PneumaticPost"),
   200 of each good, there from the start. A Post crate (`PneumaticPostPrefab`) is a depot whose
   `bufferId` is that id, so every Post crate opens onto it and golems reach it like any crate.
@@ -60,6 +75,10 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   can't hold (and the wallet can't cover) says so, `Upgrade your pack: …`, not `Need N more`:
   every priced thing formats its shortfall through `ConstructionCostPolicy.FormatShortfall`,
   passing the wallet so it reads the cap.
+- **Goods spent are what the factory uses up** (`ConsumptionTally`, fed by `EventBus.Consumed`):
+  a recipe's inputs, Coke burned, Slag voided, a recycler's intake, the tower's and the City
+  Office's deliveries. A new
+  place that destroys goods publishes it; moving goods, prices and the hand crank never do.
 - **The Ledger's live rate is fresh production** (`ProductionTally`, series `"Produced"`), not a
   buffer's level.
 - **`I` is the inventory key** (`PlayerNode.Inventory`, `PlayerInteractor.OpenInventory`): the

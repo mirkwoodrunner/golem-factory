@@ -111,7 +111,7 @@ namespace GolemFactory.Tests.EditMode
             var endpoints = new SpatialEndpointRegistry();
             GolemEntity golem = Golem(endpoints, Haul(), Push());
             var names = new TileNames(endpoints);
-            StringAssert.StartsWith("Working · step 1 of 2, HaulScrap", GolemHoverText.Compose(golem, GolemMood.Working, default, names).State);
+            StringAssert.StartsWith("Working · step 1 of 2, Haul Scrap", GolemHoverText.Compose(golem, GolemMood.Working, default, names).State);
             StringAssert.StartsWith("Sleeping until its trigger: always on", GolemHoverText.Compose(golem, GolemMood.Sleeping, default, names).State);
             Assert.AreEqual("No program · press E at it to open the Workbench",
                 GolemHoverText.Compose(golem, GolemMood.Unprogrammed, default, names).State);
@@ -141,7 +141,7 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual("Freight Mast (9,1)", names.Name(new Vector2Int(9, 1)));
             Assert.AreEqual("Pneumatic Post", names.Name(new Vector2Int(5, 5)));
             Assert.AreEqual("Belt (0,-12)", names.Name(new Vector2Int(0, -12)));
-            Assert.AreEqual("Copper Ore stall", names.Name(new Vector2Int(7, 7)));
+            Assert.AreEqual("Copper Ore cart", names.Name(new Vector2Int(7, 7)));
             Assert.AreEqual("the floor at (3,2)", names.Name(new Vector2Int(3, 2)));
         }
 
@@ -184,10 +184,10 @@ namespace GolemFactory.Tests.EditMode
             public readonly TileNames Names;
             public readonly List<string> Lines = new List<string>();
 
-            public Street(System.Func<TruckloadMarket> market = null)
+            public Street(System.Func<string, bool> refills = null)
             {
                 Belts.Configure(new GolemFactory.Belts.ConveyorSystem(), Endpoints, 4);
-                Probe = new StallFactsProbe(() => Golems, Endpoints, Belts, market);
+                Probe = new StallFactsProbe(() => Golems, Endpoints, Belts, refills);
                 Names = new TileNames(Endpoints);
             }
 
@@ -338,23 +338,18 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void ATruckloadComing_NamesNoFeeder()
+        public void ARefillingCart_NamesNoFeeder()
         {
-            var nodes = new ResourceNodeRegistry();
-            var node = new ResourceNode("CoalNode", ItemType.Coal, 0);
-            nodes.Register(node);
-            var market = new TruckloadMarket(nodes, new GameMode(false));
-            market.AddOffer(new MarketOffer("CoalNode", new List<RecipeIngredient>(), 1, 5));
-            var street = new Street(() => market);
+            var node = new ResourceNode("Cart(0,0)", ItemType.Coal, 0);
+            var street = new Street(id => id == "Cart(0,0)");
             street.Endpoints.Register(new Vector2Int(0, 0), new ResourceNodeEndpoint(node));
             GolemEntity golem = street.Golem(Scavenger, 1, new Vector2Int(0, 1));
             golem.Program.appendages[0] = new AppendageActionDefinition { name = "ExtractScrap", actionType = AppendageActionType.ExtractFromNode, durationTicks = 1 };
             golem.Program.SetItemTypeAt(0, "");
             golem.Tick(0);
-            Assert.AreEqual(MarketOrderResult.Ordered, market.TryOrder("CoalNode", null, null, 0));
 
             Assert.AreEqual(GolemMood.Waiting, golem.Mood);
-            Assert.AreEqual("Waiting for Coal · a truckload is on its way", street.State(golem));
+            Assert.AreEqual("Waiting for Coal · its cart is refilling", street.State(golem));
         }
 
         [Test]

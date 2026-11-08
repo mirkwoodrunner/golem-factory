@@ -98,6 +98,7 @@ namespace GolemFactory.Buildings
 
             PendingSlag++;
             TotalVoided++;
+            Events.EventBus.Consumed(Economy.ItemType.Slag, 1);
 
             if (PendingSlag >= SlagPerCoke)
             {
@@ -105,6 +106,7 @@ namespace GolemFactory.Buildings
                 // floats, and §1.4 settled that argument for the whole project.
                 PendingSlag -= SlagPerCoke;
                 CokeStock--;
+                Events.EventBus.Consumed(Economy.ItemType.Coke, 1);
             }
 
             return true;

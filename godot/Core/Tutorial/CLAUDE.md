@@ -34,7 +34,7 @@ doesn't reach yet, a belt pointing the wrong way. A step's `Builds` names what i
 **A new guide step needs a kit action** (`TutorialGuide.Kit.cs`, `Performs`): what the
 playtest kit does to complete it, using the player's own verbs. `PlaytestKitTests` fails for
 a step without one. **Chapters 1–4 have a game-time floor**: `ChaptersOneToFourFloorTests`
-plays them instantly but earns every good at the player's real rates (stalls, truckloads, the
+plays them instantly but earns every good at the player's real rates (carts and their trickle, the
 bench, golem cycles), runs each step's kit action paid from those goods, and fails above 10:00
 or above any chapter's ceiling (two thirds of its budget; measured 5:16 against Phase 2's
 15-minute target). `FullRunFloorTests` carries the same player (`Core.Tests/Tutorial/FloorPlayer`)
@@ -72,9 +72,9 @@ launch used to overwrite it. A question is asked as the chapter after its experi
 (`PlaytestQuestion.AfterStepId`); only the end-of-run ones (`tower`, `overclocker`,
 `stage-rate`, `whole-run`, `guide`) wait for `done`. A new question needs a new id: saves store
 the ids already asked, so reusing one (chapter 3's `market`) skips it. The
-kit's chapter 7 Save and Load use `kit-save.json` beside the player's save, never the save
-itself. Scenario runs write
-`user://scenario-playtest-report.md` instead, and save to `user://scenario-save.json`
+kit's chapter 7 Save and Load use `kit-save.json` in the save folder, which is never a slot
+(`SaveSlots.KitFileName`). Scenario runs write
+`user://scenario-playtest-report.md` instead, and save to `user://scenario-saves`
 (`PlaytestNode.UnderScenario`, which reads `--scenario` off the command line itself: a flag
 set by the ScenarioRunner arrived too late, and a kit run overwrote a player's save). Never
 point a test at the real paths. **A save calls `TutorialGuide.Settle`, never `Update`**:

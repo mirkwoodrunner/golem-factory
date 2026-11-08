@@ -10,6 +10,13 @@ town square (`Core/World/TownSquare`), is not in the build menu (`SandboxWorld.P
 versus `AllPlaceables`), and the wrecking bar refuses it. A fixture is never in
 `Build.Buildings`, which is the player's factory (save, refund, counts); its progress saves in
 `ProgressEntry` instead. It is roped off until the ledger has seen a Zeppelin
-(`ClockTowerSite.OpenWhen`), and only freshly assembled goods count toward a stage. A line's
+(`ClockTowerSite.OpenWhen`). **Any delivered good counts** toward a stage, from a line or from
+stock (`docs/contracts-design.md` §11); there is no fresh-production rule, and the 3× cap and
+the meter's 60-unit clamp are what keep a stockpile from finishing a stage instantly. A line's
 supply meter drains at the rate the line delivers, up to its demand, so a stage short of its
 demand takes nominal × demand ÷ supply (`ClockTowerSite.DecayRate`, tuning-data-spec §18).
+
+**The civic works run on this machinery** (`Core/Civic/CivicWorks`, docs/endless-design.md §1.2): a second
+`ClockTowerSite` with `PublishesTowerEvents` off, so a civic stage never fires
+`ClockTowerStageCompletedEvent` (the fanfare, the camera's event, the autosave, the Ledger). A new
+listener of that event is the tower's alone; a civic stage says so through `StageCompleted`.

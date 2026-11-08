@@ -49,8 +49,8 @@ namespace GolemFactory.Golems
 
         /// <summary>
         /// Stalled, but something already in the factory will clear the stall without the
-        /// player: a golem feeds its empty source, one drains its full target, a truckload is on
-        /// its way (docs/onboarding-feedback-design.md §3). Quiet grey. APPENDED (value 6): a
+        /// player: a golem feeds its empty source, one drains its full target, the cart behind
+        /// refills itself (docs/onboarding-feedback-design.md §3, supply-design §4). Quiet grey. APPENDED (value 6): a
         /// stall the player must fix is still <see cref="Stalled"/>, decided by
         /// <c>StallTriage</c>, never by the reason alone.
         /// </summary>

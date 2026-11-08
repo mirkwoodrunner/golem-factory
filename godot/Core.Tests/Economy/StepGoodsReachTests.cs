@@ -24,7 +24,8 @@ namespace GolemFactory.Tests.EditMode
             PriceList list = PriceList.Play();
             var defs = list.World.Definitions;
             List<DraftableCardDefinition> cards = list.Cards.ToList();
-            var stallGoods = new HashSet<string>(list.World.Setup.nodes.Select(n => n.itemType));
+            // Raw goods come by cart (docs/supply-design.md), once the cart is offered.
+            var stallGoods = new HashSet<string>(list.World.Setup.supply.carts.Select(c => c.itemType));
             IReadOnlyList<RecipeDefinition> bench = list.World.StarterBench.CrankableRecipes;
 
             IReadOnlyList<TutorialStep> steps = list.World.Tutorial.Steps;

@@ -42,7 +42,48 @@ namespace GolemFactory.Buildings
 
         public int Tier => tier;
         public int MaxGolemSlots => maxGolemSlots;
-        public IReadOnlyList<RecipeIngredient> UpgradeCost => upgradeCost;
+
+        // The campaign's last tier, and endless play's prices past it (docs/endless-design.md §2,
+        // §4): the golem cap is where the frame budget was measured to hold. Unset, the bays
+        // grow without end, as they always did.
+        private int _campaignTopTier = int.MaxValue;
+        private readonly List<IReadOnlyList<RecipeIngredient>> _endlessCosts = new List<IReadOnlyList<RecipeIngredient>>();
+
+        /// <summary>Whether endless play's tiers are offered; null offers none of them.</summary>
+        public System.Func<bool> EndlessOpen { get; set; }
+
+        /// <summary>Caps the campaign's tiers at <paramref name="campaignTopSlots"/> and adds one endless tier per price.</summary>
+        public void ConfigureTiers(int campaignTopSlots, IEnumerable<IReadOnlyList<RecipeIngredient>> endlessCosts)
+        {
+            _campaignTopTier = campaignTopSlots > 0 ? TierFor(campaignTopSlots) : int.MaxValue;
+            _endlessCosts.Clear();
+            if (endlessCosts != null)
+            {
+                _endlessCosts.AddRange(endlessCosts);
+            }
+        }
+
+        /// <summary>The tier whose slots are <paramref name="slots"/> (rounded down to a tier).</summary>
+        public static int TierFor(int slots) => 1 + System.Math.Max(0, slots - DefaultSlots) / SlotsPerUpgrade;
+
+        /// <summary>The slots at <paramref name="atTier"/>.</summary>
+        public static int SlotsAt(int atTier) => DefaultSlots + (atTier - 1) * SlotsPerUpgrade;
+
+        /// <summary>The highest tier on offer now: the campaign's, and endless play's once open.</summary>
+        public int TopTier =>
+            _campaignTopTier == int.MaxValue ? int.MaxValue
+            : _campaignTopTier + (EndlessOpen?.Invoke() == true ? _endlessCosts.Count : 0);
+
+        /// <summary>The golem cap: the slots at the last tier there will ever be, open or not.</summary>
+        public int GolemCap => _campaignTopTier == int.MaxValue ? int.MaxValue : SlotsAt(_campaignTopTier + _endlessCosts.Count);
+
+        public bool IsMaxed => tier >= TopTier;
+
+        /// <summary>The next tier's price: the campaign's bundle, or past its top, that endless tier's.</summary>
+        public IReadOnlyList<RecipeIngredient> UpgradeCost =>
+            tier >= _campaignTopTier && tier - _campaignTopTier < _endlessCosts.Count
+                ? _endlessCosts[tier - _campaignTopTier]
+                : upgradeCost;
 
         public IReadOnlyList<GolemEntity> AssignedGolems
         {
@@ -136,7 +177,7 @@ namespace GolemFactory.Buildings
         // charge on a two-good cost takes the Scrap and hands back nothing.
         public bool TryUpgrade(StorageBufferRegistry buffers, string resourceBufferId, string postBufferId = null)
         {
-            if (buffers == null || !new PlayerWallet(buffers, resourceBufferId, postBufferId).TryCharge(upgradeCost))
+            if (IsMaxed || buffers == null || !new PlayerWallet(buffers, resourceBufferId, postBufferId).TryCharge(UpgradeCost))
             {
                 return false;
             }

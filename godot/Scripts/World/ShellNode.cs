@@ -35,6 +35,18 @@ namespace GolemFactory.Nodes
 
         public override void _EnterTree() => AddToGroup(GroupName);
 
+        private FloorBounds _bounds;
+        private int _docksBuilt = Docks.Closed;
+
+        public override void _Process(double delta)
+        {
+            // The Docks' walls follow their gate and their rows (docs/region-design.md §1).
+            if (_bounds != null && _bounds.DocksNorth != _docksBuilt)
+            {
+                RebuildWalls(_bounds.NorthExtent);
+            }
+        }
+
         public override void _Ready()
         {
             YSortEnabled = true;
@@ -45,6 +57,7 @@ namespace GolemFactory.Nodes
 
             WorldNode world = WorldNode.Find(this);
             FloorBounds bounds = world?.Bounds ?? new FloorBounds();
+            _bounds = world?.Setup != null ? bounds : null;
             RebuildWalls(bounds.NorthExtent);
 
             // The back wall, its sconces and corner posts move north with a Floor Expansion.
@@ -82,7 +95,8 @@ namespace GolemFactory.Nodes
             _walls.Clear();
             SconceCount = 0;
 
-            foreach (LayoutPiece piece in SandboxLayout.Walls(northExtent))
+            _docksBuilt = _bounds?.DocksNorth ?? Docks.Closed;
+            foreach (LayoutPiece piece in SandboxLayout.Walls(northExtent, _docksBuilt))
             {
                 Node2D node = Place(piece);
                 if (piece.HasSconce)

@@ -12,10 +12,10 @@ namespace GolemFactory.Tests.EditMode
     public class ClockTowerReadoutTests
     {
         private static ClockTowerDemandReading Row(
-            string itemType, int required, int delivered, int fresh, int multiplierMilli,
+            string itemType, int required, int delivered, int multiplierMilli,
             bool starved = false) =>
             new ClockTowerDemandReading(
-                itemType, required, delivered, fresh, multiplierMilli, starved ? 0 : 12, starved);
+                itemType, required, delivered, multiplierMilli, starved ? 0 : 12, starved);
 
         private static ClockTowerReading Running(
             string starvedItem, int deficit, params ClockTowerDemandReading[] rows) =>
@@ -42,15 +42,14 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void FormatDemandRow_ShowsRequiredDeliveredFreshAndTheMultiplier()
+        public void FormatDemandRow_ShowsRequiredDeliveredAndTheMultiplier()
         {
-            // FOUR columns. §8: "a player whose multiplier is capped by fresh production rather
-            // than delivery needs to see exactly that", and Delivered 18 beside Fresh 6 is the
-            // only way that state is visible at all.
+            // Three columns: the Fresh column went with the fresh-production rule
+            // (docs/contracts-design.md §11). 18 delivered against 6 required is capped at x3.
             string row = ClockTowerReadout.FormatDemandRow(
-                Row(ItemType.FrameSection, 6, 18, 6, 1000));
+                Row(ItemType.FrameSection, 6, 18, 3000));
 
-            Assert.AreEqual("FrameSection  6 / 18 / 6  x1.00", row);
+            Assert.AreEqual("FrameSection  6 / 18  x3.00", row);
         }
 
         [Test]
@@ -58,8 +57,8 @@ namespace GolemFactory.Tests.EditMode
         {
             ClockTowerReading reading = Running(
                 null, 0,
-                Row(ItemType.GreatCog, 3, 3, 3, 1000),
-                Row(ItemType.FrameSection, 3, 9, 9, 3000));
+                Row(ItemType.GreatCog, 3, 3, 1000),
+                Row(ItemType.FrameSection, 3, 9, 3000));
 
             string table = ClockTowerReadout.FormatDemandTable(reading);
             string[] lines = table.Split('\n');
@@ -73,7 +72,7 @@ namespace GolemFactory.Tests.EditMode
         [Test]
         public void FormatHeadline_NamesTheStageItsPercentAndItsMultiplier()
         {
-            ClockTowerReading reading = Running(null, 0, Row(ItemType.FrameSection, 6, 4, 4, 660));
+            ClockTowerReading reading = Running(null, 0, Row(ItemType.FrameSection, 6, 4, 660));
             Assert.AreEqual("Stage 1 Foundation - 42% - x0.66", ClockTowerReadout.FormatHeadline(reading));
         }
 
@@ -122,7 +121,7 @@ namespace GolemFactory.Tests.EditMode
         [Test]
         public void FormatStarvedAlert_WhenNothingIsStarved_IsEmpty()
         {
-            ClockTowerReading reading = Running(null, 0, Row(ItemType.FrameSection, 6, 6, 6, 1000));
+            ClockTowerReading reading = Running(null, 0, Row(ItemType.FrameSection, 6, 6, 1000));
             Assert.AreEqual(string.Empty, ClockTowerReadout.FormatStarvedAlert(reading));
         }
 
@@ -135,8 +134,8 @@ namespace GolemFactory.Tests.EditMode
             // the middle of the most important readout in Phase 6.
             ClockTowerReading reading = Running(
                 ItemType.GreatCog, 3,
-                Row(ItemType.GreatCog, 3, 0, 0, 0, true),
-                Row(ItemType.FrameSection, 3, 9, 9, 3000));
+                Row(ItemType.GreatCog, 3, 0, 0, true),
+                Row(ItemType.FrameSection, 3, 9, 3000));
 
             string all = ClockTowerReadout.FormatHeadline(reading) +
                          ClockTowerReadout.FormatDemandTable(reading) +
@@ -150,12 +149,11 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void DeficitPerMinute_IsMeasuredAgainstDeliveryNotAgainstFreshProduction()
+        public void DeficitPerMinute_IsMeasuredAgainstDelivery()
         {
             // The meter is fed by deliveries and by nothing else, so "get this many more per
-            // minute into the tower" is the sentence that actually clears the alert. A
-            // production shortfall shows in the Fresh column instead.
-            ClockTowerDemandReading row = Row(ItemType.FrameSection, 6, 2, 0, 0, true);
+            // minute into the tower" is the sentence that actually clears the alert.
+            ClockTowerDemandReading row = Row(ItemType.FrameSection, 6, 2, 0, true);
             Assert.AreEqual(4, row.DeficitPerMinute);
         }
     }

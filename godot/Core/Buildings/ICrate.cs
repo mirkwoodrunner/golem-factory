@@ -30,4 +30,21 @@ namespace GolemFactory.Buildings
         /// <summary>Labels the crate (null clears it) and re-publishes its tile.</summary>
         void SetFilter(string itemType);
     }
+
+    /// <summary>
+    /// A crate that takes only some goods and says why it refuses the rest: the City Office's,
+    /// which takes what its contract still needs (docs/contracts-design.md §1). The Crate screen
+    /// shows its own title and cap line, and a refused good its reason.
+    /// </summary>
+    public interface IIntakeCrate : ICrate
+    {
+        /// <summary>The screen's title: "City Office".</summary>
+        string Title { get; }
+
+        /// <summary>The line under it: what it still takes.</summary>
+        string CapLine { get; }
+
+        /// <summary>Why a good can't go in, or null when it can.</summary>
+        string RefusalFor(string itemType);
+    }
 }

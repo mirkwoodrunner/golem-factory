@@ -43,6 +43,11 @@ namespace GolemFactory.Nodes
             { "stall_copper_ore", new Vector2(0.5f, 3f / 120f) },
             { "stall_zinc_ore", new Vector2(0.5f, 3f / 120f) },
             { "stall_aether", new Vector2(0.5f, 3f / 120f) },
+            // A supply-cart spot (docs/supply-design.md §1) shares the carts' canvas and wheel row.
+            { "cart_spot", new Vector2(0.5f, 3f / 120f) },
+            // The Docks' gate (docs/region-design.md): 128x160, its posts' feet on row 157.
+            { "docks_gate", new Vector2(0.5f, 3f / 160f) },
+            { "docks_gate_closed", new Vector2(0.5f, 3f / 160f) },
         };
 
         /// <summary>A sprite for <paramref name="name"/> whose pivot sits at the node's origin.</summary>

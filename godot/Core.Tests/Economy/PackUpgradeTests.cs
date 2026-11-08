@@ -63,8 +63,9 @@ namespace GolemFactory.Tests.EditMode
         [Test]
         public void TheTopRung_OffersNothing()
         {
+            // The campaign's top: endless play's rungs wait for the tower (endless-design §2).
             SandboxWorld world = Compose();
-            world.PackUpgrade.Restore(world.PackUpgrade.Rungs.Count);
+            world.PackUpgrade.Restore(world.PackUpgrade.Rungs.Count(r => !r.endless));
 
             Assert.IsTrue(world.PackUpgrade.IsMaxed);
             Assert.AreEqual(250, world.Wallet.Pack.CapacityPerType);

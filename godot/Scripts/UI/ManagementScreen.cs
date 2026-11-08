@@ -4,6 +4,7 @@ using System.Text;
 using Godot;
 using GolemFactory.Blueprints;
 using GolemFactory.Economy;
+using GolemFactory.Menus;
 using GolemFactory.UI;
 using GolemFactory.World;
 
@@ -51,6 +52,7 @@ namespace GolemFactory.Nodes
         private VBoxContainer _inventory;
         private VBoxContainer _patents;
         private Label _saveStatus;
+        private Label _slotPrompt;
         private string _renderedInventory;
         private int _renderedPatents = -1;
         private readonly List<IManagementTab> _extraTabs = new List<IManagementTab>();
@@ -66,17 +68,21 @@ namespace GolemFactory.Nodes
         public Control RootControl => _root;
         public AssemblyLineTab AssemblyLine { get; private set; }
 
-        /// <summary>Where Save writes and Load reads. A scenario points it at a scratch file.</summary>
-        public string SavePath { get; set; } = PlaytestNode.UnderScenario
-            ? "user://scenario-save.json" // a scenario run (the kit's save step included) never touches the player's save
-            : "user://" + Save.SaveFileIO.DefaultFileName;
-
-        public Button SaveButton { get; private set; }
-        public Button LoadButton { get; private set; }
+        /// <summary>The Save / Load tab's slots (docs/menus-design.md §7): what they say, and their buttons.</summary>
+        public SaveSlotBoard SlotBoard { get; private set; }
+        public SaveSlotList Slots { get; private set; }
+        public Button QuitToTitleButton { get; private set; }
+        public Button QuitGameButton { get; private set; }
         public string SaveStatus => _saveStatus?.Text ?? "";
+
+        /// <summary>Why the armed button asks to be pressed again, or "".</summary>
+        public string SlotPrompt => _slotPrompt?.Text ?? "";
         public LedgerTab Ledger { get; private set; }
 
-        /// <summary>The Settings tab: the sound's sliders and mute.</summary>
+        /// <summary>The Overview tab: the map, the production graph and the alerts (docs/menus-design.md §8).</summary>
+        public OverviewTab Overview { get; private set; }
+
+        /// <summary>The Settings tab: sound, display and keys.</summary>
         public SettingsTab Settings { get; private set; }
 
         public override void _EnterTree() => AddToGroup(ModalScreens.GroupName);
@@ -97,11 +103,16 @@ namespace GolemFactory.Nodes
                 AddTab(ManagementTab.AssemblyLine, AssemblyLine);
             }
             Ledger = new LedgerTab(_world.Sandbox.TechTree, _world.Sandbox.LedgerReadout);
-            _world.Sandbox.DefaultSavePath = ProjectSettings.GlobalizePath(SavePath);
             AddTab(ManagementTab.TechTree, Ledger);
             Settings = new SettingsTab(AudioNode.Find(this));
             AddTab(ManagementTab.Settings, Settings);
+            Overview = new OverviewTab(_world.Sandbox, Close);
+            AddTab(ManagementTab.Overview, Overview);
             _root.Visible = false;
+            if (GetParent()?.GetNodeOrNull<GameSaves>("Saves") is GameSaves saves)
+            {
+                saves.PictureTaken += OnPictureTaken;
+            }
             _world.Sandbox.Screens.Register(this);
             _world.Sandbox.ConfigureScreens(null, null, this);
         }
@@ -130,6 +141,8 @@ namespace GolemFactory.Nodes
 
         public void Close()
         {
+            Settings?.CancelCapture();
+            DisarmSlots();
             _tabs.Close();
             _root.Visible = false;
         }
@@ -148,8 +161,21 @@ namespace GolemFactory.Nodes
 
         public void SelectTab(ManagementTab tab)
         {
+            DisarmSlots();
             _tabs.SelectTab(tab);
             ApplyTabs();
+        }
+
+        /// <summary>
+        /// A key press while the Settings tab waits for a key goes to the capture, before the GUI
+        /// and before <see cref="_UnhandledInput"/>'s Tab and Escape, so any key can be chosen.
+        /// </summary>
+        public override void _Input(InputEvent e)
+        {
+            if (IsOpen && Settings != null && Settings.TryCapture(e))
+            {
+                GetViewport().SetInputAsHandled();
+            }
         }
 
         public override void _UnhandledInput(InputEvent e)
@@ -184,6 +210,10 @@ namespace GolemFactory.Nodes
             }
             _renderedInventory = null;
             _renderedPatents = -1;
+            if (IsOpen && _tabs.IsContentShown(ManagementTab.SaveLoad))
+            {
+                ReadSlots(); // what is on disk now, every time the tab is shown
+            }
         }
 
         public override void _Process(double delta)
@@ -362,10 +392,11 @@ namespace GolemFactory.Nodes
             var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Begin };
             row.AddThemeConstantOverride("separation", 8);
             bar.AddChild(row);
-            foreach (ManagementTab tab in (ManagementTab[])Enum.GetValues(typeof(ManagementTab)))
+            foreach (ManagementTab tab in ManagementTabs.BarOrder)
             {
                 Button button = PlateButton(tab + "Button", Ui + "Hud/hud_button.png", UnselectedTab, ManagementTabs.Label(tab), 15, SelectedTabLabel, bold: true);
-                button.CustomMinimumSize = new Vector2(150f, 46f);
+                // Seven fit the bar at 138 (six had 150): "Assembly Line" still clears its plate.
+                button.CustomMinimumSize = new Vector2(138f, 46f);
                 ManagementTab captured = tab;
                 button.Pressed += () => SelectTab(captured);
                 _tabButtons[tab] = button;
@@ -385,6 +416,7 @@ namespace GolemFactory.Nodes
             _tabContent[ManagementTab.AssemblyLine] = TabHolder(content, "AssemblyLineTab");
             _tabContent[ManagementTab.TechTree] = TabHolder(content, "TechTreeTab");
             _tabContent[ManagementTab.Settings] = TabHolder(content, "SettingsTab");
+            _tabContent[ManagementTab.Overview] = TabHolder(content, "OverviewTab");
             BuildSaveLoad(content);
         }
 
@@ -414,38 +446,133 @@ namespace GolemFactory.Nodes
         }
 
         /// <summary>
-        /// The SaveLoad tab's layout, as the prefab has it. Saving to disk is G9; until then the
-        /// buttons are drawn but disabled, and the status line says why rather than leaving a
-        /// tab that does nothing silently.
+        /// The Save / Load tab (docs/menus-design.md §7): the six slots down the left, each with
+        /// Save, Load and Delete; on the right the last thing done, why a button waits for its
+        /// second press, and the two ways out of the game, each autosaving first.
         /// </summary>
         private void BuildSaveLoad(Control parent)
         {
             Control holder = TabHolder(parent, "SaveLoadTab");
             _tabContent[ManagementTab.SaveLoad] = holder;
-            var buttons = Ugui.Place(new HBoxContainer { Name = "ButtonRow", Alignment = BoxContainer.AlignmentMode.Begin }, 0.1f, 0.78f, 0.9f, 0.9f);
-            buttons.AddThemeConstantOverride("separation", 16);
-            holder.AddChild(buttons);
-            foreach ((string name, string sprite) in new[] { ("Save", "hud_button_accept.png"), ("Load", "hud_button.png") })
-            {
-                Button button = PlateButton(name + "Button", Ui + "Hud/" + sprite, new Color(0.80f, 0.62f, 0.32f), name, 15, SelectedTabLabel, bold: true);
-                button.CustomMinimumSize = new Vector2(140f, 42f);
-                button.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-                bool save = name == "Save";
-                button.Pressed += () => _saveStatus.Text = save
-                    ? _world.Sandbox.SaveTo(ProjectSettings.GlobalizePath(SavePath))
-                    : _world.Sandbox.LoadFrom(ProjectSettings.GlobalizePath(SavePath));
-                buttons.AddChild(button);
-                if (save)
-                {
-                    SaveButton = button;
-                }
-                else
-                {
-                    LoadButton = button;
-                }
-            }
-            _saveStatus = Ugui.Place(Ugui.Text("StatusText", "", 15, HeaderInk), 0.1f, 0.62f, 0.9f, 0.74f);
+
+            SlotBoard = new SaveSlotBoard(SlotBoardMode.InGame, null, DateTime.Now);
+            Slots = new SaveSlotList(SlotBoard, PressSlot);
+            Control list = Slots.Build(ListWidth, new[] { SlotAction.Save, SlotAction.Load, SlotAction.Delete });
+            TopLeft(list, 24f, 18f, ListWidth, 6f * SaveSlotList.RowHeight + 5f * SaveSlotList.RowGap);
+            holder.AddChild(list);
+
+            float side = 24f + ListWidth + 28f;
+            bool creative = _world.Sandbox.Creative;
+            Label heading = Ugui.Text("SideHeading", creative ? "Saving a Creative world" : "Saving", 15, HeaderInk, bold: true);
+            TopLeft(heading, side, 18f, SideWidth, 22f);
+            holder.AddChild(heading);
+            Label about = Wrapped("About", creative
+                ? "Five slots are yours, apart from the campaign's. The game writes the Autosave itself when you quit."
+                : "Five slots are yours. The game writes the Autosave itself: when you quit, and when a Clock Tower stage completes.", 12, DimInk);
+            TopLeft(about, side, 44f, SideWidth, 64f);
+            holder.AddChild(about);
+
+            _saveStatus = Wrapped("StatusText", "", 14, ItemNameInk);
+            TopLeft(_saveStatus, side, 124f, SideWidth, 66f);
             holder.AddChild(_saveStatus);
+            _slotPrompt = Wrapped("Prompt", "", 14, NearFullFill);
+            TopLeft(_slotPrompt, side, 196f, SideWidth, 66f);
+            holder.AddChild(_slotPrompt);
+
+            QuitToTitleButton = SideButton("QuitToTitleButton", "Quit to title", side, 440f);
+            QuitToTitleButton.Pressed += () => GameSaves.Find(this)?.QuitToTitle();
+            holder.AddChild(QuitToTitleButton);
+            QuitGameButton = SideButton("QuitGameButton", "Quit to desktop", side, 486f);
+            QuitGameButton.Pressed += () => GameSaves.Find(this)?.QuitGame();
+            holder.AddChild(QuitGameButton);
+            Label note = Ugui.Text("QuitNote", "Both save to the Autosave first.", 12, DimInk);
+            TopLeft(note, side, 530f, SideWidth, 20f);
+            holder.AddChild(note);
+        }
+
+        private const float ListWidth = 860f;
+        private const float SideWidth = 320f;
+
+        private static Button SideButton(string name, string label, float x, float y)
+        {
+            Button button = PlateButton(name, Ui + "Hud/hud_button.png", new Color(0.80f, 0.62f, 0.32f), label, 15, SelectedTabLabel, bold: true);
+            button.MouseDefaultCursorShape = Control.CursorShape.PointingHand;
+            TopLeft(button, x, y, 220f, 38f);
+            return button;
+        }
+
+        private static Label Wrapped(string name, string text, int size, Color ink)
+        {
+            Label label = Ugui.Text(name, text, size, ink);
+            label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            label.ClipText = false;
+            label.VerticalAlignment = VerticalAlignment.Top;
+            return label;
+        }
+
+        /// <summary>Positions <paramref name="control"/> from the top left, in canvas pixels.</summary>
+        private static void TopLeft(Control control, float x, float y, float width, float height)
+        {
+            control.AnchorLeft = control.AnchorRight = control.AnchorTop = control.AnchorBottom = 0f;
+            control.OffsetLeft = x;
+            control.OffsetTop = y;
+            control.OffsetRight = x + width;
+            control.OffsetBottom = y + height;
+        }
+
+        /// <summary>The slots as they are on disk now; anything armed is let go.</summary>
+        private void ReadSlots()
+        {
+            SlotBoard.Show(SavePaths.Saves(_world.Sandbox.Creative), DateTime.Now);
+            ShowSlots();
+        }
+
+        private void ShowSlots()
+        {
+            Slots.Refresh();
+            _slotPrompt.Text = SlotBoard.Prompt;
+        }
+
+        private void DisarmSlots()
+        {
+            if (SlotBoard?.Armed != null)
+            {
+                SlotBoard.Disarm();
+                ShowSlots();
+            }
+        }
+
+        /// <summary>A slot's button: the first press of one that loses something only arms it.</summary>
+        private void PressSlot(string key, SlotAction action)
+        {
+            GameSaves saves = GameSaves.Find(this);
+            if (saves == null || saves.Leaving || SlotBoard.Press(key, action) != SlotPress.Go)
+            {
+                ShowSlots();
+                return;
+            }
+            switch (action)
+            {
+                case SlotAction.Save:
+                    _saveStatus.Text = saves.SaveSlot(key);
+                    break;
+                case SlotAction.Load:
+                    _saveStatus.Text = saves.LoadSlot(key);
+                    break;
+                default:
+                    _saveStatus.Text = saves.DeleteSlot(key);
+                    break;
+            }
+            ReadSlots();
+        }
+
+        /// <summary>A picture lands a frame after its save: the row shows it then, unless a press is waiting.</summary>
+        private void OnPictureTaken(string key)
+        {
+            if (IsOpen && _tabs.IsContentShown(ManagementTab.SaveLoad) && SlotBoard.Armed == null)
+            {
+                ReadSlots();
+            }
         }
 
         // --- Small builders -----------------------------------------------------------------

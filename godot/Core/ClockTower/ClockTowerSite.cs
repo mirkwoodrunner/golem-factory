@@ -12,8 +12,8 @@ namespace GolemFactory.ClockTower
     //
     //   * WHICH STAGE is running, and how far through it the player is (an integer accumulator;
     //     see ClockTowerProgress for why not a float);
-    //   * TWO 60-SECOND ROLLING WINDOWS per tracked item -- units DELIVERED into the tower, and
-    //     units FRESHLY ASSEMBLED anywhere in the factory;
+    //   * A 60-SECOND ROLLING WINDOW per tracked item: units DELIVERED into the tower, however
+    //     they were made or wherever they were kept (docs/contracts-design.md §11);
     //   * A SUPPLY-PRESSURE METER per demanded item;
     //   * WHETHER THE TOWER IS FINISHED, which is the win.
     //
@@ -62,8 +62,6 @@ namespace GolemFactory.ClockTower
         // authored demand list instead.
         private readonly Dictionary<string, RollingSupplyWindow> _delivered =
             new Dictionary<string, RollingSupplyWindow>(StringComparer.Ordinal);
-        private readonly Dictionary<string, RollingSupplyWindow> _freshlyProduced =
-            new Dictionary<string, RollingSupplyWindow>(StringComparer.Ordinal);
         private readonly Dictionary<string, SupplyPressureMeter> _meters =
             new Dictionary<string, SupplyPressureMeter>(StringComparer.Ordinal);
 
@@ -72,12 +70,8 @@ namespace GolemFactory.ClockTower
         // iteration in Tick" absolute is cheaper than re-arguing it at every future edit.
         private readonly List<RollingSupplyWindow> _allWindows = new List<RollingSupplyWindow>();
 
-        // The union of every stage's demanded item types. Fresh-production events arrive for
-        // EVERY Assemble in the factory -- twenty-odd goods across a hundred golems -- and the
-        // tower cares about five of them. Filtering on arrival keeps the tracked set bounded and
-        // fixed for the whole session rather than growing with whatever the player happens to
-        // build; it changes no behaviour, because an item no stage demands can never appear in a
-        // min.
+        // The union of every stage's demanded item types. A delivery of anything else is refused,
+        // so the tracked set stays bounded and fixed for the whole session.
         private readonly HashSet<string> _trackedTypes = new HashSet<string>(StringComparer.Ordinal);
 
         private int _stageIndex;
@@ -253,8 +247,8 @@ namespace GolemFactory.ClockTower
         /// <para>
         /// PROGRESS IS RESTORED; THE RATE WINDOWS ARE NOT, and that asymmetry is deliberate.
         /// Stage progress is a durable achievement -- tens of minutes of a whole factory's output,
-        /// by far the most expensive number in a save file. The 60-second delivery and
-        /// fresh-production windows are estimates of what a factory is doing *right now*, stamped
+        /// by far the most expensive number in a save file. The 60-second delivery windows are
+        /// estimates of what a factory is doing *right now*, stamped
         /// with tick numbers that <c>SaveData</c> does not persist (it is explicitly "continue
         /// where you left off", not a simulation snapshot), so restoring them would mean replaying
         /// samples against a tick counter that has restarted. They rebuild within a minute of the
@@ -288,6 +282,17 @@ namespace GolemFactory.ClockTower
         public Func<bool> OpenWhen { get; set; }
 
         public bool IsOpen => OpenWhen == null || OpenWhen();
+
+        /// <summary>
+        /// Whether a finished stage is the Clock Tower's (<see cref="ClockTowerStageCompletedEvent"/>:
+        /// the fanfare, the camera's event, the autosave, the Ledger). False for a civic work's site
+        /// (docs/endless-design.md §1.2), which runs the same machinery and says so only through
+        /// <see cref="StageCompleted"/>.
+        /// </summary>
+        public bool PublishesTowerEvents { get; set; } = true;
+
+        /// <summary>A stage finished: its number, its name, whether it was the last, and the tick.</summary>
+        public event Action<int, string, bool, long> StageCompleted;
 
         /// <summary>What the rope's sign says while the site is closed.</summary>
         public string ClosedReason { get; set; } = "roped off";
@@ -334,19 +339,12 @@ namespace GolemFactory.ClockTower
             }
         }
 
-        /// <summary>The rate a demanded item is arriving at, in items per minute over 60 s.</summary>
-        public int DeliveryRatePerMinute(string itemType) => RateIn(_delivered, itemType);
-
         /// <summary>
-        /// The rate that item is being FRESHLY ASSEMBLED at anywhere in the factory, over the
-        /// same 60 s window.
+        /// The rate a demanded item is arriving at, in items per minute over 60 s: the rate a
+        /// stage counts. Any source counts, fresh from a line or out of stock
+        /// (docs/contracts-design.md §11).
         /// </summary>
-        public int FreshProductionRatePerMinute(string itemType) => RateIn(_freshlyProduced, itemType);
-
-        /// <summary>§7's <c>min(deliveryRate, freshProductionRate)</c>.</summary>
-        public int EffectiveRatePerMinute(string itemType) =>
-            ClockTowerProgress.EffectiveRate(
-                DeliveryRatePerMinute(itemType), FreshProductionRatePerMinute(itemType));
+        public int DeliveryRatePerMinute(string itemType) => RateIn(_delivered, itemType);
 
         /// <summary>The supply-pressure meter for an item, in whole units of <c>[0, 60]</c>.</summary>
         public int MeterUnits(string itemType)
@@ -378,29 +376,10 @@ namespace GolemFactory.ClockTower
 
             WindowFor(_delivered, itemType).Record(tick, quantity);
             MeterFor(itemType).Credit(quantity);
+            EventBus.Consumed(itemType, quantity);
             _started = true;
             _fedThisStage = true;
             return quantity;
-        }
-
-        /// <summary>
-        /// Records that <paramref name="quantity"/> units of <paramref name="itemType"/> were
-        /// genuinely ASSEMBLED on <paramref name="tick"/>. Fed from
-        /// <see cref="ItemAssembledEvent"/> by the holder.
-        ///
-        /// <para>
-        /// This is the half of the multiplier a stockpile cannot fake, and the whole reason the
-        /// event exists. See <see cref="ClockTowerProgress.EffectiveRate"/>.
-        /// </para>
-        /// </summary>
-        public void RecordFreshProduction(string itemType, int quantity, long tick)
-        {
-            if (quantity <= 0 || !_trackedTypes.Contains(itemType ?? string.Empty))
-            {
-                return;
-            }
-
-            WindowFor(_freshlyProduced, itemType).Record(tick, quantity);
         }
 
         // --- The tick -------------------------------------------------------------------------
@@ -424,9 +403,7 @@ namespace GolemFactory.ClockTower
                 return;
             }
 
-            // Aged out every tick, open or not: a roped-off site still records fresh production,
-            // and untrimmed, those lists grew for the whole game before the Zeppelin and then
-            // reported hours of output as one minute's rate (from review).
+            // Aged out every tick, open or not, so a window never reports more than a minute.
             for (int i = 0; i < _allWindows.Count; i++)
             {
                 _allWindows[i].Trim(tick);
@@ -507,8 +484,6 @@ namespace GolemFactory.ClockTower
                 StageDemand demand = demands[i];
 
                 int delivered = DeliveryRatePerMinute(demand.itemType);
-                int fresh = FreshProductionRatePerMinute(demand.itemType);
-                int effective = ClockTowerProgress.EffectiveRate(delivered, fresh);
 
                 SupplyPressureMeter meter;
                 bool starved = !TryFindMeter(demand.itemType, out meter) || meter.IsEmpty;
@@ -518,7 +493,7 @@ namespace GolemFactory.ClockTower
                 // starved line in authored order when several are empty at once.
                 long scaled = starved
                     ? 0L
-                    : ClockTowerProgress.ScaledRatio(effective, demand.ratePerMinute);
+                    : ClockTowerProgress.ScaledRatio(delivered, demand.ratePerMinute);
 
                 // Strictly less-than, so ties go to the earlier line in authored order.
                 if (scaled < minimum)
@@ -535,10 +510,8 @@ namespace GolemFactory.ClockTower
                 {
                     _starvedItemType = demand.itemType;
 
-                    // The deficit is measured against DELIVERY, not against the effective rate:
-                    // the meter is fed by deliveries and by nothing else, so "get this many more
-                    // per minute into the tower" is the sentence that actually clears the alert.
-                    // The Fresh column of the §8 readout is where a production shortfall shows.
+                    // "Get this many more per minute into the tower" is the sentence that clears
+                    // the alert: the meter is fed by deliveries and by nothing else.
                     int deficit = demand.ratePerMinute - delivered;
                     _starvedDeficitPerMinute = deficit > 0 ? deficit : 0;
                 }
@@ -565,14 +538,18 @@ namespace GolemFactory.ClockTower
                 CompletedTick = tick;
             }
 
-            EventBus.Publish(new ClockTowerStageCompletedEvent(
-                completed.stageNumber, completed.stageName, isFinal, tick));
+            if (PublishesTowerEvents)
+            {
+                EventBus.Publish(new ClockTowerStageCompletedEvent(
+                    completed.stageNumber, completed.stageName, isFinal, tick));
+            }
+            StageCompleted?.Invoke(completed.stageNumber, completed.stageName, isFinal, tick);
         }
 
         // --- Readout --------------------------------------------------------------------------
 
         /// <summary>
-        /// The whole §8 readout in one struct: <c>Required / Delivered / Fresh / xmultiplier</c>
+        /// The whole §8 readout in one struct: <c>Required / Delivered / xmultiplier</c>
         /// per demanded item, plus the stage headline and the starved-item alert. Reads only the
         /// last settled evaluation, so calling it from a HUD repainting at 60 fps cannot perturb
         /// the simulation.
@@ -603,18 +580,16 @@ namespace GolemFactory.ClockTower
                 StageDemand demand = stage.demands[i];
 
                 int delivered = DeliveryRatePerMinute(demand.itemType);
-                int fresh = FreshProductionRatePerMinute(demand.itemType);
-                int effective = ClockTowerProgress.EffectiveRate(delivered, fresh);
 
                 SupplyPressureMeter meter;
                 bool starved = !TryFindMeter(demand.itemType, out meter) || meter.IsEmpty;
 
                 long scaled = starved
                     ? 0L
-                    : ClockTowerProgress.ScaledRatio(effective, demand.ratePerMinute);
+                    : ClockTowerProgress.ScaledRatio(delivered, demand.ratePerMinute);
 
                 rows.Add(new ClockTowerDemandReading(
-                    demand.itemType, demand.ratePerMinute, delivered, fresh,
+                    demand.itemType, demand.ratePerMinute, delivered,
                     ClockTowerProgress.MultiplierMilli(scaled),
                     meter != null ? meter.Units : 0,
                     starved));

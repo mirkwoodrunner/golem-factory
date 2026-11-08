@@ -69,8 +69,16 @@ namespace GolemFactory.Tests.UI
         public void TabLabels_ReadAsTheDocsNameThem()
         {
             CollectionAssert.AreEqual(
-                new[] { "Inventory", "Assembly Line", "Patents", "Save / Load", "Ledger", "Settings" },
-                AllTabs.Select(ManagementTabs.Label));
+                new[] { "Overview", "Inventory", "Assembly Line", "Patents", "Save / Load", "Ledger", "Settings" },
+                ManagementTabs.BarOrder.Select(ManagementTabs.Label));
+        }
+
+        // docs/menus-design.md §8: the overview leads the bar, and every tab is on it once.
+        [Test]
+        public void TheBar_HoldsEveryTabOnce()
+        {
+            CollectionAssert.AreEquivalent(AllTabs, ManagementTabs.BarOrder);
+            Assert.AreEqual(ManagementTabs.BarOrder.Count, ManagementTabs.BarOrder.Distinct().Count());
         }
 
         private sealed class StubScreen : IClosableScreen

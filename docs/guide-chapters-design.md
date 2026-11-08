@@ -79,10 +79,10 @@ Columns: the step's **id** (unchanged), its **title and body** as the player rea
 
 | Id | Title · body | Done | Marks · target | Flags | Kit |
 |---|---|---|---|---|---|
-| `scrap` | **Gather Scrap** · "Walk with WASD to the Scrap stall the arrow points at. Press E to take Scrap; hold E to keep taking. Scrap pays for almost everything at first." | pack Scrap ≥ 20 | target the Scrap stall | | grant 20 Scrap |
-| `coal` | **Buy Coal** · "The Coal stall is empty. Press E there to order a truckload (10 Scrap). When the cart arrives, press E again to take Coal." | pack Coal ≥ 5 | target Coal stall, or Scrap stall while short and nothing in transit | | grant 5 Coal |
+| `scrap` | **Gather Scrap** · "Walk with WASD to the Scrap cart the arrow points at. Press E to take Scrap; hold E to keep taking. Scrap pays for almost everything at first, and the cart refills itself." | pack Scrap ≥ 20 | target the starting Scrap cart | | grant 20 Scrap |
+| `coal` | **Buy a Coal cart** · "Coal comes by cart. At the marked spot, press E and add a Coal cart (80 Scrap). It fills by itself: press E at it to take 5 Coal." (supply-design §6) | pack Coal ≥ 5 | spot: the Coal cart's (x −4) until a Coal cart stands; target the Coal cart, or the Scrap cart while short of its price | | add the cart (its price granted), grant 5 Coal |
 | `coke` | **Make Coke** · "At the Hand-Crank Bench, hold E to crank R1 Coking: 1 Coal makes 1 Coke. Boilers burn Coke." | pack Coke ≥ 5 | target the bench | | grant 5 Coke |
-| `iron` | **Make Iron Plate** · "Press R at the bench to switch it to R2 Scrap Reclamation (1 Scrap makes 1 Iron Plate), then hold E. Holding a building? Escape puts it down first." | pack Iron Plate ≥ 10 | bench (Scrap stall while out of Scrap) | | grant 10 Iron Plate |
+| `iron` | **Make Iron Plate** · "Press R at the bench to switch it to R2 Scrap Reclamation (1 Scrap makes 1 Iron Plate), then hold E. Holding a building? Escape puts it down first." | pack Iron Plate ≥ 10 | bench (Scrap cart while out of Scrap) | | grant 10 Iron Plate |
 | `boiler` | **Build a Boiler** · "Golems run on steam. Click Boiler in the build menu (30 Scrap + 10 Iron Plate), click the marked tile beside the Scrap stall, then press Escape." | unchanged (a boiler on `BoilerSpot`, or the first golem's tile steamable) | spot `BoilerSpot`, exact | `menuKey` Boiler | unchanged (`PlaceGranted`) |
 | `fuel` | **Fuel the Boiler** · "Stand at the boiler and press E to load your Coke. No Coke, no steam." | a boiler holds Coke | target the boiler | | unchanged |
 | `golem` | **Build a Golem** · "At the construction station, press E and pick the Clockwork Scavenger (12 Scrap). The Workbench opens on it." | a golem stands | target the station | | unchanged (`BuildGolem`) |
@@ -111,9 +111,9 @@ Columns: the step's **id** (unchanged), its **title and body** as the player rea
 | `presser2` | **A second Presser** · "Build another Brass Presser (60 Scrap + 20 Iron Plate + 10 Gear). Take Plate from the first Presser's crate (E); crank the Gears (R8). A full crate turns its golem red." | two Pressers stand | station | | unchanged |
 | `boiler2` | **A boiler for the coal line** · "Build a second Boiler on the marked tile, two out from the Coal stall. The coking Presser will stand between them and push Coke into it." | unchanged | spot `Boiler2Spot`, exact | `menuKey` Boiler | unchanged |
 | `pipes2` | **Join the boilers** · "Lay Steam Pipe on the marked tiles, from your first boiler to the new one. Joined boilers share steam: the first powers the coking Presser until the new one has Coke, then the new one powers the rest. Your own route counts too." (2026-11-01: joined boilers share) | unchanged (`FirstBoilerPowersCokerAndJoins`) | spots `Pipe2Spots` | `menuKey` Steam Pipe | unchanged |
-| `coal-order` | **Stock the Coal stall** · "Golems take from stalls as you do. Press E at the empty Coal stall to order a truckload (10 Scrap for 40 Coal)." | the Coal stall holds Coal | Coal stall | | unchanged (`Deliver(40)`) |
-| `program-coker` | **Program the coking Presser** · "Drag the glowing cards: Always On, Extract, Assemble Coking, Push Output, then ENGAGE. Extract takes whatever the stall behind holds: here, Coal." | `Program.Matches` (was `IsCoker`) | the newest Presser | `Workbench`; `Program` | `PerformPlan` |
-| `work-coker` | **Feed the boiler** · "Lift the coking Presser onto the marked tile: teal on the Coal stall, gold on the new boiler. Boilers dry? Load Coke into the new one with E." | unchanged | spot `CokerSpot` + facing; the new boiler while dry | | unchanged |
+| `coal-order` | **Upgrade the Coal cart** · "Your coker will eat nearly all the Coal your cart brings. At the Coal cart, press I and buy Rate (10 Iron Plate + 5 Gear): 60 Coal a minute, not 30." (supply-design §6; the id is kept) | a Coal cart at Rate rung ≥ 1 | the Coal cart | | buy the rung (its price granted) |
+| `program-coker` | **Program the coking Presser** · "Drag the glowing cards: Always On, Extract, Assemble Coking, Push Output, then ENGAGE. Extract takes whatever the cart behind holds: here, Coal." | `Program.Matches` (was `IsCoker`) | the newest Presser | `Workbench`; `Program` | `PerformPlan` |
+| `work-coker` | **Feed the boiler** · "Lift the coking Presser onto the marked tile: teal on the Coal cart, gold on the new boiler. Boilers dry? Load Coke into the new one with E." | unchanged | spot `CokerSpot` + facing; the new boiler while dry | | unchanged |
 
 ### Chapter 4: Copies, turning and stalls
 
@@ -122,7 +122,7 @@ Columns: the step's **id** (unchanged), its **title and body** as the player rea
 | `patent` | **Patent a program** · "A patent saves a program to reuse. Press E at your first Scavenger and press PATENT in the Workbench." | a patent exists | the first golem | `Workbench` | unchanged |
 | `scav2` | **Build one from the patent** · "At the station, under From a patent, click your patent: a Scavenger (12 Scrap) arrives already programmed." | the `scav2` role has a golem | station | | unchanged (`TryConstructFromBlueprint`) |
 | `stamp` | **Program the new Scavenger** · "This one arrived bare. Drag the glowing cards (Always On, Extract, Push Output) and pull ENGAGE. Next time, build from the patent." | `Program.Matches` on the `scav2` golem | that golem | `Workbench`; `Program` | `PerformPlan` |
-| `depot3` | **A depot beside the stall** · "Your new Scavenger needs a crate to fill, like your first one has. Build a Depot on the marked tile, two tiles out from another side of the Scrap stall. The new Scavenger will stand on the empty tile between them." (2026-11-01: says what the depot is for) | unchanged | spot `Depot3Spot`, exact | `menuKey` Depot | unchanged |
+| `depot3` | **A depot beside the cart** · "Your new Scavenger needs a crate to fill, like your first one has. Build a Depot on the marked tile, two tiles out from another side of the Scrap cart. The new Scavenger will stand on the empty tile between them." (2026-11-01: says what the depot is for) | unchanged | spot `Depot3Spot`, exact | `menuKey` Depot | unchanged |
 | `turn` | **Turn it with R** · "Lift the new Scavenger (G) and stand on the marked tile. While you carry it, R turns it: turn until teal is on the stall and gold on the depot, then set it down (G)." | unchanged (the `scav2` golem cycled since entry) | spot `Scav2Spot` + facing | | unchanged |
 | `stall` | **Stall it on purpose** · "Golems never improvise. Stand by the new Scavenger and press R to turn it away. It stops and turns red. Hover it: it names the tile and what is wrong." | unchanged (the `scav2` golem is `Stalled`) | that golem | | unchanged |
 | `unstall` | **And back to work** · "Turn it back (R) until teal is on the stall. A stuck golem retries the same step, and starts again the moment its tile is right." | unchanged | spot `Scav2Spot` + facing | | unchanged |
@@ -184,7 +184,8 @@ flags and kit are as built (`TutorialGuide.cs`, `TutorialGuide.Kit.cs`, `crates-
 | `program-carrier` | 5 | kept | `Program.Matches` | newest Presser | `Workbench`; `Program` | `PerformPlan` |
 | `carrier-feed` | 5 | kept | `SmeltOut` crate ≥ 1 Coke, or the carrier cycled | `SmeltOut` | `Crate` | `Put` 10 Coke |
 | `work-carrier` | 5 | kept | a heap has voided Slag | spot `CarrierSpot` + facing | | `SetPlacement`, `Put` 8 Slag, 4 Coke |
-| `copper` | 6 | kept | pack Copper Ore ≥ 1 | Copper stall | | `Deliver(40)`, grant 1 |
+| `contract` | 5 | new (contracts-design §6) | a contract taken, or one done | the City Office | | walks there, takes it, walks back |
+| `copper` | 6 | "Buy a Copper Ore cart" | pack Copper Ore ≥ 1 | spot: the Copper Ore cart's (x 0) until one stands; then the cart | | add the cart, grant 1 |
 | `belts` | 6 | kept | the run laid, pointing `CopperFacing` | spots `BeltSpots` | `menuKey` Belt | `PlaceGranted` each |
 | `pipes4` | 6 | kept | steam reaches the extractor's and unloader's tiles | spots `Pipe4Spots` | `menuKey` Steam Pipe | `PlaceGranted` each |
 | `scav3` | 6 | kept | `Program.Matches` on the `extractor` role | station | `Workbench`; `Program` | `BuildGolem`, `PerformPlan` |
@@ -199,14 +200,14 @@ flags and kit are as built (`TutorialGuide.cs`, `TutorialGuide.Kit.cs`, `crates-
 | `save` | 7 | kept | a save made | none | | `SaveTo(kit-save.json)` |
 | `load` | 7 | kept | a load made | none | | `LoadFrom(kit-save.json)` |
 | `copper-ingot` | 8 | kept | the Ledger has Copper Ingot | none | `Card`; `Workbench` | `MakeGood` |
-| `zinc-ingot` | 8 | kept | … Zinc Ingot | Zinc stall | `Card`; `Workbench` | `MakeGood` |
+| `zinc-ingot` | 8 | "Add a Zinc Ore cart on the marked spot" | … Zinc Ingot | spot x 4 until a Zinc Ore cart stands; then the cart | `Card`; `Workbench` | add the cart, `MakeGood` |
 | `brass` | 8 | kept | … Brass | none | `Card`; `Workbench` | `MakeGood` |
 | `casing` | 8 | kept | … Casing | none | `Card`; `Workbench` | `MakeGood` |
 | `post` | 8 | kept | two Post crates stand | none | `menuKey` Pneumatic Post | `PlaceGranted` ×2 on `PostSpots` |
 | `glass` | 8 | kept | … Glass | none | `Card`; `Workbench` | `MakeGood` |
 | `lens` | 8 | kept | … Lens | none | `Card`; `Workbench` | `MakeGood` |
 | `mainspring` | 8 | kept | … Mainspring | none | `Card`; `Workbench` | `MakeGood` |
-| `aether-cell` | 8 | kept | … Aether Cell | Aether stall | `Card`; `Workbench` | `MakeGood` |
+| `aether-cell` | 8 | "Add an Aether cart on the marked spot" | … Aether Cell | spot x 8 until an Aether cart stands; then the cart | `Card`; `Workbench` | add the cart, `MakeGood` |
 | `zeppelin-card` | 9 | kept | claimed the Zeppelin chassis | none | `Card` | `Claim` |
 | `freight-card` | 9 | kept | claimed Freight Launch | none | `Card` | `Claim` |
 | `zeppelin` | 9 | kept | a Zeppelin stands | station | | `BuildGolem` |
@@ -215,6 +216,7 @@ flags and kit are as built (`TutorialGuide.cs`, `TutorialGuide.Kit.cs`, `crates-
 | `program-zeppelin` | 9 | kept | `Program.Matches` | none | `Workbench`; `Program` | `PerformPlan` |
 | `launch` | 9 | kept | the Zeppelin cycled since entry | spot `ZeppelinSpot` + facing | | `SetPlacement` |
 | `mast-collect` | 9 | kept | a mast's crate gave Copper Ore | the mast | | `TryCollect`, retried |
+| `docks` | 9 | new (region-design §3) | the player stands on the Docks' floor | the gate | | `Teleport` there and back |
 | `tower-visit` | 10 | kept | the player is in the town square | the tower | | `Teleport` |
 | `frame-section` | 10 | kept | … Frame Section | none | `Card`; `Workbench` | `MakeGood` |
 | `tower-feed` | 10 | kept | the tower's Frame Section rate > 0 | the tower | | a push into the tower's endpoint |
