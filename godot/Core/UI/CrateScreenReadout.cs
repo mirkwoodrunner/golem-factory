@@ -62,6 +62,9 @@ namespace GolemFactory.UI
         /// <summary>The City Office's crate takes what its contract asks, so it has no label of its own.</summary>
         public const string OfficeLabel = "The office takes what its contract asks";
 
+        /// <summary>A Golem Foundry takes what its order's chassis is made of (docs/golem-sales-design.md §2.2).</summary>
+        public const string FoundryLabel = "The Foundry takes what the golem order's chassis needs";
+
         private readonly StorageBufferRegistry _buffers;
         private readonly string _packId;
         private readonly string _postId;
@@ -185,6 +188,10 @@ namespace GolemFactory.UI
         /// <summary>The label button: "Label: Copper Ore", "Choose a label" while picking, or a mast's.</summary>
         public static string LabelText(ICrate crate, bool picking)
         {
+            if (crate is PlaceableGolemFoundry)
+            {
+                return FoundryLabel;
+            }
             if (crate is IIntakeCrate)
             {
                 return OfficeLabel;

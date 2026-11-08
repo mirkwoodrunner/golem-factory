@@ -582,6 +582,57 @@ namespace GolemFactory.Buildings
                 return false;
             }
 
+            TearDown(golem, payout, "golem dismantled");
+            refunded = payout;
+            return true;
+        }
+
+        /// <summary>
+        /// Sells a golem to the city (docs/golem-sales-design.md §2.1): it leaves the world for
+        /// good through the same teardown as a dismantle, but only its cargo comes back, because
+        /// the city pays for the chassis. The golem may be in the player's hands, which is how it
+        /// reaches the office; the interactor lets go of a removed golem on its next poll. Refused,
+        /// with nothing touched, for a golem nobody built (it would mint a reward out of the
+        /// scenery) or one whose cargo the pack can't hold.
+        /// </summary>
+        public bool TrySellGolem(GolemEntity golem, out IReadOnlyList<RecipeIngredient> cargo, out string refusalReason)
+        {
+            cargo = Array.Empty<RecipeIngredient>();
+            refusalReason = "";
+            if (golem == null || golem.IsRemoved)
+            {
+                refusalReason = "No golem to sell.";
+                return false;
+            }
+            if (!golem.IsRuntimeSpawned)
+            {
+                refusalReason = "The city buys only golems you built.";
+                return false;
+            }
+
+            List<RecipeIngredient> payout = GolemDismantleRules.ComposeRefund(
+                null,
+                StockAsBundle(golem.Inventory != null ? golem.Inventory.Input : null),
+                StockAsBundle(golem.Inventory != null ? golem.Inventory.Output : null));
+            string misfit = Wallet?.FirstMisfit(payout);
+            if (misfit != null)
+            {
+                refusalReason = $"Not sold: pack full of {ItemTiers.DisplayName(misfit)}.";
+                return false;
+            }
+
+            if (golem.IsHeld)
+            {
+                golem.SetHeld(false);
+            }
+            TearDown(golem, payout, "golem sold");
+            cargo = payout;
+            return true;
+        }
+
+        // The birth sequence in reverse, shared by a dismantle and a sale (see TryDismantleGolem).
+        private void TearDown(GolemEntity golem, List<RecipeIngredient> payout, string reason)
+        {
             // Released before the golem goes, while there is still a golem to match on.
             if (assemblyBay != null)
             {
@@ -606,11 +657,8 @@ namespace GolemFactory.Buildings
 
             // Same reason SpawnGolem publishes it: the interactor caches its interactables, so
             // without this the player keeps being offered a golem that is gone.
-            EventBus.Publish(new WorldInteractablesChangedEvent("golem dismantled"));
+            EventBus.Publish(new WorldInteractablesChangedEvent(reason));
             GolemDismantled?.Invoke(golem);
-
-            refunded = payout;
-            return true;
         }
 
         // One Stock flattened into an ingredient bundle, in TypesInOrder rather than dictionary

@@ -6975,6 +6975,22 @@
       "CivicSiteView"
     ]
   },
+  "golem_foundry.png": {
+    "set": "golem-sales",
+    "kind": "standing",
+    "size": [
+      64,
+      92
+    ],
+    "pivot": "bottom-center",
+    "footRow": 91,
+    "owner": "generated:generate_foundry_art.py",
+    "palette": "bible",
+    "readers": [
+      "data/placeables.json",
+      "BuildingsLayer"
+    ]
+  },
   "docks_gate.png": {
     "set": "docks",
     "kind": "standing",

@@ -46,6 +46,23 @@
       { "name": "Observatory", "lines": ["The new star dome wants {goods}.", "The orrery's next wing needs {goods}."] }
     ]
   },
+  "golemOrders": {
+    "_doc": "The City Office's golem orders (docs/golem-sales-design.md), from the office's opening in chapter 5. Order k names the kth chassis the factory has built, cheapest first, as many as a raw-goods budget buys (growing over growthOrders to plateauRaw; 1 to maxCount); done, it pays rewardShare of the golems' worth (chassis raw cost, plus slotBonus of it per filled card slot) in the kth seen good of rewardGoods. A Golem Foundry builds a chassis in foundrySecondsByTier[tier - 1] seconds. {golems} in a line is the order.",
+    "plateauRaw": 640,
+    "growthOrders": 8,
+    "maxCount": 8,
+    "rewardShare": 0.5,
+    "slotBonus": 0.1,
+    "rewardGoods": ["Gear", "Brass", "Casing", "Lens", "Mainspring", "Mechanism", "Regulator"],
+    "foundrySecondsByTier": [20, 45, 90],
+    "requesters": [
+      { "name": "Tramway Company", "lines": ["Our depot wants hands that never tire: {golems}.", "The new line's sheds need {golems}."] },
+      { "name": "City Watch", "lines": ["The watch-houses want {golems} for the night rounds.", "The river wards ask for {golems}."] },
+      { "name": "Bellfounders", "lines": ["The casting floor is short of {golems}.", "The bell pit wants {golems} for the heavy lifting."] },
+      { "name": "Lamplighters' Guild", "lines": ["Every lamp on the hill wants tending: {golems}.", "The gasworks ask for {golems}."] },
+      { "name": "Observatory", "lines": ["The dome's gears want {golems} to keep them turning.", "The lens house needs {golems}."] }
+    ]
+  },
   "assemblyBays": {
     "_doc": "The campaign's bays top out at campaignTopSlots; endless play (docs/endless-design.md §2) adds one tier per endless price, to the golem cap of 112 (docs/performance-report-endless.md).",
     "campaignTopSlots": 100,

@@ -223,6 +223,10 @@ namespace GolemFactory.Contracts
                     return "The " + e.Requester + " posted a contract at the City Office";
                 case Events.ContractEventKind.Completed:
                     return "Contract done for the " + e.Requester + (e.BonusEarned ? " · bonus earned" : "");
+                case Events.ContractEventKind.OrderPosted:
+                    return "The " + e.Requester + " posted an order for golems at the City Office";
+                case Events.ContractEventKind.OrderCompleted:
+                    return "Golem order done for the " + e.Requester;
                 default:
                     return "You took the " + e.Requester + "'s contract";
             }

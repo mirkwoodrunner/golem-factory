@@ -237,6 +237,11 @@ stage times are unchanged: their tests fed delivery and fresh production at the 
 
 ## 12. As built (2026-11-07)
 
+> **Since (2026-11-08):** the office also posts **golem orders**, one at a time beside the
+> contract, from its opening (`golem-sales-design.md`). The notice shows both; a finished order's
+> reward goes through the same pack-or-shelf payout (`ContractBoard.Pay`).
+
+
 - **Core:** `Core/Contracts/` holds `ContractDefinition` (the data), `ContractBoard`
   (`SandboxWorld.Contracts`, ticked on the clock), `CityOfficeCrate`, `ContractPanel` (the
   notice's lines, rows and presses) and `ContractText` (every player line). Tests:

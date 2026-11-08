@@ -69,6 +69,9 @@ namespace GolemFactory.Nodes
 
         private Control _contract;
         private Label _contractText;
+        private Control _order;
+        private Label _orderText;
+        private float _orderTop;
         private Control _region;
         private Label _regionText;
 
@@ -77,6 +80,9 @@ namespace GolemFactory.Nodes
 
         /// <summary>The HUD's contract line as drawn, empty while none is up; for scenarios.</summary>
         public string ContractLine => _contract != null && _contract.Visible ? _contractText.Text : "";
+
+        /// <summary>The golem order's line under the contract's (docs/golem-sales-design.md §4), or empty.</summary>
+        public string OrderLine => _order != null && _order.Visible ? _orderText.Text : "";
 
         /// <summary>The tower panel's lines under the headline, as drawn, for scenarios.</summary>
         public string TowerDetail => _demand?.Text ?? "";
@@ -148,6 +154,14 @@ namespace GolemFactory.Nodes
             _contractText = Ugui.Place(Ugui.Text("ContractText", "", 13, ManagementScreen.ItemNameInk), 0f, 0f, 1f, 1f, 0f, 0f, -16f, -4f);
             _contractText.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
             _contract.AddChild(_contractText);
+
+            // The golem order's line, under the contract's; in its place when there is none.
+            _order = Ugui.Place(Ugui.Rect("OrderLine", Plate), 1f, 1f, 1f, 1f, -12f, -194f, 320f, 26f, 1f, 1f);
+            _root.AddChild(_order);
+            _orderTop = _order.OffsetTop;
+            _orderText = Ugui.Place(Ugui.Text("OrderText", "", 13, ManagementScreen.ItemNameInk), 0f, 0f, 1f, 1f, 0f, 0f, -16f, -4f);
+            _orderText.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+            _order.AddChild(_orderText);
 
             // The region's name while the player stands in the Docks (docs/region-design.md §5),
             // top centre under the clock bar, clear of the alerts strip and the right-hand panels.
@@ -287,6 +301,14 @@ namespace GolemFactory.Nodes
             string contract = GolemFactory.Contracts.ContractText.HudLine(_world.Sandbox.Contracts);
             _contractText.Text = contract;
             _contract.Visible = contract.Length > 0;
+
+            string order = GolemFactory.Contracts.GolemOrderText.HudLine(_world.Sandbox.GolemOrders);
+            _orderText.Text = order;
+            _order.Visible = order.Length > 0;
+            float shift = _contract.Visible ? 0f : -30f;
+            float height = _order.OffsetBottom - _order.OffsetTop;
+            _order.OffsetTop = _orderTop + shift;
+            _order.OffsetBottom = _order.OffsetTop + height;
 
             string region = GolemFactory.World.Docks.RegionName(_world.Sandbox.Interactor.PlayerCell, _world.Sandbox.Bounds.DocksNorth);
             _regionText.Text = region;

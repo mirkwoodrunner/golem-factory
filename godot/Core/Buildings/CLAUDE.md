@@ -24,6 +24,12 @@ one `BuildingView` each, by listening to `BuildingPlaced`, `BuildingRemoved` and
 - **The wrecking bar takes golems too** (`IGolemDismantler`), refunding chassis and cargo
   (`GolemDismantleRules`). **A click takes a golem; a drag never does**, because a refund can't
   restore a program. A golem the player is carrying is refused.
+- **Selling a golem to the city** (`TrySellGolem`, docs/golem-sales-design.md §2.1) shares the
+  dismantle's teardown but pays back the cargo only: the city's order pays for the chassis. It
+  takes a carried golem (that is how it reaches the office) and refuses one nobody built.
+- **A Golem Foundry** (`PlaceableGolemFoundry`) is a crate the rules already know, an
+  `IIntakeCrate` owning its buffer, so saving, refunds and the Crate screen need nothing new; its
+  build under way is saved on its `BuildingEntry` and refunded on demolition.
 - **Golems are NOT `GridMap` occupants**; only buildings are. Anything asking "what stands
   here" scans for golems (`TryFindGolemAt`). There is no golem-by-cell registry.
 - **Click-and-drag lays a run that points along itself** (`Player/BuildDragPath`, orthogonal,

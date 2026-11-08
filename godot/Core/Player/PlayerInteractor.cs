@@ -279,6 +279,24 @@ namespace GolemFactory.Player
             _officePositions = new Vector3[_officeCells.Length > 0 ? 1 : 0];
         }
 
+        /// <summary>
+        /// The office's golem orders and the world's sale (docs/golem-sales-design.md §2.1): E at
+        /// the office while carrying a golem the order wants sells it.
+        /// </summary>
+        public void ConfigureGolemOrders(Contracts.GolemOrderBoard orders, Func<GolemEntity, Contracts.GolemSaleResult> sell)
+        {
+            _golemOrders = orders != null && orders.Enabled ? orders : null;
+            _sellGolem = sell;
+        }
+
+        private Contracts.GolemOrderBoard _golemOrders;
+        private Func<GolemEntity, Contracts.GolemSaleResult> _sellGolem;
+
+        /// <summary>Whether E at the office would sell the golem in the player's hands.</summary>
+        public bool OfficeWouldSell =>
+            CarriedGolem != null && _sellGolem != null && _golemOrders != null && _contracts != null && _contracts.IsOpen
+            && _golemOrders.Wants(CarriedGolem.Program?.chassis?.name);
+
         /// <summary>The office's notice. Null keeps one already handed over.</summary>
         public void ConfigureContractScreen(IContractScreen screen) => _contractScreen = screen ?? _contractScreen;
 
@@ -903,15 +921,36 @@ namespace GolemFactory.Player
 
             CurrentPrompt = InteractionTargeting.BuildPrompt(
                 pick.Kind, targetName, detail, CurrentAffordance, KeyNames.Interact);
+            if (pick.Kind == InteractionKind.Office && CurrentAffordance == InteractionAffordance.Ready && OfficeWouldSell)
+            {
+                Contracts.GolemOrder order = _golemOrders.Current;
+                CurrentPrompt = "[" + KeyNames.Interact + "]  Sell " + UI.GolemNames.Short(CarriedGolem) + "  -  to the "
+                    + order.Requester + " · " + _golemOrders.Delivered + " of " + order.Count;
+            }
             PromptPosition = targetPosition;
         }
 
         private InteractionPick SelectNearestPick()
         {
             FillPositions();
-            return InteractionTargeting.SelectNearest(
+            InteractionPick pick = InteractionTargeting.SelectNearest(
                 Position, _nodePositions, _stationPositions, _golemPositions, _boilerPositions, _depotPositions,
                 _spotPositions, _officePositions);
+
+            // The golem in the player's hands rides with them, so it is always the nearest golem;
+            // at the open office the office is what E is for: it sells a golem the order wants,
+            // and opens the notice, which says what the order wants, for any other
+            // (docs/golem-sales-design.md §2.1).
+            if (CarriedGolem != null && _contracts != null && _contracts.IsOpen && _officePositions.Length > 0
+                && pick.Kind != InteractionKind.Office)
+            {
+                float toOffice = (_officePositions[0] - Position).magnitude;
+                if (toOffice <= _interactRange)
+                {
+                    return new InteractionPick(InteractionKind.Office, 0, toOffice);
+                }
+            }
+            return pick;
         }
 
         private object ResolveTarget(InteractionPick pick, out Vector3 position)
@@ -1045,8 +1084,10 @@ namespace GolemFactory.Player
                 case InteractionKind.Sort:
                 {
                     var crate = (ICrate)target;
-                    targetName = crate is PlaceableFreightMast ? "Freight Mast" : crate.OwnsBuffer ? "Crate" : "Pneumatic Post";
-                    detail = DescribeContents(crate.Buffer);
+                    targetName = crate is PlaceableFreightMast ? "Freight Mast"
+                        : crate is PlaceableGolemFoundry ? PlaceableGolemFoundry.Name
+                        : crate.OwnsBuffer ? "Crate" : "Pneumatic Post";
+                    detail = crate is PlaceableGolemFoundry foundry ? FoundryText.CapLine(foundry) : DescribeContents(crate.Buffer);
                     break;
                 }
                 case InteractionKind.Program:
@@ -1114,7 +1155,7 @@ namespace GolemFactory.Player
                 case InteractionKind.Supply:
                     return TryOpenSupply(target as CartSpot);
                 case InteractionKind.Office:
-                    return TryOpenOffice();
+                    return OfficeWouldSell ? TrySellCarriedGolem() : TryOpenOffice();
                 default:
                     LastStatusMessage = "Nothing in range to interact with.";
                     return false;
@@ -1194,6 +1235,35 @@ namespace GolemFactory.Player
                 return false;
             }
             _contractScreen.Open();
+            return true;
+        }
+
+        /// <summary>
+        /// E at the office with a golem the order wants in hand (docs/golem-sales-design.md §2.1):
+        /// the world sells it, and the player's hands are empty.
+        /// </summary>
+        public bool TrySellCarriedGolem()
+        {
+            GolemEntity golem = CarriedGolem;
+            Vector3 at = _officePositions.Length > 0 ? _officePositions[0] : Position;
+            if (golem == null || _sellGolem == null)
+            {
+                LastStatusMessage = "Carry a golem here to sell it.";
+                return false;
+            }
+            string name = UI.GolemNames.Short(golem);
+            Contracts.GolemSaleResult sale = _sellGolem(golem);
+            if (!sale.Done)
+            {
+                LastStatusMessage = sale.Refusal;
+                Popup(at, "Not sold", InteractionPopupKind.Refused);
+                return false;
+            }
+            CarriedGolem = null;
+            LastStatusMessage = sale.CompletedOrder
+                ? Contracts.GolemOrderText.SoldLast(name, sale.Order.Requester) + "."
+                : Contracts.GolemOrderText.Sold(name, sale.Order, sale.Delivered) + ".";
+            Popup(at, "Sold " + name, InteractionPopupKind.Gain);
             return true;
         }
 

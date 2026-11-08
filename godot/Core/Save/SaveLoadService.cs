@@ -145,6 +145,14 @@ namespace GolemFactory.Save
                     }
                 }
 
+                var foundry = building.GetPart<GolemFactory.Buildings.PlaceableGolemFoundry>();
+                if (foundry != null)
+                {
+                    entry.foundryChassis = foundry.Chassis;
+                    entry.foundryProgressTicks = foundry.ProgressTicks;
+                    entry.foundryHolding = foundry.Holding;
+                }
+
                 var recycler = building.GetPart<GolemFactory.Buildings.PlaceableScrapRecycler>();
                 if (recycler != null && recycler.Recycler != null)
                 {
@@ -526,6 +534,9 @@ namespace GolemFactory.Save
             // Restore, not Add: the rebuilt hopper was placed with whatever the prefab starts
             // with, and adding to that would mint fuel and goods on every load -- the same
             // reasoning SteamBoiler.SetCoke records above.
+            building.GetPart<GolemFactory.Buildings.PlaceableGolemFoundry>()?.Restore(
+                entry.foundryChassis, entry.foundryProgressTicks, entry.foundryHolding);
+
             var recycler = building.GetPart<GolemFactory.Buildings.PlaceableScrapRecycler>();
             if (recycler != null && recycler.Recycler != null)
             {

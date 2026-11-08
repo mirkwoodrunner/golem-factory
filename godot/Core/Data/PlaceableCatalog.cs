@@ -135,6 +135,9 @@ namespace GolemFactory.Data
                         entry.Prefab.AddPart(new PlaceableSlagHeap()).Configure(
                             fields.String("heapId"), fields.Int("startingCoke"), fields.Int("slagPerCoke"));
                         break;
+                    case "PlaceableGolemFoundry":
+                        entry.Prefab.AddPart(new PlaceableGolemFoundry());
+                        break;
                     case "PlaceableScrapRecycler":
                         entry.Prefab.AddPart(new PlaceableScrapRecycler()).Configure(fields.String("recyclerId"), fields.Int("startingCoke"));
                         break;

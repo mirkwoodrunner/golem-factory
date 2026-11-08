@@ -494,5 +494,34 @@
         "filterItemType": ""
       }
     }
+  },
+  {
+    "name": "GolemFoundryPrefab",
+    "sprite": "golem_foundry.png",
+    "parts": {
+      "PlaceableBuilding": {
+        "cost": [
+          {
+            "itemType": "Scrap",
+            "quantity": 40
+          },
+          {
+            "itemType": "IronPlate",
+            "quantity": 20
+          },
+          {
+            "itemType": "Gear",
+            "quantity": 10
+          },
+          {
+            "itemType": "Slag",
+            "quantity": 10
+          }
+        ],
+        "dragPlaceable": 0
+      },
+      "YSortSpriteRenderer": {},
+      "PlaceableGolemFoundry": {}
+    }
   }
 ]

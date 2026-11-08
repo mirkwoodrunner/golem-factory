@@ -1018,7 +1018,8 @@ namespace GolemFactory.Player
                  building.GetPart<PlaceableBoiler>() != null ||
                  building.GetPart<PlaceableFreightMast>() != null ||
                  building.GetPart<PlaceableSlagHeap>() != null ||
-                 building.GetPart<PlaceableScrapRecycler>() != null))
+                 building.GetPart<PlaceableScrapRecycler>() != null ||
+                 building.GetPart<PlaceableGolemFoundry>() != null))
             {
                 _spatialEndpoints.Unregister(cell);
             }
@@ -1135,6 +1136,17 @@ namespace GolemFactory.Player
             ScrapRecycler recycler = building.GetPart<PlaceableScrapRecycler>()?.Recycler;
             Add(refund, ItemType.Coke, recycler?.CokeStock ?? 0);
             Add(refund, ItemType.Scrap, recycler?.ScrapStock ?? 0);
+
+            // A Golem Foundry's golem under way, or built and waiting: its goods were the player's
+            // (docs/golem-sales-design.md §2.2).
+            PlaceableGolemFoundry foundry = building.GetPart<PlaceableGolemFoundry>();
+            if (foundry != null)
+            {
+                foreach (RecipeIngredient c in foundry.GolemUnderWayRefund)
+                {
+                    Add(refund, c.itemType, c.quantity);
+                }
+            }
 
             // A crate's goods, if they are its own (crates-design §4.6). A Post crate's are the
             // shared store's, and stay there.
