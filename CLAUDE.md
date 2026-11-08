@@ -42,6 +42,7 @@ Read the docs before making design calls, not just the code:
 - `docs/history/` -- the Unity era (M0-M9, test ledger, MCP setup). History, not instructions.
 - `testscript/phase-1-playtest.md` -- how to run a playtest; the guide asks the questions.
 - `testscript/phase-2-playtest.md` -- chapters 1–4 without F9 in 15 minutes; run it first.
+- `testscript/endless-soak.md` -- two hours of endless play, sampled by `Tools/Soak/soak-sample.ps1`.
 
 ## Toolchain
 
