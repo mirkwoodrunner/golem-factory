@@ -66,7 +66,7 @@ Read the docs before making design calls, not just the code:
 **Folder rules** load only when you work in that folder; read the right one first when working on its area from
 elsewhere: `godot/Scripts/Scenarios/`, `godot/Scripts/UI/` (screens, `Ugui`), `godot/Core/` `Tutorial/` (guide, playtest
 kit), `Golems/`, `Simulation/` (the tick), `Buildings/` (wrecking bar), `Economy/` (cards, crates, pack), `ClockTower/`;
-`godot/data/`; `Tools/Art/` (art, AI images, hand-replaced sprites).
+`godot/data/`; `godot/Scenes/` (hand-written `.tscn`); `Tools/Art/` (art, AI images, hand-replaced sprites).
 
 ## Commands
 
