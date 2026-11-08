@@ -151,7 +151,7 @@ namespace GolemFactory.Nodes
 
             // The region's name while the player stands in the Docks (docs/region-design.md §5),
             // top centre under the clock bar, clear of the alerts strip and the right-hand panels.
-            _region = Ugui.Place(Ugui.Rect("RegionPlate", Plate), 0.5f, 1f, 0.5f, 1f, 0f, -80f, 160f, 28f, 0.5f, 1f);
+            _region = Ugui.Place(Ugui.Rect("RegionPlate", Plate), 0.5f, 1f, 0.5f, 1f, 0f, -80f, 380f, 28f, 0.5f, 1f);
             _root.AddChild(_region);
             _regionText = Ugui.Place(Ugui.Text("RegionText", "", 15, Amber), 0f, 0f, 1f, 1f, 0f, 0f, 0f, 0f);
             _regionText.HorizontalAlignment = HorizontalAlignment.Center;

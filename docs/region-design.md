@@ -20,8 +20,9 @@ after Phase 8 (decision 12: "a second region and selling golems wait"), chosen b
 ## The idea in one paragraph
 
 East of the market street's end, through a gate, lies **the Docks**: a second floor the player
-buys, with a quay of its own cart spots where barges bring raw goods by water. It holds what the
-workshop has run out of room for. Goods cross between the two by Zeppelin, by belt along the
+buys, with a quay of its own cart spots where barges bring raw goods by water. In the campaign it
+holds what the tower's build-out has no room for in the workshop; after the tower, with the golem
+cap binding first, it is room to spread out (§7, the user's call of 2026-11-08). Goods cross between the two by Zeppelin, by belt along the
 street, by hand, or through the Pneumatic Post, whose crates open onto the one shared store in
 either region (§6 Q3). It opens when the factory builds its first Zeppelin, in chapter 9 (§6
 Q2), as the tower's rope comes down, so the campaign's last chapters have room to grow into.
@@ -145,6 +146,21 @@ still run their per-frame work (about 2.4 ms and 1.9 ms at 160 golems). Proposed
   (`performance-report-endless.md` §5, with the three spikes fixed on the way).
 - **Not built:** step 6's Zeppelin launch between the regions is the existing mast and Zeppelin,
   untouched; the `docks` scenario covers the walk, the barge, a row, and a save.
+
+**After the design audit (2026-11-08):**
+- **The gate says why it is shut.** A player at the street's east end sees "The Docks · open once
+  you build a Zeppelin" in the HUD's plate (`Docks.RegionName`), and the alerts log notes "The
+  Docks are open" the moment they open in play (not on a load that finds them open). The Ledger
+  has no Docks entry: the tower's carries the same condition.
+- **The rows' prices rise, and stay cheap** (the user's call). Each row costs more raw goods than
+  the last, and every row less a cell than Floor Expansion's fifth, in the game's raw costs
+  (`ContractGenerator.RawCosts`: Plate 1, Brass 3, Casing 7, Mainspring and Aether Cell 13): 140,
+  225, 235, 253, 304 and 361 for fifty cells, against Floor 5's 405. The walk is what the Docks
+  cost; `DocksTests` pins both rules.
+- **On screen they are carts.** The quay's spots are the street's own kind, named and drawn as
+  carts; "barges" stays this doc's word, and the guide says "eight more spots for carts".
+- **What they are for after the tower** is room to spread out, not to grow: the golem cap binds
+  first (`endless-design.md` §2).
 
 ## 6. Questions for the user
 

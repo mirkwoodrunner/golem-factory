@@ -65,11 +65,17 @@ call): built, reviewed, critiqued and tested. Done:
   their prices (7a79046). 1925 Core tests pass.
 
 **Resume here:**
+- **Phases 7 and 8 and the Docks are done** (2026-11-08), on `phase8/depth` (from `phase7/menus`),
+  with a design audit's findings fixed (`region-design.md` §7). Phases 5 and 6 went in as PR #61.
+  Next, at the user's go: selling golems to the city, or the Steam Deck
+  (`steam-deck-design.md`). Still to run by a person: the playtests below and
+  `testscript/endless-soak.md`.
+
 0. **Phase 6 (Game feel), on branch `phase6/feel` (from `phase5/audio`), built 2026-11-01.** The
    spec is `docs/game-feel-design.md`; the user's four decisions are its §7 (ComfyUI FX art,
    click the alert strip, fixed zoom levels, the tower's event skippable with the clock running).
    Everything plays. The S7 FX art is installed. **Done** (2026-11-05, the user is happy with the feel).
-   **Phase 7 (`docs/menus-design.md`), branch `phase7/menus`, in progress:** step 1 (settings) is in
+   **Phase 7 (`docs/menus-design.md`), branch `phase7/menus`, done:** step 1 (settings) is in
    (`Core/Settings`, `GameSettingsStore`, the Settings tab, the `settings` scenario; the calls
    made are `menus-design.md` §4). Step 2 (accessibility) is in too: Reduced motion
    (`MotionPreference`) and the colour-blind stripes (`ColourMarks`), `menus-design.md` §5, the
@@ -481,10 +487,13 @@ Factorio's breadth.
    placeholder site until their art is commissioned. The `endless` scenario covers each.
    Phase 8 is done.
 
-**Next (2026-11-07): a second region, the Docks** (`docs/region-design.md`, approved with the
-user's answers): east of the street, opening at the Zeppelin in chapter 9. Waiting: selling golems
-to the city; the Steam Deck (`steam-deck-design.md` §8 holds the user's answers: native gamepad
-support, a Deck on hand, the viewport chosen from frames).
+**A second region, the Docks, is done** (2026-11-08, `docs/region-design.md` §7): east of the
+street, opening at the Zeppelin in chapter 9, its rows bought north, a quay of eight cart spots,
+and the `docks` scenario. Off-screen nodes skip their animation; re-measured, the golem cap stays
+112 (`performance-report-endless.md` §5). After the tower the Docks are room to spread out, not to
+grow (`endless-design.md` §2). Waiting: selling golems to the city; the Steam Deck
+(`steam-deck-design.md` §8 holds the user's answers: native gamepad support, a Deck on hand, the
+viewport chosen from frames).
 
 ## Phase 9: What release asks of development
 

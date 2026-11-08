@@ -15,7 +15,8 @@ which it builds on. Written before the code, with its invariants first.
   and Regulators.
 - **`contracts-design.md`:** contracts continue after the tower; bigger rewards wait for endless
   play.
-- **Waiting, not part of this:** a second map region, and selling golems to the city.
+- **Waiting, not part of this:** a second map region (built since: the Docks, `region-design.md`),
+  and selling golems to the city.
 
 ## The problem
 
@@ -112,7 +113,7 @@ offered once stage 4 completes:
 | A cart's Rate and Capacity | rung 3 | rungs 4 and 5 | Regulator, then Chronometer Core |
 | Assembly Bays | its top tier | one tier, up to the golem cap (§4) | Mechanism + Great Cog |
 | Floor Expansion | six purchases (`MaxNorthExtent`) | §6 Q3 | Frame Section + Great Cog |
-| Street spots | 17 (`supply-design.md` §1) | none: the street is full | — |
+| Street spots | 17 (`supply-design.md` §1) | none: the street is full; the Docks' quay adds 8 (`region-design.md` §2) | — |
 
 **Built (2026-11-07):** `SandboxWorld.EndlessOpen` (the tower complete, or Creative) opens
 every endless rung; there is no switch. In `data/sandbox.json`: the pack's `endless` rungs, 300
@@ -127,6 +128,12 @@ the `endless` scenario.
 the second region, the Docks (`region-design.md`, built since: a 25-wide floor bought north in
 rows, and a quay of eight more cart spots). So endless growth is mostly **density and rates**: more
 from each cart, golems that do more, carts upgraded rather than added.
+
+**After the tower, the golem cap binds before land does** (the user's call, 2026-11-08). The full
+workshop is tight at about 96 golems; the Docks add 725 cells, but the cap (112) allows only 16
+golems more. The Docks are for **spreading out**: moving a line off a crowded workshop, room for
+boilers, crates and belts, a quay feeding a line where it stands. Raising the cap is a render
+pass's work (`performance-report-endless.md` §5), not more land.
 
 ## 3. What the player sees
 

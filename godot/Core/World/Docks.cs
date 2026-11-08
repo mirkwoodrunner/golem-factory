@@ -61,7 +61,26 @@ namespace GolemFactory.World
         /// <summary>The region's name, for the HUD, while the player stands on the Docks' floor; empty elsewhere (region-design §5).</summary>
         public const string Name = "The Docks";
 
-        public static string RegionName(Vector2Int playerCell, int north) => InFloor(playerCell, north) ? Name : "";
+        /// <summary>What the HUD's plate says at the street's east end while the gate is roped.</summary>
+        public const string ShutLine = Name + " · open once you build a Zeppelin";
+
+        /// <summary>What the city's note says the moment the Docks open (region-design §3).</summary>
+        public const string OpenedNote = Name + " are open: through the gate at the street's east end.";
+
+        /// <summary>
+        /// The HUD's plate: the region's name on the Docks' floor, and while they are shut, why, to a
+        /// player at the street's east end beside the roped gate; empty elsewhere.
+        /// </summary>
+        public static string RegionName(Vector2Int playerCell, int north)
+        {
+            if (InFloor(playerCell, north))
+            {
+                return Name;
+            }
+            bool atTheGate = playerCell.x >= FloorLayout.StreetHalfExtent - 2 && playerCell.x < West
+                && playerCell.y >= Bottom && playerCell.y <= LaneTop;
+            return north == Closed && atTheGate ? ShutLine : "";
+        }
 
         /// <summary>Whether a cell is the Docks' ground (the lane or the floor) with the Docks reaching <paramref name="north"/>.</summary>
         public static bool Contains(Vector2Int cell, int north) =>

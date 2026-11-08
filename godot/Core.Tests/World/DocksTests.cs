@@ -1,11 +1,13 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using GolemFactory.Compat;
 using GolemFactory.Diagnostics;
 using GolemFactory.Economy;
 using GolemFactory.Player;
+using GolemFactory.PunchCards;
 using GolemFactory.Supply;
 using GolemFactory.Tests.EditMode;
 using GolemFactory.UI;
@@ -154,6 +156,58 @@ namespace GolemFactory.Tests.World
             finally
             {
                 File.Delete(path);
+            }
+        }
+
+        [Test]
+        public void TheRows_CostMoreEachTime_AndLessACellThanTheWorkshopsFifth()
+        {
+            // The user's call (2026-11-08): kept cheaper than the workshop's last rows, since the
+            // walk is their cost, but rising, so the last row is the dearest (region-design §7).
+            var raw = GolemFactory.Contracts.ContractGenerator.RawCosts(_world.Definitions.Recipes.Values);
+            double Raw(List<RecipeIngredient> price) => price.Sum(p => raw[p.itemType] * p.quantity);
+            List<List<RecipeIngredient>> rows = _world.Setup.docks.purchases;
+            double fifth = Raw(_world.Setup.floorExpansion.purchases[4]) / (2 * 25);
+            for (int i = 0; i < rows.Count; i++)
+            {
+                double perCell = Raw(rows[i]) / (_world.Setup.docks.rowsPerPurchase * (Docks.East - Docks.West + 1));
+                Assert.Less(perCell, fifth, $"row {i + 1}: {perCell:F1} a cell against the workshop's fifth {fifth:F1}");
+                if (i > 0)
+                {
+                    Assert.Greater(Raw(rows[i]), Raw(rows[i - 1]), $"row {i + 1} costs more than row {i}");
+                }
+            }
+        }
+
+        [Test]
+        public void ShutTheGateSaysWhy_AndTheCityNotesTheMomentTheyOpen()
+        {
+            var atTheGate = new Vector2Int(FloorLayout.StreetHalfExtent, -16);
+            Assert.AreEqual(Docks.ShutLine, Docks.RegionName(atTheGate, _world.Bounds.DocksNorth));
+            Assert.AreEqual("", Docks.RegionName(new Vector2Int(0, -16), _world.Bounds.DocksNorth), "not down the street");
+            _world.Advance(0.1f);
+            Assert.IsFalse(_world.Alerts.Log.Entries.Any(e => e.IsNote && e.Text == Docks.OpenedNote));
+
+            BuildAZeppelin();
+            _world.Advance(0.1f);
+            Assert.AreEqual("", Docks.RegionName(atTheGate, _world.Bounds.DocksNorth), "open: nothing to explain");
+            Assert.AreEqual(1, _world.Alerts.Log.Entries.Count(e => e.IsNote && e.Text == Docks.OpenedNote), "noted once");
+            _world.Advance(0.1f);
+            Assert.AreEqual(1, _world.Alerts.Log.Entries.Count(e => e.IsNote && e.Text == Docks.OpenedNote), "and only once");
+        }
+
+        [Test]
+        public void ALoad_ThatFindsThemOpen_NotesNothing()
+        {
+            SandboxWorld open = CreativeTests.Compose(creative: true);
+            try
+            {
+                open.Advance(0.1f);
+                Assert.IsFalse(open.Alerts.Log.Entries.Any(e => e.Text == Docks.OpenedNote));
+            }
+            finally
+            {
+                open.Dispose();
             }
         }
 

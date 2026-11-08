@@ -1983,8 +1983,8 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "docks", "The Docks",
                 "Your Zeppelin flew, and the city has opened the Docks at the street's east end. Walk down "
-                + "the street, through the gate, onto the Docks: more ground to build on, and a quay where "
-                + "barges bring raw goods.",
+                + "the street, through the gate, onto the Docks: more ground to build on, and a quay with eight "
+                + "more spots for carts.",
                 w => Docks.InFloor(_world.Interactor.PlayerCell, _world.Bounds.DocksNorth),
                 w => Docks.GateCell),
 

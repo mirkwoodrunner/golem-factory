@@ -93,6 +93,10 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "the gate shows " + Shell.Gate.Shown;
                 }
+                if (Hud.RegionLine != Docks.ShutLine)
+                {
+                    return $"at the gate the plate reads '{Hud.RegionLine}'";
+                }
                 ScenarioCapture.Shot(Runner.GetViewport(), "docks-gate");
                 return null;
             });
@@ -105,6 +109,8 @@ namespace GolemFactory.Nodes.Scenarios
                 Sandbox.TechTree.Ledger.RecordChassis(SandboxWorld.ZeppelinChassis);
                 return null;
             });
+            Until("the city notes it", 2, () =>
+                Sandbox.Alerts.Log.Entries.Any(e => e.IsNote && e.Text == Docks.OpenedNote) ? null : "no note");
             Until("the gate opens, the Docks paved", 2, () =>
                 Shell.Gate.Shown == DocksGateView.OpenSprite && Floor.DocksPainted == Docks.StartNorth
                     ? null : $"gate {Shell.Gate.Shown}, painted {Floor.DocksPainted}");

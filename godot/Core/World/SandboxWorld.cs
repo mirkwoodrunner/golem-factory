@@ -1396,6 +1396,12 @@ namespace GolemFactory.World
             int docksNorth = Bounds.DocksNorth;
             if (docksNorth != _docksNorthSeen)
             {
+                // The moment they open in play, the city says so (a load that finds them open
+                // already, the first Advance, says nothing).
+                if (_docksNorthSeen == Docks.Closed && docksNorth != Docks.Closed)
+                {
+                    Alerts.Log.Note(Alerts.Seconds, Docks.OpenedNote);
+                }
                 _docksNorthSeen = docksNorth;
                 Interactor.RefreshInteractables();
             }

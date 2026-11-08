@@ -1,7 +1,8 @@
 # Golem Factory — Gameplay Progression Design
 
-**Status:** design proposal, revision 3 — cleared for implementation. No code written. Intended as
-the spec another agent implements against.
+**Status:** design proposal, revision 3 — cleared for implementation, and since built. Its numbers
+are history where later docs own them: prices and rates are `tuning-data-spec.md`'s and the data's,
+the tower's rule is `contracts-design.md` §11's, and land is §3.3's note below.
 
 **Revision history.** Revision 1 failed a rubric review on five structural points. Revision 2
 passed. Revision 3 is a tightening pass fixing two must-fix defects and a set of corrections.
@@ -226,6 +227,11 @@ real infrastructure, which is what makes the Zeppelin's Freight Link (§6) land 
 than a curiosity.
 
 ### 3.3 Bounded, purchasable floor
+
+> **Superseded (2026-11-08):** Floor Expansion was built as two 25-cell rows a purchase, six
+> purchases, priced in `sandbox.json`'s `floorExpansion` (`tuning-data-spec.md` §6 owns them);
+> the floor is repainted at runtime, so the note below is history. More land is the Docks
+> (`region-design.md`). The rest of this section is the original proposal.
 
 Buildable area is the rendered floor (`FloorLayout`), which starts at **25 × 25 tiles**
 (`HalfExtent = 12`). **Floor Expansion** paves a 6 × 6 block for `60 Scrap + 30 Iron Plate` — cheap

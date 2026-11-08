@@ -13,15 +13,15 @@
     { "capacityPerType": 350, "endless": true, "cost": [{ "itemType": "Mechanism", "quantity": 20 }, { "itemType": "Regulator", "quantity": 8 }] }
   ],
   "docks": {
-    "_doc": "The Docks' floor (docs/region-design.md §1): two rows north a purchase, from y -4 to y 8. Priced in what a chapter 9 factory makes, within the pack it has then.",
+    "_doc": "The Docks' floor (docs/region-design.md §1): two rows north a purchase, from y -4 to y 8. Priced in what a chapter 9 factory makes, within the pack it has then; each row costs more than the last, and every row less a cell than Floor Expansion's fifth, in raw goods (region-design §7).",
     "rowsPerPurchase": 2,
     "purchases": [
       [{ "itemType": "IronPlate", "quantity": 80 }, { "itemType": "Brass", "quantity": 20 }],
       [{ "itemType": "IronPlate", "quantity": 120 }, { "itemType": "Casing", "quantity": 15 }],
-      [{ "itemType": "Brass", "quantity": 60 }, { "itemType": "Casing", "quantity": 25 }],
-      [{ "itemType": "Casing", "quantity": 40 }, { "itemType": "Mainspring", "quantity": 6 }],
-      [{ "itemType": "Casing", "quantity": 60 }, { "itemType": "Mainspring", "quantity": 10 }],
-      [{ "itemType": "Mainspring", "quantity": 15 }, { "itemType": "AetherCell", "quantity": 6 }]
+      [{ "itemType": "IronPlate", "quantity": 100 }, { "itemType": "Brass", "quantity": 10 }, { "itemType": "Casing", "quantity": 15 }],
+      [{ "itemType": "Casing", "quantity": 25 }, { "itemType": "Mainspring", "quantity": 6 }],
+      [{ "itemType": "IronPlate", "quantity": 60 }, { "itemType": "Casing", "quantity": 20 }, { "itemType": "Mainspring", "quantity": 8 }],
+      [{ "itemType": "IronPlate", "quantity": 100 }, { "itemType": "Casing", "quantity": 15 }, { "itemType": "Mainspring", "quantity": 8 }, { "itemType": "AetherCell", "quantity": 4 }]
     ]
   },
   "endlessContracts": {
