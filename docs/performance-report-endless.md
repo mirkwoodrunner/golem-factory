@@ -92,3 +92,39 @@ drawing (about 920 draw calls) and the nodes' own work; the next gains are a ren
 top is 100 slots, the endgame's 96 golems and room to rebuild; endless play adds two tiers, to
 112 (endless-design §2).
 
+
+## 5. With the Docks: off-screen skipping, re-measured (region-design.md §4)
+
+Golem and building nodes outside the view (`Scripts/World/ViewRect`, three cells past the screen's
+edge) now skip their per-frame presentation and catch up when they come back; the simulation
+never skips. A seventh phase, `flowing-far`, runs at the farthest zoom, where the most of the
+factory is on screen and skipping saves least. `--perf-no-skip` turns skipping off to compare.
+
+Windowed, `--fixed-fps 60`, frame p95 in ms (max over 33.3 ms in the last column):
+
+| Golems | flowing-1x | flowing-4x | starved | hover | flowing-far | max over 33.3 |
+|---|---|---|---|---|---|---|
+| 96 (the `perf` scenario) | 10.7 | 11.6 | 12.8 | 12.5 | 11.9 | no (27.0) |
+| 112 | 11.9 | 13.2 | 13.2 | 14.5 | 13.1 | no (26.6) |
+| 128 | 12.5 | 14.1 | 13.9 | 14.8 | 13.9 | yes (46.0) |
+| 144 | 13.8 | 14.3 | 14.8 | 15.9 | 14.7 | yes (37.2) |
+
+Skipping saves about 1.2 ms at p50 in every phase at 112 (flowing-1x 10.2 against 11.4 with
+`--perf-no-skip`), and it moved the p95s of 128 and 144 under budget. **The cap stays at 112**:
+128 and 144 each still drop a single frame past 33.3 ms in some runs, and invariant 4 raises the
+cap only when every check passes.
+
+**Spikes, found on the way.** Three causes of single frames over 33.3 ms, each fixed:
+
+1. **A blocking full collection** (a 21.9 ms GC pause inside `node.buildings`). The game now runs
+   with `GCLatencyMode.SustainedLowLatency` (`WorldNode`), which keeps full collections in the
+   background unless memory runs short.
+2. **A golem's frames loaded on first draw.** With skipping, a golem first seen mid-run read its
+   picture from disk and uploaded it inside a frame. `GolemNode.WarmFrames` loads every chassis's
+   28 frames before the first golem is drawn and holds them.
+3. **`Visible` set every frame on every cart spot view**, which the Docks' quay added. The
+   default `perf` load failed on it (max 43.7 ms; the last commit read 22.3); bisected to that
+   one line, now set only on a change.
+
+The `perf` scenario logs any frame over 33.3 ms (at most four a phase) with its process and
+render time, the GC collections and pause since the last frame, and any section over 2 ms.

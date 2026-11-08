@@ -300,9 +300,7 @@ namespace GolemFactory.Player
 
             if (_placementBounds != null)
             {
-                return FloorLayout.IsInsideWorld(
-                    cell, _placementBounds.HalfExtent, _placementStreetDepth,
-                    FloorLayout.StreetHalfExtent, _placementBounds.NorthExtent);
+                return _placementBounds.IsGround(cell, _placementStreetDepth);
             }
 
             return FloorLayout.IsInsideWorld(cell, _placementHalfExtent, _placementStreetDepth);

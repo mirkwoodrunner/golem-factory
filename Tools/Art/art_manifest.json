@@ -6974,5 +6974,54 @@
     "readers": [
       "CivicSiteView"
     ]
+  },
+  "docks_gate.png": {
+    "set": "docks",
+    "kind": "standing",
+    "size": [
+      128,
+      160
+    ],
+    "pivot": [
+      0.5,
+      0.019
+    ],
+    "footRow": 157,
+    "owner": "generated:generate_docks_art.py",
+    "palette": "bible",
+    "readers": [
+      "DocksGateView"
+    ]
+  },
+  "docks_gate_closed.png": {
+    "set": "docks",
+    "kind": "standing",
+    "size": [
+      128,
+      160
+    ],
+    "pivot": [
+      0.5,
+      0.019
+    ],
+    "footRow": 157,
+    "owner": "generated:generate_docks_art.py",
+    "palette": "bible",
+    "readers": [
+      "DocksGateView"
+    ]
+  },
+  "docks_water.png": {
+    "set": "docks",
+    "kind": "tile",
+    "size": [
+      64,
+      64
+    ],
+    "owner": "generated:generate_docks_art.py",
+    "palette": "bible",
+    "readers": [
+      "FloorLayer"
+    ]
   }
 }

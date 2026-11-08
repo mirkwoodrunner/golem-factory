@@ -160,6 +160,9 @@ namespace GolemFactory.World
         public bool playtest;
         public Point playerStart = new Point();
         public Expansion floorExpansion;
+
+        /// <summary>The Docks' floor rows (docs/region-design.md §1): two rows a purchase, at these prices.</summary>
+        public Expansion docks;
         public WorkbenchRoster workbench;
         public AssemblyLineSetup assemblyLine;
         public SupplySetup supply;

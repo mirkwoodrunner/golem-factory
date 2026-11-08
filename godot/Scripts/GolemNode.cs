@@ -109,6 +109,17 @@ namespace GolemFactory.Nodes
                 return;
             }
             _time += (float)delta;
+            // Off screen, a golem skips its picture, badge and motion (region-design §4): it catches
+            // up the frame it comes back into view. Never while carried, hovered or focused.
+            bool carried = _world.Setup != null && _world.Sandbox.Interactor.CarriedGolem == Entity;
+            if (!carried && !Hovered && !ShowTiles && !ViewRect.Shows(GridConversions.CellToWorld(Entity.Cell)))
+            {
+                if (_badge != null && _badge.Visible)
+                {
+                    _badge.Visible = false;
+                }
+                return;
+            }
             SyncToEntity();
             RefreshBadge((float)delta);
             Animate((float)delta);
@@ -364,6 +375,53 @@ namespace GolemFactory.Nodes
         private static readonly Dictionary<(string stem, GolemFrameKey key), string> ResolvedFrames =
             new Dictionary<(string, GolemFrameKey), string>();
 
+        // Every body picture, loaded once and held: a golem first drawn mid-run (off screen until
+        // then, region-design §4) read and uploaded its frame inside a frame, a 20 ms hitch.
+        private static readonly Dictionary<string, Texture2D> BodyTextures = new Dictionary<string, Texture2D>();
+
+        /// <summary>How many body pictures are loaded and held, for a scenario.</summary>
+        public static int WarmBodyTextures => BodyTextures.Count;
+
+        /// <summary>
+        /// Resolves and loads every chassis's 28 frames (and the fallback) before the first golem
+        /// is drawn, so no frame ever reads a picture from disk. Called once by the world's node.
+        /// </summary>
+        public static void WarmFrames(IEnumerable<ChassisDefinition> chassis)
+        {
+            Body(GolemFrames.FallbackSprite);
+            foreach (ChassisDefinition c in chassis)
+            {
+                string stem = GolemFrames.Stem(c.chassisSprite);
+                foreach (Facing facing in Diagnostics.ArtGallery.Facings)
+                {
+                    foreach (GolemFrameKey key in Diagnostics.ArtGallery.FramesOf(facing))
+                    {
+                        Body(ResolveFrame(stem, key));
+                    }
+                }
+            }
+        }
+
+        private static string ResolveFrame(string stem, GolemFrameKey key)
+        {
+            if (!ResolvedFrames.TryGetValue((stem, key), out string sprite))
+            {
+                sprite = GolemFrames.Resolve(stem, key, name => ResourceLoader.Exists("res://art/" + name));
+                ResolvedFrames[(stem, key)] = sprite;
+            }
+            return sprite;
+        }
+
+        private static Texture2D Body(string sprite)
+        {
+            if (!BodyTextures.TryGetValue(sprite, out Texture2D texture))
+            {
+                texture = GD.Load<Texture2D>("res://art/" + sprite);
+                BodyTextures[sprite] = texture;
+            }
+            return texture;
+        }
+
         /// <summary>The frame GolemFrames picked this frame (a diagnostic for scenarios).</summary>
         public GolemFrameKey DrawnFrame { get; private set; }
 
@@ -400,17 +458,13 @@ namespace GolemFactory.Nodes
             GolemFrameKey key = PinnedFrame ?? GolemFrames.FrameFor(_mood, motion, phase, carried, _time, Entity.Facing);
             DrawnFrame = key;
 
-            if (!ResolvedFrames.TryGetValue((stem, key), out string sprite))
-            {
-                sprite = GolemFrames.Resolve(stem, key, name => ResourceLoader.Exists("res://art/" + name));
-                ResolvedFrames[(stem, key)] = sprite;
-            }
+            string sprite = ResolveFrame(stem, key);
             if (sprite == _bodySprite)
             {
                 return;
             }
             _bodySprite = sprite;
-            _body.Texture = GD.Load<Texture2D>("res://art/" + sprite);
+            _body.Texture = Body(sprite);
             GridConversions.StandOnCell(_body);
         }
 

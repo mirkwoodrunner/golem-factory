@@ -74,11 +74,14 @@ namespace GolemFactory.Tests.Supply
         [Test]
         public void TheStreet_HasSeventeenSpots_AllRopedButTheScrapCart()
         {
-            CollectionAssert.AreEqual(Enumerable.Range(0, 17).Select(i => -32 + 4 * i), Street.Spots.Select(s => s.Cell.x));
-            Assert.IsTrue(Street.Spots.All(s => s.Cell.y == -16), "one row");
+            // The street's own; the Docks' quay adds eight more past its end (region-design §2).
+            List<CartSpot> street = Street.Spots.Where(s => !Docks.IsQuaySpot(s.Cell)).ToList();
+            CollectionAssert.AreEqual(Enumerable.Range(0, 17).Select(i => -32 + 4 * i), street.Select(s => s.Cell.x));
+            Assert.IsTrue(street.All(s => s.Cell.y == -16), "one row");
+            Assert.AreEqual(8, Street.Spots.Count(s => Docks.IsQuaySpot(s.Cell)), "the quay's eight");
             Assert.AreEqual(new[] { -8 }, Street.Spots.Where(s => !s.IsEmpty).Select(s => s.Cell.x).ToArray(),
                 "the starting Scrap cart, and every other spot roped off");
-            Assert.IsTrue(Street.Spots.All(s => FloorLayout.IsInsideWorld(s.Cell)), "every spot is on the street");
+            Assert.IsTrue(street.All(s => FloorLayout.IsInsideWorld(s.Cell)), "every street spot is on the street");
             Assert.AreEqual(1, _world.Markers.Count, "a marker for the one cart");
         }
 

@@ -555,6 +555,29 @@ namespace GolemFactory.Nodes
         public override void _Process(double delta)
         {
             using var perf = NodePerf.Measure("node.buildings");
+            // A boiler's glow and a pipe's heat are the steam's state, kept current on screen or
+            // off: both are cheap, and the `golems` scenario reads them anywhere.
+            if (_glow != null)
+            {
+                RefreshGlow();
+            }
+            if (_pipe != null)
+            {
+                // Hot or cold follows the boilers' Coke, which no shape change reports: the
+                // picture is refreshed when it turns (a shape change refreshes it already).
+                bool hot = PipeIsHot();
+                if (hot != _pipeHot)
+                {
+                    _pipeHot = hot;
+                    RefreshShape();
+                }
+            }
+            // Off screen, the animation skips (region-design §4) and catches up in view. A
+            // demolition still runs, so the building is gone when the camera comes back.
+            if (_demolishAge < 0f && !ViewRect.Shows(GlobalPosition))
+            {
+                return;
+            }
             UpdateFeel((float)delta);
             if (_crate != null)
             {
@@ -572,21 +595,6 @@ namespace GolemFactory.Nodes
             {
                 // The wheel turns while the bench makes progress (HandCrankBench.SpriteFor).
                 SetSprite(_bench.SpriteFor(_entry?.Sprite ?? "ghost_placeholder"), centred: false);
-            }
-            if (_glow != null)
-            {
-                RefreshGlow();
-            }
-            if (_pipe != null)
-            {
-                // Hot or cold follows the boilers' Coke, which no shape change reports: the
-                // picture is refreshed when it turns (a shape change refreshes it already).
-                bool hot = PipeIsHot();
-                if (hot != _pipeHot)
-                {
-                    _pipeHot = hot;
-                    RefreshShape();
-                }
             }
             if (_belt?.Segment != null)
             {

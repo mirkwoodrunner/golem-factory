@@ -57,6 +57,38 @@ namespace GolemFactory.World
         /// rare accent tiles (brass plate, grate), which are workshop fittings and would read as
         /// debris in the road.
         /// </summary>
+        /// <summary>
+        /// The Docks' edges once open (docs/region-design.md §1): kerbs along the lane's two sides and
+        /// the quay's water edge, a side wall up the floor's east flank and up its west flank north
+        /// of the lane, and a kerb along its north row (moved north as rows are bought).
+        /// </summary>
+        public static IEnumerable<LayoutPiece> LaneEdges()
+        {
+            // Drawn shut or open: the lane is paved from the start, its gate roped.
+            for (int x = Docks.LaneWest; x < Docks.West; x++)
+            {
+                yield return new LayoutPiece("DocksLaneNorth_" + x, "street_edge", new Vector2(x, Docks.LaneTop + 0.5f));
+                yield return new LayoutPiece("DocksLaneSouth_" + x, "street_edge", new Vector2(x, Docks.Bottom - 0.5f));
+            }
+        }
+
+        public static IEnumerable<LayoutPiece> DocksEdges(int docksNorth)
+        {
+            for (int x = Docks.West; x <= Docks.East; x++)
+            {
+                yield return new LayoutPiece("DocksQuay_" + x, "street_edge", new Vector2(x, Docks.Bottom - 0.5f));
+                yield return new LayoutPiece("DocksNorth_" + x, "street_edge", new Vector2(x, docksNorth + 0.5f));
+            }
+            for (int y = Docks.Bottom; y <= docksNorth; y++)
+            {
+                yield return new LayoutPiece("DocksEast_" + y, "wall_side_e", new Vector2(Docks.East + 0.5f, y));
+                if (y > Docks.LaneTop)
+                {
+                    yield return new LayoutPiece("DocksWest_" + y, "wall_side_w", new Vector2(Docks.West - 0.5f, y));
+                }
+            }
+        }
+
         public static int StreetTileVariant(Vector2Int cell, int variantCount = 2) =>
             Mod(cell.x * 5 + cell.y * 3, variantCount);
 
@@ -72,7 +104,7 @@ namespace GolemFactory.World
         /// height (down the street too), while the skirting stops where the plank deck does.
         /// </para>
         /// </summary>
-        public static List<LayoutPiece> Walls(int northExtent = FloorLayout.DefaultNorthExtent)
+        public static List<LayoutPiece> Walls(int northExtent = FloorLayout.DefaultNorthExtent, int docksNorth = Docks.Closed)
         {
             int he = FloorLayout.HalfExtent;
             int depth = FloorLayout.StreetDepth;
@@ -80,8 +112,14 @@ namespace GolemFactory.World
 
             foreach (int index in FloorLayout.GetWorldEdgeIndices(he, depth, northExtent))
             {
-                pieces.Add(new LayoutPiece("WallEast_" + index, "wall_side_e",
-                    FloorLayout.GetWorldEdgeAnchor(FloorLayout.Edge.East, index, he, depth, northExtent)));
+                // The street's east wall opens onto the Docks' lane, whose gate is roped until
+                // they open (docs/region-design.md §1).
+                bool lane = index < -he;
+                if (!lane)
+                {
+                    pieces.Add(new LayoutPiece("WallEast_" + index, "wall_side_e",
+                        FloorLayout.GetWorldEdgeAnchor(FloorLayout.Edge.East, index, he, depth, northExtent)));
+                }
                 pieces.Add(new LayoutPiece("WallWest_" + index, "wall_side_w",
                     FloorLayout.GetWorldEdgeAnchor(FloorLayout.Edge.West, index, he, depth, northExtent)));
             }
@@ -118,6 +156,20 @@ namespace GolemFactory.World
             for (int x = -TownSquare.HalfExtent; x <= TownSquare.HalfExtent; x++)
             {
                 pieces.Add(new LayoutPiece("KerbSquare_" + x, "street_edge", new Vector2(x, TownSquare.Bottom - 0.5f)));
+            }
+
+            pieces.AddRange(LaneEdges());
+            if (docksNorth != Docks.Closed)
+            {
+                pieces.AddRange(DocksEdges(docksNorth));
+            }
+            else
+            {
+                // While shut, the lane's far end is the world's edge.
+                for (int y = Docks.Bottom; y <= Docks.LaneTop; y++)
+                {
+                    pieces.Add(new LayoutPiece("DocksLaneEnd_" + y, "wall_side_e", new Vector2(Docks.West - 0.5f, y)));
+                }
             }
 
             // The shoulders: the building's south face where it is no longer the world's edge.

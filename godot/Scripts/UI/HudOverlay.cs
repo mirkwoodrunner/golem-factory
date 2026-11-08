@@ -69,6 +69,11 @@ namespace GolemFactory.Nodes
 
         private Control _contract;
         private Label _contractText;
+        private Control _region;
+        private Label _regionText;
+
+        /// <summary>The HUD's region plate as drawn, empty outside the Docks; for scenarios.</summary>
+        public string RegionLine => _region != null && _region.Visible ? _regionText.Text : "";
 
         /// <summary>The HUD's contract line as drawn, empty while none is up; for scenarios.</summary>
         public string ContractLine => _contract != null && _contract.Visible ? _contractText.Text : "";
@@ -143,6 +148,15 @@ namespace GolemFactory.Nodes
             _contractText = Ugui.Place(Ugui.Text("ContractText", "", 13, ManagementScreen.ItemNameInk), 0f, 0f, 1f, 1f, 0f, 0f, -16f, -4f);
             _contractText.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
             _contract.AddChild(_contractText);
+
+            // The region's name while the player stands in the Docks (docs/region-design.md §5),
+            // top centre under the clock bar, clear of the alerts strip and the right-hand panels.
+            _region = Ugui.Place(Ugui.Rect("RegionPlate", Plate), 0.5f, 1f, 0.5f, 1f, 0f, -80f, 160f, 28f, 0.5f, 1f);
+            _root.AddChild(_region);
+            _regionText = Ugui.Place(Ugui.Text("RegionText", "", 15, Amber), 0f, 0f, 1f, 1f, 0f, 0f, 0f, 0f);
+            _regionText.HorizontalAlignment = HorizontalAlignment.Center;
+            _region.AddChild(_regionText);
+            _region.Visible = false;
 
             BuildControlBar();
         }
@@ -273,6 +287,10 @@ namespace GolemFactory.Nodes
             string contract = GolemFactory.Contracts.ContractText.HudLine(_world.Sandbox.Contracts);
             _contractText.Text = contract;
             _contract.Visible = contract.Length > 0;
+
+            string region = GolemFactory.World.Docks.RegionName(_world.Sandbox.Interactor.PlayerCell, _world.Sandbox.Bounds.DocksNorth);
+            _regionText.Text = region;
+            _region.Visible = region.Length > 0;
 
             if (_world.Sandbox.Creative)
             {

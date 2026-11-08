@@ -216,6 +216,7 @@ flags and kit are as built (`TutorialGuide.cs`, `TutorialGuide.Kit.cs`, `crates-
 | `program-zeppelin` | 9 | kept | `Program.Matches` | none | `Workbench`; `Program` | `PerformPlan` |
 | `launch` | 9 | kept | the Zeppelin cycled since entry | spot `ZeppelinSpot` + facing | | `SetPlacement` |
 | `mast-collect` | 9 | kept | a mast's crate gave Copper Ore | the mast | | `TryCollect`, retried |
+| `docks` | 9 | new (region-design §3) | the player stands on the Docks' floor | the gate | | `Teleport` there and back |
 | `tower-visit` | 10 | kept | the player is in the town square | the tower | | `Teleport` |
 | `frame-section` | 10 | kept | … Frame Section | none | `Card`; `Workbench` | `MakeGood` |
 | `tower-feed` | 10 | kept | the tower's Frame Section rate > 0 | the tower | | a push into the tower's endpoint |

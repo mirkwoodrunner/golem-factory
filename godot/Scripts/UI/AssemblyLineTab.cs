@@ -143,6 +143,9 @@ namespace GolemFactory.Nodes
                     case AssemblyLineRowKind.Pack:
                         button.Pressed += () => _board.UpgradePack();
                         break;
+                    case AssemblyLineRowKind.Docks:
+                        button.Pressed += () => _board.ExtendDocks();
+                        break;
                 }
                 line.AddChild(button);
             }

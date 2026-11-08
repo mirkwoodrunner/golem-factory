@@ -571,7 +571,15 @@ namespace GolemFactory.Tests.Tutorial
                 "the ore it flew landed in the mast's own crate");
             Assert.AreEqual("mast-collect", StepId(world), "landing is not collecting");
             Assert.IsTrue(world.Interactor.TryCollect(mast), world.Interactor.LastStatusMessage);
-            Assert.AreEqual("tower-visit", StepId(world), "collected from the mast");
+            Assert.AreEqual("docks", StepId(world), "collected from the mast");
+
+            // The Docks opened with the Zeppelin (region-design §3): walking onto them is the step.
+            Assert.AreEqual(Docks.StartNorth, world.Bounds.DocksNorth, "open");
+            Assert.AreEqual(Docks.GateCell, world.Tutorial.TargetCell, "the arrow points at the gate");
+            world.Interactor.Position = new Compat.Vector3(Docks.West + 3, Docks.Bottom + 3, 0f);
+            world.Advance(1f / 30f);
+            Assert.AreEqual("tower-visit", StepId(world), "walked onto the Docks");
+            world.Interactor.Position = new Compat.Vector3(0f, 0f, 0f);
 
             // --- Chapter 10: the Clock Tower -------------------------------------------------------
             Assert.IsTrue(world.ClockTower.Site.IsOpen, "the Zeppelin took the rope down");
@@ -1641,7 +1649,7 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual("mast-collect", StepId(world), "landing is not unloading");
 
             Assert.IsTrue(world.Interactor.TryCollect(mast));
-            Assert.AreEqual("tower-visit", StepId(world));
+            Assert.AreEqual("docks", StepId(world), "on to the Docks, which the Zeppelin opened");
         }
 
         [Test]

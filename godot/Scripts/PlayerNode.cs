@@ -128,6 +128,7 @@ namespace GolemFactory.Nodes
 
             FloorBounds bounds = WorldNode.Find(this)?.Bounds ?? new FloorBounds();
             _walker.SetNorthExtent(bounds.NorthExtent);
+            _walker.DocksNorth ??= () => bounds.DocksNorth; // the world's own bounds: no tree search a step
             _walker.MoveBy(new CoreVector2(input.X, input.Y), (float)delta);
             Position = ToPixels(_walker.Position);
             _sprite.Texture = _frames[_walker.SpriteIndex];

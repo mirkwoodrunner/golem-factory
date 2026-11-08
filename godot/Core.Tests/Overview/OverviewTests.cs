@@ -250,7 +250,8 @@ namespace GolemFactory.Tests.Overview
                 Assert.AreEqual(built, map.Marks.Count(m => m.Kind != MapMarkKind.Golem && m.Kind != MapMarkKind.Player
                     && m.Kind != MapMarkKind.Cart && m.Kind != MapMarkKind.Spot && m.Kind != MapMarkKind.Tower));
                 Assert.AreEqual(world.Supply.Carts.Count(), map.Marks.Count(m => m.Kind == MapMarkKind.Cart));
-                Assert.AreEqual(world.Supply.Spots.Count - world.Supply.Carts.Count(), map.Marks.Count(m => m.Kind == MapMarkKind.Spot));
+                Assert.AreEqual(world.Supply.Spots.Count(s => s.IsEmpty && world.Supply.IsOpen(s)), map.Marks.Count(m => m.Kind == MapMarkKind.Spot),
+                    "every empty spot that can take a cart: the Docks' quay only once they open");
                 Assert.IsTrue(map.Marks.Where(m => m.Kind == MapMarkKind.Cart).All(m => m.Label.EndsWith(" cart")), "a cart is named a cart");
                 Assert.AreEqual(1, map.Marks.Count(m => m.Kind == MapMarkKind.Tower));
                 Assert.AreEqual(1, map.Marks.Count(m => m.Kind == MapMarkKind.Player));

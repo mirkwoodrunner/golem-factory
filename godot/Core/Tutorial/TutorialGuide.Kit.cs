@@ -350,6 +350,14 @@ namespace GolemFactory.Tutorial
                 }
                 _world.Interactor.Teleport(back);
             },
+            // Walks through the gate onto the Docks and back to where it stood.
+            ["docks"] = () =>
+            {
+                Compat.Vector3 back = _world.Interactor.Position;
+                _world.Interactor.Teleport(new Compat.Vector3(Docks.West + 2, Docks.Bottom + 4, 0f));
+                _world.Tutorial.Update();
+                _world.Interactor.Teleport(back);
+            },
             ["tower-visit"] = () =>
                 _world.Interactor.Teleport(new Compat.Vector3(TownSquare.TowerCentre.x, TownSquare.TowerCentre.y - 3, 0f)),
             ["frame-section"] = () => MakeGood("AssembleFrameSection", ItemType.FrameSection, 12),

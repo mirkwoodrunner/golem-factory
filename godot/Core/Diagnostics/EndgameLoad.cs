@@ -169,6 +169,12 @@ namespace GolemFactory.Diagnostics
             }
             while (world.AssemblyBay.MaxGolemSlots < spec.Golems + world.AssemblyBay.OccupiedSlots)
             {
+                // The campaign's tiers stop short of the cap until the tower stands; a load measures
+                // the frame, not the progression, so it lifts them too.
+                if (world.AssemblyBay.IsMaxed)
+                {
+                    world.AssemblyBay.ConfigureTiers(0, null);
+                }
                 Grant(world, world.AssemblyBay.UpgradeCost);
                 Require(world.AssemblyBay.TryUpgrade(world.Buffers, world.StockpileBufferId, SandboxWorld.PostBufferId), "bay upgrade");
             }

@@ -91,8 +91,9 @@ Current scenarios:
   `critique-hover-feeder`); once S wakes, "brings it" without the clause.
 - `font-glyphs`: the project font covers printable Latin-1 plus → ≥ █ ░.
 - `perf` (Sandbox): the endgame profile (`docs/performance-report-template.md` §4). Core's
-  `Diagnostics/EndgameLoad` builds 96 golems, 500 belt items and 12 boilers; six phases of
-  1,200 frames (flowing at 1× and 4×, starved, hover, unlit, world drawing hidden) are timed with
+  `Diagnostics/EndgameLoad` builds 96 golems, 500 belt items and 12 boilers; seven phases of
+  1,200 frames (flowing at 1× and 4×, starved, hover, unlit, world drawing hidden, and flowing at
+  the farthest zoom, where off-screen skipping saves least) are timed with
   `SandboxWorld.Perf` (Core's sections) and `NodePerf` (the nodes'). Windowed it must hold frame
   p95 ≤ 16.6 ms and max ≤ 33.3 ms, and the lighting (flowing-1x less unlit render CPU p95)
   ≤ 1.0 ms; headless, Core's share p95 ≤ 6 ms. One `[perf]` line a
@@ -217,6 +218,13 @@ Current scenarios:
   first stage's goods pushed into the site build it, and the HUD moves on to its second.
   Captures `endless-rungs`, `endless-cart`, `endless-contract`, `endless-won`,
   `endless-overview`, `endless-civic`.
+- `docks` (Sandbox): the Docks (`docs/region-design.md`) with real keys and clicks. D east down
+  the street stops at its end, the gate roped and no region named. A Zeppelin in the Ledger opens
+  the gate and paves the Docks; D walks down the lane onto them and the HUD's plate names them.
+  At a quay spot the prompt offers a cart, E opens the panel and a click adds a Coal barge. The
+  Assembly Line tab's Docks row's Extend buys two rows, paved at once. Saved to Slot 1, the barge
+  removed and the rows taken back, loaded with two clicks: both as saved. Captures `docks-gate`,
+  `docks-open`, `docks-quay`.
 - `perf` also takes `--perf-golems=N` (a load of N golems in the endgame's proportions) and
   `--perf-load=endless` (160), for measuring the golem cap (`docs/performance-report-endless.md`).
 

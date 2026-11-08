@@ -1,6 +1,7 @@
 # A second region: the Docks
 
-**Status: approved 2026-11-07 with the user's answers in §6.** The roadmap's next depth addition
+**Status: approved 2026-11-07 with the user's answers in §6; built (§7 records where the build
+differs from the proposal).** The roadmap's next depth addition
 after Phase 8 (decision 12: "a second region and selling golems wait"), chosen by the user on
 2026-11-07. Written before the code, like the Phase 8 docs, with its invariants first.
 
@@ -114,6 +115,36 @@ still run their per-frame work (about 2.4 ms and 1.9 ms at 160 golems). Proposed
    line, launch a Zeppelin to the workshop, save and load. Frames looked at.
 7. The docs it amends (`endless-design.md` §2, `guide-chapters-design.md`, root `CLAUDE.md`'s
    scenario list).
+
+## 7. As built
+
+- **Core:** `Core/World/Docks.cs` holds the layout (lane x 35..39 on y −20..−13, floor x 40..64
+  from y −20, opening at north −4 and bought to 8, two rows a purchase, six purchases in
+  `data/sandbox.json`'s `docks`) and `DocksExpansionService`. `FloorBounds` keeps the Docks' north
+  row (`Docks.Closed` while shut) and opens it through its `DocksGate`, which `SandboxWorld` wires
+  to the Ledger's Zeppelin (or Creative). Walking (`PlayerWalker.DocksNorth`), building
+  (`FloorBounds.IsGround`) and the clamp (`FloorLayout.ClampToFloor`) all read it. Saves keep
+  `progress.docksRows`; a save without it loads with the Docks shut until a Zeppelin is seen.
+- **The quay** is eight spots at x 43..64, **pitch 3**, not 2: a cart's art is wider than two
+  cells. They join the supply street's spots; `SupplyStreet.SpotOpen` refuses one ("Roped off
+  until the Docks open.") and the map, the spot views, the overview and the player's targeting
+  skip them while shut; the world refreshes the targets the frame the Docks open or grow.
+- **The gate is drawn only** (`DocksGateView`, open and roped pictures), never a fixture, so belts
+  and pipes run down the lane. It stands at the lane's mouth (x 35), where a player walking east
+  stops while it is roped. The lane is paved and kerbed from the start, its far end walled while
+  shut; walking and building there stay gated in Core. Open, the shell edges the Docks
+  (`SandboxLayout.DocksEdges`) and the floor paints them in cobbles over harbour water.
+- **The rows** are bought from the Assembly Line tab's Docks row (Extend), beside the floor's.
+- **The HUD** names the region in a plate at the top while the player stands on the Docks' floor.
+- **The guide's step** `docks` follows `mast-collect` in chapter 9; its check is standing on the
+  floor, and the kit walks there and back. Nothing after it needs the Docks.
+- **Off screen**, golem and building nodes skip their per-frame presentation (`ViewRect`, three
+  cells past the screen's edge); a carried, hovered or tile-showing golem never skips. The `perf`
+  scenario adds a `flowing-far` phase at the farthest zoom. Re-measured, **the cap stays 112**:
+  the p95s hold to 144, but single frames over 33.3 ms remain past 112
+  (`performance-report-endless.md` §5, with the three spikes fixed on the way).
+- **Not built:** step 6's Zeppelin launch between the regions is the existing mast and Zeppelin,
+  untouched; the `docks` scenario covers the walk, the barge, a row, and a save.
 
 ## 6. Questions for the user
 

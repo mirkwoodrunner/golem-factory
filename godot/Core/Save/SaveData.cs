@@ -193,6 +193,9 @@ namespace GolemFactory.Save
         /// overview's running total. Absent in an older save, so 0: that game counts from its load.
         /// </summary>
         public long goodsMadeEver;
+
+        /// <summary>Rows bought north of the Docks' opening floor (docs/region-design.md). Absent in an older save: 0.</summary>
+        public int docksRows;
         public int floorNorthExtent;
         public int assemblyBayTier = 1;
 

@@ -80,6 +80,13 @@ namespace GolemFactory.Nodes.Scenarios
         /// </summary>
         public static bool Endless => OS.GetCmdlineUserArgs().Contains("--perf-load=endless");
 
+        /// <summary><c>--perf-no-skip</c>: off-screen nodes draw as if on screen, to measure what skipping saves.</summary>
+        public static bool NoSkip => OS.GetCmdlineUserArgs().Contains("--perf-no-skip");
+
+        // A frame over the max budget is logged (at most this many a phase) with what it spent.
+        private const int SpikesLogged = 4;
+        private int _spikes;
+
         /// <summary><c>--perf-golems=N</c>: a load of N golems in the endgame's proportions (<see cref="EndgameLoadSpec.ForGolems"/>).</summary>
         public static int? Golems
         {
@@ -111,6 +118,7 @@ namespace GolemFactory.Nodes.Scenarios
                 _failure = "load: " + e.Message;
                 return;
             }
+            ViewRect.Enabled = !NoSkip;
             _perf = new PerfSampler();
             _world.Perf = _perf;
             NodePerf.Sampler = _perf;
@@ -122,6 +130,9 @@ namespace GolemFactory.Nodes.Scenarios
             _phases.Add(new Phase { Name = "hover", Enter = HoverAWaitingGolem });
             _phases.Add(new Phase { Name = "unlit", Enter = () => { Flowing(1f); Light(false); } });
             _phases.Add(new Phase { Name = "no-draw", Enter = () => { Flowing(1f); Light(true); DrawWorld(false); } });
+            // The farthest zoom, the most of the factory on screen at once: what bounds the golem
+            // cap once off-screen nodes skip their presentation (docs/region-design.md §4).
+            _phases.Add(new Phase { Name = "flowing-far", Enter = () => { DrawWorld(true); Flowing(1f); ZoomFarthest(); } });
         }
 
         // --- Phases -------------------------------------------------------------------------
@@ -137,6 +148,13 @@ namespace GolemFactory.Nodes.Scenarios
             if (_load.Starved)
             {
                 _load.Refill();
+            }
+        }
+
+        private void ZoomFarthest()
+        {
+            while (_world.Camera.ZoomStep(-1))
+            {
             }
         }
 
@@ -267,6 +285,7 @@ namespace GolemFactory.Nodes.Scenarios
             _frame++;
             if (_frame == WarmupFrames)
             {
+                _spikes = 0;
                 if (!CheckBeforeMeasuring(phase))
                 {
                     return new ScenarioResult(false, _failure);
@@ -277,6 +296,16 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 phase.Frames++;
                 phase.FrameMs.Add(frameMs);
+                if (frameMs > 33.3 && _spikes < SpikesLogged)
+                {
+                    _spikes++;
+                    Rid vp = _viewport.GetViewportRid();
+                    string heavy = string.Join(" ", _perf.Sections.Where(s => s.LastFrameMs > 2.0).Select(s => $"{s.Name}={s.LastFrameMs:F1}"));
+                    GD.Print($"[perf] spike phase={phase.Name} frame={phase.Frames} ms={frameMs:F1} process={Performance.GetMonitor(Performance.Monitor.TimeProcess) * 1000.0:F1} "
+                        + $"render_cpu={RenderingServer.ViewportGetMeasuredRenderTimeCpu(vp):F1} "
+                        + $"gc={GC.CollectionCount(0) - _gcSeen[0]}/{GC.CollectionCount(1) - _gcSeen[1]}/{GC.CollectionCount(2) - _gcSeen[2]} "
+                        + $"gc_pause={(GC.GetTotalPauseDuration() - _gcPauseSeen).TotalMilliseconds:F1} {heavy}");
+                }
                 phase.CoreMs.Add(Last(PerfSampler.Tick) + Last(PerfSampler.Mood) + Last(PerfSampler.Strip) + Last(PerfSampler.Hover));
                 phase.ProcessMs.Add(Performance.GetMonitor(Performance.Monitor.TimeProcess) * 1000.0);
                 Rid viewport = _viewport.GetViewportRid();
@@ -286,9 +315,16 @@ namespace GolemFactory.Nodes.Scenarios
                 phase.Objects = Math.Max(phase.Objects, Performance.GetMonitor(Performance.Monitor.RenderTotalObjectsInFrame));
                 phase.Nodes = Performance.GetMonitor(Performance.Monitor.ObjectNodeCount);
             }
+            _gcSeen[0] = GC.CollectionCount(0);
+            _gcSeen[1] = GC.CollectionCount(1);
+            _gcSeen[2] = GC.CollectionCount(2);
+            _gcPauseSeen = GC.GetTotalPauseDuration();
             _perf.BeginFrame();
             return null;
         }
+
+        private readonly int[] _gcSeen = new int[3];
+        private TimeSpan _gcPauseSeen;
 
         private double Last(string section) => _perf.Has(section) ? _perf.Get(section).LastFrameMs : 0.0;
 

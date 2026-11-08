@@ -193,6 +193,11 @@ namespace GolemFactory.Tests.EditMode
             {
                 Add("floor expansion " + (n + 1), purchases[n]);
             }
+            List<List<RecipeIngredient>> docks = world.Setup.docks?.purchases ?? new List<List<RecipeIngredient>>();
+            for (int n = 0; n < docks.Count; n++)
+            {
+                Add("docks rows " + (n + 1), docks[n]);
+            }
             for (int k = 0; k < Rungs.Count; k++)
             {
                 Add("pack rung " + (k + 1), Rungs[k].cost, k);

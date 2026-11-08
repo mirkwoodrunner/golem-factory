@@ -25,7 +25,7 @@ namespace GolemFactory.Tests.World
         private static int CountPrefix(IEnumerable<LayoutPiece> pieces, string prefix) =>
             pieces.Count(p => p.Name.StartsWith(prefix + "_"));
 
-        [TestCase("WallEast", 33)]
+        [TestCase("WallEast", 25)] // 33, less the street's 8 rows the Docks' lane opens (region-design §1)
         [TestCase("WallWest", 33)]
         [TestCase("WallNorth", 25)]
         [TestCase("SkirtSouth", 25)]
@@ -61,7 +61,8 @@ namespace GolemFactory.Tests.World
         [TestCase("WallNorth_0", 0f, 12.5f)]
         [TestCase("WallNorth_4", 4f, 12.5f)]
         [TestCase("WallEast_0", 12.5f, 0f)]
-        [TestCase("WallEast_-20", 34.5f, -20f)] // the street's east end, at ±34 since supply carts
+        [TestCase("WallWest_-20", -34.5f, -20f)] // the street's west end, at ±34 since supply carts; its east end opens onto the Docks' lane
+        [TestCase("DocksLaneSouth_35", 35f, -20.5f)]
         [TestCase("WallWest_12", -12.5f, 12f)]
         [TestCase("SkirtSouth_0", 0f, -12.5f)]
         [TestCase("KerbStreet_-18", -18f, -20.5f)]

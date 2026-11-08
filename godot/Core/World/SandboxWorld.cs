@@ -74,6 +74,9 @@ namespace GolemFactory.World
         /// <summary>The pack's cap ladder (docs/pack-upgrades-design.md): the Assembly Line tab's Pack row.</summary>
         public PackUpgradeService PackUpgrade { get; } = new PackUpgradeService();
 
+        /// <summary>The Docks' floor rows (docs/region-design.md §1).</summary>
+        public DocksExpansionService DocksExpansion { get; } = new DocksExpansionService();
+
         public FloorBounds Bounds { get; private set; } = new FloorBounds();
         public DefinitionSet Definitions { get; private set; }
         public SandboxSetup Setup { get; private set; }
@@ -244,6 +247,11 @@ namespace GolemFactory.World
                 FloorExpansion.ConfigureCost(setup.floorExpansion.purchases, setup.floorExpansion.rowsPerPurchase);
             }
             PackUpgrade.Configure(Buffers, _stockpileBufferId, PostBufferId, setup.packCapacityPerType, setup.packUpgrades);
+            // The Docks open with the first Zeppelin, as the tower's rope comes down (region-design §3);
+            // in Creative from the start.
+            Bounds.DocksGate = () => Creative || TechTree.Ledger.HasChassis(ZeppelinChassis);
+            DocksExpansion.Configure(Bounds, Buffers, _stockpileBufferId, PostBufferId,
+                setup.docks?.purchases.Select(c => (IReadOnlyList<RecipeIngredient>)c).ToList(), setup.docks?.rowsPerPurchase ?? 2);
             PackUpgrade.EndlessOpen = () => EndlessOpen;
             if (setup.assemblyBays != null)
             {
@@ -279,6 +287,12 @@ namespace GolemFactory.World
             {
                 ladder.EndlessOpen = () => EndlessOpen;
             }
+            // The quay's barges: eight spots of the street's own kind, open with the Docks.
+            foreach (Vector2Int cell in Docks.QuaySpots())
+            {
+                Supply.AddSpot(cell);
+            }
+            Supply.SpotOpen = spot => !Docks.IsQuaySpot(spot.Cell) || Bounds.DocksOpen;
 
             WireBuildMode();
             RaiseClockTower();
@@ -387,6 +401,7 @@ namespace GolemFactory.World
             AssemblyLineBoard = new AssemblyLineBoard(AssemblyLine, Buffers, _stockpileBufferId, setup.claimUserId, PostBufferId);
             AssemblyLineBoard.ConfigureBays(AssemblyBay, _stockpileBufferId);
             AssemblyLineBoard.ConfigureFloorExpansion(FloorExpansion);
+            AssemblyLineBoard.ConfigureDocks(DocksExpansion);
             AssemblyLineBoard.ConfigurePackUpgrade(PackUpgrade);
             AssemblyLineBoard.ConfigureSeen(item => TechTree.Ledger.HasItem(item));
             AssemblyLineBoard.ConfigurePostShown(() => TechTree.Ledger.HasBuilding(TechTreeCatalog.BuildingPneumaticPost));
@@ -841,6 +856,7 @@ namespace GolemFactory.World
             {
                 ledgerTowerStages = TechTree.Ledger.CompletedTowerStages,
                 goodsMadeEver = GoodsMadeEver,
+                docksRows = Bounds.DocksRows,
                 floorNorthExtent = Bounds.NorthExtent,
                 assemblyBayTier = AssemblyBay.Tier,
                 packUpgradeTier = PackUpgrade.Tier,
@@ -903,6 +919,7 @@ namespace GolemFactory.World
 
             AssemblyBay.RestoreTier(progress.assemblyBayTier);
             FloorExpansion.Restore(progress.floorNorthExtent);
+            Bounds.RestoreDocks(progress.docksRows);
             PackUpgrade.Restore(progress.packUpgradeTier);
 
             // The tower on its site (G10), a fixture the building list never holds.
@@ -1367,10 +1384,21 @@ namespace GolemFactory.World
         }
 
         /// <summary>Advances the simulation by real seconds (WorldNode calls this every frame).</summary>
+        private int _docksNorthSeen = int.MaxValue; // never a north row, so the first Advance refreshes
+
         public void Advance(float seconds)
         {
             Clock.Advance(seconds);
             InvalidateStallFacts();
+
+            // The Docks open when the Ledger records a Zeppelin, with no event of their own: the
+            // quay's spots become targets the frame it happens (docs/region-design.md §2).
+            int docksNorth = Bounds.DocksNorth;
+            if (docksNorth != _docksNorthSeen)
+            {
+                _docksNorthSeen = docksNorth;
+                Interactor.RefreshInteractables();
+            }
 
             // Unity's BufferThroughputMonitor and AlertsPanel ran on Update in real time, not on
             // simulation ticks: the rate column reads "per minute of the player's time", and

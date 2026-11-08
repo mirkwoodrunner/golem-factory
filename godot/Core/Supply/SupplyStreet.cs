@@ -285,8 +285,20 @@ namespace GolemFactory.Supply
 
         // --- Actions at a spot --------------------------------------------------------------------
 
+        /// <summary>
+        /// Whether a spot can take a cart now: every street spot; a quay spot only once the Docks
+        /// are open (docs/region-design.md §2). Null opens every spot.
+        /// </summary>
+        public Func<CartSpot, bool> SpotOpen { get; set; }
+
+        public bool IsOpen(CartSpot spot) => spot != null && (SpotOpen == null || SpotOpen(spot));
+
         public SupplyResult Add(CartSpot spot, string itemType)
         {
+            if (spot != null && !IsOpen(spot))
+            {
+                return SupplyResult.Refused("Roped off until the Docks open.");
+            }
             if (spot == null || !spot.IsEmpty)
             {
                 return SupplyResult.Refused("A cart already stands here.");

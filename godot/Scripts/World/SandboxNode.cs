@@ -32,6 +32,9 @@ namespace GolemFactory.Nodes
         /// <summary>The supply street's spots as drawn, in the street's order.</summary>
         public IReadOnlyList<CartSpotView> SpotViews => _spotViews;
 
+        /// <summary>The Docks' gate, for a scenario.</summary>
+        public DocksGateView Gate { get; private set; }
+
         public override void _EnterTree() => AddToGroup(GroupName);
 
         public override void _Ready()
@@ -44,6 +47,9 @@ namespace GolemFactory.Nodes
                 return;
             }
 
+            // Every golem picture loaded before the first golem is drawn (GolemNode.WarmFrames).
+            GolemNode.WarmFrames(_world.Sandbox.Definitions.Chassis.Values);
+
             // The supply street's spots (docs/supply-design.md §1), each drawn as its rope or its
             // cart. Kept by spot, never found by name.
             foreach (Supply.CartSpot spot in _world.Sandbox.Supply.Spots)
@@ -52,10 +58,15 @@ namespace GolemFactory.Nodes
                 {
                     Name = "CartSpot",
                     Position = GridConversions.CellToWorld(new Vector2I(spot.Cell.x, spot.Cell.y)),
+                    IsOpen = _world.Sandbox.Supply.IsOpen,
                 };
                 AddChild(view);
                 _spotViews.Add(view);
             }
+
+            // The Docks' gate at the street's end (docs/region-design.md §1).
+            Gate = new DocksGateView(_world.Sandbox.Bounds) { Name = "DocksGate" };
+            AddChild(Gate);
 
             if (setup.starterBench != null)
             {

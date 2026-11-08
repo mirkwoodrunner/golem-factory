@@ -124,7 +124,8 @@ stands"; at the cap, "the most the city allows". Tests: `Core.Tests/Economy/Endl
 the `endless` scenario.
 
 **Land is the hard limit.** The floor stops at `MaxNorthExtent` and the street at ±34. More land is
-the second region, which waits (roadmap). So endless growth is mostly **density and rates**: more
+the second region, the Docks (`region-design.md`, built since: a 25-wide floor bought north in
+rows, and a quay of eight more cart spots). So endless growth is mostly **density and rates**: more
 from each cart, golems that do more, carts upgraded rather than added.
 
 ## 3. What the player sees

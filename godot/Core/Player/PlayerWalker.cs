@@ -65,6 +65,9 @@ namespace GolemFactory.Player
         /// <summary>Moves the north wall the clamp respects (a Floor Expansion purchase).</summary>
         public void SetNorthExtent(int northExtent) => _northExtent = northExtent;
 
+        /// <summary>The Docks' north row as it stands now (<see cref="FloorBounds.DocksNorth"/>); null keeps them out of reach.</summary>
+        public System.Func<int> DocksNorth { get; set; }
+
         /// <summary>One frame: move by <paramref name="input"/>, clamp, then pick the frame.</summary>
         public void MoveBy(Compat.Vector2 input, float deltaTime)
         {
@@ -72,7 +75,8 @@ namespace GolemFactory.Player
             Compat.Vector3 next = Position + PlayerMovement.ComputeDisplacement(input, MoveSpeed, deltaTime);
             if (_bounded)
             {
-                next = FloorLayout.ClampToFloor(next, _boundsConverter, _halfExtent, _streetDepth, _northExtent);
+                next = FloorLayout.ClampToFloor(next, _boundsConverter, _halfExtent, _streetDepth, _northExtent,
+                    DocksNorth?.Invoke() ?? Docks.Closed);
             }
             Position = next;
 

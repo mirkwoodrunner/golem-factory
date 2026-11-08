@@ -1978,6 +1978,16 @@ namespace GolemFactory.Tutorial
                 w => MastBuilding?.Cell,
                 w => MastBuilding == null ? "" : InTheCrate(MastBuilding.Cell, ItemType.CopperOre)),
 
+            // The Docks open with the first Zeppelin (docs/region-design.md §3). The step only asks
+            // the player to walk there: nothing later needs the Docks, so the region stays optional.
+            new TutorialStep(
+                "docks", "The Docks",
+                "Your Zeppelin flew, and the city has opened the Docks at the street's east end. Walk down "
+                + "the street, through the gate, onto the Docks: more ground to build on, and a quay where "
+                + "barges bring raw goods.",
+                w => Docks.InFloor(_world.Interactor.PlayerCell, _world.Bounds.DocksNorth),
+                w => Docks.GateCell),
+
             // --- Chapter 10: the Clock Tower ------------------------------------------------------------
             // The endgame (G10, the user's call): the tower in the town square, roped off until a
             // Zeppelin flew, now open. It is built in stages, each demanding a steady RATE of a

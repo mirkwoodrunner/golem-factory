@@ -463,7 +463,16 @@ namespace GolemFactory.World
 
         public static Vector3 ClampToFloor(
             Vector3 worldPosition, GridCoordinateConverter converter,
-            int halfExtent, int streetDepth, int northExtent)
+            int halfExtent, int streetDepth, int northExtent) =>
+            ClampToFloor(worldPosition, converter, halfExtent, streetDepth, northExtent, Docks.Closed);
+
+        /// <summary>
+        /// With the Docks (docs/region-design.md): while they are open (<paramref name="docksNorth"/>
+        /// not <see cref="Docks.Closed"/>), their lane and floor are two more rectangles to be nearest.
+        /// </summary>
+        public static Vector3 ClampToFloor(
+            Vector3 worldPosition, GridCoordinateConverter converter,
+            int halfExtent, int streetDepth, int northExtent, int docksNorth)
         {
             // BOUNDS THE WORLD, NOT THE ROOM, and that is the point of the split. The player buys
             // raw goods at stalls out on the street, so a clamp at the workshop's south wall would
@@ -516,6 +525,15 @@ namespace GolemFactory.World
             if ((cellFraction - inSquare).sqrMagnitude < (cellFraction - nearest).sqrMagnitude)
             {
                 nearest = inSquare;
+            }
+
+            if (docksNorth != Docks.Closed)
+            {
+                Vector2 inDocks = Docks.Nearest(cellFraction, docksNorth);
+                if ((cellFraction - inDocks).sqrMagnitude < (cellFraction - nearest).sqrMagnitude)
+                {
+                    nearest = inDocks;
+                }
             }
 
             return converter.CellFractionToWorld(nearest);

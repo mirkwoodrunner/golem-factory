@@ -12,6 +12,18 @@
     { "capacityPerType": 300, "endless": true, "cost": [{ "itemType": "Mechanism", "quantity": 10 }, { "itemType": "Regulator", "quantity": 4 }] },
     { "capacityPerType": 350, "endless": true, "cost": [{ "itemType": "Mechanism", "quantity": 20 }, { "itemType": "Regulator", "quantity": 8 }] }
   ],
+  "docks": {
+    "_doc": "The Docks' floor (docs/region-design.md §1): two rows north a purchase, from y -4 to y 8. Priced in what a chapter 9 factory makes, within the pack it has then.",
+    "rowsPerPurchase": 2,
+    "purchases": [
+      [{ "itemType": "IronPlate", "quantity": 80 }, { "itemType": "Brass", "quantity": 20 }],
+      [{ "itemType": "IronPlate", "quantity": 120 }, { "itemType": "Casing", "quantity": 15 }],
+      [{ "itemType": "Brass", "quantity": 60 }, { "itemType": "Casing", "quantity": 25 }],
+      [{ "itemType": "Casing", "quantity": 40 }, { "itemType": "Mainspring", "quantity": 6 }],
+      [{ "itemType": "Casing", "quantity": 60 }, { "itemType": "Mainspring", "quantity": 10 }],
+      [{ "itemType": "Mainspring", "quantity": 15 }, { "itemType": "AetherCell", "quantity": 6 }]
+    ]
+  },
   "endlessContracts": {
     "_doc": "Contracts after the authored sequence (docs/endless-design.md §1.1): a formula, one at a time, once the Clock Tower stands. Contract k asks goods[k % 10] and goods[(k + offset) % 10] for a share of a raw-goods budget that grows over growthContracts and then holds at plateauRaw; its reward is rewardShare of that in rewardGoods[k % 5]; its bonus is an endless cart rung for the first rungBonuses, then bonusShare in goods. {goods} in a line is the asked goods.",
     "goods": ["Casing", "Lens", "Mainspring", "AetherCell", "Mechanism", "Regulator", "FrameSection", "GreatCog", "AetherConduit", "ChronometerCore"],

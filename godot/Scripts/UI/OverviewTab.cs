@@ -644,6 +644,10 @@ namespace GolemFactory.Nodes
                 }
                 float s = CellScale;
                 DrawBlock(Model.Street, Street, null);
+                if (Model.Docks is MapRect docks)
+                {
+                    DrawBlock(docks, Street, null);
+                }
                 DrawBlock(Model.Workshop, Floor, Edge);
                 foreach (MapMark mark in Model.Marks.Where(m => m.Kind != MapMarkKind.Golem && m.Kind != MapMarkKind.Player))
                 {

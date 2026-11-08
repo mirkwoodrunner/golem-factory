@@ -22,6 +22,9 @@ namespace GolemFactory.UI
         Waiting,
         More,
         Pack,
+
+        /// <summary>The Docks' floor (docs/region-design.md §1). Appended.</summary>
+        Docks,
     }
 
     /// <summary>One row of the Assembly Line tab, decided; the screen only lays it out.</summary>
@@ -95,6 +98,23 @@ namespace GolemFactory.UI
         }
 
         public void ConfigureFloorExpansion(FloorExpansionService floor) => _floor = floor;
+
+        /// <summary>The Docks' floor rows, shown once the Docks are open.</summary>
+        public void ConfigureDocks(DocksExpansionService docks) => _docks = docks;
+
+        private DocksExpansionService _docks;
+
+        public bool ExtendDocks()
+        {
+            if (_docks == null)
+            {
+                Status = "No Docks in this scene.";
+                return false;
+            }
+            bool bought = _docks.TryPurchase();
+            Status = bought ? "" : _docks.LastStatusMessage;
+            return bought;
+        }
 
         public void ConfigurePackUpgrade(PackUpgradeService pack) => _pack = pack;
 
@@ -185,6 +205,15 @@ namespace GolemFactory.UI
                     rows.Add(PricedRow(AssemblyLineRowKind.Floor, label + "  ·  +" + _floor.RowsPerPurchase + " rows north",
                         _floor.NextCost(), _floor.CanAfford(), "Extend"));
                 }
+            }
+
+            if (_docks?.Bounds != null && _docks.Bounds.DocksOpen)
+            {
+                string label = "Docks " + (Docks.East - Docks.West + 1) + "x" + (_docks.Bounds.DocksNorth - Docks.Bottom + 1);
+                rows.Add(_docks.CanExpand
+                    ? PricedRow(AssemblyLineRowKind.Docks, label + "  ·  +" + _docks.RowsPerPurchase + " rows north",
+                        _docks.NextCost(), _docks.CanAfford(), "Extend")
+                    : new AssemblyLineRow { Kind = AssemblyLineRowKind.Docks, Text = label + "  ·  fully extended" });
             }
 
             if (_pack != null && _pack.CapacityPerType > 0)

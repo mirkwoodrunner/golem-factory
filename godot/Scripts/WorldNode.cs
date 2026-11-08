@@ -74,7 +74,14 @@ namespace GolemFactory.Nodes
         public static WorldNode Find(Node from) =>
             from.GetTree().GetFirstNodeInGroup(GroupName) as WorldNode;
 
-        public override void _EnterTree() => AddToGroup(GroupName);
+        public override void _EnterTree()
+        {
+            AddToGroup(GroupName);
+            // A blocking full collection paused a frame for 20 ms or more under the endgame load
+            // (docs/performance-report-endless.md, "Spikes"). Sustained low latency keeps full
+            // collections in the background unless memory runs short.
+            System.Runtime.GCSettings.LatencyMode = System.Runtime.GCLatencyMode.SustainedLowLatency;
+        }
 
         public override void _Ready()
         {
@@ -145,6 +152,7 @@ namespace GolemFactory.Nodes
             // before any view asks where its own goes. This node is the scene's first child, so
             // its _Process runs before every view's.
             UI.WorldHudRegistry.Solve((int)Engine.GetProcessFrames());
+            ViewRect.Refresh(GetViewport());
             Sandbox.Advance((float)delta);
         }
 

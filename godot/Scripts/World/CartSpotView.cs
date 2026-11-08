@@ -23,6 +23,9 @@ namespace GolemFactory.Nodes
 
         public CartSpotView(CartSpot spot) => _spot = spot;
 
+        /// <summary>Whether the spot can take a cart now: a quay spot is hidden until the Docks open (region-design §2).</summary>
+        public System.Func<CartSpot, bool> IsOpen { get; set; }
+
         public override void _Ready()
         {
             Shown = SupplyArt.SpriteFor(_spot);
@@ -32,6 +35,13 @@ namespace GolemFactory.Nodes
 
         public override void _Process(double delta)
         {
+            // Set only on a change: assigning Visible every frame on every spot cost a 20 ms
+            // hitch in the `perf` scenario's first phase.
+            bool open = IsOpen == null || IsOpen(_spot);
+            if (Visible != open)
+            {
+                Visible = open;
+            }
             string name = SupplyArt.SpriteFor(_spot);
             if (name == Shown)
             {

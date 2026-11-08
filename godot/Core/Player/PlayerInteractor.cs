@@ -351,7 +351,9 @@ namespace GolemFactory.Player
         {
             _nodeMarkers = Snapshot(_markerSource);
             _golems = Snapshot(_golemSource);
-            _spots = _supply?.Invoke()?.Spots.Where(s => s.IsEmpty).ToArray() ?? new CartSpot[0];
+            // A spot that can't take a cart yet (the Docks' quay while shut) is no target.
+            SupplyStreet street = _supply?.Invoke();
+            _spots = street?.Spots.Where(s => s.IsEmpty && street.IsOpen(s)).ToArray() ?? new CartSpot[0];
             _spotPositions = Resize(_spotPositions, _spots.Length);
 
             var stations = new List<GolemConstructionStation>();

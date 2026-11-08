@@ -96,6 +96,12 @@ namespace GolemFactory.Overview
         /// <summary>The street and the town square below it.</summary>
         public MapRect Street { get; private set; }
 
+        /// <summary>
+        /// The Docks' lane and floor (docs/region-design.md) while they are open; null while the
+        /// gate is shut, when the map ends at the street as before.
+        /// </summary>
+        public MapRect? Docks { get; private set; }
+
         /// <summary>Every cell the map must show.</summary>
         public MapRect Extent { get; private set; }
 
@@ -117,6 +123,13 @@ namespace GolemFactory.Overview
             map.Street = new MapRect(-FloorLayout.StreetHalfExtent, streetBottom, FloorLayout.StreetHalfExtent * 2 + 1, -half - streetBottom);
             int west = -FloorLayout.StreetHalfExtent;
             map.Extent = new MapRect(west, streetBottom, -west * 2 + 1, north - streetBottom + 1);
+            int docksNorth = world.Bounds.DocksNorth;
+            if (docksNorth != World.Docks.Closed)
+            {
+                map.Docks = new MapRect(World.Docks.LaneWest, World.Docks.Bottom,
+                    World.Docks.East - World.Docks.LaneWest + 1, docksNorth - World.Docks.Bottom + 1);
+                map.Extent = new MapRect(west, streetBottom, World.Docks.East - west + 1, north - streetBottom + 1);
+            }
 
             TileNames names = world.TileNames;
             var cells = new GridCoordinateConverter(new Vector2(1f, 1f));
@@ -127,7 +140,7 @@ namespace GolemFactory.Overview
             }
             foreach (Supply.CartSpot spot in world.Supply?.Spots ?? new List<Supply.CartSpot>())
             {
-                if (spot.IsEmpty)
+                if (spot.IsEmpty && world.Supply.IsOpen(spot))
                 {
                     map._marks.Add(new MapMark(MapMarkKind.Spot, spot.Cell, "Empty cart spot " + TileNames.Cell(spot.Cell)));
                 }
