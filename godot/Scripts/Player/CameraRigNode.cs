@@ -69,7 +69,7 @@ namespace GolemFactory.Nodes
         public override void _UnhandledInput(InputEvent e)
         {
             // Any key while the tower's event plays skips it (decision 4).
-            if (e is InputEventKey { Pressed: true, Echo: false } && _director != null &&
+            if ((e is InputEventKey { Pressed: true, Echo: false } || e is InputEventJoypadButton { Pressed: true }) && _director != null &&
                 (_director.TowerPhase == TowerEventPhase.GlideIn || _director.TowerPhase == TowerEventPhase.Reveal))
             {
                 _director.SkipTowerEvent();
@@ -207,6 +207,7 @@ namespace GolemFactory.Nodes
             }
             InputMap.AddAction(action);
             InputMap.ActionAddEvent(action, new InputEventMouseButton { ButtonIndex = button });
+            PadBindings.AddTo(action);
         }
     }
 }

@@ -60,7 +60,7 @@ Scenario runs start from the defaults and write only `user://scenario-settings.c
 | # | Call | Why |
 |---|---|---|
 | 1 | Eight rebindable actions: the four moves, Use, Carry, Pack, Turn. | The actions registered in code. Turn joined because the guide and prompts name R. |
-| 2 | Reserved, never bindable: Tab, Escape, F1, F9, the digits, Minus, Equal, X, Shift, Ctrl, Alt, Meta. | Each already does something (menu, cancel, guide, build-menu rows, Shift-click). |
+| 2 | Reserved, never bindable: Tab, Escape, F1, F9, the digits, Minus, Equal, X, Space, Shift, Ctrl, Alt, Meta. | Each already does something (menu, cancel, guide, build-menu rows, pause since `steam-deck-design.md` D4, Shift-click). |
 | 3 | A rebind replaces the action's first key; the arrows stay as the moves' second keys. Taking a key another action has swaps the two. | The old key must stop working, and no action may be left without one. |
 | 4 | Escape cancels a capture; leaving the tab or closing the screen cancels too. | The press goes to the capture before the screen's own keys, so E and Escape never close it mid-capture. |
 | 5 | Every key name in player text reads the bindings (`KeyNames`): prompts, hover cards, the guide, the build menu, the Pack hint, the playtest questions. | A rebind that left "[E]" in the guide would teach the wrong key. |

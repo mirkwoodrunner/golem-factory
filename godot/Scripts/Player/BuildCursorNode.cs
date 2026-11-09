@@ -39,11 +39,28 @@ namespace GolemFactory.Nodes
 
         private BuildModeController Build => _world.Sandbox.Build;
 
+        // The pad's cursor (docs/steam-deck-design.md D5.1, built with D4 so a pad can place):
+        // an offset from the player's cell, so it walks with them, stepped by the right stick.
+        /// <summary>How far, in cells, the pad's cursor may stray from the player.</summary>
+        public const int PadReach = 6;
+        /// <summary>The right stick held over: the first step waits this long before repeating...</summary>
+        public const double PadFirstRepeat = 0.3;
+        /// <summary>...then steps at this rate.</summary>
+        public const double PadRepeat = 0.12;
+
+        private CoreVector2Int _padOffset;
+        private bool _wasActive;
+        private double _padHeldFor = -1;
+        private double _padNextStep;
+        private bool _padPlacing;
+        private PlayerNode _player;
+
         public override void _Ready()
         {
             _world = WorldNode.Find(this);
             Bind(RotateAction, Key.R);
             Bind(CancelAction, Key.Escape);
+            _player = FindPlayer(GetTree().Root);
 
             // Floor level: beneath every standing thing, above the floor tiles.
             ZIndex = -1;
@@ -58,11 +75,39 @@ namespace GolemFactory.Nodes
         public CoreVector2Int GhostCell => GridConversions.WorldToCell(_ghost.Position);
         public Color GhostTint => _ghost.Modulate;
 
-        /// <summary>The cell under the pointer, in Core's frame.</summary>
-        public CoreVector2Int PointerCell => GridConversions.WorldToCell(GetGlobalMousePosition());
+        /// <summary>The cell the build tool aims at: the pad's cursor while the pad is in use, else the pointer's.</summary>
+        public CoreVector2Int PointerCell => UsingPad ? PadCell : GridConversions.WorldToCell(GetGlobalMousePosition());
+
+        /// <summary>Whether the pad's cursor, not the mouse, aims the tool.</summary>
+        public bool UsingPad => InputDevices.PadInUse && _player != null;
+
+        /// <summary>The pad's cursor cell: the player's cell plus the offset the right stick set.</summary>
+        public CoreVector2Int PadCell => PlayerCell + _padOffset;
+
+        private CoreVector2Int PlayerCell =>
+            _player == null ? default : new CoreVector2Int(Mathf.RoundToInt(_player.CorePosition.x), Mathf.RoundToInt(_player.CorePosition.y));
 
         public override void _UnhandledInput(InputEvent e)
         {
+            // The pad's place trigger: the left click's press and release, at the pad's cursor.
+            if (Build.IsBuildToolActive && UsingPad && (e.IsActionPressed(PadBindings.BuildPlace) || e.IsActionReleased(PadBindings.BuildPlace)))
+            {
+                if (e.IsActionPressed(PadBindings.BuildPlace) && !_padPlacing)
+                {
+                    _padPlacing = true;
+                    _lastCell = PadCell;
+                    Build.Hover(PadCell);
+                    Build.Click(PadCell, pointerOverUi: false);
+                }
+                else if (e.IsActionReleased(PadBindings.BuildPlace) && _padPlacing)
+                {
+                    _padPlacing = false;
+                    Build.Release();
+                }
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+
             if (e.IsActionPressed(CancelAction) || (e is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true } && Build.IsBuildToolActive))
             {
                 if (Build.CancelPlacement())
@@ -105,7 +150,20 @@ namespace GolemFactory.Nodes
                 {
                     Build.Release(); // a drag must never outlive its tool
                 }
+                _wasActive = false;
+                _padPlacing = false;
                 return;
+            }
+            if (!_wasActive)
+            {
+                // A tool just picked up: the pad's cursor starts one cell ahead of the Artificer.
+                _wasActive = true;
+                _padOffset = FacingStep(_player?.Facing ?? ArtificerFacing.Down);
+                _padHeldFor = -1;
+            }
+            if (UsingPad)
+            {
+                StepPadCursor(delta);
             }
 
             CoreVector2Int cell = PointerCell;
@@ -122,7 +180,8 @@ namespace GolemFactory.Nodes
         {
             // Hidden over UI, as Unity's BuildClickPolicy.ShouldPlace(tool, pointerOverUi) hid
             // it: a ghost under the menu promises a click the menu will take.
-            _ghost.Visible = BuildClickPolicy.ShouldPlace(Build.IsBuildToolActive, GetViewport().GuiGetHoveredControl() != null);
+            // The pad's cursor is never "over the UI": a resting mouse's hover means nothing then.
+            _ghost.Visible = BuildClickPolicy.ShouldPlace(Build.IsBuildToolActive, !UsingPad && GetViewport().GuiGetHoveredControl() != null);
             _ghost.Position = GridConversions.CellToWorld(cell);
             CoreColor tint = BuildGhostVisuals.Evaluate(Build.GhostStateFor(cell), (float)_time, _world.Sandbox.Motion.Pulse);
             _ghost.Modulate = new Color(tint.r, tint.g, tint.b, tint.a);
@@ -135,14 +194,77 @@ namespace GolemFactory.Nodes
             _arrow.Position = GridConversions.FacingStep(facing) * 0.28f;
         }
 
-        private static void Bind(string action, Key key)
+        /// <summary>
+        /// The right stick steps the cursor a cell at a time: once on the push, then again after
+        /// <see cref="PadFirstRepeat"/> and every <see cref="PadRepeat"/> while held, never further
+        /// than <see cref="PadReach"/> from the player.
+        /// </summary>
+        private void StepPadCursor(double delta)
         {
-            if (InputMap.HasAction(action))
+            if (TextEntry.IsTyping(GetViewport()))
             {
                 return;
             }
-            InputMap.AddAction(action);
-            InputMap.ActionAddEvent(action, new InputEventKey { PhysicalKeycode = key });
+            Vector2 stick = Input.GetVector(PadBindings.CursorLeft, PadBindings.CursorRight, PadBindings.CursorDown, PadBindings.CursorUp); // +y north
+            if (stick == Vector2.Zero)
+            {
+                _padHeldFor = -1;
+                return;
+            }
+            if (_padHeldFor < 0)
+            {
+                _padHeldFor = 0;
+                _padNextStep = PadFirstRepeat; // the push steps at once
+            }
+            else
+            {
+                _padHeldFor += delta;
+                if (_padHeldFor < _padNextStep)
+                {
+                    return;
+                }
+                _padNextStep += PadRepeat;
+            }
+            // A diagonal push steps both ways; a mostly-sideways one steps sideways only.
+            int dx = Mathf.Abs(stick.X) >= 0.38f ? System.Math.Sign(stick.X) : 0;
+            int dy = Mathf.Abs(stick.Y) >= 0.38f ? System.Math.Sign(stick.Y) : 0;
+            _padOffset = new CoreVector2Int(
+                System.Math.Clamp(_padOffset.x + dx, -PadReach, PadReach),
+                System.Math.Clamp(_padOffset.y + dy, -PadReach, PadReach));
+        }
+
+        private static CoreVector2Int FacingStep(ArtificerFacing facing) => facing switch
+        {
+            ArtificerFacing.Up => new CoreVector2Int(0, 1),
+            ArtificerFacing.Left => new CoreVector2Int(-1, 0),
+            ArtificerFacing.Right => new CoreVector2Int(1, 0),
+            _ => new CoreVector2Int(0, -1),
+        };
+
+        private static PlayerNode FindPlayer(Node node)
+        {
+            if (node is PlayerNode player)
+            {
+                return player;
+            }
+            foreach (Node child in node.GetChildren())
+            {
+                if (FindPlayer(child) is PlayerNode found)
+                {
+                    return found;
+                }
+            }
+            return null;
+        }
+
+        private static void Bind(string action, Key key)
+        {
+            if (!InputMap.HasAction(action))
+            {
+                InputMap.AddAction(action);
+                InputMap.ActionAddEvent(action, new InputEventKey { PhysicalKeycode = key });
+            }
+            PadBindings.AddTo(action);
         }
     }
 }

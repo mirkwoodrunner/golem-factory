@@ -95,6 +95,7 @@ namespace GolemFactory.Nodes
             {
                 InputMap.AddAction(ToggleAction);
                 InputMap.ActionAddEvent(ToggleAction, new InputEventKey { PhysicalKeycode = Key.Tab });
+                PadBindings.AddTo(ToggleAction); // Start
             }
             Build();
             if (_world.Sandbox.AssemblyLineBoard != null)

@@ -1,7 +1,8 @@
 # Golem Factory: running on the Steam Deck
 
-**Status: planned, not started (2026-11-03).** This is the plan for a later phase. Nothing here is built.
-The roadmap's Phase 7 and Phase 8 come first.
+**Status (2026-11-08):** D1's export is built (§7's export log); the Deck's first launch is the
+owner's. D4, the gamepad's model, is built, with D5.1's build cursor pulled in so a pad can place
+(§7's input audit and "D4 as built"). The rest is planned, not started.
 
 The goal is to run the game on Steam Deck hardware, played by its owner. **It is not a Steam store release**
 (roadmap decision 14: release isn't planned). No Steamworks, no store page, no depots, no Steam Deck
@@ -320,10 +321,69 @@ are built pad-navigable once. The whole plan is roughly 12 to 16 working days; t
 
 Fill these in while doing the work, so a later session doesn't repeat a finding.
 
-- **Input audit (D4.1):** _each site that polls or handles input, its screen, its needs._
+- **Input audit (D4.1), 2026-11-08** (`Scripts/`, scenarios aside):
+  - **The world, polled:** `PlayerNode` (move by `GetVector`, Interact held and pressed);
+    `CameraRigNode.PlayerIsWalking` (the move actions). Both read actions, so the pad works with no
+    change, and both already check `TextEntry.IsTyping`.
+  - **The world, by event:** `PlayerNode._UnhandledInput` (rotate, carry, inventory);
+    `BuildCursorNode` (rotate, cancel, and the left and right mouse buttons at the pointer's cell);
+    `BuildMenuNode` (digits, Minus, Equal and X as raw keys); `CameraRigNode` (zoom by the wheel,
+    any key skips the tower's event); `ManagementScreen` (Tab, Escape); `HudOverlay` (a click on
+    the alert strip; the PAUSE button).
+  - **Needs a pointer:** `GolemHoverNode` (hover card, D5.2); `LedgerTab` (drag to pan),
+    `OverviewTab` (hover and click on the map), `InventoryPanel` (click and Shift-click a row),
+    the Workbench's card drags: all D6.
+  - **Screens closing:** `PackScreen`, `CrateScreen`, `ContractScreen`, `SupplyScreen`,
+    `ConstructionPanelNode` close on cancel, I or E by action, so B closes them.
+  - **Text and keys:** `SettingsTab` captures a key (keyboard only, by design); `TextEntry`.
+- **D4 as built, 2026-11-08** (branch `deck/export`):
+  - **`Scripts/Player/PadInput.cs`:** `PadBindings` adds a pad event to each action beside its
+    keys (every owner's `Bind` calls `AddTo`, and the player calls `RegisterAll` once ready;
+    `ApplyKeys` rewrites key events only, so a rebind keeps the pad's). `InputDevices` tracks the
+    last device (a stick past 0.3 or a button is the pad; a key, a click or the mouse moved 4 px is
+    the keyboard), and `InputDeviceNode` hides the pointer while the pad is in use.
+  - **The bindings:** left stick moves (dead zone 0.25); A use, X carry, Y pack, B cancel and close,
+    RB rotate, LB the next build-menu row (after the last, empty hands), LT the wrecking bar, RT
+    places; the right stick moves the build cursor (dead zone 0.5 for it and the triggers); d-pad
+    up and down zoom, d-pad right glides to the next stopped golem (the alert strip's click); Start
+    opens the menu (Tab's screen); Back pauses and plays. **Space pauses** on the keyboard, so
+    Pause has a key too; it joined the reserved keys (`KeyBindings.Reserved`).
+  - **The pad's build cursor** (D5.1, pulled in): an offset from the player's cell, starting one
+    cell the way the Artificer faces when a tool is picked up, stepped by the right stick (once on
+    the push, then after 0.3 s every 0.12 s), at most 6 cells out. RT is the left click's press
+    and release at it, so holding RT while the stick or the player moves lays a run through the
+    same `BuildModeController` drag. With the pad in use the ghost is never "over the UI", and the
+    build menu's card shows the held tool's.
+  - **Checked by** the `gamepad` scenario (13 break checks caught). Left for D5 to D7: the hover
+    card at the cursor (D5.2), every screen's focus (D6), and prompts and cards that still name
+    keys ("[E]", the card's "[3]"; D7).
 - **Screen checklist (D6):** build menu, Workbench, Pack, Crate, label picker, guide, hint, title, save/load,
   settings. For each: focus order, open/close, every action by pad, hover content reachable.
-- **Export log (D1):** exact preset, runtime pack source, errors met and fixes.
+- **Export log (D1), 2026-11-08:**
+  - **Presets** (`godot/export_presets.cfg`): "Linux Deck" (Linux, x86_64, PCK beside the binary, not
+    embedded) and "Windows Smoke" (the same pack for Windows). Both include `data/*.json`, which
+    `WorldNode` reads through `FileAccess`, and exclude `Core/`, `Core.Tests/` and `Tools/`.
+  - **One command:** `Tools/Deck/export-linux.ps1` writes `build/deck/` (ignored by git), and
+    `-DeckHost steamdeck` copies it to `~/Games/GolemFactory/` over SSH. The build is 158 MB:
+    a 74 MB binary, a 2 MB pack and the .NET folder.
+  - **The .NET risk (D1.4) is cleared.** The net10 project exports self-contained with no retarget:
+    `data_GolemFactory.Godot_linuxbsd_x86_64/` holds `libcoreclr.so`, `libhostfxr.so` and
+    `Microsoft.NETCore.App` 10.0.10. The Linux runtime pack came from nuget.org (already in
+    `nuget.config`) and is cached in `~/.nuget/packages` after the first export.
+  - **Godot can sit idle after an export** that has finished: the pack and the .NET folder are
+    written, and the process doesn't exit. It happened on most runs, the first for each platform
+    included. The script watches the log for the pack's `DONE` and ends Godot 20 s later. A build
+    made that way matched a clean run's pack byte for byte.
+  - **The exported build runs scenarios.** On "Windows Smoke", `GolemFactory.exe --headless
+    --fixed-fps 60 -- --scenario <name>` passes `world`, `build`, `interact`, `golems`,
+    `golem-motion`, `workbench`, `save`, `tutorial`, `inventory`, `audio`, `settings`, `title`,
+    `slots`, `contracts`, `endless`, `docks`, `golem-sales`, `supply` and `creative`. Two can't run
+    there: `art` reads the repo's `Tools/Art` manifest, and `loop` needs a scene path on the
+    command line, which release templates refuse. `golem-motion` first failed on the export
+    because it listed `res://art` for `.png` files, and a pack lists `.png.import`. That was the
+    scenario's check, not the game, which asks `ResourceLoader.Exists`. Fixed.
+  - **Not yet run on the Deck:** no WSL on the build machine, so the Linux binary's first launch
+    (D1.5 and D1.6) is the owner's.
 - **Display readings (D3):** the stretch mode chosen, per-screen legibility notes.
 - **Performance runs (D8):** where the numbers are stored.
 - **Accessibility pass (§10):** each row's reading on the device, and the calls made.
@@ -368,7 +428,7 @@ phase picks it up. "Call" marks a row that needs the user's decision before anyo
 | **Remapping** | Eight keyboard actions rebind (`menus-design.md` §4). On the Deck, Steam Input remaps every control at the system level (D2). | D4 adds the pad bindings in code |
 | **No required chords** | Shift-click in the Pack and Crate screens (`InventoryPanel`). | D6 gives the pad a trigger for it; check a mouse-only player has a way too |
 | **No long holds without an alternative** | E is held for a crank's whole length (twice the recipe's time, `HandCrankRules`) and to keep harvesting. There's no toggle. | **Call**: a "tap to start, tap to stop" setting; A on a pad is the same hold |
-| **Pause at any time** | A button on the HUD's bar only; no key. | D4's `Pause` action, with a keyboard key as well as Start (D4.2: every verb gets both) |
+| **Pause at any time** | Done (D4): Space, the pad's Back, or the HUD's button. Not over a full screen. | — |
 | **Adjustable speed, nothing timed** | Done: 0.5× to 4× (`ClockReadout.SpeedPresets`); contracts and the tower never fail (`contracts-design.md` §0). | — |
 | **The current goal always to hand** | Done: the guide's panel; F1 hides it and brings it back. | D6: B dismisses it on a pad |
 | **Everything reachable without a pointer** | No: the screens are mouse-driven. | D6. Its `ui_*` focus also gives keyboard-only play, so test it with the arrow keys too |

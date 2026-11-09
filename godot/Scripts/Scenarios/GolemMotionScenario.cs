@@ -245,7 +245,10 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 string south = w.Golem.Program.chassis?.chassisSprite;
                 string stem = GolemFrames.Stem(south);
-                bool hasFrames = DirAccess.GetFilesAt("res://art").Any(f => f.StartsWith(stem + "_") && f.EndsWith(".png"));
+                // An exported pack lists "x.png.import", not "x.png", so strip the suffix first.
+                bool hasFrames = DirAccess.GetFilesAt("res://art")
+                    .Select(f => f.EndsWith(".import") ? f[..^".import".Length] : f)
+                    .Any(f => f.StartsWith(stem + "_") && f.EndsWith(".png"));
                 if (!hasFrames && (w.Bodies.Count != 1 || !w.Bodies.Contains(south)))
                 {
                     problems.Add($"{chassis} has no frame files but drew {string.Join(",", w.Bodies)}, not {south}");

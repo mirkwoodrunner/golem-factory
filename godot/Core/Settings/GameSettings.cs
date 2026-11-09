@@ -167,12 +167,13 @@ namespace GolemFactory.Settings
         /// <summary>
         /// Keys the game uses outside these actions (Godot <c>Key</c> names): Tab opens Management,
         /// Escape cancels, F1 and F9 are the guide's, the build menu's rows are the digits, Minus,
-        /// Equal and X (<c>BuildMenuNode.KeyText</c>), and the modifiers change a click (Shift-click
-        /// moves all that fits). A rebind to one is refused, and a loaded file holding one is fixed.
+        /// Equal and X (<c>BuildMenuNode.KeyText</c>), Space pauses and plays the clock
+        /// (<c>PadBindings.Pause</c>), and the modifiers change a click (Shift-click moves all that
+        /// fits). A rebind to one is refused, and a loaded file holding one is fixed.
         /// </summary>
         public static readonly IReadOnlySet<string> Reserved = new HashSet<string>
         {
-            "Tab", "Escape", "F1", "F9", "Minus", "Equal", "X",
+            "Tab", "Escape", "F1", "F9", "Minus", "Equal", "X", "Space",
             "Key0", "Key1", "Key2", "Key3", "Key4", "Key5", "Key6", "Key7", "Key8", "Key9",
             "Shift", "Ctrl", "Alt", "Meta",
         };

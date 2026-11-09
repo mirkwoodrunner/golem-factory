@@ -160,6 +160,7 @@ namespace GolemFactory.Tests.EditMode
         [TestCase("X")]
         [TestCase("Shift")]
         [TestCase("Ctrl")]
+        [TestCase("Space")]
         public void ReservedKey_IsRefusedAndKeepsListening(string key)
         {
             var b = KeyBindings.Defaults();

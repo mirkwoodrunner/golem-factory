@@ -51,6 +51,9 @@ namespace GolemFactory.Nodes
         /// <summary>Where the player stands, in cells (Core frame).</summary>
         public CoreVector3 CorePosition => _walker.Position;
 
+        /// <summary>The way the Artificer faces; the pad's build cursor starts one cell that way.</summary>
+        public ArtificerFacing Facing => _walker.Facing;
+
         private static readonly GridCoordinateConverter UnitConverter = new GridCoordinateConverter(new CoreVector2(1f, 1f));
 
         private readonly Texture2D[] _frames = new Texture2D[ArtificerWalkAnimation.SpriteCount];
@@ -73,6 +76,8 @@ namespace GolemFactory.Nodes
         {
             RegisterInputActions();
             GameSettingsStore.Apply(GetWindow());
+            PadBindings.RegisterAll(); // after the keys: ApplyKeys rewrites key events only
+            AddChild(new InputDeviceNode { Name = "InputDevices" });
 
             string[] rows = { "down", "left", "right", "up" }; // ArtificerFacing's order
             for (int row = 0; row < rows.Length; row++)
@@ -238,6 +243,7 @@ namespace GolemFactory.Nodes
             {
                 InputMap.ActionAddEvent(action, new InputEventKey { PhysicalKeycode = key });
             }
+            PadBindings.AddTo(action);
         }
     }
 
