@@ -196,6 +196,44 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
+        public void PlanFor_TheNewAetherHauler_IsTheSmelterPlanWhileBuildingIt()
+        {
+            // From playtest (2026-11-08): "I couldn't tell what all the steps I should program" on
+            // the first Aether-Hauler. The station opens the Workbench on it at "hauler", three
+            // steps before "Two Hauls, two goods".
+            SandboxWorld world = Compose();
+            for (int chapter = 1; chapter <= 4; chapter++)
+            {
+                RunKit(world);
+            }
+            Assert.IsTrue(world.Tutorial.StartKit());
+            GolemEntity hauler = null;
+            for (int frame = 0; frame < 7200 && hauler == null; frame++)
+            {
+                world.Advance(1f / 30f);
+                if (world.Tutorial.Current.Id == "hauler")
+                {
+                    hauler = world.Golems.FirstOrDefault(g => !g.IsRemoved && g.Program.chassis?.name == "AetherHauler");
+                }
+            }
+            Assert.IsNotNull(hauler, "the kit built the Hauler on its step");
+            Assert.AreEqual("hauler", world.Tutorial.Current.Id);
+            Assert.AreSame(world.Tutorial.SmelterPlan, world.Tutorial.PlanFor(hauler));
+            Assert.AreEqual("program-smelter", world.Tutorial.ProgramStepFor(hauler)?.Id,
+                "the step whose words the panel shows over the Workbench");
+            Assert.AreEqual(world.Tutorial.Steps.ToList().FindIndex(s => s.Id == "program-smelter"),
+                world.Tutorial.IndexOf(world.Tutorial.ProgramStepFor(hauler)));
+
+            // "Risky to expect two different inputs in the same depot" (the same playtest): the
+            // depots step says each good is kept apart, in the data's number.
+            string depots = world.Tutorial.Steps.Single(s => s.Id == "smelt-depots").Body;
+            StringAssert.Contains($"up to {world.Setup.crateCapacityPerType} of each good apart", depots);
+
+            world.Tutorial.Dismiss();
+            Assert.IsNull(world.Tutorial.ProgramStepFor(hauler), "a guide put away shows no step");
+        }
+
+        [Test]
         public void TheKit_StartsFromWhereverThePlayerIs()
         {
             // Half-way through chapter 1 by hand, then the kit finishes it.

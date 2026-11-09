@@ -245,6 +245,14 @@ Current scenarios:
   takes a belt back. The d-pad zooms; Back pauses and plays. A mouse nudge hands the cursor back.
   **Parsed input lands a frame later**: check what a release did in the step after sending it.
   Headless ignores `Input.MouseMode`; read `InputDeviceNode.AppliedMode`. Captures `gamepad-cursor`.
+- `guide-ahead` (Sandbox): the guide's program step shown over the Workbench ahead of the guide
+  (`docs/guide-chapters-design.md` §9). F9 four times reaches chapter 5; Iron Smelting is claimed
+  by the kit's own claim; E at the station and a click on the Aether-Hauler's row build it, and the
+  Workbench opens with the guide on "Depots for the smelter". The plate shows "Two Hauls, two
+  goods" in the chassis rack, naming Coke, with no goods line or notice, clear of the lever, the
+  vault and every socket. Following the glow (real drags, the good arrow, the dial, the lever;
+  each glowing card inside the vault's window, STEP 4 never under the plate) engages the smelter
+  in 9 moves, and the plate steps aside. Captures `guide-ahead`, `guide-ahead-step4`.
 - `perf` also takes `--perf-golems=N` (a load of N golems in the endgame's proportions) and
   `--perf-load=endless` (160), for measuring the golem cap (`docs/performance-report-endless.md`).
 

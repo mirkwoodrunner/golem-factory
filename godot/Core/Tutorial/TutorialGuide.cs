@@ -816,7 +816,16 @@ namespace GolemFactory.Tutorial
         /// Brass Presser opens it two steps before "Program the Presser". Null with the guide put
         /// away or finished, and for a golem no step means.
         /// </summary>
-        public ProgramPlan PlanFor(GolemEntity golem)
+        public ProgramPlan PlanFor(GolemEntity golem) => ProgramStepFor(golem)?.Program;
+
+        /// <summary>
+        /// The step whose program <paramref name="golem"/> is meant for (see <see cref="PlanFor"/>),
+        /// so the guide's panel can show that step's words over the Workbench while the guide is
+        /// still on an earlier step: from playtest (2026-11-08), "I couldn't tell what all the steps
+        /// I should program" on the first Aether-Hauler, whose Workbench opened at "hauler", three
+        /// steps before "Two Hauls, two goods", with only the glow to go by.
+        /// </summary>
+        public TutorialStep ProgramStepFor(GolemEntity golem)
         {
             if (golem == null || !IsShowing)
             {
@@ -828,11 +837,14 @@ namespace GolemFactory.Tutorial
                 TutorialStep step = _steps[i];
                 if (step.Program != null && step.ProgramTarget != null && step.ProgramTarget(golem))
                 {
-                    return step.Program;
+                    return step;
                 }
             }
             return null;
         }
+
+        /// <summary>The position of <paramref name="step"/> in the guide, or -1.</summary>
+        public int IndexOf(TutorialStep step) => step == null ? -1 : _steps.IndexOf(step);
 
         private bool IsIronPresser(GolemEntity golem) => IronPresserPlan.Matches(golem.Program);
 
@@ -1598,7 +1610,8 @@ namespace GolemFactory.Tutorial
                 "smelt-depots", "Depots for the smelter",
                 "Build two Depots on the marked tiles, two apart with a free tile between: one behind the smelter "
                 + "for its Scrap and Coke, which you fill by hand, one in front for its Iron Plate. A pair of your "
-                + "own works too.",
+                + $"own works too. A depot keeps up to {CrateHolds} of each good apart, so Scrap never crowds out "
+                + "the Coke; leave both unlabelled.",
                 w => new[] { SmeltInSpot, SmeltOutSpot }.All(c => Built.Any(b => b.Cell == c && b.GetPart<PlaceableDepot>() != null)),
                 w => new[] { SmeltInSpot, SmeltOutSpot }.Where(c => !Built.Any(b => b.Cell == c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
                 w => Count(ItemType.Scrap, 30),

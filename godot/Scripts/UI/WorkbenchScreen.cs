@@ -95,6 +95,21 @@ namespace GolemFactory.Nodes
         private float _landAge = -1f;
         private float _tapeAge;
         private ScrollContainer _vaultScroll;
+        private Control _scrolledTo;
+        private int _scrollFramesLeft;
+        private const int ScrollRetryFrames = 3;
+
+        private Control _rackArea;
+
+        /// <summary>
+        /// The chassis rack's inner area: empty whenever the Workbench is on a golem, so the guide
+        /// docks its plate there (TutorialPanel). The viewport's lower half, where it used to sit,
+        /// holds the Aether-Hauler's fourth step socket.
+        /// </summary>
+        public Control RackArea => _rackArea;
+
+        /// <summary>The vault's visible window, for scenarios: a card outside it can't be seen or grabbed.</summary>
+        public Control VaultView => _vaultScroll;
         private Panel _hintCardOutline;
         private Panel _hintTargetOutline;
         private WorkbenchHintTarget _shownHint;
@@ -295,12 +310,22 @@ namespace GolemFactory.Nodes
             {
                 _shownHint = hint;
                 _hintClock = 0f;
-                // The vault scrolls the card into view once, when the hint moves to it, never
-                // while the player is scrolling.
-                if (vaultCard != null)
-                {
-                    _vaultScroll.EnsureControlVisible(vaultCard);
-                }
+            }
+            // The vault scrolls the card into view when the hint moves to it, never while the
+            // player is scrolling. "Moves to it" means a new control, not only a new hint: a drop
+            // rebuilds the vault's cards in the frame the hint moves on, and a scroll asked of the
+            // old control did nothing, which left Assemble Iron Smelting glowing below the vault's
+            // window, out of sight (playtest, 2026-11-08). The new card is laid out a frame or two
+            // later, so the scroll is asked again for a few frames.
+            if (vaultCard != _scrolledTo)
+            {
+                _scrolledTo = vaultCard;
+                _scrollFramesLeft = vaultCard != null ? ScrollRetryFrames : 0;
+            }
+            if (_scrollFramesLeft > 0 && GodotObject.IsInstanceValid(vaultCard))
+            {
+                _vaultScroll.EnsureControlVisible(vaultCard);
+                _scrollFramesLeft--;
             }
             _hintClock += dt;
             float alpha = WorkbenchHint.PulseAlpha(_hintClock);
@@ -336,6 +361,10 @@ namespace GolemFactory.Nodes
         }
 
         private static string CardName(WorkbenchCardRef card) => card.LogicCore?.name ?? card.Appendage?.name;
+
+        /// <summary>For scenarios: the card and the control the shown hint outlines, so a run can follow the glow.</summary>
+        public Control HintedCardControl => HintedVaultCard(_shownHint);
+        public Control HintedTargetControl => HintedTarget(_shownHint);
 
         private Control HintedVaultCard(WorkbenchHintTarget hint) =>
             hint.Kind != WorkbenchHintKind.VaultCard || hint.Card == null ? null
@@ -683,6 +712,7 @@ namespace GolemFactory.Nodes
             area.AddThemeConstantOverride("margin_top", 8);
             area.AddThemeConstantOverride("margin_bottom", 6);
             rack.AddChild(area);
+            _rackArea = area;
             _chassisList = new VBoxContainer();
             _chassisList.AddThemeConstantOverride("separation", 8);
             area.AddChild(_chassisList);
