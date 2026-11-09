@@ -45,6 +45,7 @@ namespace GolemFactory.Nodes
         private CrateScreen _crateScreen;
         private int _renderedVersion = -1;
         private int _renderedKeys = -1;
+        private TutorialStep _renderedStep;
         private bool _docked;
         private float _time;
 
@@ -121,7 +122,7 @@ namespace GolemFactory.Nodes
             column.AddThemeConstantOverride("separation", 3);
             _plate.AddChild(column);
 
-            _counter = Ugui.Text("Counter", "", 12, Dim);
+            _counter = Wrap(Ugui.Text("Counter", "", 12, Dim)); // the rack's narrower dock wraps it
             _title = Ugui.Text("Title", "", 17, Amber, bold: true);
             _body = Ugui.Text("Body", "", 13, Ink);
             Wrap(_body);
@@ -176,8 +177,9 @@ namespace GolemFactory.Nodes
         /// </summary>
         private void FitPlate()
         {
-            float inner = PlateWidth - 28f;
+            float inner = _plateWidth - 28f;
             float buttons = (_skip.Visible ? _skip.CustomMinimumSize.X + 4f : 0f) + (_finish.Visible ? _finish.CustomMinimumSize.X + 4f : 0f);
+            _counter.Size = new Vector2(inner, 0f);
             _body.Size = new Vector2(inner, 0f);
             _progress.Size = new Vector2(inner - buttons, 0f);
             float height = 10f + 8f + 3f * 3f
@@ -205,15 +207,23 @@ namespace GolemFactory.Nodes
         private void Dock(bool inWorkbench)
         {
             _docked = inWorkbench;
-            if (inWorkbench)
+            Rect2 rack = inWorkbench && _workbench?.RackArea != null ? _workbench.RackArea.GetGlobalRect() : default;
+            if (rack.Size.X > 0f)
             {
-                Ugui.Place(_plate, 0f, 1f, 0f, 1f, 268f, -377f, PlateWidth, PlateHeight, 0f, 1f);
+                // In the chassis rack, empty while the Workbench is on a golem (every guide program
+                // step's case). The viewport's lower half, where it sat, holds an Aether-Hauler's
+                // STEP 4: the glow there went under the plate (frames, 2026-11-08).
+                _plateWidth = rack.Size.X;
+                Ugui.Place(_plate, 0f, 1f, 0f, 1f, rack.Position.X, -rack.Position.Y, _plateWidth, PlateHeight, 0f, 1f);
             }
             else
             {
+                _plateWidth = PlateWidth;
                 Ugui.Place(_plate, 1f, 1f, 1f, 1f, -12f, -168f, PlateWidth, PlateHeight, 1f, 1f);
             }
         }
+
+        private float _plateWidth = PlateWidth;
 
         public override void _UnhandledInput(InputEvent e)
         {
@@ -245,7 +255,11 @@ namespace GolemFactory.Nodes
             TutorialGuide guide = Guide;
             bool screenOpen = ModalScreens.AnyOpen(GetTree());
             _workbench ??= GetTree().Root.FindChild("Workbench", true, false) as WorkbenchScreen;
-            bool inWorkbench = screenOpen && _workbench != null && _workbench.IsOpen && guide?.Current?.Workbench == true;
+            bool benchOpen = screenOpen && _workbench != null && _workbench.IsOpen;
+            // The station opens the Workbench on a new golem at once, often steps before the step
+            // that programs it: show that step's words then, until the golem runs its program.
+            TutorialStep ahead = AheadStep(guide, benchOpen);
+            bool inWorkbench = benchOpen && (guide?.Current?.Workbench == true || ahead != null);
             // The Crate screen leaves the usual dock clear (inventory-screens-design §4.1), so a
             // step done in it keeps the plate where it always is.
             _crateScreen ??= GetTree().Root.FindChild("CrateScreen", true, false) as CrateScreen;
@@ -273,26 +287,33 @@ namespace GolemFactory.Nodes
                 _fitted = false;
             }
 
-            if (guide.Version != _renderedVersion || TextTokens.Version != _renderedKeys)
+            TutorialStep step = ahead ?? guide.Current;
+            if (guide.Version != _renderedVersion || TextTokens.Version != _renderedKeys || step != _renderedStep)
             {
                 _renderedVersion = guide.Version;
                 _renderedKeys = TextTokens.Version; // a rebind or the marks setting redraws the step's words
-                TutorialStep step = guide.Current;
-                int chapter = guide.ChapterOf(guide.Index);
+                _renderedStep = step;
+                int index = guide.IndexOf(step);
+                int chapter = guide.ChapterOf(index);
                 _counter.Text = guide.KitRunning
                     ? $"PLAYTEST KIT  ·  fast-forwarding chapter {chapter}..."
-                    : $"CHAPTER {chapter}  ·  {guide.Index + 1}/{guide.StepCount}  ·  F1 hides"
-                      + (guide.Playtest != null ? "  ·  F9 skips" : "");
+                    : ahead != null
+                        ? $"CHAPTER {chapter}  ·  {index + 1}/{guide.StepCount}  ·  coming up"
+                        : $"CHAPTER {chapter}  ·  {index + 1}/{guide.StepCount}  ·  F1 hides"
+                          + (guide.Playtest != null ? "  ·  F9 skips" : "");
                 _title.Text = step.Title;
                 _body.Text = step.Body + MenuKeyHint(step) + ReportHint(step, guide);
-                bool last = guide.Index == guide.StepCount - 1;
+                bool last = index == guide.StepCount - 1;
                 _finish.Visible = last;
                 _skip.Visible = !last;
                 _fitted = false;
             }
-            if (_progress.Text != guide.Progress)
+            // The current step's goods and notice are about the world behind the Workbench, not
+            // the program shown ahead of it.
+            string progress = ahead != null ? "" : guide.Progress;
+            if (_progress.Text != progress)
             {
-                _progress.Text = guide.Progress;
+                _progress.Text = progress;
                 _fitted = false;
             }
             if (!_fitted)
@@ -300,12 +321,30 @@ namespace GolemFactory.Nodes
                 FitPlate();
                 _fitted = true;
             }
-            ShowNotice(guide.Notice);
+            ShowNotice(ahead != null ? null : guide.Notice);
 
             PointArrow(guide, screenOpen);
             HighlightRow(guide, screenOpen);
             MarkSpot(guide, screenOpen);
         }
+
+        /// <summary>
+        /// A later step of this chapter that programs the golem on the open Workbench, while the
+        /// current step isn't a Workbench step and the golem doesn't yet run that program; else null.
+        /// </summary>
+        private TutorialStep AheadStep(TutorialGuide guide, bool benchOpen)
+        {
+            if (!benchOpen || guide == null || guide.Current == null || guide.Current.Workbench)
+            {
+                return null;
+            }
+            Golems.GolemEntity golem = _world?.Sandbox?.Workbench?.TargetGolem;
+            TutorialStep step = guide.ProgramStepFor(golem);
+            return step != null && step != guide.Current && !step.Program.Matches(golem.Program) ? step : null;
+        }
+
+        /// <summary>The step whose words the plate shows: a program step ahead of the guide, over the Workbench.</summary>
+        public string ShownStepId => _renderedStep?.Id ?? "";
 
         private void ShowNotice(string notice)
         {

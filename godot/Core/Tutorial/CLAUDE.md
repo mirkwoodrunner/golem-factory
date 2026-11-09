@@ -56,7 +56,9 @@ player calls `PlayerInteractor.Teleport`; a bare `Position` write is overwritten
   `GolemProgramWriter`. Don't hand-write a program step's cards in the kit or its check. Plans
   are built per world from the loaded data (`TutorialGuide`'s `*PlanFor` builders), so a Haul
   quantity matching a recipe or a ratio (R4's inputs, the Slag Heap's `slagPerCoke`) is never a
-  literal. **The hint never fills a socket**: reading it changes nothing (`WorkbenchSession.Version` holds), and
+  literal. **The plate shows a program step ahead of the guide** over the Workbench
+  (`ProgramStepFor`; `docs/guide-chapters-design.md` §9): the station opens the Workbench on a new
+  golem before its program step comes up. **The hint never fills a socket**: reading it changes nothing (`WorkbenchSession.Version` holds), and
   `WorkbenchScreen` only draws frames around controls that already exist. Without a plan, only a
   golem never programmed gets the fallback (TRIGGER, STEP 1, the lever).
 

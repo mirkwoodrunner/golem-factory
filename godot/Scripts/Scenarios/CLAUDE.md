@@ -235,6 +235,24 @@ Current scenarios:
   totals count the golems sold. Saved to Slot 1 mid-build, the Foundry demolished, loaded with
   two clicks: the Foundry, its build and the order as saved. Captures `sales-office`,
   `sales-notice`, `sales-foundry`, `sales-foundry-intake`.
+- `gamepad` (Sandbox): the pad (`docs/steam-deck-design.md` D4) with joypad events only, after the
+  playtest card's one click. Every pad action has its joypad event and the keys stay. The left
+  stick walks, no faster on a diagonal; A harvests at the Scrap cart; X picks a golem up and sets
+  it down; Y opens the pack and Start the menu, B closes each. LB steps the build menu to the belt
+  (its card showing, the pointer hidden), the cursor starts a cell ahead of the Artificer, the right
+  stick steps it once and repeats while held; RT places a belt and its release ends the drag, RB
+  turns it, RT held over the stick lays a run; B puts it down. LT takes the wrecking bar and RT
+  takes a belt back. The d-pad zooms; Back pauses and plays. A mouse nudge hands the cursor back.
+  **Parsed input lands a frame later**: check what a release did in the step after sending it.
+  Headless ignores `Input.MouseMode`; read `InputDeviceNode.AppliedMode`. Captures `gamepad-cursor`.
+- `guide-ahead` (Sandbox): the guide's program step shown over the Workbench ahead of the guide
+  (`docs/guide-chapters-design.md` §9). F9 four times reaches chapter 5; Iron Smelting is claimed
+  by the kit's own claim; E at the station and a click on the Aether-Hauler's row build it, and the
+  Workbench opens with the guide on "Depots for the smelter". The plate shows "Two Hauls, two
+  goods" in the chassis rack, naming Coke, with no goods line or notice, clear of the lever, the
+  vault and every socket. Following the glow (real drags, the good arrow, the dial, the lever;
+  each glowing card inside the vault's window, STEP 4 never under the plate) engages the smelter
+  in 9 moves, and the plate steps aside. Captures `guide-ahead`, `guide-ahead-step4`.
 - `perf` also takes `--perf-golems=N` (a load of N golems in the endgame's proportions) and
   `--perf-load=endless` (160), for measuring the golem cap (`docs/performance-report-endless.md`).
 

@@ -157,7 +157,25 @@ namespace GolemFactory.Nodes
         {
             // The keys belong to the world, not to a full screen (the Workbench and Management
             // have their own uses for a keyboard), so they do nothing while one is open.
-            if (e is not InputEventKey { Pressed: true, Echo: false } key || ModalScreens.AnyOpen(GetTree()))
+            if (ModalScreens.AnyOpen(GetTree()))
+            {
+                return;
+            }
+            // The pad (docs/steam-deck-design.md D4): LB steps along the rows, as pressing each
+            // row's key in turn would, and LT is X, the wrecking bar.
+            if (e.IsActionPressed(PadBindings.BuildNext))
+            {
+                StepTool();
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+            if (e.IsActionPressed(PadBindings.BuildDemolish))
+            {
+                ToggleDemolish();
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+            if (e is not InputEventKey { Pressed: true, Echo: false } key)
             {
                 return;
             }
@@ -181,6 +199,30 @@ namespace GolemFactory.Nodes
                     GetViewport().SetInputAsHandled();
                     return;
                 }
+            }
+        }
+
+        /// <summary>
+        /// The next row's placeable: the first with nothing in hand (or the wrecking bar), the one
+        /// after the held one, and after the last row, empty hands again.
+        /// </summary>
+        public void StepTool()
+        {
+            int held = -1;
+            for (int i = 0; i < _rows.Count; i++)
+            {
+                if (_build.ActivePrefab == _rows[i].prefab)
+                {
+                    held = i;
+                }
+            }
+            if (held + 1 < _rows.Count)
+            {
+                _build.SetActivePrefab(_rows[held + 1].prefab);
+            }
+            else
+            {
+                _build.CancelPlacement();
             }
         }
 
@@ -209,6 +251,18 @@ namespace GolemFactory.Nodes
             // through enter/exit signals, which a row can miss (headless runs never send them).
             Control under = Panel.Visible ? GetViewport().GuiGetHoveredControl() : null;
             _hovered = under is Button button && _rowKeys.ContainsKey(button) ? button : null;
+            if (InputDevices.PadInUse && Panel.Visible)
+            {
+                // No pointer with a pad: the card is the held tool's, so LB shows each price in turn.
+                _hovered = _build.IsDemolishActive ? _demolishRow : null;
+                foreach ((PlaceableBuilding prefab, Button row) in _rows)
+                {
+                    if (_build.ActivePrefab == prefab)
+                    {
+                        _hovered = row;
+                    }
+                }
+            }
             foreach ((PlaceableBuilding prefab, Button row) in _rows)
             {
                 Highlight(row, _build.ActivePrefab == prefab);
