@@ -54,6 +54,9 @@ namespace GolemFactory.Nodes
         /// <summary>The way the Artificer faces; the pad's build cursor starts one cell that way.</summary>
         public ArtificerFacing Facing => _walker.Facing;
 
+        /// <summary>Whether a walk was asked for this frame (the pad's look-around cursor returns to the facing).</summary>
+        public bool Walking { get; private set; }
+
         private static readonly GridCoordinateConverter UnitConverter = new GridCoordinateConverter(new CoreVector2(1f, 1f));
 
         private readonly Texture2D[] _frames = new Texture2D[ArtificerWalkAnimation.SpriteCount];
@@ -122,6 +125,7 @@ namespace GolemFactory.Nodes
                 ?? (ModalScreens.AnyOpen(GetTree()) || TextEntry.IsTyping(GetViewport())
                     ? Vector2.Zero
                     : Input.GetVector(MoveLeft, MoveRight, MoveDown, MoveUp)); // +y = north
+            Walking = input != Vector2.Zero;
 
             // Bounded by the WORLD (workshop + street), with the north wall wherever Floor
             // Expansion has pushed it -- the clamp Unity's PlayerController applied.

@@ -1,8 +1,9 @@
 # Golem Factory: running on the Steam Deck
 
-**Status (2026-11-08):** D1's export is built (§7's export log); the Deck's first launch is the
+**Status (2026-11-09):** D1's export is built (§7's export log); the Deck's first launch is the
 owner's. D4, the gamepad's model, is built, with D5.1's build cursor pulled in so a pad can place
-(§7's input audit and "D4 as built"). The rest is planned, not started.
+(§7's input audit and "D4 as built"). D5.2, the hover card at the pad's cursor, is built (§7's
+"D5.2 as built"). The rest is planned, not started.
 
 The goal is to run the game on Steam Deck hardware, played by its owner. **It is not a Steam store release**
 (roadmap decision 14: release isn't planned). No Steamworks, no store page, no depots, no Steam Deck
@@ -355,8 +356,22 @@ Fill these in while doing the work, so a later session doesn't repeat a finding.
     same `BuildModeController` drag. With the pad in use the ghost is never "over the UI", and the
     build menu's card shows the held tool's.
   - **Checked by** the `gamepad` scenario (13 break checks caught). Left for D5 to D7: the hover
-    card at the cursor (D5.2), every screen's focus (D6), and prompts and cards that still name
-    keys ("[E]", the card's "[3]"; D7).
+    card at the cursor (D5.2, now built: below), every screen's focus (D6), and prompts and cards
+    that still name keys ("[E]", the card's "[3]"; D7).
+- **D5.2 as built, 2026-11-09** (branch `deck/hover-card`): with the pad in use, the hover card
+  reads the pad's cursor instead of the pointer.
+  - **With a tool in hand** it is the build cursor, so the card shows for a golem the ghost is over.
+  - **With empty hands** the cursor is the cell ahead of the Artificer and turns as they turn, so
+    walking up to a golem and facing it shows its card, as hovering it does. The right stick moves
+    the cursor to look around, up to 6 cells out (the build cursor's reach and repeat). A brass
+    tile, not the ghost's green, marks the cell while it's off the cell ahead. A walk brings it
+    back to the cell ahead.
+  - The card hangs from the cursor cell's top-right corner on screen, as it hangs from the pointer.
+    A full screen or the wrecking bar hides it, as with the mouse, and a screen hides the tile.
+  - A tool picked up still starts its cursor a cell ahead, whatever the look was.
+  - **Checked by** the `gamepad` scenario's hover steps (8 break checks caught); frames
+    `gamepad-hover-ahead`, `gamepad-hover-look`, `gamepad-hover-floor`. Over a building the tile
+    is under its sprite. There, the golem's own hover lights show the pick.
 - **Screen checklist (D6):** build menu, Workbench, Pack, Crate, label picker, guide, hint, title, save/load,
   settings. For each: focus order, open/close, every action by pad, hover content reachable.
 - **Export log (D1), 2026-11-08:**

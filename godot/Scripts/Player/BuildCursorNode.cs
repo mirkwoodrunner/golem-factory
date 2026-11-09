@@ -25,6 +25,11 @@ namespace GolemFactory.Nodes
     /// controller's own GhostStateFor (so the ghost and the click read one answer), with the
     /// facing arrow 0.28 cells toward the facing, hidden for the wrecking bar.
     /// </para>
+    ///
+    /// <para>
+    /// It also owns the pad's cursor, with a tool in hand or not: with empty hands it is where
+    /// the hover card looks (<see cref="GolemHoverNode"/>, docs/steam-deck-design.md D5.2).
+    /// </para>
     /// </summary>
     public partial class BuildCursorNode : Node2D
     {
@@ -53,7 +58,15 @@ namespace GolemFactory.Nodes
         private double _padHeldFor = -1;
         private double _padNextStep;
         private bool _padPlacing;
+        private bool _padAimed;
+        private Sprite2D _reticle;
         private PlayerNode _player;
+
+        /// <summary>
+        /// The look-around tile's tint: brass, not the ghost's valid green, so it reads as a glance,
+        /// not a placement. Bright enough to find on the Deck's 7-inch screen. <b>TUNING.</b>
+        /// </summary>
+        private static readonly Color ReticleTint = new Color(1.6f, 1.25f, 0.6f, 0.95f);
 
         public override void _Ready()
         {
@@ -68,6 +81,8 @@ namespace GolemFactory.Nodes
             AddChild(_ghost);
             _arrow = new Sprite2D { Texture = GD.Load<Texture2D>("res://art/facing_arrow.png") };
             _ghost.AddChild(_arrow);
+            _reticle = new Sprite2D { Texture = _ghost.Texture, Modulate = ReticleTint, Visible = false };
+            AddChild(_reticle);
         }
 
         /// <summary>Whether the ghost is drawn, and where (Core cell) -- for a scenario to check.</summary>
@@ -152,12 +167,15 @@ namespace GolemFactory.Nodes
                 }
                 _wasActive = false;
                 _padPlacing = false;
+                LookAround(delta);
                 return;
             }
+            _reticle.Visible = false;
             if (!_wasActive)
             {
                 // A tool just picked up: the pad's cursor starts one cell ahead of the Artificer.
                 _wasActive = true;
+                _padAimed = false;
                 _padOffset = FacingStep(_player?.Facing ?? ArtificerFacing.Down);
                 _padHeldFor = -1;
             }
@@ -195,21 +213,59 @@ namespace GolemFactory.Nodes
         }
 
         /// <summary>
+        /// With no tool in hand, the pad's cursor is where the hover card looks (D5.2): one cell
+        /// ahead of the Artificer, turning as they turn, until the right stick moves it to look
+        /// around. Then it holds its offset, drawn as a brass tile, until the player walks again.
+        /// </summary>
+        private void LookAround(double delta)
+        {
+            if (!UsingPad || ModalScreens.AnyOpen(GetTree()))
+            {
+                _padAimed &= UsingPad; // a screen opened over an aimed cursor keeps it
+                _padHeldFor = -1;
+                _reticle.Visible = false;
+                return;
+            }
+            if (_player.Walking)
+            {
+                _padAimed = false;
+                _padHeldFor = -1;
+            }
+            if (!_padAimed)
+            {
+                // The first push looks on from the cell ahead, not from wherever a tool left it.
+                _padOffset = FacingStep(_player.Facing);
+            }
+            if (!_player.Walking && StepPadCursor(delta))
+            {
+                _padAimed = true;
+            }
+            _reticle.Visible = _padAimed;
+            _reticle.Position = GridConversions.CellToWorld(PadCell);
+        }
+
+        /// <summary>Whether the right stick has moved the look-around cursor off the cell ahead -- for a scenario.</summary>
+        public bool PadAimed => _padAimed;
+
+        /// <summary>Whether the look-around cursor's tile is drawn -- for a scenario.</summary>
+        public bool ReticleVisible => _reticle.Visible;
+
+        /// <summary>
         /// The right stick steps the cursor a cell at a time: once on the push, then again after
         /// <see cref="PadFirstRepeat"/> and every <see cref="PadRepeat"/> while held, never further
-        /// than <see cref="PadReach"/> from the player.
+        /// than <see cref="PadReach"/> from the player. Returns whether it stepped.
         /// </summary>
-        private void StepPadCursor(double delta)
+        private bool StepPadCursor(double delta)
         {
             if (TextEntry.IsTyping(GetViewport()))
             {
-                return;
+                return false;
             }
             Vector2 stick = Input.GetVector(PadBindings.CursorLeft, PadBindings.CursorRight, PadBindings.CursorDown, PadBindings.CursorUp); // +y north
             if (stick == Vector2.Zero)
             {
                 _padHeldFor = -1;
-                return;
+                return false;
             }
             if (_padHeldFor < 0)
             {
@@ -221,7 +277,7 @@ namespace GolemFactory.Nodes
                 _padHeldFor += delta;
                 if (_padHeldFor < _padNextStep)
                 {
-                    return;
+                    return false;
                 }
                 _padNextStep += PadRepeat;
             }
@@ -231,6 +287,7 @@ namespace GolemFactory.Nodes
             _padOffset = new CoreVector2Int(
                 System.Math.Clamp(_padOffset.x + dx, -PadReach, PadReach),
                 System.Math.Clamp(_padOffset.y + dy, -PadReach, PadReach));
+            return true;
         }
 
         private static CoreVector2Int FacingStep(ArtificerFacing facing) => facing switch

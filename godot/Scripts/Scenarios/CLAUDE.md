@@ -238,13 +238,16 @@ Current scenarios:
 - `gamepad` (Sandbox): the pad (`docs/steam-deck-design.md` D4) with joypad events only, after the
   playtest card's one click. Every pad action has its joypad event and the keys stay. The left
   stick walks, no faster on a diagonal; A harvests at the Scrap cart; X picks a golem up and sets
-  it down; Y opens the pack and Start the menu, B closes each. LB steps the build menu to the belt
+  it down. The hover card at the pad's cursor (D5.2): facing the golem shows its card, hung from
+  the cell ahead; turning away hides it; the right stick looks back at it, drawing the brass tile;
+  the pack opened over it hides both; a walk brings the cursor back ahead. Y opens the pack and Start the menu, B closes each. LB steps the build menu to the belt
   (its card showing, the pointer hidden), the cursor starts a cell ahead of the Artificer, the right
   stick steps it once and repeats while held; RT places a belt and its release ends the drag, RB
   turns it, RT held over the stick lays a run; B puts it down. LT takes the wrecking bar and RT
   takes a belt back. The d-pad zooms; Back pauses and plays. A mouse nudge hands the cursor back.
   **Parsed input lands a frame later**: check what a release did in the step after sending it.
-  Headless ignores `Input.MouseMode`; read `InputDeviceNode.AppliedMode`. Captures `gamepad-cursor`.
+  Headless ignores `Input.MouseMode`; read `InputDeviceNode.AppliedMode`. Captures `gamepad-cursor`, `gamepad-hover-ahead`,
+  `gamepad-hover-look`, `gamepad-hover-floor`.
 - `guide-ahead` (Sandbox): the guide's program step shown over the Workbench ahead of the guide
   (`docs/guide-chapters-design.md` §9). F9 four times reaches chapter 5; Iron Smelting is claimed
   by the kit's own claim; E at the station and a click on the Aether-Hauler's row build it, and the
