@@ -68,9 +68,13 @@ call): built, reviewed, critiqued and tested. Done:
 - **Selling golems to the city is built** (2026-11-08, `golem-sales-design.md`), on branch
   `depth/golem-sales` from `main` (Phases 7 and 8 and the Docks went in as PR #62): golem orders
   at the City Office from chapter 5, sold by hand (carry, E) or built and shipped by a Golem
-  Foundry, and the `golem-sales` scenario. Next, at the user's go: the Steam Deck
-  (`steam-deck-design.md`). Still to run by a person: the playtests below and
-  `testscript/endless-soak.md`.
+  Foundry, and the `golem-sales` scenario. PR #63.
+- **The Steam Deck has begun** (`steam-deck-design.md`), on branch `deck/export` from
+  `depth/golem-sales`: D1's Linux export, self-contained .NET 10, one command
+  (`Tools/Deck/export-linux.ps1`), and scenarios passing on an exported build (§7's export log).
+  Next: the owner launches it on the Deck (D1.5, D1.6, then D2's Steam Input template), and the
+  native gamepad work (D4) begins with the input audit. Still to run by a person: the playtests
+  below and `testscript/endless-soak.md`.
 
 0. **Phase 6 (Game feel), on branch `phase6/feel` (from `phase5/audio`), built 2026-11-01.** The
    spec is `docs/game-feel-design.md`; the user's four decisions are its §7 (ComfyUI FX art,

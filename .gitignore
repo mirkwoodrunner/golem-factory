@@ -10,6 +10,9 @@
 # Local art review scratch (generated comparison images, not part of the build)
 art-review/
 
+# Exported builds (Tools/Deck/export-linux.ps1)
+build/
+
 # Python bytecode (Tools/ scripts import each other since the art-path helper)
 __pycache__/
 

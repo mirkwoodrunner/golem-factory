@@ -1,7 +1,7 @@
 # Golem Factory: running on the Steam Deck
 
-**Status: planned, not started (2026-11-03).** This is the plan for a later phase. Nothing here is built.
-The roadmap's Phase 7 and Phase 8 come first.
+**Status: D1's export is built (2026-11-08, §7's export log); the Deck's first launch is the owner's.**
+The rest is planned, not started.
 
 The goal is to run the game on Steam Deck hardware, played by its owner. **It is not a Steam store release**
 (roadmap decision 14: release isn't planned). No Steamworks, no store page, no depots, no Steam Deck
@@ -323,7 +323,31 @@ Fill these in while doing the work, so a later session doesn't repeat a finding.
 - **Input audit (D4.1):** _each site that polls or handles input, its screen, its needs._
 - **Screen checklist (D6):** build menu, Workbench, Pack, Crate, label picker, guide, hint, title, save/load,
   settings. For each: focus order, open/close, every action by pad, hover content reachable.
-- **Export log (D1):** exact preset, runtime pack source, errors met and fixes.
+- **Export log (D1), 2026-11-08:**
+  - **Presets** (`godot/export_presets.cfg`): "Linux Deck" (Linux, x86_64, PCK beside the binary, not
+    embedded) and "Windows Smoke" (the same pack for Windows). Both include `data/*.json`, which
+    `WorldNode` reads through `FileAccess`, and exclude `Core/`, `Core.Tests/` and `Tools/`.
+  - **One command:** `Tools/Deck/export-linux.ps1` writes `build/deck/` (ignored by git), and
+    `-DeckHost steamdeck` copies it to `~/Games/GolemFactory/` over SSH. The build is 158 MB:
+    a 74 MB binary, a 2 MB pack and the .NET folder.
+  - **The .NET risk (D1.4) is cleared.** The net10 project exports self-contained with no retarget:
+    `data_GolemFactory.Godot_linuxbsd_x86_64/` holds `libcoreclr.so`, `libhostfxr.so` and
+    `Microsoft.NETCore.App` 10.0.10. The Linux runtime pack came from nuget.org (already in
+    `nuget.config`) and is cached in `~/.nuget/packages` after the first export.
+  - **Godot can sit idle after an export** that has finished: the pack and the .NET folder are
+    written, and the process doesn't exit. It happened on most runs, the first for each platform
+    included. The script watches the log for the pack's `DONE` and ends Godot 20 s later. A build
+    made that way matched a clean run's pack byte for byte.
+  - **The exported build runs scenarios.** On "Windows Smoke", `GolemFactory.exe --headless
+    --fixed-fps 60 -- --scenario <name>` passes `world`, `build`, `interact`, `golems`,
+    `golem-motion`, `workbench`, `save`, `tutorial`, `inventory`, `audio`, `settings`, `title`,
+    `slots`, `contracts`, `endless`, `docks`, `golem-sales`, `supply` and `creative`. Two can't run
+    there: `art` reads the repo's `Tools/Art` manifest, and `loop` needs a scene path on the
+    command line, which release templates refuse. `golem-motion` first failed on the export
+    because it listed `res://art` for `.png` files, and a pack lists `.png.import`. That was the
+    scenario's check, not the game, which asks `ResourceLoader.Exists`. Fixed.
+  - **Not yet run on the Deck:** no WSL on the build machine, so the Linux binary's first launch
+    (D1.5 and D1.6) is the owner's.
 - **Display readings (D3):** the stretch mode chosen, per-screen legibility notes.
 - **Performance runs (D8):** where the numbers are stored.
 - **Accessibility pass (§10):** each row's reading on the device, and the calls made.
