@@ -515,6 +515,24 @@ namespace GolemFactory.Nodes
             _fx.Spawn(FxKind.Glint, lid + new Vector2(10f, -6f));
         }
 
+        private int _shipped = -1;
+
+        /// <summary>
+        /// A Golem Foundry ships a golem to the city (docs/golem-sales-design.md §2.2): a glint over
+        /// its door and a puff from its chimney. Counted, so it shows once however many golems
+        /// shipped since the last frame drawn (one shipped off screen shows on coming back).
+        /// </summary>
+        private void UpdateFoundry(PlaceableGolemFoundry foundry)
+        {
+            int shipped = foundry.Shipped;
+            if (_shipped >= 0 && shipped > _shipped && _fx != null)
+            {
+                _fx.Spawn(FxKind.Glint, GlobalPosition + new Vector2(0f, -56f));
+                _fx.Spawn(FxKind.Puff, GlobalPosition + new Vector2(14f, -90f));
+            }
+            _shipped = shipped;
+        }
+
         /// <summary>A burning boiler puffs from its chimney on the factory's clock, so not while paused.</summary>
         private void UpdateBoilerPuff()
         {
@@ -586,6 +604,10 @@ namespace GolemFactory.Nodes
             if (_boiler != null)
             {
                 UpdateBoilerPuff();
+            }
+            if (_crate is PlaceableGolemFoundry foundry)
+            {
+                UpdateFoundry(foundry);
             }
             if (_tower != null)
             {

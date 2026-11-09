@@ -328,7 +328,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return $"HUD '{Hud().TowerHeadline}'";
                 }
-                if (!Sandbox.RunTotalsLine.EndsWith("1 civic stage built"))
+                if (!Sandbox.RunTotalsLine.Contains(" · 1 civic stage built")) // golems sold follow it
                 {
                     return "totals '" + Sandbox.RunTotalsLine + "'";
                 }

@@ -273,6 +273,12 @@ namespace GolemFactory.Events
         Posted = 0,
         Accepted = 1,
         Completed = 2,
+
+        /// <summary>A golem order posted (docs/golem-sales-design.md); its name is the chassis.</summary>
+        OrderPosted = 3,
+
+        /// <summary>A golem order done: every golem it asked for reached the city.</summary>
+        OrderCompleted = 4,
     }
 
     public readonly struct ContractEvent
@@ -294,6 +300,20 @@ namespace GolemFactory.Events
             ContractName = contractName;
             Requester = requester;
             BonusEarned = bonusEarned;
+        }
+    }
+
+    // A Golem Foundry shipped a golem to the city (docs/golem-sales-design.md §2.2): its view
+    // glints. The order's own count and completion go through ContractEvent.
+    public readonly struct FoundryShippedEvent
+    {
+        public readonly Compat.Vector2Int Cell;
+        public readonly string Chassis;
+
+        public FoundryShippedEvent(Compat.Vector2Int cell, string chassis)
+        {
+            Cell = cell;
+            Chassis = chassis;
         }
     }
 
@@ -381,6 +401,7 @@ namespace GolemFactory.Events
         public static event Action<ClockTowerStageCompletedEvent> ClockTowerStageCompleted;
         public static event Action<ContractEvent> Contract;
         public static event Action<CivicStageCompletedEvent> CivicStageCompleted;
+        public static event Action<FoundryShippedEvent> FoundryShipped;
         public static event Action<WorldInteractablesChangedEvent> WorldInteractablesChanged;
 
         /// <summary>
@@ -392,7 +413,7 @@ namespace GolemFactory.Events
             Count(TickAdvanced) + Count(ThresholdCrossed) + Count(GolemCompleted) + Count(GolemStalled)
             + Count(GolemResumed) + Count(GolemTriggerFired) + Count(ItemAssembled) + Count(ItemConsumed)
             + Count(ClockTowerStageCompleted) + Count(WorldInteractablesChanged) + Count(Contract)
-            + Count(CivicStageCompleted);
+            + Count(CivicStageCompleted) + Count(FoundryShipped);
 
         private static int Count(Delegate handlers) => handlers?.GetInvocationList().Length ?? 0;
 
@@ -415,6 +436,7 @@ namespace GolemFactory.Events
         public static void Publish(ClockTowerStageCompletedEvent e) => ClockTowerStageCompleted?.Invoke(e);
         public static void Publish(ContractEvent e) => Contract?.Invoke(e);
         public static void Publish(CivicStageCompletedEvent e) => CivicStageCompleted?.Invoke(e);
+        public static void Publish(FoundryShippedEvent e) => FoundryShipped?.Invoke(e);
         public static void Publish(WorldInteractablesChangedEvent e) => WorldInteractablesChanged?.Invoke(e);
     }
 }

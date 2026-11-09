@@ -111,8 +111,8 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 ## 4. Polish, none of it blocking
 
 - **The art is placeholder** throughout, and the Workbench's lever housing, display face and
-  card faces most of all. The City Office, the civic works' site and the Docks' gate and water are
-  generated placeholders, the user's to commission.
+  card faces most of all. The City Office, the civic works' site, the Docks' gate and water and
+  the Golem Foundry are generated placeholders, the user's to commission.
 - **The Inventory tab's order** (`crates-design.md` §4.7, §10.1.10): its headers read as words
   now ("Your pack", "Pneumatic Post", "Crate (3,-2)"), but `InventoryReadout` still sorts the
   buffers by id: crates, the pack, masts, then the Post. The spec asks for the pack

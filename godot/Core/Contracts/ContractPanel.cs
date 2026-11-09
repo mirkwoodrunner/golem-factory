@@ -52,10 +52,31 @@ namespace GolemFactory.Contracts
     public sealed class ContractPanel
     {
         private readonly ContractBoard _board;
+        private readonly GolemOrderBoard _orders;
 
-        public ContractPanel(ContractBoard board) => _board = board;
+        public ContractPanel(ContractBoard board, GolemOrderBoard orders = null)
+        {
+            _board = board;
+            _orders = orders != null && orders.Enabled ? orders : null;
+        }
 
         public ContractBoard Board => _board;
+
+        // --- The golem order, under the contract (docs/golem-sales-design.md §4) ----------------
+
+        private GolemOrder Order => _orders?.Current;
+
+        /// <summary>"Golem order · Tramway Company", or empty with no order.</summary>
+        public string OrderTitle => Order == null ? "" : GolemOrderText.Heading(Order);
+
+        public string OrderWords => Order?.Words ?? "";
+
+        /// <summary>"Wants 6 Clockwork Scavengers · 2 delivered".</summary>
+        public string OrderAsks => Order == null ? "" : GolemOrderText.Asks(_orders);
+
+        public string OrderReward => Order == null ? "" : GolemOrderText.RewardLine(_orders);
+
+        public string OrderHow => Order == null ? "" : GolemOrderText.HowTo;
 
         /// <summary>Who asks, or the office's own name while nothing is posted.</summary>
         public string Title => _board.Current?.requester ?? ContractText.OfficeName;

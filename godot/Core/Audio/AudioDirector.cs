@@ -304,7 +304,7 @@ namespace GolemFactory.Audio
         // from an existing slot. Posting and taking one are quiet.
         private void OnContract(ContractEvent e)
         {
-            if (e.Kind == ContractEventKind.Completed)
+            if (e.Kind == ContractEventKind.Completed || e.Kind == ContractEventKind.OrderCompleted)
             {
                 Play(AudioRules.Claim);
             }

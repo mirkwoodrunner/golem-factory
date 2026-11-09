@@ -89,7 +89,7 @@ namespace GolemFactory.World
         private SupplyPanel _supplyPanel;
 
         /// <summary>The City Office's notice: its lines and rows, and what a click does.</summary>
-        public ContractPanel ContractPanel => _contractPanel ??= new ContractPanel(Contracts);
+        public ContractPanel ContractPanel => _contractPanel ??= new ContractPanel(Contracts, GolemOrders);
         private ContractPanel _contractPanel;
 
         /// <summary>Hands [E] at the office its notice. Null keeps one already handed over.</summary>
@@ -116,6 +116,12 @@ namespace GolemFactory.World
         /// <c>data/contracts.json</c>, opened in chapter 5. None in Creative (invariant 12).
         /// </summary>
         public ContractBoard Contracts { get; private set; }
+
+        /// <summary>
+        /// The City Office's golem orders (docs/golem-sales-design.md): one at a time beside the
+        /// contract, from the office's opening. None in Creative.
+        /// </summary>
+        public GolemOrderBoard GolemOrders { get; private set; }
 
         /// <summary>The office's crate: golems, belts and the Crate screen fill the contract through it.</summary>
         public CityOfficeCrate OfficeCrate { get; private set; }
@@ -610,6 +616,7 @@ namespace GolemFactory.World
             Interactor.ConfigureWorld(() => Markers, InteractableBuildings, () => _golems);
             Interactor.ConfigureSupply(() => Supply);
             Interactor.ConfigureOffice(Contracts, OfficeCrate, TownSquare.OfficeCells());
+            Interactor.ConfigureGolemOrders(GolemOrders, SellGolem);
             Interactor.ConfigureBuildMode(Build);
             Interactor.ConfigureGolemPlacement(Grid, new Vector2(1f, 1f));
             Interactor.ConfigureScreenCoordinator(Screens);
@@ -689,6 +696,7 @@ namespace GolemFactory.World
             data.supply = Supply.Capture();
             data.contracts = Contracts?.Capture();
             data.civic = Civic?.Capture();
+            data.golemOrders = GolemOrders?.Capture();
             data.meta = CaptureMeta(live.Count, data.buildings.Count, autosaveReason);
             data.creative = Creative;
             SaveFileIO.WriteToFile(data, path);
@@ -781,6 +789,7 @@ namespace GolemFactory.World
             // After the Ledger and the tower: a save without contracts posts its first one if it can.
             Contracts?.Restore(data.contracts);
             Civic?.Restore(data.civic);
+            GolemOrders?.Restore(data.golemOrders);
 
             IGolemRespawner respawner = _stationTemplate != null ? new StationGolemRespawner(_stationTemplate) : null;
             SaveLoadService.RestoreReport report = SaveLoadService.RestoreState(
@@ -1106,6 +1115,17 @@ namespace GolemFactory.World
             Contracts.TowerComplete = () => site.IsComplete;
             Clock.Register(Contracts);
             OfficeCrate = new CityOfficeCrate(Contracts);
+            ContractBoard board = Contracts;
+            GolemOrders = new GolemOrderBoard(
+                Setup?.golemOrders,
+                Definitions?.Chassis,
+                Definitions == null ? null : ContractGenerator.RawCosts(Definitions.Recipes.Values),
+                () => board.IsOpen,
+                chassis => TechTree.Ledger.HasChassis(chassis),
+                item => TechTree.Ledger.HasItem(item),
+                goods => board.Pay(goods),
+                enabled: !Creative);
+            Clock.Register(GolemOrders);
 
             var office = new PlaceableBuilding { name = "CityOffice" };
             Build.RegisterFixture(office, TownSquare.OfficeCell, TownSquare.OfficeCells());
@@ -1250,6 +1270,16 @@ namespace GolemFactory.World
                 bench.ConfigureStockpile(Buffers, _stockpileBufferId, PostBufferId);
                 Clock.Register(bench);
             }
+
+            // A Golem Foundry (docs/golem-sales-design.md §2.2): its intake on its tile, the
+            // orders it fills, and the clock it builds on.
+            PlaceableGolemFoundry foundry = building.GetPart<PlaceableGolemFoundry>();
+            if (foundry != null)
+            {
+                foundry.Attach(Endpoints, building.Cell, GolemOrders, Definitions?.Chassis,
+                    (int)System.Math.Round(Clock.TicksPerSecond));
+                Clock.Register(foundry);
+            }
         }
 
         private void OnBuildingRemoved(PlaceableBuilding building)
@@ -1260,6 +1290,11 @@ namespace GolemFactory.World
             {
                 bench.IsCranking = false;
                 Clock.Unregister(bench);
+            }
+            PlaceableGolemFoundry foundry = building.GetPart<PlaceableGolemFoundry>();
+            if (foundry != null)
+            {
+                Clock.Unregister(foundry);
             }
         }
 
@@ -1428,6 +1463,7 @@ namespace GolemFactory.World
             // After the Ledger's poll, so a contract posts the frame its good is first seen; and
             // every frame, so goods put in by hand count while the clock is paused.
             Contracts?.Settle();
+            GolemOrders?.Settle();
             Tutorial?.Update();
             Audio.Update(seconds, Clock, _golems, Steam.LastEvaluatedWorkingCount);
         }
@@ -1460,7 +1496,35 @@ namespace GolemFactory.World
 
         /// <summary>The overview's running totals line.</summary>
         public string RunTotalsLine => Overview.RunTotals.Text(GoodsMadeEver, Contracts?.Done.Count ?? 0,
-            Civic != null && Civic.Works.Count > 0 && EndlessOpen && !Creative ? Civic.StagesBuilt : -1);
+            Civic != null && Civic.Works.Count > 0 && EndlessOpen && !Creative ? Civic.StagesBuilt : -1,
+            GolemOrders != null && GolemOrders.Enabled && Contracts.IsOpen ? GolemOrders.GolemsSold : -1);
+
+        /// <summary>
+        /// Sells a golem to the city (docs/golem-sales-design.md §2.1): refused unless the open
+        /// order wants its chassis; then it leaves through the station's teardown, its cargo to
+        /// the pack, and the order counts it, worth its chassis and its cards.
+        /// </summary>
+        public GolemSaleResult SellGolem(GolemEntity golem)
+        {
+            string chassis = golem?.Program?.chassis?.name;
+            string refusal = GolemOrders == null ? "The city has no order for golems" : GolemOrders.Refusal(chassis);
+            if (refusal != null)
+            {
+                return GolemSaleResult.Refused(refusal + ".");
+            }
+            if (_stationTemplate == null)
+            {
+                return GolemSaleResult.Refused("No golem to sell.");
+            }
+            GolemOrder order = GolemOrders.Current;
+            int filled = golem.Program.appendages.Count(a => a != null);
+            if (!_stationTemplate.TrySellGolem(golem, out IReadOnlyList<RecipeIngredient> cargo, out string why))
+            {
+                return GolemSaleResult.Refused(why);
+            }
+            GolemOrders.Deliver(chassis, filled);
+            return GolemSaleResult.Sold(order, GolemOrders.Current == order ? GolemOrders.Delivered : order.Count, cargo);
+        }
 
         /// <summary>An hour of what the factory made and spent, for the overview's graph (docs/menus-design.md §8).</summary>
         public Overview.ProductionHistory History { get; } = new Overview.ProductionHistory();

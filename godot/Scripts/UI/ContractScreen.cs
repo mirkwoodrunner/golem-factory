@@ -32,6 +32,11 @@ namespace GolemFactory.Nodes
         private Label _reward;
         private Label _bonus;
         private Label _how;
+        private Label _orderTitle;
+        private Label _orderWords;
+        private Label _orderAsks;
+        private Label _orderReward;
+        private Label _orderHow;
         private Label _status;
         private VBoxContainer _content;
         private string _signature;
@@ -47,11 +52,15 @@ namespace GolemFactory.Nodes
         public string Reward => _reward.Text;
         public string Bonus => _bonus.Text;
         public string Status => _status.Text;
+        public string OrderTitle => _orderTitle.Text;
+        public string OrderAsks => _orderAsks.Text;
+        public string OrderReward => _orderReward.Text;
         public IReadOnlyList<(ContractRow row, Button button)> Rows => _rows;
 
         /// <summary>Every label the notice draws, for the scenario's id and glyph checks.</summary>
         public IEnumerable<string> DrawnText =>
-            new[] { _title.Text, _words.Text, _asks.Text, _reward.Text, _bonus.Text, _how.Text, _status.Text }
+            new[] { _title.Text, _words.Text, _asks.Text, _reward.Text, _bonus.Text, _how.Text, _status.Text,
+                    _orderTitle.Text, _orderWords.Text, _orderAsks.Text, _orderReward.Text, _orderHow.Text }
                 .Concat(_rows.SelectMany(r => new[] { r.row.Label, r.row.Detail, r.row.Price }));
 
         public Button Button(ContractAction action) => _rows.FirstOrDefault(r => r.row.Action == action).button;
@@ -116,6 +125,11 @@ namespace GolemFactory.Nodes
             _reward.Text = panel.RewardLine;
             _bonus.Text = panel.BonusLine;
             _how.Text = panel.HowLine;
+            _orderTitle.Text = panel.OrderTitle;
+            _orderWords.Text = panel.OrderWords;
+            _orderAsks.Text = panel.OrderAsks;
+            _orderReward.Text = panel.OrderReward;
+            _orderHow.Text = panel.OrderHow;
             IReadOnlyList<ContractRow> rows = panel.Rows();
             string signature = Signature(rows);
             if (signature == _signature)
@@ -217,7 +231,7 @@ namespace GolemFactory.Nodes
 
             // Left of centre, as the cart panel and the Crate screen are, so the guide's plate stays readable.
             _panel = new Control { Name = "ContractPanel", MouseFilter = Control.MouseFilterEnum.Stop };
-            _root.AddChild(Ugui.Place(_panel, 0f, 0.5f, 0f, 0.5f, 140f, 0f, 520f, 540f, 0f, 0.5f));
+            _root.AddChild(Ugui.Place(_panel, 0f, 0.5f, 0f, 0.5f, 140f, 0f, 520f, 640f, 0f, 0.5f));
             _panel.AddChild(Ugui.Fill(Ugui.Image("Plate", Ugui.NineSlice(Hud + "hud_panel_plain.png", 8), new Color(0.13f, 0.11f, 0.09f))));
 
             var office = Ugui.Place(new TextureRect
@@ -249,9 +263,17 @@ namespace GolemFactory.Nodes
             _bonus = Wrapped("Bonus", 13, ManagementScreen.ItemNameInk, -214f, 34f);
             _how = Wrapped("How", 12, ManagementScreen.DimInk, -250f, 34f);
 
+            // The golem order beside the contract (docs/golem-sales-design.md §4): its heading,
+            // the requester's words, what it wants with what is delivered, the reward, and how.
+            _orderTitle = Wrapped("OrderTitle", 15, ManagementScreen.HeaderInk, -292f, 22f, bold: true);
+            _orderWords = Wrapped("OrderWords", 13, ManagementScreen.ItemNameInk, -314f, 20f);
+            _orderAsks = Wrapped("OrderAsks", 15, ManagementScreen.QuantityInk, -336f, 22f, bold: true);
+            _orderReward = Wrapped("OrderReward", 12, ManagementScreen.ItemNameInk, -360f, 18f);
+            _orderHow = Wrapped("OrderHow", 12, ManagementScreen.DimInk, -378f, 34f);
+
             var scroll = Ugui.Place(new ScrollContainer { Name = "Scroll", HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled },
-                // Under the notice's lines, 52 above the bottom edge for the status line.
-                0f, 0f, 1f, 1f, 0f, -118f, -16f, -342f, 0.5f, 0.5f);
+                // Under the notice's lines (to 412 from the top), 52 above the bottom edge for the status line.
+                0f, 0f, 1f, 1f, 0f, -179.5f, -16f, -465f, 0.5f, 0.5f);
             _panel.AddChild(scroll);
             var margin = new MarginContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
             foreach (string side in new[] { "margin_left", "margin_right", "margin_top", "margin_bottom" })

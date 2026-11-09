@@ -170,6 +170,9 @@ namespace GolemFactory.World
         /// <summary>Endless play's generated contracts (docs/endless-design.md §1.1).</summary>
         public GolemFactory.Contracts.EndlessContractsSetup endlessContracts;
 
+        /// <summary>The City Office's golem orders and the Golem Foundry (docs/golem-sales-design.md).</summary>
+        public GolemFactory.Contracts.GolemOrdersSetup golemOrders;
+
         /// <summary>The bays' campaign top and endless play's tiers (docs/endless-design.md §2, §4).</summary>
         public AssemblyBaysSetup assemblyBays;
 

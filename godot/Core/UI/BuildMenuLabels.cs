@@ -40,6 +40,7 @@ namespace GolemFactory.UI
             ["FreightMastPrefab"] = "A landing mast for Zeppelin freight between distant sites.",
             ["SlagHeapPrefab"] = "Burns Coke to get rid of Slag.",
             ["ScrapRecyclerPrefab"] = "Burns Coke to turn junk, Slag included, back into Scrap.",
+            ["GolemFoundryPrefab"] = "Builds the golems the City Office's order asks for from the goods fed into it, and ships them to the city.",
             ["PneumaticPostPrefab"] = "A Post crate: every one opens onto one shared store, 200 of each good. Your building spends from it once your pack runs short.",
         };
 

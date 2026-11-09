@@ -61,6 +61,9 @@ namespace GolemFactory.Save
         /// <summary>The civic works (docs/endless-design.md §1.2). Null in an older save: the first work, from its start.</summary>
         public CivicEntry civic;
 
+        /// <summary>The golem orders (docs/golem-sales-design.md). Null in an older save: the first order.</summary>
+        public GolemOrdersEntry golemOrders;
+
         /// <summary>
         /// What a save slot shows about this save (docs/menus-design.md §7): when it was written,
         /// where the guide was, how big the factory is. Null in a save from before slots; a slot
@@ -101,6 +104,21 @@ namespace GolemFactory.Save
 
         /// <summary><c>Contracts.ContractRungKind</c> by value: 1 Rate, 2 Capacity.</summary>
         public List<int> shelfRungKinds = new List<int>();
+    }
+
+    /// <summary>The golem orders (docs/golem-sales-design.md): orders done, golems sold, and the open order.</summary>
+    [Serializable]
+    public sealed class GolemOrdersEntry
+    {
+        public int done;
+        public int sold;
+
+        /// <summary>The open order's chassis, or null with none.</summary>
+        public string chassis;
+        public int count;
+        public string rewardGood;
+        public int delivered;
+        public double worthDelivered;
     }
 
     /// <summary>The civic works: the one under way by name, works built, and its stage and progress.</summary>
@@ -285,6 +303,11 @@ namespace GolemFactory.Save
         public int recyclerScrapStock;
 
         public int recyclerPendingPoints;
+
+        /// <summary>A Golem Foundry's chassis under way or held (docs/golem-sales-design.md §2.2); null idle.</summary>
+        public string foundryChassis;
+        public long foundryProgressTicks;
+        public bool foundryHolding;
 
         /// <summary>
         /// Clock Tower progress: which stage is running and how far into it, in the same

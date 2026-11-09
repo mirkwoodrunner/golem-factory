@@ -225,6 +225,16 @@ Current scenarios:
   Assembly Line tab's Docks row's Extend buys two rows, paved at once. Saved to Slot 1, the barge
   removed and the rows taken back, loaded with two clicks: both as saved. Captures `docks-gate`,
   `docks-open`, `docks-quay`.
+- `golem-sales` (Sandbox): selling golems (`docs/golem-sales-design.md`) with real keys. The office
+  open and a Scavenger built, the first golem order posts (Scavengers) and the HUD shows it. G
+  picks up a fresh Scavenger and W walks it to the office: the prompt offers the sale and E sells
+  it, gone for good with the hands empty and the HUD counting one. E empty-handed opens the notice
+  with the order (no id drawn). A Golem Foundry fed by a golem hauling Scrap from a kept-stocked
+  depot builds and ships Scavengers, its prompt and I's Crate screen saying so, its golems never
+  in the world; the order completes, its reward in the pack, the next posted, and the running
+  totals count the golems sold. Saved to Slot 1 mid-build, the Foundry demolished, loaded with
+  two clicks: the Foundry, its build and the order as saved. Captures `sales-office`,
+  `sales-notice`, `sales-foundry`, `sales-foundry-intake`.
 - `perf` also takes `--perf-golems=N` (a load of N golems in the endgame's proportions) and
   `--perf-load=endless` (160), for measuring the golem cap (`docs/performance-report-endless.md`).
 

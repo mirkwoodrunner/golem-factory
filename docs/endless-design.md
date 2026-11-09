@@ -16,7 +16,7 @@ which it builds on. Written before the code, with its invariants first.
 - **`contracts-design.md`:** contracts continue after the tower; bigger rewards wait for endless
   play.
 - **Waiting, not part of this:** a second map region (built since: the Docks, `region-design.md`),
-  and selling golems to the city.
+  and selling golems to the city (built since, from chapter 5: `golem-sales-design.md`).
 
 ## The problem
 

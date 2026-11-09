@@ -23,10 +23,11 @@ namespace GolemFactory.Tests.Data
         public void TheBuildMenuOffersUnitysTenPlaceables_InItsOrder_PlusTheSplitter()
         {
             // Unity's ten, in Sandbox.unity's order, with the belt splitter (G10, no Unity
-            // prefab) right after the belt, and the Pneumatic Post (crates-design §10) last.
+            // prefab) right after the belt, the Pneumatic Post (crates-design §10), then the Golem
+            // Foundry (docs/golem-sales-design.md §2.2).
             CollectionAssert.AreEqual(
                 new[] { "Depot", "GolemConstructionStation", "Belt", "BeltSplitter", "Boiler", "SteamPipe", "ClockTower",
-                        "HandCrankBench", "FreightMast", "SlagHeap", "ScrapRecycler", "PneumaticPost" },
+                        "HandCrankBench", "FreightMast", "SlagHeap", "ScrapRecycler", "PneumaticPost", "GolemFoundry" },
                 LoadReal().Select(e => e.DisplayName));
         }
 

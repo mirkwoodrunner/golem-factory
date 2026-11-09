@@ -339,6 +339,20 @@ namespace GolemFactory.Contracts
             }
         }
 
+        /// <summary>
+        /// Goods the office pays for something other than a contract (a golem order,
+        /// docs/golem-sales-design.md §3): into the pack as far as they fit, the rest on this shelf.
+        /// </summary>
+        public void Pay(IReadOnlyList<RecipeIngredient> goods)
+        {
+            if (goods == null || goods.Count == 0)
+            {
+                return;
+            }
+            Give(new ContractReward { goods = goods.ToList() });
+            Version++;
+        }
+
         /// <summary>The shelf's goods into the pack, as far as they fit; what doesn't stays. What moved, for a status line.</summary>
         public List<RecipeIngredient> CollectGoods()
         {

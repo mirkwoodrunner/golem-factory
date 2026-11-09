@@ -65,9 +65,10 @@ call): built, reviewed, critiqued and tested. Done:
   their prices (7a79046). 1925 Core tests pass.
 
 **Resume here:**
-- **Phases 7 and 8 and the Docks are done** (2026-11-08), on `phase8/depth` (from `phase7/menus`),
-  with a design audit's findings fixed (`region-design.md` §7). Phases 5 and 6 went in as PR #61.
-  Next, at the user's go: selling golems to the city, or the Steam Deck
+- **Selling golems to the city is built** (2026-11-08, `golem-sales-design.md`), on branch
+  `depth/golem-sales` from `main` (Phases 7 and 8 and the Docks went in as PR #62): golem orders
+  at the City Office from chapter 5, sold by hand (carry, E) or built and shipped by a Golem
+  Foundry, and the `golem-sales` scenario. Next, at the user's go: the Steam Deck
   (`steam-deck-design.md`). Still to run by a person: the playtests below and
   `testscript/endless-soak.md`.
 
@@ -491,7 +492,8 @@ Factorio's breadth.
 street, opening at the Zeppelin in chapter 9, its rows bought north, a quay of eight cart spots,
 and the `docks` scenario. Off-screen nodes skip their animation; re-measured, the golem cap stays
 112 (`performance-report-endless.md` §5). After the tower the Docks are room to spread out, not to
-grow (`endless-design.md` §2). Waiting: selling golems to the city; the Steam Deck
+grow (`endless-design.md` §2). Selling golems to the city is built (`golem-sales-design.md`).
+Waiting: the Steam Deck
 (`steam-deck-design.md` §8 holds the user's answers: native gamepad support, a Deck on hand, the
 viewport chosen from frames).
 

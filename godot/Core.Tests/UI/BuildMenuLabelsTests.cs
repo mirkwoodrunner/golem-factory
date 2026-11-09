@@ -15,7 +15,9 @@ namespace GolemFactory.Tests.UI
         [Test]
         public void EveryPlaceable_HasAReadableName_AHotkey_AndADescription()
         {
-            List<PlaceableEntry> placeables = PlaceableCatalogTests.LoadReal(AuthoredData.Load()).ToList();
+            // The menu's rows: the catalog less the Clock Tower, which stands on its own site (G10).
+            List<PlaceableEntry> placeables = PlaceableCatalogTests.LoadReal(AuthoredData.Load())
+                .Where(p => p.Key != GolemFactory.World.SandboxWorld.ClockTowerKey).ToList();
             Assert.LessOrEqual(placeables.Count, BuildMenuLabels.RowKeys.Length, "every row gets a key");
 
             for (int i = 0; i < placeables.Count; i++)
