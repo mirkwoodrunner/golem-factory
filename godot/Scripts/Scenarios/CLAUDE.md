@@ -235,6 +235,16 @@ Current scenarios:
   totals count the golems sold. Saved to Slot 1 mid-build, the Foundry demolished, loaded with
   two clicks: the Foundry, its build and the order as saved. Captures `sales-office`,
   `sales-notice`, `sales-foundry`, `sales-foundry-intake`.
+- `gamepad` (Sandbox): the pad (`docs/steam-deck-design.md` D4) with joypad events only, after the
+  playtest card's one click. Every pad action has its joypad event and the keys stay. The left
+  stick walks, no faster on a diagonal; A harvests at the Scrap cart; X picks a golem up and sets
+  it down; Y opens the pack and Start the menu, B closes each. LB steps the build menu to the belt
+  (its card showing, the pointer hidden), the cursor starts a cell ahead of the Artificer, the right
+  stick steps it once and repeats while held; RT places a belt and its release ends the drag, RB
+  turns it, RT held over the stick lays a run; B puts it down. LT takes the wrecking bar and RT
+  takes a belt back. The d-pad zooms; Back pauses and plays. A mouse nudge hands the cursor back.
+  **Parsed input lands a frame later**: check what a release did in the step after sending it.
+  Headless ignores `Input.MouseMode`; read `InputDeviceNode.AppliedMode`. Captures `gamepad-cursor`.
 - `perf` also takes `--perf-golems=N` (a load of N golems in the endgame's proportions) and
   `--perf-load=endless` (160), for measuring the golem cap (`docs/performance-report-endless.md`).
 

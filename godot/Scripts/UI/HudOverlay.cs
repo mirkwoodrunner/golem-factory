@@ -240,6 +240,28 @@ namespace GolemFactory.Nodes
             return button;
         }
 
+        /// <summary>
+        /// Pause (Space or the pad's Back) does the bar's PAUSE/PLAY button; the pad's d-pad right
+        /// does a click on the alert strip (docs/steam-deck-design.md D4). Neither over a full screen.
+        /// </summary>
+        public override void _UnhandledInput(InputEvent e)
+        {
+            if (ModalScreens.AnyOpen(GetTree()))
+            {
+                return;
+            }
+            if (e.IsActionPressed(PadBindings.Pause))
+            {
+                TogglePlayPause();
+                GetViewport().SetInputAsHandled();
+            }
+            else if (e.IsActionPressed(PadBindings.AlertNext))
+            {
+                _world.Sandbox.FocusNextAlert();
+                GetViewport().SetInputAsHandled();
+            }
+        }
+
         private void TogglePlayPause()
         {
             if (_world.Clock.State == ClockState.Paused)
