@@ -96,6 +96,7 @@ namespace GolemFactory.Nodes.Scenarios
                 ["docks"] = () => new DocksScenario(),
                 ["golem-sales"] = () => new GolemSalesScenario(),
                 ["gamepad"] = () => new GamepadScenario(),
+                ["guide-ahead"] = () => new GuideAheadScenario(),
             };
 
         [Export] public NodePath StationPath { get; set; }

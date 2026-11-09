@@ -508,6 +508,16 @@ namespace GolemFactory.Tutorial
         }
 
         /// <summary>Claims the card with this appendage: from its slot if offered, else granted.</summary>
+        /// <summary>
+        /// The kit's claim of one card, paid from granted goods, for a scenario that needs a card
+        /// in hand without the rest of its chapter. True once the player owns it.
+        /// </summary>
+        public bool KitClaim(string appendageName)
+        {
+            Claim(appendageName);
+            return HasClaimed(appendageName);
+        }
+
         private void Claim(string appendageName)
         {
             AssemblyLineState line = _world.AssemblyLine;

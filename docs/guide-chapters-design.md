@@ -288,3 +288,24 @@ step ids are unchanged since `phase1/crates`, every step has a kit action, the p
 Done checks are their plans' `Matches` over the golem's committed program, and `PlanFor` only
 reads. Golems the guide's texts talk about now print as `Scavenger #4` on every readout
 (`UI/GolemNames`); the texts themselves name roles, not numbers, and are unchanged.
+
+## 9. From playtest: the program shown ahead of its step (2026-11-08)
+
+"I couldn't tell what all the steps I should program" on the first Aether-Hauler. The station
+opens the Workbench on a new golem at once, and the Hauler's program step ("Two Hauls, two
+goods") is three steps after "hauler"; over the Workbench the plate showed only for a Workbench
+step, so the player had the glow alone, which can't say "Coke" or "2".
+
+- **The plate shows the program step ahead of the guide** (`TutorialGuide.ProgramStepFor`,
+  `TutorialPanel.AheadStep`): while the Workbench is on a golem a later step of the chapter
+  programs, and until that golem runs the program, the plate shows that step's words ("coming
+  up"), with no goods line or notice from the step behind. Chapter 1's first Scavenger gets it too.
+- **The plate docks in the chassis rack**, empty while the Workbench is on a golem. The viewport's
+  lower half, where it sat, holds the Hauler's STEP 4, whose glow went under the plate.
+- **The vault scrolls the glowing card into view whenever it is a new control**, not only when the
+  hint moves: a drop rebuilds the vault in the frame the hint moves on, and Assemble Iron Smelting
+  glowed below the vault's window, out of sight.
+- **"Depots for the smelter" says a depot keeps each good apart** (the crate's per-good number),
+  answering "risky to expect two different inputs in the same depot". Hauling from two depots
+  (each Haul naming its side) is the user's open call, not built.
+- Checked by the `guide-ahead` scenario and `PlaytestKitTests`.
