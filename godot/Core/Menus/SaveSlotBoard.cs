@@ -225,8 +225,10 @@ namespace GolemFactory.Menus
             }
         }
 
-        /// <summary>Why the armed button asks twice, or "" with nothing armed.</summary>
-        public string Prompt
+        /// <summary>Why the armed button asks twice, or "" with nothing armed; "Press A on" with the pad.</summary>
+        public string Prompt => Settings.TextTokens.Fill(ArmedPrompt);
+
+        private string ArmedPrompt
         {
             get
             {

@@ -34,6 +34,10 @@ namespace GolemFactory.Nodes
         public const string AlertNext = "alert_next";
         /// <summary>The d-pad's left takes the pad into the playtest card (a click answers it with the mouse).</summary>
         public const string CardAnswer = "card_answer";
+        /// <summary>The left stick pressed in puts the guide away and brings it back, as F1 does.</summary>
+        public const string GuideToggle = "guide_toggle";
+        /// <summary>The right stick pressed in runs the playtest kit through a chapter (playtest mode only), as F9 does.</summary>
+        public const string KitSkip = "kit_skip";
         /// <summary>Pause and play the clock: Space on the keyboard (reserved), Back on a pad.</summary>
         public const string Pause = "game_pause";
 
@@ -66,6 +70,8 @@ namespace GolemFactory.Nodes
             [CursorDown] = new InputEvent[] { Axis(JoyAxis.RightY, 1f) },
             [AlertNext] = new InputEvent[] { Button(JoyButton.DpadRight) },
             [CardAnswer] = new InputEvent[] { Button(JoyButton.DpadLeft) },
+            [GuideToggle] = new InputEvent[] { Button(JoyButton.LeftStick) },
+            [KitSkip] = new InputEvent[] { Button(JoyButton.RightStick) },
             [Pause] = new InputEvent[] { Button(JoyButton.Back), Key(Godot.Key.Space) },
         };
 
@@ -78,7 +84,7 @@ namespace GolemFactory.Nodes
         /// </summary>
         public static void RegisterAll()
         {
-            foreach (string own in new[] { BuildNext, BuildDemolish, BuildPlace, CursorLeft, CursorRight, CursorUp, CursorDown, AlertNext, CardAnswer, Pause })
+            foreach (string own in new[] { BuildNext, BuildDemolish, BuildPlace, CursorLeft, CursorRight, CursorUp, CursorDown, AlertNext, CardAnswer, GuideToggle, KitSkip, Pause })
             {
                 if (!InputMap.HasAction(own))
                 {
@@ -159,6 +165,8 @@ namespace GolemFactory.Nodes
             if (kind is InputDeviceKind k && k != Last)
             {
                 Last = k;
+                // Every prompt, hint and guide step names the buttons in the player's hands (D7).
+                Settings.KeyNames.Pad = k == InputDeviceKind.Pad;
                 Changed?.Invoke(k);
             }
         }
@@ -167,6 +175,7 @@ namespace GolemFactory.Nodes
         public static void Reset()
         {
             Last = InputDeviceKind.KeyboardMouse;
+            Settings.KeyNames.Pad = false;
             OverlayHoldsPad = false;
         }
 

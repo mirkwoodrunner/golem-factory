@@ -32,8 +32,9 @@ namespace GolemFactory.Contracts
             return "Reward: " + paid + ", more for golems with cards";
         }
 
-        /// <summary>"Carry one here and press E, or build a Golem Foundry": how an order is filled.</summary>
-        public const string HowTo = "Carry a golem here and press E to sell it, or build a Golem Foundry to make them.";
+        /// <summary>"Carry one here and press E, or build a Golem Foundry": how an order is filled, naming the device's key.</summary>
+        public static string HowTo =>
+            $"Carry a golem here and press {Settings.KeyNames.Interact} to sell it, or build a Golem Foundry to make them.";
 
         /// <summary>The HUD's line while an order is open: "Golem order · 1 of 3 Brass Pressers".</summary>
         public static string HudLine(GolemOrderBoard board) =>
@@ -41,7 +42,7 @@ namespace GolemFactory.Contracts
 
         /// <summary>The office's prompt while carrying a golem the order wants: "sell Presser #4 to the Tramway Company".</summary>
         public static string SellPrompt(string golemName, GolemOrder order) =>
-            "[E] sell " + golemName + " to the " + order.Requester;
+            "[" + Settings.KeyNames.Interact + "] sell " + golemName + " to the " + order.Requester;
 
         /// <summary>"Sold Presser #4 to the Tramway Company · 2 of 3".</summary>
         public static string Sold(string golemName, GolemOrder order, int delivered) =>

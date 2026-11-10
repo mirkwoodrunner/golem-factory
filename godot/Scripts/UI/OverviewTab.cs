@@ -317,7 +317,7 @@ namespace GolemFactory.Nodes
             AlertRows.Clear();
             if (entries.Count == 0)
             {
-                _alerts.AddChild(Message("No golem has stopped yet. When one does, it is listed here, and a click takes you to it."));
+                _alerts.AddChild(Message(Settings.TextTokens.Fill("No golem has stopped yet. When one does, it is listed here, and a click takes you to it.")));
                 return;
             }
             foreach (AlertEntry entry in entries)

@@ -5,6 +5,7 @@ using GolemFactory.Economy;
 using GolemFactory.Golems;
 using GolemFactory.Menus;
 using GolemFactory.PunchCards;
+using GolemFactory.Settings;
 using GolemFactory.UI;
 using GolemFactory.World;
 using Stop = GolemFactory.Nodes.WorkbenchScreen.PadStopKind;
@@ -843,6 +844,10 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "the A that built the golem also sent a card";
                 }
+                if (Bench.TriggerRow.Hint.Text != "send a logic core" || Bench.StepRows[0].Hint.Text != "send an appendage")
+                {
+                    return $"the empty sockets read '{Bench.TriggerRow.Hint.Text}' and '{Bench.StepRows[0].Hint.Text}'";
+                }
                 string ring = RingOn("AlwaysOnCore");
                 if (ring != null)
                 {
@@ -951,14 +956,14 @@ namespace GolemFactory.Nodes.Scenarios
         {
             NavigateTo("STEP 1", Stop.Step, () => 0);
             PressAxis("RT", JoyAxis.TriggerRight);
-            Do("the batch size rose, and the dial names the triggers", () =>
+            Do("the batch size rose, and the dial names the triggers by the Deck's labels", () =>
             {
                 if (Session.DraftQuantityAt(0) != 2)
                 {
                     return $"batch {Session.DraftQuantityAt(0)}";
                 }
                 string minus = Glyph(0, "Decrease"), plus = Glyph(0, "Increase");
-                if (minus != "LT" || plus != "RT")
+                if (minus != KeyNames.PadL2 || plus != KeyNames.PadR2)
                 {
                     return $"the dial reads '{minus}' and '{plus}'";
                 }
@@ -1017,7 +1022,7 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 _good = Session.DraftItemTypeAt(1);
                 string left = Glyph(1, "PreviousGood"), right = Glyph(1, "NextGood");
-                return left == "LB" && right == "RB" ? null : $"the picker reads '{left}' and '{right}'";
+                return left == KeyNames.PadL1 && right == KeyNames.PadR1 ? null : $"the picker reads '{left}' and '{right}'";
             });
             PressButton("RB", JoyButton.RightShoulder);
             Do("the good changed", () =>

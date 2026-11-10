@@ -242,7 +242,7 @@ namespace GolemFactory.Nodes
             int researched = TechTreeStatusRules.CountResearched(_states);
             TechTreeNode next = TechTreeStatusRules.FindNextObjective(nodes, _states);
             _header.Text = $"THE ARTIFICER'S LEDGER    {researched} / {nodes.Count} researched    ·    " +
-                           $"Next: {(next != null ? next.DisplayName : "everything on the track")}    ·    drag the chart to pan";
+                           Settings.TextTokens.Fill($"Next: {(next != null ? next.DisplayName : "everything on the track")}    ·    drag the chart to pan");
         }
 
         private void ApplyNodeState(NodeView view, TechTreeNode node, TechTreeNodeState state)

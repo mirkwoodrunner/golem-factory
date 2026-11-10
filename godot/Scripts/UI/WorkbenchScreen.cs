@@ -56,6 +56,10 @@ namespace GolemFactory.Nodes
         private const float VaultHeadingHeight = 26f;
         private const float LeverTravel = 74f;
 
+        /// <summary>An empty socket's line, reworded for the pad ("send a logic core") by <see cref="Settings.PadPhrasing"/>.</summary>
+        public const string TriggerHint = "drop a logic core";
+        public const string StepHint = "drop an appendage";
+
         // The next-drag hint (docs/onboarding-feedback-design.md §2.4): a pulsing brass frame
         // around controls that already exist, never a card placed for the player.
         private static readonly Color HintBrass = new Color(1f, 0.8f, 0.416f);           // #FFCC6A
@@ -476,7 +480,12 @@ namespace GolemFactory.Nodes
                     _landAge = 0f;
                 }
             }
-            _triggerRow.Caption.Text = _session.TriggerCaption;
+            _triggerRow.Caption.Text = Settings.TextTokens.Fill(_session.TriggerCaption);
+            _triggerRow.Hint.Text = Settings.TextTokens.Fill(_triggerRow.HintText);
+            foreach (WorkbenchDropRow step in _stepRows)
+            {
+                step.Hint.Text = Settings.TextTokens.Fill(step.HintText);
+            }
 
             for (int i = 0; i < _stepRows.Count; i++)
             {
@@ -493,7 +502,7 @@ namespace GolemFactory.Nodes
                         _landAge = 0f;
                     }
                 }
-                row.Caption.Text = _session.SlotCaption(i);
+                row.Caption.Text = Settings.TextTokens.Fill(_session.SlotCaption(i));
             }
 
             foreach (KeyValuePair<ChassisDefinition, Button> entry in _chassisButtons)
@@ -564,10 +573,10 @@ namespace GolemFactory.Nodes
         private Control GoodPicker(int slot)
         {
             var row = Ugui.Place(new Control { Name = "Good", MouseFilter = Control.MouseFilterEnum.Ignore }, 0.34f, 0.46f, 0.98f, 0.96f);
-            row.AddChild(PickerButton("PreviousGood", Glyph("<", "LB"), 0f, 0.16f, () => _session.CycleDraftItemType(slot, -1)));
+            row.AddChild(PickerButton("PreviousGood", Glyph("<", Settings.KeyNames.PadL1), 0f, 0.16f, () => _session.CycleDraftItemType(slot, -1)));
             row.AddChild(Ugui.Place(Ugui.Text("Value", GolemFactory.Economy.ItemTiers.DisplayName(_session.DraftItemTypeAt(slot)), 13, CardInk, align: 2, bold: true),
                 0.17f, 0f, 0.83f, 1f));
-            row.AddChild(PickerButton("NextGood", Glyph(">", "RB"), 0.84f, 1f, () => _session.CycleDraftItemType(slot, +1)));
+            row.AddChild(PickerButton("NextGood", Glyph(">", Settings.KeyNames.PadR1), 0.84f, 1f, () => _session.CycleDraftItemType(slot, +1)));
             return row;
         }
 
@@ -588,9 +597,9 @@ namespace GolemFactory.Nodes
         {
             var row = Ugui.Place(new Control { Name = "Quantity", MouseFilter = Control.MouseFilterEnum.Ignore }, 0.62f, 0.04f, 0.98f, 0.42f);
             int quantity = _session.DraftQuantityAt(slot);
-            row.AddChild(StepperButton("Decrease", Glyph("-", "LT"), 0f, 0.22f, slot, -1, quantity > WorkbenchQuantityPolicy.MinQuantity));
+            row.AddChild(StepperButton("Decrease", Glyph("-", Settings.KeyNames.PadL2), 0f, 0.22f, slot, -1, quantity > WorkbenchQuantityPolicy.MinQuantity));
             row.AddChild(Ugui.Place(Ugui.Text("Value", WorkbenchQuantityPolicy.Describe(card, quantity), 11, CardInk, align: 2), 0.24f, 0f, 0.76f, 1f));
-            row.AddChild(StepperButton("Increase", Glyph("+", "RT"), 0.78f, 1f, slot, +1, quantity < _session.DraftQuantityMax(slot)));
+            row.AddChild(StepperButton("Increase", Glyph("+", Settings.KeyNames.PadR2), 0.78f, 1f, slot, +1, quantity < _session.DraftQuantityMax(slot)));
             return row;
         }
 
@@ -675,12 +684,12 @@ namespace GolemFactory.Nodes
 
             var stack = Ugui.Place(new Control { Name = "SlotStack", MouseFilter = Control.MouseFilterEnum.Pass }, 0.425f, 0.028f, 0.968f, 0.895f);
             viewport.AddChild(stack);
-            _triggerRow = MakeRow("LogicCoreSlot", WorkbenchZone.Trigger, "TRIGGER", "drop a logic core", TriggerSocket, 0.87f, 0.99f);
+            _triggerRow = MakeRow("LogicCoreSlot", WorkbenchZone.Trigger, "TRIGGER", TriggerHint, TriggerSocket, 0.87f, 0.99f);
             stack.AddChild(_triggerRow);
             for (int i = 0; i < _session.SocketCount; i++)
             {
                 float top = 0.85f - 0.14f * i;
-                WorkbenchDropRow row = MakeRow("AppendageSlot" + i, WorkbenchZone.Socket(i), "STEP " + (i + 1), "drop an appendage", StepSocket, top - 0.12f, top);
+                WorkbenchDropRow row = MakeRow("AppendageSlot" + i, WorkbenchZone.Socket(i), "STEP " + (i + 1), StepHint, StepSocket, top - 0.12f, top);
                 _stepRows.Add(row);
                 stack.AddChild(row);
             }
@@ -698,7 +707,9 @@ namespace GolemFactory.Nodes
             row.AddChild(row.Caption);
             row.Socket = Ugui.Place(Ugui.Image("Socket", Ugui.NineSlice(Ui + "Workbench/wb_slot_socket.png", 10), socketTint), 0.255f, 0.06f, 1f, 0.94f);
             row.AddChild(row.Socket);
-            row.Socket.AddChild(Ugui.Fill(Ugui.Text("Hint", hint, 11, HintInk, align: 2)));
+            row.Hint = Ugui.Fill(Ugui.Text("Hint", hint, 11, HintInk, align: 2));
+            row.HintText = hint;
+            row.Socket.AddChild(row.Hint);
             return row;
         }
 
@@ -888,6 +899,10 @@ namespace GolemFactory.Nodes
         public WorkbenchZone Zone { get; }
         public Label Caption { get; set; }
         public Panel Socket { get; set; }
+
+        /// <summary>The empty socket's line ("drop a logic core"), and its text before the device's wording.</summary>
+        public Label Hint { get; set; }
+        public string HintText { get; set; }
         public WorkbenchCardControl Card { get; private set; }
 
         public WorkbenchDropRow() { }

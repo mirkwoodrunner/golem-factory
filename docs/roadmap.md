@@ -75,9 +75,9 @@ call): built, reviewed, critiqued and tested. Done:
   a right-stick build cursor, and the `gamepad` scenario. D5.2, the hover card at the pad's
   cursor, and D6's screens by pad (the Workbench, the station's panel, the Crate and Pack screens,
   the playtest card, Management, merged with #67; the title, the cart panel and the City Office on
-  `deck/screens-rest`). Next: the owner launches it on the Deck (D1.5, D1.6, then D2's Steam
-  Input template) and tries the playtest script with no mouse or keyboard (D6's exit); in code, D7
-  (prompts naming the pad's buttons). Still to run by a person: the playtests
+  `deck/screens-rest`, with D7: text names the pad's buttons by the Deck's labels). Next: the
+  owner launches it on the Deck (D1.5, D1.6, then D2's Steam Input template) and tries the
+  playtest script with no mouse or keyboard (D6's exit); in code, D8 (performance and battery). Still to run by a person: the playtests
   below and `testscript/endless-soak.md`.
 
 0. **Phase 6 (Game feel), on branch `phase6/feel` (from `phase5/audio`), built 2026-11-01.** The

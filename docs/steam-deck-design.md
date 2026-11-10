@@ -1,13 +1,14 @@
 # Golem Factory: running on the Steam Deck
 
-**Status (2026-11-09):** D1's export is built (§7's export log); the Deck's first launch is the
+**Status (2026-11-10):** D1's export is built (§7's export log); the Deck's first launch is the
 owner's. D4, the gamepad's model, is built, with D5.1's build cursor pulled in so a pad can place
 (§7's input audit and "D4 as built"). D5.2, the hover card at the pad's cursor, is built (§7's
 "D5.2 as built"). D6's screens are built: the Workbench (D6.W, decided and built), the station's panel, the Crate
 and Pack screens, the playtest card, the Management screen with all its tabs, the title with its
 Settings and Load, the cart panel and the City Office's notice. Still pointer-only: the Overview
 map's hover card and its click on a golem. D6's exit, the playtest script played with no mouse or
-keyboard, is the owner's to try. D7 onward is planned, not started.
+keyboard, is the owner's to try. D7 is built: text names the pad's buttons by the Deck's labels
+(§ D7's "As built"). D8 onward is planned, not started.
 
 The goal is to run the game on Steam Deck hardware, played by its owner. **It is not a Steam store release**
 (roadmap decision 14: release isn't planned). No Steamworks, no store page, no depots, no Steam Deck
@@ -439,6 +440,61 @@ the shoulders. Frames capture the focus ring and a carry.
 - The guide texts live in `Core/Tutorial` as data (a quoted price is the data's). A binding name placed in a
   step is a placeholder substituted at display time, so the guide's text stays device-neutral in data.
 - Extend the `font-glyphs` scenario if any new character is used.
+
+**As built, 2026-11-10** (branch `deck/screens-rest`, after D6's last screens):
+- **`KeyNames` knows the device.** `KeyNames.Pad` is set by `InputDevices` whenever the last
+  device changes. With the pad in use, the names are the pad's buttons by the Deck's own labels:
+  - Use A, carry X, pack Y, turn R1;
+  - move with the left stick;
+  - the menu is Menu and cancel is B;
+  - the guide is L3, and the playtest kit's skip is R3;
+  - the bumpers are L1 R1 and the triggers L2 R2. The Workbench's dials read L1/R1 and L2/R2,
+    not the LB/RB/LT/RT D6 first drew.
+
+  Setting it bumps `KeyNames.Version`, so text drawn once (the guide's plate, the build menu's
+  lines) redraws. Every prompt and hover card already read `KeyNames`, so "[E] Harvest" became
+  "[A] Harvest" with no change at the call sites.
+- **New tokens:** `[[menu]]` (Tab or Menu), `[[cancel]]` (Escape or B) and `[[guide]]` (F1 or L3).
+  The guide's "Press Tab", "press Escape" and "F1 brings this guide back" use them. The keyboard's
+  text is unchanged.
+- **`PadPhrasing`** rewords, by phrase and most particular first, what the mouse does in text
+  built once and kept:
+  - "Drag the glowing cards" becomes "Press A on each glowing card";
+  - "Click Boiler in the build menu" becomes "Pick Boiler in the build menu with L1";
+  - "click the marked tile" becomes "aim the right stick at the marked tile and press R2";
+  - "Shift-click" becomes "press X on";
+  - "Hover it" becomes "Face it";
+  - "drop a logic core" becomes "send a logic core";
+  - anything else clicked becomes "press A on".
+
+  It runs in `KeyNames.Fill` with the pad in use, so it reaches everything `TextTokens.Fill`
+  already reached: guide steps, the guide's notices (now filled too), playtest questions, the
+  build menu's lines, the save slots' armed prompts, the Ledger's and Overview's lines, the
+  Workbench's captions and empty sockets, and Settings' key line.
+- **Read from `KeyNames` now, not hand-written:** the golem order's "press E to sell it" and
+  "[E] sell", and the contract's "press I here".
+- **Gaps closed along the way:**
+  - The build menu's tiles drop their digits with the pad in use, Demolish shows L2, and the
+    card names L1.
+  - The guide plate's counter reads "L3 hides · R3 skips", and its "Shortcut: 5." goes.
+  - L3 puts the guide away and brings it back, and R3 runs the playtest kit. F1 and F9 had no
+    pad binding; the two stick clicks were the last free buttons.
+- **No new characters:** the names are plain Latin letters and digits.
+- **Checked by:**
+  - **`PadPhrasingTests`:** every guide step, question, build-menu line, the order's how-to and
+    the Workbench's empty program read with the pad in use, and none says click, drag, hover, a
+    named key or a key in brackets. The test lists the leftovers, so a new step written for the
+    mouse fails until it has a pad phrase.
+  - **The `gamepad` scenario:** with the pad in use the prompt reads [A], the guide "the left
+    stick" and "Press A", the plate "L3 hides · R3 skips" with no shortcut, and the build menu L2
+    on Demolish; L3 toggles the guide; a mouse nudge brings back WASD and the digits.
+  - **`gamepad-ui`:** the Workbench's empty sockets read "send …", and its dials L1/R1 and L2/R2.
+  - **Frames:** `gamepad-names`, `pad-workbench-open`, `pad-workbench-haul`.
+  - **Break checks:** 10 of 10 caught, covering `KeyNames`, the phrasing, the order's how-to,
+    the device hook, the build menu, L3, the counter, and the Workbench's sockets and dials.
+- **Not covered by a check:** the plate's missing "Shortcut" on a step that has one (the scenario's
+  step has none), and the guide's notices (no scenario raises one with the pad in use). Both go
+  through the code paths above.
 
 ### D8. Performance and battery (1 day)
 

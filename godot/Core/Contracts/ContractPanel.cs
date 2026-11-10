@@ -98,7 +98,7 @@ namespace GolemFactory.Contracts
         /// <summary>How to fill it, once taken.</summary>
         public string HowLine =>
             _board.State == ContractState.Accepted
-                ? "Fill it however you like: press I here to put goods in by hand, or have a golem or a belt deliver to the office."
+                ? $"Fill it however you like: press {Settings.KeyNames.Inventory} here to put goods in by hand, or have a golem or a belt deliver to the office."
                 : _board.State == ContractState.Posted
                     ? "Take it, and the office's crate takes what it asks for. There is no deadline."
                     : "";
