@@ -32,6 +32,8 @@ namespace GolemFactory.Nodes
         public const string CursorUp = "cursor_up";
         public const string CursorDown = "cursor_down";
         public const string AlertNext = "alert_next";
+        /// <summary>The d-pad's left takes the pad into the playtest card (a click answers it with the mouse).</summary>
+        public const string CardAnswer = "card_answer";
         /// <summary>Pause and play the clock: Space on the keyboard (reserved), Back on a pad.</summary>
         public const string Pause = "game_pause";
 
@@ -63,6 +65,7 @@ namespace GolemFactory.Nodes
             [CursorUp] = new InputEvent[] { Axis(JoyAxis.RightY, -1f) },
             [CursorDown] = new InputEvent[] { Axis(JoyAxis.RightY, 1f) },
             [AlertNext] = new InputEvent[] { Button(JoyButton.DpadRight) },
+            [CardAnswer] = new InputEvent[] { Button(JoyButton.DpadLeft) },
             [Pause] = new InputEvent[] { Button(JoyButton.Back), Key(Godot.Key.Space) },
         };
 
@@ -75,7 +78,7 @@ namespace GolemFactory.Nodes
         /// </summary>
         public static void RegisterAll()
         {
-            foreach (string own in new[] { BuildNext, BuildDemolish, BuildPlace, CursorLeft, CursorRight, CursorUp, CursorDown, AlertNext, Pause })
+            foreach (string own in new[] { BuildNext, BuildDemolish, BuildPlace, CursorLeft, CursorRight, CursorUp, CursorDown, AlertNext, CardAnswer, Pause })
             {
                 if (!InputMap.HasAction(own))
                 {
@@ -161,7 +164,17 @@ namespace GolemFactory.Nodes
         }
 
         /// <summary>Back to the keyboard and mouse, as a scenario starts.</summary>
-        public static void Reset() => Last = InputDeviceKind.KeyboardMouse;
+        public static void Reset()
+        {
+            Last = InputDeviceKind.KeyboardMouse;
+            OverlayHoldsPad = false;
+        }
+
+        /// <summary>
+        /// An overlay that isn't a full screen (the playtest card) has taken the pad: the world's
+        /// polling (walking, the right stick's cursor) ignores it until the overlay lets go.
+        /// </summary>
+        public static bool OverlayHoldsPad { get; set; }
     }
 
     /// <summary>

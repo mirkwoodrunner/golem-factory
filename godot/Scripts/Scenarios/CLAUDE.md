@@ -257,8 +257,11 @@ Current scenarios:
   each glowing card inside the vault's window, STEP 4 never under the plate) engages the smelter
   in 9 moves, and the plate steps aside. Captures `guide-ahead`, `guide-ahead-step4`.
 - `gamepad-ui` (Sandbox): the screens by pad (`docs/steam-deck-design.md` D6), joypad events only
-  after the playtest card's click; so far the station's panel, the Workbench (D6.W), the Crate
-  and the Pack. A at the station opens the panel with the ring on the row the pack pays for; A on
+  throughout; so far the playtest card, the station's panel, the Workbench (D6.W), the Crate, the
+  Pack and the Management screen. The card first: it says the d-pad's left answers it, which
+  takes the pad (the stick held then doesn't walk); B lets go with the question waiting; A on the
+  note gives it focus and B takes it back; A on the second answer answers, harvesting nothing at
+  the Scrap cart beside. A at the station opens the panel with the ring on the row the pack pays for; A on
   a greyed row says what's short; A builds, and the Workbench opens with nothing sent by that A and
   the ring on the hinted Always On. A sends Always On, Extract and Push Output, the ring following the
   hint to the lever; LB and the d-pad change nothing behind the screen. The d-pad walks the ring
@@ -271,10 +274,12 @@ Current scenarios:
   puts one back; A on the label button opens the picker on the crate's label, the status naming
   the option under the ring, A labels it, B closes the picker and then the screen; Take all; Y
   closes. With one of every good, Y opens the pack (hint "press Y") and the ring walks to its
-  last row, scrolled into view; B closes. **Drive the d-pad a press and a release at a time**
-  (the ring steps on the push, and repeats only after 0.3 s held). Captures `pad-station`,
+  last row, scrolled into view; B closes. Start opens the menu: RB and LB change tab (LB heard by
+  nothing behind it); on Settings the ring starts on Master, never on a key button; LT and RT
+  step it; A ticks and unticks Mute; the right stick pans the Ledger; B closes. **Drive the d-pad a press and a release at a time**
+  (the ring steps on the push, and repeats only after 0.3 s held). Captures `pad-card`, `pad-station`,
   `pad-workbench-open`, `-lever`, `-dial`, `-haul`, `-scroll`, `pad-crate`, `pad-crate-picker`,
-  `pad-pack`.
+  `pad-pack`, `pad-management-settings`.
 - `perf` also takes `--perf-golems=N` (a load of N golems in the endgame's proportions) and
   `--perf-load=endless` (160), for measuring the golem cap (`docs/performance-report-endless.md`).
 

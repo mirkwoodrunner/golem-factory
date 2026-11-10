@@ -59,6 +59,121 @@ namespace GolemFactory.Nodes.Scenarios
             PlanVaultScroll();
             PlanCrate();
             PlanPack();
+            PlanManagement();
+        }
+
+        // --- 10. The Management screen ----------------------------------------------------------
+
+        private ManagementScreen Menu => Tree.Root.FindChild("Management", true, false) as ManagementScreen;
+        private ManagementTab _tabBefore;
+        private double _volumeBefore;
+        private bool _muteBefore;
+        private int _ledgerScroll;
+
+        private ScrollContainer LedgerScroll =>
+            Menu.TabContent[ManagementTab.TechTree].FindChildren("*", "ScrollContainer", true, false).OfType<ScrollContainer>().First();
+
+        private void PlanManagement()
+        {
+            PressButton("Start", JoyButton.Start);
+            Wait(0.1);
+            Do("the menu is open with the ring in it", () =>
+            {
+                if (!Menu.IsOpen)
+                {
+                    return "Start didn't open the menu";
+                }
+                _tabBefore = Menu.Tabs.ActiveTab;
+                return Menu.PadRingVisible ? null : "no ring";
+            });
+            PressButton("RB", JoyButton.RightShoulder);
+            Do("the next tab", () =>
+            {
+                List<ManagementTab> bar = ManagementTabs.BarOrder.Where(t => Menu.TabButtons[t].Visible).ToList();
+                ManagementTab expected = bar[(bar.IndexOf(_tabBefore) + 1) % bar.Count];
+                return Menu.Tabs.ActiveTab == expected ? null : $"on {Menu.Tabs.ActiveTab}, expected {expected}";
+            });
+            PressButton("LB", JoyButton.LeftShoulder);
+            Do("back, and nothing behind the menu heard LB", () =>
+                Sandbox.Build.IsBuildToolActive ? "LB picked up a build tool behind the menu"
+                : Menu.Tabs.ActiveTab == _tabBefore ? null : $"on {Menu.Tabs.ActiveTab}");
+            Do("d-pad up behind the menu", () => { _zoom = Camera.OrthographicSize; Button(JoyButton.DpadUp, true); return null; });
+            Do("d-pad up let go", () => { Button(JoyButton.DpadUp, false); return null; });
+            Wait(0.3);
+            Do("the camera didn't zoom behind the menu", () =>
+                Mathf.Abs(Camera.OrthographicSize - _zoom) > 0.01f ? "the d-pad zoomed the camera behind the menu" : null);
+            Until("RB to Settings", 4, () =>
+            {
+                if (_dpadDown)
+                {
+                    Button(JoyButton.RightShoulder, false);
+                    _dpadDown = false;
+                    return "letting go";
+                }
+                if (Menu.Tabs.ActiveTab == ManagementTab.Settings)
+                {
+                    return null;
+                }
+                Button(JoyButton.RightShoulder, true);
+                _dpadDown = true;
+                return "on " + Menu.Tabs.ActiveTab;
+            });
+            Do("let go of RB; the ring on the first slider, and never on a key button", () =>
+            {
+                if (_dpadDown)
+                {
+                    Button(JoyButton.RightShoulder, false);
+                    _dpadDown = false;
+                }
+                if (Menu.PadStopControls.Any(c => Menu.Settings.KeyButtons.Values.Contains(c as Button)))
+                {
+                    return "a key button is a stop";
+                }
+                return Menu.PadFocusControl == Menu.Settings.Master ? null : $"the ring is on {Menu.PadFocusControl?.Name}";
+            });
+            Do("LT on Master", () => { _volumeBefore = Menu.Settings.Master.Value; Axis(JoyAxis.TriggerLeft, 1f); return null; });
+            Do("LT up: the volume fell a step", () =>
+            {
+                Axis(JoyAxis.TriggerLeft, 0f);
+                return Menu.Settings.Master.Value < _volumeBefore ? null : $"Master {Menu.Settings.Master.Value} from {_volumeBefore}";
+            });
+            PressAxis("RT on Master", JoyAxis.TriggerRight);
+            Do("back up", () => Mathf.IsEqualApprox((float)Menu.Settings.Master.Value, (float)_volumeBefore) ? null : $"Master {Menu.Settings.Master.Value}");
+            Walk("Mute", () => Menu.PadFocusKind, () => Menu.PadFocusControl == Menu.Settings.Mute ? 1 : 0, ManagementScreen.StopItem, () => 1,
+                () => Menu.Settings.Mute, () => Menu.PadRingRect, list: false);
+            Do("A on Mute", () =>
+            {
+                _muteBefore = Menu.Settings.Mute.ButtonPressed;
+                ScenarioCapture.Shot(Runner.GetViewport(), "pad-management-settings");
+                Button(JoyButton.A, true);
+                return null;
+            });
+            Do("A up: Mute ticked", () =>
+            {
+                Button(JoyButton.A, false);
+                return Menu.Settings.Mute.ButtonPressed != _muteBefore ? null : "A didn't tick Mute";
+            });
+            PressButton("A on Mute again", JoyButton.A);
+            Do("untick", () => Menu.Settings.Mute.ButtonPressed == _muteBefore ? null : "A didn't untick Mute");
+            Do("to the Tech tree", () => { Menu.SelectTab(ManagementTab.TechTree); return null; });
+            Wait(0.2);
+            Do("right stick right", () => { _ledgerScroll = LedgerScroll.ScrollHorizontal; Axis(JoyAxis.RightX, 1f); return null; });
+            Wait(0.3);
+            Do("let go: the chart panned", () =>
+            {
+                Axis(JoyAxis.RightX, 0f);
+                return LedgerScroll.ScrollHorizontal > _ledgerScroll ? null : $"scroll {LedgerScroll.ScrollHorizontal} from {_ledgerScroll}";
+            });
+            PressButton("B", JoyButton.B);
+            Do("B closed the menu", () =>
+            {
+                if (Menu.IsOpen)
+                {
+                    return "still open";
+                }
+                Log("the menu by pad: LB and RB changed tab, RT and LT stepped a slider, A ticked a checkbox, the right stick panned the Ledger, B closed");
+                return null;
+            });
         }
 
         // --- 8. The Crate screen ----------------------------------------------------------------
@@ -310,29 +425,105 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void PlanStart()
         {
-            Do("answer the playtest's first question", () =>
+            Do("stand at the starting Scrap cart; nudge the left stick", () =>
             {
-                var playtest = Tree.Root.FindChild("Playtest", true, false) as PlaytestNode;
-                if (playtest?.Card.Visible == true)
-                {
-                    Click(playtest.Options.GetChildren().OfType<Button>().First());
-                }
+                Compat.Vector2Int scrap = World.Setup.HomeSpot(ItemType.Scrap).Value;
+                Sandbox.Interactor.Teleport(new Compat.Vector3(scrap.x, scrap.y + 1f, 0f));
+                Axis(JoyAxis.LeftX, 0.6f);
                 return null;
             });
-            Do("the card down, the clock running", () =>
-            {
-                if ((Tree.Root.FindChild("Playtest", true, false) as PlaytestNode)?.Card.Visible == true)
-                {
-                    return "the card is still up";
-                }
-                Sandbox.Clock.Play();
-                return null;
-            });
-            Do("nudge the left stick", () => { Axis(JoyAxis.LeftX, 0.6f); return null; });
             Do("let go: the pad is in use", () =>
             {
                 Axis(JoyAxis.LeftX, 0f);
                 return InputDevices.PadInUse ? null : "the stick didn't count as the pad";
+            });
+            PlanCard();
+            Do("the clock running", () => { Sandbox.Clock.Play(); return null; });
+        }
+
+        // --- 0b. The playtest card by pad -------------------------------------------------------
+
+        private PlaytestNode Card => Tree.Root.FindChild("Playtest", true, false) as PlaytestNode;
+        private Tutorial.PlaytestQuestion _question;
+        private Compat.Vector3 _standing;
+        private int _scrapBefore;
+
+        private void PlanCard()
+        {
+            Wait(0.2);
+            Do("the card is up, saying the d-pad's left answers it", () =>
+            {
+                if (Card?.Card.Visible != true)
+                {
+                    return "no playtest card";
+                }
+                _question = Sandbox.Tutorial.Playtest.Current;
+                return Card.CounterLine == PlaytestNode.PadCounterText ? null : $"the counter reads '{Card.CounterLine}'";
+            });
+            PressButton("d-pad left", JoyButton.DpadLeft);
+            Do("the card holds the pad, the ring on the first answer", () =>
+            {
+                if (!Card.PadHeld || !InputDevices.OverlayHoldsPad)
+                {
+                    return "the d-pad's left didn't take the pad into the card";
+                }
+                if (Card.PadFocusKind != PlaytestNode.StopOption || Card.PadFocusIndex != 0 || !Card.PadRingVisible)
+                {
+                    return $"the ring ({Card.PadRingVisible}) is on {Card.PadFocusKind} {Card.PadFocusIndex}";
+                }
+                return Card.CounterLine == PlaytestNode.CounterText ? null : $"the counter still reads '{Card.CounterLine}'";
+            });
+            Do("hold the left stick", () => { _standing = Sandbox.Interactor.Position; Axis(JoyAxis.LeftX, 1f); return null; });
+            Wait(0.3);
+            Do("let go: the Artificer stood still", () =>
+            {
+                Axis(JoyAxis.LeftX, 0f);
+                Compat.Vector3 now = Sandbox.Interactor.Position;
+                return Mathf.Abs(now.x - _standing.x) < 0.01f ? null : $"walked {now.x - _standing.x:0.00} cells while the card held the pad";
+            });
+            Do("d-pad up while the card holds the pad", () => { _zoom = Camera.OrthographicSize; Button(JoyButton.DpadUp, true); return null; });
+            Do("d-pad up let go", () => { Button(JoyButton.DpadUp, false); return null; });
+            Wait(0.3);
+            Do("the camera didn't zoom behind the card", () =>
+                Mathf.Abs(Camera.OrthographicSize - _zoom) > 0.01f ? "the d-pad zoomed the camera while the card held the pad" : null);
+            PressButton("B", JoyButton.B);
+            Do("B let go of the card; the question still waits", () =>
+                Card.PadHeld || InputDevices.OverlayHoldsPad ? "B didn't let go" : Sandbox.Tutorial.Playtest.Current == _question ? null : "B answered it");
+            PressButton("d-pad left again", JoyButton.DpadLeft);
+            Walk("the note", () => Card.PadFocusKind, () => Card.PadFocusIndex, PlaytestNode.StopNote, () => 0, () => Card.Note, () => Card.PadRingRect, list: false);
+            PressButton("A on the note", JoyButton.A);
+            Do("the note takes typing", () => Card.Note.HasFocus() ? null : "A didn't open the note");
+            PressButton("B", JoyButton.B);
+            Do("B is back on the ring, still holding the card", () =>
+                !Card.Note.HasFocus() && Card.PadHeld ? null : $"note focused {Card.Note.HasFocus()}, held {Card.PadHeld}");
+            Walk("the second answer", () => Card.PadFocusKind, () => Card.PadFocusIndex, PlaytestNode.StopOption, () => 1,
+                () => Card.Options.GetChildren().OfType<Button>().ElementAt(1), () => Card.PadRingRect, list: false);
+            Do("capture; A", () =>
+            {
+                ScenarioCapture.Shot(Runner.GetViewport(), "pad-card");
+                _scrapBefore = Sandbox.Buffers.GetQuantity(Sandbox.StockpileBufferId, ItemType.Scrap);
+                Button(JoyButton.A, true);
+                return null;
+            });
+            Do("let go of A", () => { Button(JoyButton.A, false); return null; });
+            Wait(0.1);
+            Do("answered with the second option; the pad back in the world, and no Scrap harvested by that A", () =>
+            {
+                if (Sandbox.Tutorial.Playtest.Current == _question)
+                {
+                    return "still on the same question";
+                }
+                if (Card.PadHeld || InputDevices.OverlayHoldsPad)
+                {
+                    return "the card kept the pad";
+                }
+                int scrap = Sandbox.Buffers.GetQuantity(Sandbox.StockpileBufferId, ItemType.Scrap);
+                if (scrap != _scrapBefore)
+                {
+                    return $"the A that answered also harvested ({_scrapBefore} -> {scrap})";
+                }
+                Log("the playtest card by pad: the d-pad's left took it, the stick didn't walk, B let go, A opened the note and B closed it, A answered");
+                return null;
             });
         }
 
@@ -520,7 +711,7 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 return Mathf.Abs(Camera.OrthographicSize - _zoom) > 0.01f ? "the d-pad zoomed the camera behind the Workbench" : null;
             });
-            Log("A sent Always On, Extract and Push Output, the ring following the hint to the lever");
+            Do("log", () => { Log("A sent Always On, Extract and Push Output, the ring following the hint to the lever"); return null; });
         }
 
         // --- 3. The d-pad to STEP 1; the triggers on its dial; X and A --------------------------
@@ -556,7 +747,7 @@ namespace GolemFactory.Nodes.Scenarios
             });
             PressButton("A on Extract", JoyButton.A);
             Do("Extract back in STEP 1, the first empty step", () => Draft(0) == "ExtractScrap" ? null : $"STEP 1 holds {Draft(0)}");
-            Log("the d-pad reached STEP 1; RT and LT stepped its dial; X took it out and A sent it back");
+            Do("log", () => { Log("the d-pad reached STEP 1; RT and LT stepped its dial; X took it out and A sent it back"); return null; });
         }
 
         // --- 4. Every step full -----------------------------------------------------------------
@@ -613,7 +804,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("the ring follows the hint to Push Output", () => Draft(1) != null ? $"STEP 2 holds {Draft(1)}" : RingOn("PushOutput"));
             PressButton("A on Push Output", JoyButton.A);
             Do("Push Output back in STEP 2", () => Draft(1) == "PushOutput" ? null : $"STEP 2 holds {Draft(1)}");
-            Log("RB and LB stepped a Haul's good");
+            Do("log", () => { Log("RB and LB stepped a Haul's good"); return null; });
         }
 
         // --- 6. The lever and B -----------------------------------------------------------------

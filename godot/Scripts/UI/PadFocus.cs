@@ -38,7 +38,11 @@ namespace GolemFactory.Nodes
             public readonly int Index;
             public readonly Control Control;
             public readonly ScrollContainer List;
-            /// <summary>The list's columns: up and down within it step by this many (a grid of options).</summary>
+            /// <summary>
+            /// The list's columns: up and down within it step by this many (a grid of options).
+            /// Zero: the list is laid out freely (a screen's controls found by walking its tree),
+            /// so the ring moves within it by position on screen.
+            /// </summary>
             public readonly int Columns;
 
             public Stop(string kind, int index, Control control, ScrollContainer list = null, int columns = 1)
@@ -199,7 +203,7 @@ namespace GolemFactory.Nodes
         /// </summary>
         private static Stop? Neighbour(List<Stop> stops, Stop from, Vector2 dir)
         {
-            if (from.List != null && dir.X == 0f && Find(stops, from.Kind, from.Index + (int)dir.Y * from.Columns) is Stop next)
+            if (from.List != null && from.Columns > 0 && dir.X == 0f && Find(stops, from.Kind, from.Index + (int)dir.Y * from.Columns) is Stop next)
             {
                 return next;
             }
@@ -214,7 +218,9 @@ namespace GolemFactory.Nodes
                     continue;
                 }
                 Rect2 rect = s.Control.GetGlobalRect();
-                if (s.List != null && !s.List.GetGlobalRect().Intersects(rect))
+                // Entering a list from outside: only an item in its window. Within one list, the
+                // next item down may be scrolled out of view, and moving to it scrolls it in.
+                if (s.List != null && s.List != from.List && !s.List.GetGlobalRect().Intersects(rect))
                 {
                     continue;
                 }
@@ -246,7 +252,8 @@ namespace GolemFactory.Nodes
                 // Asked every frame it's focused: a row rebuilt or laid out late still comes into view.
                 Rect2 view = at.List.GetGlobalRect();
                 Rect2 rect = at.Control.GetGlobalRect();
-                if (rect.Position.Y < view.Position.Y - 1f || rect.End.Y > view.End.Y + 1f)
+                if (rect.Position.Y < view.Position.Y - 1f || rect.End.Y > view.End.Y + 1f
+                    || rect.Position.X < view.Position.X - 1f || rect.End.X > view.End.X + 1f)
                 {
                     at.List.EnsureControlVisible(at.Control);
                 }

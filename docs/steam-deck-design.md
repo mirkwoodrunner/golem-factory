@@ -3,9 +3,10 @@
 **Status (2026-11-09):** D1's export is built (§7's export log); the Deck's first launch is the
 owner's. D4, the gamepad's model, is built, with D5.1's build cursor pulled in so a pad can place
 (§7's input audit and "D4 as built"). D5.2, the hover card at the pad's cursor, is built (§7's
-"D5.2 as built"). D6 has begun: the Workbench (D6.W, decided and built), the station's panel and the Crate and
-Pack screens are built. The rest of D6 (Management, settings, title and saves, the playtest
-card, the contract and supply screens) and D7 onward are planned, not started.
+"D5.2 as built"). D6 is mostly built: the Workbench (D6.W, decided and built), the station's panel, the Crate and
+Pack screens, the playtest card and the Management screen with all its tabs (Settings among
+them). Left in D6: the title screen and its save slots, and the contract and supply screens. D7
+onward is planned, not started.
 
 The goal is to run the game on Steam Deck hardware, played by its owner. **It is not a Steam store release**
 (roadmap decision 14: release isn't planned). No Steamworks, no store page, no depots, no Steam Deck
@@ -305,6 +306,37 @@ shoulders for a card's dials, and focus follows the hint. As decided, it replace
   a guard against a change of node order, which is what bit the Workbench (its break was
   caught). Frames `pad-station`, `pad-crate`, `pad-crate-picker`,
   `pad-pack`.
+
+**The playtest card and the Management screen by pad, as built 2026-11-09** (same branch):
+- **The playtest card isn't a full screen.** It sits over the world while the player plays, so
+  the pad isn't the card's until the player asks. **The d-pad's left** (`card_answer`, the one
+  pad button the world left free) takes the pad into the card, and with the pad in use the card
+  says so ("d-pad left to answer"). The ring walks the answers, the note and Skip. A picks an
+  answer, and the pad goes back to the world. A on the note gives it focus for typing; the
+  Deck's keyboard is Steam's (Steam + X), since `VirtualKeyboardShow` does nothing on desktop
+  Linux. B leaves the note, then the card. While the card holds the pad,
+  `InputDevices.OverlayHoldsPad` stops the world's polling (walking, the right stick's cursor,
+  and the A that harvests, for the frame after too), and the card swallows the pad's events.
+- **The Management screen** (`ManagementScreen.Pad.cs`): its tabs are built by several nodes,
+  and most hold ordinary controls, so the ring is generic. Its stops are the tab buttons, Close,
+  and every visible button and slider in the shown tab, found by walking the tab's tree and
+  moved between by position on screen. **LB and RB change tab.** A presses a button, and a
+  checkbox ticks: setting `ButtonPressed`, because emitting `Pressed` leaves a toggle unticked.
+  **LT and RT step a slider**, as they turn the Workbench's dials. **The right stick scrolls the
+  tab**, both ways: a long list, or the Ledger's wide chart, which the mouse drags. B, or Start
+  as it opened it, closes.
+- **Settings' key buttons are left out.** Capturing a key is the keyboard's job, and a pad press
+  there would wait for a key the pad can't give.
+- **`PadFocus` change:** a list laid out freely (columns 0) moves by position, and within one
+  list the ring may move to an item scrolled out of view, scrolling it in. Scrolling to the ring's
+  stop now works sideways too, for the Ledger.
+- **Still pointer-only:** the Overview map's hover card and its click on a golem. Its alert
+  rows are buttons, so the pad reaches the same camera glide. The Ledger's plaques are
+  buttons, so A opens their readout.
+- **Checked by** `gamepad-ui`'s card steps (taken, the stick held without walking, B, the note,
+  answered with no harvest) and its menu steps (RB and LB with nothing behind hearing LB, a
+  slider by LT and RT, a checkbox by A, no key button a stop, the Ledger panned, B). Frames
+  `pad-card`, `pad-management-settings`.
 
 The proposal as written, kept for the record:
 
