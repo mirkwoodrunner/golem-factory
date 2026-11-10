@@ -30,6 +30,10 @@ namespace GolemFactory.Nodes.Scenarios
         private SandboxWorld Sandbox => World.Sandbox;
         private WorkbenchSession Session => Sandbox.Workbench;
         private WorkbenchScreen Bench => Tree.Root.FindChild("Workbench", true, false) as WorkbenchScreen;
+        private ConstructionPanelNode Panel => Tree.Root.FindChild("ConstructionPanel", true, false) as ConstructionPanelNode;
+        private CrateScreen CrateUi => Tree.Root.FindChildren("*", "CanvasLayer", true, false).OfType<CrateScreen>().First();
+        private PackScreen PackUi => Tree.Root.FindChildren("*", "CanvasLayer", true, false).OfType<PackScreen>().First();
+        private ChassisDefinition Scavenger => Sandbox.Definitions.Chassis["ClockworkScavenger"];
         private CameraRigNode Camera => Tree.Root.FindChildren("*", "Camera2D", true, false).OfType<CameraRigNode>().First();
 
         private static readonly Compat.Vector3 OpenFloor = new Compat.Vector3(-5f, 8f, 0f);
@@ -53,21 +57,211 @@ namespace GolemFactory.Nodes.Scenarios
             PlanHaul();
             PlanEngage();
             PlanVaultScroll();
+            PlanCrate();
+            PlanPack();
+        }
+
+        // --- 8. The Crate screen ----------------------------------------------------------------
+
+        private static readonly Compat.Vector2Int DepotCell = new Compat.Vector2Int(-4, 4);
+        private Buildings.ICrate _depot;
+        private int _packScrap;
+
+        private int PackOf(string good) => Sandbox.Buffers.GetQuantity(Sandbox.StockpileBufferId, good);
+
+        private void WalkCrate(string name, string kind, System.Func<int> index, System.Func<Control> target, bool list) =>
+            Walk(name, () => CrateUi.PadFocusKind, () => CrateUi.PadFocusIndex, kind, index, target, () => CrateUi.PadRingRect, list);
+
+        private void PlanCrate()
+        {
+            Do("a depot holding 10 Scrap; stand north of it", () =>
+            {
+                Buildings.PlaceableBuilding prefab = Sandbox.Placeables.Single(p => p.Key == "DepotPrefab").Prefab;
+                foreach (RecipeIngredient c in prefab.Cost)
+                {
+                    Sandbox.Buffers.Deposit(Sandbox.StockpileBufferId, c.itemType, c.quantity);
+                }
+                Sandbox.Build.SetActivePrefab(prefab);
+                Sandbox.Build.PlaceOrRemove(DepotCell);
+                Sandbox.Build.CancelPlacement();
+                _depot = Sandbox.Build.Buildings.SingleOrDefault(b => b.Cell == DepotCell && !b.IsRemoved)?.GetPart<Buildings.ICrate>();
+                if (_depot == null)
+                {
+                    return $"no depot placed at {DepotCell}: {Sandbox.Build.LastStatusMessage}";
+                }
+                _depot.Buffer.Deposit(ItemType.Scrap, 10);
+                Sandbox.Interactor.Teleport(new Compat.Vector3(DepotCell.x, DepotCell.y + 1, 0f));
+                return null;
+            });
+            Wait(0.2);
+            PressButton("Y at the depot", JoyButton.Y);
+            Wait(0.1);
+            Do("the Crate screen, the ring on the crate's Scrap, the hint naming A and X", () =>
+            {
+                if (!CrateUi.IsOpen || CrateUi.Crate != _depot)
+                {
+                    return "Y didn't open the depot's crate: " + Sandbox.Interactor.LastStatusMessage;
+                }
+                if (CrateUi.PadFocusKind != CrateScreen.StopCrate || CrateUi.CrateRowsInOrder[CrateUi.PadFocusIndex].good != ItemType.Scrap)
+                {
+                    return $"the ring is on {CrateUi.PadFocusKind} {CrateUi.PadFocusIndex}";
+                }
+                if (!CrateUi.PadRingVisible || !CrateUi.PadRingRect.Encloses(CrateUi.CrateRows[ItemType.Scrap].GetGlobalRect()))
+                {
+                    return "the ring doesn't surround the crate's Scrap row";
+                }
+                if (CrateUi.HintText != CrateScreen.PadHint)
+                {
+                    return $"the hint reads '{CrateUi.HintText}'";
+                }
+                _packScrap = PackOf(ItemType.Scrap);
+                ScenarioCapture.Shot(Runner.GetViewport(), "pad-crate");
+                return null;
+            });
+            PressButton("A", JoyButton.A);
+            Do("one Scrap taken", () =>
+                _depot.Buffer.GetQuantity(ItemType.Scrap) == 9 && PackOf(ItemType.Scrap) == _packScrap + 1
+                    ? null : $"crate {_depot.Buffer.GetQuantity(ItemType.Scrap)}, pack {PackOf(ItemType.Scrap)} (was {_packScrap})");
+            PressButton("X", JoyButton.X);
+            Do("the rest taken: what fits", () =>
+                _depot.Buffer.GetQuantity(ItemType.Scrap) == 0 && PackOf(ItemType.Scrap) == _packScrap + 10
+                    ? null : $"crate {_depot.Buffer.GetQuantity(ItemType.Scrap)}, pack {PackOf(ItemType.Scrap)} (was {_packScrap})");
+            WalkCrate("the pack's Scrap", CrateScreen.StopPack, () => CrateUi.PackRowsInOrder.ToList().FindIndex(r => r.good == ItemType.Scrap),
+                () => CrateUi.PackRows[ItemType.Scrap], list: true);
+            PressButton("A on the pack's Scrap", JoyButton.A);
+            Do("one Scrap put back", () =>
+                _depot.Buffer.GetQuantity(ItemType.Scrap) == 1 ? null : $"crate {_depot.Buffer.GetQuantity(ItemType.Scrap)}");
+            WalkCrate("the label button", CrateScreen.StopLabel, () => 0, () => CrateUi.LabelButton, list: false);
+            PressButton("A on the label button", JoyButton.A);
+            Do("the picker is open, the ring on the crate's label (Any)", () =>
+            {
+                if (!CrateUi.PickerOpen)
+                {
+                    return "A didn't open the picker";
+                }
+                if (CrateUi.PadFocusKind != CrateScreen.StopOption || CrateUi.PickerOptions[CrateUi.PadFocusIndex].good != null)
+                {
+                    return $"the ring is on {CrateUi.PadFocusKind} {CrateUi.PadFocusIndex}";
+                }
+                return null;
+            });
+            PressButton("d-pad right", JoyButton.DpadRight);
+            Do("the ring on the next option", () =>
+            {
+                if (CrateUi.PadFocusKind != CrateScreen.StopOption || CrateUi.PadFocusIndex != 1)
+                {
+                    return $"the ring is on {CrateUi.PadFocusKind} {CrateUi.PadFocusIndex}";
+                }
+                string named = CrateScreenReadout.OptionName(CrateUi.PickerOptions[1].good);
+                if (CrateUi.Status != named)
+                {
+                    return $"the status reads '{CrateUi.Status}', not '{named}'";
+                }
+                ScenarioCapture.Shot(Runner.GetViewport(), "pad-crate-picker");
+                return null;
+            });
+            PressButton("A on it", JoyButton.A);
+            Do("the crate is labelled; the picker closed onto the label button", () =>
+            {
+                string good = CrateUi.PickerOptions.Count > 1 ? CrateUi.PickerOptions[1].good : null;
+                if (CrateUi.PickerOpen)
+                {
+                    return "the picker stayed open";
+                }
+                if (_depot.FilterItemType == null)
+                {
+                    return "the crate has no label: " + CrateUi.Status;
+                }
+                return CrateUi.PadFocusKind == CrateScreen.StopLabel ? null : $"the ring is on {CrateUi.PadFocusKind} {CrateUi.PadFocusIndex}";
+            });
+            PressButton("A on the label button again", JoyButton.A);
+            PressButton("B", JoyButton.B);
+            Do("B closed the picker, not the screen", () =>
+                CrateUi.PickerOpen || !CrateUi.IsOpen ? $"picker {CrateUi.PickerOpen}, screen {CrateUi.IsOpen}" : null);
+            PressButton("B", JoyButton.B);
+            Do("B closed the screen", () => CrateUi.IsOpen ? "still open" : null);
+            PressButton("Y at the depot", JoyButton.Y);
+            Wait(0.1);
+            WalkCrate("Take all", CrateScreen.StopTakeAll, () => 0, () => CrateUi.TakeAllButton, list: false);
+            PressButton("A on Take all", JoyButton.A);
+            Do("the crate is empty", () => _depot.Buffer.GetQuantity(ItemType.Scrap) == 0 ? null : $"crate {_depot.Buffer.GetQuantity(ItemType.Scrap)}");
+            PressButton("Y", JoyButton.Y);
+            Do("Y closed the screen", () =>
+            {
+                if (CrateUi.IsOpen)
+                {
+                    return "still open";
+                }
+                Log("the Crate screen by pad: A took one, X what fits, A put one back, the picker labelled it, Take all, B and Y closed");
+                return null;
+            });
+        }
+
+        // --- 9. The Pack screen -----------------------------------------------------------------
+
+        private void PlanPack()
+        {
+            Do("one of every good in the pack; stand in the open", () =>
+            {
+                foreach (string good in ItemTiers.CanonicalOrder)
+                {
+                    Sandbox.Buffers.Deposit(Sandbox.StockpileBufferId, good, 1);
+                }
+                Sandbox.Interactor.Teleport(OpenFloor + new Compat.Vector3(3f, 0f, 0f));
+                return null;
+            });
+            Wait(0.2);
+            PressButton("Y", JoyButton.Y);
+            Wait(0.1);
+            Do("the pack, the ring on its first row, the list longer than its window", () =>
+            {
+                if (!PackUi.IsOpen)
+                {
+                    return "Y didn't open the pack";
+                }
+                if (!PackUi.PadRingVisible || PackUi.PadFocusKind != PackScreen.StopRow || PackUi.PadFocusIndex != 0)
+                {
+                    return $"the ring ({PackUi.PadRingVisible}) is on {PackUi.PadFocusKind} {PackUi.PadFocusIndex}";
+                }
+                Button last = PackUi.RowsInOrder[PackUi.RowsInOrder.Count - 1].row;
+                if (PackUi.HintText != PackScreen.PadHint)
+                {
+                    return $"the hint reads '{PackUi.HintText}'";
+                }
+                return last.GetGlobalRect().End.Y > PackUi.RowsView.GetGlobalRect().End.Y + 1f ? null : "the whole pack fits its window";
+            });
+            Walk("the last row", () => PackUi.PadFocusKind, () => PackUi.PadFocusIndex, PackScreen.StopRow,
+                () => PackUi.RowsInOrder.Count - 1, () => PackUi.RowsInOrder[PackUi.RowsInOrder.Count - 1].row, () => default, list: true);
+            Wait(0.1);
+            Do("the last row is scrolled into view", () =>
+            {
+                Button last = PackUi.RowsInOrder[PackUi.RowsInOrder.Count - 1].row;
+                if (!PackUi.RowsView.GetGlobalRect().Grow(1f).Encloses(last.GetGlobalRect()))
+                {
+                    return "the last row is outside the window";
+                }
+                ScenarioCapture.Shot(Runner.GetViewport(), "pad-pack");
+                return null;
+            });
+            PressButton("B", JoyButton.B);
+            Do("B closed the pack", () =>
+            {
+                if (PackUi.IsOpen)
+                {
+                    return "still open";
+                }
+                Log("the pack's ring walked a long list to its last row; B closed it");
+                return null;
+            });
         }
 
         // --- 7. A long vault scrolls to the ring ------------------------------------------------
 
         private void PlanVaultScroll()
         {
-            Do("press A at the golem again", () => { Button(JoyButton.A, true); return null; });
-            Do("let go of A", () => { Button(JoyButton.A, false); return null; });
-            Wait(0.1);
-            Do("open; every card offered, so the vault is longer than its window", () =>
+            PlanReopen();
+            Do("every card offered, so the vault is longer than its window", () =>
             {
-                if (!Bench.IsOpen)
-                {
-                    return "A didn't reopen the Workbench: " + Sandbox.Interactor.LastStatusMessage;
-                }
                 Session.ConfigureCardGating(null, null);
                 return null;
             });
@@ -146,21 +340,100 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void PlanOpen()
         {
-            Do("build a Scavenger at the station", () =>
+            Do("a Scavenger's cost in the pack, and only that; stand south of the station", () =>
             {
-                ChassisDefinition chassis = Sandbox.Definitions.Chassis["ClockworkScavenger"];
-                foreach (RecipeIngredient c in chassis.cost)
+                foreach (RecipeIngredient c in Scavenger.cost)
                 {
                     Sandbox.Buffers.Deposit(Sandbox.StockpileBufferId, c.itemType, c.quantity);
                 }
-                if (!Sandbox.StarterStation.TryConstructGolem(chassis, out _golem))
-                {
-                    return "no golem built";
-                }
-                (Sandbox.WorkbenchScreen as WorkbenchScreen)?.Close();
+                Compat.Vector2Int station = Sandbox.StarterStation.Cell;
+                Sandbox.Interactor.Teleport(new Compat.Vector3(station.x, station.y - 1, 0f));
                 return null;
             });
-            // It stands on the station, where A builds: X carries it off to open floor first.
+            Wait(0.2);
+            Do("tap the left stick up, to face it", () => { Axis(JoyAxis.LeftY, -1f); return null; });
+            Do("let go", () => { Axis(JoyAxis.LeftY, 0f); return null; });
+            Wait(0.2);
+            PressButton("A at the station", JoyButton.A);
+            Wait(0.1);
+            Do("the panel is open, the ring on the Scavenger's row, the one the pack pays for", () =>
+            {
+                if (!Panel.IsOpen)
+                {
+                    return "A didn't open the station's panel: " + Sandbox.Interactor.LastStatusMessage;
+                }
+                int scavenger = Panel.Rows.ToList().FindIndex(r => r.chassis == Scavenger);
+                if (Panel.PadFocusKind != ConstructionPanelNode.StopChassis || Panel.PadFocusIndex != scavenger)
+                {
+                    return $"the ring is on {Panel.PadFocusKind} {Panel.PadFocusIndex}, the Scavenger is row {scavenger}";
+                }
+                if (!Panel.PadRingVisible || !Panel.PadRingRect.Encloses(Panel.Rows[scavenger].row.GetGlobalRect()))
+                {
+                    return $"the ring ({Panel.PadRingVisible}) {Panel.PadRingRect} doesn't surround the row";
+                }
+                ScenarioCapture.Shot(Runner.GetViewport(), "pad-station");
+                return null;
+            });
+            PressButton("d-pad down, to a row the pack can't pay for", JoyButton.DpadDown);
+            Do("the ring on a greyed row", () =>
+                Panel.PadFocusKind == ConstructionPanelNode.StopChassis && Panel.Rows[Panel.PadFocusIndex].row.Disabled
+                    ? null : $"the ring is on {Panel.PadFocusKind} {Panel.PadFocusIndex}");
+            PressButton("A on it", JoyButton.A);
+            Do("nothing built; the panel says what's short", () =>
+            {
+                if (!Panel.IsOpen || Bench.IsOpen)
+                {
+                    return $"panel open {Panel.IsOpen}, Workbench open {Bench.IsOpen}";
+                }
+                return Panel.Status.Contains(" to build ") ? null : $"status '{Panel.Status}'";
+            });
+            PressButton("d-pad up, back to the Scavenger", JoyButton.DpadUp);
+            Do("press A on the Scavenger", () =>
+            {
+                _zoom = Camera.OrthographicSize;
+                Button(JoyButton.A, true);
+                return null;
+            });
+            Do("let go of A", () => { Button(JoyButton.A, false); return null; });
+            Wait(0.1);
+            Do("built; the panel closed onto the Workbench", () =>
+            {
+                _golem = Panel.LastBuilt;
+                if (_golem == null || _golem.Program.chassis != Scavenger)
+                {
+                    return "no Scavenger built: " + Panel.Status;
+                }
+                if (Panel.IsOpen)
+                {
+                    return "the panel stayed open";
+                }
+                Log("the station's panel by pad: A at the station, the ring on the row the pack pays for, A on a greyed row said what's short, A built");
+                return null;
+            });
+            Wait(0.1);
+            Do("the Workbench is open on it, nothing sent by the A that built it, the ring on Always On, the card the guide lights", () =>
+            {
+                if (!Bench.IsOpen || Bench.TargetGolem != _golem)
+                {
+                    return $"open {Bench.IsOpen} on {Bench.TargetGolem?.GolemId}: {Sandbox.Interactor.LastStatusMessage}";
+                }
+                if (Session.DraftLogicCore != null || Session.AssignedAppendageCount != 0)
+                {
+                    return "the A that built the golem also sent a card";
+                }
+                string ring = RingOn("AlwaysOnCore");
+                if (ring != null)
+                {
+                    return ring;
+                }
+                ScenarioCapture.Shot(Runner.GetViewport(), "pad-workbench-open");
+                return null;
+            });
+        }
+
+        /// <summary>Reopens the Workbench on the golem by A at it, after X carries it off the station, where A builds.</summary>
+        private void PlanReopen()
+        {
             Do("stand south of it", () =>
             {
                 Sandbox.Interactor.Teleport(new Compat.Vector3(_golem.Cell.x, _golem.Cell.y - 1, 0f));
@@ -192,31 +465,15 @@ namespace GolemFactory.Nodes.Scenarios
             Do("tap the left stick up, to face it", () => { Axis(JoyAxis.LeftY, -1f); return null; });
             Do("let go", () => { Axis(JoyAxis.LeftY, 0f); return null; });
             Wait(0.2);
-            Do("press A at the golem", () =>
-            {
-                _zoom = Camera.OrthographicSize;
-                Button(JoyButton.A, true);
-                return null;
-            });
-            Do("let go of A", () => { Button(JoyButton.A, false); return null; });
+            PressButton("A at the golem", JoyButton.A);
             Wait(0.1);
-            Do("the Workbench is open on it, nothing sent by the A that opened it, the ring on Always On, the card the guide lights", () =>
+            Do("the Workbench is open on it again, its program kept", () =>
             {
                 if (!Bench.IsOpen || Bench.TargetGolem != _golem)
                 {
                     return $"open {Bench.IsOpen} on {Bench.TargetGolem?.GolemId}: {Sandbox.Interactor.LastStatusMessage}";
                 }
-                if (Session.DraftLogicCore != null || Session.AssignedAppendageCount != 0)
-                {
-                    return "the A that opened the Workbench also sent a card";
-                }
-                string ring = RingOn("AlwaysOnCore");
-                if (ring != null)
-                {
-                    return ring;
-                }
-                ScenarioCapture.Shot(Runner.GetViewport(), "pad-workbench-open");
-                return null;
+                return Session.AssignedAppendageCount == 2 ? null : $"the draft holds {Session.AssignedAppendageCount} steps";
             });
         }
 
@@ -433,7 +690,24 @@ namespace GolemFactory.Nodes.Scenarios
         }
 
         /// <summary>The d-pad, a press and a release at a time, toward the stop until the ring is on it.</summary>
-        private void NavigateTo(string name, Stop kind, System.Func<int> index)
+        private void NavigateTo(string name, Stop kind, System.Func<int> index) =>
+            Walk(name, () => Bench.PadFocusKind.ToString(), () => Bench.PadFocusIndex, kind.ToString(), index,
+                () => kind switch
+                {
+                    Stop.Step => Bench.StepRows[index()].Socket,
+                    Stop.Vault => Bench.VaultList.GetChildren().OfType<WorkbenchCardControl>().Where(c => !c.IsQueuedForDeletion()).ElementAt(index()),
+                    Stop.Lever => Bench.Lever,
+                    _ => null,
+                },
+                () => Bench.PadRingRect, kind == Stop.Vault);
+
+        /// <summary>
+        /// Any screen's ring: the d-pad, a press and a release at a time, toward the stop until the
+        /// ring is on it. Within a list (<paramref name="list"/>), up or down by index; else toward
+        /// the target on screen.
+        /// </summary>
+        private void Walk(string name, System.Func<string> atKind, System.Func<int> atIndex, string kind, System.Func<int> index,
+            System.Func<Control> target, System.Func<Rect2> ring, bool list)
         {
             Until("the d-pad walks the ring to " + name, 6, () =>
             {
@@ -443,25 +717,17 @@ namespace GolemFactory.Nodes.Scenarios
                     _dpadDown = false;
                     return "letting go";
                 }
-                if (Bench.PadFocusKind == kind && Bench.PadFocusIndex == index())
+                if (atKind() == kind && atIndex() == index())
                 {
                     return null;
                 }
-                Control target = kind switch
-                {
-                    Stop.Step => Bench.StepRows[index()].Socket,
-                    Stop.Vault => Bench.VaultList.GetChildren().OfType<WorkbenchCardControl>().Where(c => !c.IsQueuedForDeletion()).ElementAt(index()),
-                    Stop.Lever => Bench.Lever,
-                    _ => null,
-                };
-                Vector2 d = target.GetGlobalRect().GetCenter() - Bench.PadRingRect.GetCenter();
-                bool inVault = Bench.PadFocusKind == Stop.Vault && kind == Stop.Vault;
-                _dpadHeld = inVault
-                    ? (index() > Bench.PadFocusIndex ? JoyButton.DpadDown : JoyButton.DpadUp)
+                Vector2 d = target().GetGlobalRect().GetCenter() - ring().GetCenter();
+                _dpadHeld = list && atKind() == kind
+                    ? (index() > atIndex() ? JoyButton.DpadDown : JoyButton.DpadUp)
                     : Mathf.Abs(d.X) > Mathf.Abs(d.Y) ? (d.X > 0 ? JoyButton.DpadRight : JoyButton.DpadLeft) : (d.Y > 0 ? JoyButton.DpadDown : JoyButton.DpadUp);
                 Button(_dpadHeld, true);
                 _dpadDown = true;
-                return $"the ring on {Bench.PadFocusKind} {Bench.PadFocusIndex}";
+                return $"the ring on {atKind()} {atIndex()}";
             });
             Do("let go of the d-pad", () =>
             {

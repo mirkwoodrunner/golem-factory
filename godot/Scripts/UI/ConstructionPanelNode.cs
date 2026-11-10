@@ -66,6 +66,8 @@ namespace GolemFactory.Nodes
         private Label _stockLabel;
         private Label _statusLabel;
         private FontVariation _bold;
+        private ScrollContainer _patentScroll;
+        private Button _close;
 
         public bool IsOpen { get; private set; }
         public IReadOnlyList<(ChassisDefinition chassis, Button row)> Rows => _rows;
@@ -95,6 +97,7 @@ namespace GolemFactory.Nodes
             IsOpen = true;
             _root.Visible = true;
             Refresh();
+            PadOpened();
         }
 
         public void Close()
@@ -109,9 +112,11 @@ namespace GolemFactory.Nodes
             if (IsOpen)
             {
                 Refresh();
+                PadProcess(delta);
             }
         }
 
+        // The pad's events never reach here while the panel is open (PadProcess reads them).
         public override void _UnhandledInput(InputEvent e)
         {
             if (IsOpen && (e.IsActionPressed(BuildCursorNode.CancelAction) || e.IsActionPressed(PlayerNode.Interact)))
@@ -242,7 +247,7 @@ namespace GolemFactory.Nodes
             _rowContainer.AddChild(heading);
             _rowContainer.AddChild(MakeLabel("Built with its program already engaged. Same cost as the chassis.", SubtitleColor, 12));
             // A long patent library scrolls rather than pushing Close off the bottom of the screen.
-            var scroll = new ScrollContainer
+            var scroll = _patentScroll = new ScrollContainer
             {
                 Name = "Patents",
                 HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
@@ -441,7 +446,7 @@ namespace GolemFactory.Nodes
             _statusLabel = MakeLabel("", StatusColor, 13);
             column.AddChild(_statusLabel);
 
-            var close = new Button { Text = "Close", CustomMinimumSize = new Vector2(0f, 32f), FocusMode = Control.FocusModeEnum.None };
+            var close = _close = new Button { Text = "Close", CustomMinimumSize = new Vector2(0f, 32f), FocusMode = Control.FocusModeEnum.None };
             StyleBoxTexture button = NineSlice("res://art/UI/Hud/hud_button.png", 8);
             foreach (string state in new[] { "normal", "hover", "pressed", "focus" })
             {
@@ -452,6 +457,7 @@ namespace GolemFactory.Nodes
             close.AddThemeColorOverride("font_color", new Color(0.92f, 0.88f, 0.80f, 1f));
             close.Pressed += Close;
             column.AddChild(close);
+            _pad = new PadFocus(_root) { Default = DefaultStop };
         }
 
         private static Label MakeLabel(string text, Color color, int size)

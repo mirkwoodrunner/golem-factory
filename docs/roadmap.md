@@ -73,9 +73,10 @@ call): built, reviewed, critiqued and tested. Done:
   self-contained .NET 10, one command (`Tools/Deck/export-linux.ps1`), and scenarios passing on an
   exported build (§7's export log). D4, the gamepad's model, is built too: every verb on the pad,
   a right-stick build cursor, and the `gamepad` scenario. D5.2, the hover card at the pad's
-  cursor, is on branch `deck/hover-card`; the Workbench by pad (D6.W) on `deck/screens`, from it.
-  Next: the owner launches it on the Deck (D1.5, D1.6, then D2's Steam Input template); in code,
-  the rest of D6 (the other screens by pad). Still to run by a person: the playtests
+  cursor, is on branch `deck/hover-card`; the Workbench, the station's panel and the Crate and
+  Pack screens by pad (D6) on `deck/screens`, from it. Next: the owner launches it on the Deck
+  (D1.5, D1.6, then D2's Steam Input template); in code, the rest of D6 (Management, settings,
+  title and saves, the playtest card, contracts and supply). Still to run by a person: the playtests
   below and `testscript/endless-soak.md`.
 
 0. **Phase 6 (Game feel), on branch `phase6/feel` (from `phase5/audio`), built 2026-11-01.** The

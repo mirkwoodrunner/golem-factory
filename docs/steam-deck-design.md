@@ -3,8 +3,9 @@
 **Status (2026-11-09):** D1's export is built (§7's export log); the Deck's first launch is the
 owner's. D4, the gamepad's model, is built, with D5.1's build cursor pulled in so a pad can place
 (§7's input audit and "D4 as built"). D5.2, the hover card at the pad's cursor, is built (§7's
-"D5.2 as built"). D6 has begun with the Workbench (D6.W, decided and built). The rest is
-planned, not started.
+"D5.2 as built"). D6 has begun: the Workbench (D6.W, decided and built), the station's panel and the Crate and
+Pack screens are built. The rest of D6 (Management, settings, title and saves, the playtest
+card, the contract and supply screens) and D7 onward are planned, not started.
 
 The goal is to run the game on Steam Deck hardware, played by its owner. **It is not a Steam store release**
 (roadmap decision 14: release isn't planned). No Steamworks, no store page, no depots, no Steam Deck
@@ -272,6 +273,38 @@ shoulders for a card's dials, and focus follows the hint. As decided, it replace
   `-scroll`. Core: `WorkbenchPadSendTests`.
 - **Left for D7:** the guide's text still says "Drag the glowing card" and "Press E at the
   golem".
+
+**The station, Crate and Pack screens by pad, as built 2026-11-09** (same branch):
+- **One focus ring for every screen:** `Scripts/UI/PadFocus.cs`, taken out of the Workbench's
+  first build. A screen lists its stops each frame, each with a kind, an index, its control,
+  and the scrolling list it's in, with the list's columns for a grid. `PadFocus` keeps the ring
+  on a stop that exists, moves it, scrolls its list and draws it. The screen decides what its
+  buttons do. Each screen marks every pad event handled while it's open and reads the pad by
+  polling. A screen's buttons wait one frame after it opens, because the press that opened it
+  is still "just pressed".
+- **The station's panel** (`ConstructionPanelNode.Pad.cs`): the ring opens on the first row the
+  pack pays for. A builds the row, and the Workbench opens on the new golem without the same A
+  sending a card. **A on a greyed row says what's short**, as the build would refuse. B closes.
+  E on the keyboard still closes too; the pad's A doesn't, since it presses the row. Patent
+  rows scroll in their list.
+- **The Crate screen** (`CrateScreen.Pad.cs`): stops on the label button, the crate's rows (or
+  the picker's options while it's open), Take all and the pack's rows. On a row, **A moves one
+  across and X moves what fits** (the click and the Shift-click). This replaces item 2's "a
+  trigger moves half": the screen has no half rule, and inventing one would be a second
+  transfer rule. A on the label button opens the picker, with the ring on the crate's label;
+  the d-pad walks the 8-column grid; the status line names the option under the ring, as the
+  mouse's hover does; A sets it, and the ring returns to the label button. B closes the picker
+  first, then the screen. Y closes the screen, as it opened it. The hint reads "A moves one ·
+  X moves what fits".
+- **The Pack screen:** nothing moves from it, so the ring only walks the rows, scrolling a long
+  pack. B, Y or A closes it. With the pad in use, the hint says "press Y".
+- **Checked by** `gamepad-ui`'s station, crate and pack steps: 22 of 23 break checks across the
+  four screens and `PadFocus` were caught. The miss is the station panel's one-frame wait.
+  `PlayerNode` handles the A that opens the panel before the panel's own `_Process` runs in
+  that frame, so today the panel never sees that press as "just pressed". The wait is kept as
+  a guard against a change of node order, which is what bit the Workbench (its break was
+  caught). Frames `pad-station`, `pad-crate`, `pad-crate-picker`,
+  `pad-pack`.
 
 The proposal as written, kept for the record:
 

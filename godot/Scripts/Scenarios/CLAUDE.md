@@ -257,17 +257,24 @@ Current scenarios:
   each glowing card inside the vault's window, STEP 4 never under the plate) engages the smelter
   in 9 moves, and the plate steps aside. Captures `guide-ahead`, `guide-ahead-step4`.
 - `gamepad-ui` (Sandbox): the screens by pad (`docs/steam-deck-design.md` D6), joypad events only
-  after the playtest card's click; so far the Workbench (D6.W). X carries a new Scavenger off the
-  station (where A builds), and A at it opens the Workbench with nothing sent by that A and the
-  ring on the hinted Always On. A sends Always On, Extract and Push Output, the ring following the
+  after the playtest card's click; so far the station's panel, the Workbench (D6.W), the Crate
+  and the Pack. A at the station opens the panel with the ring on the row the pack pays for; A on
+  a greyed row says what's short; A builds, and the Workbench opens with nothing sent by that A and
+  the ring on the hinted Always On. A sends Always On, Extract and Push Output, the ring following the
   hint to the lever; LB and the d-pad change nothing behind the screen. The d-pad walks the ring
   to STEP 1; RT and LT step its dial (reading `LT`/`RT`); X takes it out and A sends it back. With
   every step full, A moves nothing and says why. A Haul in STEP 2: RB and LB step its good
   (reading `LB`/`RB`; Coke deposited and the ledger polled so there is a second good). A on the
-  lever engages, B closes. Reopened with every card offered, the d-pad walks the vault to its
-  last card, scrolled into view. **Drive the d-pad a press and a release at a time** (the ring
-  steps on the push, and repeats only after 0.3 s held). Captures `pad-workbench-open`, `-lever`,
-  `-dial`, `-haul`, `-scroll`.
+  lever engages, B closes. X carries the golem off the station (where A builds) and A at it
+  reopens the Workbench; with every card offered, the d-pad walks the vault to its last card,
+  scrolled into view. Y at a depot opens its Crate: A takes one, X what fits, A on the pack's row
+  puts one back; A on the label button opens the picker on the crate's label, the status naming
+  the option under the ring, A labels it, B closes the picker and then the screen; Take all; Y
+  closes. With one of every good, Y opens the pack (hint "press Y") and the ring walks to its
+  last row, scrolled into view; B closes. **Drive the d-pad a press and a release at a time**
+  (the ring steps on the push, and repeats only after 0.3 s held). Captures `pad-station`,
+  `pad-workbench-open`, `-lever`, `-dial`, `-haul`, `-scroll`, `pad-crate`, `pad-crate-picker`,
+  `pad-pack`.
 - `perf` also takes `--perf-golems=N` (a load of N golems in the endgame's proportions) and
   `--perf-load=endless` (160), for measuring the golem cap (`docs/performance-report-endless.md`).
 

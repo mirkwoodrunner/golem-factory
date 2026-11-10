@@ -35,6 +35,11 @@ namespace GolemFactory.Nodes
         /// <summary>The row drawn for each good, by item type.</summary>
         public IReadOnlyDictionary<string, Button> Rows => _rows;
 
+        /// <summary>The goods' rows top to bottom (not the Post's), for the pad's ring to step through.</summary>
+        public IReadOnlyList<(string good, Button row)> OrderedRows => _order;
+
+        private readonly List<(string good, Button row)> _order = new List<(string, Button)>();
+
         /// <summary>The Post store's rows under the pack's (inventory spec §4.5), by item type.</summary>
         public IReadOnlyDictionary<string, Button> PostRows => _postRows;
 
@@ -96,9 +101,14 @@ namespace GolemFactory.Nodes
                 _content.RemoveChild(child);
                 child.QueueFree();
             }
+            _order.Clear();
             foreach (CrateScreenRow row in rows)
             {
                 _content.AddChild(row.IsMessage ? MessageRow(row.Name) : ItemRow(row, _rows, _click));
+                if (!row.IsMessage)
+                {
+                    _order.Add((row.ItemType, _rows[row.ItemType]));
+                }
             }
             if (post != null && post.Count > 0)
             {
