@@ -3,6 +3,7 @@ using System.Linq;
 using Godot;
 using GolemFactory.Economy;
 using GolemFactory.Golems;
+using GolemFactory.Menus;
 using GolemFactory.PunchCards;
 using GolemFactory.UI;
 using GolemFactory.World;
@@ -60,6 +61,235 @@ namespace GolemFactory.Nodes.Scenarios
             PlanCrate();
             PlanPack();
             PlanManagement();
+            PlanSupply();
+            PlanContract();
+            PlanTitle();
+        }
+
+        // --- 11. The cart panel -----------------------------------------------------------------
+
+        private static readonly Compat.Vector2Int SpotCell = new Compat.Vector2Int(-20, -16);
+        private SupplyScreen Carts => SupplyScreen.Find(Runner);
+
+        private void PlanSupply()
+        {
+            Do("the Coal cart's price in the pack; stand at the empty spot", () =>
+            {
+                foreach ((string item, int n) in new[] { (ItemType.Scrap, 100), (ItemType.IronPlate, 40), (ItemType.Gear, 10) })
+                {
+                    Sandbox.Buffers.Deposit(Sandbox.StockpileBufferId, item, n);
+                }
+                Sandbox.Interactor.Teleport(new Compat.Vector3(SpotCell.x, SpotCell.y + 1f, 0f));
+                return null;
+            });
+            Wait(0.3);
+            PressButton("A at the spot", JoyButton.A);
+            Wait(0.1);
+            Do("the panel lists the carts, the ring on the first", () =>
+            {
+                if (!Carts.IsOpen)
+                {
+                    return "A didn't open the cart panel: " + Sandbox.Interactor.CurrentPrompt;
+                }
+                return Carts.PadRingVisible && Carts.PadFocusIndex == 0 ? null : $"the ring ({Carts.PadRingVisible}) on row {Carts.PadFocusIndex}";
+            });
+            Walk("the Coal cart", () => SupplyScreen.StopRow, () => Carts.PadFocusIndex, SupplyScreen.StopRow,
+                () => Carts.Rows.ToList().FindIndex(r => r.row.Action == Supply.SupplyAction.Add && r.row.ItemType == ItemType.Coal),
+                () => Carts.Button(Supply.SupplyAction.Add, ItemType.Coal), () => Carts.PadRingRect, list: true);
+            Do("capture; A", () =>
+            {
+                ScenarioCapture.Shot(Runner.GetViewport(), "pad-supply");
+                Button(JoyButton.A, true);
+                return null;
+            });
+            Do("let go of A: a Coal cart at the spot", () =>
+            {
+                Button(JoyButton.A, false);
+                return Sandbox.Supply.SpotAt(SpotCell).Cart?.ItemType == ItemType.Coal ? null : "no Coal cart: " + Carts.Status;
+            });
+            PressButton("B", JoyButton.B);
+            Do("B closed the panel", () =>
+            {
+                if (Carts.IsOpen)
+                {
+                    return "still open";
+                }
+                Log("the cart panel by pad: A at the spot, the ring to the Coal cart, A added it, B closed");
+                return null;
+            });
+        }
+
+        // --- 12. The City Office's notice -------------------------------------------------------
+
+        private ContractScreen Notice => ContractScreen.Find(Runner);
+
+        private void PlanContract()
+        {
+            Do("the factory smelts iron, so the first contract posts; stand at the office's door", () =>
+            {
+                foreach (string good in Sandbox.Contracts.Sequence[0].postWhenSeen)
+                {
+                    Sandbox.TechTree.Ledger.RecordItem(good);
+                }
+                Compat.Vector2Int front = TownSquare.OfficeCell + new Compat.Vector2Int(0, -1);
+                Sandbox.Interactor.Teleport(new Compat.Vector3(front.x, front.y, 0f));
+                return null;
+            });
+            Until("the first contract posts", 2, () =>
+                Sandbox.Contracts.Current == Sandbox.Contracts.Sequence[0] && Sandbox.Contracts.State == Contracts.ContractState.Posted
+                    ? null : $"current {Sandbox.Contracts.Current?.name}");
+            Do("tap the left stick up, to face it", () => { Axis(JoyAxis.LeftY, -1f); return null; });
+            Do("let go", () => { Axis(JoyAxis.LeftY, 0f); return null; });
+            Wait(0.3);
+            PressButton("A at the office", JoyButton.A);
+            Wait(0.1);
+            Do("the notice is open, the ring on Take, not taken by the A that opened it", () =>
+            {
+                if (!Notice.IsOpen)
+                {
+                    return "A didn't open the notice: " + Sandbox.Interactor.CurrentPrompt;
+                }
+                if (Sandbox.Contracts.State != Contracts.ContractState.Posted)
+                {
+                    return "the A that opened the notice also took the contract";
+                }
+                Button take = Notice.Button(Contracts.ContractAction.Accept);
+                if (take == null || !Notice.PadRingVisible || !Notice.PadRingRect.Encloses(take.GetGlobalRect()))
+                {
+                    return $"the ring ({Notice.PadRingVisible}) on row {Notice.PadFocusIndex}, Take {(take == null ? "missing" : "elsewhere")}";
+                }
+                ScenarioCapture.Shot(Runner.GetViewport(), "pad-contract");
+                return null;
+            });
+            PressButton("A on Take", JoyButton.A);
+            Do("taken", () => Sandbox.Contracts.State == Contracts.ContractState.Accepted ? null : $"{Sandbox.Contracts.State}: {Notice.Status}");
+            PressButton("Y", JoyButton.Y);
+            Do("Y closed the notice", () =>
+            {
+                if (Notice.IsOpen)
+                {
+                    return "still open";
+                }
+                Log("the City Office by pad: A at the door, the ring on Take, A took it, Y closed");
+                return null;
+            });
+        }
+
+        // --- 13. The title ----------------------------------------------------------------------
+
+        private TitleScreen Title => TitleScreen.Find(Runner);
+        private Menus.TitleChoice _choice;
+        private double _titleVolume;
+
+        private void WalkTitle(Menus.TitleChoice choice)
+        {
+            Until("the d-pad walks the menu to " + choice, 6, () =>
+            {
+                if (_dpadDown)
+                {
+                    Button(_dpadHeld, false);
+                    _dpadDown = false;
+                    return "letting go";
+                }
+                if (Title.Menu.Selected == choice)
+                {
+                    return null;
+                }
+                int from = Menus.TitleMenu.Order.ToList().IndexOf(Title.Menu.Selected), to = Menus.TitleMenu.Order.ToList().IndexOf(choice);
+                _dpadHeld = to > from ? JoyButton.DpadDown : JoyButton.DpadUp;
+                Button(_dpadHeld, true);
+                _dpadDown = true;
+                return "on " + Title.Menu.Selected;
+            });
+        }
+
+        private void PlanTitle()
+        {
+            Do("a save, so the title has one to load", () => { Sandbox.SaveTo(SavePaths.Legacy); return null; });
+            Reload("to the title", LaunchKind.Title);
+            Wait(0.3);
+            Do("the title, its hint naming A", () =>
+            {
+                if (Title?.IsOpen != true)
+                {
+                    return "no title";
+                }
+                if (Title.MainHintText != TitleScreen.PadMainHint)
+                {
+                    return $"the hint reads '{Title.MainHintText}'";
+                }
+                _choice = Title.Menu.Selected;
+                _zoom = Camera.OrthographicSize;
+                return null;
+            });
+            Do("the stick down, in five motion events at once", () =>
+            {
+                foreach (float v in new[] { 0.55f, 0.7f, 0.85f, 0.95f, 1f })
+                {
+                    Axis(JoyAxis.LeftY, v);
+                }
+                return null;
+            });
+            // Let go inside the repeat's first wait (0.3 s): held longer, it steps again, as it should.
+            Do("let go: one step down, not five; the camera unmoved", () =>
+            {
+                Axis(JoyAxis.LeftY, 0f);
+                List<Menus.TitleChoice> order = Menus.TitleMenu.Order.ToList();
+                Menus.TitleChoice next = order.Skip(order.IndexOf(_choice) + 1).FirstOrDefault(c => Title.Menu.IsEnabled(c));
+                if (Title.Menu.Selected != next)
+                {
+                    return $"on {Title.Menu.Selected}, from {_choice}, expected {next} (enabled: "
+                        + string.Join(", ", order.Where(c => Title.Menu.IsEnabled(c))) + ")";
+                }
+                return Mathf.Abs(Camera.OrthographicSize - _zoom) > 0.01f ? "the stick zoomed the showcase" : null;
+            });
+            WalkTitle(Menus.TitleChoice.Settings);
+            PressButton("A on Settings", JoyButton.A);
+            Wait(0.1);
+            Do("Settings, the ring on Master", () =>
+                !Title.SettingsOpen ? "A didn't open Settings"
+                : Title.PadFocusControl == Title.Settings.Master && Title.PadRingVisible ? null : $"the ring is on {Title.PadFocusControl?.Name}");
+            Do("LT on Master", () => { _titleVolume = Title.Settings.Master.Value; Axis(JoyAxis.TriggerLeft, 1f); return null; });
+            Do("LT up: a step down", () =>
+            {
+                Axis(JoyAxis.TriggerLeft, 0f);
+                return Title.Settings.Master.Value < _titleVolume ? null : $"Master {Title.Settings.Master.Value}";
+            });
+            PressAxis("RT on Master", JoyAxis.TriggerRight);
+            PressButton("B", JoyButton.B);
+            Do("B is back on the menu", () => Title.SettingsOpen ? "still in Settings" : null);
+            WalkTitle(Menus.TitleChoice.Load);
+            PressButton("A on Load", JoyButton.A);
+            Wait(0.1);
+            Do("Load, its hint naming A and B", () =>
+            {
+                if (!Title.LoadOpen)
+                {
+                    return "A didn't open Load";
+                }
+                if (Title.LoadHintText != TitleScreen.PadLoadHint)
+                {
+                    return $"the hint reads '{Title.LoadHintText}'";
+                }
+                ScenarioCapture.Shot(Runner.GetViewport(), "pad-title-load");
+                return null;
+            });
+            PressButton("d-pad right", JoyButton.DpadRight);
+            Do("Creative's slots", () => Title.LoadingCreative ? null : "still the campaign's");
+            PressButton("d-pad left", JoyButton.DpadLeft);
+            Do("the campaign's again, a slot chosen", () =>
+                Title.LoadingCreative ? "still Creative's" : Title.SlotBoard.Selected != null ? null : "no slot chosen");
+            Reloading("A loads it", 1, () => Button(JoyButton.A, true));
+            Do("let go of A: the game, loaded", () =>
+            {
+                Button(JoyButton.A, false);
+                if (World.Launch != LaunchKind.Continue || Title?.IsOpen == true)
+                {
+                    return $"launch {World.Launch}, title open {Title?.IsOpen}";
+                }
+                Log("the title by pad: a held stick stepped once, Settings by the ring, Load's kinds by the d-pad, A loaded the slot");
+                return null;
+            });
         }
 
         // --- 10. The Management screen ----------------------------------------------------------
@@ -419,9 +649,10 @@ namespace GolemFactory.Nodes.Scenarios
                 Axis(axis, 0f);
             }
             InputDevices.Reset();
+            ScenarioSaves.Clear();
         }
 
-        // --- 0. A fresh game, the playtest card answered (a click), the pad picked up ----------
+        // --- 0.A fresh game, the playtest card answered (a click), the pad picked up ----------
 
         private void PlanStart()
         {

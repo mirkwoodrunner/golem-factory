@@ -3,10 +3,11 @@
 **Status (2026-11-09):** D1's export is built (§7's export log); the Deck's first launch is the
 owner's. D4, the gamepad's model, is built, with D5.1's build cursor pulled in so a pad can place
 (§7's input audit and "D4 as built"). D5.2, the hover card at the pad's cursor, is built (§7's
-"D5.2 as built"). D6 is mostly built: the Workbench (D6.W, decided and built), the station's panel, the Crate and
-Pack screens, the playtest card and the Management screen with all its tabs (Settings among
-them). Left in D6: the title screen and its save slots, and the contract and supply screens. D7
-onward is planned, not started.
+"D5.2 as built"). D6's screens are built: the Workbench (D6.W, decided and built), the station's panel, the Crate
+and Pack screens, the playtest card, the Management screen with all its tabs, the title with its
+Settings and Load, the cart panel and the City Office's notice. Still pointer-only: the Overview
+map's hover card and its click on a golem. D6's exit, the playtest script played with no mouse or
+keyboard, is the owner's to try. D7 onward is planned, not started.
 
 The goal is to run the game on Steam Deck hardware, played by its owner. **It is not a Steam store release**
 (roadmap decision 14: release isn't planned). No Steamworks, no store page, no depots, no Steam Deck
@@ -337,6 +338,35 @@ shoulders for a card's dials, and focus follows the hint. As decided, it replace
   answered with no harvest) and its menu steps (RB and LB with nothing behind hearing LB, a
   slider by LT and RT, a checkbox by A, no key button a stop, the Ledger panned, B). Frames
   `pad-card`, `pad-management-settings`.
+
+**The title, the cart panel and the City Office by pad, as built 2026-11-10** (branch
+`deck/screens-rest`), which finishes D6's screens:
+- **The title** keeps its own selection (Core's `TitleMenu`, the slot board), which the keyboard
+  already walked by its actions. The pad's events reached that path too, one menu step per stick
+  motion event, and the d-pad also zoomed the showcase's camera. Now the title marks every pad
+  event handled and walks the same selection by polling, with the ring's repeat
+  (`PadFocus.DirectionRepeat`). Up and down choose, A picks, B goes back; on Load, left and
+  right switch Campaign and Creative. Settings is Management's tab on the generic ring (key
+  buttons left out), with Back. With the pad in use, the hints say "A to pick" and "A to load ·
+  B to go back".
+- **The cart panel and the City Office's notice** (`SupplyScreen.Pad.cs`,
+  `ContractScreen.Pad.cs`) are lists of row buttons: the ring walks them, scrolling, and A
+  presses the row, a greyed one saying why. B or Y closes. The keyboard's E still closes too;
+  the pad's A presses the row.
+- **`PadFocus` now holds what the screens share:** the direction repeat, finding a tree's
+  buttons and sliders (`ControlsIn`), A's press-or-tick (`Press`), LT and RT on a slider
+  (`StepSlider`), and the right stick's scroll (`ScrollWithStick`). Management uses them too.
+- **Checked by** `gamepad-ui`'s cart, office and title steps. The cart steps: A at an empty spot
+  opens the panel, the ring walks to the Coal cart, A adds it, B closes. The office steps: A at
+  its door opens the notice with nothing taken by that A, A takes the contract, Y closes. The
+  title steps: a reload to the title with a save in a slot; five stick motion events in one
+  frame step the menu once, with the camera unmoved; Settings by the ring and its slider; Load,
+  where the d-pad switches kinds and A loads the slot. Frames `pad-supply`, `pad-contract`,
+  `pad-title-load`. 16 of 17 break checks were caught. The miss is the notice's one-frame wait,
+  which is the station panel's case: the player handles the opening A before the notice runs,
+  so the wait guards only against a change of node order.
+- **Left for D7:** text that names a key: the guide, the prompts, the contract's "press E to
+  sell it".
 
 The proposal as written, kept for the record:
 
