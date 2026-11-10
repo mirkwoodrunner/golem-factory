@@ -238,13 +238,16 @@ Current scenarios:
 - `gamepad` (Sandbox): the pad (`docs/steam-deck-design.md` D4) with joypad events only, after the
   playtest card's one click. Every pad action has its joypad event and the keys stay. The left
   stick walks, no faster on a diagonal; A harvests at the Scrap cart; X picks a golem up and sets
-  it down; Y opens the pack and Start the menu, B closes each. LB steps the build menu to the belt
+  it down. The hover card at the pad's cursor (D5.2): facing the golem shows its card, hung from
+  the cell ahead; turning away hides it; the right stick looks back at it, drawing the brass tile;
+  the pack opened over it hides both; a walk brings the cursor back ahead. Y opens the pack and Start the menu, B closes each. LB steps the build menu to the belt
   (its card showing, the pointer hidden), the cursor starts a cell ahead of the Artificer, the right
   stick steps it once and repeats while held; RT places a belt and its release ends the drag, RB
   turns it, RT held over the stick lays a run; B puts it down. LT takes the wrecking bar and RT
   takes a belt back. The d-pad zooms; Back pauses and plays. A mouse nudge hands the cursor back.
   **Parsed input lands a frame later**: check what a release did in the step after sending it.
-  Headless ignores `Input.MouseMode`; read `InputDeviceNode.AppliedMode`. Captures `gamepad-cursor`.
+  Headless ignores `Input.MouseMode`; read `InputDeviceNode.AppliedMode`. Captures `gamepad-cursor`, `gamepad-hover-ahead`,
+  `gamepad-hover-look`, `gamepad-hover-floor`.
 - `guide-ahead` (Sandbox): the guide's program step shown over the Workbench ahead of the guide
   (`docs/guide-chapters-design.md` §9). F9 four times reaches chapter 5; Iron Smelting is claimed
   by the kit's own claim; E at the station and a click on the Aether-Hauler's row build it, and the
@@ -253,6 +256,30 @@ Current scenarios:
   vault and every socket. Following the glow (real drags, the good arrow, the dial, the lever;
   each glowing card inside the vault's window, STEP 4 never under the plate) engages the smelter
   in 9 moves, and the plate steps aside. Captures `guide-ahead`, `guide-ahead-step4`.
+- `gamepad-ui` (Sandbox): the screens by pad (`docs/steam-deck-design.md` D6), joypad events only
+  throughout; so far the playtest card, the station's panel, the Workbench (D6.W), the Crate, the
+  Pack and the Management screen. The card first: it says the d-pad's left answers it, which
+  takes the pad (the stick held then doesn't walk); B lets go with the question waiting; A on the
+  note gives it focus and B takes it back; A on the second answer answers, harvesting nothing at
+  the Scrap cart beside. A at the station opens the panel with the ring on the row the pack pays for; A on
+  a greyed row says what's short; A builds, and the Workbench opens with nothing sent by that A and
+  the ring on the hinted Always On. A sends Always On, Extract and Push Output, the ring following the
+  hint to the lever; LB and the d-pad change nothing behind the screen. The d-pad walks the ring
+  to STEP 1; RT and LT step its dial (reading `LT`/`RT`); X takes it out and A sends it back. With
+  every step full, A moves nothing and says why. A Haul in STEP 2: RB and LB step its good
+  (reading `LB`/`RB`; Coke deposited and the ledger polled so there is a second good). A on the
+  lever engages, B closes. X carries the golem off the station (where A builds) and A at it
+  reopens the Workbench; with every card offered, the d-pad walks the vault to its last card,
+  scrolled into view. Y at a depot opens its Crate: A takes one, X what fits, A on the pack's row
+  puts one back; A on the label button opens the picker on the crate's label, the status naming
+  the option under the ring, A labels it, B closes the picker and then the screen; Take all; Y
+  closes. With one of every good, Y opens the pack (hint "press Y") and the ring walks to its
+  last row, scrolled into view; B closes. Start opens the menu: RB and LB change tab (LB heard by
+  nothing behind it); on Settings the ring starts on Master, never on a key button; LT and RT
+  step it; A ticks and unticks Mute; the right stick pans the Ledger; B closes. **Drive the d-pad a press and a release at a time**
+  (the ring steps on the push, and repeats only after 0.3 s held). Captures `pad-card`, `pad-station`,
+  `pad-workbench-open`, `-lever`, `-dial`, `-haul`, `-scroll`, `pad-crate`, `pad-crate-picker`,
+  `pad-pack`, `pad-management-settings`.
 - `perf` also takes `--perf-golems=N` (a load of N golems in the endgame's proportions) and
   `--perf-load=endless` (160), for measuring the golem cap (`docs/performance-report-endless.md`).
 

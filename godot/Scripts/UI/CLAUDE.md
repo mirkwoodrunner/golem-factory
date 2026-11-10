@@ -23,5 +23,13 @@ a RectTransform's anchorMin/anchorMax/anchoredPosition/sizeDelta/pivot, with Uni
 numbers; don't eyeball a layout. **A control has no size until the frame
 after it's built**, so a scenario must not click something in the same step that opened it.
 
+**A screen by pad** (`docs/steam-deck-design.md` D6) uses `PadFocus`: list the stops each frame
+(kind, index, control, and the scrolling list a stop is in) and act on `Current`. Not Godot's
+focus, which a rebuild from data drops. While the screen is open, mark every joypad event handled
+in its `_Input` and read the pad by polling, or LB steps the build menu and the d-pad zooms the
+camera behind it. The A, E or Y that opened it is still "just pressed" in the frame it opens, so
+its buttons wait a frame. The pad's A presses the stop, so it must not also close the screen; B
+closes. See `WorkbenchScreen.Pad.cs`, `ConstructionPanelNode.Pad.cs`, `CrateScreen.Pad.cs`.
+
 The Pack and Crate screens' rules (`SandboxWorld.Inventory`) are in
 `godot/Core/Economy/CLAUDE.md`; hover's card is in `godot/Core/Golems/CLAUDE.md`.

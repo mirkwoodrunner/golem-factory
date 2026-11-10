@@ -13,7 +13,8 @@ namespace GolemFactory.Nodes
     /// <para>
     /// No pointer in the world -- nothing hovered -- while the mouse is over a control, a full
     /// screen is open, the wrecking bar is up (its ghost says what a click takes), or the mouse
-    /// is off the window.
+    /// is off the window. With the pad in use, the pad's cursor is the pointer
+    /// (<see cref="BuildCursorNode.PadCell"/>), and the card hangs from its cell.
     /// </para>
     /// </summary>
     public partial class GolemHoverNode : CanvasLayer
@@ -109,10 +110,10 @@ namespace GolemFactory.Nodes
                 _cardLabel.Text = text;
             }
 
-            // Right of and below the pointer, kept on screen.
+            // Right of and below the pointer (or the pad's cursor cell), kept on screen.
             _card.ResetSize();
             Vector2 view = GetViewport().GetVisibleRect().Size;
-            Vector2 at = _mouse + new Vector2(CardOffset, CardOffset);
+            Vector2 at = CardAnchor() + new Vector2(CardOffset, CardOffset);
             at.X = Mathf.Clamp(at.X, 0f, Mathf.Max(0f, view.X - _card.Size.X));
             at.Y = Mathf.Clamp(at.Y, 0f, Mathf.Max(0f, view.Y - _card.Size.Y));
             _card.Position = at;
@@ -140,10 +141,19 @@ namespace GolemFactory.Nodes
             }
         }
 
-        /// <summary>The cell under the mouse, or null when the pointer isn't in the world.</summary>
+        /// <summary>
+        /// The cell under the mouse, or null when the pointer isn't in the world. With the pad in
+        /// use it is the pad's cursor (docs/steam-deck-design.md D5.2): the cell ahead of the
+        /// Artificer, or where the right stick moved it. A resting mouse means nothing then.
+        /// </summary>
         private Compat.Vector2Int? PointerCell(World.SandboxWorld sandbox)
         {
             Viewport viewport = GetViewport();
+            _cursor ??= FindCursor(GetTree().Root);
+            if (_cursor != null && _cursor.UsingPad)
+            {
+                return ModalScreens.AnyOpen(GetTree()) || sandbox.Build.IsDemolishActive ? null : _cursor.PadCell;
+            }
             Vector2 mouse = _mouse;
             if (!_mouseInWindow || !viewport.GetVisibleRect().HasPoint(mouse) ||
                 viewport.GuiGetHoveredControl() != null ||
@@ -154,6 +164,36 @@ namespace GolemFactory.Nodes
             }
             Vector2 world = viewport.GetCanvasTransform().AffineInverse() * mouse;
             return GridConversions.WorldToCell(world);
+        }
+
+        private BuildCursorNode _cursor;
+
+        /// <summary>Where the card hangs from: the pointer, or with the pad the cursor cell's top-right corner on screen.</summary>
+        private Vector2 CardAnchor()
+        {
+            if (_cursor != null && _cursor.UsingPad)
+            {
+                float half = GridConversions.CellPixels / 2f;
+                Vector2 corner = GridConversions.CellToWorld(_cursor.PadCell) + new Vector2(half, -half);
+                return GetViewport().GetCanvasTransform() * corner;
+            }
+            return _mouse;
+        }
+
+        private static BuildCursorNode FindCursor(Node node)
+        {
+            if (node is BuildCursorNode cursor)
+            {
+                return cursor;
+            }
+            foreach (Node child in node.GetChildren())
+            {
+                if (FindCursor(child) is BuildCursorNode found)
+                {
+                    return found;
+                }
+            }
+            return null;
         }
     }
 }

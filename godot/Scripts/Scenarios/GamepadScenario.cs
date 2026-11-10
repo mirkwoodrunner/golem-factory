@@ -20,6 +20,9 @@ namespace GolemFactory.Nodes.Scenarios
     ///   <item>Every verb has a pad binding beside its key.</item>
     ///   <item>The left stick walks the Artificer, no faster on a diagonal than straight.</item>
     ///   <item>A at the starting Scrap cart harvests; X picks a golem up and sets it down.</item>
+    ///   <item>Facing the golem shows its hover card at the cell ahead; turning away hides it; the
+    ///   right stick looks back at it, with the look-around tile drawn; a screen hides both; a walk
+    ///   brings the cursor back to the cell ahead.</item>
     ///   <item>Y opens the pack and B closes it; Start opens the menu and B closes it.</item>
     ///   <item>LB picks up the belt; the cursor starts a cell ahead of the Artificer; the right stick
     ///   steps it; RT places one belt, RT held while the stick steps lays a run; RB turns it; B puts it down.</item>
@@ -54,6 +57,9 @@ namespace GolemFactory.Nodes.Scenarios
         private int _beltsBefore;
         private Facing _facingBefore;
         private float _sizeBefore;
+        private Golems.GolemEntity _golem;
+
+        private GolemHoverNode Hover => Tree.Root.FindChildren("*", "CanvasLayer", true, false).OfType<GolemHoverNode>().First();
 
         protected override void Plan()
         {
@@ -64,6 +70,7 @@ namespace GolemFactory.Nodes.Scenarios
             PlanBindings();
             PlanWalk();
             PlanHands();
+            PlanHover();
             PlanScreens();
             PlanBuild();
             PlanDemolish();
@@ -229,6 +236,7 @@ namespace GolemFactory.Nodes.Scenarios
                     return "no golem built";
                 }
                 (Sandbox.WorkbenchScreen as WorkbenchScreen)?.Close();
+                _golem = golem;
                 Hands.Teleport(new CoreVector3(golem.Cell.x, golem.Cell.y - 1, 0f));
                 return null;
             });
@@ -245,6 +253,137 @@ namespace GolemFactory.Nodes.Scenarios
                 Button(JoyButton.X, false);
                 return Hands.CarriedGolem == null ? null : "still carrying: " + Hands.LastStatusMessage;
             });
+        }
+
+        // --- 3b. The hover card at the pad's cursor (D5.2) ---------------------------------------
+
+        private void PlanHover()
+        {
+            Do("stand a cell east of the Scavenger", () =>
+            {
+                Hands.Teleport(new CoreVector3(_golem.Cell.x + 1, _golem.Cell.y, 0f));
+                return null;
+            });
+            Wait(0.2);
+            Do("tap the left stick west, to face it", () => { Axis(JoyAxis.LeftX, -1f); return null; });
+            Do("let go", () => { Axis(JoyAxis.LeftX, 0f); return null; });
+            Wait(0.4);
+            Do("facing it: its card shows, hung from the cell ahead, with no tile drawn", () =>
+            {
+                if (Cursor.PadCell != _golem.Cell)
+                {
+                    return $"the cursor is at {Cursor.PadCell}, the Scavenger at {_golem.Cell} (player {PlayerCell()}, facing {Player.Facing})";
+                }
+                if (Cursor.PadAimed || Cursor.ReticleVisible)
+                {
+                    return "the look-around tile shows without the right stick";
+                }
+                string card = CardAt(_golem.Cell);
+                if (card != null)
+                {
+                    return card;
+                }
+                ScenarioCapture.Shot(Runner.GetViewport(), "gamepad-hover-ahead");
+                return null;
+            });
+            Do("tap the left stick east, to turn away", () => { Axis(JoyAxis.LeftX, 1f); return null; });
+            Do("let go", () => { Axis(JoyAxis.LeftX, 0f); return null; });
+            Wait(0.4);
+            Do("turned away: no card", () =>
+                Hover.Hovered == null && !Hover.CardVisible ? null : $"still hovering {Hover.Hovered?.GolemId}, card shown {Hover.CardVisible}");
+            Do("right stick east, onto open floor", () => { Axis(JoyAxis.RightX, 1f); return null; });
+            Do("let go", () => { Axis(JoyAxis.RightX, 0f); return null; });
+            Do("the tile marks the cell the pad looks at", () =>
+            {
+                CoreVector2Int expected = PlayerCell() + new CoreVector2Int(2, 0);
+                if (!Cursor.PadAimed || !Cursor.ReticleVisible || Cursor.PadCell != expected)
+                {
+                    return $"aimed {Cursor.PadAimed}, tile shown {Cursor.ReticleVisible}, at {Cursor.PadCell} (expected {expected})";
+                }
+                ScenarioCapture.Shot(Runner.GetViewport(), "gamepad-hover-floor");
+                return null;
+            });
+            Until("the right stick looks back at the Scavenger", 6, () =>
+            {
+                Axis(JoyAxis.RightX, 0f);
+                Axis(JoyAxis.RightY, 0f);
+                if (Cursor.PadCell == _golem.Cell)
+                {
+                    return null;
+                }
+                CoreVector2Int d = _golem.Cell - Cursor.PadCell;
+                if (d.x != 0)
+                {
+                    Axis(JoyAxis.RightX, System.Math.Sign(d.x));
+                }
+                else
+                {
+                    Axis(JoyAxis.RightY, -System.Math.Sign(d.y)); // a stick's up is -y
+                }
+                return $"cursor at {Cursor.PadCell}";
+            });
+            Do("let go of the right stick", () =>
+            {
+                Axis(JoyAxis.RightX, 0f);
+                Axis(JoyAxis.RightY, 0f);
+                return null;
+            });
+            Wait(0.4);
+            Do("looked at: the card shows, and the tile marks where the pad looks", () =>
+            {
+                if (!Cursor.PadAimed || !Cursor.ReticleVisible)
+                {
+                    return $"aimed {Cursor.PadAimed}, tile shown {Cursor.ReticleVisible}";
+                }
+                string card = CardAt(_golem.Cell);
+                if (card != null)
+                {
+                    return card;
+                }
+                ScenarioCapture.Shot(Runner.GetViewport(), "gamepad-hover-look");
+                return null;
+            });
+            Do("Y opens the pack over it", () => { Button(JoyButton.Y, true); return null; });
+            Do("Y up", () => { Button(JoyButton.Y, false); return null; });
+            Do("a screen open: no card, no tile", () =>
+            {
+                if (!Pack.IsOpen)
+                {
+                    return "Y didn't open the pack";
+                }
+                return Hover.CardVisible || Cursor.ReticleVisible ? $"card {Hover.CardVisible}, tile {Cursor.ReticleVisible} over the pack" : null;
+            });
+            Do("B closes it", () => { Button(JoyButton.B, true); return null; });
+            Do("B up", () => { Button(JoyButton.B, false); return Pack.IsOpen ? "B didn't close the pack" : null; });
+            Do("tap the left stick south", () => { Axis(JoyAxis.LeftY, 1f); return null; });
+            Do("let go", () => { Axis(JoyAxis.LeftY, 0f); return null; });
+            Do("walking brings the cursor back to the cell ahead", () =>
+            {
+                if (Cursor.PadAimed || Cursor.ReticleVisible)
+                {
+                    return $"aimed {Cursor.PadAimed}, tile shown {Cursor.ReticleVisible} after a walk";
+                }
+                CoreVector2Int ahead = PlayerCell() + new CoreVector2Int(0, -1);
+                if (Cursor.PadCell != ahead)
+                {
+                    return $"the cursor is at {Cursor.PadCell}, the cell ahead {ahead}";
+                }
+                Log("the card followed the pad: the cell ahead, the right stick's look, hidden under a screen");
+                return null;
+            });
+        }
+
+        /// <summary>Null if the Scavenger's card shows, hung from <paramref name="cell"/>'s top-right corner; else why not.</summary>
+        private string CardAt(CoreVector2Int cell)
+        {
+            if (Hover.Hovered != _golem || !Hover.CardVisible)
+            {
+                return $"hovering {Hover.Hovered?.GolemId ?? "nothing"}, card shown {Hover.CardVisible}";
+            }
+            float half = GridConversions.CellPixels / 2f;
+            Vector2 corner = Runner.GetViewport().GetCanvasTransform() * (GridConversions.CellToWorld(cell) + new Vector2(half, -half));
+            Vector2 expected = corner + new Vector2(16f, 16f);
+            return Hover.CardPosition.DistanceTo(expected) <= 2f ? null : $"the card is at {Hover.CardPosition}, the cell's corner at {corner}";
         }
 
         // --- 4. Y, Start, B ---------------------------------------------------------------------

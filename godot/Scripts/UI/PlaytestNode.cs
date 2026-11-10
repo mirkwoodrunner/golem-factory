@@ -88,6 +88,10 @@ namespace GolemFactory.Nodes
 
         public override void _ExitTree()
         {
+            if (_padHeld)
+            {
+                InputDevices.OverlayHoldsPad = false; // a reload under the card must not leave the world deaf to the pad
+            }
             if (_logger != null)
             {
                 OS.RemoveLogger(_logger);
@@ -123,6 +127,7 @@ namespace GolemFactory.Nodes
             {
                 ShowQuestion(question);
             }
+            PadProcess(delta, show);
             if (show)
             {
                 // Grows to the question: a long prompt or a second row of answers pushed the Skip
@@ -183,7 +188,7 @@ namespace GolemFactory.Nodes
             column.AddThemeConstantOverride("separation", 6);
             _card.AddChild(column);
 
-            Label counter = Ugui.Text("Counter", "PLAYTEST  ·  your call  ·  goes in your report", 12, Dim);
+            Label counter = _counter = Ugui.Text("Counter", CounterText, 12, Dim);
             column.AddChild(counter);
             _prompt = Ugui.Text("Prompt", "", 14, Amber, bold: true);
             _prompt.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -211,6 +216,7 @@ namespace GolemFactory.Nodes
             _skip.Pressed += () => Answer(null);
             footer.AddChild(_skip);
             column.AddChild(footer);
+            _pad = new PadFocus(_card);
         }
 
         private void ShowQuestion(PlaytestQuestion question)

@@ -356,6 +356,53 @@ namespace GolemFactory.UI
 
         public void RemoveFromSlot(WorkbenchCardRef card) => HandleDrop(card, null);
 
+        public const string StepsFullMessage = "Every step is full: take a card out first.";
+        public const string NoChassisMessage = "Fit a chassis from the rack first.";
+
+        /// <summary>
+        /// The socket a pad's send puts a vault card in (docs/steam-deck-design.md D6.W): a logic
+        /// core goes to TRIGGER, replacing the one there as a drop does; an appendage goes to the
+        /// first empty step inside the chassis. Null when no step is free.
+        /// </summary>
+        public WorkbenchZone? NextSocketFor(WorkbenchCardRef card)
+        {
+            if (card.LogicCore != null)
+            {
+                return WorkbenchZone.Trigger;
+            }
+            if (card.Appendage == null)
+            {
+                return null;
+            }
+            for (int i = 0; i < _draftAppendages.Length; i++)
+            {
+                if (SlotActive(i) && _draftAppendages[i] == null)
+                {
+                    return WorkbenchZone.Socket(i);
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// A pad's send: the mouse's own drag, start to finish, at <see cref="NextSocketFor"/>, so
+        /// every drop rule is the mouse's. With no socket free nothing moves, and the status says
+        /// why. Returns the socket the card went to, or null.
+        /// </summary>
+        public WorkbenchZone? SendToNextSocket(WorkbenchCardRef card)
+        {
+            WorkbenchZone? zone = NextSocketFor(card);
+            if (zone == null)
+            {
+                SetStatus(DraftMaxSlots == 0 ? NoChassisMessage : StepsFullMessage, WorkbenchStatusReason.Info);
+                Version++;
+                return null;
+            }
+            BeginCardDrag(card);
+            HandleDrop(card, zone);
+            return zone;
+        }
+
         /// <summary>The good the draft's Haul in <paramref name="index"/> takes ("" for a non-Haul slot).</summary>
         public string DraftItemTypeAt(int index) =>
             IsDraftHaul(index) ? (_draftItemTypes[index] ?? "") : "";

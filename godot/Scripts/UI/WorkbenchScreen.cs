@@ -188,6 +188,7 @@ namespace GolemFactory.Nodes
             _session.Open();
             _root.Visible = true;
             Rebuild();
+            PadOpened();
         }
 
         public void Close()
@@ -253,6 +254,7 @@ namespace GolemFactory.Nodes
             DrawHint(dt);
             AnimateLever(dt);
             AnimateFlash(dt);
+            PadProcess(delta);
         }
 
         // --- Drag and drop ------------------------------------------------------------------
@@ -562,10 +564,10 @@ namespace GolemFactory.Nodes
         private Control GoodPicker(int slot)
         {
             var row = Ugui.Place(new Control { Name = "Good", MouseFilter = Control.MouseFilterEnum.Ignore }, 0.34f, 0.46f, 0.98f, 0.96f);
-            row.AddChild(PickerButton("PreviousGood", "<", 0f, 0.16f, () => _session.CycleDraftItemType(slot, -1)));
+            row.AddChild(PickerButton("PreviousGood", Glyph("<", "LB"), 0f, 0.16f, () => _session.CycleDraftItemType(slot, -1)));
             row.AddChild(Ugui.Place(Ugui.Text("Value", GolemFactory.Economy.ItemTiers.DisplayName(_session.DraftItemTypeAt(slot)), 13, CardInk, align: 2, bold: true),
                 0.17f, 0f, 0.83f, 1f));
-            row.AddChild(PickerButton("NextGood", ">", 0.84f, 1f, () => _session.CycleDraftItemType(slot, +1)));
+            row.AddChild(PickerButton("NextGood", Glyph(">", "RB"), 0.84f, 1f, () => _session.CycleDraftItemType(slot, +1)));
             return row;
         }
 
@@ -586,9 +588,9 @@ namespace GolemFactory.Nodes
         {
             var row = Ugui.Place(new Control { Name = "Quantity", MouseFilter = Control.MouseFilterEnum.Ignore }, 0.62f, 0.04f, 0.98f, 0.42f);
             int quantity = _session.DraftQuantityAt(slot);
-            row.AddChild(StepperButton("Decrease", "-", 0f, 0.22f, slot, -1, quantity > WorkbenchQuantityPolicy.MinQuantity));
+            row.AddChild(StepperButton("Decrease", Glyph("-", "LT"), 0f, 0.22f, slot, -1, quantity > WorkbenchQuantityPolicy.MinQuantity));
             row.AddChild(Ugui.Place(Ugui.Text("Value", WorkbenchQuantityPolicy.Describe(card, quantity), 11, CardInk, align: 2), 0.24f, 0f, 0.76f, 1f));
-            row.AddChild(StepperButton("Increase", "+", 0.78f, 1f, slot, +1, quantity < _session.DraftQuantityMax(slot)));
+            row.AddChild(StepperButton("Increase", Glyph("+", "RT"), 0.78f, 1f, slot, +1, quantity < _session.DraftQuantityMax(slot)));
             return row;
         }
 
@@ -646,6 +648,7 @@ namespace GolemFactory.Nodes
             _hintTargetOutline = HintOutline("HintTargetOutline");
             _root.AddChild(_hintCardOutline);
             _root.AddChild(_hintTargetOutline);
+            BuildPadRing();
         }
 
         private void BuildViewport()

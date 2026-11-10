@@ -69,12 +69,15 @@ call): built, reviewed, critiqued and tested. Done:
   `depth/golem-sales` from `main` (Phases 7 and 8 and the Docks went in as PR #62): golem orders
   at the City Office from chapter 5, sold by hand (carry, E) or built and shipped by a Golem
   Foundry, and the `golem-sales` scenario. PR #63.
-- **The Steam Deck has begun** (`steam-deck-design.md`), on branch `deck/export` from
-  `depth/golem-sales`: D1's Linux export, self-contained .NET 10, one command
-  (`Tools/Deck/export-linux.ps1`), and scenarios passing on an exported build (§7's export log).
-  D4, the gamepad's model, is built too: every verb on the pad, a right-stick build cursor, and
-  the `gamepad` scenario. Next: the owner launches it on the Deck (D1.5, D1.6, then D2's Steam
-  Input template); in code, D5 (the hover card at the cursor), then D6 (every screen by pad). Still to run by a person: the playtests
+- **The Steam Deck has begun** (`steam-deck-design.md`), merged with #66: D1's Linux export,
+  self-contained .NET 10, one command (`Tools/Deck/export-linux.ps1`), and scenarios passing on an
+  exported build (§7's export log). D4, the gamepad's model, is built too: every verb on the pad,
+  a right-stick build cursor, and the `gamepad` scenario. D5.2, the hover card at the pad's
+  cursor, is on branch `deck/hover-card`; the Workbench, the station's panel, the Crate and Pack
+  screens, the playtest card and the Management screen by pad (D6) on `deck/screens`, from it.
+  Next: the owner launches it on the Deck (D1.5, D1.6, then D2's Steam Input template); in code,
+  the rest of D6 (the title screen and its slots, contracts and supply), then D7 (prompts naming
+  the pad's buttons). Still to run by a person: the playtests
   below and `testscript/endless-soak.md`.
 
 0. **Phase 6 (Game feel), on branch `phase6/feel` (from `phase5/audio`), built 2026-11-01.** The

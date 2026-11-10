@@ -27,6 +27,7 @@ namespace GolemFactory.Nodes
         private GridContainer _pickerGrid;
         private Label _status;
         private Label _summary;
+        private Label _hint;
         private readonly List<(string good, Button button)> _options = new List<(string, Button)>();
 
         public bool IsOpen { get; private set; }
@@ -72,6 +73,7 @@ namespace GolemFactory.Nodes
             _packPanel.Invalidate();
             _root.Visible = true;
             Refresh();
+            PadOpened();
         }
 
         public void Close()
@@ -81,6 +83,7 @@ namespace GolemFactory.Nodes
             _root.Visible = false;
         }
 
+        // The pad's events never reach here while the screen is open (PadProcess reads them).
         public override void _UnhandledInput(InputEvent e)
         {
             if (!IsOpen)
@@ -112,6 +115,7 @@ namespace GolemFactory.Nodes
                 return;
             }
             Refresh();
+            PadProcess(delta);
         }
 
         private void Refresh()
@@ -143,6 +147,7 @@ namespace GolemFactory.Nodes
             {
                 BuildOptions();
             }
+            PadPickerShown(show);
             if (Crate != null)
             {
                 _labelText.Text = CrateScreenReadout.LabelText(Crate, show);
@@ -241,7 +246,8 @@ namespace GolemFactory.Nodes
             _summary = Ugui.Place(Ugui.Text("Summary", "", 12, ManagementScreen.DimInk), 0f, 0f, 1f, 0f, 0f, 12f, -24f, 30f, 0.5f, 0f);
             _packPanel.Root.AddChild(_summary);
 
-            _root.AddChild(Ugui.Place(Ugui.Text("Hint", Hint, 12, ManagementScreen.DimInk, align: 2), 0f, 0.5f, 0f, 0.5f, 528f, -272f, 776f, 18f, 0.5f, 1f));
+            _root.AddChild(Ugui.Place(_hint = Ugui.Text("Hint", Hint, 12, ManagementScreen.DimInk, align: 2), 0f, 0.5f, 0f, 0.5f, 528f, -272f, 776f, 18f, 0.5f, 1f));
+            _pad = new PadFocus(_root) { Default = DefaultStop };
         }
     }
 }

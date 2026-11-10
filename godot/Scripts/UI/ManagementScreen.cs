@@ -138,6 +138,7 @@ namespace GolemFactory.Nodes
             _tabs.Open();
             _root.Visible = true;
             ApplyTabs();
+            PadOpened();
         }
 
         public void Close()
@@ -176,6 +177,10 @@ namespace GolemFactory.Nodes
             if (IsOpen && Settings != null && Settings.TryCapture(e))
             {
                 GetViewport().SetInputAsHandled();
+            }
+            else if (IsOpen && (e is InputEventJoypadButton || e is InputEventJoypadMotion))
+            {
+                GetViewport().SetInputAsHandled(); // the screen's, read by polling (PadProcess)
             }
         }
 
@@ -236,6 +241,7 @@ namespace GolemFactory.Nodes
             {
                 tab.Refresh(_tabs.ActiveTab);
             }
+            PadProcess(delta);
         }
 
         // --- Inventory ----------------------------------------------------------------------
@@ -408,6 +414,7 @@ namespace GolemFactory.Nodes
                 1f, 1f, 1f, 1f, -6f, -46f, 70f, 28f, 1f, 1f);
             close.Pressed += Close;
             _root.AddChild(close);
+            _closeButton = close;
 
             var content = Ugui.Place(new Control { Name = "TabContent", MouseFilter = Control.MouseFilterEnum.Pass }, 0f, 0f, 1f, 0.845f);
             _root.AddChild(content);

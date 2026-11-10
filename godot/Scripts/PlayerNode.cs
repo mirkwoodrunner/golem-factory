@@ -54,6 +54,9 @@ namespace GolemFactory.Nodes
         /// <summary>The way the Artificer faces; the pad's build cursor starts one cell that way.</summary>
         public ArtificerFacing Facing => _walker.Facing;
 
+        /// <summary>Whether a walk was asked for this frame (the pad's look-around cursor returns to the facing).</summary>
+        public bool Walking { get; private set; }
+
         private static readonly GridCoordinateConverter UnitConverter = new GridCoordinateConverter(new CoreVector2(1f, 1f));
 
         private readonly Texture2D[] _frames = new Texture2D[ArtificerWalkAnimation.SpriteCount];
@@ -119,9 +122,10 @@ namespace GolemFactory.Nodes
             using var perf = NodePerf.Measure("node.player");
             // A full screen owns the keys: the player does not walk off while choosing a chassis.
             Vector2 input = ScriptedMove
-                ?? (ModalScreens.AnyOpen(GetTree()) || TextEntry.IsTyping(GetViewport())
+                ?? (ModalScreens.AnyOpen(GetTree()) || TextEntry.IsTyping(GetViewport()) || InputDevices.OverlayHoldsPad
                     ? Vector2.Zero
                     : Input.GetVector(MoveLeft, MoveRight, MoveDown, MoveUp)); // +y = north
+            Walking = input != Vector2.Zero;
 
             // Bounded by the WORLD (workshop + street), with the north wall wherever Floor
             // Expansion has pushed it -- the clamp Unity's PlayerController applied.
@@ -144,7 +148,9 @@ namespace GolemFactory.Nodes
                 // whether [E] is held (the crank), then re-pick and refresh the prompt.
                 _interactor.Position = _walker.Position;
                 // Typing a note counts too: "e" in a sentence must not crank a bench.
-                bool openNow = ModalScreens.AnyOpen(GetTree());
+                // The playtest card holding the pad counts as a screen, for the frame after too:
+                // the A that answers it must not also harvest.
+                bool openNow = ModalScreens.AnyOpen(GetTree()) || InputDevices.OverlayHoldsPad;
                 bool screenOpen = openNow || _screenWasOpen || TextEntry.IsTyping(GetViewport());
                 _screenWasOpen = openNow;
                 _interactor.SetInteractHeld(!screenOpen && Input.IsActionPressed(Interact));
