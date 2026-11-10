@@ -256,6 +256,18 @@ Current scenarios:
   vault and every socket. Following the glow (real drags, the good arrow, the dial, the lever;
   each glowing card inside the vault's window, STEP 4 never under the plate) engages the smelter
   in 9 moves, and the plate steps aside. Captures `guide-ahead`, `guide-ahead-step4`.
+- `gamepad-ui` (Sandbox): the screens by pad (`docs/steam-deck-design.md` D6), joypad events only
+  after the playtest card's click; so far the Workbench (D6.W). X carries a new Scavenger off the
+  station (where A builds), and A at it opens the Workbench with nothing sent by that A and the
+  ring on the hinted Always On. A sends Always On, Extract and Push Output, the ring following the
+  hint to the lever; LB and the d-pad change nothing behind the screen. The d-pad walks the ring
+  to STEP 1; RT and LT step its dial (reading `LT`/`RT`); X takes it out and A sends it back. With
+  every step full, A moves nothing and says why. A Haul in STEP 2: RB and LB step its good
+  (reading `LB`/`RB`; Coke deposited and the ledger polled so there is a second good). A on the
+  lever engages, B closes. Reopened with every card offered, the d-pad walks the vault to its
+  last card, scrolled into view. **Drive the d-pad a press and a release at a time** (the ring
+  steps on the push, and repeats only after 0.3 s held). Captures `pad-workbench-open`, `-lever`,
+  `-dial`, `-haul`, `-scroll`.
 - `perf` also takes `--perf-golems=N` (a load of N golems in the endgame's proportions) and
   `--perf-load=endless` (160), for measuring the golem cap (`docs/performance-report-endless.md`).
 

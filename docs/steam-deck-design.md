@@ -3,7 +3,8 @@
 **Status (2026-11-09):** D1's export is built (§7's export log); the Deck's first launch is the
 owner's. D4, the gamepad's model, is built, with D5.1's build cursor pulled in so a pad can place
 (§7's input audit and "D4 as built"). D5.2, the hover card at the pad's cursor, is built (§7's
-"D5.2 as built"). The rest is planned, not started.
+"D5.2 as built"). D6 has begun with the Workbench (D6.W, decided and built). The rest is
+planned, not started.
 
 The goal is to run the game on Steam Deck hardware, played by its owner. **It is not a Steam store release**
 (roadmap decision 14: release isn't planned). No Steamworks, no store page, no depots, no Steam Deck
@@ -225,6 +226,113 @@ Screens are built in code through `Ugui` (`Scripts/UI/CLAUDE.md`, read it first)
    the focus ring (the root `CLAUDE.md` rule: look at the game view, not only properties).
 
 **Exit:** every screen reachable and usable with a pad; the playtest script runs with no mouse or keyboard.
+
+#### D6.W: the Workbench by pad (decided 2026-11-09)
+
+**The owner's answers:** "A sends it to the next socket" (not the carry proposed below), the
+shoulders for a card's dials, and focus follows the hint. As decided, it replaces items 2 and 6:
+
+- **A on a vault card sends it** to the first socket that takes it: a logic core to TRIGGER
+  (replacing the one there, as a drop does), an appendage to the first empty step. It's one
+  press, but still the mouse's three verbs (`BeginCardDrag`, `HandleDrop` at that socket,
+  `EndCardDrag`), so the rules, refusals and landing animation are the mouse's. With every step
+  full, nothing moves, and the status says to remove a card first.
+- **X on a socketed card removes it** (`HandleDrop(card, null)`, as dragging it out does). The
+  steps below it keep their places. To change the order, remove cards and send them again.
+- **Focus follows the hint**: it opens on the hinted card, and after a send moves to the next one.
+- B closes the screen, as today. Items 1, 3, 4, 5 and 7 stand as proposed, except that with no
+  carry, nothing limits focus.
+
+**As built, 2026-11-09** (branch `deck/screens`, `Scripts/UI/WorkbenchScreen.Pad.cs`):
+- **The focus is the screen's own, not Godot's.** The cards are rebuilt whenever the session's
+  `Version` moves, which would drop Godot's focus each time. A stop is kept by what it is (the
+  third vault card, STEP 2, the lever), so it survives a rebuild. The ring moves to the nearest
+  stop on screen in the direction pressed, preferring one in line. Within the vault, up and down
+  step through its list and scroll it. From outside, the ring enters only a vault card in the
+  window.
+- **The input:** the d-pad (`ui_*`) or the left stick, one step on the push, then repeating after
+  0.3 s every 0.12 s. A, X, the shoulders and B are read by polling. While the screen is open,
+  every pad event is marked handled, so LB doesn't also step the build menu and the d-pad doesn't
+  zoom the camera behind it.
+- **The A that opened the screen** (at a golem or the station) is still "just pressed" in the
+  frame the screen opens, so the screen's buttons wait one frame.
+- **The hint:** the ring follows it on opening, after a send and after a removal, **but not
+  after a dial.** The first build moved the ring to the lever after RT, because the plan doesn't
+  care about batch size, so the next LT missed the dial.
+- **With the pad in use, the dials name the pad's buttons:** the picker reads `LB` / `RB` in
+  place of `<` / `>`, and the stepper `LT` / `RT` in place of `-` / `+`. The screen rebuilds when
+  the device changes.
+- **The ring** is cream, solid and 3 px, set 7 px out from the stop, beside the hint's pulsing
+  brass. It shows only while the pad is in use.
+- **Checked by** `gamepad-ui` (joypad events only after the playtest card's click): open by A at
+  the golem with nothing sent; three sends, the ring following the hint to the lever; LB and the
+  d-pad heard by nothing behind the screen; RT and LT on STEP 1's dial; X and a send back; every
+  step full; RB and LB on a Haul's good; A on the lever engages; B closes; a long vault walked to
+  its last card, scrolled into view. Frames `pad-workbench-open`, `-lever`, `-dial`, `-haul`,
+  `-scroll`. Core: `WorkbenchPadSendTests`.
+- **Left for D7:** the guide's text still says "Drag the glowing card" and "Press E at the
+  golem".
+
+The proposal as written, kept for the record:
+
+The Workbench has four regions: the blueprint viewport's sockets (TRIGGER, then STEP 1 to n) on the
+left, the chassis rack in the middle, the card vault on the right (a scrolling list), and the bottom
+bar's ENGAGE GEARS lever and PATENT, with CLOSE at the top right. A mouse player drags a card from
+the vault onto a socket, between sockets, or off a socket to remove it. Each drag is three
+`WorkbenchSession` verbs: `BeginCardDrag` (the sockets tint valid and invalid), `HandleDrop(card,
+zone)` (or `null`: released over nothing), and `EndCardDrag`.
+
+**The rule this keeps.** The pad calls the same three verbs in the same order, so every drop rule,
+tint, refusal, batch-size carry and landing animation is the mouse's, unchanged. The player picks
+every card and every socket. The hint still never fills a socket.
+
+1. **Focus.** One focus stop per card, socket, chassis button, lever, PATENT and CLOSE, as a grid:
+   - left and right (d-pad or left stick) move between the columns, keeping the row as near as
+     the layout allows;
+   - up and down move within a column, and the vault scrolls to keep the focused card in view
+     (the scroll fix from the Hauler playtest);
+   - down from a column's last stop reaches the bottom bar; up from the top row reaches CLOSE.
+
+   A brass focus ring marks the stop, distinct from the hint's glow. The buttons draw no focus
+   ring today: their "focus" style is their normal face.
+2. **Carry.** A on a card picks it up (`BeginCardDrag`). The card stays ghosted where it was,
+   as in a mouse drag, and a lifted copy rides beside the focused stop. Focus jumps to the first
+   socket that accepts it and is empty, or the first that accepts it if none is empty. The player
+   moves it anywhere with the d-pad. While a card is carried, only the sockets and the vault take
+   focus.
+   - **A on a socket drops it there** (`HandleDrop(card, zone)`). A refused drop says why, as the
+     mouse's does.
+   - **A on the vault** drops a socketed card "over nothing", which removes it from its socket,
+     like dragging it out.
+   - **B cancels the carry** (`EndCardDrag` alone). Nothing changes, and focus returns to the
+     card. With no card carried, B closes the screen, as today.
+3. **A socketed card's controls.** A socketed Haul has the good picker (`<` `>`); a socketed
+   card with a batch size has the stepper (`-` `+`). With a socketed card focused, **LB and RB
+   change the good, and LT and RT change the batch size**. The card keeps a single focus stop, and
+   the shoulders show as small labels on it while the pad is in use.
+4. **The chassis rack**: A on a chassis button picks it, as a click does.
+5. **The lever and PATENT**: A on them, as a click does. ENGAGE GEARS stays a focus stop the
+   player moves to, never a shortcut button, since pulling it rewrites a running golem.
+6. **The guide's hint.** Opening the Workbench by pad puts focus on the hinted card, if there is
+   one, else the first vault card. After a drop, focus moves to the next hinted card. Each press is
+   still the player's; the hint only saves the walk across the screen.
+7. **Mouse and pad together.** The mouse's drag is untouched. A mouse click during a pad carry
+   cancels the carry first.
+
+**Where it lives.** Choosing the first open socket that accepts the carried card is a rule, so it
+goes in Core (on `WorkbenchSession`, beside `WorkbenchDropRules`) with unit tests. The focus grid,
+the ring and the lifted copy are drawing, so they live in `WorkbenchScreen`.
+
+**Checked by** the `gamepad-ui` scenario (D6.5), with joypad events only. It builds chapter 1's
+program by pad (Always On, Extract, Push Output, ENGAGE GEARS), moves a card between sockets,
+removes one to the vault, cancels a carry with B, and changes a Haul's good and batch size with
+the shoulders. Frames capture the focus ring and a carry.
+
+**Alternatives not proposed:**
+- **"A sends the card to the next socket"**: one press per card, but the player never chooses
+  the socket. Step order is the program, so that's the choice the screen exists for.
+- **Focus inside a card** (a stop on `<`, `>`, `-` and `+`): it makes every socket row three or
+  four stops wide, and left and right would mean two things.
 
 ### D7. Prompts and glyphs (1 day)
 

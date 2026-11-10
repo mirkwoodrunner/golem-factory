@@ -101,7 +101,7 @@ slice, kept as the `loop` scenario's fixture; run it by passing `res://Scenes/Lo
 **Scenarios** (`Scripts/Scenarios/`) are the scene-level checks. `ScenarioRunner` is a node in each scene; `--
 --scenario <name>` runs one to a verdict, prints `[scenario <name>] PASS|FAIL …` and exits 0/1. An unknown name fails
 and lists the known ones. Current scenarios: `world`, `build`, `interact`, `golems`, `golem-motion`, `workbench`,
-`management`, `save`, `tutorial`, `playtest-kit`, `loop`, `inventory`, `moods`, `hover`, `font-glyphs`, `perf`, `art`, `audio`, `feel`, `settings`, `accessibility`, `title`, `slots`, `overview`, `creative`, `supply`, `contracts`, `endless`, `docks`, `golem-sales`, `gamepad`, `guide-ahead`; what
+`management`, `save`, `tutorial`, `playtest-kit`, `loop`, `inventory`, `moods`, `hover`, `font-glyphs`, `perf`, `art`, `audio`, `feel`, `settings`, `accessibility`, `title`, `slots`, `overview`, `creative`, `supply`, `contracts`, `endless`, `docks`, `golem-sales`, `gamepad`, `guide-ahead`, `gamepad-ui`; what
 each checks is in `godot/Scripts/Scenarios/CLAUDE.md`.
 
 To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scenarios`. `--demo` (alias `--spike-demo`)
