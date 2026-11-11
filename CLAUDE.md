@@ -107,7 +107,8 @@ each checks is in `godot/Scripts/Scenarios/CLAUDE.md`.
 To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scenarios`. `--demo` (alias `--spike-demo`)
 only runs the scripted setup, for `--write-movie` captures. A windowed scenario run given `-- --scenario <name>
 --capture-dir=<dir>` saves the frames its steps name (`ScenarioCapture.Shot`), e.g. `moods`, `hover` and `workbench`'s
-`critique-*.png`.
+`critique-*.png`. Any scenario given `--frame-watch` prints its five worst frames of wall time after loading, each with its
+step and process time: the cold cost a first open pays.
 
 ## Git in this repo
 

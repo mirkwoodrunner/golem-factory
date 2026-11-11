@@ -102,7 +102,10 @@ namespace GolemFactory.Nodes
                 if (Input.IsActionJustPressed(BuildCursorNode.CancelAction))
                 {
                     _note.ReleaseFocus();
-                    DisplayServer.VirtualKeyboardHide();
+                    if (DisplayServer.HasFeature(DisplayServer.Feature.VirtualKeyboard))
+                    {
+                        DisplayServer.VirtualKeyboardHide();
+                    }
                 }
                 _pad.Update(PadStops(), delta, move: false);
                 return;
@@ -118,7 +121,10 @@ namespace GolemFactory.Nodes
                 if (at.Kind == StopNote)
                 {
                     _note.GrabFocus();
-                    DisplayServer.VirtualKeyboardShow(_note.Text);
+                    if (DisplayServer.HasFeature(DisplayServer.Feature.VirtualKeyboard))
+                    {
+                        DisplayServer.VirtualKeyboardShow(_note.Text); // a desktop has none (the Deck's is Steam's), and asking cost a ~55 ms frame
+                    }
                 }
                 else if (at.Control is BaseButton button)
                 {

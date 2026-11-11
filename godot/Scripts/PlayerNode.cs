@@ -81,6 +81,7 @@ namespace GolemFactory.Nodes
             GameSettingsStore.Apply(GetWindow());
             PadBindings.RegisterAll(); // after the keys: ApplyKeys rewrites key events only
             AddChild(new InputDeviceNode { Name = "InputDevices" });
+            AddChild(new BackgroundFrameCap { Name = "BackgroundFrameCap" });
 
             string[] rows = { "down", "left", "right", "up" }; // ArtificerFacing's order
             for (int row = 0; row < rows.Length; row++)

@@ -8,7 +8,9 @@ and Pack screens, the playtest card, the Management screen with all its tabs, th
 Settings and Load, the cart panel and the City Office's notice. Still pointer-only: the Overview
 map's hover card and its click on a golem. D6's exit, the playtest script played with no mouse or
 keyboard, is the owner's to try. D7 is built: text names the pad's buttons by the Deck's labels
-(§ D7's "As built"). D8 onward is planned, not started.
+(§ D7's "As built"). D8's parts that don't need the Deck are done: the clock at any frame rate,
+the unfocused frame cap, the frame watch, two hitches fixed and ReadyToRun on export, and a
+one-command perf run for the Deck. The Deck's own numbers, and D9 onward, wait for the Deck.
 
 The goal is to run the game on Steam Deck hardware, played by its owner. **It is not a Steam store release**
 (roadmap decision 14: release isn't planned). No Steamworks, no store page, no depots, no Steam Deck
@@ -510,6 +512,40 @@ the shoulders. Frames capture the focus ring and a carry.
    performance overlay.
 4. The tick clock is independent of frame rate (invariant 7), so a lower display rate must not slow the game.
    Check by comparing a 30 fps cap run with a 60 fps one on the `world` scenario.
+
+**As built on the build machine, 2026-11-10** (branch `deck/screens-rest`). Items 1 to 3 need the
+Deck; what could be done or prepared without it:
+- **Item 4, done.** The `golems` scenario at a fixed 60, 30 and 20 fps reports the same cycles:
+  G1=49, G2=49, G3=25, G4=6, G5=20, G6=11. The clock catches up every tick a slow frame owes, with
+  no cap per frame. A Core test, `AMinuteAtAnyFrameRate_TicksTheSame_EvenAtFourTimesSpeed`, pins
+  a minute at 60, 30 and 20 fps at 4×, where a 30 fps frame owes more than one tick. A
+  one-tick-per-frame clock fails it at 30 and 20.
+- **Item 3, battery.** `BackgroundFrameCap`, which the player adds, draws at 10 fps while the
+  window has no focus: the Steam overlay or the quick-access menu over it, or another window on a
+  desktop. The factory runs on at its own speed, and focus puts the cap back as it was. It stays
+  off under a scenario, since a run launched from a shell often lacks focus, unless the
+  scenario testing it turns it on (`gamepad`). A cap in play is the Deck's own limiter (Game
+  Mode's quick-access menu), so there's no in-game setting.
+- **Item 2, the cold start.** A frame watch for any scenario: `--frame-watch` prints its five
+  worst frames of wall time after loading, each with its step and its process time. On the
+  Windows export of the Deck's pack, `gamepad-ui` showed frames of 45 to 65 ms at first events:
+
+  | First event | Before | Cause, and what was done |
+  |---|---|---|
+  | The pad's first press | 62 ms | `PadPhrasing`'s ~30 regexes built `Compiled`, which writes and JITs IL at first use. Now interpreted: gone. |
+  | A on the playtest note | 58 ms | `VirtualKeyboardShow` on a desktop, which has none. Now asked only where `DisplayServer` has the feature: gone. |
+  | The A that builds a golem (the Workbench's first open) | 65 to 72 ms | Part JIT: **ReadyToRun** on export (`PublishReadyToRun` when a runtime is named, so only an export) brought it to 40 ms in one run. |
+  | The Crate screen's first open (Y) | 45 to 59 ms | Not isolated. |
+  | Management's first open (Start) | 42 to 54 ms | Not isolated. |
+
+  For the last two, the slow frame's process time is about 20 ms, so most of the cost is in
+  drawing. Two tries changed nothing: rasterizing the font's glyphs at every size during loading,
+  and drawing Management for its first frames during loading. They were taken out. ReadyToRun
+  makes the export 203 MB (from 190); the editor's and the tests' builds are unchanged.
+- **Item 1, prepared.** `Tools/Deck/export-linux.ps1 -DeckHost steamdeck -RunPerf` exports,
+  copies, then runs `perf` and `gamepad-ui --frame-watch` on the Deck's own screen (Desktop Mode,
+  `DISPLAY=:0`) and prints their verdicts. Not run: there's no Deck here. The numbers go in
+  `performance-report-deck.md`.
 
 ### D9. Save and suspend (half a day)
 

@@ -71,7 +71,10 @@ namespace GolemFactory.Settings
             P(@"\bClick\b", "Press A on"),
         };
 
-        private static (Regex, string) P(string pattern, string pad) => (new Regex(pattern, RegexOptions.Compiled), pad);
+        // Interpreted, not Compiled: compiling ~30 patterns to IL cost one ~60 ms frame the first time
+        // the pad was picked up (the frame watch, D8); interpreted they cost nothing to make, and the
+        // strings they run over are a sentence or two.
+        private static (Regex, string) P(string pattern, string pad) => (new Regex(pattern), pad);
 
         /// <summary>The pad's wording of <paramref name="text"/>.</summary>
         public static string Apply(string text)
@@ -90,7 +93,7 @@ namespace GolemFactory.Settings
         // A word only the mouse or keyboard means: a click, a drag, a named key, a key in brackets.
         private static readonly Regex MouseWords = new Regex(
             @"\b([Cc]lick\w*|[Dd]rag\w*|[Hh]over(ing)?|[Mm]ouse|[Ww]heel|Tab|Escape|Enter|Shift|Space|F\d{1,2})\b|\[(E|G|I|R)\]|\b[Pp]ress (E|G|I|R)\b",
-            RegexOptions.Compiled);
+            RegexOptions.None);
 
         /// <summary>The mouse or keyboard words left in <paramref name="text"/>, for the test.</summary>
         public static IEnumerable<string> Leftover(string text)

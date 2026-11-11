@@ -194,12 +194,52 @@ namespace GolemFactory.Nodes.Scenarios
                 return;
             }
 
+            WatchFrame();
             ScenarioResult? result = _scenario.Step(delta);
             if (result.HasValue)
             {
                 Finish(result.Value);
             }
         }
+
+        // --- The frame watch (docs/steam-deck-design.md D8) --------------------------------------
+        // `--frame-watch` reports a scenario's worst frames of wall time, each with the step it fell
+        // in: a first open's cold cost (the JIT, a shader) shows as one slow frame there. The
+        // frames just after a scene loads are loading, not play, and are left out. Static, so a
+        // scenario that reloads the scene (to the title) is watched across the reload.
+
+        /// <summary>Frames after a scene load that count as loading. <b>TUNING.</b></summary>
+        public const int FrameWatchSettle = 30;
+        private static readonly List<(double ms, double process, string step)> WorstFrames = new List<(double, double, string)>();
+        private ulong _lastFrameUsec;
+        private int _framesSinceLoad;
+
+        private bool FrameWatchOn => OS.GetCmdlineUserArgs().Contains("--frame-watch");
+
+        private void WatchFrame()
+        {
+            ulong now = Time.GetTicksUsec();
+            ulong last = _lastFrameUsec;
+            _lastFrameUsec = now;
+            if (last == 0 || ++_framesSinceLoad <= FrameWatchSettle || !FrameWatchOn)
+            {
+                return;
+            }
+            double ms = (now - last) / 1000.0;
+            // The last frame's scripts and nodes (process), against its whole wall time: what is
+            // left over is drawing, and the GPU driver's work a first draw asks for.
+            double process = Performance.GetMonitor(Performance.Monitor.TimeProcess) * 1000.0;
+            string step = (_scenario as StepScenario)?.CurrentStepName ?? _name;
+            WorstFrames.Add((ms, process, step));
+            WorstFrames.Sort((a, b) => b.ms.CompareTo(a.ms));
+            if (WorstFrames.Count > 5)
+            {
+                WorstFrames.RemoveAt(5);
+            }
+        }
+
+        private static string FrameWatchReport() =>
+            "[frame-watch] worst frames: " + string.Join("; ", WorstFrames.Select(f => $"{f.ms:0.0} ms (process {f.process:0.0}) at '{f.step}'"));
 
         private static string ScenarioName(string[] args)
         {
@@ -213,6 +253,10 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void Finish(ScenarioResult result)
         {
+            if (FrameWatchOn)
+            {
+                GD.Print(FrameWatchReport());
+            }
             GD.Print($"[scenario {_name}] {(result.Passed ? "PASS" : "FAIL")} {result.Report}");
             _scenario = null;
             SetProcess(false);

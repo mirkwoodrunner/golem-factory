@@ -14,9 +14,14 @@
   -Preset "Windows Smoke" exports the same pack for Windows, to run scenarios on an exported build
   without a Deck: GolemFactory.exe --headless --fixed-fps 60 -- --scenario world
 
+  -RunPerf, with -DeckHost, then runs the perf scenario on the Deck, windowed on its own screen
+  (Desktop Mode, DISPLAY=:0), and gamepad-ui with --frame-watch for the worst frames a first open
+  costs (docs/steam-deck-design.md D8). Both print their verdicts here.
+
 .EXAMPLE
   ./Tools/Deck/export-linux.ps1
   ./Tools/Deck/export-linux.ps1 -DeckHost steamdeck
+  ./Tools/Deck/export-linux.ps1 -DeckHost steamdeck -RunPerf
 #>
 param(
     [string]$Out = (Join-Path $PSScriptRoot '..\..\build\deck'),
@@ -24,7 +29,8 @@ param(
     [string]$DeckHost = '',
     [string]$Godot = 'G:\Godot_v4.7.2-stable_mono_win64\Godot_v4.7.2-stable_mono_win64\Godot_v4.7.2-stable_mono_win64_console.exe',
     [int]$TimeoutSeconds = 900,
-    [int]$GraceSeconds = 20
+    [int]$GraceSeconds = 20,
+    [switch]$RunPerf
 )
 
 $ErrorActionPreference = 'Stop'
@@ -76,4 +82,14 @@ if ($DeckHost) {
     if ($LASTEXITCODE -ne 0) { throw "scp to deck@$DeckHost failed" }
     ssh "deck@$DeckHost" "chmod +x ~/Games/GolemFactory/$binary"
     Write-Host "Copied to deck@${DeckHost}:~/Games/GolemFactory/. Run it there from a Desktop Mode terminal first."
+}
+
+if ($RunPerf) {
+    if (-not $DeckHost) { throw "-RunPerf needs -DeckHost" }
+    # On the Deck's own screen, in Desktop Mode: a headless run would measure no drawing.
+    foreach ($scenario in @('perf', 'gamepad-ui --frame-watch')) {
+        Write-Host "Running $scenario on the Deck..."
+        ssh "deck@$DeckHost" "cd ~/Games/GolemFactory && DISPLAY=:0 ./$binary --fixed-fps 60 -- --scenario $scenario 2>/dev/null | grep -E '^\[(scenario|frame-watch)'"
+    }
+    Write-Host "Record the numbers in docs/performance-report-deck.md (the template: docs/performance-report-template.md)."
 }

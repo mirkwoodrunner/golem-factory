@@ -77,7 +77,10 @@ call): built, reviewed, critiqued and tested. Done:
   the playtest card, Management, merged with #67; the title, the cart panel and the City Office on
   `deck/screens-rest`, with D7: text names the pad's buttons by the Deck's labels). Next: the
   owner launches it on the Deck (D1.5, D1.6, then D2's Steam Input template) and tries the
-  playtest script with no mouse or keyboard (D6's exit); in code, D8 (performance and battery). Still to run by a person: the playtests
+  playtest script with no mouse or keyboard (D6's exit), and runs `export-linux.ps1 -DeckHost
+  steamdeck -RunPerf` for D8's numbers. D8's machine-side work is done (the frame cap, the frame
+  watch, ReadyToRun); a 42 to 59 ms first open of the Crate screen and Management is still open
+  (`open-items.md` §4). Still to run by a person: the playtests
   below and `testscript/endless-soak.md`.
 
 0. **Phase 6 (Game feel), on branch `phase6/feel` (from `phase5/audio`), built 2026-11-01.** The

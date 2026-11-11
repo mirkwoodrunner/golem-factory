@@ -59,6 +59,9 @@ namespace GolemFactory.Nodes.Scenarios
             Input.ParseInputEvent(new InputEventMouseMotion { Position = window, GlobalPosition = window });
         }
 
+        /// <summary>The step that runs or waits next, for the runner's frame watch to name a slow frame by.</summary>
+        public string CurrentStepName => _steps.Count > 0 ? _steps.Peek().Item1 : "(done)";
+
         public ScenarioResult? Step(double delta)
         {
             if (_heldTap is Key held)

@@ -52,6 +52,25 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(1, clock.CurrentTick);
         }
 
+        /// <summary>
+        /// A capped frame rate must not slow the game (docs/steam-deck-design.md D8.4): a minute of
+        /// frames at 60, 30 or 20 fps, even at 4x where a slow frame owes more than one tick, ticks
+        /// the same. The clock catches up every tick a frame owes; it never drops one.
+        /// </summary>
+        [TestCase(60), TestCase(30), TestCase(20)]
+        public void AMinuteAtAnyFrameRate_TicksTheSame_EvenAtFourTimesSpeed(int fps)
+        {
+            var clock = new SimulationClock { TicksPerSecond = 10f, Speed = 4f };
+            clock.Play();
+
+            for (int frame = 0; frame < fps * 60; frame++)
+            {
+                clock.Advance(1f / fps);
+            }
+
+            Assert.That(clock.CurrentTick, Is.InRange(2399, 2400), "4 x 10 ticks a second for 60 s, less float rounding");
+        }
+
         [Test]
         public void Advance_ScalesWithSpeed()
         {

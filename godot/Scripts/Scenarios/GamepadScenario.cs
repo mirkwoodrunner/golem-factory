@@ -76,6 +76,7 @@ namespace GolemFactory.Nodes.Scenarios
             PlanDemolish();
             PlanCameraAndClock();
             PlanNames();
+            PlanBackgroundCap();
             PlanBackToMouse();
         }
 
@@ -83,6 +84,7 @@ namespace GolemFactory.Nodes.Scenarios
         {
             ReleaseAll();
             InputDevices.Reset();
+            BackgroundFrameCap.EvenUnderScenario = false;
         }
 
         // --- 0. A fresh game, the playtest card answered (a click: the screens are D6) --------
@@ -722,6 +724,45 @@ namespace GolemFactory.Nodes.Scenarios
                     return "L3 didn't put the guide away";
                 }
                 Log("the prompt read [A], the guide 'the left stick' and 'Press A', the build menu L2 on Demolish; L3 brought the guide back and put it away");
+                return null;
+            });
+        }
+
+        // --- 7c. The window loses focus: the frame cap (D8) -------------------------------------
+
+        private int _maxFpsBefore;
+        private long _tickBefore;
+
+        private void PlanBackgroundCap()
+        {
+            Do("the window loses focus (the Steam overlay over it)", () =>
+            {
+                BackgroundFrameCap.EvenUnderScenario = true;
+                _maxFpsBefore = Engine.MaxFps;
+                _tickBefore = Sandbox.Clock.CurrentTick;
+                Tree.Root.PropagateNotification((int)Node.NotificationApplicationFocusOut);
+                return null;
+            });
+            Do("drawn at the background rate", () =>
+                Engine.MaxFps == BackgroundFrameCap.BackgroundFps ? null : $"max fps {Engine.MaxFps}");
+            Wait(0.5);
+            Do("the factory ran on; focus back", () =>
+            {
+                if (Sandbox.Clock.CurrentTick <= _tickBefore)
+                {
+                    return "the clock stopped under the cap";
+                }
+                Tree.Root.PropagateNotification((int)Node.NotificationApplicationFocusIn);
+                return null;
+            });
+            Do("the cap is off", () =>
+            {
+                BackgroundFrameCap.EvenUnderScenario = false;
+                if (Engine.MaxFps != _maxFpsBefore)
+                {
+                    return $"max fps {Engine.MaxFps}, was {_maxFpsBefore}";
+                }
+                Log($"unfocused, the game drew at {BackgroundFrameCap.BackgroundFps} fps and the clock ran on; focused, the cap went back to {_maxFpsBefore}");
                 return null;
             });
         }
