@@ -42,6 +42,9 @@ namespace GolemFactory.Nodes
             _world = WorldNode.Find(this).Sandbox;
             Build();
             _root.Visible = false;
+            // The rows built now, while the scene loads: a first open then only adds the goods
+            // gathered since (InventoryPanel keeps a good's row), not a row for every good (D8).
+            Refresh();
             _world.Screens.Register(this);
             _world.ConfigureInventoryScreens(this, null);
         }
@@ -50,7 +53,7 @@ namespace GolemFactory.Nodes
         {
             _world.Screens.Opening(this);
             IsOpen = true;
-            _panel.Invalidate();
+            // No forced rebuild: the panel redraws only what changed, in place where it can (D8).
             _root.Visible = true;
             Refresh();
             _pad.Reset();

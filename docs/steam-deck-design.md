@@ -535,13 +535,54 @@ Deck; what could be done or prepared without it:
   | The pad's first press | 62 ms | `PadPhrasing`'s ~30 regexes built `Compiled`, which writes and JITs IL at first use. Now interpreted: gone. |
   | A on the playtest note | 58 ms | `VirtualKeyboardShow` on a desktop, which has none. Now asked only where `DisplayServer` has the feature: gone. |
   | The A that builds a golem (the Workbench's first open) | 65 to 72 ms | Part JIT: **ReadyToRun** on export (`PublishReadyToRun` when a runtime is named, so only an export) brought it to 40 ms in one run. |
-  | The Crate screen's first open (Y) | 45 to 59 ms | Not isolated. |
-  | Management's first open (Start) | 42 to 54 ms | Not isolated. |
+  | The Crate screen's first open (Y) | 45 to 59 ms | Every open rebuilt every row: fixed (below). |
+  | Management's first open (Start) | 42 to 54 ms | The same: fixed (below). |
 
-  For the last two, the slow frame's process time is about 20 ms, so most of the cost is in
-  drawing. Two tries changed nothing: rasterizing the font's glyphs at every size during loading,
-  and drawing Management for its first frames during loading. They were taken out. ReadyToRun
-  makes the export 203 MB (from 190); the editor's and the tests' builds are unchanged.
+  **The last two, found and fixed (the dig, 2026-11-10).** The frame watch was given stamps on
+  the engine's loop: a node first and last in the process step, one first in the physics step,
+  and the renderer's pre- and post-draw signals. With them, a frame splits into input, physics,
+  process, layout and draw.
+
+  The open's cost was in **input**, the step a screen opens in, and not in drawing: about 18 ms
+  of a normal frame is the wait for the display. Timing inside the open showed what it was:
+  - **Every open rebuilt every row.** The Pack and Crate screens invalidated their lists on
+    open, and Management's Inventory tab cleared its signature, so all their rows were made
+    again each time. Each row cost about a millisecond: a button, a line, labels, a bar, an icon.
+    The lists also rebuilt every row whenever anything shown changed, every second or so while
+    golems filled a crate or a rate moved.
+  - **Icons were reloaded each time.** A row's icon texture was freed with its row, so each
+    open checked the disk, loaded and uploaded it again.
+
+  What was done:
+  - **Rows update in place** (`InventoryPanel`, Management's Inventory tab): the same goods in
+    the same order only rewrite their counts, bars, rates and dimming. When the goods change, a
+    good still listed keeps its row, and only a new good costs one.
+  - **The forced rebuilds on open are gone.**
+  - **Icons are kept once loaded** (`ItemIcons`).
+  - **The Pack's and Management's rows are built during loading,** and so is the Crate screen's
+    pack column.
+
+  On the ReadyToRun export, two runs of `gamepad-ui --frame-watch` (whose frames land on 20 ms,
+  50 Hz, here):
+
+  | First event | Before | After |
+  |---|---|---|
+  | The Crate screen's first open | 44 to 45 ms | under 27 ms (out of the worst five) |
+  | Management's first open | 30 ms | 30 to 32 ms |
+  | The Workbench's first open | 29 to 31 ms | 29 to 31 ms |
+  | A repeat open of the Pack (benchmark, dev build) | 25 ms to drawn, 15 ms in `Open` | 19 ms to drawn (a normal frame), 2 ms in `Open` |
+
+  The worst frame left, 43 to 48 ms, is the Pack opening just after the scenario deposits one of
+  every good at once: 21 new rows in one frame, which play can't produce. Gathered goods arrive a
+  few at a time, and a row, once made, is kept. Loading the title (30 to 34 ms) is loading.
+
+  Two tries that changed nothing were taken out: rasterizing the font's glyphs at every size
+  during loading, and drawing Management for its first frames during loading. Godot's fallback
+  text server, a lighter shaper, isn't in the official build (`TextServerManager` lists only the
+  ICU one). **A print costs milliseconds on Windows:** timing code that prints inside the
+  measured span inflated it from 0.4 to 20 ms, so the frame watch collects and prints at the
+  end. ReadyToRun makes the export 203 MB (from 190); the editor's and the tests' builds are
+  unchanged.
 - **Item 1, prepared.** `Tools/Deck/export-linux.ps1 -DeckHost steamdeck -RunPerf` exports,
   copies, then runs `perf` and `gamepad-ui --frame-watch` on the Deck's own screen (Desktop Mode,
   `DISPLAY=:0`) and prints their verdicts. Not run: there's no Deck here. The numbers go in

@@ -165,6 +165,35 @@ namespace GolemFactory.Nodes.Scenarios
                 _log.Add($"Inventory: {items.Count} item rows with icons, titled for the player");
                 return null;
             });
+            // The rows update in place as goods move (docs/steam-deck-design.md D8): rebuilding
+            // every row on each change cost about a millisecond a row while the tab was open.
+            Control plateRow = null;
+            Do("20 more Coal while the tab is open", () =>
+            {
+                plateRow = _screen.InventoryList.GetChildren().OfType<Control>()
+                    .FirstOrDefault(c => (c.FindChild("Name", true, false) as Label)?.Text == "Coal");
+                if (plateRow == null)
+                {
+                    return "no Coal row";
+                }
+                _world.Buffers.Deposit(_world.StockpileBufferId, ItemType.Coal, 20);
+                return null;
+            });
+            Do("the same row reads the new count: updated in place, not rebuilt", () =>
+            {
+                Control now = _screen.InventoryList.GetChildren().OfType<Control>()
+                    .FirstOrDefault(c => !c.IsQueuedForDeletion() && (c.FindChild("Name", true, false) as Label)?.Text == "Coal");
+                if (now == null)
+                {
+                    return "no Coal row";
+                }
+                if (now != plateRow)
+                {
+                    return "the Coal row was rebuilt for a count";
+                }
+                string text = (now.FindChild("Quantity", true, false) as Label)?.Text ?? "";
+                return text.StartsWith("25") ? null : $"the row reads '{text}'";
+            });
         }
 
         private static IEnumerable<string> Texts(Node root) =>

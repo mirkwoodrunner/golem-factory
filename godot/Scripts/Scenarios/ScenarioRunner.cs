@@ -204,13 +204,39 @@ namespace GolemFactory.Nodes.Scenarios
 
         // --- The frame watch (docs/steam-deck-design.md D8) --------------------------------------
         // `--frame-watch` reports a scenario's worst frames of wall time, each with the step it fell
-        // in: a first open's cold cost (the JIT, a shader) shows as one slow frame there. The
-        // frames just after a scene loads are loading, not play, and are left out. Static, so a
-        // scenario that reloads the scene (to the title) is watched across the reload.
+        // in and its split by phase: a slow open shows as one long frame there, and its phase says
+        // where to look. The frames just after a scene loads are loading, not play, and are left
+        // out. Static, so a scenario that reloads the scene (to the title) is watched across the
+        // reload. Don't print from the code being watched: on Windows a print costs milliseconds.
 
         /// <summary>Frames after a scene load that count as loading. <b>TUNING.</b></summary>
         public const int FrameWatchSettle = 30;
-        private static readonly List<(double ms, double process, string step)> WorstFrames = new List<(double, double, string)>();
+        /// <summary>One watched frame: its wall time, split by stamps on the engine's loop.</summary>
+        private readonly struct WatchedFrame
+        {
+            public readonly double Ms, Process, Layout, Draw;
+            public readonly string Step;
+
+            public WatchedFrame(double ms, double process, double layout, double draw, string step)
+            {
+                Ms = ms;
+                Process = process;
+                Layout = layout;
+                Draw = draw;
+                Step = step;
+            }
+
+            /// <summary>The physics step and its flush, before the process step.</summary>
+            public double Physics { get; init; }
+
+            /// <summary>What's left: input (which opens most screens), before the physics step.</summary>
+            public double Input => Ms - Process - Layout - Draw - Physics;
+
+            public override string ToString() =>
+                $"{Ms:0.0} ms (input {Input:0.0}, physics {Physics:0.0}, process {Process:0.0}, layout {Layout:0.0}, draw {Draw:0.0}) at '{Step}'";
+        }
+
+        private static readonly List<WatchedFrame> AllFrames = new List<WatchedFrame>();
         private ulong _lastFrameUsec;
         private int _framesSinceLoad;
 
@@ -221,25 +247,95 @@ namespace GolemFactory.Nodes.Scenarios
             ulong now = Time.GetTicksUsec();
             ulong last = _lastFrameUsec;
             _lastFrameUsec = now;
-            if (last == 0 || ++_framesSinceLoad <= FrameWatchSettle || !FrameWatchOn)
+            if (!FrameWatchOn)
             {
                 return;
             }
-            double ms = (now - last) / 1000.0;
-            // The last frame's scripts and nodes (process), against its whole wall time: what is
-            // left over is drawing, and the GPU driver's work a first draw asks for.
-            double process = Performance.GetMonitor(Performance.Monitor.TimeProcess) * 1000.0;
-            string step = (_scenario as StepScenario)?.CurrentStepName ?? _name;
-            WorstFrames.Add((ms, process, step));
-            WorstFrames.Sort((a, b) => b.ms.CompareTo(a.ms));
-            if (WorstFrames.Count > 5)
+            if (last == 0)
             {
-                WorstFrames.RemoveAt(5);
+                StartStamps();
             }
+            if (last == 0 || ++_framesSinceLoad <= FrameWatchSettle)
+            {
+                return;
+            }
+            // The frame just gone, split by stamps on the engine's own loop: the nodes' process step
+            // (a node first and a node last), then the layout and deferred calls up to the
+            // renderer's pre-draw signal, the drawing to its post-draw, and the rest (input, which
+            // opens most screens, and the wait for the next frame).
+            // This frame's first node has run; its last hasn't: every stamp but the newest start is
+            // the frame before's, which runs from the start before to this one.
+            double ms = (_stampProcessStart - _stampPreviousStart) / 1000.0;
+            double process = (_stampProcessEnd - _stampPreviousStart) / 1000.0;
+            double layout = (_stampPreDraw - _stampProcessEnd) / 1000.0;
+            double draw = (_stampPostDraw - _stampPreDraw) / 1000.0;
+            string step = (_scenario as StepScenario)?.CurrentStepName ?? _name;
+            // The physics step before this frame's process: its nodes, and the deferred calls and
+            // layout the engine flushes after it (a screen opened by input lays out there).
+            double physics = (_stampProcessStart - _stampPhysicsStart) / 1000.0;
+            AllFrames.Add(new WatchedFrame(ms, process, layout, draw, step) { Physics = physics });
         }
 
-        private static string FrameWatchReport() =>
-            "[frame-watch] worst frames: " + string.Join("; ", WorstFrames.Select(f => $"{f.ms:0.0} ms (process {f.process:0.0}) at '{f.step}'"));
+        private static ulong _stampPhysicsStart;
+
+        /// <summary>Notes the time the physics step starts: first of it, by its priority.</summary>
+        private partial class PhysicsStamp : Node
+        {
+            public override void _PhysicsProcess(double delta) => _stampPhysicsStart = Time.GetTicksUsec();
+        }
+
+        // Stamps on the engine's loop, for the frame watch.
+        private static ulong _stampPreviousStart, _stampProcessStart, _stampProcessEnd, _stampPreDraw, _stampPostDraw;
+
+        private void StartStamps()
+        {
+            AddChild(new FrameStamp
+            {
+                ProcessPriority = int.MinValue,
+                Stamp = t =>
+                {
+                    _stampPreviousStart = _stampProcessStart;
+                    _stampProcessStart = t;
+                },
+            });
+            AddChild(new FrameStamp { ProcessPriority = int.MaxValue, Stamp = t => _stampProcessEnd = t });
+            AddChild(new PhysicsStamp { ProcessPhysicsPriority = int.MinValue });
+            RenderingServer.FramePreDraw += () => _stampPreDraw = Time.GetTicksUsec();
+            RenderingServer.FramePostDraw += () => _stampPostDraw = Time.GetTicksUsec();
+        }
+
+        /// <summary>Notes the time its process runs: first or last of the frame, by its priority.</summary>
+        private partial class FrameStamp : Node
+        {
+            public Action<ulong> Stamp;
+
+            public override void _Process(double delta) => Stamp?.Invoke(Time.GetTicksUsec());
+        }
+
+        /// <summary>
+        /// The median frame, then the five worst, split by phase; with <c>--frame-watch-detail</c>,
+        /// the three frames either side of the worst three. With vsync on, the wait for the display
+        /// sits in "draw" (a normal frame's 18 ms at 50 Hz), and a frame that misses a refresh
+        /// waits for the next whole one.
+        /// </summary>
+        private static string FrameWatchReport()
+        {
+            if (AllFrames.Count == 0)
+            {
+                return "[frame-watch] no frames after loading";
+            }
+            List<double> sorted = AllFrames.Select(f => f.Ms).OrderBy(f => f).ToList();
+            double median = sorted[sorted.Count / 2];
+            double medianProcess = AllFrames.Select(f => f.Process).OrderBy(f => f).ElementAt(AllFrames.Count / 2);
+            IEnumerable<int> worst = Enumerable.Range(0, AllFrames.Count).OrderByDescending(i => AllFrames[i].Ms).Take(5);
+            return $"[frame-watch] median {median:0.0} ms (process {medianProcess:0.0}) over {AllFrames.Count} frames; worst: "
+                + string.Join("; ", worst.Select(i => AllFrames[i].ToString()))
+                + (OS.GetCmdlineUserArgs().Contains("--frame-watch-detail")
+                    ? "\n[frame-watch] around the worst three:\n" + string.Join("\n---\n", worst.Take(3).Select(i =>
+                        string.Join("\n", Enumerable.Range(Math.Max(0, i - 3), Math.Min(AllFrames.Count, i + 4) - Math.Max(0, i - 3))
+                            .Select(j => (j == i ? "  > " : "    ") + AllFrames[j]))))
+                    : "");
+        }
 
         private static string ScenarioName(string[] args)
         {

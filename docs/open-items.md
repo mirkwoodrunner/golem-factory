@@ -140,9 +140,11 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   - **Fixed:** two first-event frames of about 60 ms (the pad phrasing's compiled regexes, and a
     desktop's virtual keyboard).
   - **Shrunk:** the JIT's share, by ReadyToRun on export.
-  - **Still open:** the first open of the Crate screen and of Management each take one 42 to
-    59 ms frame on this machine, mostly in drawing. The cause isn't isolated; glyph
-    rasterization and pre-drawing at load were ruled out. It matters more on the Deck.
+  - **Closed, the same day:** the slow first opens of the Crate screen and of Management. The
+    cost was every open rebuilding every row, and reloading its icons. Rows now update in
+    place, and a good keeps its row. The export's worst frame in `gamepad-ui` is the Pack's
+    first open after the scenario deposits all 24 goods at once, which play can't produce
+    (`docs/steam-deck-design.md` D8).
 - **The depot label picker: closed.** Built in Phase 1 on the crate screen
   (`docs/inventory-screens-design.md` §4.4), taught by step `copper-depot`.
 

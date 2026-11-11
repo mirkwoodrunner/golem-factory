@@ -35,5 +35,12 @@ screen of ordinary controls uses `PadFocus.ControlsIn`, `Press` and `StepSlider`
 polling with `PadFocus.DirectionRepeat`: acting on the stick's events steps once per motion
 event.
 
+**A list that redraws as the world moves updates its rows in place** (`InventoryPanel`,
+Management's Inventory tab): when the same things are listed in the same order, rewrite their
+text, bars and dimming; when the list changes, keep each surviving thing's row. Rebuilding every
+row, on each open and each change, cost about a millisecond a row and was the screens' slow
+first frame (`docs/steam-deck-design.md` D8). Check it with `--frame-watch`, and never print
+from the code you're timing: a print on Windows costs milliseconds.
+
 The Pack and Crate screens' rules (`SandboxWorld.Inventory`) are in
 `godot/Core/Economy/CLAUDE.md`; hover's card is in `godot/Core/Golems/CLAUDE.md`.

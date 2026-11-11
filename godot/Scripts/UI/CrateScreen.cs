@@ -54,6 +54,10 @@ namespace GolemFactory.Nodes
             _world = WorldNode.Find(this).Sandbox;
             Build();
             _root.Visible = false;
+            // The pack's rows built now, while the scene loads (any crate's pack column lists the
+            // same goods; what a crate changes is updated in place): a first open then builds only
+            // the crate's own rows and goods gathered since (D8).
+            _packPanel.Render(_world.Inventory.PackRows(null));
             _world.Screens.Register(this);
             _world.ConfigureInventoryScreens(null, this);
         }
@@ -69,8 +73,7 @@ namespace GolemFactory.Nodes
             IsOpen = true;
             _status.Text = "";
             ShowPicker(false);
-            _cratePanel.Invalidate();
-            _packPanel.Invalidate();
+            // No forced rebuild: the panels redraw only what changed, in place where they can (D8).
             _root.Visible = true;
             Refresh();
             PadOpened();

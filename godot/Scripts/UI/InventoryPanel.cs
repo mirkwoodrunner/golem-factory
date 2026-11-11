@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Godot;
 using GolemFactory.Economy;
@@ -20,6 +21,11 @@ namespace GolemFactory.Nodes
         private static readonly Color RowHover = new Color(1f, 1f, 1f, 0.09f);
         private static readonly Color RowPressed = new Color(0.85f, 0.66f, 0.32f, 0.25f);
         private const float DimAlpha = 0.55f;
+
+        private static readonly StyleBoxFlat Plain = new StyleBoxFlat { BgColor = ManagementScreen.RowTint };
+        private static readonly StyleBoxFlat Hover = new StyleBoxFlat { BgColor = RowHover };
+        private static readonly StyleBoxFlat Pressed = new StyleBoxFlat { BgColor = RowPressed };
+        private static readonly StyleBoxEmpty NoFocus = new StyleBoxEmpty();
 
         private readonly Dictionary<string, Button> _rows = new Dictionary<string, Button>();
         private readonly Dictionary<string, Button> _postRows = new Dictionary<string, Button>();
@@ -94,17 +100,42 @@ namespace GolemFactory.Nodes
                 return;
             }
             _signature = signature;
+
+            // The same goods in the same order: what moved is a count, a bar or a reason, so the rows
+            // are updated in place (docs/steam-deck-design.md D8). Rebuilding cost about a
+            // millisecond a row, every time a golem filled the crate the screen was showing.
+            List<CrateScreenRow> shown = post == null ? rows : rows.Concat(post).ToList();
+            string structure = Structure(rows) + "#" + (post == null ? "" : Structure(post));
+            if (structure == _structure && _parts.Count == shown.Count)
+            {
+                for (int i = 0; i < shown.Count; i++)
+                {
+                    _parts[i]?.Show(shown[i]);
+                }
+                return;
+            }
+            // Other goods, or another order: the rows are laid out again, but a good still shown keeps
+            // its row (taken out and put back, updated), so only a good new to the list costs a row.
+            _structure = structure;
+            _parts.Clear();
             _rows.Clear();
             _postRows.Clear();
+            var reusable = new HashSet<Node>(_kept.Values.Select(k => (Node)k.button).Concat(_keptPost.Values.Select(k => (Node)k.button)));
             foreach (Node child in _content.GetChildren())
             {
                 _content.RemoveChild(child);
-                child.QueueFree();
+                if (!reusable.Contains(child))
+                {
+                    child.QueueFree();
+                }
             }
+            Dictionary<string, (Button button, RowParts parts)> oldKept = _kept, oldPost = _keptPost;
+            _kept = new Dictionary<string, (Button, RowParts)>();
+            _keptPost = new Dictionary<string, (Button, RowParts)>();
             _order.Clear();
             foreach (CrateScreenRow row in rows)
             {
-                _content.AddChild(row.IsMessage ? MessageRow(row.Name) : ItemRow(row, _rows, _click));
+                _content.AddChild(row.IsMessage ? PartlessRow(row.Name) : Keep(row, oldKept, _kept, _rows, _click));
                 if (!row.IsMessage)
                 {
                     _order.Add((row.ItemType, _rows[row.ItemType]));
@@ -115,8 +146,81 @@ namespace GolemFactory.Nodes
                 _content.AddChild(HeaderRow(CrateScreenReadout.PostTitle));
                 foreach (CrateScreenRow row in post)
                 {
-                    _content.AddChild(row.IsMessage ? MessageRow(row.Name) : ItemRow(row, _postRows, null));
+                    _content.AddChild(row.IsMessage ? PartlessRow(row.Name) : Keep(row, oldPost, _keptPost, _postRows, null));
                 }
+            }
+            foreach ((Button button, RowParts _) in oldKept.Values.Concat(oldPost.Values))
+            {
+                if (button.GetParent() == null)
+                {
+                    button.QueueFree(); // a good no longer listed
+                }
+            }
+        }
+
+        // Each good's row, kept between layouts: the list's own, and the Post's under it.
+        private Dictionary<string, (Button button, RowParts parts)> _kept = new Dictionary<string, (Button, RowParts)>();
+        private Dictionary<string, (Button button, RowParts parts)> _keptPost = new Dictionary<string, (Button, RowParts)>();
+
+        /// <summary><paramref name="row"/>'s good's row: the one it had, updated, else a new one.</summary>
+        private Control Keep(CrateScreenRow row, Dictionary<string, (Button button, RowParts parts)> old,
+            Dictionary<string, (Button button, RowParts parts)> kept, Dictionary<string, Button> lookup, Action<string, bool> click)
+        {
+            if (old.TryGetValue(row.ItemType, out var had))
+            {
+                had.parts.Show(row);
+                _parts.Add(had.parts);
+                kept[row.ItemType] = had;
+                lookup[row.ItemType] = had.button;
+                return had.button;
+            }
+            var button = (Button)ItemRow(row, lookup, click, _parts);
+            kept[row.ItemType] = (button, _parts[_parts.Count - 1]);
+            return button;
+        }
+
+        // What decides the rows' controls: which goods, in which order, and which are messages.
+        private static string Structure(List<CrateScreenRow> rows)
+        {
+            var b = new StringBuilder();
+            foreach (CrateScreenRow r in rows)
+            {
+                b.Append(r.IsMessage ? "m:" + r.Name : r.ItemType).Append('\n');
+            }
+            return b.ToString();
+        }
+
+        private string _structure;
+
+        /// <summary>A row's parts, in the order the rows are shown (a message row has none).</summary>
+        private readonly List<RowParts> _parts = new List<RowParts>();
+
+        /// <summary>The controls of one good's row that change as it moves.</summary>
+        private sealed class RowParts
+        {
+            public Button Button;
+            public TextureRect Icon;
+            public Label Name;
+            public Control Bar;
+            public Label Quantity;
+
+            public void Show(CrateScreenRow row)
+            {
+                if (Name.Text != row.Name)
+                {
+                    Name.Text = row.Name;
+                }
+                if (Quantity.Text != row.QuantityText)
+                {
+                    Quantity.Text = row.QuantityText;
+                }
+                Quantity.AddThemeColorOverride("font_color", row.Bar.IsFull ? ManagementScreen.FullFill : ManagementScreen.QuantityInk);
+                ManagementScreen.SetBar(Bar, row.Bar);
+                // A good that can't move still takes the click, which says why where the player looks.
+                Color dim = row.CanMove ? Colors.White : new Color(1f, 1f, 1f, DimAlpha);
+                Icon.Modulate = dim;
+                Name.Modulate = dim;
+                Button.TooltipText = row.CanMove ? "" : row.Reason ?? "";
             }
         }
 
@@ -131,13 +235,14 @@ namespace GolemFactory.Nodes
             return b.ToString();
         }
 
-        private static Control ItemRow(CrateScreenRow row, Dictionary<string, Button> lookup, Action<string, bool> click)
+        private static Control ItemRow(CrateScreenRow row, Dictionary<string, Button> lookup, Action<string, bool> click, List<RowParts> parts)
         {
             var button = new Button { Name = "Row", CustomMinimumSize = new Vector2(0f, 30f), FocusMode = Control.FocusModeEnum.None };
-            button.AddThemeStyleboxOverride("normal", new StyleBoxFlat { BgColor = ManagementScreen.RowTint });
-            button.AddThemeStyleboxOverride("hover", new StyleBoxFlat { BgColor = click != null ? RowHover : ManagementScreen.RowTint });
-            button.AddThemeStyleboxOverride("pressed", new StyleBoxFlat { BgColor = click != null ? RowPressed : ManagementScreen.RowTint });
-            button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+            // Shared by every row: a style per row cost a resource each, three a row (D8).
+            button.AddThemeStyleboxOverride("normal", Plain);
+            button.AddThemeStyleboxOverride("hover", click != null ? Hover : Plain);
+            button.AddThemeStyleboxOverride("pressed", click != null ? Pressed : Plain);
+            button.AddThemeStyleboxOverride("focus", NoFocus);
             if (click == null)
             {
                 button.MouseFilter = Control.MouseFilterEnum.Ignore;
@@ -169,9 +274,12 @@ namespace GolemFactory.Nodes
             line.AddChild(icon);
             Control name = ManagementScreen.Flex(Ugui.Text("Name", row.Name, 13, ManagementScreen.ItemNameInk));
             line.AddChild(name);
-            line.AddChild(ManagementScreen.Bar(row.Bar));
-            line.AddChild(ManagementScreen.Fixed(Ugui.Text("Quantity", row.QuantityText, 13,
-                row.Bar.IsFull ? ManagementScreen.FullFill : ManagementScreen.QuantityInk, align: 4, bold: true), 60f));
+            Control bar = ManagementScreen.Bar(row.Bar);
+            line.AddChild(bar);
+            var quantity = (Label)ManagementScreen.Fixed(Ugui.Text("Quantity", row.QuantityText, 13,
+                row.Bar.IsFull ? ManagementScreen.FullFill : ManagementScreen.QuantityInk, align: 4, bold: true), 60f);
+            line.AddChild(quantity);
+            parts.Add(new RowParts { Button = button, Icon = icon, Name = (Label)name, Bar = bar, Quantity = quantity });
 
             // A good that can't move still takes the click, which says why where the player looks.
             if (!row.CanMove)
@@ -191,6 +299,13 @@ namespace GolemFactory.Nodes
             plate.AddThemeStyleboxOverride("panel", new StyleBoxFlat { BgColor = ManagementScreen.HeaderPlateTint });
             ManagementScreen.RowLine(plate).AddChild(ManagementScreen.Flex(Ugui.Text("Name", text, 14, ManagementScreen.HeaderInk, bold: true)));
             return plate;
+        }
+
+        /// <summary>A message row: no parts change in place, so its slot in the parts is empty.</summary>
+        private Control PartlessRow(string text)
+        {
+            _parts.Add(null);
+            return MessageRow(text);
         }
 
         private static Control MessageRow(string text)
