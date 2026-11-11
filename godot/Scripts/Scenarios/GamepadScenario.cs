@@ -75,6 +75,8 @@ namespace GolemFactory.Nodes.Scenarios
             PlanBuild();
             PlanDemolish();
             PlanCameraAndClock();
+            PlanNames();
+            PlanBackgroundCap();
             PlanBackToMouse();
         }
 
@@ -82,6 +84,7 @@ namespace GolemFactory.Nodes.Scenarios
         {
             ReleaseAll();
             InputDevices.Reset();
+            BackgroundFrameCap.EvenUnderScenario = false;
         }
 
         // --- 0. A fresh game, the playtest card answered (a click: the screens are D6) --------
@@ -657,6 +660,113 @@ namespace GolemFactory.Nodes.Scenarios
             });
         }
 
+        // --- 7b. The names are the pad's (D7) ---------------------------------------------------
+
+        private string ScrapStep => Sandbox.Tutorial.Steps.First(s => s.Id == "scrap").Body;
+
+        private void PlanNames()
+        {
+            Do("at the Scrap cart", () =>
+            {
+                CoreVector2Int scrap = World.Setup.HomeSpot(ItemType.Scrap).Value;
+                Hands.Teleport(new CoreVector3(scrap.x, scrap.y + 1f, 0f));
+                return null;
+            });
+            Wait(0.3);
+            Do("the prompt, the guide and the build menu name the pad's buttons", () =>
+            {
+                if (!Settings.KeyNames.Pad)
+                {
+                    return "the names aren't the pad's with the pad in use";
+                }
+                if (!Hands.CurrentPrompt.StartsWith("[A]"))
+                {
+                    return $"the prompt reads '{Hands.CurrentPrompt}'";
+                }
+                if (!ScrapStep.Contains("Walk with the left stick") || !ScrapStep.Contains("Press A to take Scrap"))
+                {
+                    return $"the guide reads '{ScrapStep}'";
+                }
+                Button belt = BuildMenu.Rows.First(r => r.prefab == BeltPrefab).row;
+                if (BuildMenu.KeyShownOn(belt) != "" || BuildMenu.KeyShownOn(BuildMenu.DemolishRow) != Settings.KeyNames.PadL2)
+                {
+                    return $"the build menu shows '{BuildMenu.KeyShownOn(belt)}' on Belt and '{BuildMenu.KeyShownOn(BuildMenu.DemolishRow)}' on Demolish";
+                }
+                return null;
+            });
+            Do("L3", () => { Button(JoyButton.LeftStick, true); return null; });
+            Do("L3 up: the guide is back", () =>
+            {
+                Button(JoyButton.LeftStick, false);
+                return Sandbox.Tutorial.IsShowing ? null : "L3 didn't bring the guide back";
+            });
+            Wait(0.3);
+            Do("the plate names L3 and R3, its body the pad's words, and no shortcut digit", () =>
+            {
+                var panel = Tree.Root.FindChildren("*", "CanvasLayer", true, false).OfType<TutorialPanel>().First();
+                if (!panel.CounterText.Contains("L3 hides") || !panel.CounterText.Contains("R3 skips"))
+                {
+                    return $"the counter reads '{panel.CounterText}'";
+                }
+                if (!panel.BodyText.Contains("the left stick") || panel.BodyText.Contains("Shortcut"))
+                {
+                    return $"the plate reads '{panel.BodyText}'";
+                }
+                ScenarioCapture.Shot(Runner.GetViewport(), "gamepad-names");
+                return null;
+            });
+            Do("L3 again", () => { Button(JoyButton.LeftStick, true); return null; });
+            Do("L3 up: the guide is put away", () =>
+            {
+                Button(JoyButton.LeftStick, false);
+                if (Sandbox.Tutorial.IsShowing)
+                {
+                    return "L3 didn't put the guide away";
+                }
+                Log("the prompt read [A], the guide 'the left stick' and 'Press A', the build menu L2 on Demolish; L3 brought the guide back and put it away");
+                return null;
+            });
+        }
+
+        // --- 7c. The window loses focus: the frame cap (D8) -------------------------------------
+
+        private int _maxFpsBefore;
+        private long _tickBefore;
+
+        private void PlanBackgroundCap()
+        {
+            Do("the window loses focus (the Steam overlay over it)", () =>
+            {
+                BackgroundFrameCap.EvenUnderScenario = true;
+                _maxFpsBefore = Engine.MaxFps;
+                _tickBefore = Sandbox.Clock.CurrentTick;
+                Tree.Root.PropagateNotification((int)Node.NotificationApplicationFocusOut);
+                return null;
+            });
+            Do("drawn at the background rate", () =>
+                Engine.MaxFps == BackgroundFrameCap.BackgroundFps ? null : $"max fps {Engine.MaxFps}");
+            Wait(0.5);
+            Do("the factory ran on; focus back", () =>
+            {
+                if (Sandbox.Clock.CurrentTick <= _tickBefore)
+                {
+                    return "the clock stopped under the cap";
+                }
+                Tree.Root.PropagateNotification((int)Node.NotificationApplicationFocusIn);
+                return null;
+            });
+            Do("the cap is off", () =>
+            {
+                BackgroundFrameCap.EvenUnderScenario = false;
+                if (Engine.MaxFps != _maxFpsBefore)
+                {
+                    return $"max fps {Engine.MaxFps}, was {_maxFpsBefore}";
+                }
+                Log($"unfocused, the game drew at {BackgroundFrameCap.BackgroundFps} fps and the clock ran on; focused, the cap went back to {_maxFpsBefore}");
+                return null;
+            });
+        }
+
         // --- 8. The mouse takes over again ------------------------------------------------------
 
         private void PlanBackToMouse()
@@ -679,6 +789,11 @@ namespace GolemFactory.Nodes.Scenarios
                 if (InputDeviceNode.AppliedMode != Input.MouseModeEnum.Visible)
                 {
                     return "the pointer is still hidden";
+                }
+                Button belt = BuildMenu.Rows.First(r => r.prefab == BeltPrefab).row;
+                if (Settings.KeyNames.Pad || !ScrapStep.Contains("Walk with WASD") || BuildMenu.KeyShownOn(belt) == "")
+                {
+                    return $"the names stayed the pad's: '{ScrapStep}', Belt shows '{BuildMenu.KeyShownOn(belt)}'";
                 }
                 Build.CancelPlacement();
                 Log("a mouse nudge handed the cursor back");

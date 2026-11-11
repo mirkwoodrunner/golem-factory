@@ -1,12 +1,16 @@
 # Golem Factory: running on the Steam Deck
 
-**Status (2026-11-09):** D1's export is built (§7's export log); the Deck's first launch is the
+**Status (2026-11-10):** D1's export is built (§7's export log); the Deck's first launch is the
 owner's. D4, the gamepad's model, is built, with D5.1's build cursor pulled in so a pad can place
 (§7's input audit and "D4 as built"). D5.2, the hover card at the pad's cursor, is built (§7's
-"D5.2 as built"). D6 is mostly built: the Workbench (D6.W, decided and built), the station's panel, the Crate and
-Pack screens, the playtest card and the Management screen with all its tabs (Settings among
-them). Left in D6: the title screen and its save slots, and the contract and supply screens. D7
-onward is planned, not started.
+"D5.2 as built"). D6's screens are built: the Workbench (D6.W, decided and built), the station's panel, the Crate
+and Pack screens, the playtest card, the Management screen with all its tabs, the title with its
+Settings and Load, the cart panel and the City Office's notice. Still pointer-only: the Overview
+map's hover card and its click on a golem. D6's exit, the playtest script played with no mouse or
+keyboard, is the owner's to try. D7 is built: text names the pad's buttons by the Deck's labels
+(§ D7's "As built"). D8's parts that don't need the Deck are done: the clock at any frame rate,
+the unfocused frame cap, the frame watch, two hitches fixed and ReadyToRun on export, and a
+one-command perf run for the Deck. The Deck's own numbers, and D9 onward, wait for the Deck.
 
 The goal is to run the game on Steam Deck hardware, played by its owner. **It is not a Steam store release**
 (roadmap decision 14: release isn't planned). No Steamworks, no store page, no depots, no Steam Deck
@@ -338,6 +342,35 @@ shoulders for a card's dials, and focus follows the hint. As decided, it replace
   slider by LT and RT, a checkbox by A, no key button a stop, the Ledger panned, B). Frames
   `pad-card`, `pad-management-settings`.
 
+**The title, the cart panel and the City Office by pad, as built 2026-11-10** (branch
+`deck/screens-rest`), which finishes D6's screens:
+- **The title** keeps its own selection (Core's `TitleMenu`, the slot board), which the keyboard
+  already walked by its actions. The pad's events reached that path too, one menu step per stick
+  motion event, and the d-pad also zoomed the showcase's camera. Now the title marks every pad
+  event handled and walks the same selection by polling, with the ring's repeat
+  (`PadFocus.DirectionRepeat`). Up and down choose, A picks, B goes back; on Load, left and
+  right switch Campaign and Creative. Settings is Management's tab on the generic ring (key
+  buttons left out), with Back. With the pad in use, the hints say "A to pick" and "A to load ·
+  B to go back".
+- **The cart panel and the City Office's notice** (`SupplyScreen.Pad.cs`,
+  `ContractScreen.Pad.cs`) are lists of row buttons: the ring walks them, scrolling, and A
+  presses the row, a greyed one saying why. B or Y closes. The keyboard's E still closes too;
+  the pad's A presses the row.
+- **`PadFocus` now holds what the screens share:** the direction repeat, finding a tree's
+  buttons and sliders (`ControlsIn`), A's press-or-tick (`Press`), LT and RT on a slider
+  (`StepSlider`), and the right stick's scroll (`ScrollWithStick`). Management uses them too.
+- **Checked by** `gamepad-ui`'s cart, office and title steps. The cart steps: A at an empty spot
+  opens the panel, the ring walks to the Coal cart, A adds it, B closes. The office steps: A at
+  its door opens the notice with nothing taken by that A, A takes the contract, Y closes. The
+  title steps: a reload to the title with a save in a slot; five stick motion events in one
+  frame step the menu once, with the camera unmoved; Settings by the ring and its slider; Load,
+  where the d-pad switches kinds and A loads the slot. Frames `pad-supply`, `pad-contract`,
+  `pad-title-load`. 16 of 17 break checks were caught. The miss is the notice's one-frame wait,
+  which is the station panel's case: the player handles the opening A before the notice runs,
+  so the wait guards only against a change of node order.
+- **Left for D7:** text that names a key: the guide, the prompts, the contract's "press E to
+  sell it".
+
 The proposal as written, kept for the record:
 
 The Workbench has four regions: the blueprint viewport's sockets (TRIGGER, then STEP 1 to n) on the
@@ -410,6 +443,61 @@ the shoulders. Frames capture the focus ring and a carry.
   step is a placeholder substituted at display time, so the guide's text stays device-neutral in data.
 - Extend the `font-glyphs` scenario if any new character is used.
 
+**As built, 2026-11-10** (branch `deck/screens-rest`, after D6's last screens):
+- **`KeyNames` knows the device.** `KeyNames.Pad` is set by `InputDevices` whenever the last
+  device changes. With the pad in use, the names are the pad's buttons by the Deck's own labels:
+  - Use A, carry X, pack Y, turn R1;
+  - move with the left stick;
+  - the menu is Menu and cancel is B;
+  - the guide is L3, and the playtest kit's skip is R3;
+  - the bumpers are L1 R1 and the triggers L2 R2. The Workbench's dials read L1/R1 and L2/R2,
+    not the LB/RB/LT/RT D6 first drew.
+
+  Setting it bumps `KeyNames.Version`, so text drawn once (the guide's plate, the build menu's
+  lines) redraws. Every prompt and hover card already read `KeyNames`, so "[E] Harvest" became
+  "[A] Harvest" with no change at the call sites.
+- **New tokens:** `[[menu]]` (Tab or Menu), `[[cancel]]` (Escape or B) and `[[guide]]` (F1 or L3).
+  The guide's "Press Tab", "press Escape" and "F1 brings this guide back" use them. The keyboard's
+  text is unchanged.
+- **`PadPhrasing`** rewords, by phrase and most particular first, what the mouse does in text
+  built once and kept:
+  - "Drag the glowing cards" becomes "Press A on each glowing card";
+  - "Click Boiler in the build menu" becomes "Pick Boiler in the build menu with L1";
+  - "click the marked tile" becomes "aim the right stick at the marked tile and press R2";
+  - "Shift-click" becomes "press X on";
+  - "Hover it" becomes "Face it";
+  - "drop a logic core" becomes "send a logic core";
+  - anything else clicked becomes "press A on".
+
+  It runs in `KeyNames.Fill` with the pad in use, so it reaches everything `TextTokens.Fill`
+  already reached: guide steps, the guide's notices (now filled too), playtest questions, the
+  build menu's lines, the save slots' armed prompts, the Ledger's and Overview's lines, the
+  Workbench's captions and empty sockets, and Settings' key line.
+- **Read from `KeyNames` now, not hand-written:** the golem order's "press E to sell it" and
+  "[E] sell", and the contract's "press I here".
+- **Gaps closed along the way:**
+  - The build menu's tiles drop their digits with the pad in use, Demolish shows L2, and the
+    card names L1.
+  - The guide plate's counter reads "L3 hides · R3 skips", and its "Shortcut: 5." goes.
+  - L3 puts the guide away and brings it back, and R3 runs the playtest kit. F1 and F9 had no
+    pad binding; the two stick clicks were the last free buttons.
+- **No new characters:** the names are plain Latin letters and digits.
+- **Checked by:**
+  - **`PadPhrasingTests`:** every guide step, question, build-menu line, the order's how-to and
+    the Workbench's empty program read with the pad in use, and none says click, drag, hover, a
+    named key or a key in brackets. The test lists the leftovers, so a new step written for the
+    mouse fails until it has a pad phrase.
+  - **The `gamepad` scenario:** with the pad in use the prompt reads [A], the guide "the left
+    stick" and "Press A", the plate "L3 hides · R3 skips" with no shortcut, and the build menu L2
+    on Demolish; L3 toggles the guide; a mouse nudge brings back WASD and the digits.
+  - **`gamepad-ui`:** the Workbench's empty sockets read "send …", and its dials L1/R1 and L2/R2.
+  - **Frames:** `gamepad-names`, `pad-workbench-open`, `pad-workbench-haul`.
+  - **Break checks:** 10 of 10 caught, covering `KeyNames`, the phrasing, the order's how-to,
+    the device hook, the build menu, L3, the counter, and the Workbench's sockets and dials.
+- **Not covered by a check:** the plate's missing "Shortcut" on a step that has one (the scenario's
+  step has none), and the guide's notices (no scenario raises one with the pad in use). Both go
+  through the code paths above.
+
 ### D8. Performance and battery (1 day)
 
 1. Run `--scenario perf` and the endgame benchmark (`dotnet test -c Release --filter Category=Perf`, plus
@@ -424,6 +512,81 @@ the shoulders. Frames capture the focus ring and a carry.
    performance overlay.
 4. The tick clock is independent of frame rate (invariant 7), so a lower display rate must not slow the game.
    Check by comparing a 30 fps cap run with a 60 fps one on the `world` scenario.
+
+**As built on the build machine, 2026-11-10** (branch `deck/screens-rest`). Items 1 to 3 need the
+Deck; what could be done or prepared without it:
+- **Item 4, done.** The `golems` scenario at a fixed 60, 30 and 20 fps reports the same cycles:
+  G1=49, G2=49, G3=25, G4=6, G5=20, G6=11. The clock catches up every tick a slow frame owes, with
+  no cap per frame. A Core test, `AMinuteAtAnyFrameRate_TicksTheSame_EvenAtFourTimesSpeed`, pins
+  a minute at 60, 30 and 20 fps at 4×, where a 30 fps frame owes more than one tick. A
+  one-tick-per-frame clock fails it at 30 and 20.
+- **Item 3, battery.** `BackgroundFrameCap`, which the player adds, draws at 10 fps while the
+  window has no focus: the Steam overlay or the quick-access menu over it, or another window on a
+  desktop. The factory runs on at its own speed, and focus puts the cap back as it was. It stays
+  off under a scenario, since a run launched from a shell often lacks focus, unless the
+  scenario testing it turns it on (`gamepad`). A cap in play is the Deck's own limiter (Game
+  Mode's quick-access menu), so there's no in-game setting.
+- **Item 2, the cold start.** A frame watch for any scenario: `--frame-watch` prints its five
+  worst frames of wall time after loading, each with its step and its process time. On the
+  Windows export of the Deck's pack, `gamepad-ui` showed frames of 45 to 65 ms at first events:
+
+  | First event | Before | Cause, and what was done |
+  |---|---|---|
+  | The pad's first press | 62 ms | `PadPhrasing`'s ~30 regexes built `Compiled`, which writes and JITs IL at first use. Now interpreted: gone. |
+  | A on the playtest note | 58 ms | `VirtualKeyboardShow` on a desktop, which has none. Now asked only where `DisplayServer` has the feature: gone. |
+  | The A that builds a golem (the Workbench's first open) | 65 to 72 ms | Part JIT: **ReadyToRun** on export (`PublishReadyToRun` when a runtime is named, so only an export) brought it to 40 ms in one run. |
+  | The Crate screen's first open (Y) | 45 to 59 ms | Every open rebuilt every row: fixed (below). |
+  | Management's first open (Start) | 42 to 54 ms | The same: fixed (below). |
+
+  **The last two, found and fixed (the dig, 2026-11-10).** The frame watch was given stamps on
+  the engine's loop: a node first and last in the process step, one first in the physics step,
+  and the renderer's pre- and post-draw signals. With them, a frame splits into input, physics,
+  process, layout and draw.
+
+  The open's cost was in **input**, the step a screen opens in, and not in drawing: about 18 ms
+  of a normal frame is the wait for the display. Timing inside the open showed what it was:
+  - **Every open rebuilt every row.** The Pack and Crate screens invalidated their lists on
+    open, and Management's Inventory tab cleared its signature, so all their rows were made
+    again each time. Each row cost about a millisecond: a button, a line, labels, a bar, an icon.
+    The lists also rebuilt every row whenever anything shown changed, every second or so while
+    golems filled a crate or a rate moved.
+  - **Icons were reloaded each time.** A row's icon texture was freed with its row, so each
+    open checked the disk, loaded and uploaded it again.
+
+  What was done:
+  - **Rows update in place** (`InventoryPanel`, Management's Inventory tab): the same goods in
+    the same order only rewrite their counts, bars, rates and dimming. When the goods change, a
+    good still listed keeps its row, and only a new good costs one.
+  - **The forced rebuilds on open are gone.**
+  - **Icons are kept once loaded** (`ItemIcons`).
+  - **The Pack's and Management's rows are built during loading,** and so is the Crate screen's
+    pack column.
+
+  On the ReadyToRun export, two runs of `gamepad-ui --frame-watch` (whose frames land on 20 ms,
+  50 Hz, here):
+
+  | First event | Before | After |
+  |---|---|---|
+  | The Crate screen's first open | 44 to 45 ms | under 27 ms (out of the worst five) |
+  | Management's first open | 30 ms | 30 to 32 ms |
+  | The Workbench's first open | 29 to 31 ms | 29 to 31 ms |
+  | A repeat open of the Pack (benchmark, dev build) | 25 ms to drawn, 15 ms in `Open` | 19 ms to drawn (a normal frame), 2 ms in `Open` |
+
+  The worst frame left, 43 to 48 ms, is the Pack opening just after the scenario deposits one of
+  every good at once: 21 new rows in one frame, which play can't produce. Gathered goods arrive a
+  few at a time, and a row, once made, is kept. Loading the title (30 to 34 ms) is loading.
+
+  Two tries that changed nothing were taken out: rasterizing the font's glyphs at every size
+  during loading, and drawing Management for its first frames during loading. Godot's fallback
+  text server, a lighter shaper, isn't in the official build (`TextServerManager` lists only the
+  ICU one). **A print costs milliseconds on Windows:** timing code that prints inside the
+  measured span inflated it from 0.4 to 20 ms, so the frame watch collects and prints at the
+  end. ReadyToRun makes the export 203 MB (from 190); the editor's and the tests' builds are
+  unchanged.
+- **Item 1, prepared.** `Tools/Deck/export-linux.ps1 -DeckHost steamdeck -RunPerf` exports,
+  copies, then runs `perf` and `gamepad-ui --frame-watch` on the Deck's own screen (Desktop Mode,
+  `DISPLAY=:0`) and prints their verdicts. Not run: there's no Deck here. The numbers go in
+  `performance-report-deck.md`.
 
 ### D9. Save and suspend (half a day)
 

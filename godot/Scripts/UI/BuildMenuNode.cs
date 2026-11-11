@@ -125,6 +125,28 @@ namespace GolemFactory.Nodes
             GetViewport().SizeChanged += PlaceBottomCentre;
         }
 
+        // --- The pad's names (docs/steam-deck-design.md D7) ------------------------------------
+
+        private readonly Dictionary<Button, (Label label, string hotkey)> _keyLabels = new Dictionary<Button, (Label, string)>();
+        private bool _padKeys;
+
+        /// <summary>What a tile's corner shows, for a scenario: its digit, or with the pad nothing (L1 steps the menu) and L2 on Demolish.</summary>
+        public string KeyShownOn(Button row) => _keyLabels.TryGetValue(row, out var entry) ? entry.label.Text : "";
+
+        /// <summary>The pad's button for a row on the card: L2 for Demolish, L1 (the menu's step) for the rest; null without the pad.</summary>
+        private string PadKey(Button row) =>
+            !Settings.KeyNames.Pad ? null : row == _demolishRow ? Settings.KeyNames.PadL2 : Settings.KeyNames.PadL1;
+
+        /// <summary>The tiles' corners follow the device: digits for the keyboard, only Demolish's L2 for the pad.</summary>
+        private void ShowKeysFor(bool pad)
+        {
+            _padKeys = pad;
+            foreach (KeyValuePair<Button, (Label label, string hotkey)> entry in _keyLabels)
+            {
+                entry.Value.label.Text = !pad ? entry.Value.hotkey : entry.Key == _demolishRow ? Settings.KeyNames.PadL2 : "";
+            }
+        }
+
         /// <summary>A row click or its key: pick the placeable up, or put it down if held.</summary>
         private void Toggle(PlaceableBuilding prefab)
         {
@@ -244,6 +266,10 @@ namespace GolemFactory.Nodes
         public override void _Process(double delta)
         {
             using var perf = NodePerf.Measure("node.menu");
+            if (Settings.KeyNames.Pad != _padKeys)
+            {
+                ShowKeysFor(Settings.KeyNames.Pad);
+            }
             // Unity's BuildMenuPanel asked HudScreenPolicy every frame: no world HUD over a
             // full screen. HudScreenExclusivityTests' last case is the `management` scenario's.
             Panel.Visible = !ModalScreens.AnyOpen(GetTree());
@@ -301,6 +327,7 @@ namespace GolemFactory.Nodes
             keyLabel.AddThemeFontOverride("font", _bold);
             keyLabel.AddThemeFontSizeOverride("font_size", 11);
             row.AddChild(keyLabel);
+            _keyLabels[row] = (keyLabel, hotkey);
 
             var label = new Label
             {
@@ -415,7 +442,7 @@ namespace GolemFactory.Nodes
                 return;
             }
 
-            string key = _rowKeys.TryGetValue(_hovered, out string k) ? k : "";
+            string key = PadKey(_hovered) ?? (_rowKeys.TryGetValue(_hovered, out string k) ? k : "");
             if (_hovered == _demolishRow)
             {
                 _cardName.Text = $"{BuildMenuLabels.DemolishName}   [{key}]";

@@ -56,8 +56,6 @@ namespace GolemFactory.Nodes
         }
 
         private readonly Panel _ring;
-        private double _heldFor = -1;
-        private double _nextStep;
 
         public PadFocus(Control parent)
         {
@@ -97,7 +95,7 @@ namespace GolemFactory.Nodes
         public void Reset()
         {
             HasFocus = false;
-            _heldFor = -1;
+            _repeat.Reset();
         }
 
         public static Stop? Find(List<Stop> stops, string kind, int index)
@@ -118,7 +116,7 @@ namespace GolemFactory.Nodes
         public void Hide()
         {
             _ring.Visible = false;
-            _heldFor = -1;
+            _repeat.Reset();
         }
 
         /// <summary>
@@ -163,37 +161,163 @@ namespace GolemFactory.Nodes
 
         private void Step(List<Stop> stops, double delta)
         {
-            // The d-pad (ui_*) and the left stick (the move actions). The keyboard's arrows would
-            // move it too, but a key hands the screen back to the mouse first.
-            Vector2 held = Input.GetVector("ui_left", "ui_right", "ui_up", "ui_down")
-                + Input.GetVector(PlayerNode.MoveLeft, PlayerNode.MoveRight, PlayerNode.MoveUp, PlayerNode.MoveDown);
-            Vector2 dir = Mathf.Abs(held.X) >= Mathf.Abs(held.Y)
-                ? new Vector2(Mathf.Abs(held.X) >= 0.5f ? Mathf.Sign(held.X) : 0f, 0f)
-                : new Vector2(0f, Mathf.Abs(held.Y) >= 0.5f ? Mathf.Sign(held.Y) : 0f);
-            if (dir == Vector2.Zero)
-            {
-                _heldFor = -1;
-                return;
-            }
-            if (_heldFor < 0)
-            {
-                _heldFor = 0;
-                _nextStep = FirstRepeat;
-            }
-            else
-            {
-                _heldFor += delta;
-                if (_heldFor < _nextStep)
-                {
-                    return;
-                }
-                _nextStep += Repeat;
-            }
-            if (Current(stops) is Stop from && Neighbour(stops, from, dir) is Stop to)
+            Vector2 dir = _repeat.Step(delta);
+            if (dir != Vector2.Zero && Current(stops) is Stop from && Neighbour(stops, from, dir) is Stop to)
             {
                 Focus(to);
                 Moved = true;
             }
+        }
+
+        private readonly DirectionRepeat _repeat = new DirectionRepeat();
+
+        /// <summary>
+        /// The pad's held direction as steps: one on the push, then after <see cref="FirstRepeat"/>
+        /// one every <see cref="Repeat"/>. The d-pad (ui_*) and the left stick (the move actions);
+        /// the keyboard's arrows count too, but a key hands the screen back to the mouse first. For
+        /// a screen with its own selection (the title's menu) as well as for the ring.
+        /// </summary>
+        public sealed class DirectionRepeat
+        {
+            private double _heldFor = -1;
+            private double _nextStep;
+
+            /// <summary>A unit step (x right, y down) when one is due this frame, else zero.</summary>
+            public Vector2 Step(double delta)
+            {
+                Vector2 held = Input.GetVector("ui_left", "ui_right", "ui_up", "ui_down")
+                    + Input.GetVector(PlayerNode.MoveLeft, PlayerNode.MoveRight, PlayerNode.MoveUp, PlayerNode.MoveDown);
+                Vector2 dir = Mathf.Abs(held.X) >= Mathf.Abs(held.Y)
+                    ? new Vector2(Mathf.Abs(held.X) >= 0.5f ? Mathf.Sign(held.X) : 0f, 0f)
+                    : new Vector2(0f, Mathf.Abs(held.Y) >= 0.5f ? Mathf.Sign(held.Y) : 0f);
+                if (dir == Vector2.Zero)
+                {
+                    _heldFor = -1;
+                    return Vector2.Zero;
+                }
+                if (_heldFor < 0)
+                {
+                    _heldFor = 0;
+                    _nextStep = FirstRepeat;
+                    return dir;
+                }
+                _heldFor += delta;
+                if (_heldFor < _nextStep)
+                {
+                    return Vector2.Zero;
+                }
+                _nextStep += Repeat;
+                return dir;
+            }
+
+            public void Reset() => _heldFor = -1;
+        }
+
+        // --- Shared by the screens ------------------------------------------------------------
+
+        /// <summary>Whether <paramref name="e"/> came from the pad: a screen open over the world takes every one.</summary>
+        public static bool IsPadEvent(InputEvent e) => e is InputEventJoypadButton || e is InputEventJoypadMotion;
+
+        /// <summary>
+        /// Every visible button and slider under <paramref name="root"/>, in tree order, each in the
+        /// scrolling list it sits in, moved between by position (columns 0). For a screen of
+        /// ordinary controls built elsewhere (Management's tabs, Settings).
+        /// </summary>
+        public static IEnumerable<Stop> ControlsIn(Control root, string kind, Func<Control, bool> skip = null)
+        {
+            int k = 0;
+            foreach (Node node in Walk(root))
+            {
+                if (node is Control control && (control is BaseButton || control is Slider))
+                {
+                    if ((skip == null || !skip(control)) && control.IsVisibleInTree() && !control.IsQueuedForDeletion()
+                        && control.MouseFilter != Control.MouseFilterEnum.Ignore)
+                    {
+                        yield return new Stop(kind, k, control, ScrollOf(control, root), columns: 0);
+                    }
+                    k++;
+                }
+            }
+        }
+
+        /// <summary>
+        /// The pad's A on a control: a button presses, a checkbox ticks (setting ButtonPressed, since
+        /// emitting Pressed leaves a toggle unticked). A greyed button does nothing.
+        /// </summary>
+        public static void Press(Control control)
+        {
+            if (control is BaseButton button && !button.Disabled)
+            {
+                if (button.ToggleMode)
+                {
+                    button.ButtonPressed = !button.ButtonPressed;
+                }
+                else
+                {
+                    button.EmitSignal(BaseButton.SignalName.Pressed);
+                }
+            }
+        }
+
+        /// <summary>LT and RT step a slider, as they turn the Workbench's dials.</summary>
+        public static void StepSlider(Control control)
+        {
+            if (control is Slider slider && slider.Editable)
+            {
+                double step = slider.Step > 0 ? slider.Step : (slider.MaxValue - slider.MinValue) / 20.0;
+                if (Input.IsActionJustPressed(PadBindings.BuildDemolish))
+                {
+                    slider.Value -= step;
+                }
+                if (Input.IsActionJustPressed(PadBindings.BuildPlace))
+                {
+                    slider.Value += step;
+                }
+            }
+        }
+
+        /// <summary>How fast the right stick scrolls, in pixels a second at full tilt.</summary>
+        public const float ScrollSpeed = 900f;
+
+        /// <summary>The right stick scrolls the first visible scrolling area under <paramref name="root"/>, both ways.</summary>
+        public static void ScrollWithStick(Control root, double delta)
+        {
+            Vector2 stick = Input.GetVector(PadBindings.CursorLeft, PadBindings.CursorRight, PadBindings.CursorUp, PadBindings.CursorDown);
+            if (stick == Vector2.Zero || root == null)
+            {
+                return;
+            }
+            ScrollContainer scroll = Walk(root).OfType<ScrollContainer>().FirstOrDefault(s => s.IsVisibleInTree());
+            if (scroll == null)
+            {
+                return;
+            }
+            scroll.ScrollHorizontal += Mathf.RoundToInt(stick.X * ScrollSpeed * (float)delta);
+            scroll.ScrollVertical += Mathf.RoundToInt(stick.Y * ScrollSpeed * (float)delta);
+        }
+
+        private static IEnumerable<Node> Walk(Node node)
+        {
+            foreach (Node child in node.GetChildren())
+            {
+                yield return child;
+                foreach (Node below in Walk(child))
+                {
+                    yield return below;
+                }
+            }
+        }
+
+        private static ScrollContainer ScrollOf(Control control, Control within)
+        {
+            for (Node n = control.GetParent(); n != null && n != within; n = n.GetParent())
+            {
+                if (n is ScrollContainer scroll)
+                {
+                    return scroll;
+                }
+            }
+            return null;
         }
 
         /// <summary>

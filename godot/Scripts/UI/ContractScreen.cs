@@ -87,6 +87,7 @@ namespace GolemFactory.Nodes
             _signature = null;
             _root.Visible = true;
             Refresh();
+            PadOpened();
         }
 
         public void Close()
@@ -113,6 +114,7 @@ namespace GolemFactory.Nodes
             if (IsOpen)
             {
                 Refresh();
+                PadProcess(delta);
             }
         }
 

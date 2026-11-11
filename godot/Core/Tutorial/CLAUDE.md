@@ -66,6 +66,13 @@ player calls `PlayerInteractor.Teleport`; a bare `Position` write is overwritten
 that names a price builds it from the definition (`TutorialGuide.Price`, `CostCounts`,
 `OfferPrice`, `RecipeLine`), never a copy of the number.
 
+**A guide text names a key by token, and a mouse gesture is reworded for the pad**
+(`docs/steam-deck-design.md` D7). Write `[[interact]]`, `[[carry]]`, `[[inventory]]`,
+`[[rotate]]`, `[[move]]`, `[[menu]]`, `[[cancel]]` or `[[guide]]`, never "E" or "Tab"; they name
+the pad's buttons once it's the device in use. A step that says click, drag, hover or Shift-click
+needs a phrase in `Settings/PadPhrasing`: `PadPhrasingTests` reads every step with the pad in use
+and fails on the leftover word, naming the step.
+
 # Playtest mode
 
 **Playtest mode writes `user://playtest-report.md`**, and keeps the previous session's as

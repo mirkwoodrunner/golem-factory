@@ -110,6 +110,9 @@ namespace GolemFactory.Nodes
             Overview = new OverviewTab(_world.Sandbox, Close);
             AddTab(ManagementTab.Overview, Overview);
             _root.Visible = false;
+            // The Inventory tab's rows built now, while the scene loads: its first open then only
+            // updates them in place (D8).
+            RefreshInventory();
             if (GetParent()?.GetNodeOrNull<GameSaves>("Saves") is GameSaves saves)
             {
                 saves.PictureTaken += OnPictureTaken;
@@ -255,6 +258,20 @@ namespace GolemFactory.Nodes
                 return; // only rebuild when something visible changed
             }
             _renderedInventory = signature;
+            // The same rows as drawn: a count, a bar or a rate moved, so they update in place
+            // (docs/steam-deck-design.md D8). Rates move often, and rebuilding every row cost
+            // about a millisecond a row each time, while the tab was open.
+            string structure = InventoryStructure(rows);
+            if (structure == _inventoryStructure && _inventoryUpdates.Count == rows.Count)
+            {
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    _inventoryUpdates[i]?.Invoke(rows[i]);
+                }
+                return;
+            }
+            _inventoryStructure = structure;
+            _inventoryUpdates.Clear();
             foreach (Node child in _inventory.GetChildren())
             {
                 child.QueueFree();
@@ -264,6 +281,27 @@ namespace GolemFactory.Nodes
                 _inventory.AddChild(InventoryRowControl(row));
             }
         }
+
+        private string _inventoryStructure;
+
+        /// <summary>Each drawn row's update in place, in order (a message row has none).</summary>
+        private readonly List<Action<InventoryRow>> _inventoryUpdates = new List<Action<InventoryRow>>();
+
+        // What decides the rows' controls: their kinds, goods and headings, and how a bar is read.
+        private static string InventoryStructure(List<InventoryRow> rows)
+        {
+            var b = new StringBuilder();
+            foreach (InventoryRow r in rows)
+            {
+                b.Append(r.Kind).Append('|').Append(r.Kind == InventoryRowKind.Item ? r.ItemType : r.Text).Append('|')
+                 .Append(r.Bar.Mode).Append('\n');
+            }
+            return b.ToString();
+        }
+
+        private static Color RateInk(InventoryRow row) =>
+            row.RateKind == StockFlowKind.Net ? (row.Trend == StockTrend.Rising ? RisingInk : FallingInk)
+            : row.RateKind == StockFlowKind.Throughput ? ItemNameInk : DimInk;
 
         private static string Signature(List<InventoryRow> rows)
         {
@@ -285,7 +323,9 @@ namespace GolemFactory.Nodes
                     Panel plate = Row(24f, new StyleBoxFlat { BgColor = HeaderPlateTint });
                     HBoxContainer line = RowLine(plate);
                     line.AddChild(Flex(Ugui.Text("Name", row.Text, 14, HeaderInk, bold: true)));
-                    line.AddChild(Fixed(Ugui.Text("Count", row.CountText, 11, DimInk, align: 4), 74f));
+                    var count = (Label)Fixed(Ugui.Text("Count", row.CountText, 11, DimInk, align: 4), 74f);
+                    line.AddChild(count);
+                    _inventoryUpdates.Add(r => count.Text = r.CountText);
                     return plate;
                 }
                 case InventoryRowKind.Item:
@@ -306,13 +346,33 @@ namespace GolemFactory.Nodes
                     // starts at the same x.
                     icon.Texture = ItemIcons.Load(row.ItemType);
                     line.AddChild(icon);
-                    line.AddChild(Flex(Ugui.Text("Name", row.Text, 13, ItemNameInk)));
-                    line.AddChild(Bar(row.Bar));
-                    line.AddChild(Fixed(Ugui.Text("Quantity", row.QuantityText, row.Bar.Mode == StockBarMode.AgainstCapacity ? 13 : 15,
-                        row.Bar.IsFull ? FullFill : QuantityInk, align: 4, bold: true), 52f));
-                    Color rateInk = row.RateKind == StockFlowKind.Net ? (row.Trend == StockTrend.Rising ? RisingInk : FallingInk)
-                        : row.RateKind == StockFlowKind.Throughput ? ItemNameInk : DimInk;
-                    line.AddChild(Fixed(Ugui.Text("Rate", row.RateText, 12, rateInk, align: 4, bold: row.RateKind == StockFlowKind.Net), 74f));
+                    var name = (Label)Flex(Ugui.Text("Name", row.Text, 13, ItemNameInk));
+                    line.AddChild(name);
+                    Control bar = Bar(row.Bar);
+                    line.AddChild(bar);
+                    var quantity = (Label)Fixed(Ugui.Text("Quantity", row.QuantityText, row.Bar.Mode == StockBarMode.AgainstCapacity ? 13 : 15,
+                        row.Bar.IsFull ? FullFill : QuantityInk, align: 4, bold: true), 52f);
+                    line.AddChild(quantity);
+                    // The rate's weight (bold for a net flow) is set here; a change of kind redraws it.
+                    var rate = (Label)Fixed(Ugui.Text("Rate", row.RateText, 12, RateInk(row), align: 4, bold: row.RateKind == StockFlowKind.Net), 74f);
+                    line.AddChild(rate);
+                    StockFlowKind kind = row.RateKind;
+                    _inventoryUpdates.Add(r =>
+                    {
+                        if (r.RateKind != kind)
+                        {
+                            // The rate's weight changes: rebuilt next frame (both, or the frame
+                            // would find these rows already drawn and skip it).
+                            _inventoryStructure = null;
+                            _renderedInventory = null;
+                        }
+                        name.Text = r.Text;
+                        SetBar(bar, r.Bar);
+                        quantity.Text = r.QuantityText;
+                        quantity.AddThemeColorOverride("font_color", r.Bar.IsFull ? FullFill : QuantityInk);
+                        rate.Text = r.RateText;
+                        rate.AddThemeColorOverride("font_color", RateInk(r));
+                    });
                     return plate;
                 }
                 default:
@@ -321,6 +381,7 @@ namespace GolemFactory.Nodes
                     plate.Name = "Message";
                     HBoxContainer line = RowLine(plate);
                     line.AddChild(Flex(Ugui.Text("Label", row.Text, 12, DimInk)));
+                    _inventoryUpdates.Add(null); // its text is its structure
                     return plate;
                 }
             }
@@ -330,9 +391,26 @@ namespace GolemFactory.Nodes
         {
             var track = new Control { Name = "Bar", CustomMinimumSize = new Vector2(56f, 8f), SizeFlagsVertical = Control.SizeFlags.ShrinkCenter, MouseFilter = Control.MouseFilterEnum.Ignore };
             track.AddChild(Ugui.Fill(Ugui.Rect("Track", BarTrack)));
-            Color fill = bar.Mode == StockBarMode.RelativeToLargest ? BarFill : bar.IsFull ? FullFill : bar.IsNearFull ? NearFullFill : CapacityFill;
-            track.AddChild(Ugui.Place(Ugui.Rect("Fill", fill), 0f, 0f, Mathf.Clamp(bar.Fraction, 0f, 1f), 1f));
+            track.AddChild(Ugui.Place(Ugui.Rect("Fill", BarColor(bar)), 0f, 0f, Mathf.Clamp(bar.Fraction, 0f, 1f), 1f));
             return track;
+        }
+
+        /// <summary>A bar's fill: amber against the largest, else by how full against the cap.</summary>
+        internal static Color BarColor(StockBar bar) =>
+            bar.Mode == StockBarMode.RelativeToLargest ? BarFill : bar.IsFull ? FullFill : bar.IsNearFull ? NearFullFill : CapacityFill;
+
+        /// <summary>
+        /// Shows <paramref name="bar"/> on a track <see cref="Bar"/> made, in place: a screen's rows
+        /// change as goods move, and rebuilding them cost about a millisecond a row (D8).
+        /// </summary>
+        internal static void SetBar(Control track, StockBar bar)
+        {
+            if (track.GetNodeOrNull<ColorRect>("Fill") is ColorRect fill)
+            {
+                fill.Color = BarColor(bar);
+                fill.AnchorRight = Mathf.Clamp(bar.Fraction, 0f, 1f);
+                fill.OffsetRight = 0f;
+            }
         }
 
         // --- Patents ------------------------------------------------------------------------
@@ -660,11 +738,21 @@ namespace GolemFactory.Nodes
             return b.Append(".png").ToString();
         }
 
+        // Kept once loaded (docs/steam-deck-design.md D8): a screen's rows are rebuilt on every
+        // open, and a texture nothing else held was freed with its row, so each open checked the
+        // disk and loaded and uploaded every icon again. A good's icon never changes.
+        private static readonly Dictionary<string, Texture2D> Loaded = new Dictionary<string, Texture2D>();
+
         /// <summary>The good's icon, or null where it has none.</summary>
         public static Texture2D Load(string itemType)
         {
             string path = PathFor(itemType);
-            return ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
+            if (!Loaded.TryGetValue(path, out Texture2D icon))
+            {
+                icon = ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
+                Loaded[path] = icon;
+            }
+            return icon;
         }
     }
 }

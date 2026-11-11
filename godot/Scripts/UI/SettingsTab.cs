@@ -50,7 +50,10 @@ namespace GolemFactory.Nodes
 
         private static GameSettings Settings => GameSettingsStore.Current;
 
-        private const string Idle = "Click a key to change it.";
+        private const string IdleText = "Click a key to change it.";
+
+        /// <summary>The keys' line at rest: with the pad in use it says the keys are the keyboard's (docs/steam-deck-design.md D7).</summary>
+        private static string Idle => GolemFactory.Settings.TextTokens.Fill(IdleText);
 
         public Control Build()
         {
@@ -132,6 +135,10 @@ namespace GolemFactory.Nodes
                 return;
             }
             ShowScale(); // the window may have been resized
+            if (!IsCapturing && KeyStatus.Text != Idle && (KeyStatus.Text == IdleText || KeyStatus.Text == GolemFactory.Settings.PadPhrasing.Apply(IdleText)))
+            {
+                KeyStatus.Text = Idle; // the device changed
+            }
         }
 
         private void ShowScale()

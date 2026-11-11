@@ -29,7 +29,18 @@ focus, which a rebuild from data drops. While the screen is open, mark every joy
 in its `_Input` and read the pad by polling, or LB steps the build menu and the d-pad zooms the
 camera behind it. The A, E or Y that opened it is still "just pressed" in the frame it opens, so
 its buttons wait a frame. The pad's A presses the stop, so it must not also close the screen; B
-closes. See `WorkbenchScreen.Pad.cs`, `ConstructionPanelNode.Pad.cs`, `CrateScreen.Pad.cs`.
+closes. See `WorkbenchScreen.Pad.cs`, `ConstructionPanelNode.Pad.cs`, `CrateScreen.Pad.cs`; a
+screen of ordinary controls uses `PadFocus.ControlsIn`, `Press` and `StepSlider`
+(`ManagementScreen.Pad.cs`). A screen with its own selection (the title) reads the pad by
+polling with `PadFocus.DirectionRepeat`: acting on the stick's events steps once per motion
+event.
+
+**A list that redraws as the world moves updates its rows in place** (`InventoryPanel`,
+Management's Inventory tab): when the same things are listed in the same order, rewrite their
+text, bars and dimming; when the list changes, keep each surviving thing's row. Rebuilding every
+row, on each open and each change, cost about a millisecond a row and was the screens' slow
+first frame (`docs/steam-deck-design.md` D8). Check it with `--frame-watch`, and never print
+from the code you're timing: a print on Windows costs milliseconds.
 
 The Pack and Crate screens' rules (`SandboxWorld.Inventory`) are in
 `godot/Core/Economy/CLAUDE.md`; hover's card is in `godot/Core/Golems/CLAUDE.md`.

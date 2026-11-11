@@ -276,10 +276,16 @@ Current scenarios:
   closes. With one of every good, Y opens the pack (hint "press Y") and the ring walks to its
   last row, scrolled into view; B closes. Start opens the menu: RB and LB change tab (LB heard by
   nothing behind it); on Settings the ring starts on Master, never on a key button; LT and RT
-  step it; A ticks and unticks Mute; the right stick pans the Ledger; B closes. **Drive the d-pad a press and a release at a time**
+  step it; A ticks and unticks Mute; the right stick pans the Ledger; B closes. A at an empty cart
+  spot opens the cart panel; the ring walks to the Coal cart and A adds it; B closes. With the
+  first contract posted, A at the City Office's door opens the notice (nothing taken by that A),
+  A takes it, Y closes. Last, with a save in a slot, a reload to the title: five stick motion
+  events in a frame step the menu once (the camera unmoved); Settings by the ring (LT on Master);
+  Load by A, the d-pad switching Campaign and Creative; A loads the slot. **Drive the d-pad a press and a release at a time**
   (the ring steps on the push, and repeats only after 0.3 s held). Captures `pad-card`, `pad-station`,
   `pad-workbench-open`, `-lever`, `-dial`, `-haul`, `-scroll`, `pad-crate`, `pad-crate-picker`,
-  `pad-pack`, `pad-management-settings`.
+  `pad-pack`, `pad-management-settings`, `pad-supply`, `pad-contract`, `pad-title-load`. Clears
+  the scenario saves at the end.
 - `perf` also takes `--perf-golems=N` (a load of N golems in the endgame's proportions) and
   `--perf-load=endless` (160), for measuring the golem cap (`docs/performance-report-endless.md`).
 

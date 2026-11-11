@@ -134,7 +134,17 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 - **A first-launch hitch:** the first windowed `perf` run after a clean rebuild had one 142 ms
   frame in its first phase; the immediate rerun's worst frame was 22.8 ms. Most likely a
   first-run cost (shader or pipeline compilation, a cold .NET JIT). A player's first launch
-  may stutter once. Worth a look in Phase 6 (game feel) or Phase 9; not reproduced warm.
+  may stutter once.
+
+  **Measured, 2026-11-10** (`--frame-watch`; `docs/steam-deck-design.md` D8's "As built"):
+  - **Fixed:** two first-event frames of about 60 ms (the pad phrasing's compiled regexes, and a
+    desktop's virtual keyboard).
+  - **Shrunk:** the JIT's share, by ReadyToRun on export.
+  - **Closed, the same day:** the slow first opens of the Crate screen and of Management. The
+    cost was every open rebuilding every row, and reloading its icons. Rows now update in
+    place, and a good keeps its row. The export's worst frame in `gamepad-ui` is the Pack's
+    first open after the scenario deposits all 24 goods at once, which play can't produce
+    (`docs/steam-deck-design.md` D8).
 - **The depot label picker: closed.** Built in Phase 1 on the crate screen
   (`docs/inventory-screens-design.md` §4.4), taught by step `copper-depot`.
 

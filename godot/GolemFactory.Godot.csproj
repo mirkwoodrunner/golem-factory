@@ -15,4 +15,11 @@
   <ItemGroup>
     <ProjectReference Include="Core/GolemFactory.Core.csproj" />
   </ItemGroup>
+
+  <!-- An export (dotnet publish for a runtime, Linux on the Deck) compiles the game ahead of
+       time, so a first open doesn't wait on the JIT (docs/steam-deck-design.md D8). The editor's
+       and the tests' builds name no runtime, and stay as they were. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <PublishReadyToRun>true</PublishReadyToRun>
+  </PropertyGroup>
 </Project>

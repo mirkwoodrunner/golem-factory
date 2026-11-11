@@ -54,6 +54,7 @@ namespace GolemFactory.Nodes
         /// <summary>For scenarios.</summary>
         public Control Plate => _plate;
         public string TitleText => _title?.Text ?? "";
+        public string CounterText => _counter?.Text ?? "";
         public string BodyText => _body?.Text ?? "";
         public string ProgressText => _progress?.Text ?? "";
 
@@ -227,7 +228,8 @@ namespace GolemFactory.Nodes
 
         public override void _UnhandledInput(InputEvent e)
         {
-            if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F1 } && Guide != null)
+            // F1, or the pad's L3 (docs/steam-deck-design.md D7: the guide's text names whichever).
+            if ((e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F1 } || e.IsActionPressed(PadBindings.GuideToggle)) && Guide != null)
             {
                 if (Guide.IsShowing)
                 {
@@ -241,7 +243,7 @@ namespace GolemFactory.Nodes
             }
 
             // The playtest kit: playtest mode only, never in a normal game.
-            if (e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F9 } && Guide?.Playtest != null)
+            if ((e is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F9 } || e.IsActionPressed(PadBindings.KitSkip)) && Guide?.Playtest != null)
             {
                 Guide.StartKit();
                 GetViewport().SetInputAsHandled();
@@ -299,8 +301,8 @@ namespace GolemFactory.Nodes
                     ? $"PLAYTEST KIT  ·  fast-forwarding chapter {chapter}..."
                     : ahead != null
                         ? $"CHAPTER {chapter}  ·  {index + 1}/{guide.StepCount}  ·  coming up"
-                        : $"CHAPTER {chapter}  ·  {index + 1}/{guide.StepCount}  ·  F1 hides"
-                          + (guide.Playtest != null ? "  ·  F9 skips" : "");
+                        : $"CHAPTER {chapter}  ·  {index + 1}/{guide.StepCount}  ·  {Settings.KeyNames.Guide} hides"
+                          + (guide.Playtest != null ? $"  ·  {Settings.KeyNames.Kit} skips" : "");
                 _title.Text = step.Title;
                 _body.Text = step.Body + MenuKeyHint(step) + ReportHint(step, guide);
                 bool last = index == guide.StepCount - 1;
@@ -499,7 +501,7 @@ namespace GolemFactory.Nodes
         /// </summary>
         private string MenuKeyHint(TutorialStep step)
         {
-            if (step?.MenuKey == null || _world?.Sandbox == null)
+            // The pad steps the build menu with L1, which the step's own text names: no digit to show.
             {
                 return "";
             }

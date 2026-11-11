@@ -157,6 +157,7 @@ namespace GolemFactory.Nodes
             {
                 Settings.Refresh(ManagementTab.Settings);
             }
+            PadProcess(delta);
         }
 
         // --- Continue's load, on the scene it started -----------------------------------------
@@ -290,6 +291,12 @@ namespace GolemFactory.Nodes
             {
                 GetViewport().SetInputAsHandled();
             }
+            else if (_shown && PadFocus.IsPadEvent(e))
+            {
+                // The pad's, read by polling (PadProcess): its stick would otherwise step the menu
+                // once per motion event, and the d-pad would also zoom the showcase's camera.
+                GetViewport().SetInputAsHandled();
+            }
         }
 
         public override void _UnhandledInput(InputEvent e)
@@ -398,7 +405,7 @@ namespace GolemFactory.Nodes
             Place(_notice, MenuLeft, MenuTop + TitleMenu.Order.Count * (EntryHeight + EntryGap) + 8f, MenuWidth + 80f, 48f);
             _main.AddChild(_notice);
 
-            Label hint = Ugui.Text("Hint", "Up and Down to choose  ·  Enter to pick", 13, ManagementScreen.DimInk);
+            Label hint = _mainHint = Ugui.Text("Hint", MainHint, 13, ManagementScreen.DimInk);
             hint.AnchorTop = 1f;
             hint.AnchorBottom = 1f;
             hint.OffsetLeft = MenuLeft;
@@ -532,7 +539,7 @@ namespace GolemFactory.Nodes
             Place(list, LoadLeft, 78f, LoadWidth, 6f * SaveSlotList.RowHeight + 5f * SaveSlotList.RowGap);
             _loadView.AddChild(list);
 
-            Label hint = Ugui.Text("Hint", "Up and Down to choose  ·  Left and Right for Campaign or Creative  ·  Enter to load  ·  Escape to go back", 13, ManagementScreen.DimInk);
+            Label hint = _loadHint = Ugui.Text("Hint", LoadHint, 13, ManagementScreen.DimInk);
             Place(hint, LoadLeft, 78f + 6f * SaveSlotList.RowHeight + 5f * SaveSlotList.RowGap + 18f, LoadWidth, 22f);
             _loadView.AddChild(hint);
 

@@ -357,7 +357,7 @@ namespace GolemFactory.Tutorial
         // on a free route, since round 1, can pave over a later chapter's tile).
 
         /// <summary>A note under the step, or "": what is in the way of the marked tiles.</summary>
-        public string Notice => IsShowing ? NoticeFor(Current) : "";
+        public string Notice => IsShowing ? Settings.TextTokens.Fill(NoticeFor(Current)) : "";
 
         private string NoticeFor(TutorialStep step)
         {
@@ -1284,7 +1284,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "iron", "Make Iron Plate",
                 $"Press [[rotate]] at the bench to switch it to R2 Scrap Reclamation ({Makes("AssembleScrapReclamation")}), then "
-                + "hold [[interact]]. Holding a building? Escape puts it down first.",
+                + "hold [[interact]]. Holding a building? [[cancel]] puts it down first.",
                 w => Stock(ItemType.IronPlate) >= 10,
                 w => ScrapFirst(1, Bench),
                 w => Count(ItemType.IronPlate, 10)),
@@ -1292,7 +1292,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "boiler", "Build a Boiler",
                 $"Golems run on steam. Click Boiler in the build menu ({Price(PlaceableCost("BoilerPrefab"))}), click the marked "
-                + "tile beside the Scrap cart, then press Escape.",
+                + "tile beside the Scrap cart, then press [[cancel]].",
                 // Its own layout counts too, if steam from it already reaches the golem's tile.
                 w => BoilerBuildings.Any(b => b.Cell == BoilerSpot) || Plan.Golem1Steamable,
                 w => ScrapFirst(LineOf(PlaceableCost("BoilerPrefab"), ItemType.Scrap), BoilerSpot),
@@ -1371,7 +1371,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "claim", "Claim Scrap Reclamation",
-                "A golem can only use cards you own. Press Tab, open the Assembly Line and click Claim on "
+                "A golem can only use cards you own. Press [[menu]], open the Assembly Line and click Claim on "
                 + $"Assemble Scrap Reclamation ({ClaimCost("AssembleScrapReclamation", ItemType.Scrap)} Scrap): Scrap in, Iron Plate out.",
                 w => HasClaimed("AssembleScrapReclamation"),
                 w => null,
@@ -1433,7 +1433,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "coking-card", "Claim Coking",
-                "Your boiler burns Coke you crank, and it will run dry. Press Tab, open the Assembly Line and claim "
+                "Your boiler burns Coke you crank, and it will run dry. Press [[menu]], open the Assembly Line and claim "
                 + "Assemble Coking. It costs Coal: short? Take some at the Coal cart.",
                 w => HasClaimed("AssembleCoking"),
                 // Chapter 1 cranks every Coal into Coke, so the stockpile is usually out.
@@ -1593,7 +1593,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "r4-card", "Claim Iron Smelting",
                 "Iron Smelting makes twice the Iron Plate from the same Scrap, but it needs Coke too: two "
-                + "inputs. Press Tab, open the Assembly Line and claim Assemble Iron Smelting.",
+                + "inputs. Press [[menu]], open the Assembly Line and claim Assemble Iron Smelting.",
                 w => HasClaimed("AssembleIronSmelting"),
                 w => null,
                 card: "AssembleIronSmelting"),
@@ -1815,7 +1815,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "expand", "More room",
-                "Eight golems fill a workshop fast. Press Tab, open the Assembly Line, and click Extend "
+                "Eight golems fill a workshop fast. Press [[menu]], open the Assembly Line, and click Extend "
                 + $"({Price(FirstFloorCost)}): two more rows of workshop, floored and walled.",
                 w => _world.Bounds.NorthExtent > _world.Bounds.MinNorthExtent,
                 w => ScrapFirst(LineOf(FirstFloorCost, ItemType.Scrap), null),
@@ -1840,14 +1840,14 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "ledger", "Read the Ledger",
-                "The Ledger maps everything you can build and how far you have come. Press Tab, open the "
+                "The Ledger maps everything you can build and how far you have come. Press [[menu]], open the "
                 + "Ledger, and click any recipe node to see what it costs and makes.",
                 w => _world.LedgerReadout.HasSelection,
                 w => null),
 
             new TutorialStep(
                 "save", "Save",
-                "Press Tab, open Save / Load and click Save beside any slot. Everything you built goes into the "
+                "Press [[menu]], open Save / Load and click Save beside any slot. Everything you built goes into the "
                 + "save: golems and their programs, buildings, your pack and every crate, your cards and this guide's place.",
                 w => _world.SavesMade > 0,
                 w => null),
@@ -1920,7 +1920,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "zeppelin-card", "Claim the Zeppelin",
                 "Your factory has made everything it costs: collect what the card asks for into your pack. Press "
-                + "Tab, open the Assembly Line and claim the Zeppelin Freight Loader.",
+                + "[[menu]], open the Assembly Line and claim the Zeppelin Freight Loader.",
                 w => HasClaimed("ZeppelinFreightLoader"),
                 w => null,
                 card: "ZeppelinFreightLoader"),
@@ -1930,7 +1930,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "freight-card", "Claim Freight Launch",
                 "A Zeppelin flies what it holds with Freight Launch, and a golem can only use cards you own. "
-                + "Press Tab, open the Assembly Line and claim it: it's free.",
+                + "Press [[menu]], open the Assembly Line and claim it: it's free.",
                 w => HasClaimed("FreightLaunch"),
                 w => null,
                 card: "FreightLaunch"),
@@ -2039,8 +2039,8 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "done", "The Foundation is laid",
                 "The guide ends here; the tower doesn't. Three stages remain: The Movement, Aether Illumination "
-                + "and The Chronometer, each wanting its own goods at a steady rate. The Ledger (Tab) maps every "
-                + "recipe they need, and the tower's panel shows what it wants now. F1 brings this guide back.",
+                + "and The Chronometer, each wanting its own goods at a steady rate. The Ledger ([[menu]]) maps every "
+                + "recipe they need, and the tower's panel shows what it wants now. [[guide]] brings this guide back.",
                 w => false,
                 w => null),
         };
