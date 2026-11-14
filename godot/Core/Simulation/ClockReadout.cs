@@ -2,7 +2,7 @@ namespace GolemFactory.Simulation
 {
     // Presentation-side formatting for the simulation clock. Engine-free static so it is
     // unit-testable without a scene, the same math/state split GridCoordinateConverter,
-    // YSortUtility, WorkbenchDiagnostics, StallDiagnostics and BeltSignalUtility already use.
+    // WorkbenchDiagnostics and StallDiagnostics already use.
     //
     // Nothing here reads or mutates the clock -- SimulationClock stays the single source of
     // truth for tick advancement; this only decides how that state is worded.

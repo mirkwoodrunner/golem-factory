@@ -9,24 +9,12 @@ using GolemFactory.World;
 
 namespace GolemFactory.Nodes
 {
-    /// <summary>The two programs the slice needs. Hardcoded: there is no Workbench yet (G7).</summary>
-    public enum SliceProgram
-    {
-        /// <summary>ExtractFromNode from the tile behind, Push onto the tile in front.</summary>
-        Extractor,
-
-        /// <summary>Haul Scrap from the tile behind, Push onto the tile in front.</summary>
-        Unloader,
-    }
-
     /// <summary>
     /// A golem on the floor: draws a Core <see cref="GolemEntity"/>.
     ///
     /// <para>
-    /// Two ways in. A golem a construction station builds already exists, fully wired, when
-    /// the station raises <c>GolemSpawned</c>; <see cref="Host"/> wraps it, and this node only
-    /// draws. A golem authored into the scene (the slice's unloader) has no station, so this
-    /// node wires it itself, call for call the way the station's SpawnGolem does.
+    /// A golem a construction station builds already exists, fully wired, when the station
+    /// raises <c>GolemSpawned</c>; <see cref="Host"/> wraps it, and this node only draws.
     /// </para>
     ///
     /// <para>
@@ -37,10 +25,7 @@ namespace GolemFactory.Nodes
     /// </summary>
     public partial class GolemNode : Node2D
     {
-        [Export] public string GolemId { get; set; } = "Golem-001";
-        [Export] public Vector2I Cell { get; set; }
-        [Export] public Facing Facing { get; set; } = Facing.East;
-        [Export] public SliceProgram ProgramKind { get; set; } = SliceProgram.Extractor;
+        public string GolemId { get; private set; }
 
         public GolemEntity Entity { get; private set; }
 
@@ -48,7 +33,6 @@ namespace GolemFactory.Nodes
         public int CompletedCycles => Entity?.CompletedCycles ?? 0;
 
         private WorldNode _world;
-        private bool _ownsWiring;
 
         /// <summary>A node for a golem something else already built and wired.</summary>
         public static GolemNode Host(GolemEntity entity) =>
@@ -59,21 +43,6 @@ namespace GolemFactory.Nodes
         public override void _Ready()
         {
             _world = WorldNode.Find(this);
-
-            if (Entity == null)
-            {
-                // Authored into the scene: no station built it, so wire it here, in SpawnGolem's
-                // order.
-                _ownsWiring = true;
-                Entity = new GolemEntity();
-                Entity.Configure(GolemId, _world.Conveyor);
-                Entity.ConfigureEconomy(_world.Nodes, _world.Buffers);
-                Entity.ConfigureSpatial(_world.Endpoints, GridConversions.ToCore(Cell), Facing);
-                Entity.MarkRuntimeSpawned();
-                ApplySliceProgram(Entity.Program, ProgramKind, _world.Definitions);
-                Entity.Attach();
-                _world.Clock.Register(Entity);
-            }
             BuildVisuals();
             SyncToEntity();
         }
@@ -88,11 +57,6 @@ namespace GolemFactory.Nodes
             _targetTile?.QueueFree();
             _dropTile?.QueueFree();
             _badge?.QueueFree(); // on the shared layer, not under this node
-            if (_ownsWiring)
-            {
-                _world.Clock.Unregister(Entity);
-                Entity.Remove();
-            }
         }
 
         public override void _Process(double delta)
@@ -106,7 +70,7 @@ namespace GolemFactory.Nodes
             _time += (float)delta;
             // Off screen, a golem skips its picture, badge and motion (region-design §4): it catches
             // up the frame it comes back into view. Never while carried, hovered or focused.
-            bool carried = _world.Setup != null && _world.Sandbox.Interactor.CarriedGolem == Entity;
+            bool carried = _world.Sandbox.Interactor.CarriedGolem == Entity;
             if (!carried && !Hovered && !ShowTiles && !ViewRect.Shows(GridConversions.CellToWorld(Entity.Cell)))
             {
                 if (_badge != null && _badge.Visible)
@@ -468,8 +432,8 @@ namespace GolemFactory.Nodes
         private void SyncToEntity()
         {
             // A golem in the player's hands rides with them ([G]); Core says where.
-            Player.PlayerInteractor hands = _world.Setup != null ? _world.Sandbox.Interactor : null;
-            bool carried = hands != null && hands.CarriedGolem == Entity;
+            Player.PlayerInteractor hands = _world.Sandbox.Interactor;
+            bool carried = hands.CarriedGolem == Entity;
             if (carried)
             {
                 Compat.Vector3 at = hands.PositionOf(Entity);
@@ -847,21 +811,11 @@ namespace GolemFactory.Nodes
             }
         }
 
-        /// <summary>
-        /// Fits the slice's hardcoded program: the authored cards, not copies -- definitions are
-        /// shared, as Unity's assets were, and a golem's per-slot quantity lives on its own
-        /// GolemProgram (TryAddAppendage seeds it). Assigns the chassis only if the golem has
-        /// none, so a station-built golem keeps the one it was paid for.
-        /// </summary>
-        public static void ApplySliceProgram(GolemProgram program, SliceProgram kind, DefinitionSet definitions)
-        {
-            if (program.chassis == null)
-            {
-                program.TryAssignChassis(definitions.Chassis["ClockworkScavenger"]);
-            }
-            program.logicCore = definitions.LogicCores["AlwaysOnCore"];
-            program.TryAddAppendage(definitions.Appendages[kind == SliceProgram.Extractor ? "ExtractScrap" : "HaulScrap"]);
-            program.TryAddAppendage(definitions.Appendages["PushOutput"]);
-        }
+    }
+
+    /// <summary>The scene-tree group every <see cref="GolemNode"/> joins.</summary>
+    public static class GolemNodeGroup
+    {
+        public const string Name = "golems";
     }
 }

@@ -57,7 +57,7 @@ namespace GolemFactory.UI
     /// </para>
     ///
     /// <para>
-    /// Pure and engine-light, like <c>YSortUtility</c> and <c>GridCoordinateConverter</c>: the
+    /// Pure and engine-light, like <c>GridCoordinateConverter</c>: the
     /// views hand it their anchors and apply what comes back.
     /// </para>
     /// </summary>

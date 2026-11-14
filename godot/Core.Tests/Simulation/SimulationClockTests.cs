@@ -138,15 +138,16 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(0f, clock.TickFraction, 0.0001f);
         }
 
-        [Test]
-        public void TickFraction_ReportsProgressThroughTheCurrentTick()
+        [TestCase(10f, 0.04f, 0.4f, TestName = "TickFraction_ReportsProgressThroughTheCurrentTick")]
+        [TestCase(0f, 1f, 0f, TestName = "TickFraction_IsZeroWhenTicksPerSecondIsZero")]
+        public void TickFraction_IsHowFarThroughTheCurrentTick(float ticksPerSecond, float seconds, float expected)
         {
-            var clock = new SimulationClock { TicksPerSecond = 10f };
+            var clock = new SimulationClock { TicksPerSecond = ticksPerSecond };
             clock.Play();
 
-            clock.Advance(0.04f);
+            clock.Advance(seconds);
 
-            Assert.AreEqual(0.4f, clock.TickFraction, 0.0001f);
+            Assert.AreEqual(expected, clock.TickFraction, 0.0001f);
         }
 
         [Test]
@@ -160,16 +161,6 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(1L, clock.CurrentTick);
             Assert.AreEqual(0.3f, clock.TickFraction, 0.0001f);
             Assert.Less(clock.TickFraction, 1f);
-        }
-
-        [Test]
-        public void TickFraction_IsZeroWhenTicksPerSecondIsZero()
-        {
-            var clock = new SimulationClock { TicksPerSecond = 0f };
-            clock.Play();
-            clock.Advance(1f);
-
-            Assert.AreEqual(0f, clock.TickFraction, 0.0001f);
         }
 
         private sealed class OrderRecordingTickable : ITickable

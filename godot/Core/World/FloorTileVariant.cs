@@ -1,8 +1,8 @@
 namespace GolemFactory.World
 {
     // Which of the workshop floor's tile sprites a given cell gets. Pure integer math with no
-    // UnityEngine types at all -- same math/MonoBehaviour split as GridCoordinateConverter and
-    // YSortUtility, so it is EditMode-testable without a scene and, more importantly, so the
+    // UnityEngine types at all -- same math/MonoBehaviour split as GridCoordinateConverter,
+    // so it is EditMode-testable without a scene and, more importantly, so the
     // pattern is *deterministic*: SandboxFloorGenerator can repaint the floor any number of
     // times and always produce the identical layout, instead of a random scatter that changes
     // on every regeneration and shows up as scene-diff churn.

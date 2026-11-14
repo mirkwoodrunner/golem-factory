@@ -93,30 +93,18 @@ namespace GolemFactory.Tests.Data
 
         // --- Strictness: a bad file fails loudly, naming where -------------------------------
 
-        [Test]
-        public void UnknownKeyIsRefused()
+        // The last: AppendageActionType is append-only and serialized by index, so an index past
+        // the end is a card from a newer build, or a typo, and must not load as garbage.
+        [TestCase("recipes.json", "{\"R1\": {\"durationTicks\": 12, \"durationTiks\": 3}}",
+            "recipes.json: R1.durationTiks", TestName = "UnknownKeyIsRefused")]
+        [TestCase("appendages.json", "{\"Assemble\": {\"actionType\": 5, \"recipe\": \"NoSuchRecipe\"}}",
+            "no RecipeDefinition named 'NoSuchRecipe'", TestName = "DanglingReferenceIsRefused")]
+        [TestCase("appendages.json", "{\"Bad\": {\"actionType\": 999}}",
+            "not a defined AppendageActionType", TestName = "UndefinedEnumValueIsRefused")]
+        public void ABadDefinitionIsRefused_NamingWhatIsWrong(string file, string json, string expected)
         {
-            var e = Assert.Throws<DefinitionLoadException>(() => LoadWith("recipes.json",
-                "{\"R1\": {\"durationTicks\": 12, \"durationTiks\": 3}}"));
-            StringAssert.Contains("recipes.json: R1.durationTiks", e.Message);
-        }
-
-        [Test]
-        public void DanglingReferenceIsRefused()
-        {
-            var e = Assert.Throws<DefinitionLoadException>(() => LoadWith("appendages.json",
-                "{\"Assemble\": {\"actionType\": 5, \"recipe\": \"NoSuchRecipe\"}}"));
-            StringAssert.Contains("no RecipeDefinition named 'NoSuchRecipe'", e.Message);
-        }
-
-        [Test]
-        public void UndefinedEnumValueIsRefused()
-        {
-            // AppendageActionType is append-only and serialized by index: an index past the end
-            // is a card from a newer build, or a typo, and must not load as garbage.
-            var e = Assert.Throws<DefinitionLoadException>(() => LoadWith("appendages.json",
-                "{\"Bad\": {\"actionType\": 999}}"));
-            StringAssert.Contains("not a defined AppendageActionType", e.Message);
+            var e = Assert.Throws<DefinitionLoadException>(() => LoadWith(file, json));
+            StringAssert.Contains(expected, e.Message);
         }
 
         [Test]

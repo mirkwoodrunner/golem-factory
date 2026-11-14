@@ -9,7 +9,7 @@ namespace GolemFactory.UI
     /// popup.
     /// <para>
     /// Extracted rather than inlined per call site for the usual reason in this project (see
-    /// PlayerMovement.ComputeDisplacement, YSortUtility, BeltSignalUtility): timing curves are
+    /// PlayerMovement.ComputeDisplacement): timing curves are
     /// exactly the kind of thing that silently drifts out of sync between four hand-written
     /// copies, and a Mathf.Sin in an Update() is untestable without a scene.
     /// </para>

@@ -31,11 +31,12 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(raw, offset, 1e-4f);
         }
 
-        [Test]
-        public void ComputeShakeOffset_AtZeroTimeRemaining_IsZero()
+        [TestCase(1f, TestName = "ComputeShakeOffset_AtZeroTimeRemaining_IsZero")]
+        [TestCase(0f, TestName = "ComputeShakeOffset_ZeroDuration_IsZero")]
+        public void ComputeShakeOffset_WithNoTimeLeft_IsZero(float shakeDuration)
         {
             float offset = GolemAnimationUtility.ComputeShakeOffset(
-                time: 0.25f, shakeTimeRemaining: 0f, shakeDuration: 1f, amplitude: 1f, frequency: 40f);
+                time: 0.25f, shakeTimeRemaining: 0f, shakeDuration: shakeDuration, amplitude: 1f, frequency: 40f);
 
             Assert.AreEqual(0f, offset);
         }
@@ -49,15 +50,6 @@ namespace GolemFactory.Tests.EditMode
                 time: 0.25f, shakeTimeRemaining: 0.5f, shakeDuration: 1f, amplitude: 1f, frequency: 40f);
 
             Assert.AreEqual(full * 0.5f, half, 1e-4f);
-        }
-
-        [Test]
-        public void ComputeShakeOffset_ZeroDuration_IsZero()
-        {
-            float offset = GolemAnimationUtility.ComputeShakeOffset(
-                time: 0.25f, shakeTimeRemaining: 0f, shakeDuration: 0f, amplitude: 1f, frequency: 40f);
-
-            Assert.AreEqual(0f, offset);
         }
     }
 }

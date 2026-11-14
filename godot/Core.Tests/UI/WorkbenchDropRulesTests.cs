@@ -10,45 +10,32 @@ namespace GolemFactory.Tests.EditMode
     // disagree for an occupied out-of-capacity slot.
     public class WorkbenchDropRulesTests
     {
-        [Test]
-        public void SlotWithinChassis_IndexInsideCapacity_IsTrue()
+        [TestCase(0, 3, true)]
+        [TestCase(2, 3, true)]
+        [TestCase(3, 3, false)] // at capacity
+        [TestCase(4, 3, false)]
+        [TestCase(-1, 3, false)]
+        [TestCase(0, 0, false)] // no chassis
+        public void SlotWithinChassis_IsTrueOnlyForAnIndexInsideTheCapacity(int index, int slots, bool expected)
         {
-            Assert.IsTrue(WorkbenchDropRules.SlotWithinChassis(0, 3));
-            Assert.IsTrue(WorkbenchDropRules.SlotWithinChassis(2, 3));
+            Assert.AreEqual(expected, WorkbenchDropRules.SlotWithinChassis(index, slots));
         }
 
-        [Test]
-        public void SlotWithinChassis_IndexAtOrBeyondCapacity_IsFalse()
+        [TestCase(DropZoneKind.LogicCore, -1, true, 0, true,
+            TestName = "AcceptsCard_LogicCoreCardOntoLogicCoreSocket_IsAccepted")]
+        // Precisely the case the socket highlighting has to make visible: the trigger socket
+        // rejects an action card.
+        [TestCase(DropZoneKind.LogicCore, -1, false, 5, false,
+            TestName = "AcceptsCard_AppendageCardOntoLogicCoreSocket_IsRejected")]
+        [TestCase(DropZoneKind.Appendage, 0, true, 5, false,
+            TestName = "AcceptsCard_LogicCoreCardOntoAppendageSocket_IsRejected")]
+        [TestCase(DropZoneKind.Appendage, 0, false, 0, false,
+            TestName = "AcceptsCard_NoChassisFitted_RejectsEveryAppendageSocket")]
+        public void AcceptsCard_MatchesTheCardToTheSocket(
+            DropZoneKind zone, int index, bool cardIsLogicCore, int slots, bool expected)
         {
-            Assert.IsFalse(WorkbenchDropRules.SlotWithinChassis(3, 3));
-            Assert.IsFalse(WorkbenchDropRules.SlotWithinChassis(4, 3));
-        }
-
-        [Test]
-        public void SlotWithinChassis_NegativeIndexOrNoChassis_IsFalse()
-        {
-            Assert.IsFalse(WorkbenchDropRules.SlotWithinChassis(-1, 3));
-            Assert.IsFalse(WorkbenchDropRules.SlotWithinChassis(0, 0));
-        }
-
-        [Test]
-        public void AcceptsCard_LogicCoreCardOntoLogicCoreSocket_IsAccepted()
-        {
-            Assert.IsTrue(WorkbenchDropRules.AcceptsCard(DropZoneKind.LogicCore, -1, cardIsLogicCore: true, chassisMaxAppendageSlots: 0));
-        }
-
-        [Test]
-        public void AcceptsCard_AppendageCardOntoLogicCoreSocket_IsRejected()
-        {
-            // This is precisely the case the socket highlighting has to make visible: the
-            // trigger socket rejects an action card.
-            Assert.IsFalse(WorkbenchDropRules.AcceptsCard(DropZoneKind.LogicCore, -1, cardIsLogicCore: false, chassisMaxAppendageSlots: 5));
-        }
-
-        [Test]
-        public void AcceptsCard_LogicCoreCardOntoAppendageSocket_IsRejected()
-        {
-            Assert.IsFalse(WorkbenchDropRules.AcceptsCard(DropZoneKind.Appendage, 0, cardIsLogicCore: true, chassisMaxAppendageSlots: 5));
+            Assert.AreEqual(expected, WorkbenchDropRules.AcceptsCard(
+                zone, index, cardIsLogicCore: cardIsLogicCore, chassisMaxAppendageSlots: slots));
         }
 
         [Test]
@@ -58,16 +45,11 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsFalse(WorkbenchDropRules.AcceptsCard(DropZoneKind.Appendage, 2, cardIsLogicCore: false, chassisMaxAppendageSlots: 2));
         }
 
-        [Test]
-        public void AcceptsCard_NoChassisFitted_RejectsEveryAppendageSocket()
+        [TestCase(0, 2, true, TestName = "SlotVisible_WithinChassisCapacity_IsVisibleEvenWhenEmpty")]
+        [TestCase(3, 2, false, TestName = "SlotVisible_EmptySlotBeyondCapacity_IsHidden")]
+        public void SlotVisible_AnEmptySlot_ShowsOnlyWithinCapacity(int index, int slots, bool expected)
         {
-            Assert.IsFalse(WorkbenchDropRules.AcceptsCard(DropZoneKind.Appendage, 0, cardIsLogicCore: false, chassisMaxAppendageSlots: 0));
-        }
-
-        [Test]
-        public void SlotVisible_WithinChassisCapacity_IsVisibleEvenWhenEmpty()
-        {
-            Assert.IsTrue(WorkbenchDropRules.SlotVisible(0, 2, slotOccupied: false));
+            Assert.AreEqual(expected, WorkbenchDropRules.SlotVisible(index, slots, slotOccupied: false));
         }
 
         [Test]
@@ -79,12 +61,6 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsTrue(WorkbenchDropRules.SlotVisible(0, 0, slotOccupied: true));
             // ...but it still must not accept anything new.
             Assert.IsFalse(WorkbenchDropRules.AcceptsCard(DropZoneKind.Appendage, 0, cardIsLogicCore: false, chassisMaxAppendageSlots: 0));
-        }
-
-        [Test]
-        public void SlotVisible_EmptySlotBeyondCapacity_IsHidden()
-        {
-            Assert.IsFalse(WorkbenchDropRules.SlotVisible(3, 2, slotOccupied: false));
         }
     }
 }

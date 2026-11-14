@@ -729,7 +729,7 @@ Fill these in while doing the work, so a later session doesn't repeat a finding.
     --fixed-fps 60 -- --scenario <name>` passes `world`, `build`, `interact`, `golems`,
     `golem-motion`, `workbench`, `save`, `tutorial`, `inventory`, `audio`, `settings`, `title`,
     `slots`, `contracts`, `endless`, `docks`, `golem-sales`, `supply` and `creative`. Two can't run
-    there: `art` reads the repo's `Tools/Art` manifest, and `loop` needs a scene path on the
+    there: `art` reads the repo's `Tools/Art` manifest, and `loop` (since retired) needed a scene path on the
     command line, which release templates refuse. `golem-motion` first failed on the export
     because it listed `res://art` for `.png` files, and a pack lists `.png.import`. That was the
     scenario's check, not the game, which asks `ResourceLoader.Exists`. Fixed.

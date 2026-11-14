@@ -85,6 +85,8 @@ namespace GolemFactory.Tests.Tutorial
             {
                 Assert.IsTrue(world.Tutorial.HasKitAction(step.Id), step.Id);
             }
+            Assert.IsFalse(world.Tutorial.TryPerformKitAction("no-such-step"), "an unknown step does nothing");
+            Assert.IsFalse(world.Tutorial.TryPerformKitAction(null));
         }
 
         [Test]

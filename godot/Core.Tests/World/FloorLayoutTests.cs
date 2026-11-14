@@ -122,7 +122,7 @@ namespace GolemFactory.Tests.EditMode
         }
 
         // A back-edge wall must always sort behind anything standing on the floor beside it,
-        // and a front-edge skirt must always sort in front -- YSortUtility keys purely off
+        // and a front-edge skirt must always sort in front -- y-sorting keys purely off
         // world Y, so this is a property of the anchor positions themselves.
         [Test]
         public void GetEdgeAnchor_BackWallsSortBehindTheFloorAndFrontSkirtsSortInFront()

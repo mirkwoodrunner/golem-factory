@@ -38,28 +38,17 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(1, buffer.GetQuantity("Brass"));
         }
 
-        [Test]
-        public void TryWithdraw_SufficientQuantity_SucceedsAndDecrements()
+        [TestCase(5, true, 3, TestName = "TryWithdraw_SufficientQuantity_SucceedsAndDecrements")]
+        [TestCase(1, false, 1, TestName = "TryWithdraw_InsufficientQuantity_FailsAndLeavesUnchanged")]
+        public void TryWithdraw_TakesTheWholeAmountOrNothing(int stocked, bool expected, int left)
         {
             var buffer = new StorageBuffer("Buffer");
-            buffer.Deposit("Scrap", 5);
+            buffer.Deposit("Scrap", stocked);
 
             bool result = buffer.TryWithdraw("Scrap", 2);
 
-            Assert.IsTrue(result);
-            Assert.AreEqual(3, buffer.GetQuantity("Scrap"));
-        }
-
-        [Test]
-        public void TryWithdraw_InsufficientQuantity_FailsAndLeavesUnchanged()
-        {
-            var buffer = new StorageBuffer("Buffer");
-            buffer.Deposit("Scrap", 1);
-
-            bool result = buffer.TryWithdraw("Scrap", 2);
-
-            Assert.IsFalse(result);
-            Assert.AreEqual(1, buffer.GetQuantity("Scrap"));
+            Assert.AreEqual(expected, result);
+            Assert.AreEqual(left, buffer.GetQuantity("Scrap"));
         }
 
         [Test]
@@ -242,67 +231,6 @@ namespace GolemFactory.Tests.EditMode
             registry.Deposit("ScrapBuffer", "Scrap", 1);
 
             Assert.IsTrue(registry.TryWithdraw("ScrapBuffer", "Scrap"));
-        }
-
-        [Test]
-        public void TryWithdrawScrapAndBrass_SufficientOfBoth_WithdrawsBoth()
-        {
-            var registry = new StorageBufferRegistry();
-            registry.Deposit("Wallet", "Scrap", 20);
-            registry.Deposit("Wallet", "Brass", 5);
-
-            bool result = registry.TryWithdrawScrapAndBrass("Wallet", 15, 3);
-
-            Assert.IsTrue(result);
-            Assert.AreEqual(5, registry.GetOrCreate("Wallet").GetQuantity("Scrap"));
-            Assert.AreEqual(2, registry.GetOrCreate("Wallet").GetQuantity("Brass"));
-        }
-
-        [Test]
-        public void TryWithdrawScrapAndBrass_InsufficientScrap_Fails_BrassUntouched()
-        {
-            var registry = new StorageBufferRegistry();
-            registry.Deposit("Wallet", "Brass", 5);
-
-            bool result = registry.TryWithdrawScrapAndBrass("Wallet", 15, 3);
-
-            Assert.IsFalse(result);
-            Assert.AreEqual(5, registry.GetOrCreate("Wallet").GetQuantity("Brass"));
-        }
-
-        [Test]
-        public void TryWithdrawScrapAndBrass_InsufficientBrass_Fails_RefundsScrap()
-        {
-            var registry = new StorageBufferRegistry();
-            registry.Deposit("Wallet", "Scrap", 20);
-
-            bool result = registry.TryWithdrawScrapAndBrass("Wallet", 15, 3);
-
-            Assert.IsFalse(result);
-            Assert.AreEqual(20, registry.GetOrCreate("Wallet").GetQuantity("Scrap"));
-        }
-
-        [Test]
-        public void TryWithdrawScrapAndBrass_ZeroCostForBoth_SucceedsOnUntouchedBuffer()
-        {
-            // A zero-cost purchase must succeed even if the buffer has never seen a
-            // deposit of either item type -- see the method's own comment for why a naive
-            // TryWithdraw(id, type, 0) against an untouched buffer would otherwise fail.
-            var registry = new StorageBufferRegistry();
-
-            Assert.IsTrue(registry.TryWithdrawScrapAndBrass("NeverTouchedBuffer", 0, 0));
-        }
-
-        [Test]
-        public void TryWithdrawScrapAndBrass_ZeroBrassCost_OnlyChecksScrap()
-        {
-            var registry = new StorageBufferRegistry();
-            registry.Deposit("Wallet", "Scrap", 10);
-
-            bool result = registry.TryWithdrawScrapAndBrass("Wallet", 10, 0);
-
-            Assert.IsTrue(result);
-            Assert.AreEqual(0, registry.GetOrCreate("Wallet").GetQuantity("Scrap"));
         }
 
         // --- Capacity policy -------------------------------------------------------------

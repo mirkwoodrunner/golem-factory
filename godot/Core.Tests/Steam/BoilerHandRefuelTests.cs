@@ -19,23 +19,13 @@ namespace GolemFactory.Tests.EditMode
     {
         // --- The policy, which is where the size of a hand-load is decided --------------------
 
-        [Test]
-        public void AmountToLoad_EmptyStockpile_IsZeroRatherThanATransferOfNothing()
+        [TestCase(0, 0, TestName = "AmountToLoad_EmptyStockpile_IsZeroRatherThanATransferOfNothing")]
+        [TestCase(7, 7, TestName = "AmountToLoad_LessThanABatch_MovesEverythingThePlayerHas")]
+        [TestCase(500, BoilerRefuelPolicy.HandLoadBatch,
+            TestName = "AmountToLoad_MoreThanABatch_IsCappedSoTwoColdBoilersCanBeSplit")]
+        public void AmountToLoad_IsWhatThePlayerHolds_UpToOneBatch(int held, int expected)
         {
-            Assert.AreEqual(0, BoilerRefuelPolicy.AmountToLoad(0));
-        }
-
-        [Test]
-        public void AmountToLoad_LessThanABatch_MovesEverythingThePlayerHas()
-        {
-            Assert.AreEqual(7, BoilerRefuelPolicy.AmountToLoad(7));
-        }
-
-        [Test]
-        public void AmountToLoad_MoreThanABatch_IsCappedSoTwoColdBoilersCanBeSplit()
-        {
-            Assert.AreEqual(
-                BoilerRefuelPolicy.HandLoadBatch, BoilerRefuelPolicy.AmountToLoad(500));
+            Assert.AreEqual(expected, BoilerRefuelPolicy.AmountToLoad(held));
         }
 
         // A hand-load must never be a substitute for a coking line. §3.1 wants Coke to be the

@@ -4,7 +4,7 @@ namespace GolemFactory.World
 {
     // Pure, engine-light cell math for facing-based spatial routing -- the same
     // "extract the math into a static that a test can call without a scene" split
-    // GridCoordinateConverter / YSortUtility / BeltSignalUtility / StallDiagnostics use.
+    // GridCoordinateConverter / StallDiagnostics use.
     //
     // The grid here is the *simulation* grid, which is a plain square grid (World/GridMap is
     // Vector2Int-indexed and deliberately decoupled from rendering). Projection is presentation

@@ -29,9 +29,6 @@ namespace GolemFactory.Nodes
         /// <summary>Starting cell, in Core's frame (north = +y).</summary>
         [Export] public Vector2I StartCell { get; set; }
 
-        /// <summary>How far an interactable may be and still answer [E], in cells.</summary>
-        [Export] public float InteractRange { get; set; } = 1.6f;
-
         /// <summary>Carry a plain Camera2D. Off where a CameraRigNode follows the player instead.</summary>
         [Export] public bool OwnCamera { get; set; } = true;
 
@@ -72,9 +69,6 @@ namespace GolemFactory.Nodes
         /// <summary>The Artificer's sprite showing (<see cref="PlayerWalker.SpriteIndex"/>), for the scenarios.</summary>
         public int SpriteIndex => _walker.SpriteIndex;
 
-        /// <summary>The interactable [E] would use right now, or null.</summary>
-        public IInteractable Focus { get; private set; }
-
         public override void _Ready()
         {
             RegisterInputActions();
@@ -108,10 +102,8 @@ namespace GolemFactory.Nodes
                 AddChild(new Camera2D());
             }
 
-            // The Sandbox's [E] is Core's PlayerInteractor. LoopSlice has no composed world, so it
-            // keeps the spike's IInteractable nodes.
-            WorldNode world = WorldNode.Find(this);
-            _interactor = world?.Setup != null ? world.Sandbox.Interactor : null;
+            // [E] is Core's PlayerInteractor.
+            _interactor = WorldNode.Find(this).Sandbox.Interactor;
 
             _walker = new PlayerWalker(MoveSpeed) { Position = new CoreVector3(StartCell.X, StartCell.Y, 0f) };
             _walker.SetFloorBounds(UnitConverter, FloorLayout.HalfExtent);
@@ -131,7 +123,7 @@ namespace GolemFactory.Nodes
             // Bounded by the WORLD (workshop + street), with the north wall wherever Floor
             // Expansion has pushed it -- the clamp Unity's PlayerController applied.
             // A teleport Core asked for (the playtest kit) lands before this frame's walk.
-            if (_interactor != null && _interactor.TryTakeTeleport(out CoreVector3 teleport))
+            if (_interactor.TryTakeTeleport(out CoreVector3 teleport))
             {
                 TeleportTo(teleport);
             }
@@ -143,44 +135,34 @@ namespace GolemFactory.Nodes
             Position = ToPixels(_walker.Position);
             _sprite.Texture = _frames[_walker.SpriteIndex];
 
-            if (_interactor != null)
+            // Core's PlayerInteractor, as Unity's Update drove it: where the player stands,
+            // whether [E] is held (the crank), then re-pick and refresh the prompt.
+            _interactor.Position = _walker.Position;
+            // Typing a note counts too: "e" in a sentence must not crank a bench.
+            // The playtest card holding the pad counts as a screen, for the frame after too:
+            // the A that answers it must not also harvest.
+            bool openNow = ModalScreens.AnyOpen(GetTree()) || InputDevices.OverlayHoldsPad;
+            bool screenOpen = openNow || _screenWasOpen || TextEntry.IsTyping(GetViewport());
+            _screenWasOpen = openNow;
+            _interactor.SetInteractHeld(!screenOpen && Input.IsActionPressed(Interact));
+            _interactor.Poll();
+            // Turning a crank: face the bench and show its turn frame (walking wins).
+            if (_interactor.TryGetCrank(out CoreVector3 benchAt, out int turnFrame))
             {
-                // Core's PlayerInteractor, as Unity's Update drove it: where the player stands,
-                // whether [E] is held (the crank), then re-pick and refresh the prompt.
-                _interactor.Position = _walker.Position;
-                // Typing a note counts too: "e" in a sentence must not crank a bench.
-                // The playtest card holding the pad counts as a screen, for the frame after too:
-                // the A that answers it must not also harvest.
-                bool openNow = ModalScreens.AnyOpen(GetTree()) || InputDevices.OverlayHoldsPad;
-                bool screenOpen = openNow || _screenWasOpen || TextEntry.IsTyping(GetViewport());
-                _screenWasOpen = openNow;
-                _interactor.SetInteractHeld(!screenOpen && Input.IsActionPressed(Interact));
-                _interactor.Poll();
-                // Turning a crank: face the bench and show its turn frame (walking wins).
-                if (_interactor.TryGetCrank(out CoreVector3 benchAt, out int turnFrame))
-                {
-                    _walker.ShowCrank(benchAt, turnFrame);
-                    _sprite.Texture = _frames[_walker.SpriteIndex];
-                }
-                bool pressed = !screenOpen && Input.IsActionJustPressed(Interact);
-                if (pressed)
-                {
-                    _interactor.Interact();
-                }
-                _interactor.HoldHarvest((float)delta, !screenOpen && Input.IsActionPressed(Interact), pressed);
-                return;
+                _walker.ShowCrank(benchAt, turnFrame);
+                _sprite.Texture = _frames[_walker.SpriteIndex];
             }
-
-            Focus = FindNearestInteractable();
-            if (Focus != null && Input.IsActionJustPressed(Interact))
+            bool pressed = !screenOpen && Input.IsActionJustPressed(Interact);
+            if (pressed)
             {
-                Focus.Interact();
+                _interactor.Interact();
             }
+            _interactor.HoldHarvest((float)delta, !screenOpen && Input.IsActionPressed(Interact), pressed);
         }
 
         public override void _UnhandledInput(InputEvent e)
         {
-            if (_interactor == null || ModalScreens.AnyOpen(GetTree()))
+            if (ModalScreens.AnyOpen(GetTree()))
             {
                 return;
             }
@@ -201,25 +183,6 @@ namespace GolemFactory.Nodes
             {
                 GetViewport().SetInputAsHandled();
             }
-        }
-
-        private IInteractable FindNearestInteractable()
-        {
-            IInteractable best = null;
-            float bestDistance = InteractRange * GridConversions.CellPixels;
-            foreach (Node node in GetTree().GetNodesInGroup(InteractableGroup.Name))
-            {
-                if (node is IInteractable candidate && node is Node2D placed)
-                {
-                    float distance = placed.GlobalPosition.DistanceTo(GlobalPosition);
-                    if (distance <= bestDistance)
-                    {
-                        best = candidate;
-                        bestDistance = distance;
-                    }
-                }
-            }
-            return best;
         }
 
         private static Vector2 ToPixels(CoreVector3 p) =>
@@ -252,17 +215,5 @@ namespace GolemFactory.Nodes
             }
             PadBindings.AddTo(action);
         }
-    }
-
-    /// <summary>Something the Artificer can use with [E].</summary>
-    public interface IInteractable
-    {
-        string Prompt { get; }
-        void Interact();
-    }
-
-    public static class InteractableGroup
-    {
-        public const string Name = "interactable";
     }
 }

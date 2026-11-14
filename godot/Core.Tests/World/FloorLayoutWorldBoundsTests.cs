@@ -17,7 +17,8 @@ namespace GolemFactory.Tests.EditMode
             var world = new System.Collections.Generic.HashSet<Vector2Int>(
                 FloorLayout.GetWorldCells());
 
-            for (int x = -FloorLayout.HalfExtent - 3; x <= FloorLayout.HalfExtent + 3; x++)
+            // Out past the street's ends, which are wider than the workshop: the whole T.
+            for (int x = -FloorLayout.StreetHalfExtent - 3; x <= FloorLayout.StreetHalfExtent + 3; x++)
             {
                 for (int y = FloorLayout.WorldMinY - 3; y <= FloorLayout.WorldMaxY + 3; y++)
                 {

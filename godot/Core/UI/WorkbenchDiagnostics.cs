@@ -8,7 +8,7 @@ namespace GolemFactory.UI
     // feedback before activation").
     //
     // Deliberately a *pure, engine-free* class -- same idiom as GridCoordinateConverter /
-    // YSortUtility / GolemAnimationUtility -- so the string the player reads is unit-
+    // GolemAnimationUtility -- so the string the player reads is unit-
     // testable without a scene, and WorkbenchController stays a thin applier.
     //
     // Important scoping note: steam is NOT a simulated resource in this project and this

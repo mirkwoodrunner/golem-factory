@@ -1,7 +1,7 @@
 namespace GolemFactory.UI
 {
     // Pure, engine-free rules for "may this card go in this socket, and should this socket
-    // be on screen at all" -- same idiom as GridCoordinateConverter / YSortUtility /
+    // be on screen at all" -- same idiom as GridCoordinateConverter /
     // WorkbenchLeverMotion, so the decisions are unit-testable without a scene.
     //
     // Extracted because three call sites need the *same* answer and used to compute it

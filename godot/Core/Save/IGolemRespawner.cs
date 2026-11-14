@@ -15,8 +15,8 @@ namespace GolemFactory.Save
     /// two registries, the clock, the spatial endpoint registry, the steam network, the extractor
     /// cap) that only a live scene has. Putting that behind one method is what lets
     /// <c>SaveLoadService</c> stay a plain static that an EditMode test can drive with a fake --
-    /// the same split <c>GridCoordinateConverter</c>, <c>PlayerMovement.ComputeDisplacement</c>
-    /// and <c>YSortUtility</c> already use for engine-free math.
+    /// the same split <c>GridCoordinateConverter</c> and <c>PlayerMovement.ComputeDisplacement</c>
+    /// already use for engine-free math.
     /// </para>
     ///
     /// <para>

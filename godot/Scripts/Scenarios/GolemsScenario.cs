@@ -169,12 +169,13 @@ namespace GolemFactory.Nodes.Scenarios
             // The machines' neighbours.
             // A golem reaches only the crates beside it, so G1's and G6's Scrap goes into theirs
             // by hand, as the player would put it there.
-            Feed(Place<PlaceableDepot>("DepotPrefab", -9, 1), ItemType.Scrap, 50);
-            for (int x = -7; x <= -5; x++)
+            _lineStart = Place<PlaceableDepot>("DepotPrefab", -9, 1);
+            Feed(_lineStart, ItemType.Scrap, LineScrap);
+            for (int x = LineBeltFrom; x <= LineBeltTo; x++)
             {
                 PlaceAt("BeltPrefab", x, 1, Facing.East);
             }
-            Place<PlaceableDepot>("DepotPrefab", -3, 1);
+            _lineEnd = Place<PlaceableDepot>("DepotPrefab", -3, 1);
             Feed(Place<PlaceableDepot>("DepotPrefab", 4, 1), ItemType.Scrap, 50);
             Place<PlaceableFreightMast>("FreightMastPrefab", 7, 1);
             _scrapCrate = Place<ICrate>("DepotPrefab", -8, -14);
@@ -224,6 +225,37 @@ namespace GolemFactory.Nodes.Scenarios
 
             _scrapStallBefore = ScrapCartTaken();
             _cokeBefore = CokeMade;
+        }
+
+        // The y=1 line: D1, G1, three belts, G2, D2. The Scrap fed into D1 is all there is on it.
+        private const int LineScrap = 50;
+        private const int LineBeltFrom = -7, LineBeltTo = -5;
+        private PlaceableDepot _lineStart, _lineEnd;
+
+        /// <summary>
+        /// Where the line's Scrap is now: both depots, both golems' hands, and the belts between.
+        /// It must add up to what D1 was fed: nothing made and nothing lost on the way.
+        /// </summary>
+        private string CheckLineConserves()
+        {
+            int Held(string label) => _golems[label].Inventory.GetInput(ItemType.Scrap) + _golems[label].Inventory.GetOutput(ItemType.Scrap);
+            int start = _lineStart?.Buffer?.GetQuantity(ItemType.Scrap) ?? 0;
+            int end = _lineEnd?.Buffer?.GetQuantity(ItemType.Scrap) ?? 0;
+            int onBelts = 0;
+            for (int x = LineBeltFrom; x <= LineBeltTo; x++)
+            {
+                if (!_world.Belts.TryGetBelt(new CoreVector2Int(x, 1), out PlacedBelt belt))
+                {
+                    return $"no belt at ({x}, 1)";
+                }
+                onBelts += belt.Segment.Items.Count;
+            }
+            int total = start + Held("G1") + onBelts + Held("G2") + end;
+            if (total != LineScrap)
+            {
+                return $"the y=1 line holds {total} Scrap of the {LineScrap} fed: D1 {start}, G1 {Held("G1")}, belts {onBelts}, G2 {Held("G2")}, D2 {end}";
+            }
+            return end < 1 ? "no Scrap reached D2 down the belt" : null;
         }
 
         // G3 pushes its Scrap into D4; G4 pushes its Coke into the crate in front of it, D5.
@@ -365,6 +397,19 @@ namespace GolemFactory.Nodes.Scenarios
                 }
             }
 
+            // The station is Core's real one: its first build takes the player's first name, and
+            // is a built golem, not an authored one.
+            GolemEntity first = _golems["G1"];
+            if (first.GolemId != "PlayerGolem-001" || !first.IsRuntimeSpawned)
+            {
+                problems.Add($"the station's first build is '{first.GolemId}' (runtime-spawned: {first.IsRuntimeSpawned})");
+            }
+            string line = CheckLineConserves();
+            if (line != null)
+            {
+                problems.Add(line);
+            }
+
             int stallNow = ScrapCartTaken();
             if (stallNow <= _scrapStallBefore)
             {
@@ -438,7 +483,8 @@ namespace GolemFactory.Nodes.Scenarios
 
             string counts = string.Join(" ", new[] { "G1", "G2", "G3", "G4", "G5", "G6" }.Select(l => $"{l}={Cycles(l)}"));
             return new ScenarioResult(true,
-                $"5 chassis built, 8 action types run on steam: cycles {counts}; Scrap cart gave {stallNow - _scrapStallBefore}; " +
+                $"5 chassis built, 8 action types run on steam: cycles {counts}; the belt line kept its {LineScrap} Scrap, " +
+                $"{_lineEnd.Buffer.GetQuantity(ItemType.Scrap)} of it in D2; Scrap cart gave {stallNow - _scrapStallBefore}; " +
                 $"Coke +{CokeMade - _cokeBefore}; Iron Plate {_world.Buffers.GetQuantity("IronPlateBuffer", ItemType.IronPlate)}; " +
                 $"G7 stalled NoSteam, badge '{g7View.BadgeText.Replace('\n', ' ')}'");
         }

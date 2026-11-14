@@ -15,22 +15,18 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsFalse(HudScreenPolicy.ShouldShowWorldHud(true, true, true));
         }
 
-        [Test]
-        public void HasOverlap_IsFalseForZeroOrOneOpenScreen()
+        [TestCase(false, false, false, false)]
+        [TestCase(true, false, false, false)]
+        [TestCase(false, true, false, false)]
+        [TestCase(false, false, true, false)]
+        [TestCase(true, true, false, true)]
+        [TestCase(true, false, true, true)]
+        [TestCase(false, true, true, true)]
+        [TestCase(true, true, true, true)]
+        public void HasOverlap_IsTrueOnlyWhenTwoOrMoreScreensAreOpen(
+            bool workbench, bool management, bool construction, bool expected)
         {
-            Assert.IsFalse(HudScreenPolicy.HasOverlap(false, false, false));
-            Assert.IsFalse(HudScreenPolicy.HasOverlap(true, false, false));
-            Assert.IsFalse(HudScreenPolicy.HasOverlap(false, true, false));
-            Assert.IsFalse(HudScreenPolicy.HasOverlap(false, false, true));
-        }
-
-        [Test]
-        public void HasOverlap_IsTrueForEveryPairAndTheTriple()
-        {
-            Assert.IsTrue(HudScreenPolicy.HasOverlap(true, true, false));
-            Assert.IsTrue(HudScreenPolicy.HasOverlap(true, false, true));
-            Assert.IsTrue(HudScreenPolicy.HasOverlap(false, true, true));
-            Assert.IsTrue(HudScreenPolicy.HasOverlap(true, true, true));
+            Assert.AreEqual(expected, HudScreenPolicy.HasOverlap(workbench, management, construction));
         }
     }
 }

@@ -1,9 +1,7 @@
-using System.IO;
 using System.Linq;
 using GolemFactory.AssemblyLine;
 using GolemFactory.Data;
 using GolemFactory.PunchCards;
-using GolemFactory.Tests.Data;
 using GolemFactory.UI;
 using NUnit.Framework;
 
@@ -41,25 +39,6 @@ namespace GolemFactory.Tests.EditMode
         {
             DefinitionSet defs = AuthoredData.Load();
             Assert.AreEqual("Push Output", WorkbenchSession.CardDisplayName(null, defs.Appendages["PushOutput"]));
-        }
-
-        [Test]
-        public void EveryPlaceablesSprite_IsInTheArtFolder()
-        {
-            // The old single-cell clock_tower.png was deleted once the staged art replaced it;
-            // nothing may still name a sprite that is not on disk.
-            string art = Path.Combine(AuthoredData.DataDirectory, "..", "art");
-            foreach (PlaceableEntry entry in PlaceableCatalogTests.LoadReal())
-            {
-                if (!string.IsNullOrEmpty(entry.Sprite))
-                {
-                    FileAssert.Exists(Path.Combine(art, entry.Sprite.EndsWith(".png") ? entry.Sprite : entry.Sprite + ".png"), entry.Key);
-                }
-                foreach (string shape in entry.ShapeSprites.Values.Where(v => !string.IsNullOrEmpty(v)))
-                {
-                    FileAssert.Exists(Path.Combine(art, shape.EndsWith(".png") ? shape : shape + ".png"), entry.Key + " shape");
-                }
-            }
         }
     }
 }

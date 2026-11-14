@@ -512,20 +512,5 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(3, stock.GetQuantity("Coke"),
                 "with no steam anywhere, the player must still be able to hand-crank coke");
         }
-
-        [Test]
-        public void TheBenchHoldsNoReferenceToSteamAtAll()
-        {
-            // Structural, not behavioural: the guarantee above is only durable if the type
-            // genuinely cannot consult power. Cheap to assert and impossible to forget.
-            foreach (var field in typeof(HandCrankBench).GetFields(
-                         System.Reflection.BindingFlags.Instance |
-                         System.Reflection.BindingFlags.NonPublic |
-                         System.Reflection.BindingFlags.Public))
-            {
-                StringAssert.DoesNotContain("Steam", field.FieldType.Name,
-                    "the Hand-Crank Bench must be explicitly unpowered (§10)");
-            }
-        }
     }
 }

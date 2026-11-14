@@ -5,28 +5,17 @@ namespace GolemFactory.Tests.EditMode
 {
     public class TickSchedulerTests
     {
-        [Test]
-        public void Tick_BeforeDueTick_DoesNotFireCallback()
+        [TestCase(4, false, TestName = "Tick_BeforeDueTick_DoesNotFireCallback")]
+        [TestCase(5, true, TestName = "Tick_AtDueTick_FiresCallback")]
+        public void Tick_FiresACallbackOnlyOnceItIsDue(int tick, bool expected)
         {
             var scheduler = new TickScheduler();
             bool fired = false;
             scheduler.ScheduleAfter(currentTick: 0, ticksFromNow: 5, () => fired = true);
 
-            scheduler.Tick(4);
+            scheduler.Tick(tick);
 
-            Assert.IsFalse(fired);
-        }
-
-        [Test]
-        public void Tick_AtDueTick_FiresCallback()
-        {
-            var scheduler = new TickScheduler();
-            bool fired = false;
-            scheduler.ScheduleAfter(currentTick: 0, ticksFromNow: 5, () => fired = true);
-
-            scheduler.Tick(5);
-
-            Assert.IsTrue(fired);
+            Assert.AreEqual(expected, fired);
         }
 
         [Test]

@@ -361,7 +361,7 @@ namespace GolemFactory.Tests.EditMode
             }
 
             int lookups = side * side * rounds;
-            TestContext.WriteLine($"{lookups} lookups: spatial hash {gridMs * 1e6 / lookups:F1} ns each, dictionary {dictionaryMs * 1e6 / lookups:F1} ns each");
+            TestContext.WriteLine($"{lookups} lookups: spatial hash {gridMs * 1e6 / lookups:F1} ns each, dictionary {dictionaryMs * 1e6 / lookups:F1} ns each; longest bucket chain {grid.LongestChain()}");
             Assert.AreEqual(dictionaryHits, gridHits);
         }
     }

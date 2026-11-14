@@ -530,12 +530,13 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsNotNull(problem);
         }
 
-        [Test]
-        public void IsWellFormed_RejectsANonPositiveInputQuantity()
+        // The input: consuming nothing would stall forever with no shortfall to name, which reads
+        // to the player as a bug rather than as a recipe.
+        [TestCase(1, 0, TestName = "IsWellFormed_RejectsANonPositiveInputQuantity")]
+        [TestCase(0, 1, TestName = "IsWellFormed_RejectsANonPositiveOutputQuantity")]
+        public void IsWellFormed_RejectsANonPositiveQuantity(int outputQuantity, int inputQuantity)
         {
-            // Consuming nothing would stall forever with no shortfall to name, which reads to
-            // the player as a bug rather than as a recipe.
-            RecipeDefinition recipe = Recipe(IronPlate, 1, 4, In(ItemType.Scrap, 0));
+            RecipeDefinition recipe = Recipe(IronPlate, outputQuantity, 4, In(ItemType.Scrap, inputQuantity));
 
             Assert.IsFalse(recipe.IsWellFormed());
         }
@@ -547,14 +548,6 @@ namespace GolemFactory.Tests.EditMode
             // checks in BeginAssemble would both pass with room for only one of them.
             RecipeDefinition recipe = Recipe(IronPlate, 1, 4, In(ItemType.Scrap, 1));
             recipe.byproductItemType = IronPlate;
-
-            Assert.IsFalse(recipe.IsWellFormed());
-        }
-
-        [Test]
-        public void IsWellFormed_RejectsANonPositiveOutputQuantity()
-        {
-            RecipeDefinition recipe = Recipe(IronPlate, 0, 4, In(ItemType.Scrap, 1));
 
             Assert.IsFalse(recipe.IsWellFormed());
         }

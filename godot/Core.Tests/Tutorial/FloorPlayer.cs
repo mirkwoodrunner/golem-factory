@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using GolemFactory.AssemblyLine;
 using GolemFactory.Belts;
 using GolemFactory.Buildings;
@@ -58,7 +57,6 @@ namespace GolemFactory.Tests.Tutorial
 
         private readonly SandboxWorld _w;
         private readonly float _timeout;
-        private readonly Dictionary<string, Action> _kit;
 
         /// <summary>Seconds spent cranking, by good.</summary>
         public Dictionary<string, float> Cranked { get; } = new Dictionary<string, float>();
@@ -73,9 +71,6 @@ namespace GolemFactory.Tests.Tutorial
             _w = SandboxWorld.Compose(definitions, SandboxSetupTests.LoadReal(), PlaceableCatalogTests.LoadReal(definitions));
             _w.Clock.Play();
             _timeout = stepTimeout;
-            _kit = (Dictionary<string, Action>)typeof(TutorialGuide)
-                .GetProperty("Performs", BindingFlags.NonPublic | BindingFlags.Instance)
-                .GetValue(_w.Tutorial);
         }
 
         public SandboxWorld World => _w;
@@ -229,7 +224,7 @@ namespace GolemFactory.Tests.Tutorial
             Dictionary<string, int> before = goods.ToDictionary(g => g, g => Pack.TotalDeposited(g));
             Dictionary<string, int> inPack = goods.ToDictionary(g => g, g => Pack.GetQuantity(g));
             Dictionary<(Vector2Int, string), int> inCrates = CrateContents();
-            _kit[stepId]();
+            Assert.IsTrue(_w.Tutorial.TryPerformKitAction(stepId), "the kit has no action for " + stepId);
             // A crate the kit filled by hand (a smelter's inputs, the carrier's Coke) is a golem's
             // to work from: what the player put there is never taken back to repay the kit.
             foreach (KeyValuePair<(Vector2Int, string), int> held in CrateContents())
