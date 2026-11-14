@@ -126,5 +126,97 @@ namespace GolemFactory.Tests.EditMode
             golem.Tick(4);
             Assert.AreEqual(GolemState.Running, golem.Program.State);
         }
+
+        // --- The subscription follows the core ------------------------------------------------
+        // Only a golem with a Signal core is on the bus (GolemEntity.RefreshSignalSubscription).
+
+        [Test]
+        public void AGolemWithNoSignalCore_IsNotOnTheBus()
+        {
+            int before = EventBus.ListenerCount;
+
+            GolemEntity golem = Build("Worker");
+            golem.Program.logicCore = new LogicCoreDefinition { triggerType = TriggerType.AlwaysOn };
+
+            Assert.AreEqual(before, EventBus.ListenerCount, "attached, but with nothing to hear");
+        }
+
+        [Test]
+        public void ASignalCoreAssignedAfterAttach_IsHeardAtOnce_AndDroppedWhenReplaced()
+        {
+            int before = EventBus.ListenerCount;
+            GolemEntity golem = Build("Watcher");
+            golem.Program.appendages.Add(NoOpStep());
+
+            golem.Program.logicCore = SignalCore("Producer");
+            Assert.AreEqual(before + 1, EventBus.ListenerCount);
+            EventBus.Publish(new GolemCompletedEvent("Producer")); // no tick in between
+            Assert.IsTrue(golem.Program.PendingSignal);
+
+            golem.Program.logicCore = new LogicCoreDefinition { triggerType = TriggerType.AlwaysOn };
+            Assert.AreEqual(before, EventBus.ListenerCount, "no Signal core, no listener");
+
+            golem.Program.logicCore = SignalCore("Producer");
+            golem.Detach();
+            Assert.AreEqual(before, EventBus.ListenerCount, "detached, it hears nothing");
+        }
+
+        [Test]
+        public void ACoreEditedInPlaceIntoASignal_IsHeardFromItsNextTriggerCheck()
+        {
+            GolemEntity golem = Build("Watcher");
+            var core = new LogicCoreDefinition { triggerType = TriggerType.Interval, intervalTicks = 0 };
+            golem.Program.logicCore = core;
+            golem.Program.appendages.Add(NoOpStep());
+            golem.Program.appendages.Add(NoOpStep());
+
+            core.triggerType = TriggerType.Signal; // edited where it stands: nothing is told
+            core.signalGolemId = "Producer";
+            golem.Tick(1);                         // an idle golem checks its trigger, and subscribes
+            Assert.AreEqual(0, golem.Program.CurrentStepIndex, "no signal yet");
+            EventBus.Publish(new GolemCompletedEvent("Producer"));
+            golem.Tick(2);
+
+            Assert.AreEqual(1, golem.Program.CurrentStepIndex, "fired: the first of its two steps ran");
+        }
+
+        [Test]
+        public void AGolemCountsItsOwnCyclesAndStalls_AsItPublishesThem()
+        {
+            int completed = 0, stalled = 0;
+            System.Action<GolemCompletedEvent> onCompleted = e => completed += e.GolemId == "Counter" ? 1 : 0;
+            System.Action<GolemStalledEvent> onStalled = e => stalled += e.GolemId == "Counter" ? 1 : 0;
+            EventBus.GolemCompleted += onCompleted;
+            EventBus.GolemStalled += onStalled;
+            try
+            {
+                GolemEntity golem = Build("Counter");
+                golem.Program.logicCore = new LogicCoreDefinition { triggerType = TriggerType.AlwaysOn };
+                golem.Program.appendages.Add(NoOpStep());
+                for (int tick = 1; tick <= 5; tick++)
+                {
+                    golem.Tick(tick);
+                }
+                Assert.Greater(completed, 0);
+                Assert.AreEqual(completed, golem.CompletedCycles);
+
+                // A Push with no tile in front: one stall, however many ticks it is retried.
+                golem.Program.appendages.Clear();
+                golem.Program.appendages.Add(new AppendageActionDefinition { actionType = AppendageActionType.Push });
+                golem.Program.CurrentStepIndex = 0;
+                golem.Program.StepProgressTicks = 0;
+                for (int tick = 6; tick <= 10; tick++)
+                {
+                    golem.Tick(tick);
+                }
+                Assert.AreEqual(1, stalled);
+                Assert.AreEqual(stalled, golem.StallIncidents);
+            }
+            finally
+            {
+                EventBus.GolemCompleted -= onCompleted;
+                EventBus.GolemStalled -= onStalled;
+            }
+        }
     }
 }

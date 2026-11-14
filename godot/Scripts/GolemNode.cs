@@ -2,7 +2,6 @@ using GolemFactory.Settings;
 using System.Collections.Generic;
 using Godot;
 using GolemFactory.Data;
-using GolemFactory.Events;
 using GolemFactory.Golems;
 using GolemFactory.Player;
 using GolemFactory.PunchCards;
@@ -45,8 +44,8 @@ namespace GolemFactory.Nodes
 
         public GolemEntity Entity { get; private set; }
 
-        /// <summary>Completed cycles since spawn, counted from <see cref="EventBus.GolemCompleted"/>.</summary>
-        public int CompletedCycles { get; private set; }
+        /// <summary>Cycles the golem has completed (<see cref="GolemEntity.CompletedCycles"/>).</summary>
+        public int CompletedCycles => Entity?.CompletedCycles ?? 0;
 
         private WorldNode _world;
         private bool _ownsWiring;
@@ -75,8 +74,6 @@ namespace GolemFactory.Nodes
                 Entity.Attach();
                 _world.Clock.Register(Entity);
             }
-            EventBus.GolemCompleted += OnGolemCompleted;
-
             BuildVisuals();
             SyncToEntity();
         }
@@ -87,8 +84,6 @@ namespace GolemFactory.Nodes
             {
                 return;
             }
-            EventBus.GolemCompleted -= OnGolemCompleted;
-            EventBus.GolemStalled -= OnGolemStalled;
             _sourceTile?.QueueFree();
             _targetTile?.QueueFree();
             _dropTile?.QueueFree();
@@ -192,6 +187,7 @@ namespace GolemFactory.Nodes
         private readonly int _moodSlot = _nextMoodSlot++;
         private float _rawHeld;
         private bool _shakePending;
+        private int _stallIncidentsSeen;
         private bool _wasStopped;
         private CanvasLayer _badgeLayer;
         private PanelContainer _badge;
@@ -297,7 +293,8 @@ namespace GolemFactory.Nodes
             _badgeLayer.AddChild(_badge);
             _badgeLabel.AddThemeFontOverride("font", _badgeFont ??= new FontVariation { BaseFont = _badgeLabel.GetThemeDefaultFont(), VariationEmbolden = 0.6f });
 
-            EventBus.GolemStalled += OnGolemStalled;
+            // Stalls from here on shake the golem; the ones before its view existed don't.
+            _stallIncidentsSeen = Entity.StallIncidents;
         }
 
         // Every golem's badge on one CanvasLayer (4), in one emboldened font. A layer and a
@@ -696,6 +693,13 @@ namespace GolemFactory.Nodes
             // The entry shake: only for a golem that has just STOPPED. One that starts waiting
             // doesn't jolt, nor does a collecting Haul each time a good arrives.
             bool stopped = GolemMoodRules.IsStopped(raw);
+            // Read from the golem each frame, not heard on the bus: a handler per golem node made
+            // every golem's stall call every node, from inside the tick.
+            if (Entity.StallIncidents != _stallIncidentsSeen)
+            {
+                _stallIncidentsSeen = Entity.StallIncidents;
+                _shakePending = true;
+            }
             if (_shakePending)
             {
                 _shakePending = false;
@@ -840,22 +844,6 @@ namespace GolemFactory.Nodes
             {
                 _badgeLabel.Text = text;
                 _badgeResizes = BadgeResizeFrames;
-            }
-        }
-
-        private void OnGolemStalled(GolemStalledEvent e)
-        {
-            if (e.GolemId == Entity.GolemId)
-            {
-                _shakePending = true;
-            }
-        }
-
-        private void OnGolemCompleted(GolemCompletedEvent e)
-        {
-            if (e.GolemId == GolemId)
-            {
-                CompletedCycles++;
             }
         }
 

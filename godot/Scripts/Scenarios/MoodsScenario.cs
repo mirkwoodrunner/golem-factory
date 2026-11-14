@@ -63,11 +63,23 @@ namespace GolemFactory.Nodes.Scenarios
             Do("log P collecting", () => { Log.Add($"P collecting: badge '{p.BadgeText}', crate empty"); return null; });
 
             // 3, 4 and 6: N faces nothing, F pushes into a full crate, X has no steam.
+            // A golem that has just STOPPED jolts once, where one that starts waiting did not:
+            // its view reads the golem's own count of stalls (GolemEntity.StallIncidents).
+            float stopShake = 0f;
             Do("program N, F and X", () => { ProgramTheStuck(); return null; });
             Until("N, F red; X blue", 2.0, () =>
-                Is(NodeOf(N), GolemMood.Stalled) ?? Is(NodeOf(F), GolemMood.Stalled) ?? Is(NodeOf(X), GolemMood.Starved)
-                ?? (N.StallReason == Events.StallReason.NoSourceAtTile ? null : "N stalled " + N.StallReason)
-                ?? (F.StallReason == Events.StallReason.BeltFull ? null : "F stalled " + F.StallReason));
+            {
+                stopShake = Mathf.Max(stopShake, Mathf.Abs(NodeOf(N).DrawnOffset.X));
+                return Is(NodeOf(N), GolemMood.Stalled) ?? Is(NodeOf(F), GolemMood.Stalled) ?? Is(NodeOf(X), GolemMood.Starved)
+                    ?? (N.StallReason == Events.StallReason.NoSourceAtTile ? null : "N stalled " + N.StallReason)
+                    ?? (F.StallReason == Events.StallReason.BeltFull ? null : "F stalled " + F.StallReason);
+            });
+            Until("N jolts as it stops", 1.0, () =>
+            {
+                stopShake = Mathf.Max(stopShake, Mathf.Abs(NodeOf(N).DrawnOffset.X));
+                return stopShake > 0.01f ? null : $"N stopped without its jolt ({N.StallIncidents} stalls counted)";
+            });
+            Do("log N's jolt", () => { Log.Add($"N stopped with a jolt ({stopShake:0.00} px)"); return null; });
             Do("the strip counts the red and blue only", () =>
             {
                 World.Alerts.Reconcile();

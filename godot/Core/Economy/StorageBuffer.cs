@@ -234,6 +234,25 @@ namespace GolemFactory.Economy
             return true;
         }
 
+        /// <summary>
+        /// The first good this buffer holds any of, in the order its goods first arrived, or null
+        /// when it is empty: what an untyped take is given. Walks the dictionary itself, so a
+        /// golem asking every tick allocates no enumerator (<see cref="Quantities"/>, read
+        /// through its interface, boxes one per walk).
+        /// </summary>
+        public string FirstHeldType()
+        {
+            foreach (KeyValuePair<string, int> pair in _quantities)
+            {
+                if (pair.Value > 0)
+                {
+                    return pair.Key;
+                }
+            }
+
+            return null;
+        }
+
         public int GetQuantity(string itemType) => _quantities.TryGetValue(itemType, out int quantity) ? quantity : 0;
 
         /// <summary>Every good held, above zero, in tier order: what a crate shows, collects and refunds.</summary>

@@ -73,7 +73,8 @@ Current scenarios:
   feeder will serve goes grey after its dwell, badge "waiting for Scrap", no shake, uncounted,
   and the strip reads "No golem needs you · 1 waiting for goods."; a collecting Haul shows
   "2/5 Scrap"; facing bare floor, pushing into a full crate (red) and off the steam grid (blue)
-  are counted; a straining golem wears no badge; a golem set to haul from the full crate turns
+  are counted, and the one facing bare floor jolts as it stops (its view reads
+  `GolemEntity.StallIncidents`, not the bus); a straining golem wears no badge; a golem set to haul from the full crate turns
   its feeder grey; carrying the feeder away (G) turns the waiting golem red at once; a stuck
   golem's [E] prompt names its problem; an extractor at a new, empty Coal cart waits grey, because
   the cart refills itself.

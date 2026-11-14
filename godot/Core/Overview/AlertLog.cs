@@ -54,11 +54,17 @@ namespace GolemFactory.Overview
         /// The golems stopped now (<paramref name="stopped"/>, the reconcile's snapshots) at the
         /// player's <paramref name="seconds"/>. <paramref name="describe"/> names a new stop.
         /// </summary>
+        private readonly HashSet<string> _nowScratch = new HashSet<string>();
+        private readonly List<string> _endedScratch = new List<string>();
+
         public void Observe(float seconds, IReadOnlyList<StallSnapshot> stopped, Func<StallSnapshot, string> describe)
         {
-            var now = new HashSet<string>();
-            foreach (StallSnapshot stall in stopped)
+            // Kept sets, refilled: this runs twice a second for as long as the game does.
+            HashSet<string> now = _nowScratch;
+            now.Clear();
+            for (int s = 0; s < stopped.Count; s++)
             {
+                StallSnapshot stall = stopped[s];
                 now.Add(stall.GolemId);
                 if (_open.TryGetValue(stall.GolemId, out AlertEntry open))
                 {
@@ -80,13 +86,18 @@ namespace GolemFactory.Overview
                 _open[stall.GolemId] = entry;
                 _entries.Insert(0, entry);
             }
-            foreach (string id in new List<string>(_open.Keys))
+            _endedScratch.Clear();
+            foreach (KeyValuePair<string, AlertEntry> open in _open)
             {
-                if (!now.Contains(id))
+                if (!now.Contains(open.Key))
                 {
-                    _open[id].EndedAt = seconds;
-                    _open.Remove(id);
+                    open.Value.EndedAt = seconds;
+                    _endedScratch.Add(open.Key);
                 }
+            }
+            for (int i = 0; i < _endedScratch.Count; i++)
+            {
+                _open.Remove(_endedScratch[i]);
             }
             // The oldest finished stops go first; one still open stays, or it would come back as new.
             for (int i = _entries.Count - 1; i >= 0 && _entries.Count > MaxEntries; i--)

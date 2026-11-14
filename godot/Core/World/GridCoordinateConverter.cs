@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using GolemFactory.Compat;
 
 namespace GolemFactory.World
@@ -20,16 +21,16 @@ namespace GolemFactory.World
             CellSize = cellSize;
         }
 
-        public Vector2Int WorldToCell(Vector3 worldPosition)
-        {
-            Vector2 fraction = WorldToCellFraction(worldPosition);
-            return new Vector2Int(Mathf.RoundToInt(fraction.x), Mathf.RoundToInt(fraction.y));
-        }
+        // The snap itself is GridMath's, shared with the Node boundary (GridConversions).
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Vector2Int WorldToCell(Vector3 worldPosition) =>
+            new Vector2Int(
+                GridMath.WorldToCell(worldPosition.x, CellSize.x),
+                GridMath.WorldToCell(worldPosition.y, CellSize.y));
 
-        public Vector3 CellToWorldCenter(Vector2Int cell)
-        {
-            return CellFractionToWorld(new Vector2(cell.x, cell.y));
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Vector3 CellToWorldCenter(Vector2Int cell) =>
+            new Vector3(GridMath.CellToWorld(cell.x, CellSize.x), GridMath.CellToWorld(cell.y, CellSize.y), 0f);
 
         // Unrounded siblings of the above, needed for smooth analog clamping (see
         // FloorLayout.ClampToFloor) where snapping to a cell would make movement jerky.
