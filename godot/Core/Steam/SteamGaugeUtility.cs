@@ -46,7 +46,7 @@ namespace GolemFactory.Steam
     // they cannot plan against.
     //
     // Pure and engine-free, beside a thin view (UI/SteamFuelGaugeView), the same split
-    // BufferTrendUtility/BeltSignalUtility/StallDiagnostics already use: the arithmetic is
+    // BufferTrendUtility/StallDiagnostics already use: the arithmetic is
     // unit-tested without a scene and the MonoBehaviour only paints the result.
     public static class SteamGaugeUtility
     {

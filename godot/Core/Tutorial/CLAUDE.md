@@ -35,7 +35,7 @@ doesn't reach yet, a belt pointing the wrong way. A step's `Builds` names what i
 playtest kit does to complete it, using the player's own verbs. `PlaytestKitTests` fails for
 a step without one. **Chapters 1–4 have a game-time floor**: `ChaptersOneToFourFloorTests`
 plays them instantly but earns every good at the player's real rates (carts and their trickle, the
-bench, golem cycles), runs each step's kit action paid from those goods, and fails above 10:00
+bench, golem cycles), runs each step's kit action (`TutorialGuide.TryPerformKitAction`) paid from those goods, and fails above 10:00
 or above any chapter's ceiling (two thirds of its budget; measured 5:16 against Phase 2's
 15-minute target). `FullRunFloorTests` carries the same player (`Core.Tests/Tutorial/FloorPlayer`)
 through chapter 10, building reference lines from chapter 8, in about 6 s of wall time

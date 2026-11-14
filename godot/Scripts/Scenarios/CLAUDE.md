@@ -16,7 +16,9 @@ Current scenarios:
   Artificer's crank frame facing it and the bench's turning wheel; letting go stands.
 - `golems` (Sandbox): every chassis built, and every `AppendageActionType` run on real steam:
   extract (from the Scrap cart, and a Coal cart added on its spot), haul, push, load, assemble
-  plus repeat, refine, and freight. A golem out of steam
+  plus repeat, refine, and freight. The station's first build takes the player's first name, and
+  the Scrap fed to the belt line is all still on it at the end (both depots, both golems' hands,
+  the belts), with some of it across. A golem out of steam
   must stall and wear its badge. Each boiler glows by `LightingRules.BoilerGlow`, and one
   run dry goes dark a frame later; every pipe wears its `_hot` picture exactly while it carries
   steam (`LightingRules.PipeHot`), so that boiler's run goes cold and a loose pipe never warms. Each golem draws its own chassis's frame for what it is doing,
@@ -57,8 +59,6 @@ Current scenarios:
   fast-forward every guide chapter, leaving the golems and buildings a player would have
   built, and the report must record it. Its Save and Load steps use
   `user://scenario-saves/kit-save.json`.
-- `loop` (LoopSlice): the station builds a Scavenger, which mines onto the belt, which the unloader hauls
-  into the stockpile, over 600 ticks. `--spike-check` is an alias.
 - `inventory` (Sandbox): the Pack and Crate screens with real keys and clicks. I opens the pack
   away from a crate and the crate's screen at one; I, E and Escape close them. A click moves
   one, Shift-click all that fits, and crate + pack per good never changes. The label

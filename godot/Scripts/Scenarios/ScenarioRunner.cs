@@ -56,8 +56,7 @@ namespace GolemFactory.Nodes.Scenarios
     /// <para>
     /// <c>--demo</c> (or the spike's <c>--spike-demo</c>) only performs the scripted setup -- the
     /// station builds its golem -- without checking or quitting, for rendering frames with
-    /// <c>--write-movie</c>. The spike's <c>--spike-check</c> is an alias for
-    /// <c>--scenario loop</c>.
+    /// <c>--write-movie</c>.
     /// </para>
     /// </summary>
     public partial class ScenarioRunner : Node
@@ -65,7 +64,6 @@ namespace GolemFactory.Nodes.Scenarios
         private static readonly Dictionary<string, Func<IScenario>> Scenarios =
             new Dictionary<string, Func<IScenario>>(StringComparer.Ordinal)
             {
-                ["loop"] = () => new LoopScenario(),
                 ["font-glyphs"] = () => new FontGlyphsScenario(),
                 ["world"] = () => new WorldScenario(),
                 ["build"] = () => new BuildScenario(),
@@ -101,7 +99,6 @@ namespace GolemFactory.Nodes.Scenarios
             };
 
         [Export] public NodePath StationPath { get; set; }
-        [Export] public NodePath DepotPath { get; set; }
 
         private string _name;
         private IScenario _scenario;
@@ -110,7 +107,6 @@ namespace GolemFactory.Nodes.Scenarios
         private static (string name, IScenario scenario)? _carried;
 
         public ConstructionStationNode Station => GetNode<ConstructionStationNode>(StationPath);
-        public DepotNode Depot => GetNode<DepotNode>(DepotPath);
         public WorldNode World => WorldNode.Find(this);
 
         /// <summary>The names <c>--scenario</c> accepts.</summary>
@@ -120,7 +116,6 @@ namespace GolemFactory.Nodes.Scenarios
         {
             // Before any _Ready: a scenario run must not write over a real playtest's report.
             PlaytestNode.UnderScenario = Array.IndexOf(OS.GetCmdlineUserArgs(), "--scenario") >= 0
-                || Array.IndexOf(OS.GetCmdlineUserArgs(), "--spike-check") >= 0
                 || Array.IndexOf(OS.GetCmdlineUserArgs(), "--demo") >= 0
                 || Array.IndexOf(OS.GetCmdlineUserArgs(), "--spike-demo") >= 0;
         }
@@ -161,7 +156,7 @@ namespace GolemFactory.Nodes.Scenarios
                 if (args.Contains("--demo") || args.Contains("--spike-demo"))
                 {
                     // Deferred so every sibling has finished _Ready before a golem joins the tree.
-                    Callable.From(Station.Interact).CallDeferred();
+                    Callable.From(Station.BuildFirst).CallDeferred();
                 }
                 SetProcess(false);
                 return;
@@ -344,7 +339,7 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 return index + 1 < args.Length ? args[index + 1] : "";
             }
-            return args.Contains("--spike-check") ? "loop" : null;
+            return null;
         }
 
         private void Finish(ScenarioResult result)

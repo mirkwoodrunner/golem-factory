@@ -28,7 +28,8 @@ advancement. Simulation is plain, data-oriented C#: no ECS, no per-item nodes.
   mark the evaluation dirty, or be added to that check.
 - **Cells are looked up in `World/SpatialHashGrid`** (endpoints, occupancy): flat arrays, no
   allocation once sized, queries into a caller's `Span`. A query promises no order among its
-  results; pick by `CellOrder` or an id where order matters.
+  results; pick by `CellOrder` or an id where order matters. `LongestChain` is how far the worst
+  lookup walks, for tests and the perf run; never call it from a tick.
 - **The measures**: `dotnet test godot/GolemFactory.sln -c Release --filter Category=Perf` runs
   `Diagnostics/StressLoad` (1,024 golems, 10,000 ticks, twice: time, bytes, checksums) beside
   the endgame profile. `StressLoad` is the tick alone, past the game's cap; `EndgameLoad` is the

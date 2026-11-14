@@ -68,16 +68,11 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual("Zeppelin Freight Loader", WorkbenchDiagnostics.Humanize("ZeppelinFreightLoader"));
         }
 
-        [Test]
-        public void Humanize_KeepsDigitRunsTogetherAndSeparateFromWords()
+        [TestCase("IntervalCore10", "Interval Core 10", TestName = "Humanize_KeepsDigitRunsTogetherAndSeparateFromWords")]
+        [TestCase("PSIValve", "PSI Valve", TestName = "Humanize_KeepsAcronymRunsIntact")]
+        public void Humanize_KeepsARunWhole(string name, string expected)
         {
-            Assert.AreEqual("Interval Core 10", WorkbenchDiagnostics.Humanize("IntervalCore10"));
-        }
-
-        [Test]
-        public void Humanize_KeepsAcronymRunsIntact()
-        {
-            Assert.AreEqual("PSI Valve", WorkbenchDiagnostics.Humanize("PSIValve"));
+            Assert.AreEqual(expected, WorkbenchDiagnostics.Humanize(name));
         }
 
         [Test]

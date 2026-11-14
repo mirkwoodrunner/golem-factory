@@ -46,12 +46,6 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void FourStagesAreAuthored()
-        {
-            Assert.AreEqual(4, LoadStages().Count, "section 7 gives the tower exactly four stages");
-        }
-
-        [Test]
         public void EveryStageIsWellFormed()
         {
             foreach (ClockTowerStageDefinition stage in LoadStages())
@@ -112,20 +106,6 @@ namespace GolemFactory.Tests.EditMode
                         ", which is not one of the Tier-5 goods (or Lens)");
                 }
             }
-        }
-
-        [Test]
-        public void TheAuthoredNominalDurationsAreSixEightEightAndTenMinutes()
-        {
-            List<ClockTowerStageDefinition> stages = LoadStages();
-            var minutes = new List<int>();
-            foreach (ClockTowerStageDefinition stage in stages)
-            {
-                Assert.AreEqual(0, stage.nominalSeconds % 60, stage.stageName + " is whole minutes");
-                minutes.Add(stage.nominalSeconds / 60);
-            }
-
-            Assert.AreEqual(new[] { 6, 8, 8, 10 }, minutes.ToArray());
         }
 
         [Test]

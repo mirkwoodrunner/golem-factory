@@ -7,7 +7,7 @@ namespace GolemFactory.UI
 {
     // Turns a StallReason plus the id that blocked it into the sentence the player reads.
     // Engine-free static so it is unit-testable without a scene, the same split
-    // GridCoordinateConverter/YSortUtility/WorkbenchDiagnostics/BeltSignalUtility already use.
+    // GridCoordinateConverter/WorkbenchDiagnostics already use.
     //
     // The phrasing names the blocking resource, because in a strictly-linear execution model
     // "GolemD is stalled" is not actionable on its own -- the golem will retry the same step

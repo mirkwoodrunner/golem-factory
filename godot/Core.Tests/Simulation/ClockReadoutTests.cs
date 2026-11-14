@@ -5,22 +5,12 @@ namespace GolemFactory.Tests.EditMode
 {
     public class ClockReadoutTests
     {
-        [Test]
-        public void FormatTick_GroupsLargeCountsSoTheyStayReadable()
+        [TestCase(1234567, "1,234,567", TestName = "FormatTick_GroupsLargeCountsSoTheyStayReadable")]
+        [TestCase(0, "0", TestName = "FormatTick_Zero_IsZero")]
+        [TestCase(-5, "0", TestName = "FormatTick_NegativeTick_ClampsRatherThanShowingAMinus")]
+        public void FormatTick_ReadsATickCount(long tick, string expected)
         {
-            Assert.AreEqual("1,234,567", ClockReadout.FormatTick(1234567));
-        }
-
-        [Test]
-        public void FormatTick_Zero_IsZero()
-        {
-            Assert.AreEqual("0", ClockReadout.FormatTick(0));
-        }
-
-        [Test]
-        public void FormatTick_NegativeTick_ClampsRatherThanShowingAMinus()
-        {
-            Assert.AreEqual("0", ClockReadout.FormatTick(-5));
+            Assert.AreEqual(expected, ClockReadout.FormatTick(tick));
         }
 
         [Test]

@@ -277,8 +277,6 @@ namespace GolemFactory.Tests.EditMode
                 }
             }
 
-            // Every cell's own bucket, walked: the longest holds a handful, not a column.
-            int longest = 0;
             Span<int> handles = stackalloc int[1];
             for (int x = -32; x < 32; x++)
             {
@@ -287,20 +285,24 @@ namespace GolemFactory.Tests.EditMode
                     Assert.AreEqual(1, grid.QueryCell(new Vector2Int(x, y), handles));
                 }
             }
-            var chains = (int[])typeof(SpatialHashGrid<int>)
-                .GetField("_head", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(grid);
-            var next = (int[])typeof(SpatialHashGrid<int>)
-                .GetField("_next", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(grid);
-            foreach (int head in chains)
-            {
-                int length = 0;
-                for (int slot = head; slot != -1; slot = next[slot])
-                {
-                    length++;
-                }
-                longest = Math.Max(longest, length);
-            }
-            Assert.LessOrEqual(longest, 8, "the longest bucket chain over a 64 x 64 block");
+            // The longest bucket holds a handful, not a column.
+            Assert.LessOrEqual(grid.LongestChain(), 8, "the longest bucket chain over a 64 x 64 block");
+        }
+
+        [Test]
+        public void LongestChain_CountsTheFullestBucket()
+        {
+            var grid = new SpatialHashGrid<string>();
+            Assert.AreEqual(0, grid.LongestChain(), "an empty grid");
+
+            // Entities sharing a cell share its bucket, so three on one cell is a chain of three.
+            int a = grid.Add(new Vector2Int(4, 4), "a");
+            grid.Add(new Vector2Int(4, 4), "b");
+            grid.Add(new Vector2Int(4, 4), "c");
+            Assert.AreEqual(3, grid.LongestChain());
+
+            grid.Remove(a);
+            Assert.AreEqual(2, grid.LongestChain());
         }
     }
 }

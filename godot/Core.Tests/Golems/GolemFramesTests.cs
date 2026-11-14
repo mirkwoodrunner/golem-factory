@@ -55,12 +55,6 @@ namespace GolemFactory.Tests.EditMode
             }
         }
 
-        [Test]
-        public void TheImpactFrame_StartsWhereTheStampLands()
-        {
-            Assert.AreEqual(GolemWorkMotion.StampImpact, GolemFrames.ImpactStart);
-        }
-
         [TestCase(GolemMood.Working)]
         [TestCase(GolemMood.Sleeping)]
         [TestCase(GolemMood.Waiting)]

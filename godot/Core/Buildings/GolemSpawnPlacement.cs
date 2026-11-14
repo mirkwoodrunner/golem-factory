@@ -5,7 +5,7 @@ namespace GolemFactory.Buildings
 {
     // Where a freshly constructed golem stands, as a pure function of the station's own
     // placement -- the same "extract the math into an engine-free static a test can call
-    // without a scene" split as FacingUtility / GridCoordinateConverter / YSortUtility.
+    // without a scene" split as FacingUtility / GridCoordinateConverter.
     //
     // This exists because "spawn the golem on the station's cell" is not actually viable once
     // facing is load-bearing: the station occupies that cell, so the golem would be standing

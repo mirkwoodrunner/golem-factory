@@ -15,7 +15,7 @@ namespace GolemFactory.Economy
 
     // Pure, engine-free math for the inventory's rate/trend readout -- same "extract the
     // math into a static class the tests can call without a scene" split as
-    // GridCoordinateConverter / YSortUtility / BeltFlowUtility / StallDiagnostics.
+    // GridCoordinateConverter / BeltFlowUtility / StallDiagnostics.
     //
     // This is PRESENTATION ONLY. StorageBufferRegistry holds current quantities and
     // nothing else; deriving "is this filling or draining" belongs in the UI layer, not in

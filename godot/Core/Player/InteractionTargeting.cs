@@ -90,7 +90,7 @@ namespace GolemFactory.Player
     /// targeted and how it should be advertised.
     /// <para>
     /// Extracted from PlayerInteractor so it is testable without a scene, the same idiom as
-    /// PlayerMovement.ComputeDisplacement / GridCoordinateConverter / YSortUtility. Doing so
+    /// PlayerMovement.ComputeDisplacement / GridCoordinateConverter. Doing so
     /// also fixed a real behaviour bug: the original inline version checked node markers
     /// first, then stations, then golems, and returned the first kind with *any* candidate in
     /// range -- so a resource node at the very edge of range beat a construction station the

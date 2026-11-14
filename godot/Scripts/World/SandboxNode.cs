@@ -41,11 +41,6 @@ namespace GolemFactory.Nodes
         {
             _world = WorldNode.Find(this);
             SandboxSetup setup = _world.Setup;
-            if (setup == null)
-            {
-                GD.PushWarning("SandboxNode: WorldNode.ApplySandboxSetup is off, so there is nothing to populate.");
-                return;
-            }
 
             // Every golem picture loaded before the first golem is drawn (GolemNode.WarmFrames).
             GolemNode.WarmFrames(_world.Sandbox.Definitions.Chassis.Values);

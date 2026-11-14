@@ -77,19 +77,12 @@ namespace GolemFactory.Tests.EditMode
         [TearDown]
         public void Restore() => ColourMarks.Enabled = false;
 
-        [Test]
-        public void Off_TheGuideSaysTealAndGold()
+        [TestCase(false, "teal is behind it, gold in front", TestName = "Off_TheGuideSaysTealAndGold")]
+        [TestCase(true, "striped teal is behind it, plain gold in front", TestName = "On_TheGuideNamesTheStripes")]
+        public void TheGuideNamesTheTiles_AsTheSettingHasThem(bool marks, string expected)
         {
-            ColourMarks.Enabled = false;
-            Assert.AreEqual("teal is behind it, gold in front",
-                TextTokens.Fill(ColourMarks.SourceToken + " is behind it, " + ColourMarks.TargetToken + " in front"));
-        }
-
-        [Test]
-        public void On_TheGuideNamesTheStripes()
-        {
-            ColourMarks.Enabled = true;
-            Assert.AreEqual("striped teal is behind it, plain gold in front",
+            ColourMarks.Enabled = marks;
+            Assert.AreEqual(expected,
                 TextTokens.Fill(ColourMarks.SourceToken + " is behind it, " + ColourMarks.TargetToken + " in front"));
         }
 

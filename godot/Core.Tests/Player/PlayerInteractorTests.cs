@@ -96,18 +96,19 @@ namespace GolemFactory.Tests.PlayMode
             return station;
         }
 
-        [Test]
-        public void Interact_NodeInRange_HarvestsAndDepositsIntoStockpile()
+        [TestCase(0.5f, true, 1, TestName = "Interact_NodeInRange_HarvestsAndDepositsIntoStockpile")]
+        [TestCase(5f, false, 0, TestName = "Interact_NodeOutOfRange_FailsWithoutDepositing")]
+        public void Interact_HarvestsANodeOnlyWithinRange(float nodeX, bool expected, int deposited)
         {
             (PlayerInteractor interactor, StorageBufferRegistry stockpile) = Build();
-            MakeMarker(new Vector3(0.5f, 0f, 0f), "ScrapNode");
+            MakeMarker(new Vector3(nodeX, 0f, 0f), "ScrapNode");
             interactor.Attach(); // Unity: the OnEnable frame
             interactor.RefreshInteractables();
 
             bool result = interactor.Interact();
 
-            Assert.IsTrue(result);
-            Assert.AreEqual(1, stockpile.GetOrCreate("FactoryStockpile").GetQuantity(ItemType.Scrap));
+            Assert.AreEqual(expected, result);
+            Assert.AreEqual(deposited, stockpile.GetOrCreate("FactoryStockpile").GetQuantity(ItemType.Scrap));
         }
 
         [Test]
@@ -151,20 +152,6 @@ namespace GolemFactory.Tests.PlayMode
             interactor.RefreshInteractables();
 
             Assert.AreEqual(0, interactor.HoldHarvest(2f, true, false));
-            Assert.AreEqual(0, stockpile.GetOrCreate("FactoryStockpile").GetQuantity(ItemType.Scrap));
-        }
-
-        [Test]
-        public void Interact_NodeOutOfRange_FailsWithoutDepositing()
-        {
-            (PlayerInteractor interactor, StorageBufferRegistry stockpile) = Build();
-            MakeMarker(new Vector3(5f, 0f, 0f), "ScrapNode");
-            interactor.Attach(); // Unity: the OnEnable frame
-            interactor.RefreshInteractables();
-
-            bool result = interactor.Interact();
-
-            Assert.IsFalse(result);
             Assert.AreEqual(0, stockpile.GetOrCreate("FactoryStockpile").GetQuantity(ItemType.Scrap));
         }
 

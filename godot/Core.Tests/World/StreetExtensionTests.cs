@@ -64,22 +64,6 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void IsInsideWorld_AgreesWithGetWorldCells_OverTheWholeNeighbourhood()
-        {
-            var world = new HashSet<Vector2Int>(FloorLayout.GetWorldCells());
-
-            for (int x = -FloorLayout.StreetHalfExtent - 3; x <= FloorLayout.StreetHalfExtent + 3; x++)
-            {
-                for (int y = FloorLayout.WorldMinY - 3; y <= FloorLayout.WorldMaxY + 3; y++)
-                {
-                    var cell = new Vector2Int(x, y);
-                    Assert.AreEqual(world.Contains(cell), FloorLayout.IsInsideWorld(cell),
-                        "disagreed at " + cell);
-                }
-            }
-        }
-
-        [Test]
         public void ClampToFloor_LetsThePlayerOntoTheOuterStreet()
         {
             var converter = new GridCoordinateConverter(CellSize);

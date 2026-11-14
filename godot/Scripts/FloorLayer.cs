@@ -119,16 +119,13 @@ namespace GolemFactory.Nodes
             Position = new Vector2(-GridConversions.CellPixels / 2f, -GridConversions.CellPixels / 2f);
 
             WorldNode world = WorldNode.Find(this);
-            FloorBounds bounds = world?.Bounds ?? new FloorBounds();
-            _bounds = world?.Setup != null ? bounds : null;
+            FloorBounds bounds = world.Bounds;
+            _bounds = bounds;
             PaintRows(-bounds.HalfExtent, bounds.NorthExtent, bounds.HalfExtent);
 
             // A Floor Expansion purchase announces exactly the rows it added; plank them.
-            if (world?.Setup != null)
-            {
-                world.Sandbox.FloorExpansion.RowsAdded += (from, to) => PaintRows(from, to, bounds.HalfExtent);
-                world.Sandbox.FloorExpansion.RowsRemoved += (from, to) => EraseRows(from, to, bounds.HalfExtent);
-            }
+            world.Sandbox.FloorExpansion.RowsAdded += (from, to) => PaintRows(from, to, bounds.HalfExtent);
+            world.Sandbox.FloorExpansion.RowsRemoved += (from, to) => EraseRows(from, to, bounds.HalfExtent);
 
             if (PaintStreet)
             {

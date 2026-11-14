@@ -6,7 +6,7 @@ namespace GolemFactory.Golems
     // an internal inventory."
     //
     // Deliberately plain C# with no UnityEngine types, matching GridCoordinateConverter /
-    // YSortUtility / PlayerMovement.ComputeDisplacement: the machine model is the thing every
+    // PlayerMovement.ComputeDisplacement: the machine model is the thing every
     // ratio in the progression design is derived from, so it has to be unit-testable without a
     // scene, a tick clock or a GameObject.
     //

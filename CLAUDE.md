@@ -79,6 +79,7 @@ dotnet test godot/GolemFactory.sln -c Release --filter Category=Perf   # the exp
 G=".../Godot_v4.7.2-stable_mono_win64_console.exe"
 "$G" --headless --path godot --build-solutions --quit             # compile the Godot project
 "$G" --headless --path godot --fixed-fps 60 -- --scenario world   # an end-to-end scenario, exit 0/1
+./Tools/Scenarios/run-all.ps1 [-Only golems,save]                 # every scenario, about 2.5 min (PowerShell)
 "$G" --path godot --fixed-fps 60 --quit-after 240 \
      --write-movie <dir>/frame.png -- --demo                       # render frames to look at
 
@@ -87,7 +88,7 @@ G=".../Godot_v4.7.2-stable_mono_win64_console.exe"
 ```
 
 An exported build runs scenarios too (`GolemFactory.exe --headless --fixed-fps 60 -- --scenario world`), except
-`art` (it reads `Tools/`) and `loop` (release builds refuse a scene path). A scenario must not list `res://` for
+`art` (it reads `Tools/`). A scenario must not list `res://` for
 `.png` files: a pack lists `.png.import`; ask `ResourceLoader.Exists`.
 
 `--fixed-fps 60` makes every frame 1/60 s of game time, so headless runs are deterministic and as fast as the machine
@@ -95,13 +96,12 @@ allows.
 
 **Scenes.** `Scenes/Sandbox.tscn` is the game world (the main scene). It opens on the title
 screen (`docs/menus-design.md` §6), and starting a game reloads it; a scenario or `--demo` run
-opens straight on a new game. `Scenes/LoopSlice.tscn` is a small hand-built
-slice, kept as the `loop` scenario's fixture; run it by passing `res://Scenes/LoopSlice.tscn` before `--`.
+opens straight on a new game. It is the only scene.
 
-**Scenarios** (`Scripts/Scenarios/`) are the scene-level checks. `ScenarioRunner` is a node in each scene; `--
+**Scenarios** (`Scripts/Scenarios/`) are the scene-level checks. `ScenarioRunner` is a node in the scene; `--
 --scenario <name>` runs one to a verdict, prints `[scenario <name>] PASS|FAIL …` and exits 0/1. An unknown name fails
 and lists the known ones. Current scenarios: `world`, `build`, `interact`, `golems`, `golem-motion`, `workbench`,
-`management`, `save`, `tutorial`, `playtest-kit`, `loop`, `inventory`, `moods`, `hover`, `font-glyphs`, `perf`, `art`, `audio`, `feel`, `settings`, `accessibility`, `title`, `slots`, `overview`, `creative`, `supply`, `contracts`, `endless`, `docks`, `golem-sales`, `gamepad`, `guide-ahead`, `gamepad-ui`; what
+`management`, `save`, `tutorial`, `playtest-kit`, `inventory`, `moods`, `hover`, `font-glyphs`, `perf`, `art`, `audio`, `feel`, `settings`, `accessibility`, `title`, `slots`, `overview`, `creative`, `supply`, `contracts`, `endless`, `docks`, `golem-sales`, `gamepad`, `guide-ahead`, `gamepad-ui`; what
 each checks is in `godot/Scripts/Scenarios/CLAUDE.md`.
 
 To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scenarios`. `--demo` (alias `--spike-demo`)

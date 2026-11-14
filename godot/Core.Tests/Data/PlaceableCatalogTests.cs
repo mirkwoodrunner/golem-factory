@@ -109,22 +109,16 @@ namespace GolemFactory.Tests.Data
             StringAssert.Contains("Teleporter", e.Message);
         }
 
-        [Test]
-        public void AnUnknownFieldIsRefused_NamingIt()
+        [TestCase("[{\"name\":\"DepotPrefab\",\"sprite\":\"depot.png\",\"parts\":{" +
+                  "\"PlaceableDepot\":{\"bufferId\":\"X\",\"filterItemType\":\"\",\"capacity\":3}}}]",
+            "capacity", TestName = "AnUnknownFieldIsRefused_NamingIt")]
+        [TestCase("[{\"name\":\"BenchPrefab\",\"sprite\":null,\"parts\":{" +
+                  "\"HandCrankBench\":{\"stockpileBufferId\":\"X\",\"candidateRecipes\":[\"R99_Nothing\"]}}}]",
+            "R99_Nothing", TestName = "AMissingRecipeIsRefused")]
+        public void ABadPlaceableIsRefused_NamingWhatIsWrong(string json, string expected)
         {
-            const string json = "[{\"name\":\"DepotPrefab\",\"sprite\":\"depot.png\",\"parts\":{" +
-                                "\"PlaceableDepot\":{\"bufferId\":\"X\",\"filterItemType\":\"\",\"capacity\":3}}}]";
             var e = Assert.Throws<DefinitionLoadException>(() => PlaceableCatalog.Load(json, AuthoredData.Load()));
-            StringAssert.Contains("capacity", e.Message);
-        }
-
-        [Test]
-        public void AMissingRecipeIsRefused()
-        {
-            const string json = "[{\"name\":\"BenchPrefab\",\"sprite\":null,\"parts\":{" +
-                                "\"HandCrankBench\":{\"stockpileBufferId\":\"X\",\"candidateRecipes\":[\"R99_Nothing\"]}}}]";
-            var e = Assert.Throws<DefinitionLoadException>(() => PlaceableCatalog.Load(json, AuthoredData.Load()));
-            StringAssert.Contains("R99_Nothing", e.Message);
+            StringAssert.Contains(expected, e.Message);
         }
     }
 }

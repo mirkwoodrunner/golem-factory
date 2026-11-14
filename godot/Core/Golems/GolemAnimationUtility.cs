@@ -3,7 +3,7 @@ using GolemFactory.Compat;
 namespace GolemFactory.Golems
 {
     // Pure math for GolemVisual's idle-bob/stall-shake "juice", extracted so it's testable
-    // without a scene -- same idiom as World/YSortUtility.ComputeSortingOrder.
+    // without a scene -- same idiom as World/GridCoordinateConverter.
     public static class GolemAnimationUtility
     {
         public static float ComputeIdleBobOffset(float time, float amplitude, float frequency) =>

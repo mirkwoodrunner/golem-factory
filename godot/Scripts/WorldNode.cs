@@ -35,14 +35,10 @@ namespace GolemFactory.Nodes
         [Export] public int BeltSegmentLengthTicks { get; set; } = 4;
 
         /// <summary>
-        /// Whether to compose the full Sandbox from <c>res://data/sandbox.json</c> and
-        /// <c>placeables.json</c>: the street's carts, buffer policy, bounds, starter bench and
-        /// station, the build menu. On in Sandbox.tscn; off in test scenes (LoopSlice) that
-        /// author their own world on bare belts and a clock.
+        /// The world, composed from <c>res://data/sandbox.json</c> and <c>placeables.json</c>: the
+        /// street's carts, buffer policy, bounds, starter bench and station, the build menu. Null
+        /// only before _Ready.
         /// </summary>
-        [Export] public bool ApplySandboxSetup { get; set; }
-
-        /// <summary>The composed world. Null only before _Ready.</summary>
         public SandboxWorld Sandbox { get; private set; }
 
         /// <summary>
@@ -64,7 +60,7 @@ namespace GolemFactory.Nodes
         public BeltNetwork Belts => Sandbox.Belts;
         public DefinitionSet Definitions => Sandbox.Definitions;
 
-        /// <summary>The applied setup, or null when <see cref="ApplySandboxSetup"/> is off.</summary>
+        /// <summary>The applied setup. Null only before _Ready.</summary>
         public SandboxSetup Setup => Sandbox?.Setup;
 
 
@@ -96,28 +92,20 @@ namespace GolemFactory.Nodes
             Compat.Debug.Warned += _warned;
             Compat.Debug.Errored += _errored;
 
-            // Only a scene with the whole Sandbox has a title; a test scene is always a game.
-            Launch = ApplySandboxSetup ? GameLaunch.Take(PlaytestNode.UnderScenario) : LaunchKind.NewGame;
+            Launch = GameLaunch.Take(PlaytestNode.UnderScenario);
 
             // Strict loaders: a bad data file throws here, at startup, naming the file and field.
             DefinitionSet definitions = DefinitionLoader.Load(Read);
 
-            if (ApplySandboxSetup)
-            {
-                SandboxSetup setup = SandboxSetup.Parse(Read("sandbox.json"));
-                // The showcase asks no playtest questions and writes no report: nobody is playing.
-                setup.playtest &= !IsShowcase;
-                // A Creative world (docs/menus-design.md §9): the setup's own Creative switch.
-                setup.creativeMode = GameLaunch.Creative && !IsShowcase;
-                Sandbox = SandboxWorld.Compose(
-                    definitions, setup,
-                    PlaceableCatalog.Load(Read(PlaceableCatalog.FileName), definitions),
-                    BeltSegmentLengthTicks, TicksPerSecond);
-            }
-            else
-            {
-                Sandbox = new SandboxWorld(definitions, BeltSegmentLengthTicks, TicksPerSecond);
-            }
+            SandboxSetup setup = SandboxSetup.Parse(Read("sandbox.json"));
+            // The showcase asks no playtest questions and writes no report: nobody is playing.
+            setup.playtest &= !IsShowcase;
+            // A Creative world (docs/menus-design.md §9): the setup's own Creative switch.
+            setup.creativeMode = GameLaunch.Creative && !IsShowcase;
+            Sandbox = SandboxWorld.Compose(
+                definitions, setup,
+                PlaceableCatalog.Load(Read(PlaceableCatalog.FileName), definitions),
+                BeltSegmentLengthTicks, TicksPerSecond);
 
             Sandbox.Clock.Play();
 

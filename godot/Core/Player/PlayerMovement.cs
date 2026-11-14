@@ -3,7 +3,7 @@ using GolemFactory.Compat;
 namespace GolemFactory.Player
 {
     // Pure math extracted from PlayerController so it's unit-testable without a scene,
-    // mirroring World/GridCoordinateConverter.cs and World/YSortUtility.cs's split
+    // mirroring World/GridCoordinateConverter.cs's split
     // between plain-C# math and the MonoBehaviour that applies it.
     public static class PlayerMovement
     {

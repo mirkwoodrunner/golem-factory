@@ -120,6 +120,20 @@ namespace GolemFactory.Tutorial
         /// <summary>Whether the kit knows how to do <paramref name="stepId"/>.</summary>
         public bool HasKitAction(string stepId) => Performs.ContainsKey(stepId);
 
+        /// <summary>
+        /// Does <paramref name="stepId"/> as the kit would, at once, whatever step the guide is on.
+        /// False, and nothing done, for a step the kit has no action for.
+        /// </summary>
+        public bool TryPerformKitAction(string stepId)
+        {
+            if (stepId == null || !Performs.TryGetValue(stepId, out Action perform))
+            {
+                return false;
+            }
+            perform();
+            return true;
+        }
+
         private Dictionary<string, Action> _performs;
 
         private Dictionary<string, Action> Performs => _performs ??= new Dictionary<string, Action>

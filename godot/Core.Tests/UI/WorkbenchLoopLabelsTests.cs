@@ -21,13 +21,19 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual("STEP 6", WorkbenchLoopLabels.Caption(6));
         }
 
-        [Test]
-        public void TheLastFilledStepIsWhereTheCycleTurnsAround()
+        // THE SENTENCE THE FINDING ASKED FOR.
+        [TestCase(3, true, 3, "STEP 3  ·  loops back to 1", TestName = "TheLastFilledStepIsWhereTheCycleTurnsAround")]
+        [TestCase(3, false, 2, "STEP 3  ·  unused", TestName = "AnEmptySocketInsideTheChassisSaysUnused")]
+        [TestCase(1, true, 1, "STEP 1  ·  loops back to 1", TestName = "AOneStepProgramLoopsBackToItself")]
+        // Such a socket is only drawn when it holds a card the fitted chassis can no longer
+        // carry. It is genuinely not part of the cycle, so it gets nothing rather than a
+        // wrong clause.
+        [TestCase(5, true, 5, "STEP 5", TestName = "ASocketBeyondTheChassisGetsNoClause")]
+        public void AStepsCaption_SaysWhereItSitsInTheCycle(int step, bool rowFilled, int lastFilledStep, string expected)
         {
-            // THE SENTENCE THE FINDING ASKED FOR.
             Assert.AreEqual(
-                "STEP 3  ·  loops back to 1",
-                WorkbenchLoopLabels.Compose(3, rowFilled: true, lastFilledStep: 3, capacitySteps: Capacity));
+                expected,
+                WorkbenchLoopLabels.Compose(step, rowFilled, lastFilledStep: lastFilledStep, capacitySteps: Capacity));
         }
 
         [Test]
@@ -39,14 +45,6 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(
                 "STEP 2  ·  then",
                 WorkbenchLoopLabels.Compose(2, rowFilled: true, lastFilledStep: 3, capacitySteps: Capacity));
-        }
-
-        [Test]
-        public void AnEmptySocketInsideTheChassisSaysUnused()
-        {
-            Assert.AreEqual(
-                "STEP 3  ·  unused",
-                WorkbenchLoopLabels.Compose(3, rowFilled: false, lastFilledStep: 2, capacitySteps: Capacity));
         }
 
         [Test]
@@ -64,14 +62,6 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(
                 "STEP 3  ·  loops back to 1",
                 WorkbenchLoopLabels.Compose(3, true, lastFilledStep: 3, capacitySteps: Capacity));
-        }
-
-        [Test]
-        public void AOneStepProgramLoopsBackToItself()
-        {
-            Assert.AreEqual(
-                "STEP 1  ·  loops back to 1",
-                WorkbenchLoopLabels.Compose(1, true, lastFilledStep: 1, capacitySteps: Capacity));
         }
 
         [Test]
@@ -100,17 +90,6 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(
                 "TRIGGER  ·  when to start",
                 WorkbenchLoopLabels.Compose(0, true, lastFilledStep: 1, capacitySteps: Capacity));
-        }
-
-        [Test]
-        public void ASocketBeyondTheChassisGetsNoClause()
-        {
-            // Such a socket is only drawn when it holds a card the fitted chassis can no longer
-            // carry. It is genuinely not part of the cycle, so it gets nothing rather than a
-            // wrong clause.
-            Assert.AreEqual(
-                "STEP 5",
-                WorkbenchLoopLabels.Compose(5, true, lastFilledStep: 5, capacitySteps: Capacity));
         }
 
         [Test]

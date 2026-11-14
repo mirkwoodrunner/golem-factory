@@ -957,8 +957,8 @@ namespace GolemFactory.World
         private List<GolemEntity> LiveGolems() => _golems.Where(g => g != null && !g.IsRemoved).ToList();
 
         /// <summary>
-        /// Adds a golem no station built -- a scene-authored one, as Unity's Main.unity demos and
-        /// LoopSlice's hand-placed golems are -- to the world's roster, so it is saved, loaded,
+        /// Adds a golem no station built -- a scene-authored one, as Unity's Main.unity demos
+        /// were -- to the world's roster, so it is saved, loaded,
         /// reachable by [E] and reported by the alerts strip like any other.
         /// </summary>
         public void AdoptGolem(GolemEntity golem)

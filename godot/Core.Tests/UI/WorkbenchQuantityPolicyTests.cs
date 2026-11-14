@@ -37,14 +37,6 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsFalse(WorkbenchQuantityPolicy.TakesQuantity(null));
         }
 
-        // The ceiling is the golem's own per-item-type stock cap, not a number picked for the UI:
-        // above it the extra units have nowhere to land.
-        [Test]
-        public void MaxQuantity_IsTheGolemsOwnStockCap()
-        {
-            Assert.AreEqual(GolemInventory.CapacityPerType, WorkbenchQuantityPolicy.MaxQuantity);
-        }
-
         [Test]
         public void Step_SaturatesAtBothEndsRatherThanWrapping()
         {

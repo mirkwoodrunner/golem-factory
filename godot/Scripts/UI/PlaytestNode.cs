@@ -63,7 +63,7 @@ namespace GolemFactory.Nodes
         public static bool UnderScenario
         {
             get => _underScenario ?? (bool)(_underScenario = System.Array.Exists(OS.GetCmdlineUserArgs(),
-                a => a == "--scenario" || a == "--spike-check" || a == "--demo" || a == "--spike-demo"));
+                a => a == "--scenario" || a == "--demo" || a == "--spike-demo"));
             set => _underScenario = value;
         }
 

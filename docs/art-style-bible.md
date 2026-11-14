@@ -451,10 +451,9 @@ The full table, file by file, is `art-pipeline-design.md` §4; this is what each
 3. **Floor and walls:** `FloorLayer` (floor and street tiles, by name), `SandboxLayout` and
    `SpritePivots` (walls, edges, props).
 4. **Buildings:** `data/placeables.json` `sprite` and shape sprites; `BuildingsLayer` centres
-   belt and pipe pieces and stands everything else on its cell; the depot by
-   `DepotNode`, the station by `ConstructionStationNode`.
-5. **Goods:** `placeables.json` `itemSprites` (belts), `ItemIcons.PathFor` (UI), `BeltRun` loads
-   `item_scrap.png` as its default.
+   belt and pipe pieces and stands everything else on its cell; the starter station by
+   `ConstructionStationNode`.
+5. **Goods:** `placeables.json` `itemSprites` (belts), `ItemIcons.PathFor` (UI).
 6. **Overlays:** `build_ghost_tile.png`, `facing_arrow.png` (golems, cursor, guide panel),
    `interaction_ring.png`, `ground_shadow.png`.
 7. **UI (9-slice margins, in pixels):** `wb_panel_mahogany`, `wb_panel_iron`,

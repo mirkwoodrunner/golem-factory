@@ -56,16 +56,13 @@ namespace GolemFactory.Nodes
             Callable.From(() => GetParent().AddChild(ambient)).CallDeferred();
 
             WorldNode world = WorldNode.Find(this);
-            FloorBounds bounds = world?.Bounds ?? new FloorBounds();
-            _bounds = world?.Setup != null ? bounds : null;
+            FloorBounds bounds = world.Bounds;
+            _bounds = bounds;
             RebuildWalls(bounds.NorthExtent);
 
             // The back wall, its sconces and corner posts move north with a Floor Expansion.
-            if (world?.Setup != null)
-            {
-                world.Sandbox.FloorExpansion.RowsAdded += (from, to) => RebuildWalls(bounds.NorthExtent);
-                world.Sandbox.FloorExpansion.RowsRemoved += (from, to) => RebuildWalls(bounds.NorthExtent);
-            }
+            world.Sandbox.FloorExpansion.RowsAdded += (from, to) => RebuildWalls(bounds.NorthExtent);
+            world.Sandbox.FloorExpansion.RowsRemoved += (from, to) => RebuildWalls(bounds.NorthExtent);
 
             foreach (LayoutPiece prop in SandboxLayout.Props())
             {

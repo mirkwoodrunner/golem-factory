@@ -402,7 +402,7 @@ any later environment redraw.
 
 | File | Size | Owner | Reads |
 |---|---|---|---|
-| `depot.png` | 62 × 69 | hand-replaced (S3 #2) | `placeables.json`, `DepotNode`, `StandOnCell` |
+| `depot.png` | 62 × 69 | hand-replaced (S3 #2) | `placeables.json`, `BuildingsLayer`, `StandOnCell` |
 | `golem_construction_station.png` | 78 × 96 | hand-replaced (S3 #3) | `placeables.json`, `ConstructionStationNode` |
 | `pneumatic_post.png` | 62 × 92 | hand-replaced (S3 #1) | `placeables.json` |
 | `freight_mast.png` | 52 × 118 | hand-replaced (S3 #6) | `placeables.json` |
@@ -411,7 +411,7 @@ any later environment redraw.
 | `steam_boiler.png` | 71 × 114 | authored | `placeables.json`; gets a glow (§6) |
 | `hand_crank_bench.png` | 94 × 82 | authored | `placeables.json` |
 | `hand_crank_bench_turn_{0..3}.png` (4) | 94 × 82 each | `hand_crank_bench.png` with rim glints (`crank_frames.py`, decision 17) | `HandCrankBench.SpriteFor`, while it turns |
-| `belt_tile.png`, `belt_tile_corner_left.png`, `belt_tile_corner_right.png`, `belt_splitter.png` | 64 × 64 | Gen topdown | `placeables.json` shape sprites, `BeltRun`, `BuildingsLayer` (centred, rotated) |
+| `belt_tile.png`, `belt_tile_corner_left.png`, `belt_tile_corner_right.png`, `belt_splitter.png` | 64 × 64 | Gen topdown | `placeables.json` shape sprites, `BuildingsLayer` (centred, rotated) |
 | `steam_pipe.png`, `_corner`, `_cross`, `_end`, `_tee` | 64 × 64 | Gen building | `BuildingsLayer` (centred, rotated); each has a `_hot` twin (§6.5) |
 | `stall_*.png` (5), `clock_tower_*.png` (6) | 96 × 120, 192 × 640 | hand-replaced | Done; not in this set |
 | `ghost_placeholder.png` | 64 × 64 | authored | `BuildingsLayer` fallback, `fallbackItemSprite` |
@@ -444,7 +444,7 @@ S6 with the rest of the pack (decision 22).
 
 | Files | Size | Owner | Reads |
 |---|---|---|---|
-| `item_scrap`, `item_coal`, `item_copper_ore`, `item_zinc_ore`, `item_aether`, `item_brass` | 32 × 32 | Gen placeholder (`belts` section) | `placeables.json` `itemSprites` (belts, drawn at 32); `ItemIcons.PathFor` (UI rows, drawn at 24); `BeltRun` default `item_scrap` |
+| `item_scrap`, `item_coal`, `item_copper_ore`, `item_zinc_ore`, `item_aether`, `item_brass` | 32 × 32 | Gen placeholder (`belts` section) | `placeables.json` `itemSprites` (belts, drawn at 32); `ItemIcons.PathFor` (UI rows, drawn at 24) |
 | `item_coke`, `item_iron_plate`, `item_slag`, `item_glass`, `item_copper_ingot`, `item_zinc_ingot`, `item_copper_wire`, `item_gear`, `item_casing`, `item_lens`, `item_mainspring`, `item_aether_cell`, `item_mechanism`, `item_regulator`, `item_frame_section`, `item_aether_conduit`, `item_chronometer_core`, `item_great_cog` | 32 × 32 | Gen placeholder (`goods` section) | same |
 
 `item_copper_ore.png` stays malachite green (`art-style-bible.md` §0.6). The rows stay at 24

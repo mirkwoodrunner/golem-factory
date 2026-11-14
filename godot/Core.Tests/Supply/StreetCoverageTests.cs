@@ -102,19 +102,13 @@ namespace GolemFactory.Tests.EditMode
             return carts;
         }
 
-        [Test]
-        public void StageOne_FitsTheStreet()
+        // docs/progression-design.md §7: a stage 1 factory runs 63 golems, and stage 4 about 96.
+        // If stage 4 fails, the street gains spots before the rates rise (supply-design §3).
+        [TestCase(1, 63, TestName = "StageOne_FitsTheStreet")]
+        [TestCase(4, 96, TestName = "StageFour_AtTheTopRungs_FitsTheStreet")]
+        public void AStagesCarts_FitTheStreet(int stage, int golems)
         {
-            // docs/progression-design.md §7: a stage 1 factory runs 63 golems.
-            Assert.LessOrEqual(CartsFor(1, 63), World.SandboxSetupTests.LoadReal().supply.spots.Count);
-        }
-
-        [Test]
-        public void StageFour_AtTheTopRungs_FitsTheStreet()
-        {
-            // §7 again: about 96 golems at stage 4. If this fails, the street gains spots before
-            // the rates rise (supply-design §3).
-            Assert.LessOrEqual(CartsFor(4, 96), World.SandboxSetupTests.LoadReal().supply.spots.Count);
+            Assert.LessOrEqual(CartsFor(stage, golems), World.SandboxSetupTests.LoadReal().supply.spots.Count);
         }
     }
 }

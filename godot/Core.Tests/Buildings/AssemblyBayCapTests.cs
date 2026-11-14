@@ -36,6 +36,7 @@ namespace GolemFactory.Tests.EditMode
             // so the cap becomes a decision in the middle game rather than a wall in Phase 1.
             Assert.AreEqual(10, bay.MaxGolemSlots);
             Assert.AreEqual(10, AssemblyBayStructure.DefaultSlots);
+            Assert.AreEqual(1, bay.Tier);
             Assert.IsTrue(bay.HasFreeSlot);
         }
 
@@ -81,9 +82,38 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsFalse(bay.TryUpgrade(buffers, "FactoryStockpile"));
 
             Assert.AreEqual(10, bay.MaxGolemSlots);
+            Assert.AreEqual(1, bay.Tier);
             Assert.AreEqual(40, buffers.GetOrCreate("FactoryStockpile").GetQuantity(ItemType.Scrap),
                 "An atomic bundle withdrawal refunds in full -- a partial charge would take the " +
                 "Scrap and hand back nothing.");
+        }
+
+        [Test]
+        public void AnAssignedGolem_IsListed_AndCannotTakeASecondSlot()
+        {
+            AssemblyBayStructure bay = BuildBay();
+            GolemEntity golem = MakeGolem("Golem");
+
+            Assert.IsTrue(bay.TryAssignGolem(golem));
+            Assert.Contains(golem, (System.Collections.ICollection)bay.AssignedGolems);
+            Assert.IsFalse(bay.TryAssignGolem(golem));
+            Assert.AreEqual(1, bay.OccupiedSlots);
+        }
+
+        [Test]
+        public void ReleasingAGolem_FreesItsSlotInAFullBay()
+        {
+            AssemblyBayStructure bay = BuildBay();
+            GolemEntity golem = MakeGolem("Golem");
+            bay.TryAssignGolem(golem);
+            for (int i = 1; i < AssemblyBayStructure.DefaultSlots; i++)
+            {
+                bay.TryAssignGolem(MakeGolem("Filler" + i));
+            }
+            Assert.IsFalse(bay.HasFreeSlot);
+
+            Assert.IsTrue(bay.ReleaseGolem(golem));
+            Assert.IsTrue(bay.TryAssignGolem(MakeGolem("GolemB")));
         }
 
         [Test]

@@ -333,6 +333,28 @@ namespace GolemFactory.World
             return found;
         }
 
+        /// <summary>
+        /// The most entities any one bucket holds: how far the worst lookup walks. A measure for
+        /// tests and the perf run, not for a tick; it visits every bucket.
+        /// </summary>
+        public int LongestChain()
+        {
+            int longest = 0;
+            for (int bucket = 0; bucket < _head.Length; bucket++)
+            {
+                int length = 0;
+                for (int slot = _head[bucket]; slot != None; slot = _next[slot])
+                {
+                    length++;
+                }
+                if (length > longest)
+                {
+                    longest = length;
+                }
+            }
+            return longest;
+        }
+
         // --- The chains ----------------------------------------------------------------------
 
         // Multiplicative, mixed down so the high bits reach the mask. No seed: two runs agree.

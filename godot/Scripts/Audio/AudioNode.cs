@@ -63,7 +63,7 @@ namespace GolemFactory.Nodes
         {
             string[] args = OS.GetCmdlineUserArgs();
             Silent = Array.IndexOf(args, "--scenario") >= 0 || Array.IndexOf(args, "--demo") >= 0
-                || Array.IndexOf(args, "--spike-demo") >= 0 || Array.IndexOf(args, "--spike-check") >= 0;
+                || Array.IndexOf(args, "--spike-demo") >= 0;
 
             _director = WorldNode.Find(this)?.Sandbox?.Audio;
             EnsureBuses();

@@ -3,8 +3,8 @@ namespace GolemFactory.ClockTower
     /// <summary>
     /// The Clock Tower's rate-scaled progress arithmetic (docs/progression-design.md §7), as
     /// pure engine-free statics -- the same "extract the math into something the tests can call
-    /// without a scene" split <c>GridCoordinateConverter</c>, <c>BufferTrendUtility</c>,
-    /// <c>SteamGaugeUtility</c> and <c>BeltSignalUtility</c> already use. Everything with a
+    /// without a scene" split <c>GridCoordinateConverter</c>, <c>BufferTrendUtility</c> and
+    /// <c>SteamGaugeUtility</c> already use. Everything with a
     /// decision in it lives here; <see cref="ClockTowerSite"/> only keeps the state and
     /// <c>ClockTowerSiteHolder</c> only gives it a scene presence.
     ///

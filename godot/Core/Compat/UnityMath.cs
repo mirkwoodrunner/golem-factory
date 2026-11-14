@@ -158,7 +158,7 @@ namespace GolemFactory.Compat
         public override string ToString() => $"({x:F2}, {y:F2}, {z:F2})";
     }
 
-    // Only BeltSignalUtility's colour maths needs this: Lerp, white, and the channels.
+    // Only the view rules' colour maths needs this: Lerp, white, and the channels.
     [Serializable]
     public struct Color : IEquatable<Color>
     {

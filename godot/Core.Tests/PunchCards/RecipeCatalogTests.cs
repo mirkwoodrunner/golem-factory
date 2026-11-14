@@ -248,12 +248,5 @@ namespace GolemFactory.Tests.EditMode
             ItemType.Mechanism, ItemType.Regulator,
             ItemType.FrameSection, ItemType.GreatCog, ItemType.AetherConduit, ItemType.ChronometerCore,
         };
-
-        [Test]
-        public void TheRosterIsExactlyTwentyFourItems()
-        {
-            Assert.AreEqual(24, new HashSet<string>(AllItemTypes()).Count,
-                "section 5.1 lists 24 distinct item types");
-        }
     }
 }

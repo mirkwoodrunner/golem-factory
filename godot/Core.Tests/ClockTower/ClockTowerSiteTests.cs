@@ -158,55 +158,25 @@ namespace GolemFactory.Tests.EditMode
             return site;
         }
 
-        // --- Nominal duration at exactly 1x -- one test per stage -------------------------------
+        // --- Nominal duration at exactly 1x -- one case per stage -------------------------------
         //
         // The cheapest possible check that §7's formula is wired the right way up. If the ratio
         // were inverted, or the window were the wrong length, or the per-tick increment were
         // scaled wrong, these are the assertions that catch it -- and they are equalities, not
         // ranges, because the arithmetic is integer end to end.
 
-        [Test]
-        public void Stage1_AtExactlyOneTimesSupply_TakesItsNominalSixMinutes()
+        [TestCase(1, 3600, TestName = "Stage1_AtExactlyOneTimesSupply_TakesItsNominalSixMinutes")]
+        [TestCase(2, 4800, TestName = "Stage2_AtExactlyOneTimesSupply_TakesItsNominalEightMinutes")]
+        [TestCase(3, 4800, TestName = "Stage3_AtExactlyOneTimesSupply_TakesItsNominalEightMinutes")]
+        [TestCase(4, 6000, TestName = "Stage4_AtExactlyOneTimesSupply_TakesItsNominalTenMinutes")]
+        public void AStage_AtExactlyOneTimesSupply_TakesItsNominalTime(int number, int nominalTicks)
         {
-            ClockTowerStageDefinition stage = Stage1();
+            ClockTowerStageDefinition stage = AllStages()[number - 1];
             ClockTowerSite site = SiteFor(stage);
             Supply supply = Supply.At(stage, 1);
             Preload(site, supply);
 
-            Assert.AreEqual(3600, TicksToAdvance(site, supply, 8000));
-        }
-
-        [Test]
-        public void Stage2_AtExactlyOneTimesSupply_TakesItsNominalEightMinutes()
-        {
-            ClockTowerStageDefinition stage = Stage2();
-            ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 1);
-            Preload(site, supply);
-
-            Assert.AreEqual(4800, TicksToAdvance(site, supply, 9000));
-        }
-
-        [Test]
-        public void Stage3_AtExactlyOneTimesSupply_TakesItsNominalEightMinutes()
-        {
-            ClockTowerStageDefinition stage = Stage3();
-            ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 1);
-            Preload(site, supply);
-
-            Assert.AreEqual(4800, TicksToAdvance(site, supply, 9000));
-        }
-
-        [Test]
-        public void Stage4_AtExactlyOneTimesSupply_TakesItsNominalTenMinutes()
-        {
-            ClockTowerStageDefinition stage = Stage4();
-            ClockTowerSite site = SiteFor(stage);
-            Supply supply = Supply.At(stage, 1);
-            Preload(site, supply);
-
-            Assert.AreEqual(6000, TicksToAdvance(site, supply, 11000));
+            Assert.AreEqual(nominalTicks, TicksToAdvance(site, supply, nominalTicks + 5000));
         }
 
         // --- Surplus is rewarded ----------------------------------------------------------------
