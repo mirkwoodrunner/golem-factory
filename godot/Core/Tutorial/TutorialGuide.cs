@@ -536,11 +536,26 @@ namespace GolemFactory.Tutorial
 
         private void OnGolemCompleted(GolemCompletedEvent e)
         {
-            // Only this world's golems: tests compose many worlds on one static bus.
-            if (_world.Golems.Any(g => g != null && !g.IsRemoved && g.GolemId == e.GolemId))
+            // A finished guide has no step left to read a cycle, and every golem's every cycle
+            // comes through here for the rest of the game: a walk of the whole roster each time
+            // was the tick's one remaining allocation, and grew with the square of the golems.
+            // Going back a step clears what was seen (Restore), so nothing is missed.
+            if (IsFinished)
             {
-                _cycleSeen = true;
-                _completedSinceEntry.Add(e.GolemId);
+                return;
+            }
+
+            // Only this world's golems: tests compose many worlds on one static bus.
+            IReadOnlyList<GolemEntity> golems = _world.Golems;
+            for (int i = 0; i < golems.Count; i++)
+            {
+                GolemEntity golem = golems[i];
+                if (golem != null && !golem.IsRemoved && golem.GolemId == e.GolemId)
+                {
+                    _cycleSeen = true;
+                    _completedSinceEntry.Add(e.GolemId);
+                    return;
+                }
             }
         }
 

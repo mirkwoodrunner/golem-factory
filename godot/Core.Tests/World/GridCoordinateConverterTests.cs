@@ -113,5 +113,37 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(rounded.x, Mathf.RoundToInt(fraction.x));
             Assert.AreEqual(rounded.y, Mathf.RoundToInt(fraction.y));
         }
+
+        // --- The snap (World/GridMath) --------------------------------------------------------
+
+        /// <summary>
+        /// A cell owns its west and south edges and not its east and north ones, every cell
+        /// alike: the point is shifted half a cell and floored. Rounding half to even, as this
+        /// did, gave even cells both edges and odd cells neither.
+        /// </summary>
+        [TestCase(0.5f, 1)]
+        [TestCase(1.5f, 2)]
+        [TestCase(2.5f, 3)]
+        [TestCase(-0.5f, 0)]
+        [TestCase(-1.5f, -1)]
+        [TestCase(0.49f, 0)]
+        [TestCase(-0.51f, -1)]
+        [TestCase(0f, 0)]
+        public void SnapToCell_GivesAnEdgeToTheCellAboveIt(float cells, int expected)
+        {
+            Assert.AreEqual(expected, GridMath.SnapToCell(cells));
+            var converter = new GridCoordinateConverter(new Vector2(1f, 1f));
+            Assert.AreEqual(new Vector2Int(expected, expected), converter.WorldToCell(new Vector3(cells, cells, 0f)));
+        }
+
+        [Test]
+        public void WorldToCell_ScalesByTheCellSize_AsTheNodeBoundaryDoes()
+        {
+            // 64 px cells, as GridConversions asks: 31 px is still cell 0, 32 px is cell 1.
+            Assert.AreEqual(0, GridMath.WorldToCell(31f, 64f));
+            Assert.AreEqual(1, GridMath.WorldToCell(32f, 64f));
+            Assert.AreEqual(-1, GridMath.WorldToCell(-33f, 64f));
+            Assert.AreEqual(128f, GridMath.CellToWorld(2, 64f));
+        }
     }
 }

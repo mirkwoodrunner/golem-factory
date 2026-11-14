@@ -44,6 +44,7 @@ namespace GolemFactory.Overview
             new List<Dictionary<string, int>>(), new List<Dictionary<string, int>>(),
         };
         private readonly Dictionary<string, int>[] _lastTotals = new Dictionary<string, int>[2];
+        private readonly IReadOnlyDictionary<string, int>[] _totals = new IReadOnlyDictionary<string, int>[2];
         private float _bucketEnds = float.NaN;
 
         /// <summary>Complete buckets held, oldest first; at most <see cref="MaxBuckets"/>.</summary>
@@ -55,7 +56,11 @@ namespace GolemFactory.Overview
         /// </summary>
         public void Record(float seconds, IReadOnlyDictionary<string, int> made, IReadOnlyDictionary<string, int> spent = null)
         {
-            IReadOnlyDictionary<string, int>[] totals = { made ?? Empty, spent ?? Empty };
+            // The one pair, refilled: this is called every frame, and a new array each time
+            // was 40 bytes of every frame for nothing.
+            IReadOnlyDictionary<string, int>[] totals = _totals;
+            totals[0] = made ?? Empty;
+            totals[1] = spent ?? Empty;
             if (float.IsNaN(_bucketEnds))
             {
                 for (int m = 0; m < totals.Length; m++)

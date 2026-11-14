@@ -386,7 +386,8 @@ namespace GolemFactory.Golems
         // MonoBehaviour lifecycle -- same idiom M6's UI listeners established.
         public void Attach()
         {
-            EventBus.GolemCompleted += OnGolemCompletedForSignal;
+            _attached = true;
+            RefreshSignalSubscription();
             // Paired with the unregister below, so a disabled/re-enabled golem stops and
             // resumes drawing steam. Play-mode only (no [ExecuteAlways]), which is exactly why
             // ConfigureSteam registers directly rather than relying on this.
@@ -395,10 +396,64 @@ namespace GolemFactory.Golems
 
         public void Detach()
         {
-            EventBus.GolemCompleted -= OnGolemCompletedForSignal;
+            _attached = false;
+            RefreshSignalSubscription();
             UnregisterSteamConsumer();
             ReleaseNodeClaim();
         }
+
+        // --- Hearing signals ---------------------------------------------------------------
+        // Only a golem with a Signal core has anything to hear, so only such a golem is on the
+        // bus. Every attached golem used to subscribe, whatever its core, and every golem's
+        // every completed cycle then called every one of them: at a thousand golems that
+        // fan-out was more than half of a tick, for a trigger most factories never use.
+        //
+        // The subscription follows the core: Attach and Detach set it, an assignment to
+        // program.logicCore re-reads it at once (GolemProgram.LogicCoreChanged, hooked in the
+        // constructor), and ShouldTrigger re-reads it for a Signal core it finds unsubscribed
+        // -- the one way left to get there, a core definition edited in place.
+        private bool _attached;
+        private bool _hearsSignals;
+
+        public GolemEntity()
+        {
+            program.LogicCoreChanged = RefreshSignalSubscription;
+        }
+
+        private void RefreshSignalSubscription()
+        {
+            LogicCoreDefinition logicCore = program.logicCore;
+            bool wanted = _attached && logicCore != null && logicCore.triggerType == TriggerType.Signal;
+            if (wanted == _hearsSignals)
+            {
+                return;
+            }
+
+            _hearsSignals = wanted;
+            if (wanted)
+            {
+                EventBus.GolemCompleted += OnGolemCompletedForSignal;
+            }
+            else
+            {
+                EventBus.GolemCompleted -= OnGolemCompletedForSignal;
+            }
+        }
+
+        // --- What a view reads instead of the bus ------------------------------------------
+        // A golem's own view wants two things the bus also says: that this golem finished a
+        // cycle, and that it has just stalled. Counted here, where each event is published, so
+        // a view compares a number on its own frame. A view per golem on the bus is the same
+        // fan-out as above: every event, delivered to every golem's view, inside the tick.
+
+        /// <summary>Cycles this golem has completed: one for each <see cref="GolemCompletedEvent"/> it published.</summary>
+        public int CompletedCycles { get; private set; }
+
+        /// <summary>
+        /// Stalls this golem has entered: one for each <see cref="GolemStalledEvent"/> it
+        /// published, so a new one each time it stalls or its stall's cause changes.
+        /// </summary>
+        public int StallIncidents { get; private set; }
 
         /// <summary>
         /// True once <see cref="Remove"/> has run: this golem has left the world.
@@ -523,6 +578,7 @@ namespace GolemFactory.Golems
 
                     if (isNewIncident)
                     {
+                        StallIncidents++;
                         EventBus.Publish(new GolemStalledEvent(
                             golemId, reason, blockedResourceId, program.CurrentStepIndex,
                             _stallShortfall));
@@ -578,6 +634,7 @@ namespace GolemFactory.Golems
             if (program.CurrentStepIndex == 0)
             {
                 program.State = GolemState.Idle;
+                CompletedCycles++;
                 EventBus.Publish(new GolemCompletedEvent(golemId));
             }
         }
@@ -599,6 +656,10 @@ namespace GolemFactory.Golems
                 case TriggerType.Threshold:
                     return ShouldTriggerThreshold(logicCore);
                 case TriggerType.Signal:
+                    if (!_hearsSignals)
+                    {
+                        RefreshSignalSubscription();
+                    }
                     if (!program.PendingSignal)
                     {
                         return false;
@@ -751,7 +812,7 @@ namespace GolemFactory.Golems
             // The golem's OWN cell, matching NoSourceAtTile/NoTargetAtTile's convention of
             // naming the tile rather than a resource id -- every fix for this stall is spatial
             // (lay a pipe to here, move the golem to a pipe, build another boiler).
-            blockedResourceId = cell.ToString();
+            blockedResourceId = CellText(cell);
             return StallReason.NoSteam;
         }
 
@@ -793,6 +854,23 @@ namespace GolemFactory.Golems
         // The one exception is Assemble, which never touches a tile at all and therefore
         // behaves identically on both paths -- see BeginAssemble.
         private bool IsSpatiallyPlaced => spatialEndpoints != null;
+
+        // A stall that names a tile names the same tile on every retry, ten times a second for
+        // as long as it lasts. The text is kept with the cell it was made for, so only the
+        // first of those ticks builds a string.
+        private Vector2Int _namedCell;
+        private string _namedCellText;
+
+        private string CellText(Vector2Int named)
+        {
+            if (_namedCellText == null || _namedCell != named)
+            {
+                _namedCell = named;
+                _namedCellText = named.ToString();
+            }
+
+            return _namedCellText;
+        }
 
         // --- The pure-logistics rule (progression-design §2) --------------------------------
         // "A program containing no Assemble step treats its input stock as its output stock."
@@ -965,7 +1043,7 @@ namespace GolemFactory.Golems
             IItemEndpoint source = ResolveSpatialSource();
             if (source == null)
             {
-                blockedResourceId = SourceCell.ToString();
+                blockedResourceId = CellText(SourceCell);
                 return StallReason.NoSourceAtTile;
             }
 
@@ -1226,7 +1304,7 @@ namespace GolemFactory.Golems
             IItemEndpoint source = ResolveSpatialSource();
             if (source == null)
             {
-                blockedResourceId = SourceCell.ToString();
+                blockedResourceId = CellText(SourceCell);
                 return StallReason.NoSourceAtTile;
             }
 
@@ -1417,7 +1495,7 @@ namespace GolemFactory.Golems
                 target = ResolveEndpointAt(BoundMastCell.Value);
                 if (target == null)
                 {
-                    blockedResourceId = BoundMastCell.Value.ToString();
+                    blockedResourceId = CellText(BoundMastCell.Value);
                     return StallReason.NoTargetAtTile;
                 }
             }
@@ -1447,7 +1525,7 @@ namespace GolemFactory.Golems
             IItemEndpoint target = ResolveSpatialTarget();
             if (target == null)
             {
-                blockedResourceId = TargetCell.ToString();
+                blockedResourceId = CellText(TargetCell);
                 return StallReason.NoTargetAtTile;
             }
 
@@ -1464,6 +1542,9 @@ namespace GolemFactory.Golems
         /// two ways: where the target comes from, and what the step costs.
         /// </para>
         /// </summary>
+        private readonly System.Collections.Generic.List<string> _pushOrderScratch =
+            new System.Collections.Generic.List<string>(4);
+
         private StallReason PushStockInto(IItemEndpoint target, out string blockedResourceId)
         {
             blockedResourceId = null;
@@ -1500,7 +1581,14 @@ namespace GolemFactory.Golems
             // it from the live ordering. Order is deterministic (see GolemInventory.Stock) so
             // two identically-programmed golems drain a mixed hold the same way when the
             // destination only has room for part of it.
-            var types = new System.Collections.Generic.List<string>(stock.TypesInOrder);
+            // Into this golem's own scratch list, emptied and refilled, so a push allocates
+            // nothing. A push never re-enters itself: an endpoint accepts a unit and returns.
+            System.Collections.Generic.List<string> types = _pushOrderScratch;
+            types.Clear();
+            for (int t = 0; t < stock.TypesInOrder.Count; t++)
+            {
+                types.Add(stock.TypesInOrder[t]);
+            }
             for (int i = 0; i < types.Count; i++)
             {
                 string itemType = types[i];

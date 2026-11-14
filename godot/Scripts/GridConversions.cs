@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Godot;
 using GolemFactory.World;
 using CoreVector2Int = GolemFactory.Compat.Vector2Int;
@@ -27,8 +28,9 @@ namespace GolemFactory.Nodes
             CellToWorld(centre) + new Vector2(0f, size * CellPixels / 2f);
 
         /// <summary>Centre of <paramref name="cell"/> in Godot world pixels.</summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector2 CellToWorld(CoreVector2Int cell) =>
-            new Vector2(cell.x * CellPixels, -cell.y * CellPixels);
+            new Vector2(GridMath.CellToWorld(cell.x, CellPixels), -GridMath.CellToWorld(cell.y, CellPixels));
 
         public static Vector2 CellToWorld(Vector2I cell) => CellToWorld(ToCore(cell));
 
@@ -40,11 +42,16 @@ namespace GolemFactory.Nodes
         public static Compat.Vector2 WorldToPoint(Vector2 world) =>
             new Compat.Vector2(world.X / CellPixels, -world.Y / CellPixels);
 
-        /// <summary>The cell whose square contains <paramref name="world"/>.</summary>
+        /// <summary>
+        /// The cell whose square contains <paramref name="world"/>. The snap is Core's
+        /// <see cref="GridMath"/>, the one the rules use; only the y flip is this file's.
+        /// Value types end to end, so a hover or a drag snaps every frame without allocating.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static CoreVector2Int WorldToCell(Vector2 world) =>
             new CoreVector2Int(
-                Mathf.FloorToInt(world.X / CellPixels + 0.5f),
-                Mathf.FloorToInt(-world.Y / CellPixels + 0.5f));
+                GridMath.WorldToCell(world.X, CellPixels),
+                GridMath.WorldToCell(-world.Y, CellPixels));
 
         // Inspector-authored cells are written in Core's frame (north = +y), so they convert
         // field for field; only positions flip.

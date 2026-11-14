@@ -550,6 +550,7 @@ namespace GolemFactory.Steam
             _poweredBy.Clear();
             _boilerOrder.Clear();
             _consumerOrder.Clear();
+            _litAtClaim.Clear();
             _orderDirty = true;
             _topologyDirty = true;
             _evaluationDirty = true;
@@ -581,11 +582,29 @@ namespace GolemFactory.Steam
                 return;
             }
 
+            bool built = _evaluationDirty;
             _evaluatedTick = tick;
             _evaluationDirty = false;
 
             RebuildOrders();
             RebuildTopology();
+
+            // Who is powered is decided by four things: the boilers and consumers in their
+            // orders, the pipes, and which boilers have Coke. The first three change only
+            // through a call that marks the evaluation dirty. So on a tick where nothing was
+            // built or moved and no boiler ran dry or was lit, the claims stand as they are.
+            // Claiming again every tick cost boilers x consumers lookups: at 160 golems, as much
+            // as ticking every golem.
+            if (!built && !FuelChanged())
+            {
+                return;
+            }
+
+            _litAtClaim.Clear();
+            for (int b = 0; b < _boilerOrder.Count; b++)
+            {
+                _litAtClaim.Add(_boilerOrder[b].CokeStock > 0);
+            }
 
             _poweredBy.Clear();
 
@@ -597,6 +616,28 @@ namespace GolemFactory.Steam
             // Its own golems first, then the network's spare (see the header).
             Claim(_ownCellsByBoiler);
             Claim(_poweredCellsByBoiler);
+        }
+
+        // Whether each boiler, in boiler order, had Coke when the claims were last made.
+        private readonly List<bool> _litAtClaim = new List<bool>();
+
+        /// <summary>Whether a boiler has run dry, or been lit, since the claims were made.</summary>
+        private bool FuelChanged()
+        {
+            if (_litAtClaim.Count != _boilerOrder.Count)
+            {
+                return true;
+            }
+
+            for (int b = 0; b < _boilerOrder.Count; b++)
+            {
+                if (_boilerOrder[b].CokeStock > 0 != _litAtClaim[b])
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void Claim(Dictionary<string, HashSet<Vector2Int>> reachByBoiler)

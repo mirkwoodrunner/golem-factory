@@ -162,8 +162,20 @@ namespace GolemFactory.Contracts
         }
 
         /// <summary>The next contract in the sequence while none is posted, or null when the sequence is done.</summary>
-        public ContractDefinition Next =>
-            Current ?? _sequence.FirstOrDefault(c => !_done.Contains(c.name)) ?? Generator?.Generate(GeneratedDone);
+        public ContractDefinition Next => Current ?? NextInSequence() ?? Generator?.Generate(GeneratedDone);
+
+        // A loop, not a query: Settle asks every tick and every frame while nothing is posted.
+        private ContractDefinition NextInSequence()
+        {
+            for (int i = 0; i < _sequence.Count; i++)
+            {
+                if (!_done.Contains(_sequence[i].name))
+                {
+                    return _sequence[i];
+                }
+            }
+            return null;
+        }
 
         /// <summary>
         /// The first thing the next contract is waiting for: a good the Ledger hasn't seen
@@ -275,12 +287,33 @@ namespace GolemFactory.Contracts
         }
 
         /// <summary>Whether a contract's condition holds: every named good seen, and its tower stage started.</summary>
-        public bool CanPost(ContractDefinition contract) =>
-            contract != null
-            && contract.postWhenSeen.All(_seen)
-            && contract.asks.All(a => _seen(a.itemType))
-            && (contract.postWhenTowerStage <= 0 || _towerStageStarted() >= contract.postWhenTowerStage)
-            && (!contract.postWhenTowerComplete || TowerComplete?.Invoke() == true);
+        public bool CanPost(ContractDefinition contract)
+        {
+            if (contract == null)
+            {
+                return false;
+            }
+
+            // Plain loops: this is asked every tick and every frame while a contract waits to
+            // be posted, which is most of the game, and a lambda here was a closure each time.
+            for (int i = 0; i < contract.postWhenSeen.Count; i++)
+            {
+                if (!_seen(contract.postWhenSeen[i]))
+                {
+                    return false;
+                }
+            }
+            for (int i = 0; i < contract.asks.Count; i++)
+            {
+                if (!_seen(contract.asks[i].itemType))
+                {
+                    return false;
+                }
+            }
+
+            return (contract.postWhenTowerStage <= 0 || _towerStageStarted() >= contract.postWhenTowerStage)
+                && (!contract.postWhenTowerComplete || TowerComplete?.Invoke() == true);
+        }
 
         /// <summary>Takes the posted contract: from now its crate takes goods and its par runs.</summary>
         public bool Accept()

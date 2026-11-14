@@ -1,5 +1,4 @@
 using GolemFactory.Compat;
-using System.Collections.Generic;
 
 namespace GolemFactory.World
 {
@@ -11,10 +10,15 @@ namespace GolemFactory.World
     // One endpoint per cell. A tile is a physical place; two things cannot occupy it, and
     // allowing a list would immediately raise "which one does the golem pull from?", which
     // is precisely the ambiguity facing-based routing exists to remove.
+    //
+    // Backed by a SpatialHashGrid rather than a Dictionary: every golem asks for the tile behind
+    // it and the tile in front at each step's Begin, so this lookup is the tick's most frequent
+    // one. The grid answers it from flat arrays in under half the dictionary's time
+    // (SimulationStressTests.TheSpatialHash_AgainstADictionary), with a hash that is the same
+    // on every run.
     public sealed class SpatialEndpointRegistry
     {
-        private readonly Dictionary<Vector2IntKey, IItemEndpoint> _endpoints =
-            new Dictionary<Vector2IntKey, IItemEndpoint>();
+        private readonly SpatialHashGrid<IItemEndpoint> _endpoints = new SpatialHashGrid<IItemEndpoint>(256);
 
         public int Count => _endpoints.Count;
 
@@ -28,37 +32,23 @@ namespace GolemFactory.World
                 return;
             }
 
-            _endpoints[new Vector2IntKey(cell)] = endpoint;
-        }
-
-        public void Unregister(Vector2Int cell) => _endpoints.Remove(new Vector2IntKey(cell));
-
-        public bool TryGetEndpoint(Vector2Int cell, out IItemEndpoint endpoint) =>
-            _endpoints.TryGetValue(new Vector2IntKey(cell), out endpoint);
-
-        public bool HasEndpoint(Vector2Int cell) => _endpoints.ContainsKey(new Vector2IntKey(cell));
-
-        public void Clear() => _endpoints.Clear();
-
-        // Vector2Int is a fine dictionary key (it implements IEquatable), but it boxes through
-        // the default comparer on some Unity versions; this wrapper pins a struct comparer path
-        // and keeps the hash stable and obvious.
-        private readonly struct Vector2IntKey : System.IEquatable<Vector2IntKey>
-        {
-            private readonly int _x;
-            private readonly int _y;
-
-            public Vector2IntKey(Vector2Int cell)
+            // One endpoint per cell: a second registration replaces the first where it stands.
+            if (_endpoints.TryGetHandle(cell, out int handle))
             {
-                _x = cell.x;
-                _y = cell.y;
+                _endpoints[handle] = endpoint;
+                return;
             }
 
-            public bool Equals(Vector2IntKey other) => _x == other._x && _y == other._y;
-
-            public override bool Equals(object obj) => obj is Vector2IntKey && Equals((Vector2IntKey)obj);
-
-            public override int GetHashCode() => (_x * 397) ^ _y;
+            _endpoints.Add(cell, endpoint);
         }
+
+        public void Unregister(Vector2Int cell) => _endpoints.RemoveAt(cell);
+
+        public bool TryGetEndpoint(Vector2Int cell, out IItemEndpoint endpoint) =>
+            _endpoints.TryGet(cell, out endpoint);
+
+        public bool HasEndpoint(Vector2Int cell) => _endpoints.Contains(cell);
+
+        public void Clear() => _endpoints.Clear();
     }
 }

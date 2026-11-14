@@ -143,7 +143,8 @@ above −10.
 ## Engine rules
 
 - **Core keeps Unity's frame: +y is north.** `Scripts/GridConversions.cs` is the only place a cell becomes a Godot
-  position (Godot's +y points down). Don't do cell arithmetic in a Node.
+  position (Godot's +y points down). Don't do cell arithmetic in a Node. Which cell a point is in is
+  `Core/World/GridMath` (floor of the point plus half a cell), for Core's converter and the Node boundary alike.
 - **Core has its own math types** (`Core/Compat/UnityMath.cs`). Ported files keep `using GolemFactory.Compat;` where
   they had `using UnityEngine;`. Don't use Godot's `Vector2I` in Core; convert at the Node boundary. The shim follows
   Unity's semantics where they differ from `System.Math` (`RoundToInt` rounds half to even, `Lerp` clamps), because the

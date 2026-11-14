@@ -231,15 +231,7 @@ namespace GolemFactory.World
                 return PreferredItemType;
             }
 
-            foreach (var pair in _buffer.Quantities)
-            {
-                if (pair.Value > 0)
-                {
-                    return pair.Key;
-                }
-            }
-
-            return null;
+            return _buffer.FirstHeldType();
         }
 
         // "Could this buffer accept anything at all?" -- and for a PER-TYPE-capped buffer the

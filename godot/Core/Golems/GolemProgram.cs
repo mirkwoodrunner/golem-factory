@@ -15,7 +15,26 @@ namespace GolemFactory.Golems
     public sealed class GolemProgram
     {
         public ChassisDefinition chassis;
-        public LogicCoreDefinition logicCore;
+        /// <summary>
+        /// The trigger. A property only so the golem holding this program hears it change
+        /// (<see cref="LogicCoreChanged"/>): a Signal core is the one kind that listens to the
+        /// event bus, and the golem subscribes for exactly as long as it has one.
+        /// </summary>
+        public LogicCoreDefinition logicCore
+        {
+            get => _logicCore;
+            set
+            {
+                _logicCore = value;
+                LogicCoreChanged?.Invoke();
+            }
+        }
+
+        private LogicCoreDefinition _logicCore;
+
+        /// <summary>Raised whenever <see cref="logicCore"/> is assigned. The owning golem's, and nobody else's.</summary>
+        [NonSerialized]
+        internal Action LogicCoreChanged;
         public List<AppendageActionDefinition> appendages = new List<AppendageActionDefinition>();
 
         // Per-slot Haul/Extract batch size, kept exactly parallel to `appendages`.

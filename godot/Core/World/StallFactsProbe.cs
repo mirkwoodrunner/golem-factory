@@ -106,7 +106,21 @@ namespace GolemFactory.World
         private readonly Dictionary<BeltSegment, List<GolemEntity>> _pushersBySegment = new Dictionary<BeltSegment, List<GolemEntity>>();
         private readonly Dictionary<object, List<GolemEntity>> _takersByStore = new Dictionary<object, List<GolemEntity>>();
         private readonly Dictionary<BeltSegment, List<GolemEntity>> _takersBySegment = new Dictionary<BeltSegment, List<GolemEntity>>();
-        private Dictionary<BeltSegment, List<BeltSegment>> _upstream;
+        private readonly Dictionary<BeltSegment, List<BeltSegment>> _upstream = new Dictionary<BeltSegment, List<BeltSegment>>();
+        private bool _upstreamBuilt;
+
+        // The pushers a belt lane's run reaches, walked upstream once per lane per index.
+        private readonly Dictionary<BeltSegment, List<GolemEntity>> _feedersBySegment = new Dictionary<BeltSegment, List<GolemEntity>>();
+
+        // The indices are rebuilt every presentation frame, and a starved factory reads them
+        // for every stalled golem. Their lists and the walks' sets are therefore kept and
+        // refilled, never made anew: a rebuild and a read allocate nothing once they have run.
+        private readonly Stack<List<GolemEntity>> _golemLists = new Stack<List<GolemEntity>>();
+        private readonly Stack<List<BeltSegment>> _segmentLists = new Stack<List<BeltSegment>>();
+        private readonly HashSet<GolemEntity> _visitedScratch = new HashSet<GolemEntity>();
+        private readonly HashSet<BeltSegment> _walkVisited = new HashSet<BeltSegment>();
+        private readonly Stack<BeltSegment> _walkFrontier = new Stack<BeltSegment>();
+        private readonly List<GolemEntity> _rosterScratch = new List<GolemEntity>();
 
         public StallFacts Read(GolemEntity golem)
         {
@@ -127,21 +141,39 @@ namespace GolemFactory.World
         }
 
         /// <summary>Whether the indices no longer describe the golems: one moved, turned, was carried or removed, or changed whether it runs.</summary>
-        private bool IndexStale(IEnumerable<GolemEntity> golems)
+        private bool IndexStale(IReadOnlyList<GolemEntity> golems)
         {
-            int i = 0;
-            foreach (GolemEntity golem in golems)
+            if (golems.Count != _indexedAs.Count)
             {
-                if (i >= _indexedAs.Count)
-                {
-                    return true;
-                }
-                if (!_indexedAs[i++].Describes(golem))
+                return true;
+            }
+            for (int i = 0; i < golems.Count; i++)
+            {
+                if (!_indexedAs[i].Describes(golems[i]))
                 {
                     return true;
                 }
             }
-            return i != _indexedAs.Count;
+            return false;
+        }
+
+        /// <summary>
+        /// The roster as a list, walked by index: a <c>foreach</c> over the interface boxes an
+        /// enumerator on every read. A source that is not a list is copied into a kept one.
+        /// </summary>
+        private IReadOnlyList<GolemEntity> Roster()
+        {
+            IEnumerable<GolemEntity> golems = _golems?.Invoke();
+            if (golems is IReadOnlyList<GolemEntity> list)
+            {
+                return list;
+            }
+            _rosterScratch.Clear();
+            if (golems != null)
+            {
+                _rosterScratch.AddRange(golems);
+            }
+            return _rosterScratch;
         }
 
         private static bool Live(GolemEntity golem) =>
@@ -150,7 +182,7 @@ namespace GolemFactory.World
         /// <summary>Builds the indices unless they still describe this frame's golems.</summary>
         private void EnsureIndex()
         {
-            IEnumerable<GolemEntity> golems = _golems?.Invoke() ?? Enumerable.Empty<GolemEntity>();
+            IReadOnlyList<GolemEntity> golems = Roster();
             long? frame = Frame?.Invoke();
             // Within a frame the index stands until a golem's layout changes (GolemLayout): the
             // per-read walk over every golem made a starved frame cost the square of the golem
@@ -165,13 +197,16 @@ namespace GolemFactory.World
             _indexed = frame.HasValue;
             _indexFrame = frame ?? 0;
             _indexedAs.Clear();
-            _pushersByStore.Clear();
-            _pushersBySegment.Clear();
-            _takersByStore.Clear();
-            _takersBySegment.Clear();
-            _upstream = null;
-            foreach (GolemEntity golem in golems)
+            Recycle(_pushersByStore, _golemLists);
+            Recycle(_pushersBySegment, _golemLists);
+            Recycle(_takersByStore, _golemLists);
+            Recycle(_takersBySegment, _golemLists);
+            Recycle(_feedersBySegment, _golemLists);
+            Recycle(_upstream, _segmentLists);
+            _upstreamBuilt = false;
+            for (int i = 0; i < golems.Count; i++)
             {
+                GolemEntity golem = golems[i];
                 _indexedAs.Add(new IndexedGolem(golem));
                 if (!Live(golem))
                 {
@@ -200,11 +235,22 @@ namespace GolemFactory.World
             }
         }
 
-        private static void Add<TKey>(Dictionary<TKey, List<GolemEntity>> index, TKey key, GolemEntity golem)
+        /// <summary>Empties an index, keeping its lists for the next build.</summary>
+        private static void Recycle<TKey, TItem>(Dictionary<TKey, List<TItem>> index, Stack<List<TItem>> kept)
+        {
+            foreach (KeyValuePair<TKey, List<TItem>> entry in index)
+            {
+                entry.Value.Clear();
+                kept.Push(entry.Value);
+            }
+            index.Clear();
+        }
+
+        private void Add<TKey>(Dictionary<TKey, List<GolemEntity>> index, TKey key, GolemEntity golem)
         {
             if (!index.TryGetValue(key, out List<GolemEntity> list))
             {
-                index[key] = list = new List<GolemEntity>();
+                index[key] = list = _golemLists.Count > 0 ? _golemLists.Pop() : new List<GolemEntity>();
             }
             list.Add(golem);
         }
@@ -299,10 +345,15 @@ namespace GolemFactory.World
         /// </summary>
         private bool IsFed(GolemEntity golem, IItemEndpoint source, string good)
         {
-            var visited = new HashSet<GolemEntity> { golem };
-            foreach (GolemEntity feeder in Feeders(golem, source, good))
+            // One kept set: a read is never inside another read's walk.
+            HashSet<GolemEntity> visited = _visitedScratch;
+            visited.Clear();
+            visited.Add(golem);
+            List<GolemEntity> candidates = FeederCandidates(source);
+            for (int i = 0; i < candidates.Count; i++)
             {
-                if (Delivers(feeder, visited))
+                GolemEntity feeder = candidates[i];
+                if (feeder != golem && MayPush(feeder, good) && Delivers(feeder, visited))
                 {
                     return true;
                 }
@@ -332,7 +383,8 @@ namespace GolemFactory.World
                 return named;
             }
             string wanted = WantedGood(golem, golem.Program.CurrentStep, source);
-            foreach (GolemEntity feeder in Feeders(golem, source, wanted).OrderBy(NumberOrder).ThenBy(g => g.GolemId, StringComparer.Ordinal))
+            foreach (GolemEntity feeder in FeederCandidates(source).Where(g => g != golem && MayPush(g, wanted))
+                         .OrderBy(NumberOrder).ThenBy(g => g.GolemId, StringComparer.Ordinal))
             {
                 // A fresh visited set each: one feeder's walk can't mark a golem another reaches.
                 if (Delivers(feeder, new HashSet<GolemEntity> { golem }))
@@ -373,8 +425,15 @@ namespace GolemFactory.World
                 return true; // stuck at the root: it is red, and the golems behind it grey
             }
             bool fed = false;
-            foreach (GolemEntity next in Feeders(feeder, source, WantedGood(feeder, feeder.Program.CurrentStep, source)))
+            string wanted = WantedGood(feeder, feeder.Program.CurrentStep, source);
+            List<GolemEntity> candidates = FeederCandidates(source);
+            for (int i = 0; i < candidates.Count; i++)
             {
+                GolemEntity next = candidates[i];
+                if (next == feeder || !MayPush(next, wanted))
+                {
+                    continue;
+                }
                 fed = true;
                 if (Delivers(next, visited))
                 {
@@ -400,45 +459,56 @@ namespace GolemFactory.World
             }
         }
 
-        /// <summary>The other golems that may put <paramref name="good"/> (any, when null) on <paramref name="source"/>.</summary>
-        private IEnumerable<GolemEntity> Feeders(GolemEntity self, IItemEndpoint source, string good) =>
+        /// <summary>
+        /// Every golem that pushes onto <paramref name="source"/>: into its store, or onto a belt
+        /// lane its run reaches upstream. The asker and the good are the caller's to rule out
+        /// (<c>other != self &amp;&amp; MayPush(other, good)</c>), so one list serves every asker.
+        /// </summary>
+        private List<GolemEntity> FeederCandidates(IItemEndpoint source) =>
             source is BeltSegmentEndpoint belt
-                ? BeltFeeders(self, belt.Segment, good)
-                : PushedInto(self, Store(source), good);
-
-        /// <summary>Other golems that push <paramref name="good"/> (any, when null) into <paramref name="store"/>.</summary>
-        private IEnumerable<GolemEntity> PushedInto(GolemEntity self, object store, string good)
-        {
-            foreach (GolemEntity other in At(_pushersByStore, store))
-            {
-                if (other != self && MayPush(other, good))
-                {
-                    yield return other;
-                }
-            }
-        }
+                ? BeltFeeders(belt.Segment)
+                : At(_pushersByStore, Store(source));
 
         /// <summary>
         /// The golems pushing onto a segment that a belt's run, walked upstream, reaches. The
-        /// pushed-onto segments and the upstream links are gathered once, so the walk is
-        /// linear in belts plus golems, not their product.
+        /// pushed-onto segments and the upstream links are gathered once, and each lane's
+        /// answer is kept until the index is rebuilt, so the walk is linear in belts plus
+        /// golems, not their product.
         /// </summary>
-        private List<GolemEntity> BeltFeeders(GolemEntity self, BeltSegment segment, string good)
+        private List<GolemEntity> BeltFeeders(BeltSegment segment)
         {
-            var feeders = new List<GolemEntity>();
             if (segment == null || _belts == null || _pushersBySegment.Count == 0)
+            {
+                return None;
+            }
+            if (_feedersBySegment.TryGetValue(segment, out List<GolemEntity> feeders))
             {
                 return feeders;
             }
+            _feedersBySegment[segment] = feeders = _golemLists.Count > 0 ? _golemLists.Pop() : new List<GolemEntity>();
             Dictionary<BeltSegment, List<BeltSegment>> upstream = Upstream();
-            foreach (BeltSegment reached in Walk(segment, at => upstream.TryGetValue(at, out List<BeltSegment> before)
-                ? before : (IEnumerable<BeltSegment>)Array.Empty<BeltSegment>()))
+
+            // Depth first, every lane once, start included: the order the walk has always had.
+            _walkVisited.Clear();
+            _walkFrontier.Clear();
+            _walkFrontier.Push(segment);
+            while (_walkFrontier.Count > 0)
             {
-                foreach (GolemEntity other in At(_pushersBySegment, reached))
+                BeltSegment reached = _walkFrontier.Pop();
+                if (!_walkVisited.Add(reached))
                 {
-                    if (other != self && MayPush(other, good))
+                    continue;
+                }
+                List<GolemEntity> pushers = At(_pushersBySegment, reached);
+                for (int i = 0; i < pushers.Count; i++)
+                {
+                    feeders.Add(pushers[i]);
+                }
+                if (upstream.TryGetValue(reached, out List<BeltSegment> before))
+                {
+                    for (int i = 0; i < before.Count; i++)
                     {
-                        feeders.Add(other);
+                        _walkFrontier.Push(before[i]);
                     }
                 }
             }
@@ -448,53 +518,30 @@ namespace GolemFactory.World
         /// <summary>Each belt lane's feeding lanes, gathered once per index.</summary>
         private Dictionary<BeltSegment, List<BeltSegment>> Upstream()
         {
-            if (_upstream != null)
+            if (_upstreamBuilt)
             {
                 return _upstream;
             }
-            _upstream = new Dictionary<BeltSegment, List<BeltSegment>>();
+            _upstreamBuilt = true;
             foreach (PlacedBelt belt in _belts.Belts)
             {
                 if (belt.Segment == null)
                 {
                     continue;
                 }
-                foreach (BeltSegment next in belt.Segment.Outputs)
+                IReadOnlyList<BeltSegment> outputs = belt.Segment.Outputs;
+                for (int i = 0; i < outputs.Count; i++)
                 {
+                    BeltSegment next = outputs[i];
                     if (!_upstream.TryGetValue(next, out List<BeltSegment> before))
                     {
-                        _upstream[next] = before = new List<BeltSegment>();
+                        _upstream[next] = before = _segmentLists.Count > 0 ? _segmentLists.Pop() : new List<BeltSegment>();
                     }
                     before.Add(belt.Segment);
                 }
             }
             return _upstream;
         }
-
-        /// <summary>Every segment a walk from <paramref name="start"/> along <paramref name="links"/> reaches, start included.</summary>
-        private static IEnumerable<BeltSegment> Walk(BeltSegment start, Func<BeltSegment, IEnumerable<BeltSegment>> links)
-        {
-            var visited = new HashSet<BeltSegment>();
-            var frontier = new Stack<BeltSegment>();
-            frontier.Push(start);
-            while (frontier.Count > 0)
-            {
-                BeltSegment at = frontier.Pop();
-                if (!visited.Add(at))
-                {
-                    continue;
-                }
-                yield return at;
-                foreach (BeltSegment next in links(at))
-                {
-                    frontier.Push(next);
-                }
-            }
-        }
-
-        /// <summary>Whether a walk from <paramref name="start"/> along <paramref name="links"/> reaches one of <paramref name="goals"/>.</summary>
-        private static bool Reaches(BeltSegment start, HashSet<BeltSegment> goals, Func<BeltSegment, IEnumerable<BeltSegment>> links) =>
-            Walk(start, links).Any(goals.Contains);
 
         /// <summary>
         /// Could <paramref name="golem"/> push <paramref name="good"/>? Its recipe's outputs and
@@ -611,9 +658,10 @@ namespace GolemFactory.World
             {
                 return false;
             }
-            foreach (GolemEntity other in At(_takersByStore, store))
+            List<GolemEntity> takers = At(_takersByStore, store);
+            for (int i = 0; i < takers.Count; i++)
             {
-                if (other != self && MayTake(other, self.PushStock))
+                if (takers[i] != self && MayTake(takers[i], self.PushStock))
                 {
                     return true;
                 }
@@ -649,23 +697,35 @@ namespace GolemFactory.World
         /// <summary>A belt is drained when its run, walked downstream, reaches a segment a golem takes from.</summary>
         private bool BeltDrained(GolemEntity self, BeltSegment segment)
         {
-            if (segment == null)
+            if (segment == null || _takersBySegment.Count == 0)
             {
                 return false;
             }
-            var taken = new HashSet<BeltSegment>();
-            foreach (KeyValuePair<BeltSegment, List<GolemEntity>> lane in _takersBySegment)
+            _walkVisited.Clear();
+            _walkFrontier.Clear();
+            _walkFrontier.Push(segment);
+            while (_walkFrontier.Count > 0)
             {
-                foreach (GolemEntity other in lane.Value)
+                BeltSegment reached = _walkFrontier.Pop();
+                if (!_walkVisited.Add(reached))
                 {
-                    if (other != self && MayTake(other, self.PushStock))
+                    continue;
+                }
+                List<GolemEntity> takers = At(_takersBySegment, reached);
+                for (int i = 0; i < takers.Count; i++)
+                {
+                    if (takers[i] != self && MayTake(takers[i], self.PushStock))
                     {
-                        taken.Add(lane.Key);
-                        break;
+                        return true;
                     }
                 }
+                IReadOnlyList<BeltSegment> outputs = reached.Outputs;
+                for (int i = 0; i < outputs.Count; i++)
+                {
+                    _walkFrontier.Push(outputs[i]);
+                }
             }
-            return taken.Count > 0 && Reaches(segment, taken, at => at.Outputs);
+            return false;
         }
 
         private static bool IsTakeStep(AppendageActionDefinition card) =>

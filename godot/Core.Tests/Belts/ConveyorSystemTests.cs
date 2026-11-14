@@ -103,5 +103,53 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsTrue(system.TryDequeueHead("Belt", out ItemStack item));
             Assert.AreEqual("Scrap", item.ItemType);
         }
+
+        /// <summary>
+        /// Where two belts feed one, the belt registered first hands off first, whatever was
+        /// pulled up and relaid in between. A dictionary gave a removed belt's slot to the
+        /// next one laid, so the newest belt took the oldest belt's turn, and the same factory
+        /// loaded from a save (laid again in order) gave the free slot to the other belt.
+        /// </summary>
+        [Test]
+        public void Tick_WhereTwoBeltsFeedOne_TheOlderHandsOffFirst_EvenAfterARemoval()
+        {
+            var system = new ConveyorSystem();
+            var pulledUp = new BeltSegment("PulledUp", 1);
+            var older = new BeltSegment("Older", 1);
+            var merge = new BeltSegment("Merge", 5);
+            system.Register(pulledUp);
+            system.Register(older);
+            system.Register(merge);
+            system.Unregister("PulledUp");
+            var newer = new BeltSegment("Newer", 1);
+            system.Register(newer);
+            older.Next = merge;
+            newer.Next = merge;
+            system.TryEnqueue("Older", new ItemStack { ItemType = "Scrap" });
+            system.TryEnqueue("Newer", new ItemStack { ItemType = "Coal" });
+
+            system.Tick(1); // both heads reach the end; the merge has room for one
+
+            Assert.AreEqual(1, merge.Items.Count);
+            Assert.AreEqual("Scrap", merge.Items[0].ItemType, "the older belt's item went first");
+            Assert.AreEqual(1, newer.Items.Count, "the newer belt's item waits its turn");
+        }
+
+        [Test]
+        public void Register_ASecondSegmentUnderOneId_TakesTheFirstOnesPlace()
+        {
+            var system = new ConveyorSystem();
+            var first = new BeltSegment("Belt", 3);
+            var second = new BeltSegment("Belt", 3);
+            system.Register(first);
+            system.Register(second);
+            second.TryEnqueue(new ItemStack { ItemType = "Scrap" });
+            first.TryEnqueue(new ItemStack { ItemType = "Scrap" });
+
+            system.Tick(1);
+
+            Assert.AreEqual(1f, second.Items[0].Progress, "the registered segment is ticked");
+            Assert.AreEqual(0f, first.Items[0].Progress, "the replaced one is not");
+        }
     }
 }

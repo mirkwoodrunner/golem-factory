@@ -95,8 +95,10 @@ namespace GolemFactory.UI
         {
             _snapshots.Clear();
             int waiting = 0;
-            foreach (GolemEntity golem in _roster?.Invoke() ?? Array.Empty<GolemEntity>())
+            IReadOnlyList<GolemEntity> roster = Roster();
+            for (int i = 0; i < roster.Count; i++)
             {
+                GolemEntity golem = roster[i];
                 if (golem == null || golem.IsRemoved || golem.Program == null ||
                     golem.Program.State != GolemState.Stalled)
                 {
@@ -111,7 +113,28 @@ namespace GolemFactory.UI
             }
             _tracker.Reconcile(_snapshots);
             WaitingCount = waiting;
-            Log.Observe(Seconds, _snapshots, Describe);
+            Log.Observe(Seconds, _snapshots, _describe ??= Describe);
+        }
+
+        private Func<StallSnapshot, string> _describe;
+
+        // The roster by index. Walking it through its interface boxed an enumerator on every
+        // reconcile, and on every stall a golem published during a tick (Find).
+        private readonly List<GolemEntity> _rosterScratch = new List<GolemEntity>();
+
+        private IReadOnlyList<GolemEntity> Roster()
+        {
+            IEnumerable<GolemEntity> golems = _roster?.Invoke();
+            if (golems is IReadOnlyList<GolemEntity> list)
+            {
+                return list;
+            }
+            _rosterScratch.Clear();
+            if (golems != null)
+            {
+                _rosterScratch.AddRange(golems);
+            }
+            return _rosterScratch;
         }
 
         /// <summary>A stop's sentence, as the strip would say it, in player names when it can.</summary>
@@ -124,11 +147,12 @@ namespace GolemFactory.UI
 
         private GolemEntity Find(string golemId)
         {
-            foreach (GolemEntity golem in _roster?.Invoke() ?? Array.Empty<GolemEntity>())
+            IReadOnlyList<GolemEntity> roster = Roster();
+            for (int i = 0; i < roster.Count; i++)
             {
-                if (golem != null && golem.GolemId == golemId)
+                if (roster[i] != null && roster[i].GolemId == golemId)
                 {
-                    return golem;
+                    return roster[i];
                 }
             }
             return null;
