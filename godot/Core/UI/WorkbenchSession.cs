@@ -602,6 +602,60 @@ namespace GolemFactory.UI
             }
         }
 
+        // --- The read head ------------------------------------------------------------------
+
+        /// <summary><see cref="ReadHeadRow"/>: the golem isn't running the cards on the bench.</summary>
+        public const int NoReadHead = -2;
+
+        /// <summary><see cref="ReadHeadRow"/>: the golem is waiting on its trigger.</summary>
+        public const int ReadHeadOnTrigger = -1;
+
+        /// <summary>
+        /// The socket whose card the target golem is on this tick: a step's index while it works
+        /// or is stopped on that step, <see cref="ReadHeadOnTrigger"/> while it waits for its
+        /// trigger. <see cref="NoReadHead"/> unless the cards on the bench are, in order, the cards
+        /// the golem runs: once the draft moves on from the engaged program, a mark on it would
+        /// point at a card the golem isn't reading. A readout only; it decides nothing.
+        /// </summary>
+        public int ReadHeadRow
+        {
+            get
+            {
+                if (TargetGolem == null || TargetGolem.IsRemoved || !TargetGolem.HasRunnableProgram)
+                {
+                    return NoReadHead;
+                }
+                GolemProgram program = TargetGolem.Program;
+                if (program.chassis != _draftChassis || program.logicCore != _draftLogicCore)
+                {
+                    return NoReadHead;
+                }
+                // The draft may hold gaps; the program never does. Walk both in step.
+                int step = 0, row = NoReadHead;
+                for (int i = 0; i < _draftAppendages.Length; i++)
+                {
+                    if (_draftAppendages[i] == null)
+                    {
+                        continue;
+                    }
+                    if (step >= program.appendages.Count || program.appendages[step] != _draftAppendages[i])
+                    {
+                        return NoReadHead;
+                    }
+                    if (step == program.CurrentStepIndex)
+                    {
+                        row = i;
+                    }
+                    step++;
+                }
+                if (step != program.appendages.Count)
+                {
+                    return NoReadHead;
+                }
+                return program.State == GolemState.Idle ? ReadHeadOnTrigger : row;
+            }
+        }
+
         // --- Status line -------------------------------------------------------------------
 
         public string StatusText { get; private set; } = "";

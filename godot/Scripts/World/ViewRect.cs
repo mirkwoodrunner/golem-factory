@@ -36,6 +36,9 @@ namespace GolemFactory.Nodes
             _known = true;
         }
 
+        /// <summary>The view with its margin, in world pixels; empty while the view is unknown.</summary>
+        public static Rect2 World => _known ? _rect : default;
+
         /// <summary>Whether a node at <paramref name="worldPosition"/> is in view, or near enough; true while the view is unknown.</summary>
         public static bool Shows(Vector2 worldPosition) => !Enabled || !_known || _rect.HasPoint(worldPosition);
     }

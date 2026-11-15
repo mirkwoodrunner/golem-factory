@@ -71,6 +71,14 @@ namespace GolemFactory.Nodes
 
         private const string Ui = "res://art/UI/";
 
+        // The header gear's mahogany, the palette's (docs/art-style-bible.md §1).
+        private static readonly Color GearBody = new Color(0.333f, 0.235f, 0.188f);  // #553c30
+        private static readonly Color GearLight = new Color(0.467f, 0.314f, 0.224f); // #775039
+        private static readonly Color GearShade = new Color(0.263f, 0.180f, 0.145f); // #432e25
+
+        // Where the tape's read head stands: under the pip.
+        private const float TapeHeadX = 20f;
+
         private WorldNode _world;
         private WorkbenchSession _session;
         private Control _root;
@@ -104,6 +112,22 @@ namespace GolemFactory.Nodes
         private const int ScrollRetryFrames = 3;
 
         private Control _rackArea;
+        private ColorRect _gear;
+        private ColorRect _tapeFeed;
+
+        // The read head (WorkbenchSession.ReadHeadRow), as drawn, and how long it has been there.
+        private int _headRow = WorkbenchSession.NoReadHead;
+        private float _headAge = -1f;
+
+        /// <summary>The header's gear and the tape's paper, drawn by shaders: for a scenario.</summary>
+        public ColorRect HeaderGear => _gear;
+        public ColorRect TapeFeed => _tapeFeed;
+
+        /// <summary>The socket row the read head is drawn on: a step's index, or <see cref="WorkbenchSession"/>'s two constants.</summary>
+        public int DrawnReadHead => _headRow;
+
+        /// <summary>True while the sweep crosses the card the head has just reached.</summary>
+        public bool ReadHeadSweeping => _headAge >= 0f;
 
         /// <summary>
         /// The chassis rack's inner area: empty whenever the Workbench is on a golem, so the guide
@@ -255,6 +279,7 @@ namespace GolemFactory.Nodes
             _lever.Disabled = !_session.CanEngage;
             _lever.Modulate = _session.CanEngage ? Colors.White : new Color(1f, 1f, 1f, WorkbenchInteractionColors.DisabledAlpha);
             ApplyHighlights();
+            DrawReadHead(dt);
             DrawHint(dt);
             AnimateLever(dt);
             AnimateFlash(dt);
@@ -408,6 +433,32 @@ namespace GolemFactory.Nodes
                 ShadowSize = HintGlow,
             });
             return outline;
+        }
+
+        /// <summary>
+        /// Draws <see cref="WorkbenchSession.ReadHeadRow"/> and decides nothing: the glow on the
+        /// socket whose card the golem is on, and a sweep across that card as the head arrives
+        /// (punch_card.gdshader). A row is only sent what has changed.
+        /// </summary>
+        private void DrawReadHead(float dt)
+        {
+            int row = _session.ReadHeadRow;
+            if (row != _headRow)
+            {
+                _headRow = row;
+                _headAge = row == WorkbenchSession.NoReadHead ? -1f : 0f;
+            }
+            else if (_headAge >= 0f)
+            {
+                _headAge = _headAge + dt >= WorkbenchReadHead.SweepSeconds ? -1f : _headAge + dt;
+            }
+            bool motion = _world?.Sandbox?.Motion.WorkbenchMotion != false;
+            float sweep = WorkbenchReadHead.Sweep(_headAge, motion);
+            _triggerRow.ShowHead(row == WorkbenchSession.ReadHeadOnTrigger, sweep);
+            for (int i = 0; i < _stepRows.Count; i++)
+            {
+                _stepRows[i].ShowHead(row == i, sweep);
+            }
         }
 
         private void ApplyHighlights()
@@ -630,13 +681,11 @@ namespace GolemFactory.Nodes
             Panel header = Ugui.Place(Ugui.Image("HeaderBar", Ugui.NineSlice(Ui + "Workbench/wb_plate_brass.png", 10), new Color(0.92f, 0.88f, 0.84f)),
                 0.012f, 0.888f, 0.988f, 0.952f);
             _root.AddChild(header);
-            var gear = Ugui.Place(new TextureRect
-            {
-                Name = "Gear", Texture = GD.Load<Texture2D>(Ui + "Hud/hud_gear.png"),
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize, StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                Modulate = new Color(0.42f, 0.30f, 0.14f), MouseFilter = Control.MouseFilterEnum.Ignore,
-            }, 0f, 0.5f, 0f, 0.5f, 12f, 0f, 34f, 34f, 0f, 0.5f);
-            header.AddChild(gear);
+            // The header's gear turns on the factory's clock (clockwork_gear.gdshader), dark
+            // against the brass plate as the picture it replaces was.
+            _gear = Ugui.Place(ShaderRect.Gear("Gear", 34f, 10, GearBody, GearLight, GearShade),
+                0f, 0.5f, 0f, 0.5f, 12f, 0f, 34f, 34f, 0f, 0.5f);
+            header.AddChild(_gear);
             header.AddChild(Ugui.Place(Ugui.Text("Title", "THE WORKBENCH", 24, PlateInk, bold: true), 0.045f, 0f, 0.46f, 1f));
             _target = Ugui.Place(Ugui.Text("TargetLabel", "TARGET  ·  none", 15, new Color(0.28f, 0.20f, 0.10f), align: 4), 0.46f, 0f, 0.86f, 1f);
             header.AddChild(_target);
@@ -710,6 +759,11 @@ namespace GolemFactory.Nodes
             row.Hint = Ugui.Fill(Ugui.Text("Hint", hint, 11, HintInk, align: 2));
             row.HintText = hint;
             row.Socket.AddChild(row.Hint);
+            // The read head's glow, over the socket and whatever card sits in it.
+            row.Head = Ugui.Place(ShaderRect.Make("ReadHead", ShaderRect.CardShader, out ShaderMaterial head), 0.255f, 0.06f, 1f, 0.94f);
+            row.Head.Visible = false;
+            row.HeadMaterial = head;
+            row.AddChild(row.Head);
             return row;
         }
 
@@ -779,6 +833,12 @@ namespace GolemFactory.Nodes
             Panel tape = Ugui.Place(Ugui.Image("DiagnosticTape", Ugui.NineSlice(Ui + "Workbench/wb_tape.png", 0), Colors.White),
                 0.012f, 0.5f, 0.655f, 0.5f, 0f, 16f, 0f, 64f);
             bar.AddChild(tape);
+            // The paper itself, feeding a notch a tick (logic_tape.gdshader), over the plate's
+            // stretched picture and under the pip and the printed line.
+            _tapeFeed = Ugui.Fill(ShaderRect.Make("TapeFeed", ShaderRect.TapeShader, out ShaderMaterial feed));
+            feed.SetShaderParameter("ticks_per_hole", (float)World.TickVisuals.TapeTicksPerHole);
+            feed.SetShaderParameter("head_px", TapeHeadX);
+            tape.AddChild(_tapeFeed);
             tape.AddChild(Ugui.Place(new TextureRect
             {
                 Name = "Pip", Texture = GD.Load<Texture2D>(Ui + "Workbench/wb_gauge_needle.png"),
@@ -904,6 +964,45 @@ namespace GolemFactory.Nodes
         public Label Hint { get; set; }
         public string HintText { get; set; }
         public WorkbenchCardControl Card { get; private set; }
+
+        /// <summary>The read head's glow over the socket (punch_card.gdshader), and what it was last sent.</summary>
+        public ColorRect Head { get; set; }
+        public ShaderMaterial HeadMaterial { get; set; }
+        private bool _headShown;
+        private bool _headHasCard;
+        private float _headSweep = 1f;
+
+        /// <summary>Whether the read head is drawn on this socket, and how far its sweep has got (1: over): for a scenario.</summary>
+        public bool HeadShown => _headShown;
+        public float HeadSweep => _headSweep;
+
+        private static readonly StringName HeadParameter = "head";
+        private static readonly StringName HasCardParameter = "has_card";
+        private static readonly StringName SweepParameter = "sweep";
+
+        /// <summary>The read head on or off this socket. Sends the shader only what changed.</summary>
+        public void ShowHead(bool on, float sweep)
+        {
+            bool hasCard = Card != null;
+            sweep = on ? sweep : 1f;
+            if (on != _headShown)
+            {
+                _headShown = on;
+                HeadMaterial.SetShaderParameter(HeadParameter, on ? 1f : 0f);
+                Head.Visible = on;
+            }
+            if (hasCard != _headHasCard)
+            {
+                _headHasCard = hasCard;
+                HeadMaterial.SetShaderParameter(HasCardParameter, hasCard ? 1f : 0f);
+            }
+            // Exact on purpose: "the same number as last time" is the question.
+            if (sweep != _headSweep)
+            {
+                _headSweep = sweep;
+                HeadMaterial.SetShaderParameter(SweepParameter, sweep);
+            }
+        }
 
         public WorkbenchDropRow() { }
 

@@ -101,7 +101,7 @@ opens straight on a new game. It is the only scene.
 **Scenarios** (`Scripts/Scenarios/`) are the scene-level checks. `ScenarioRunner` is a node in the scene; `--
 --scenario <name>` runs one to a verdict, prints `[scenario <name>] PASS|FAIL …` and exits 0/1. An unknown name fails
 and lists the known ones. Current scenarios: `world`, `build`, `interact`, `golems`, `golem-motion`, `workbench`,
-`management`, `save`, `tutorial`, `playtest-kit`, `inventory`, `moods`, `hover`, `font-glyphs`, `perf`, `art`, `audio`, `feel`, `settings`, `accessibility`, `title`, `slots`, `overview`, `creative`, `supply`, `contracts`, `endless`, `docks`, `golem-sales`, `gamepad`, `guide-ahead`, `gamepad-ui`; what
+`management`, `save`, `tutorial`, `playtest-kit`, `inventory`, `moods`, `hover`, `font-glyphs`, `perf`, `art`, `audio`, `feel`, `settings`, `accessibility`, `title`, `slots`, `overview`, `creative`, `supply`, `contracts`, `endless`, `docks`, `golem-sales`, `gamepad`, `guide-ahead`, `gamepad-ui`, `tick-visuals`; what
 each checks is in `godot/Scripts/Scenarios/CLAUDE.md`.
 
 To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scenarios`. `--demo` (alias `--spike-demo`)
@@ -161,6 +161,13 @@ above −10.
 - **Font:** `fonts/LiberationSans.ttf` (OFL; licence beside it) is the project font (`gui/theme/custom_font`). Game text
   is printable Latin-1 plus → ≥ █ ░, with · as the separator, and the `font-glyphs` scenario pins that. To use a new
   character, check that the font has it; if not, add a fallback font and widen the scenario in the same change.
+- **Shaders run on the factory's clock, never `TIME`.** `shaders/*.gdshader` read three global parameters,
+  `sim_tick_phase`, `sim_belt_phase` and `sim_motion` (declared in `project.godot`'s `[shader_globals]`), which
+  `Scripts/Visuals/TickVisualsNode` sets once a frame from Core's `World/TickVisuals`. A period a shader divides the
+  tick phase by must divide `TickVisuals.PhaseWrapTicks`. A shader snaps to art pixels before it decides anything,
+  and holds still when `sim_motion` is 0 (Reduced motion). Belts, hot pipes and splitter gears are three `MultiMesh`
+  batches (`Scripts/Visuals/TileBatch`), refilled only when the factory changes: don't give a tile its own animated
+  node. The `tick-visuals` scenario pins this.
 
 ## Game rules that hold whatever the engine
 

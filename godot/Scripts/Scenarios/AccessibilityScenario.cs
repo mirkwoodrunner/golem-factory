@@ -109,6 +109,12 @@ namespace GolemFactory.Nodes.Scenarios
                 && TextTokens.Fill(ColourMarks.SourceToken) == (on ? "striped teal" : "teal")
                     ? null
                     : $"world {World.Motion.Reduced}, marks {ColourMarks.Enabled}, settings {GameSettingsStore.Current.ReducedMotion}/{GameSettingsStore.Current.ColorBlindMarks}");
+            // What the shaders move on the clock (belt bands, pipe glints, gears, the tape) holds
+            // still: they are told so through the global sim_motion.
+            Do($"the shaders' motion is {(on ? "off" : "on")}", () =>
+                TickShaderGlobals.Motion == (on ? 0f : 1f) && World.Motion.TickMotion == !on
+                    ? null
+                    : $"sim_motion {TickShaderGlobals.Motion}, TickMotion {World.Motion.TickMotion}");
             if (on)
             {
                 Do("capture the settings", () => { ScenarioCapture.Shot(Tree.Root, "access-settings"); return null; });
