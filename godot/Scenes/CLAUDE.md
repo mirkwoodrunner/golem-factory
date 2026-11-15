@@ -9,7 +9,7 @@ Paths here are relative to `godot/` unless they say otherwise.
 - **Don't save a scene from the editor** unless that is the change you mean. A save adds `uid=` and `unique_id=`
   throughout and rewrites the ids, which turns a one-line change into a whole-file diff.
 - **Keep the header as it is:** `format=3`. `load_steps` is the count of `[ext_resource]` plus `[sub_resource]`
-  entries plus one (`Sandbox.tscn`: 27 + 0 + 1 = 28). Raise it when you add a resource.
+  entries plus one (`Sandbox.tscn`: 29 + 0 + 1 = 30). Raise it when you add a resource.
 - **A new resource takes the next number:** `id="<n>_<short name>"` (`28_docks`), unique in its file. Never reuse an
   id, and don't renumber the existing ones.
 - **Never invent a `uid://` value.** Leave `uid=` off a new reference, as every existing one is.

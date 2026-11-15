@@ -476,6 +476,7 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 return StrayCards() == 0 ? null : $"{StrayCards()} stray cards after close/open";
             });
+            PlanReadHead();
             Do("with no target the lever goes dead", () =>
             {
                 _world.Workbench.ConfigureGolem(null);
@@ -483,6 +484,80 @@ namespace GolemFactory.Nodes.Scenarios
             });
             Do("the lever is disabled", () => _screen.Lever.Disabled ? null : "a lever with nothing to program is still live");
             Do("reopen", () => { _log.Add("CLOSE hid it; E at the golem reopened it re-read; no target, dead lever"); return null; });
+        }
+
+        /// <summary>
+        /// The read head (WorkbenchSession.ReadHeadRow, punch_card.gdshader): on the socket whose
+        /// card the engaged golem is on, gone while the bench shows other cards than it runs, back
+        /// when they match again. And the tape and the header's gear are the shaders' drawings.
+        /// </summary>
+        private void PlanReadHead()
+        {
+            Do("the read head is on one socket: the card the golem is on", () =>
+            {
+                int row = _world.Workbench.ReadHeadRow;
+                if (row == WorkbenchSession.NoReadHead)
+                {
+                    return "the golem runs the cards on the bench, and the session names no socket";
+                }
+                return HeadDrawn();
+            });
+            Do("the tape and the header's gear are drawn by their shaders, at their controls' size", () =>
+            {
+                foreach ((ColorRect rect, string shader) in new[] { (_screen.TapeFeed, ShaderRect.TapeShader), (_screen.HeaderGear, ShaderRect.GearShader) })
+                {
+                    if (rect == null || !rect.IsVisibleInTree() || rect.Size.X <= 0f
+                        || (rect.Material as ShaderMaterial)?.Shader?.ResourcePath != shader)
+                    {
+                        return $"{rect?.Name} is not drawn by {shader}";
+                    }
+                    if (((ShaderMaterial)rect.Material).GetShaderParameter("rect_px").AsVector2() != rect.Size)
+                    {
+                        return $"{rect.Name}'s shader works in {((ShaderMaterial)rect.Material).GetShaderParameter("rect_px")}, the control is {rect.Size}";
+                    }
+                }
+                return _screen.TapeFeed.Size == ((Control)_screen.TapeFeed.GetParent()).Size ? null : "the paper does not cover the tape";
+            });
+            Do("capture the read head", () => { ScenarioCapture.Shot(_tree.Root, "critique-workbench-head"); return null; });
+
+            DragCard(() => _screen.StepRows[1].Card, () => (Control)_screen.TargetLabelControl);
+            Do("Push Output taken out: the bench is not what the golem runs, and the head is gone", () =>
+            {
+                if (Draft(1) != null || _world.Workbench.ReadHeadRow != WorkbenchSession.NoReadHead)
+                {
+                    return $"STEP 2 holds {Draft(1)}, the session's head is on {_world.Workbench.ReadHeadRow}";
+                }
+                return _screen.DrawnReadHead == WorkbenchSession.NoReadHead && !HeadRows().Any(r => r.HeadShown || r.Head.Visible)
+                    ? null : $"a head is still drawn (row {_screen.DrawnReadHead})";
+            });
+            DragCard("PushOutput", () => _screen.StepRows[1].Socket);
+            Do("put back: the head is back", () =>
+                Draft(1) != "PushOutput" ? "PushOutput did not go back"
+                : _world.Workbench.ReadHeadRow == WorkbenchSession.NoReadHead ? "the same cards again, and no head" : HeadDrawn());
+            Do("head", () => { _log.Add("read head on the golem's card, gone while the draft differs, back when it matches; tape and gear drawn by shaders"); return null; });
+        }
+
+        private IEnumerable<WorkbenchDropRow> HeadRows() => new[] { _screen.TriggerRow }.Concat(_screen.StepRows);
+
+        /// <summary>Null when exactly the socket the screen names wears the head; else what is wrong.</summary>
+        private string HeadDrawn()
+        {
+            int drawn = _screen.DrawnReadHead;
+            WorkbenchDropRow expected = drawn == WorkbenchSession.ReadHeadOnTrigger ? _screen.TriggerRow
+                : drawn >= 0 && drawn < _screen.StepRows.Count ? _screen.StepRows[drawn] : null;
+            if (expected == null)
+            {
+                return $"the screen draws the head on row {drawn}";
+            }
+            List<WorkbenchDropRow> lit = HeadRows().Where(r => r.HeadShown).ToList();
+            if (lit.Count != 1 || lit[0] != expected || !expected.Head.IsVisibleInTree())
+            {
+                return $"{lit.Count} sockets wear the head; row {drawn} should";
+            }
+            // The golem's own step, read now: the head may be a frame behind a step change, never elsewhere.
+            int step = _golem.Program.CurrentStepIndex;
+            bool idle = _golem.Program.State == GolemState.Idle;
+            return idle || drawn == step || drawn == WorkbenchSession.ReadHeadOnTrigger ? null : $"the head is on STEP {drawn + 1}, the golem on STEP {step + 1}";
         }
 
         // --- Gestures -----------------------------------------------------------------------

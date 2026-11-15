@@ -212,7 +212,7 @@ namespace GolemFactory.Nodes.Scenarios
             {
                 badges.Visible = visible;
             }
-            foreach (string group in new[] { GolemNodeGroup.Name, BuildingsLayer.GroupName })
+            foreach (string group in new[] { GolemNodeGroup.Name, BuildingsLayer.GroupName, TickVisualsNode.GroupName })
             {
                 foreach (CanvasItem item in _tree.GetNodesInGroup(group).OfType<CanvasItem>())
                 {

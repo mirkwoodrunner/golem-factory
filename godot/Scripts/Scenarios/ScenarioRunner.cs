@@ -96,6 +96,7 @@ namespace GolemFactory.Nodes.Scenarios
                 ["gamepad"] = () => new GamepadScenario(),
                 ["guide-ahead"] = () => new GuideAheadScenario(),
                 ["gamepad-ui"] = () => new GamepadUiScenario(),
+                ["tick-visuals"] = () => new TickVisualsScenario(),
             };
 
         [Export] public NodePath StationPath { get; set; }

@@ -32,3 +32,18 @@ theme/custom_font="res://fonts/LiberationSans.ttf"
 textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+
+[shader_globals]
+
+sim_tick_phase={
+"type": "float",
+"value": 0.0
+}
+sim_belt_phase={
+"type": "float",
+"value": 0.0
+}
+sim_motion={
+"type": "float",
+"value": 1.0
+}

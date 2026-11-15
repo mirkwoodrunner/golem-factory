@@ -1,4 +1,4 @@
-[gd_scene load_steps=28 format=3]
+[gd_scene load_steps=30 format=3]
 
 [ext_resource type="Script" path="res://Scripts/WorldNode.cs" id="1_world"]
 [ext_resource type="Script" path="res://Scripts/FloorLayer.cs" id="2_floor"]
@@ -27,6 +27,8 @@
 [ext_resource type="Script" path="res://Scripts/UI/GameSaves.cs" id="25_saves"]
 [ext_resource type="Script" path="res://Scripts/UI/SupplyScreen.cs" id="26_supply"]
 [ext_resource type="Script" path="res://Scripts/UI/ContractScreen.cs" id="27_contract"]
+[ext_resource type="Script" path="res://Scripts/Visuals/TickVisualsNode.cs" id="28_tickfx"]
+[ext_resource type="Script" path="res://Scripts/Visuals/GridOverlayNode.cs" id="29_grid"]
 
 [node name="Sandbox" type="Node2D"]
 
@@ -58,6 +60,9 @@ script = ExtResource("5_station")
 script = ExtResource("6_player")
 OwnCamera = false
 
+[node name="TickVisuals" type="Node2D" parent="."]
+script = ExtResource("28_tickfx")
+
 [node name="RoutingFocus" type="Node" parent="."]
 script = ExtResource("16_focus")
 PlayerPath = NodePath("../Entities/Player")
@@ -67,6 +72,10 @@ script = ExtResource("13_prompt")
 
 [node name="BuildCursor" type="Node2D" parent="."]
 script = ExtResource("11_cursor")
+
+[node name="GridOverlay" type="Node2D" parent="."]
+script = ExtResource("29_grid")
+CursorPath = NodePath("../BuildCursor")
 
 [node name="Camera" type="Camera2D" parent="."]
 script = ExtResource("7_camera")

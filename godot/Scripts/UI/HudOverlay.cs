@@ -40,6 +40,19 @@ namespace GolemFactory.Nodes
         private Label _tick;
         private Label _state;
         private Button _playPause;
+        private ColorRect _clockGear;
+        private const float ClockGearSize = 26f;
+
+        // Stopped and dimmed while the factory is paused.
+        private static readonly Color ClockGearPaused = new Color(0.62f, 0.60f, 0.58f);
+
+        // The palette's brass (docs/art-style-bible.md §1).
+        private static readonly Color ClockGearBody = new Color(0.769f, 0.584f, 0.267f);  // #c49544
+        private static readonly Color ClockGearLight = new Color(0.886f, 0.761f, 0.478f); // #e2c27a
+        private static readonly Color ClockGearShade = new Color(0.588f, 0.471f, 0.314f); // #967850
+
+        /// <summary>The clock bar's gear, drawn by a shader on the factory's clock: for a scenario.</summary>
+        public ColorRect ClockGear => _clockGear;
         private readonly Button[] _speeds = new Button[ClockReadout.SpeedPresets.Length];
         private float _untilRefresh;
 
@@ -192,6 +205,12 @@ namespace GolemFactory.Nodes
                 0.5f, 1f, 0.5f, 1f, 0f, -38f, 560f * BarScale, 52f * BarScale, 0.5f, 1f);
             bar.MouseFilter = Control.MouseFilterEnum.Stop;
             _root.AddChild(bar);
+
+            // The clock's gear, geared into the bar's left end (clockwork_gear.gdshader): it turns
+            // a notch a tick, faster at 2x and 4x, and stands still while the factory is paused.
+            _clockGear = Ugui.Place(ShaderRect.Gear("ClockGear", ClockGearSize, 8, ClockGearBody, ClockGearLight, ClockGearShade),
+                0.5f, 1f, 0.5f, 1f, -280f * BarScale - ClockGearSize / 2f + 4f, -38f - 26f * BarScale, ClockGearSize, ClockGearSize, 0.5f, 0.5f);
+            _root.AddChild(_clockGear);
             var row = Ugui.Fill(new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = Control.MouseFilterEnum.Pass });
             row.AddThemeConstantOverride("separation", (int)(8 * BarScale));
             bar.AddChild(row);
@@ -289,6 +308,7 @@ namespace GolemFactory.Nodes
             _state.Text = ClockReadout.Describe(clock.State, clock.TicksPerSecond, clock.Speed);
             _state.AddThemeColorOverride("font_color", paused ? new Color(1f, 0.78f, 0.35f) : new Color(0.82f, 0.86f, 0.78f));
             _playPause.GetNode<Label>("Label").Text = paused ? "PLAY" : "PAUSE";
+            _clockGear.SelfModulate = paused ? ClockGearPaused : Colors.White;
             int active = ClockReadout.IndexOfSpeed(clock.Speed);
             for (int i = 0; i < _speeds.Length; i++)
             {

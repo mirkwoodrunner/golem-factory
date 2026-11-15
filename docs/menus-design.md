@@ -87,6 +87,7 @@ director shares). One answer per kind of motion, so every node asks the same que
 | Camera glides and the follow ease: it cuts | The tower's stage and banner, on the same timeline |
 | The tower's swell and flash | The Workbench's red refusal tint (colour, not motion) |
 | A card's landing, the tape's typing, the lever's travel | |
+| What the shaders move on the clock: a belt's bands, a hot pipe's glints, the gears, the tape's feed, the read head's sweep (`TickMotion`, the global `sim_motion`, added 2026-11-14) | The goods on a belt, a hot pipe's hot picture, the read head's steady glow on the socket the golem is on |
 
 None of it changes what the simulation does (`game-feel-design.md` §0.1).
 

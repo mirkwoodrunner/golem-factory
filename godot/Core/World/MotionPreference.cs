@@ -11,7 +11,8 @@ namespace GolemFactory.World
     ///   <item>Stopped: particles (dust, sparks, steam puffs, a good's pop and glint), squashes and
     ///   bumps, a stuck golem's shake, a golem's idle bob and work sway (the Overclocker's pulsing glow with it), pulsing rings, the camera's glides
     ///   (it cuts instead), the tower's swell and flash, a card's landing, the tape's typing and
-    ///   the lever's travel.</item>
+    ///   the lever's travel, and what the shaders move on the clock (belt bands, pipe glints,
+    ///   gears, the tape's feed).</item>
     /// </list>
     /// Like every feel rule (game-feel-design §0), none of this changes what the simulation does.
     /// </summary>
@@ -43,6 +44,13 @@ namespace GolemFactory.World
 
         /// <summary>A card's landing, the tape typing its line, and the Engage lever's travel.</summary>
         public bool WorkbenchMotion => !Reduced;
+
+        /// <summary>
+        /// What the shaders move on the factory's clock (<see cref="TickVisuals"/>): a belt's
+        /// slats, a hot pipe's glints, turning gears, the tape's feed. On Reduced they hold still;
+        /// the goods on a belt still travel, and a hot pipe still wears its hot picture.
+        /// </summary>
+        public bool TickMotion => !Reduced;
 
         /// <summary>
         /// The strength a pulse holds when it can't breathe: the middle of its 0..1 range, so a

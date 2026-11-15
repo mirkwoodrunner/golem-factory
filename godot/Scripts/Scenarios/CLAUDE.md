@@ -35,7 +35,11 @@ Current scenarios:
   Patent, and close/reopen. Its golem is the guide's first, so it checks the next-drag hint
   first: the frames on the vault card and the socket, real drags following them (a wrong card
   keeps the hint, and a drop on a filled socket replaces), the lever framed last, ENGAGE
-  clearing it, and no frame without a drop changing the draft.
+  clearing it, and no frame without a drop changing the draft. Reopened on the engaged golem,
+  the read head (`WorkbenchSession.ReadHeadRow`) is drawn on exactly the socket the golem is on,
+  goes while a card dragged out makes the bench differ from what the golem runs, and comes back
+  when it is put back; the tape and the header's gear are drawn by their shaders at their
+  controls' sizes. Captures `critique-workbench`, `critique-workbench-head`.
 - `management` (Sandbox): the HUD (alerts strip, pause and play), and Tab opening Management
   with the HUD and build menu hidden. Covers the Inventory icons, the tab exclusivity, an
   Assembly Line claim reaching the Workbench, the tab's `Pack:  ·  Post:` header, the Pack row's Upgrade (the Pack screen's cap line
@@ -287,6 +291,23 @@ Current scenarios:
   `pad-workbench-open`, `-lever`, `-dial`, `-haul`, `-scroll`, `pad-crate`, `pad-crate-picker`,
   `pad-pack`, `pad-management-settings`, `pad-supply`, `pad-contract`, `pad-title-load`. Clears
   the scenario saves at the end.
+- `tick-visuals` (Sandbox): the shaders and the layer that runs them on the factory's clock
+  (`Scripts/Visuals/`, root `CLAUDE.md` "Engine rules"), with real keys and clicks. Every
+  `.gdshader` loads, none reads `TIME`, and the three global parameters are declared. 3 picks up
+  the belt: the grid shows around the cursor on the ghost's cell in the ghost's colour, and its
+  brackets close (`GridOverlayRules`); over a belt it turns the blocked red. R and clicks lay five
+  belts with a corner, 4 a splitter, 5 a boiler, 6 five pipes: each belt is an instance of the
+  belt batch, the splitter of the gear batch, and a pipe of the pipe batch exactly while a
+  fuelled boiler feeds it. Space pauses and nothing is sent to the shaders for half a second;
+  Space plays; a click on 4x runs their phase four times as fast. Reduced motion, clicked in the
+  Settings tab, sets `sim_motion` to 0, and back. Then the stress: the whole room bought and
+  every free cell planked with belt (over 1,000 tiles, `StressTiles`), 300 frames in which the
+  layer allocates nothing and sends no instance again, 120 in which the grid allocates nothing
+  with the pointer moving, and, windowed, the layer costing at most three draw calls (the
+  frame with it less the frame without). A headless run has no draw calls to count and says so.
+  Captures `tick-grid`, `tick-grid-blocked`, `tick-near`, `tick-close`, `tick-batches`,
+  `tick-paused`, `tick-reduced`, `tick-stress`, `tick-grid-debug`. **A shader compiles only in a
+  windowed run**: read that run's log for `SHADER ERROR`.
 - `perf` also takes `--perf-golems=N` (a load of N golems in the endgame's proportions) and
   `--perf-load=endless` (160), for measuring the golem cap (`docs/performance-report-endless.md`).
 
