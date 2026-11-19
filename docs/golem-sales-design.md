@@ -123,7 +123,7 @@ bare one ("in proportion to the golems' complexity", `game-design.md`):
 | Chassis | Raw cost | Full (every slot) |
 |---|---|---|
 | Clockwork Scavenger | 12 | 14 (2 slots) |
-| Brass Presser | 68 | 88 (3) |
+| Brass Presser | 68 (57 since its price fell, 2026-11-19) | 88 (3) |
 | Aether Hauler | 70 | 98 (4) |
 | Mainspring Overclocker | 398 | 597 (5) |
 | Zeppelin Freight Loader | 645 | 1,032 (6) |

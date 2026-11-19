@@ -447,6 +447,16 @@ chapter 3 2:00 (was 2:07), chapter 2 2:07 (was 2:21), the full run 1:16:27 (was 
 asks: 45, 55 Scrap; 9, 11 Iron Plate; 3 Gear all pass; 5 Gear (70 raw) puts chapter 8 at 30:33,
 over, as it does beside the old price.
 
+**Lowered a third time, 2026-11-19 (the user's call): 50 Scrap + 3 Iron Plate + 2 Gear** (card
+12 + 1 + 1; 57 raw). Chapters 1–4 were mostly cranking: their floor was 5:47, 4:43 of it at the
+bench, and the Presser's 10 Plate and 4 Gear were nearly all of chapter 2. Measured after: chapters
+1–4 **4:22** (1:33, 0:56, 1:46, 0:05), 3:15 at the bench (Iron Plate 119 s, Gear 29 s, Coke
+48 s); chapter 2 halved, 2:05 to 0:56; the full run 1:19:21 with chapter 8 at 27:47. Neighbours
+checked: 4 + 2 (chapter 8 29:06, the outlier, too near its ceiling), 5 + 2 (27:23), 4 + 3 (27:24)
+and 4 + 1 (27:52) all pass. What chapters 1 and 3 still crank is the boiler's 10 Plate, the
+second boiler and the Coal cart's first Rate rung (10 Plate + 5 Gear): the next levers if play
+asks for less.
+
 **Expected floors** [M: measured 5:16 (1:26, 2:20, 1:22, 0:06), §18 M8]:
 
 | Ch. | Budget | Floor today | Expected floor | Ceiling (§14) |
