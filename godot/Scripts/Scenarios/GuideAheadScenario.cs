@@ -241,7 +241,7 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             }
             Rect2 plate = Panel.Plate.GetGlobalRect();
-            foreach (WorkbenchDropRow row in Bench.StepRows.Prepend(Bench.TriggerRow))
+            foreach (WorkbenchDropRow row in Bench.StepRows)
             {
                 if (row.Socket.IsVisibleInTree() && plate.Intersects(row.Socket.GetGlobalRect()))
                 {

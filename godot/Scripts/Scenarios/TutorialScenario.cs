@@ -237,13 +237,13 @@ namespace GolemFactory.Nodes.Scenarios
                     return $"guide on '{_panel.TitleText}', showing {_panel.Plate.Visible}";
                 }
                 Rect2 plate = _panel.Plate.GetGlobalRect();
-                // The next-drag hint is on: Always On and TRIGGER are framed, and the plate is
+                // The next-drag hint is on: Extract and STEP 1 are framed, and the plate is
                 // clear of both frames too (onboarding-feedback-design.md §8).
                 if (!bench.HintCardOutline.Visible || !bench.HintTargetOutline.Visible)
                 {
                     return $"no hint frames on 'Program it' (hint {bench.ShownHint})";
                 }
-                foreach (Control control in bench.StepRows.Select(r => (Control)r.Socket).Append(bench.TriggerRow.Socket).Append(bench.Lever)
+                foreach (Control control in bench.StepRows.Select(r => (Control)r.Socket).Append(bench.Lever)
                              .Append(bench.VaultList).Append(bench.HintCardOutline).Append(bench.HintTargetOutline))
                 {
                     if (control != null && control.IsVisibleInTree() && plate.Intersects(control.GetGlobalRect()))

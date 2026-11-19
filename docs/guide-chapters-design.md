@@ -86,7 +86,7 @@ Columns: the step's **id** (unchanged), its **title and body** as the player rea
 | `boiler` | **Build a Boiler** · "Golems run on steam. Click Boiler in the build menu (30 Scrap + 10 Iron Plate), click the marked tile beside the Scrap stall, then press Escape." | unchanged (a boiler on `BoilerSpot`, or the first golem's tile steamable) | spot `BoilerSpot`, exact | `menuKey` Boiler | unchanged (`PlaceGranted`) |
 | `fuel` | **Fuel the Boiler** · "Stand at the boiler and press E to load your Coke. No Coke, no steam." | a boiler holds Coke | target the boiler | | unchanged |
 | `golem` | **Build a Golem** · "At the construction station, press E and pick the Clockwork Scavenger (12 Scrap). The Workbench opens on it." | a golem stands | target the station | | unchanged (`BuildGolem`) |
-| `program` | **Program it** · "Drag the glowing card onto the glowing socket, then the next: Always On, Extract, Push Output. Then pull ENGAGE GEARS. Closed it? Press E at the golem." | `Program.Matches` on any golem (was `IsProgrammed`, the same check) | target the first golem | `Workbench`; `Program` §3 | `PerformPlan` |
+| `program` | **Program it** · "Drag the glowing card onto the glowing socket, then the next: Extract, Push Output. Then pull ENGAGE GEARS. Closed it? Press E at the golem." | `Program.Matches` on any golem (was `IsProgrammed`, the same check) | target the first golem | `Workbench`; `Program` §3 | `PerformPlan` |
 | `depot` | **Build a Depot** · "A golem takes from the tile behind it and gives to the tile in front. Build a Depot (15 Scrap) on the marked tile: a crate of 50 of each good. Misplaced? X takes it back, full refund." | unchanged | spot `DepotSpot`, exact | `menuKey` Depot | unchanged |
 | `work` | **Put it to work** · "Press G by the golem to lift it. The outline under you is where it lands: teal is behind it, gold in front. Stand on the marked tile, press R until gold is on the depot, then G." | unchanged (`_cycleSeen`) | spot `GolemSpot` + `GolemFacing` | | unchanged (`SetPlacement`) |
 | `collect` | **Collect from the crate** · "Your golem fills the depot's crate, not your pack. Stand at the depot and press E: you take what fits, the rest stays. Hover any golem to see its teal and gold tiles." | unchanged (`TotalWithdrawn(Scrap) > 0`) | target the first depot | | unchanged (`TryCollect`) |
@@ -100,7 +100,7 @@ Columns: the step's **id** (unchanged), its **title and body** as the player rea
 | `presser` | **Build a Brass Presser** · "At the station, build the Brass Presser (60 Scrap + 20 Iron Plate + 10 Gear). Short of Scrap? Collect from your Scavenger's crate. Program it now if you like: the cards glow." | a Presser stands | station (Scrap stall while short) | | unchanged |
 | `pipe` | **Lay a steam pipe** · "The Presser will stand two tiles from the boiler, out of its reach. Lay Steam Pipe (1 Iron Plate each) on the marked tiles: steam reaches any golem beside a pipe." | unchanged (steam reaches `PresserSpot`) | spots `PipeSpots` | `menuKey` Steam Pipe | unchanged |
 | `depot2` | **A depot for its output** · "Build a second Depot on the marked tile. The Presser will take Scrap from the first crate, behind it, and push Iron Plate into this one." | unchanged | spot `PresserDepotSpot`, exact | `menuKey` Depot | unchanged |
-| `program-presser` | **Program the Presser** · "Drag the glowing cards: Always On, Haul, Assemble Scrap Reclamation, Push Output. Then ENGAGE. Closed it? Press E at the Presser." | `Program.Matches` (was `IsIronPresser`) | target the first Presser | `Workbench`; `Program` | `PerformPlan` |
+| `program-presser` | **Program the Presser** · "Drag the glowing cards: Haul, Assemble Scrap Reclamation, Push Output. Then ENGAGE. Closed it? Press E at the Presser." | `Program.Matches` (was `IsIronPresser`) | target the first Presser | `Workbench`; `Program` | `PerformPlan` |
 | `work-presser` | **Make Iron Plate** · "Lift the Presser (G) onto the marked tile between the depots: teal on the first, gold on the new one (R turns it), then G. Grey means it is waiting for Scrap. That's fine." | unchanged (a Presser cycled since entry) | spot `PresserSpot` + facing | | unchanged |
 
 ### Chapter 3: The Coke line
@@ -112,7 +112,7 @@ Columns: the step's **id** (unchanged), its **title and body** as the player rea
 | `boiler2` | **A boiler for the coal line** · "Build a second Boiler on the marked tile, two out from the Coal stall. The coking Presser will stand between them and push Coke into it." | unchanged | spot `Boiler2Spot`, exact | `menuKey` Boiler | unchanged |
 | `pipes2` | **Join the boilers** · "Lay Steam Pipe on the marked tiles, from your first boiler to the new one. Joined boilers share steam: the first powers the coking Presser until the new one has Coke, then the new one powers the rest. Your own route counts too." (2026-11-01: joined boilers share) | unchanged (`FirstBoilerPowersCokerAndJoins`) | spots `Pipe2Spots` | `menuKey` Steam Pipe | unchanged |
 | `coal-order` | **Upgrade the Coal cart** · "Your coker will eat nearly all the Coal your cart brings. At the Coal cart, press I and buy Rate (10 Iron Plate + 5 Gear): 60 Coal a minute, not 30." (supply-design §6; the id is kept) | a Coal cart at Rate rung ≥ 1 | the Coal cart | | buy the rung (its price granted) |
-| `program-coker` | **Program the coking Presser** · "Drag the glowing cards: Always On, Extract, Assemble Coking, Push Output, then ENGAGE. Extract takes whatever the cart behind holds: here, Coal." | `Program.Matches` (was `IsCoker`) | the newest Presser | `Workbench`; `Program` | `PerformPlan` |
+| `program-coker` | **Program the coking Presser** · "Drag the glowing cards: Extract, Assemble Coking, Push Output, then ENGAGE. Extract takes whatever the cart behind holds: here, Coal." | `Program.Matches` (was `IsCoker`) | the newest Presser | `Workbench`; `Program` | `PerformPlan` |
 | `work-coker` | **Feed the boiler** · "Lift the coking Presser onto the marked tile: teal on the Coal cart, gold on the new boiler. Boilers dry? Load Coke into the new one with E." | unchanged | spot `CokerSpot` + facing; the new boiler while dry | | unchanged |
 
 ### Chapter 4: Copies, turning and stalls
@@ -121,7 +121,7 @@ Columns: the step's **id** (unchanged), its **title and body** as the player rea
 |---|---|---|---|---|---|
 | `patent` | **Patent a program** · "A patent saves a program to reuse. Press E at your first Scavenger and press PATENT in the Workbench." | a patent exists | the first golem | `Workbench` | unchanged |
 | `scav2` | **Build one from the patent** · "At the station, under From a patent, click your patent: a Scavenger (12 Scrap) arrives already programmed." | the `scav2` role has a golem | station | | unchanged (`TryConstructFromBlueprint`) |
-| `stamp` | **Program the new Scavenger** · "This one arrived bare. Drag the glowing cards (Always On, Extract, Push Output) and pull ENGAGE. Next time, build from the patent." | `Program.Matches` on the `scav2` golem | that golem | `Workbench`; `Program` | `PerformPlan` |
+| `stamp` | **Program the new Scavenger** · "This one arrived bare. Drag the glowing cards (Extract, Push Output) and pull ENGAGE. Next time, build from the patent." | `Program.Matches` on the `scav2` golem | that golem | `Workbench`; `Program` | `PerformPlan` |
 | `depot3` | **A depot beside the cart** · "Your new Scavenger needs a crate to fill, like your first one has. Build a Depot on the marked tile, two tiles out from another side of the Scrap cart. The new Scavenger will stand on the empty tile between them." (2026-11-01: says what the depot is for) | unchanged | spot `Depot3Spot`, exact | `menuKey` Depot | unchanged |
 | `turn` | **Turn it with R** · "Lift the new Scavenger (G) and stand on the marked tile. While you carry it, R turns it: turn until teal is on the stall and gold on the depot, then set it down (G)." | unchanged (the `scav2` golem cycled since entry) | spot `Scav2Spot` + facing | | unchanged |
 | `stall` | **Stall it on purpose** · "Golems never improvise. Stand by the new Scavenger and press R to turn it away. It stops and turns red. Hover it: it names the tile and what is wrong." | unchanged (the `scav2` golem is `Stalled`) | that golem | | unchanged |
@@ -146,6 +146,9 @@ the patent.
 Each of the nine program steps carries a `ProgramPlan` (`onboarding-feedback-design.md` §2.1).
 The cards, goods and batch sizes are exactly what the kit passes today; the targets are the
 golems the kit programs today.
+
+The Core column is the plan's logic core. Since 2026-11-19 the player never drags it: the Workbench
+writes Always On on every program, so the guide's texts name only the slots.
 
 | Step | Ch. | Core | Slots (card, good, batch) | `ProgramTarget` | `Matches` (was) |
 |---|---|---|---|---|---|

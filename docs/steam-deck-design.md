@@ -238,8 +238,8 @@ Screens are built in code through `Ugui` (`Scripts/UI/CLAUDE.md`, read it first)
 **The owner's answers:** "A sends it to the next socket" (not the carry proposed below), the
 shoulders for a card's dials, and focus follows the hint. As decided, it replaces items 2 and 6:
 
-- **A on a vault card sends it** to the first socket that takes it: a logic core to TRIGGER
-  (replacing the one there, as a drop does), an appendage to the first empty step. It's one
+- **A on a vault card sends it** to the first socket that takes it: an appendage to the first
+  empty step. (A logic core went to TRIGGER until that socket was cut, 2026-11-19.) It's one
   press, but still the mouse's three verbs (`BeginCardDrag`, `HandleDrop` at that socket,
   `EndCardDrag`), so the rules, refusals and landing animation are the mouse's. With every step
   full, nothing moves, and the status says to remove a card first.

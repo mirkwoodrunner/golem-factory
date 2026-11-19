@@ -73,7 +73,6 @@ namespace GolemFactory.Tests.EditMode
             session.ConfigureRoster(new[] { defs.Chassis["MainspringOverclocker"] }, new[] { defs.LogicCores["AlwaysOnCore"] },
                 defs.Appendages.Values.ToArray());
             session.SelectChassis(defs.Chassis["MainspringOverclocker"]);
-            session.HandleDrop(WorkbenchCardRef.FromVault(defs.LogicCores["AlwaysOnCore"]), WorkbenchZone.Trigger);
             return (session, golem, defs);
         }
 
@@ -216,7 +215,6 @@ namespace GolemFactory.Tests.EditMode
             WorkbenchSession bench = world.Workbench;
             bench.RetargetGolem(golem);
             Assert.AreSame(overclocker, bench.DraftChassis, "the golem's own chassis, card or no card");
-            bench.HandleDrop(WorkbenchCardRef.FromVault(definitions.LogicCores["AlwaysOnCore"]), WorkbenchZone.Trigger);
             bench.HandleDrop(WorkbenchCardRef.FromVault(definitions.Appendages["HaulScrap"]), WorkbenchZone.Socket(0));
             bench.HandleDrop(WorkbenchCardRef.FromVault(definitions.Appendages["AssembleCoking"]), WorkbenchZone.Socket(1));
             bench.HandleDrop(WorkbenchCardRef.FromVault(definitions.Appendages["RepeatAssembly"]), WorkbenchZone.Socket(2));
@@ -278,7 +276,6 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsTrue(world.StarterStation.TryConstructGolem(overclocker, out GolemEntity golem));
             WorkbenchSession bench = world.Workbench;
             bench.RetargetGolem(golem);
-            bench.HandleDrop(WorkbenchCardRef.FromVault(definitions.LogicCores["AlwaysOnCore"]), WorkbenchZone.Trigger);
             bench.HandleDrop(WorkbenchCardRef.FromVault(definitions.Appendages["HaulScrap"]), WorkbenchZone.Socket(0));
             bench.HandleDrop(WorkbenchCardRef.FromVault(definitions.Appendages["RepeatAssembly"]), WorkbenchZone.Socket(1));
             int patents = world.Patents.Blueprints.Count;

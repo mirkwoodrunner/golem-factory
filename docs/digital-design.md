@@ -7,8 +7,9 @@
 - This doc captures three settled design decisions for the digital version that
   sharpen or supersede earlier calls: the **visual style**, the **concrete golem
   roster**, and the **programming interface**. It does not introduce new mechanics —
-  the Logic Core / Appendages / Chassis punch-card model from `game-design.md` is
-  unchanged; this is what that model looks and feels like on screen.
+  the Appendages / Chassis punch-card model from `game-design.md` is unchanged; this is
+  what that model looks and feels like on screen. *(The Logic Core, the trigger, left the
+  player's hands on 2026-11-19: every golem runs Always On.)*
 
 ## Core Gameplay Loop & Aesthetic
 
@@ -26,9 +27,8 @@
 
 ## The Golem Roster
 
-Golems remain rigid, linear automated units defined by combining a **Logic Core**
-(trigger) and **Appendages** (actions) into a **Chassis** (per the punch-card system
-in `game-design.md`). The roster below is the concrete set of chassis archetypes that
+Golems remain rigid, linear automated units defined by slotting **Appendages** (actions)
+into a **Chassis** (per the punch-card system in `game-design.md`). The roster below is the concrete set of chassis archetypes that
 combination is expected to produce across a playthrough, in rough progression order:
 
 | Golem | Tier | Role |
@@ -63,7 +63,8 @@ without physical-layout puzzles competing with the factory-floor puzzle.
   blueprint viewport of the selected golem's chassis on the left, and a **Card Vault**
   inventory grid on the right.
 - **Drag-and-drop, color-coded cards** into chassis slots:
-  - **Teal cards** — Logic Cores (timers, sensors; the trigger).
+  - ~~**Teal cards** — Logic Cores (timers, sensors; the trigger).~~ Cut 2026-11-19: with
+    only Always On worth choosing, the trigger slot was a drag that decided nothing.
   - **Copper cards** — Appendages (arms, presses, tools; the action).
 - **Diagnostic tape ticker**: a live readout tracking steam consumption and cycle
   speed as cards are slotted, giving immediate feedback before activation.

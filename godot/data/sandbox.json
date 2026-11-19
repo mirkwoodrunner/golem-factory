@@ -74,7 +74,7 @@
   "assemblyLine": { "deck": "AssemblyLineDeck", "slots": 3, "claimUserId": "LocalPlayer", "gateWorkbench": true },
   "workbench": {
     "chassis": ["ClockworkScavenger", "BrassPresser", "AetherHauler", "MainspringOverclocker", "ZeppelinFreightLoader"],
-    "logicCores": ["AlwaysOnCore", "IntervalCore10"],
+    "logicCores": ["AlwaysOnCore"],
     "appendages": [
       "ExtractScrap",
       "HaulScrap",

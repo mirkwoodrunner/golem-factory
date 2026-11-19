@@ -40,9 +40,9 @@ To run the rules' unit tests without the engine: `dotnet test godot/GolemFactory
 
 Press `E` at a golem to open the **Workbench**:
 
-- Drag a **Logic Core** (the trigger: *when* the golem acts) and up to a chassis-limited number
-  of **Appendages** (the steps: *what* it does) into the sockets. A Haul step lets you pick which
-  good it takes and how many.
+- Drag up to a chassis-limited number of **Appendages** (the steps: *what* the golem does) into
+  the sockets. A Haul step lets you pick which good it takes and how many. Every golem runs
+  continuously; there's no trigger to set.
 - Nothing takes effect until you pull **ENGAGE**.
 - **Patent** saves the program as a named blueprint you can stamp onto any golem later, from
   the Patents tab. It's free.

@@ -287,7 +287,8 @@ fine and fails silently in the scene. It keeps its name and grows a comment sayi
 > **"What are steps 1-6?" — a legibility finding, logged not fixed.** They are the golem's program,
 > run top to bottom once per cycle. The screen numbers them and never says that.
 
-The screen shows `TRIGGER`, `STEP 1` … `STEP 6` and no other words. Six numbered sockets do not by
+The screen shows `TRIGGER`, `STEP 1` … `STEP 6` and no other words. *(The TRIGGER socket was cut
+2026-11-19; the steps' captions below stand.)* Six numbered sockets do not by
 themselves say *sequence*, and nothing at all says *loop*.
 
 ### The design: say it on the labels

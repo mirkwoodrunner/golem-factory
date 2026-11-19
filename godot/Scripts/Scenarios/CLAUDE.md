@@ -32,8 +32,8 @@ Current scenarios:
   capturing the motions with `--write-movie`.
 - `workbench` (Sandbox): program a golem end to end through the Workbench with real mouse
   drags. Also covers socket highlights, the dial, failed drags leaving no orphans, Engage,
-  Patent, and close/reopen. Its golem is the guide's first, so it checks the next-drag hint
-  first: the frames on the vault card and the socket, real drags following them (a wrong card
+  Patent, and close/reopen. There is no TRIGGER socket and no logic core in the vault: the draft
+  runs Always On. Its golem is the guide's first, so it checks the next-drag hint first: the frames on the vault card and the socket, real drags following them (a wrong card
   keeps the hint, and a drop on a filled socket replaces), the lever framed last, ENGAGE
   clearing it, and no frame without a drop changing the draft. Reopened on the engaged golem,
   the read head (`WorkbenchSession.ReadHeadRow`) is drawn on exactly the socket the golem is on,
@@ -268,7 +268,7 @@ Current scenarios:
   note gives it focus and B takes it back; A on the second answer answers, harvesting nothing at
   the Scrap cart beside. A at the station opens the panel with the ring on the row the pack pays for; A on
   a greyed row says what's short; A builds, and the Workbench opens with nothing sent by that A and
-  the ring on the hinted Always On. A sends Always On, Extract and Push Output, the ring following the
+  the ring on the hinted Extract. A sends Extract and Push Output, the ring following the
   hint to the lever; LB and the d-pad change nothing behind the screen. The d-pad walks the ring
   to STEP 1; RT and LT step its dial (reading `LT`/`RT`); X takes it out and A sends it back. With
   every step full, A moves nothing and says why. A Haul in STEP 2: RB and LB step its good

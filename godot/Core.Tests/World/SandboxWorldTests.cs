@@ -200,7 +200,7 @@ namespace GolemFactory.Tests.World
             CollectionAssert.AreEquivalent(new[] { "ExtractScrap", "HaulScrap", "PushOutput" },
                 world.Workbench.VaultAppendages.Select(a => a.name));
             Assert.AreEqual(0, world.Workbench.RackChassis.Count());
-            Assert.AreEqual(2, world.Workbench.VaultLogicCores.Count(), "logic cores are not gated");
+            Assert.AreEqual("AlwaysOnCore", world.Workbench.DefaultCore?.name, "no trigger to pick: every program runs Always On");
         }
 
         [Test]

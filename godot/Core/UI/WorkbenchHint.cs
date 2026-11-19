@@ -30,7 +30,7 @@ namespace GolemFactory.UI
     {
         public readonly WorkbenchHintKind Kind;
 
-        /// <summary>The vault card's name (a logic core's or an appendage's), or null for "the socket alone".</summary>
+        /// <summary>The vault card's name, or null for "the socket alone".</summary>
         public readonly string Card;
 
         public readonly WorkbenchZone Zone;
@@ -59,7 +59,7 @@ namespace GolemFactory.UI
 
         public override string ToString() =>
             Kind == WorkbenchHintKind.None || Kind == WorkbenchHintKind.Lever ? Kind.ToString()
-            : $"{Kind} {Card ?? "-"} -> {(Zone.Kind == DropZoneKind.LogicCore ? "TRIGGER" : "STEP " + (Zone.AppendageIndex + 1))}{(Delta != 0 ? (Delta > 0 ? " +" : " -") : "")}";
+            : $"{Kind} {Card ?? "-"} -> STEP {Zone.AppendageIndex + 1}{(Delta != 0 ? (Delta > 0 ? " +" : " -") : "")}";
     }
 
     /// <summary>
@@ -86,7 +86,7 @@ namespace GolemFactory.UI
 
         /// <summary>
         /// The first thing in <paramref name="draft"/> that differs from <paramref name="plan"/>,
-        /// walked socket by socket: the trigger, then each slot's card, good and batch, then any
+        /// walked socket by socket: each slot's card, good and batch, then any
         /// card past the plan. The lever once the draft passes the step's check; nothing once the
         /// golem's committed program does (<paramref name="committedMatches"/>).
         /// </summary>
@@ -110,16 +110,12 @@ namespace GolemFactory.UI
                 }
             }
 
-            // Another order or trigger the step accepts: straight to the lever.
+            // Another order the step accepts: straight to the lever.
             if (plan.Matches(AsProgram(draft)))
             {
                 return WorkbenchHintTarget.Lever;
             }
 
-            if (draft.DraftLogicCore?.name != plan.LogicCore)
-            {
-                return new WorkbenchHintTarget(WorkbenchHintKind.VaultCard, plan.LogicCore, WorkbenchZone.Trigger, 0);
-            }
             for (int i = 0; i < plan.Slots.Count; i++)
             {
                 PlanSlot slot = plan.Slots[i];
@@ -154,8 +150,7 @@ namespace GolemFactory.UI
         }
 
         /// <summary>
-        /// Without a plan (§2.3): a golem never told what to do gets TRIGGER, then STEP 1, then
-        /// the lever, and no vault card, since no rule knows which. A programmed golem gets nothing:
+        /// Without a plan (§2.3): a golem never told what to do gets STEP 1, then the lever, and no vault card, since no rule knows which. A programmed golem gets nothing:
         /// reprogramming is the player's design.
         /// </summary>
         public static WorkbenchHintTarget Fallback(WorkbenchSession draft, bool targetHasRunnableProgram)
@@ -163,10 +158,6 @@ namespace GolemFactory.UI
             if (draft == null || targetHasRunnableProgram || draft.DraftOverflowCount > 0)
             {
                 return WorkbenchHintTarget.None;
-            }
-            if (draft.DraftLogicCore == null)
-            {
-                return new WorkbenchHintTarget(WorkbenchHintKind.VaultCard, null, WorkbenchZone.Trigger, 0);
             }
             for (int i = 0; i < draft.SocketCount; i++)
             {

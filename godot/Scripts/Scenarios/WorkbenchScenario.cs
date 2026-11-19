@@ -19,12 +19,12 @@ namespace GolemFactory.Nodes.Scenarios
     ///   <item>A Scavenger is built at the station; the Workbench opens on it (Unity's order) and
     ///   the construction panel is closed (Open_ClosesManagementPanelAndConstructionPanel).</item>
     ///   <item>The next-drag hint (docs/onboarding-feedback-design.md §2): the guide's first
-    ///   program outlines Always On and TRIGGER; real drags follow it card by card, a wrong card
+    ///   program outlines Extract and STEP 1 (there is no trigger to drag; every program runs
+    ///   Always On); real drags follow it card by card, a wrong card
     ///   keeps it on the right socket (and a drop on a filled socket replaces), the lever is
     ///   outlined last, ENGAGE clears it, and no frame without a drop changes the draft.</item>
     ///   <item>Picking up a vault appendage lights the sockets that would take it.</item>
-    ///   <item>Real drags: AlwaysOnCore onto TRIGGER, ExtractScrap onto STEP 1, PushOutput onto
-    ///   STEP 2 (RealDrag_ReleasedOverAnAppendageSocket_CommitsThroughTheNormalPath).</item>
+    ///   <item>Real drags: ExtractScrap onto STEP 1, PushOutput onto STEP 2 (RealDrag_ReleasedOverAnAppendageSocket_CommitsThroughTheNormalPath).</item>
     ///   <item>The STEP 1 dial's + raises the batch size; vault cards carry no dial
     ///   (VaultCards_HaveNoStepper).</item>
     ///   <item>A vault card released over nothing changes nothing and leaves no orphan card or
@@ -268,8 +268,9 @@ namespace GolemFactory.Nodes.Scenarios
                     return $"the Workbench shows an id: '{raw}' ('{UI.PlayerText.RawIdIn(raw)}')";
                 }
                 _vaultCardCount = VaultCards().Count;
-                // Gated (Sandbox.unity's gateWorkbenchRoster): 2 logic cores + the 3 opening verbs.
-                return _vaultCardCount == 5 ? null : $"vault shows {_vaultCardCount} cards, expected 2 cores + the 3-card opening hand";
+                // Gated (Sandbox.unity's gateWorkbenchRoster): the 3 opening verbs, and no logic
+                // cores (no trigger to pick since 2026-11-19).
+                return _vaultCardCount == 3 ? null : $"vault shows {_vaultCardCount} cards, expected the 3-card opening hand";
             });
             Do("capture the Workbench", () => { ScenarioCapture.Shot(_tree.Root, "critique-workbench"); return null; });
             Do("vault cards carry no dial", () =>
@@ -284,14 +285,13 @@ namespace GolemFactory.Nodes.Scenarios
                 DragMoveTo(_screen.StepRows[0].Socket);
                 return null;
             });
-            Do("STEP 1 and 2 lit valid, TRIGGER and STEP 3 lit invalid", () =>
+            Do("STEP 1 and 2 lit valid, STEP 3 lit invalid", () =>
             {
                 if (_world.Workbench.AppendageHighlights[0] != DropZoneHighlight.Valid ||
                     _world.Workbench.AppendageHighlights[1] != DropZoneHighlight.Valid ||
-                    _world.Workbench.AppendageHighlights[2] != DropZoneHighlight.Invalid ||
-                    _world.Workbench.LogicHighlight != DropZoneHighlight.Invalid)
+                    _world.Workbench.AppendageHighlights[2] != DropZoneHighlight.Invalid)
                 {
-                    return $"highlights trigger={_world.Workbench.LogicHighlight} steps={string.Join(",", _world.Workbench.AppendageHighlights)}";
+                    return $"highlights steps={string.Join(",", _world.Workbench.AppendageHighlights)}";
                 }
                 return null;
             });
@@ -300,8 +300,8 @@ namespace GolemFactory.Nodes.Scenarios
 
             DragCard("PushOutput", () => _screen.StepRows[1].Socket);
             Do("PushOutput sits in STEP 2", () => Draft(1) == "PushOutput" ? null : $"STEP 2 holds {Draft(1)}");
-            DragCard("AlwaysOnCore", () => _screen.TriggerRow.Socket);
-            Do("AlwaysOnCore sits in TRIGGER", () => _world.Workbench.DraftLogicCore?.name == "AlwaysOnCore" ? null : "the trigger is empty");
+            Do("no trigger to drag: the draft runs Always On", () =>
+                _world.Workbench.DraftLogicCore?.name == "AlwaysOnCore" ? null : "the draft's trigger is " + (_world.Workbench.DraftLogicCore?.name ?? "empty"));
 
             Do("click + on STEP 1's dial", () =>
             {
@@ -316,7 +316,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("the batch size rose", () => _world.Workbench.DraftQuantityAt(0) == 2 ? null : $"quantity {_world.Workbench.DraftQuantityAt(0)}");
             Do("and nothing has touched the golem yet", () =>
                 _golem.Program.appendages.Count == 0 && _golem.Program.logicCore == null ? null : "the draft leaked onto the golem before Engage");
-            Do("drags", () => { _log.Add("real drags filled TRIGGER, STEP 1, STEP 2; dial +1; golem untouched until Engage"); return null; });
+            Do("drags", () => { _log.Add("real drags filled STEP 1, STEP 2; dial +1; golem untouched until Engage"); return null; });
         }
 
         private void PlanFailedDrags()
@@ -346,29 +346,30 @@ namespace GolemFactory.Nodes.Scenarios
 
         /// <summary>
         /// The golem is the guide's first Scavenger, so the hint follows the "Program it" plan:
-        /// Always On, Extract, Push Output, then the lever. The scenario drags what the hint shows.
+        /// Extract, Push Output, then the lever. The scenario drags what the hint shows.
         /// </summary>
         private void PlanHint()
         {
             string before = null;
-            Do("the hint outlines Always On in the vault and TRIGGER, and no socket holds a card", () =>
+            Do("the hint outlines Extract in the vault and STEP 1, and no socket holds a card", () =>
             {
                 before = DraftSnapshot();
-                if (_world.Workbench.DraftLogicCore != null || Enumerable.Range(0, 6).Any(i => Draft(i) != null))
+                if (Enumerable.Range(0, 6).Any(i => Draft(i) != null))
                 {
                     return "the draft was not empty: " + before;
                 }
-                return HintOn("AlwaysOnCore", _screen.TriggerRow.Socket);
+                return HintOn("ExtractScrap", _screen.StepRows[0].Socket);
             });
             Do("frames pass with no drop: the draft is unchanged", () =>
                 DraftSnapshot() == before ? null : $"the draft moved by itself: {before} -> {DraftSnapshot()}");
-            Do("pick up Always On", () => { DragStart(VaultCard("AlwaysOnCore")); return null; });
-            Do("carry it to TRIGGER", () => { DragMoveTo(_screen.TriggerRow.Socket); return null; });
+            Do("pick up Extract", () => { DragStart(VaultCard("ExtractScrap")); return null; });
+            Do("carry it to STEP 1", () => { DragMoveTo(_screen.StepRows[0].Socket); return null; });
             Do("in hand, its vault frame hides; the socket's stays", () =>
-                _screen.HintCardOutline.Visible || !Encloses(_screen.HintTargetOutline, _screen.TriggerRow.Socket)
+                _screen.HintCardOutline.Visible || !Encloses(_screen.HintTargetOutline, _screen.StepRows[0].Socket)
                     ? $"card frame {_screen.HintCardOutline.Visible}, socket frame {_screen.HintTargetOutline.GetGlobalRect()}" : null);
-            Do("release over TRIGGER", () => { DragRelease(_screen.TriggerRow.Socket); return null; });
-            Do("the hint moves to Extract and STEP 1", () => HintOn("ExtractScrap", _screen.StepRows[0].Socket));
+            Do("release over STEP 1", () => { DragRelease(_screen.StepRows[0].Socket); return null; });
+            Do("the hint moves to Push Output and STEP 2", () =>
+                Draft(0) != "ExtractScrap" ? $"STEP 1 holds {Draft(0)}" : HintOn("PushOutput", _screen.StepRows[1].Socket));
 
             DragCard("PushOutput", () => _screen.StepRows[0].Socket);
             Do("a wrong card in STEP 1: the hint still points Extract at STEP 1", () =>
@@ -391,7 +392,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "the hint wrote to the golem";
                 }
-                _log.Add("hint: Always On -> TRIGGER, Extract -> STEP 1 (kept through a wrong card), Push -> STEP 2, then the lever");
+                _log.Add("hint: Extract -> STEP 1 (kept through a wrong card), Push -> STEP 2, then the lever");
                 return null;
             });
         }
@@ -537,14 +538,13 @@ namespace GolemFactory.Nodes.Scenarios
             Do("head", () => { _log.Add("read head on the golem's card, gone while the draft differs, back when it matches; tape and gear drawn by shaders"); return null; });
         }
 
-        private IEnumerable<WorkbenchDropRow> HeadRows() => new[] { _screen.TriggerRow }.Concat(_screen.StepRows);
+        private IEnumerable<WorkbenchDropRow> HeadRows() => _screen.StepRows;
 
         /// <summary>Null when exactly the socket the screen names wears the head; else what is wrong.</summary>
         private string HeadDrawn()
         {
             int drawn = _screen.DrawnReadHead;
-            WorkbenchDropRow expected = drawn == WorkbenchSession.ReadHeadOnTrigger ? _screen.TriggerRow
-                : drawn >= 0 && drawn < _screen.StepRows.Count ? _screen.StepRows[drawn] : null;
+            WorkbenchDropRow expected = drawn >= 0 && drawn < _screen.StepRows.Count ? _screen.StepRows[drawn] : null;
             if (expected == null)
             {
                 return $"the screen draws the head on row {drawn}";
@@ -557,7 +557,7 @@ namespace GolemFactory.Nodes.Scenarios
             // The golem's own step, read now: the head may be a frame behind a step change, never elsewhere.
             int step = _golem.Program.CurrentStepIndex;
             bool idle = _golem.Program.State == GolemState.Idle;
-            return idle || drawn == step || drawn == WorkbenchSession.ReadHeadOnTrigger ? null : $"the head is on STEP {drawn + 1}, the golem on STEP {step + 1}";
+            return idle || drawn == step ? null : $"the head is on STEP {drawn + 1}, the golem on STEP {step + 1}";
         }
 
         // --- Gestures -----------------------------------------------------------------------
@@ -626,7 +626,7 @@ namespace GolemFactory.Nodes.Scenarios
             _screen.VaultList.GetChildren().OfType<WorkbenchCardControl>().Where(c => !c.IsQueuedForDeletion()).ToList();
 
         private WorkbenchCardControl VaultCard(string name) =>
-            VaultCards().FirstOrDefault(c => (c.CardRef.Appendage?.name ?? c.CardRef.LogicCore?.name) == name);
+            VaultCards().FirstOrDefault(c => c.CardRef.Appendage?.name == name);
 
         private string Draft(int socket) => _world.Workbench.DraftAppendageAt(socket)?.name;
 

@@ -41,11 +41,11 @@ time.
 ## Programming a golem
 
 A golem's program is a set of punch cards slotted into its frame at the Workbench. Nothing takes
-effect until the player pulls the ENGAGE lever.
+effect until the player pulls the ENGAGE lever. Every golem runs its program continuously: there
+is no trigger to choose (a Logic Core slot with one right answer was cut, 2026-11-19).
 
 | Part | Role | What it does |
 |---|---|---|
-| Logic Core | The trigger | When the golem runs: always, or on an interval. |
 | Appendages | The steps | What it does, in order: Haul a good, Extract from a cart, Assemble a recipe, Push its output. |
 | Chassis | The constraint | How many steps the golem can hold, and so how many inputs a recipe can have. |
 

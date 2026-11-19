@@ -1332,7 +1332,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "program", "Program it",
-                "Drag the glowing card onto the glowing socket, then the next: Always On, Extract, Push Output. "
+                "Drag the glowing card onto the glowing socket, then the next: Extract, Push Output. "
                 + "Then pull ENGAGE GEARS. Closed it? Press [[interact]] at the golem.",
                 w => LiveGolems.Any(IsProgrammed),
                 w => FirstGolem,
@@ -1424,7 +1424,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "program-presser", "Program the Presser",
-                "Drag the glowing cards: Always On, Haul, Assemble Scrap Reclamation, Push Output. Then ENGAGE. "
+                "Drag the glowing cards: Haul, Assemble Scrap Reclamation, Push Output. Then ENGAGE. "
                 + "Closed it? Press [[interact]] at the Presser.",
                 w => Pressers.Any(IsIronPresser),
                 w => Pressers.Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
@@ -1499,7 +1499,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "program-coker", "Program the coking Presser",
-                "Drag the glowing cards: Always On, Extract, Assemble Coking, Push Output, then ENGAGE. Extract "
+                "Drag the glowing cards: Extract, Assemble Coking, Push Output, then ENGAGE. Extract "
                 + "takes whatever the cart behind holds: here, Coal.",
                 w => Pressers.Any(IsCoker),
                 w => NewestPresser?.Cell,
@@ -1552,7 +1552,7 @@ namespace GolemFactory.Tutorial
             // a golem built bare.
             new TutorialStep(
                 "stamp", "Program the new Scavenger",
-                "This one arrived bare. Drag the glowing cards (Always On, Extract, Push Output) and pull ENGAGE. "
+                "This one arrived bare. Drag the glowing cards (Extract, Push Output) and pull ENGAGE. "
                 + "Next time, build from the patent.",
                 w => SecondScavenger != null && IsProgrammed(SecondScavenger),
                 w => SecondScavenger != null ? SecondScavenger.Cell : (Vector2Int?)null,
@@ -1647,7 +1647,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "program-smelter", "Two Hauls, two goods",
-                "In the Workbench: Always On, then Haul, Haul, Assemble Iron Smelting and Push Output. On the "
+                "In the Workbench: Haul, Haul, Assemble Iron Smelting and Push Output. On the "
                 + $"second Haul, click the arrow until it says Coke. Set the first to {SmeltScrap}"
                 + (SmeltCoke > 1 ? $" and the second to {SmeltCoke}" : "")
                 + $": the recipe takes {Takes("AssembleIronSmelting")}.",
@@ -1699,7 +1699,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "program-carrier", "Carry Slag and its fuel",
-                $"Program it: Always On, Haul set to Slag with the dial at {CarrySlag}, Haul set to Coke at {CarryCoke}, then Push "
+                $"Program it: Haul set to Slag with the dial at {CarrySlag}, Haul set to Coke at {CarryCoke}, then Push "
                 + $"Output. {CarrySlag} Slag and the one Coke that burns them, every trip.",
                 w => Pressers.Any(IsCarrier),
                 w => NewestPresser?.Cell,
@@ -1974,7 +1974,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "program-zeppelin", "Program the Zeppelin",
-                "Always On, Haul set to Copper Ore, then Freight Launch: it flies whatever it holds to the mast.",
+                "Haul set to Copper Ore, then Freight Launch: it flies whatever it holds to the mast.",
                 w => Zeppelin != null && ZeppelinPlan.Matches(Zeppelin.Program),
                 w => null,
                 workbench: true,

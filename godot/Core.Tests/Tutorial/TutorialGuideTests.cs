@@ -1851,7 +1851,6 @@ namespace GolemFactory.Tests.Tutorial
             session.HintSource = g => guide.SmelterPlan;
             session.RetargetGolem(bare);
             session.Open();
-            session.HandleDrop(WorkbenchCardRef.FromVault(defs.LogicCores["AlwaysOnCore"]), WorkbenchZone.Trigger);
             session.HandleDrop(WorkbenchCardRef.FromVault(defs.Appendages["HaulScrap"]), WorkbenchZone.Socket(0));
             Assert.AreEqual(new WorkbenchHintTarget(WorkbenchHintKind.QuantityDial, null, WorkbenchZone.Socket(0), +1), session.Hint);
             session.AdjustDraftQuantity(0, +1);

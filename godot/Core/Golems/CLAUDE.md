@@ -26,6 +26,10 @@ Paths here are relative to `godot/` unless they say otherwise.
   n + 1 runs fit the 12 hold** (`Golems/RepeatRules.MaxIterations`): the Workbench dial stops
   there, `GolemProgramWriter.TryWrite` refuses a Repeat behind no Assemble or one that can't run
   twice, and a load clamps n.
+- **The player never picks a trigger** (2026-11-19): the Workbench has no TRIGGER socket and writes
+  every program with its roster's Always On core (`WorkbenchSession.DefaultCore`). The engine
+  keeps the other kinds for tests and fixtures (a sleeping feeder is an Interval core that never
+  fires).
 - Triggers: `AlwaysOn`, `Interval`, `Threshold` (edge-triggered), `Signal` (latches a fire that
   arrives mid-cycle).
 - **`AppendageActionType` and `StallReason` are append-only**: serialized by integer index.

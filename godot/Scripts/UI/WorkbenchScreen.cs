@@ -14,9 +14,9 @@ namespace GolemFactory.Nodes
     ///
     /// <para>
     /// Layout, as the prefab has it (1280x720 reference): a brass header (gear, THE WORKBENCH,
-    /// the TARGET line, CLOSE); the BLUEPRINT VIEWPORT (chassis portrait, name and stats; the
-    /// TRIGGER socket and six STEP sockets with their loop captions); the CHASSIS RACK; the
-    /// scrolling CARD VAULT of teal logic cores and copper appendages; and the bottom bar with
+    /// the TARGET line, CLOSE); the BLUEPRINT VIEWPORT (chassis portrait, name and stats; six
+    /// STEP sockets with their loop captions); the CHASSIS RACK; the scrolling CARD VAULT of
+    /// copper appendages; and the bottom bar with
     /// the diagnostic tape, the ENGAGE GEARS lever, PATENT, and the status plate.
     /// </para>
     ///
@@ -32,7 +32,6 @@ namespace GolemFactory.Nodes
     public partial class WorkbenchScreen : CanvasLayer, IWorkbenchScreen, IClosableScreen
     {
         // WorkbenchController's palette.
-        private static readonly Color Teal = new Color(0.42f, 0.80f, 0.75f);
         private static readonly Color Copper = new Color(0.88f, 0.58f, 0.34f);
         private static readonly Color CardInk = new Color(0.10f, 0.08f, 0.06f);
         private static readonly Color CardSubInk = new Color(0.24f, 0.19f, 0.14f);
@@ -49,15 +48,13 @@ namespace GolemFactory.Nodes
         private static readonly Color PlateInk = new Color(0.13f, 0.09f, 0.05f);
         private static readonly Color CaptionInk = new Color(0.94f, 0.80f, 0.50f);
         private static readonly Color HintInk = new Color(0.55f, 0.47f, 0.40f);
-        private static readonly Color TriggerSocket = new Color(0.38f, 0.72f, 0.68f);
         private static readonly Color StepSocket = new Color(0.80f, 0.54f, 0.34f);
         private const float CardHeight = 44f;
         private const float ChassisButtonHeight = 52f;
         private const float VaultHeadingHeight = 26f;
         private const float LeverTravel = 74f;
 
-        /// <summary>An empty socket's line, reworded for the pad ("send a logic core") by <see cref="Settings.PadPhrasing"/>.</summary>
-        public const string TriggerHint = "drop a logic core";
+        /// <summary>An empty socket's line, reworded for the pad ("send an appendage") by <see cref="Settings.PadPhrasing"/>.</summary>
         public const string StepHint = "drop an appendage";
 
         // The next-drag hint (docs/onboarding-feedback-design.md §2.4): a pulsing brass frame
@@ -87,7 +84,6 @@ namespace GolemFactory.Nodes
         private TextureRect _portrait;
         private Label _chassisName;
         private Label _chassisStats;
-        private WorkbenchDropRow _triggerRow;
         private readonly List<WorkbenchDropRow> _stepRows = new List<WorkbenchDropRow>();
         private VBoxContainer _chassisList;
         private readonly Dictionary<ChassisDefinition, Button> _chassisButtons = new Dictionary<ChassisDefinition, Button>();
@@ -160,7 +156,6 @@ namespace GolemFactory.Nodes
 
         // --- For scenarios ------------------------------------------------------------------
         public IReadOnlyList<WorkbenchDropRow> StepRows => _stepRows;
-        public WorkbenchDropRow TriggerRow => _triggerRow;
         public Button Lever => _lever;
         public Button PatentButton => _patent;
         public Control VaultList => _vault;
@@ -391,7 +386,7 @@ namespace GolemFactory.Nodes
             box.ShadowColor = new Color(color, alpha * HintGlowAlpha);
         }
 
-        private static string CardName(WorkbenchCardRef card) => card.LogicCore?.name ?? card.Appendage?.name;
+        private static string CardName(WorkbenchCardRef card) => card.Appendage?.name;
 
         /// <summary>For scenarios: the card and the control the shown hint outlines, so a run can follow the glow.</summary>
         public Control HintedCardControl => HintedVaultCard(_shownHint);
@@ -404,8 +399,8 @@ namespace GolemFactory.Nodes
 
         private Control HintedTarget(WorkbenchHintTarget hint)
         {
-            WorkbenchDropRow row = hint.Zone.Kind == DropZoneKind.LogicCore ? _triggerRow
-                : hint.Zone.AppendageIndex >= 0 && hint.Zone.AppendageIndex < _stepRows.Count ? _stepRows[hint.Zone.AppendageIndex] : null;
+            WorkbenchDropRow row = hint.Zone.AppendageIndex >= 0 && hint.Zone.AppendageIndex < _stepRows.Count
+                ? _stepRows[hint.Zone.AppendageIndex] : null;
             switch (hint.Kind)
             {
                 case WorkbenchHintKind.VaultCard:
@@ -454,7 +449,6 @@ namespace GolemFactory.Nodes
             }
             bool motion = _world?.Sandbox?.Motion.WorkbenchMotion != false;
             float sweep = WorkbenchReadHead.Sweep(_headAge, motion);
-            _triggerRow.ShowHead(row == WorkbenchSession.ReadHeadOnTrigger, sweep);
             for (int i = 0; i < _stepRows.Count; i++)
             {
                 _stepRows[i].ShowHead(row == i, sweep);
@@ -463,7 +457,6 @@ namespace GolemFactory.Nodes
 
         private void ApplyHighlights()
         {
-            _triggerRow.ApplyHighlight(_session.LogicHighlight, TriggerSocket);
             for (int i = 0; i < _stepRows.Count; i++)
             {
                 _stepRows[i].ApplyHighlight(_session.AppendageHighlights[i], StepSocket);
@@ -510,29 +503,12 @@ namespace GolemFactory.Nodes
             {
                 child.QueueFree();
             }
-            _vault.AddChild(VaultHeadingLabel("LOGIC CORES  ·  triggers"));
-            foreach (LogicCoreDefinition core in _session.VaultLogicCores)
-            {
-                _vault.AddChild(MakeCard(WorkbenchCardRef.FromVault(core), inSocket: false));
-            }
             _vault.AddChild(VaultHeadingLabel("APPENDAGES  ·  actions"));
             foreach (AppendageActionDefinition appendage in _session.VaultAppendages)
             {
                 _vault.AddChild(MakeCard(WorkbenchCardRef.FromVault(appendage), inSocket: false));
             }
 
-            _triggerRow.ClearCard();
-            if (_session.DraftLogicCore != null)
-            {
-                _triggerRow.SetCard(MakeCard(WorkbenchCardRef.FromTriggerSocket(_session.DraftLogicCore), inSocket: true));
-                if (landed.HasValue && landed.Value.Kind == DropZoneKind.LogicCore)
-                {
-                    _landingRow = _triggerRow;
-                    _landAge = 0f;
-                }
-            }
-            _triggerRow.Caption.Text = Settings.TextTokens.Fill(_session.TriggerCaption);
-            _triggerRow.Hint.Text = Settings.TextTokens.Fill(_triggerRow.HintText);
             foreach (WorkbenchDropRow step in _stepRows)
             {
                 step.Hint.Text = Settings.TextTokens.Fill(step.HintText);
@@ -585,9 +561,9 @@ namespace GolemFactory.Nodes
         {
             int id = _nextCardId++;
             _cards[id] = card;
-            var control = new WorkbenchCardControl(this, id, card.LogicCore != null ? Teal : Copper)
+            var control = new WorkbenchCardControl(this, id, Copper)
             {
-                Name = WorkbenchSession.CardDisplayName(card.LogicCore, card.Appendage),
+                Name = WorkbenchSession.CardDisplayName(null, card.Appendage),
                 CustomMinimumSize = new Vector2(0f, CardHeight),
             };
             control.Build(card, CardFace(card, withStepper: inSocket && card.SourceAppendageIndex >= 0 && _session.SlotHasStepper(card.SourceAppendageIndex)));
@@ -602,7 +578,7 @@ namespace GolemFactory.Nodes
             // A socketed Haul names its good with a picker (G10): "Haul  < Coke >". The card's own
             // name ("Haul Scrap") is only where it starts.
             bool goodPicker = withStepper && _session.IsDraftHaul(card.SourceAppendageIndex);
-            face.AddChild(Ugui.Place(Ugui.Text("Label", goodPicker ? "Haul" : WorkbenchSession.CardDisplayName(card.LogicCore, card.Appendage), 15, CardInk),
+            face.AddChild(Ugui.Place(Ugui.Text("Label", goodPicker ? "Haul" : WorkbenchSession.CardDisplayName(null, card.Appendage), 15, CardInk),
                 0.06f, 0.40f, goodPicker ? 0.34f : 0.98f, 0.98f));
             if (goodPicker)
             {
@@ -610,7 +586,7 @@ namespace GolemFactory.Nodes
             }
             // The card's subtitle names an old routing id ("ScrapNode -> ScrapBuffer") that a placed
             // golem never uses; a Haul with a picker says where it actually takes from.
-            string subtitle = goodPicker ? "from the tile behind" : WorkbenchSession.CardSubtitle(card.LogicCore, card.Appendage);
+            string subtitle = goodPicker ? "from the tile behind" : WorkbenchSession.CardSubtitle(null, card.Appendage);
             face.AddChild(Ugui.Place(Ugui.Text("Subtitle", subtitle, 11, CardSubInk),
                 0.06f, 0.04f, withStepper ? 0.60f : 0.98f, 0.42f));
             if (withStepper)
@@ -733,11 +709,10 @@ namespace GolemFactory.Nodes
 
             var stack = Ugui.Place(new Control { Name = "SlotStack", MouseFilter = Control.MouseFilterEnum.Pass }, 0.425f, 0.028f, 0.968f, 0.895f);
             viewport.AddChild(stack);
-            _triggerRow = MakeRow("LogicCoreSlot", WorkbenchZone.Trigger, "TRIGGER", TriggerHint, TriggerSocket, 0.87f, 0.99f);
-            stack.AddChild(_triggerRow);
+            // Six steps, spaced as they always were, centred now the TRIGGER row above them is gone.
             for (int i = 0; i < _session.SocketCount; i++)
             {
-                float top = 0.85f - 0.14f * i;
+                float top = 0.92f - 0.14f * i;
                 WorkbenchDropRow row = MakeRow("AppendageSlot" + i, WorkbenchZone.Socket(i), "STEP " + (i + 1), StepHint, StepSocket, top - 0.12f, top);
                 _stepRows.Add(row);
                 stack.AddChild(row);
@@ -960,7 +935,7 @@ namespace GolemFactory.Nodes
         public Label Caption { get; set; }
         public Panel Socket { get; set; }
 
-        /// <summary>The empty socket's line ("drop a logic core"), and its text before the device's wording.</summary>
+        /// <summary>The empty socket's line ("drop an appendage"), and its text before the device's wording.</summary>
         public Label Hint { get; set; }
         public string HintText { get; set; }
         public WorkbenchCardControl Card { get; private set; }

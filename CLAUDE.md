@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `golem-factory` is a solo-play **Godot 4** prototype of "Golem Factory: The Clockwork Metropolis" -- a
 Factorio/Satisfactory-style automation game (cozy top-down pixel art) where the player places "golems" programmed with
-punch-card-style Logic Core / Appendage / Chassis combinations that run rigidly on a world tick clock. It began as a
+punch-card-style Appendage / Chassis combinations that run rigidly on a world tick clock. It began as a
 Unity prototype and was ported to Godot (milestones G0-G10, `docs/godot-conversion-plan.md`). **The Unity project was removed at the G10 cutover; the tag `unity-final` holds its
 last state.**
 

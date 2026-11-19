@@ -60,7 +60,7 @@ player calls `PlayerInteractor.Teleport`; a bare `Position` write is overwritten
   (`ProgramStepFor`; `docs/guide-chapters-design.md` §9): the station opens the Workbench on a new
   golem before its program step comes up. **The hint never fills a socket**: reading it changes nothing (`WorkbenchSession.Version` holds), and
   `WorkbenchScreen` only draws frames around controls that already exist. Without a plan, only a
-  golem never programmed gets the fallback (TRIGGER, STEP 1, the lever).
+  golem never programmed gets the fallback (STEP 1, then the lever).
 
 **A quoted price is the data's** (tuning-data-spec invariant 12): a guide text or progress count
 that names a price builds it from the definition (`TutorialGuide.Price`, `CostCounts`,

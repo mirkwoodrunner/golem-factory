@@ -5,8 +5,8 @@ namespace GolemFactory.UI
     ///
     /// <para>
     /// <b>This exists because of a playtest finding.</b> §3y logged <i>"What are steps 1-6?"</i>
-    /// and deliberately did not fix it mid-session: the sockets read <c>TRIGGER</c>,
-    /// <c>STEP 1</c> … <c>STEP 6</c> and nothing else, and six numbered boxes do not by
+    /// and deliberately did not fix it mid-session: the sockets read <c>STEP 1</c> …
+    /// <c>STEP 6</c> and nothing else (and a <c>TRIGGER</c> socket, cut 2026-11-19), and six numbered boxes do not by
     /// themselves say <em>sequence</em> -- nothing at all said <em>loop</em>.
     /// </para>
     ///
@@ -25,11 +25,8 @@ namespace GolemFactory.UI
     /// </summary>
     public static class WorkbenchLoopLabels
     {
-        /// <summary>The logic-core socket. Row 0; every other row is a numbered step.</summary>
-        public const int TriggerRow = 0;
-
         /// <summary>
-        /// Latin-1 middle dot, matching the vault headings ("LOGIC CORES  ·  triggers") and the
+        /// Latin-1 middle dot, matching the vault heading ("APPENDAGES  ·  actions") and the
         /// tech tree's phase titles.
         ///
         /// <para>
@@ -41,15 +38,6 @@ namespace GolemFactory.UI
         /// </summary>
         public const string Separator = "  ·  ";
 
-        public const string TriggerCaption = "TRIGGER";
-        public const string TriggerHint = "when to start";
-
-        /// <summary>What the trigger row says while there is no chassis to give it sockets.</summary>
-        public const string NoChassisHint = "fit a chassis first";
-
-        /// <summary>What the trigger row says while the program is empty.</summary>
-        public const string EmptyProgramHint = "drop cards below to build a cycle";
-
         /// <summary>A filled step that is not the last one.</summary>
         public const string ThenHint = "then";
 
@@ -60,7 +48,7 @@ namespace GolemFactory.UI
         public const string UnusedHint = "unused";
 
         /// <summary>
-        /// The bare caption: <c>TRIGGER</c> for row 0, <c>STEP n</c> otherwise.
+        /// The bare caption: <c>STEP n</c>, 1-based.
         ///
         /// <para>
         /// Derived from the index and never read off the row, for exactly the reason
@@ -70,13 +58,12 @@ namespace GolemFactory.UI
         /// entire job is showing the order of a program.
         /// </para>
         /// </summary>
-        public static string Caption(int rowIndex) =>
-            rowIndex == TriggerRow ? TriggerCaption : "STEP " + rowIndex;
+        public static string Caption(int rowIndex) => "STEP " + rowIndex;
 
         /// <summary>
         /// The clause after the separator, or empty for a row that is not part of the cycle.
         /// </summary>
-        /// <param name="rowIndex">0 for the trigger, 1-based for steps.</param>
+        /// <param name="rowIndex">The step, 1-based.</param>
         /// <param name="rowFilled">Whether this socket currently holds a card.</param>
         /// <param name="lastFilledStep">
         /// The highest 1-based step number holding a card, or 0 for an empty program. This is
@@ -86,18 +73,6 @@ namespace GolemFactory.UI
         /// <param name="capacitySteps">The fitted chassis's slot count, or 0 for no chassis.</param>
         public static string Hint(int rowIndex, bool rowFilled, int lastFilledStep, int capacitySteps)
         {
-            if (rowIndex == TriggerRow)
-            {
-                // A progressive teacher: the trigger row is always on screen, so it carries
-                // whichever sentence the player needs at their current stage.
-                if (capacitySteps <= 0)
-                {
-                    return NoChassisHint;
-                }
-
-                return lastFilledStep <= 0 ? EmptyProgramHint : TriggerHint;
-            }
-
             // Beyond the fitted chassis. Such a socket is only drawn at all when it is occupied
             // by a card the chassis can no longer hold (the render rule RebuildUI records), and
             // it is genuinely not part of the cycle, so it gets no clause rather than a wrong one.
