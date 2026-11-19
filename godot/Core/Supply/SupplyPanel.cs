@@ -124,12 +124,12 @@ namespace GolemFactory.Supply
             foreach (CartLadder ladder in _street.Offers().Where(l => l.ItemType != cart.ItemType))
             {
                 SupplyRow change = Priced(SupplyAction.Change, ladder.ItemType, "Change to " + SupplyText.CartName(ladder.ItemType),
-                    "keeps its rungs", ladder.AddPrice, wallet);
+                    "keeps its rungs, its price back", ladder.AddPrice, wallet);
                 if (kept)
                 {
                     Grey(change, KeptNote(cart));
                 }
-                else if (change.Enabled && wallet.FirstMisfit(Stock(cart)) is string full)
+                else if (change.Enabled && wallet.FirstMisfit(SupplyStreet.ChangeNet(cart, ladder.AddPrice)) is string full)
                 {
                     Grey(change, "pack full of " + ItemTiers.DisplayName(full));
                 }
@@ -141,7 +141,7 @@ namespace GolemFactory.Supply
             {
                 Action = SupplyAction.Remove,
                 Label = "Remove",
-                Detail = "half its price back",
+                Detail = "its price back",
                 Price = back.Count == 0 ? "nothing back" : "returns " + ConstructionCostPolicy.FormatCost(back),
                 Enabled = true,
             };
@@ -213,9 +213,5 @@ namespace GolemFactory.Supply
 
         private static string KeptNote(SupplyCart cart) => $"the street needs one {SupplyText.CartName(cart.ItemType)}";
 
-        private static List<RecipeIngredient> Stock(SupplyCart cart) =>
-            cart.IsInfinite || cart.Stock <= 0
-                ? new List<RecipeIngredient>()
-                : new List<RecipeIngredient> { new RecipeIngredient { itemType = cart.ItemType, quantity = cart.Stock } };
     }
 }

@@ -198,7 +198,7 @@ Current scenarios:
   S and A walk to the spot at x = −20, drawn as its rope; the prompt offers a cart and E opens the
   panel, listing the carts the Ledger allows. A click adds a Coal cart for its price and the rope
   becomes the Coal cart; it fills on the clock; E takes from it; I opens its panel and a click
-  buys a Rate rung. Saved to Slot 1, removed for half its price (the rope again), and loaded with
+  buys a Rate rung. Saved to Slot 1, removed for its full price (the rope again), and loaded with
   two clicks: the cart is back at its rung, with one marker. Captures `supply-spot`,
   `supply-street`, `supply-cart`.
 - `contracts` (Sandbox): city contracts (`docs/contracts-design.md` §9) with real keys and

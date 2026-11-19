@@ -44,7 +44,8 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   `ResourceNode` on one of the street's seventeen spots, so golems and hands take from it as from
   any node. There is no truckload market and no per-load price. `SupplyStreet` owns the carts:
   add, the Rate and Capacity rungs, change and remove all charge or refund through the wallet (a
-  removal refunds half, rounded down per good, with the stock, or is refused whole). **A cart is
+  removal refunds everything paid for the cart and its rungs, with the stock, or is refused whole;
+  a change gives back the old cart's price). **A cart is
   offered once the Ledger has seen every good its add price names** (the user's call: a raw good
   is never seen before its cart). The starting Scrap cart's good is kept: its last cart can't go.
   A cart is saved in `SaveData.supply`; `SaveData.market` is only read, to migrate an old save's

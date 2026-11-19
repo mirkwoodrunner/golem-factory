@@ -253,7 +253,7 @@ namespace GolemFactory.Tests.Supply
         // --- Change and remove -------------------------------------------------------------------
 
         [Test]
-        public void Removing_RefundsHalf_RoundedDown_WithTheStock()
+        public void Removing_RefundsInFull_WithTheStock()
         {
             SupplyCart cart = AddCoal(West);
             CrateWorld.Give(_world, ItemType.IronPlate, 41);
@@ -266,9 +266,9 @@ namespace GolemFactory.Tests.Supply
             SupplyResult result = Street.Remove(Spot(West));
 
             Assert.IsTrue(result.Done, result.Message);
-            Assert.AreEqual(scrap + 40, Pack(ItemType.Scrap), "half of 80");
-            Assert.AreEqual(plate + 5, Pack(ItemType.IronPlate), "half of 10");
-            Assert.AreEqual(gear + 2, Pack(ItemType.Gear), "half of 5, rounded down");
+            Assert.AreEqual(scrap + 80, Pack(ItemType.Scrap), "the cart's 80");
+            Assert.AreEqual(plate + 10, Pack(ItemType.IronPlate), "the rung's 10");
+            Assert.AreEqual(gear + 5, Pack(ItemType.Gear), "the rung's 5");
             Assert.AreEqual(coal + 60, Pack(ItemType.Coal), "the stock comes back too");
             Assert.IsTrue(Spot(West).IsEmpty);
             Assert.IsFalse(_world.Endpoints.TryGetEndpoint(West, out _));
@@ -298,17 +298,36 @@ namespace GolemFactory.Tests.Supply
         }
 
         [Test]
-        public void AHalfRefund_RoundsDownPerGood()
+        public void TheRefund_IsEveryGoodPaid_OneLineAGood()
         {
             SupplyCart cart = AddCoal(West);
             CrateWorld.Give(_world, ItemType.IronPlate, 60);
             CrateWorld.Give(_world, ItemType.Gear, 15);
             Assert.IsTrue(Street.UpgradeRate(Spot(West)).Done, "10 Plate + 5 Gear");
             Assert.IsTrue(Street.UpgradeCapacity(Spot(West)).Done, "5 Plate + 2 Gear");
-            List<RecipeIngredient> half = SupplyStreet.HalfRefund(cart);
-            Assert.AreEqual(7, half.Single(h => h.itemType == ItemType.IronPlate).quantity, "15 Plate paid, 7 back");
-            Assert.AreEqual(3, half.Single(h => h.itemType == ItemType.Gear).quantity, "7 Gear paid, 3 back");
-            Assert.AreEqual(40, half.Single(h => h.itemType == ItemType.Scrap).quantity);
+            List<RecipeIngredient> back = SupplyStreet.Refund(cart);
+            Assert.AreEqual(15, back.Single(h => h.itemType == ItemType.IronPlate).quantity, "15 Plate paid, 15 back");
+            Assert.AreEqual(7, back.Single(h => h.itemType == ItemType.Gear).quantity, "7 Gear paid, 7 back");
+            Assert.AreEqual(80, back.Single(h => h.itemType == ItemType.Scrap).quantity);
+            Assert.AreEqual(3, back.Count, "one line a good");
+        }
+
+        [Test]
+        public void AChangeThePackCantHold_IsRefused_AndKeepsItsPrice()
+        {
+            SupplyCart coal = AddCoal(West);
+            TickMinutes(2);
+            See(ItemType.Scrap);
+            CrateWorld.Give(_world, ItemType.Coal, _world.Wallet.RoomFor(ItemType.Coal));
+            CrateWorld.Give(_world, ItemType.Scrap, 60);
+            int scrap = Pack(ItemType.Scrap), held = Pack(ItemType.Coal);
+
+            SupplyResult result = Street.Change(Spot(West), ItemType.Scrap);
+
+            Assert.AreEqual("Not changed: pack full of Coal.", result.Message);
+            Assert.AreSame(coal, Spot(West).Cart);
+            Assert.AreEqual(scrap, Pack(ItemType.Scrap), "the new cart's price is put back");
+            Assert.AreEqual(held, Pack(ItemType.Coal));
         }
 
         [Test]
@@ -328,7 +347,7 @@ namespace GolemFactory.Tests.Supply
         }
 
         [Test]
-        public void Changing_PaysTheNewGood_KeepsTheRungs_AndReturnsTheStock()
+        public void Changing_PaysTheNewGood_KeepsTheRungs_AndReturnsTheOldPriceAndTheStock()
         {
             SupplyCart coal = AddCoal(West);
             CrateWorld.Give(_world, ItemType.IronPlate, 40);
@@ -347,14 +366,15 @@ namespace GolemFactory.Tests.Supply
             Assert.AreEqual(1, now.RateRung, "its rung stays");
             Assert.AreEqual(180, now.RatePerMinute, "the Scrap ladder's rung 1");
             Assert.AreEqual(0, now.Stock, "starts empty as its new good");
-            Assert.AreEqual(scrap - 60, Pack(ItemType.Scrap), "the Scrap cart's price");
+            Assert.AreEqual(scrap - 60 + 80, Pack(ItemType.Scrap), "the Scrap cart's price paid, the Coal cart's 80 back");
             Assert.AreEqual(coalHeld + 60, Pack(ItemType.Coal), "the Coal it held comes back");
             Assert.AreEqual(ItemType.Scrap, _world.Nodes.TryGetNode(Spot(West).NodeId, out ResourceNode node) ? node.ItemType : null);
 
-            // What a removal halves now: the Scrap cart's price and the rung, not the Coal's price.
-            List<RecipeIngredient> half = SupplyStreet.HalfRefund(now);
-            Assert.AreEqual(30, half.Single(h => h.itemType == ItemType.Scrap).quantity);
-            Assert.AreEqual(5, half.Single(h => h.itemType == ItemType.IronPlate).quantity, "half the Coal rung's 10 Plate");
+            // What a removal refunds now: the Scrap cart's price and the rung, not the Coal's price,
+            // which the change gave back.
+            List<RecipeIngredient> back = SupplyStreet.Refund(now);
+            Assert.AreEqual(60, back.Single(h => h.itemType == ItemType.Scrap).quantity);
+            Assert.AreEqual(10, back.Single(h => h.itemType == ItemType.IronPlate).quantity, "the Coal rung's 10 Plate");
             Assert.AreNotSame(coal, now);
         }
 
@@ -509,7 +529,7 @@ namespace GolemFactory.Tests.Supply
             Assert.AreEqual("0 of 100 · +30 a minute", _world.SupplyPanel.Status(Spot(West)));
             CollectionAssert.AreEqual(new[] { "Rate", "Capacity", "Change to Scrap cart", "Remove" }, rows.Select(r => r.Label));
             Assert.AreEqual("30 to 60 a minute", rows[0].Detail);
-            Assert.AreEqual("returns 40 Scrap", rows[3].Price);
+            Assert.AreEqual("returns 80 Scrap", rows[3].Price);
             Assert.IsTrue(rows[3].Enabled);
         }
 

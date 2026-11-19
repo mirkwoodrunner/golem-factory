@@ -115,7 +115,7 @@ namespace GolemFactory.Supply
         /// <summary>What was paid for its rungs.</summary>
         public IReadOnlyList<RecipeIngredient> RungsPaid => _rungsPaid;
 
-        /// <summary>Every good paid for this cart and its rungs: half of it is the removal's refund.</summary>
+        /// <summary>Every good paid for this cart and its rungs: all of it is the removal's refund.</summary>
         public IEnumerable<RecipeIngredient> Paid => _addPaid.Concat(_rungsPaid);
 
         internal void RecordAdd(IEnumerable<RecipeIngredient> bundle) => Record(_addPaid, bundle);
@@ -150,7 +150,7 @@ namespace GolemFactory.Supply
     /// <summary>
     /// The market street's carts (docs/supply-design.md): spots where the player adds, upgrades,
     /// changes and removes carts, each a <see cref="ResourceNode"/> that refills itself at its
-    /// rate up to its capacity. Every price goes through the wallet; a removal refunds half.
+    /// rate up to its capacity. Every price goes through the wallet; a removal refunds it in full.
     /// </summary>
     public sealed class SupplyStreet : ITickable
     {
@@ -265,23 +265,53 @@ namespace GolemFactory.Supply
         public static IReadOnlyList<RecipeIngredient> NextCapacityCost(SupplyCart cart) =>
             cart.CapacityRung < cart.Ladder.TopCapacityRung ? cart.Ladder.CapacityCosts[cart.CapacityRung] : null;
 
-        /// <summary>Half of every good paid, each good's total rounded down (§0.6).</summary>
-        public static List<RecipeIngredient> HalfRefund(SupplyCart cart) =>
-            cart.Paid.GroupBy(p => p.itemType)
-                .Select(g => new RecipeIngredient { itemType = g.Key, quantity = g.Sum(p => p.quantity) / 2 })
-                .Where(r => r.quantity > 0)
-                .ToList();
+        /// <summary>Every good paid for the cart and its rungs, one line a good (§0.6). A rung a
+        /// contract granted was never paid for, so it isn't in it.</summary>
+        public static List<RecipeIngredient> Refund(SupplyCart cart) => Sum(cart.Paid);
 
-        /// <summary>What a removal puts in the pack: the half refund and the cart's stock.</summary>
+        /// <summary>What a removal puts in the pack: the refund and the cart's stock.</summary>
         public static List<RecipeIngredient> RemovalReturns(SupplyCart cart)
         {
-            List<RecipeIngredient> back = HalfRefund(cart);
+            List<RecipeIngredient> back = Refund(cart);
             if (!cart.IsInfinite && cart.Stock > 0)
             {
                 back.Add(new RecipeIngredient { itemType = cart.ItemType, quantity = cart.Stock });
             }
             return back;
         }
+
+        /// <summary>What a change puts in the pack: the old cart's price (its rungs move to the new
+        /// cart) and its stock.</summary>
+        public static List<RecipeIngredient> ChangeReturns(SupplyCart cart)
+        {
+            List<RecipeIngredient> back = Sum(cart.AddPaid);
+            if (!cart.IsInfinite && cart.Stock > 0)
+            {
+                back.Add(new RecipeIngredient { itemType = cart.ItemType, quantity = cart.Stock });
+            }
+            return back;
+        }
+
+        /// <summary>What a change adds to the pack once its price is paid: the returns less the
+        /// price, good by good, for the panel's fit check.</summary>
+        public static List<RecipeIngredient> ChangeNet(SupplyCart cart, IEnumerable<RecipeIngredient> price)
+        {
+            var spent = Sum(price ?? Enumerable.Empty<RecipeIngredient>()).ToDictionary(p => p.itemType, p => p.quantity);
+            return ChangeReturns(cart)
+                .Select(r => new RecipeIngredient
+                {
+                    itemType = r.itemType,
+                    quantity = r.quantity - (spent.TryGetValue(r.itemType, out int paid) ? paid : 0),
+                })
+                .Where(r => r.quantity > 0)
+                .ToList();
+        }
+
+        private static List<RecipeIngredient> Sum(IEnumerable<RecipeIngredient> paid) =>
+            paid.GroupBy(p => p.itemType)
+                .Select(g => new RecipeIngredient { itemType = g.Key, quantity = g.Sum(p => p.quantity) })
+                .Where(r => r.quantity > 0)
+                .ToList();
 
         // --- Actions at a spot --------------------------------------------------------------------
 
@@ -397,26 +427,21 @@ namespace GolemFactory.Supply
                 return SupplyResult.Refused($"The street needs one {ItemTiers.DisplayName(cart.ItemType)} cart.");
             }
             PlayerWallet wallet = _wallet();
-            var stock = new List<RecipeIngredient>();
-            if (!cart.IsInfinite && cart.Stock > 0)
-            {
-                stock.Add(new RecipeIngredient { itemType = cart.ItemType, quantity = cart.Stock });
-            }
-            string misfit = wallet.FirstMisfit(stock);
-            if (misfit != null)
-            {
-                return SupplyResult.Refused("Not changed: pack full of " + ItemTiers.DisplayName(misfit) + ".");
-            }
+            List<RecipeIngredient> back = ChangeReturns(cart);
+            // Charged first, so the room the new price frees counts toward what comes back (the
+            // old price is often the same good). A misfit after it puts the price back whole.
             if (!wallet.TryCharge(ladder.AddPrice))
             {
                 return SupplyResult.Refused(ConstructionCostPolicy.FormatShortfall(wallet, ladder.AddPrice));
             }
-            if (!wallet.Refund(stock))
+            string misfit = wallet.FirstMisfit(back);
+            if (misfit != null || !wallet.Refund(back))
             {
-                wallet.Uncharge(ladder.AddPrice); // can't happen after FirstMisfit; never lose the price
-                return SupplyResult.Refused("Not changed: pack full of " + ItemTiers.DisplayName(cart.ItemType) + ".");
+                wallet.Uncharge(ladder.AddPrice);
+                return SupplyResult.Refused("Not changed: pack full of " + ItemTiers.DisplayName(misfit ?? cart.ItemType) + ".");
             }
-            // The rungs stay; the old good's price is spent, the new one is what a removal halves.
+            // The rungs stay with the spot; the old good's price came back, the new one is what a
+            // removal refunds.
             Unplace(spot);
             SupplyCart changed = Place(spot, ladder);
             changed.RateRung = Math.Min(cart.RateRung, ladder.TopRateRung);

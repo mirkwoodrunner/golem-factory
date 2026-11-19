@@ -161,7 +161,7 @@ namespace GolemFactory.Save
 
     /// <summary>
     /// One supply cart: its spot, its good, its two rungs, its stock and the trickle's remainder,
-    /// and what was paid for it, which a removal refunds half of.
+    /// and what was paid for it, which a removal refunds.
     /// </summary>
     [Serializable]
     public sealed class SupplyCartEntry

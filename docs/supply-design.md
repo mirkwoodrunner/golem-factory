@@ -19,8 +19,8 @@ player at the stalls. Written before the code, like `pack-upgrades-design.md`.
    Coal cart costs only Scrap, later carts cost more advanced goods, and upgrades climb from there.
 7. **The guide teaches the Coal cart where Coal and Coke are first needed** (chapter 1's `coal`).
 8. **Contracts can grant an upgrade**, as well as the player paying for one.
-9. **Removing a cart refunds half** of what was paid for it. Buildings refund in full; a cart
-   refunds half.
+9. **Removing a cart refunds in full**, as a building does. *Changed 2026-11-19 (the user's
+   call): it was half, which punished rearranging the street.*
 10. **Chapter 3 teaches an upgrade**: the Coal cart's first Rate rung (§6).
 
 ## Why
@@ -55,12 +55,12 @@ A pass that touches carts, spots or the street keeps all of these. Each gets a t
    (`pack-upgrades-design.md` §1, `PriceReachTests`).
 5. **Goods never vanish.** Removing or changing a cart puts its stock in the pack, and is refused
    if the pack can't hold it ("pack full of Coal"), as a demolition is.
-6. **Removing a cart refunds half, a building refunds all.** A cart isn't a building, so the
-   settled full-refund rule (`Core/Buildings/CLAUDE.md`) isn't bent: it never applies to carts.
-   The half refund is half of every good the player paid for the cart and its rungs, each line
-   rounded down. A rung a contract granted refunds nothing. The refund goes into the pack only,
-   through `PlayerWallet.Refund` after `FirstMisfit`. The removal is refused, and nothing changes,
-   if the pack can't hold the refund and the stock together.
+6. **Removing a cart refunds in full, as a building does** (changed 2026-11-19, from half). The
+   refund is every good the player paid for the cart and its rungs, one line a good. A rung a
+   contract granted refunds nothing. A change gives back the old cart's price (its rungs move to
+   the new cart). The refund goes into the pack only, through `PlayerWallet.Refund` after
+   `FirstMisfit`. The removal or change is refused, and nothing changes, if the pack can't hold
+   the refund and the stock together.
 7. **Upgrades stay with the cart.** A load restores every spot exactly: its cart, good, rungs,
    stock and accumulator, through `RestoreQuantity`, never clamping.
 8. **A cart is offered once the Ledger has seen every good its add price names** (the user's
@@ -110,8 +110,9 @@ Crate screen does its readout.
   price. The cart arrives empty and starts to trickle.
 - **A cart: Rate and Capacity.** Each row shows the next rung's price, or that it's at the top.
 - **A cart: Change.** The other goods the Ledger has seen. It costs the new good's cart price, keeps
-  the rungs, and puts the old stock in the pack (invariant 5). The cart starts empty as its new good.
-- **A cart: Remove.** The spot goes back to rope. The stock goes to the pack, with half of what
+  the rungs, and puts the old cart's price and stock in the pack (invariants 5 and 6). The cart
+  starts empty as its new good.
+- **A cart: Remove.** The spot goes back to rope. The stock goes to the pack, with all of what
   the cart and its rungs cost (invariant 6). The row shows what comes back before the click.
 
 A cart's prompt on the street reads "Coal cart · 84 of 200 · +60 a minute". It has no order key.
@@ -301,8 +302,8 @@ truckload market before they replace it.
 
 - **Core:** a trickle adds its rate exactly over a minute and stops at capacity; it's the same
   across a load mid-tick; add, change, remove and rungs charge through the wallet and a refusal
-  takes nothing; change and remove put the stock in the pack or refuse; a removal refunds half of what was paid,
-rounded down per line, and nothing for a granted rung; the last Scrap cart can't
+  takes nothing; change and remove put the stock in the pack or refuse; a removal refunds all of what was paid,
+and nothing for a granted rung; the last Scrap cart can't
   be removed or changed; a good unseen isn't offered; golems extract from a cart under the cap;
   every price fits the reachable pack; the street covers stage 1; a save round-trips; an old save
   becomes nine carts with its stock and its carts on the road; Creative costs nothing; chapters
@@ -313,7 +314,7 @@ rounded down per line, and nothing for a granted rung; the last Scrap cart can't
 
 ## 10. Questions
 
-**Answered 2026-11-06:** removing a cart refunds half (invariant 6); chapter 3 teaches the Coal
+**Answered 2026-11-06:** removing a cart refunds half (invariant 6; full since 2026-11-19); chapter 3 teaches the Coal
 cart's first Rate rung (§6).
 
 **Still open:** the numbers (§3). They're invented; the floor tests check the guide's path, and the
