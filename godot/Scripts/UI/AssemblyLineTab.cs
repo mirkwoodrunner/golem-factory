@@ -134,9 +134,6 @@ namespace GolemFactory.Nodes
                     case AssemblyLineRowKind.Slot:
                         button.Pressed += () => _board.Claim(slot);
                         break;
-                    case AssemblyLineRowKind.Bay:
-                        button.Pressed += () => _board.UpgradeBays();
-                        break;
                     case AssemblyLineRowKind.Floor:
                         button.Pressed += () => _board.ExtendFloor();
                         break;

@@ -41,7 +41,7 @@ namespace GolemFactory.Tests.EditMode
         /// <summary>The Assembly Line tab's purchases a step makes, by step id.</summary>
         private static readonly Dictionary<string, string> Purchased = new Dictionary<string, string>
         {
-            { "expand", "floor expansion 1" }, { "bays", "assembly bays" }, { "pack", "pack rung 1" },
+            { "expand", "floor expansion 1" }, { "pack", "pack rung 1" },
         };
 
         /// <summary>Every price a guide step's kit pays: (step index, what, price).</summary>
@@ -124,7 +124,6 @@ namespace GolemFactory.Tests.EditMode
         /// </summary>
         private static readonly Dictionary<string, string> ChaptersOneToFour = new Dictionary<string, string>
         {
-            { "assembly bays", "Scrap:40 IronPlate:20" },
             { "bench R1_Coking", "Coal:1" },
             { "bench R2_ScrapReclamation", "Scrap:1" },
             { "bench R8_GearCutting", "IronPlate:2" },

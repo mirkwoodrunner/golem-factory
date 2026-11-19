@@ -66,7 +66,8 @@ and gives to the tile in front.
 
 - **The Assembly Line** offers the cards the factory can afford: recipes, steps and chassis.
   Claiming one makes it available at the Workbench (`progression-design.md` §8).
-- **Assembly Bays** cap how many golems can run at once, and are upgraded for goods.
+- **The golem cap:** at most 112 golems stand at once, where the frame budget holds. Nothing
+  buys more; steam upkeep is what each golem costs.
 - **Chassis tiers:** five chassis, from the two-slot Clockwork Scavenger to the six-slot Zeppelin
   Freight Loader (`digital-design.md`).
 - **Land:** Floor Expansion widens the workshop, and the Docks open a second region

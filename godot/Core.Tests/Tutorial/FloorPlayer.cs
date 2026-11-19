@@ -207,18 +207,9 @@ namespace GolemFactory.Tests.Tutorial
                     return;
             }
 
-            // Everything else is the kit's own action, paid for with goods earned first.
-            for (int round = 0; round < 5; round++)
-            {
-                AcquireAll(Needs(stepId).ToList());
-                if (!PriceList.KitBuilds.ContainsKey(stepId) || _w.AssemblyBay.HasFreeSlot)
-                {
-                    break;
-                }
-                // The floor player's own lines fill bays the guide's golems need: one more upgrade.
-                AcquireAll(_w.AssemblyBay.UpgradeCost);
-                Assert.IsTrue(_w.AssemblyLineBoard.UpgradeBays(), _w.AssemblyLineBoard.Status);
-            }
+            // Everything else is the kit's own action, paid for with goods earned first. The golem
+            // cap (112) is far above anything the campaign builds.
+            AcquireAll(Needs(stepId).ToList());
             // Taken just before the kit acts, which is instant: nothing else moves in between.
             IReadOnlyList<string> goods = ItemTiers.CanonicalOrder;
             Dictionary<string, int> before = goods.ToDictionary(g => g, g => Pack.TotalDeposited(g));
@@ -323,7 +314,6 @@ namespace GolemFactory.Tests.Tutorial
                 case "post": return Cost("PneumaticPostPrefab", _w.Tutorial.PostSpots.Length);
                 case "mast": return Cost("FreightMastPrefab", 1);
                 case "expand": return _w.FloorExpansion.NextCost();
-                case "bays": return _w.AssemblyBay.UpgradeCost;
                 case "pack": return _w.PackUpgrade.NextCost();
                 case "claim": return CardCost("AssembleScrapReclamation");
                 case "coking-card": return CardCost("AssembleCoking");
@@ -1069,17 +1059,7 @@ namespace GolemFactory.Tests.Tutorial
 
         private GolemEntity BuildPaid(ChassisDefinition chassis)
         {
-            // Earning the price can build lines that take the free bays: round again until both hold.
-            for (int round = 0; round < 5; round++)
-            {
-                AcquireAll(chassis.cost);
-                if (_w.AssemblyBay.HasFreeSlot)
-                {
-                    break;
-                }
-                AcquireAll(_w.AssemblyBay.UpgradeCost);
-                Assert.IsTrue(_w.AssemblyLineBoard.UpgradeBays(), _w.AssemblyLineBoard.Status);
-            }
+            AcquireAll(chassis.cost);
             Assert.IsTrue(_w.StarterStation.TryConstructGolem(chassis, out GolemEntity golem),
                 $"built a {chassis.name}: {_w.StarterStation.LastRefusalReason}");
             return golem;

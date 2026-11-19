@@ -36,7 +36,8 @@ passed. Revision 3 is a tightening pass fixing two must-fix defects and a set of
 **Relationship to the other docs:**
 - `docs/game-design.md` — the core concept. Four of its mechanics carry the progression: the
   **Clock Tower** (endgame), the **Assembly Line** (tech unlock), the **Patent Registry**
-  (replication), **Assembly Bays** (golem cap).
+  (replication), **Assembly Bays** (golem cap; since 2026-11-19 a fixed 112, with nothing to
+  buy).
 - `docs/digital-design.md` — the five-chassis roster and its order is the spine of §6. One
   deliberate deviation is flagged there.
 - `docs/history/unity-implementation-plan.md` — §11 lists everything this needs that doesn't exist.
@@ -634,7 +635,12 @@ player something to spend surplus on while a stage grinds.
 
 ### Two supporting gates, both promoting unused systems
 
-- **Assembly Bays cap concurrent golems.** Introduced in **Phase 1**, starting at **10 slots**,
+- > **Cut 2026-11-19 (the user's call):** the bay upgrades went. At a flat 40 Scrap + 20 Iron
+  > Plate they never bound, so they were a toll, not a decision; steam upkeep already prices each
+  > golem. The cap is a fixed 112 (`sandbox.json` `golemCap`), where the frame budget holds. The
+  > original proposal follows.
+
+  **Assembly Bays cap concurrent golems.** Introduced in **Phase 1**, starting at **10 slots**,
   above the natural Phase-2 count of ~8. Each upgrade is **+6 slots for 40 Scrap + 20 Iron Plate** —
   **Presser-tier goods only**, deliberately, so the cap can never gate on something the cap itself
   prevents you from making. Combined with steam upkeep it is what makes 5- and 6-slot chassis worth their cost: one Overclocker running a

@@ -299,11 +299,6 @@ namespace GolemFactory.Tutorial
                 GrantCost(_world.FloorExpansion.NextCost());
                 _world.AssemblyLineBoard.ExtendFloor();
             },
-            ["bays"] = () =>
-            {
-                GrantCost(_world.AssemblyBay.UpgradeCost);
-                _world.AssemblyLineBoard.UpgradeBays();
-            },
             ["pack"] = () =>
             {
                 GrantCost(_world.PackUpgrade.NextCost());

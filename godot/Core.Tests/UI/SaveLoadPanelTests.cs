@@ -187,20 +187,18 @@ namespace GolemFactory.Tests.UI
             ClaimFirstAffordable(world);
             Assert.IsTrue(world.AssemblyLineBoard.ExtendFloor(), world.AssemblyLineBoard.Status);
             Fund(world);
-            Assert.IsTrue(world.AssemblyLineBoard.UpgradeBays(), world.AssemblyLineBoard.Status);
             Assert.IsTrue(world.AssemblyLineBoard.UpgradePack(), world.AssemblyLineBoard.Status);
             world.TechTree.Ledger.RecordItem(ItemType.Coke);
             world.Clock.Speed = 2f;
             world.Clock.Pause();
             string claims = Claims(world);
-            int north = world.Bounds.NorthExtent, tier = world.AssemblyBay.Tier, slots = world.AssemblyBay.MaxGolemSlots;
+            int north = world.Bounds.NorthExtent;
             world.SaveTo(_path);
 
             Fund(world);
             ClaimFirstAffordable(world);
             Assert.IsTrue(world.AssemblyLineBoard.ExtendFloor());
             Fund(world);
-            Assert.IsTrue(world.AssemblyLineBoard.UpgradeBays());
             Assert.IsTrue(world.AssemblyLineBoard.UpgradePack(), world.AssemblyLineBoard.Status);
             world.Clock.Speed = 4f;
             world.Clock.Play();
@@ -219,8 +217,6 @@ namespace GolemFactory.Tests.UI
                 CollectionAssert.DoesNotContain(owned, world.AssemblyLine.GetCard(i), "slot " + i);
             }
             Assert.AreEqual(north, world.Bounds.NorthExtent);
-            Assert.AreEqual(tier, world.AssemblyBay.Tier);
-            Assert.AreEqual(slots, world.AssemblyBay.MaxGolemSlots);
             Assert.AreEqual(1, world.PackUpgrade.Tier, "the pack's rung, as saved");
             Assert.AreEqual(150, world.Wallet.Pack.CapacityPerType);
             Assert.IsTrue(world.TechTree.Ledger.HasItem(ItemType.Coke));

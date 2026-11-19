@@ -114,7 +114,7 @@ offered once stage 4 completes:
 |---|---|---|---|
 | Pack | 250 | 300, 350 | Mechanism + Regulator (`pack-upgrades-design.md` §7 Q4) |
 | A cart's Rate and Capacity | rung 3 | rungs 4 and 5 | Regulator, then Chronometer Core |
-| Assembly Bays | its top tier | one tier, up to the golem cap (§4) | Mechanism + Great Cog |
+| ~~Assembly Bays~~ | — | none: the golem cap is fixed at 112 from the start (2026-11-19) | — |
 | Floor Expansion | six purchases (`MaxNorthExtent`) | §6 Q3 | Frame Section + Great Cog |
 | Street spots | 17 (`supply-design.md` §1) | none: the street is full; the Docks' quay adds 8 (`region-design.md` §2) | — |
 
@@ -123,8 +123,8 @@ every endless rung; there is no switch. In `data/sandbox.json`: the pack's `endl
 (10 Mechanism + 4 Regulator) and 350 (20 + 8); each cart's `campaignRungs: 3` and two more Rate
 and Capacity rungs (rung 4 in Regulators and Casing, rung 5 in Chronometer Cores and
 Regulators); `assemblyBays`, the campaign's top at 100 slots and two endless tiers (Mechanism +
-Great Cog) to the golem cap of 112. Before the tower the bay row says "more once the Clock Tower
-stands"; at the cap, "the most the city allows". Tests: `Core.Tests/Economy/EndlessRungTests`;
+Great Cog) to the golem cap of 112. *Changed 2026-11-19: the bay upgrades were cut, and
+`golemCap: 112` holds from the start; the row reads "the most the workshop holds".* Tests: `Core.Tests/Economy/EndlessRungTests`;
 the `endless` scenario.
 
 **Land is the hard limit.** The floor stops at `MaxNorthExtent` and the street at ±34. More land is
@@ -169,7 +169,8 @@ p95), so the tick isn't the limit; drawing and the per-frame readouts may be.
 - **The contract plateau** (§1.1) and the civic works' rates are sized to that cap.
 - **Measured (2026-11-07, `performance-report-endless.md`):** at 160 golems the budget didn't hold.
   After optimising (the user's call), it holds at 112 and not at 118: **the golem cap is 112**.
-  The bays' campaign top is 100 slots; endless play adds two tiers, to 112.
+  The bays' campaign top was 100 slots, with two endless tiers to 112; since 2026-11-19 the cap is
+  112 from the start, with nothing to buy.
 
 ## 5. Build order
 

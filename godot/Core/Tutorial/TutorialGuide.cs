@@ -1825,8 +1825,9 @@ namespace GolemFactory.Tutorial
                 spotFacing: () => CopperFacing),
 
             // --- Chapter 7: room to grow, and keeping it -------------------------------------------
-            // The playtest script's Floor Expansion, bay cap, card-gating and Ledger items (F, G,
-            // I4), and its save/load round trip (H).
+            // The playtest script's Floor Expansion, card-gating and Ledger items (F, I4), and its
+            // save/load round trip (H). The bay step went with the bay upgrades (2026-11-19); a save
+            // on it resumes at the step that followed it.
 
             new TutorialStep(
                 "expand", "More room",
@@ -1835,14 +1836,6 @@ namespace GolemFactory.Tutorial
                 w => _world.Bounds.NorthExtent > _world.Bounds.MinNorthExtent,
                 w => ScrapFirst(LineOf(FirstFloorCost, ItemType.Scrap), null),
                 w => CostCounts(FirstFloorCost)),
-
-            new TutorialStep(
-                "bays", "More golems",
-                $"The station builds at most {AssemblyBayStructure.DefaultSlots} golems. On the same tab, click "
-                + "Upgrade on the assembly bays for six more.",
-                w => _world.AssemblyBay.Tier >= 2,
-                w => ScrapFirst(40, null),
-                w => $"Golems  {LiveGolems.Count()} / {_world.AssemblyBay.MaxGolemSlots}"),
 
             // docs/pack-upgrades-design.md §6: the next extension asks more than a 100 pack holds.
             new TutorialStep(

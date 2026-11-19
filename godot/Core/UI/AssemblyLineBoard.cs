@@ -40,7 +40,7 @@ namespace GolemFactory.UI
 
         /// <summary>
         /// "Claim", "Upgrade" or "Extend" for rows with a button; null otherwise. Two rows say
-        /// "Upgrade" (bays, pack), so a click dispatches on <see cref="Kind"/>.
+        /// "Extend" (the floor, the Docks), so a click dispatches on <see cref="Kind"/>.
         /// </summary>
         public string ButtonLabel;
 
@@ -52,7 +52,7 @@ namespace GolemFactory.UI
 
     /// <summary>
     /// The Assembly Line tab: Unity's AssemblyLinePanel with its UGUI taken out (G8). The wallet
-    /// line, the assembly-bay row (occupancy and its upgrade), the floor-expansion row (the only
+    /// line, the golem cap's row (how many stand, of how many), the floor-expansion row (the only
     /// place to buy more workshop), one row per draft slot with its WHOLE price and a Claim, and
     /// the cards still waiting on prerequisites with what each needs.
     ///
@@ -74,7 +74,6 @@ namespace GolemFactory.UI
         private readonly string _userId;
         private readonly string _post;
         private AssemblyBayStructure _bay;
-        private string _stockpile;
         private FloorExpansionService _floor;
         private PackUpgradeService _pack;
         private Func<string, bool> _seen;
@@ -91,11 +90,7 @@ namespace GolemFactory.UI
             _post = postBufferId;
         }
 
-        public void ConfigureBays(AssemblyBayStructure bay, string stockpileBufferId)
-        {
-            _bay = bay;
-            _stockpile = stockpileBufferId;
-        }
+        public void ConfigureBays(AssemblyBayStructure bay) => _bay = bay;
 
         public void ConfigureFloorExpansion(FloorExpansionService floor) => _floor = floor;
 
@@ -162,31 +157,16 @@ namespace GolemFactory.UI
             rows.Add(new AssemblyLineRow { Kind = AssemblyLineRowKind.Wallet, Text = WalletLine(), Bright = true });
 
             // FIRST, above the cards: the cap decides whether a claimed card can ever be put on
-            // a golem, so a player who cannot build is looking for this line.
-            if (_bay != null && _bay.IsMaxed)
+            // a golem, so a player who cannot build is looking for this line. Nothing to buy: the
+            // cap is fixed (2026-11-19).
+            if (_bay != null)
             {
-                // The golem cap (endless-design §4), or the campaign's top before the tower: the
-                // row says so rather than offering a button that always refuses.
                 rows.Add(new AssemblyLineRow
                 {
                     Kind = AssemblyLineRowKind.Bay,
                     Text = AssemblyBayRowPolicy.FormatOccupancy(_bay.OccupiedSlots, _bay.MaxGolemSlots)
-                           + "  ·  " + (_bay.MaxGolemSlots >= _bay.GolemCap ? "the most the city allows" : "more once the Clock Tower stands"),
+                           + "  ·  the most the workshop holds",
                     Bright = !_bay.HasFreeSlot,
-                });
-            }
-            else if (_bay != null)
-            {
-                IReadOnlyList<RecipeIngredient> cost = _bay.UpgradeCost;
-                rows.Add(new AssemblyLineRow
-                {
-                    Kind = AssemblyLineRowKind.Bay,
-                    Text = AssemblyBayRowPolicy.FormatOccupancy(_bay.OccupiedSlots, _bay.MaxGolemSlots)
-                           + "  ·  " + AssemblyBayRowPolicy.FormatUpgradeEffect(AssemblyBayStructure.SlotsPerUpgrade),
-                    Bright = !_bay.HasFreeSlot,
-                    CostText = AssemblyBayRowPolicy.FormatCost(cost),
-                    Affordable = CanAfford(cost),
-                    ButtonLabel = "Upgrade",
                 });
             }
 
@@ -310,20 +290,6 @@ namespace GolemFactory.UI
             return false;
         }
 
-        public bool UpgradeBays()
-        {
-            if (_bay == null)
-            {
-                Status = "No assembly bays in this scene.";
-                return false;
-            }
-            IReadOnlyList<RecipeIngredient> cost = _bay.UpgradeCost;
-            bool upgraded = _buffers != null && _bay.TryUpgrade(_buffers, _stockpile, _post);
-            Status = AssemblyBayRowPolicy.DescribeResult(upgraded, StockpileOf, cost, AssemblyBayStructure.SlotsPerUpgrade,
-                new PlayerWallet(_buffers, _stockpile, _post).PackCapacity);
-            return upgraded;
-        }
-
         public bool ExtendFloor()
         {
             if (_floor == null)
@@ -368,9 +334,6 @@ namespace GolemFactory.UI
                 ButtonLabel = button,
             };
         }
-
-        // The pack plus the Post: what the bay's charge (PlayerWallet.TryCharge) can spend.
-        private int StockpileOf(string itemType) => _buffers == null ? 0 : new PlayerWallet(_buffers, _stockpile, _post).Quantity(itemType);
 
         // What the charge (PlayerWallet.TryCharge) would take: Creative's waiver included.
         private bool CanAfford(IReadOnlyList<RecipeIngredient> price) =>

@@ -193,7 +193,7 @@ namespace GolemFactory.Save
 
     /// <summary>
     /// Progress a session earns beyond its goods and buildings: Assembly Line claims, the tech
-    /// tree's ledger, the Floor Expansion and assembly-bay purchases, and the clock's setting.
+    /// tree's ledger, the Floor Expansion purchases, and the clock's setting.
     /// Cards, chassis and buildings are by NAME, like the rest of this file.
     /// </summary>
     [Serializable]
@@ -215,7 +215,8 @@ namespace GolemFactory.Save
         /// <summary>Rows bought north of the Docks' opening floor (docs/region-design.md). Absent in an older save: 0.</summary>
         public int docksRows;
         public int floorNorthExtent;
-        public int assemblyBayTier = 1;
+
+        // assemblyBayTier went with the bay upgrades (2026-11-19); an older save's is ignored.
 
         /// <summary>Pack upgrades bought (docs/pack-upgrades-design.md): absent in an older save, so 0, the base cap.</summary>
         public int packUpgradeTier;

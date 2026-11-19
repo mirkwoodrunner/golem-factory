@@ -563,15 +563,10 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void TheBenchBaysPackAndFloorNodes_QuoteTheirRules()
+        public void TheBenchPackAndFloorNodes_QuoteTheirRules()
         {
             StringAssert.Contains($"at {HandCrankRules.SpeedPercent}% speed", Node("bench.handcrank").Detail);
-
-            var bay = new AssemblyBayStructure();
-            Assert.AreEqual(
-                $"Golem cap {AssemblyBayStructure.DefaultSlots} · +{AssemblyBayStructure.SlotsPerUpgrade} for "
-                + string.Join(" + ", bay.UpgradeCost.Select(c => c.quantity + " " + (c.itemType == ItemType.IronPlate ? "Plate" : ItemTiers.DisplayName(c.itemType)))),
-                Node("bays.assembly").Detail);
+            Assert.IsFalse(TechTreeCatalog.Nodes.Any(n => n.Id == "bays.assembly"), "the golem cap is fixed: nothing to unlock");
 
             SandboxSetup setup = World.SandboxSetupTests.LoadReal();
             string[] counts = { "zero", "one", "two", "three", "four", "five", "six", "seven" };

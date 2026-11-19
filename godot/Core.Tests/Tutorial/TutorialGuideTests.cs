@@ -431,10 +431,8 @@ namespace GolemFactory.Tests.Tutorial
             Give(world, ItemType.Scrap, 200);
             Give(world, ItemType.IronPlate, 100);
             Assert.IsTrue(world.AssemblyLineBoard.ExtendFloor(), world.AssemblyLineBoard.Status);
-            Assert.AreEqual("bays", StepId(world));
+            Assert.AreEqual("pack", StepId(world), "no bay step: the golem cap is fixed");
             Restock(world);
-            Assert.IsTrue(world.AssemblyLineBoard.UpgradeBays(), world.AssemblyLineBoard.Status);
-            Assert.AreEqual("pack", StepId(world));
             Give(world, ItemType.IronPlate, 60);
             Give(world, ItemType.Gear, 30);
             Assert.IsTrue(world.AssemblyLineBoard.UpgradePack(), world.AssemblyLineBoard.Status);
@@ -1128,7 +1126,6 @@ namespace GolemFactory.Tests.Tutorial
         public void ASpareScavenger_DoesNotStandInForTheExtractorOrTheUnloader()
         {
             SandboxWorld world = Plenty();
-            world.AssemblyBay.RestoreTier(2); // room for six
             Scavenger(world, "ExtractScrap", "PushOutput"); // chapter 1's
             Scavenger(world, "ExtractScrap", "PushOutput"); // chapter 4's
             Scavenger(world, "ExtractScrap", "PushOutput"); // a spare, built along the way

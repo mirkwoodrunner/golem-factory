@@ -194,7 +194,7 @@ flags and kit are as built (`TutorialGuide.cs`, `TutorialGuide.Kit.cs`, `crates-
 | `unloader` | 6 | kept | `Program.Matches` on the `unloader` role | station | `Workbench`; `Program` | `BuildGolem`, `PerformPlan` |
 | `work-unloader` | 6 | kept | the unloader cycled since entry | spot `UnloaderSpot` + facing | | `SetPlacement` |
 | `expand` | 7 | kept | the floor extended | none | | grant cost, `ExtendFloor` |
-| `bays` | 7 | kept | bay tier ≥ 2 | none | | grant cost, `UpgradeBays` |
+| ~~`bays`~~ | 7 | **cut 2026-11-19** | the golem cap is fixed at 112; a save on it resumes at `pack` | | | |
 | `pack` | 7 | kept | pack tier ≥ 1 | none | | grant cost, `UpgradePack` |
 | `ledger` | 7 | kept | a Ledger node selected | none | | `Select("r2.reclamation")` |
 | `save` | 7 | kept | a save made | none | | `SaveTo(kit-save.json)` |

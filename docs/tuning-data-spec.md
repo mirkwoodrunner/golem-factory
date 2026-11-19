@@ -193,8 +193,7 @@ not a number: a standing order per stall. That is a user's call (§17 Q3), not p
 | Crate | `sandbox.json` `crateCapacityPerType` | 50 | **keep** | Phase 1's "Done when" (`LayoutMattersTests`) rests on it |
 | Post | `sandbox.json` `postCapacityPerType` | 200 | **keep** | `pack-upgrades-design.md` §7 Q2: its own upgrade only if play asks |
 | Golem stock, per good | `GolemInventory.CapacityPerType` | 12 | **keep** | The Haul dial's top (`WorkbenchQuantityPolicy.MaxQuantity`) and Repeat's bind (§13) |
-| Assembly bays, start | `AssemblyBayStructure.DefaultSlots` | 10 | **keep** | |
-| Bay upgrade | `AssemblyBayStructure.SlotsPerUpgrade`, `upgradeCost` | +6 for 40 Scrap + 20 Iron Plate, unlimited | **keep** | 96 golems = 15 upgrades = 600 Scrap + 300 Plate over the campaign, never more than 40 at once |
+| Golem cap | `sandbox.json` `golemCap` | 112, fixed | **changed 2026-11-19** | The bay upgrades (10, +6 for 40 Scrap + 20 Iron Plate) were cut: a flat toll that never bound. Steam upkeep prices each golem |
 | Floor | `FloorLayout.HalfExtent`, `MaxNorthExtent`, `rowsPerPurchase` | 25 × 25, +12 rows, 2 a purchase | **keep** | |
 
 ## 6. Pack rungs and Floor Expansion
@@ -556,7 +555,7 @@ plays every action instantly but earns every good at the player's real rates (§
 | 4 | 7 | 2:00 | 1:20 | 0:06 | 0:06 | |
 | 5 | 12 | 20:00 | 13:20 | | 7:28 | the Hauler's 20 Plate + 10 Gear + 30 Coke (§18 correction 10; 12:51 at 80 + 40) |
 | 6 | 8 | 15:00 | 10:00 | | 0:20 | copper belts |
-| 7 | 6 | 10:00 | 6:40 | | 4:14 | Floor 1, bays, pack rung 1, Ledger, save, load |
+| 7 | 6 | 10:00 | 6:40 | | 4:14 | Floor 1, bays, pack rung 1, Ledger, save, load (the `bays` step was cut 2026-11-19) |
 | 8 | 9 | 45:00 | 30:00 | | 23:05 | 35:39 before §18 correction 10 |
 | 9 | 8 | 30:00 | 20:00 | | 7:34 | the Zeppelin's 1,093 raw |
 | 10 | 5 | 45:00 | 30:00 | | 27:21 | `stage1` 6:15 (§15.4); 12 Frame Sections the kit grants |
@@ -870,7 +869,8 @@ it; the test is named.
      comes out of the smelter's output crate and its Slag stays.
    - The full run steps one tick (0.1 s) a frame; harvests within a frame are counted exactly.
      Chapters 1–4 keep 1/30 s and measure exactly as before the refactor.
-   - Bays are upgraded when the player's lines fill them before a guide golem is built.
+   - Bays were upgraded when the player's lines filled them before a guide golem was built (until
+     the cap was fixed at 112, 2026-11-19).
    - `stage1` is held to 360 s + 60 s (the tower's one-minute windows fill first) + 1; it measures
      6:15.
 7. **Chapter 8 passed its ceiling: 35:39 against 30:00. Decided by correction 10.** The floor's chapter

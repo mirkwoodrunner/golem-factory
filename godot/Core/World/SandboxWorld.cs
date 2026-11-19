@@ -259,12 +259,10 @@ namespace GolemFactory.World
             DocksExpansion.Configure(Bounds, Buffers, _stockpileBufferId, PostBufferId,
                 setup.docks?.purchases.Select(c => (IReadOnlyList<RecipeIngredient>)c).ToList(), setup.docks?.rowsPerPurchase ?? 2);
             PackUpgrade.EndlessOpen = () => EndlessOpen;
-            if (setup.assemblyBays != null)
+            if (setup.golemCap > 0)
             {
-                AssemblyBay.ConfigureTiers(setup.assemblyBays.campaignTopSlots,
-                    setup.assemblyBays.endless.Select(c => (IReadOnlyList<RecipeIngredient>)c));
+                AssemblyBay.ConfigureCap(setup.golemCap);
             }
-            AssemblyBay.EndlessOpen = () => EndlessOpen;
 
             // Ticked whether or not a tower is built: an unbuilt tower accrues nothing.
             // EMPTY, as ManagerHolders.prefab's site holder was (stages: []): the site stays
@@ -405,7 +403,7 @@ namespace GolemFactory.World
             Workbench.HaulableGood = item => TechTree.Ledger.HasItem(item);
 
             AssemblyLineBoard = new AssemblyLineBoard(AssemblyLine, Buffers, _stockpileBufferId, setup.claimUserId, PostBufferId);
-            AssemblyLineBoard.ConfigureBays(AssemblyBay, _stockpileBufferId);
+            AssemblyLineBoard.ConfigureBays(AssemblyBay);
             AssemblyLineBoard.ConfigureFloorExpansion(FloorExpansion);
             AssemblyLineBoard.ConfigureDocks(DocksExpansion);
             AssemblyLineBoard.ConfigurePackUpgrade(PackUpgrade);
@@ -867,7 +865,6 @@ namespace GolemFactory.World
                 goodsMadeEver = GoodsMadeEver,
                 docksRows = Bounds.DocksRows,
                 floorNorthExtent = Bounds.NorthExtent,
-                assemblyBayTier = AssemblyBay.Tier,
                 packUpgradeTier = PackUpgrade.Tier,
                 clockSpeed = Clock.Speed,
                 clockPaused = Clock.State == ClockState.Paused,
@@ -895,7 +892,7 @@ namespace GolemFactory.World
 
         /// <summary>
         /// Restores progress BEFORE the world: the ledger first (the Assembly Line's unlock
-        /// context reads it), then the line, the bay tier (respawned golems take bay slots) and
+        /// context reads it), then the line and
         /// the floor (a building beyond the original back wall needs its row to rebuild on).
         /// </summary>
         private void RestoreProgress(ProgressEntry progress)
@@ -926,7 +923,6 @@ namespace GolemFactory.World
                     _deck.Cards);
             }
 
-            AssemblyBay.RestoreTier(progress.assemblyBayTier);
             FloorExpansion.Restore(progress.floorNorthExtent);
             Bounds.RestoreDocks(progress.docksRows);
             PackUpgrade.Restore(progress.packUpgradeTier);
@@ -1158,7 +1154,7 @@ namespace GolemFactory.World
 
         /// <summary>
         /// Endless play (docs/endless-design.md): not a mode but what follows the Clock Tower. Its
-        /// rungs on the pack, the carts and the bays are offered once the tower stands, and in
+        /// rungs on the pack and the carts are offered once the tower stands, and in
         /// Creative, where every rung is free.
         /// </summary>
         public bool EndlessOpen => Creative || ClockTower.Site.IsComplete;

@@ -63,14 +63,8 @@
       { "name": "Observatory", "lines": ["The dome's gears want {golems} to keep them turning.", "The lens house needs {golems}."] }
     ]
   },
-  "assemblyBays": {
-    "_doc": "The campaign's bays top out at campaignTopSlots; endless play (docs/endless-design.md §2) adds one tier per endless price, to the golem cap of 112 (docs/performance-report-endless.md).",
-    "campaignTopSlots": 100,
-    "endless": [
-      [{"itemType": "Mechanism", "quantity": 10}, {"itemType": "GreatCog", "quantity": 2}],
-      [{"itemType": "Mechanism", "quantity": 20}, {"itemType": "GreatCog", "quantity": 4}]
-    ]
-  },
+  "_golemCapDoc": "The most golems that can stand at once, campaign and endless alike: where the frame budget holds (docs/performance-report-endless.md). Nothing buys more.",
+  "golemCap": 112,
   "postCapacityPerType": 200,
   "startingNorthExtent": 12,
   "beltCellsPerSecond": 1.0,

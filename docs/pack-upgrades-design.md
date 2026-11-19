@@ -176,7 +176,8 @@ nothing clamped. `playtest-kit` still passes all ten chapters.
 
 ## 6. The guide and the playtest
 
-**Step `pack`** ("A bigger pack"), chapter 7, after `bays`: "Your pack carries 100 of each good.
+**Step `pack`** ("A bigger pack"), chapter 7, after `bays` (after `expand` since the bay step was
+cut, 2026-11-19): "Your pack carries 100 of each good.
 On the same tab, click Upgrade on the pack (60 Iron Plate + 30 Gear): 150 of each. The next
 extension needs it." Done when `_world.PackUpgrade.Tier >= 1`. Progress
 `Counts((IronPlate, 60), (Gear, 30))`. Kit action: `GrantCost` of rung 1, then the board's

@@ -173,17 +173,9 @@ namespace GolemFactory.World
         /// <summary>The City Office's golem orders and the Golem Foundry (docs/golem-sales-design.md).</summary>
         public GolemFactory.Contracts.GolemOrdersSetup golemOrders;
 
-        /// <summary>The bays' campaign top and endless play's tiers (docs/endless-design.md §2, §4).</summary>
-        public AssemblyBaysSetup assemblyBays;
-
-        public sealed class AssemblyBaysSetup
-        {
-            /// <summary>The most slots the campaign's tiers reach; 0 leaves them uncapped.</summary>
-            public int campaignTopSlots;
-
-            /// <summary>One price per endless tier, each six more slots: up to the golem cap.</summary>
-            public List<List<RecipeIngredient>> endless = new List<List<RecipeIngredient>>();
-        }
+        /// <summary>The most golems that can stand at once (docs/performance-report-endless.md); 0 keeps
+        /// <see cref="GolemFactory.Buildings.AssemblyBayStructure.DefaultCap"/>.</summary>
+        public int golemCap;
         public Placement starterBench;
         public Placement starterStation;
 

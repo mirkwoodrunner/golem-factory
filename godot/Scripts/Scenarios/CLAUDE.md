@@ -213,9 +213,9 @@ Current scenarios:
   `contracts-office`, `contracts-notice`, `contracts-taken`, `contracts-reward`,
   `contracts-next`.
 - `endless` (Sandbox): endless play (`docs/endless-design.md`) with real keys and clicks. Before
-  the tower, the bays at 100 say "more once the Clock Tower stands" with no button and the pack
-  offers nothing past 250. The tower complete, two Upgrade clicks on the bay row reach the golem
-  cap of 112, which the row then says; the Pack row's Upgrade makes the pack 300; I at a Coal
+  the tower, the golem row reads the fixed cap ("/ 112 · the most the workshop holds") with no
+  button and the pack offers nothing past 250. The tower complete, the Pack row's Upgrade makes
+  the pack 300; I at a Coal
   cart at rung 3 and a click on Rate buy rung 4 in Regulators. With every authored contract
   done, the first generated one posts; E at the City Office shows it (no id) and a click takes
   it. The last stage's banner points at the office, and the Overview tab's running totals

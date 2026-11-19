@@ -89,13 +89,6 @@ namespace GolemFactory.Progression
                 TechTreeNodeKind.Chassis, 0, 1,
                 TechTreeUnlockSignal.Chassis, ChassisScavenger,
                 new string[0], isKeystone: true),
-            // NO LONGER PLANNED -- §8's cap is built: bays start at ten slots, upgrade +6 for
-            // 40 Scrap + 20 Iron Plate, and GolemConstructionStation refuses past it.
-            new TechTreeNode(
-                "bays.assembly", "Assembly Bays", "Golem cap 10 · +6 for 40 Scrap + 20 Plate",
-                TechTreeNodeKind.Technique, 0, 2,
-                TechTreeUnlockSignal.None, null,
-                new[] { "chassis.scavenger" }),
 
             // ---- II · The First Machine -----------------------------------------------------
             new TechTreeNode(

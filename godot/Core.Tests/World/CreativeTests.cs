@@ -100,7 +100,6 @@ namespace GolemFactory.Tests.World
                 Assert.IsTrue(world.FloorExpansion.CanAfford());
                 Assert.IsTrue(world.AssemblyLineBoard.ExtendFloor(), world.AssemblyLineBoard.Status);
                 Assert.IsTrue(world.AssemblyLineBoard.UpgradePack(), world.AssemblyLineBoard.Status);
-                Assert.IsTrue(world.AssemblyLineBoard.UpgradeBays(), world.AssemblyLineBoard.Status);
 
                 // A demolition is never refused for a full pack: a refund is nothing.
                 world.Advance(SandboxWorld.CreativeRefillSeconds + 0.01f);

@@ -114,9 +114,8 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual("expand", world.Tutorial.Current.Id, "chapter 6 done: ore down a belt into a labelled depot");
 
             RunKit(world);
-            Assert.AreEqual("copper-ingot", world.Tutorial.Current.Id, "chapter 7 done: room, bays, the Ledger, a save and a load");
+            Assert.AreEqual("copper-ingot", world.Tutorial.Current.Id, "chapter 7 done: room, the pack, the Ledger, a save and a load");
             Assert.Greater(world.Bounds.NorthExtent, world.Bounds.MinNorthExtent);
-            Assert.AreEqual(2, world.AssemblyBay.Tier);
 
             RunKit(world);
             Assert.AreEqual("zeppelin-card", world.Tutorial.Current.Id, "chapter 8 done: every good the Zeppelin costs");

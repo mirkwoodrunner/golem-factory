@@ -187,7 +187,6 @@ namespace GolemFactory.Tests.EditMode
                     Add($"cart {cart.itemType} capacity {n + 1}", cart.capacityCosts[n]);
                 }
             }
-            Add("assembly bays", world.AssemblyBay.UpgradeCost);
             List<List<RecipeIngredient>> purchases = world.Setup.floorExpansion.purchases;
             for (int n = 0; n < purchases.Count; n++)
             {
