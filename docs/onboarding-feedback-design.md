@@ -253,8 +253,11 @@ Scavenger, turned round to face its own depot, is not fed by itself.
 
 **Drained.** A target cell is drained when another golem (as above) has it as its `SourceCell`
 and has a Haul, Extract or Load step; when it is a belt whose run downstream ends at such a
-golem's source; or when it is a building that consumes what it takes: a boiler, the Clock Tower,
-a Slag Heap or a Scrap Recycler. A Post crate is drained when any Post crate is.
+golem's source; or when it is a building that consumes what it takes: a boiler, a Slag Heap or a
+Scrap Recycler. The Clock Tower and a civic work's site drain a good only while their running
+stage or a later one asks for it (`ClockTowerSite.WillDemand`, added 2026-11-19): after the win,
+or once no stage left names the good, a feeder there can never deliver again, so it reads red and
+its card says the tower "no longer needs" the good. A Post crate is drained when any Post crate is.
 
 A golem waiting behind another that is itself stuck reads grey. That is deliberate: one red at
 the root and a line of grey behind it reads as one fault with one fix, the same argument

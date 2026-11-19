@@ -37,9 +37,16 @@ namespace GolemFactory.Golems
         /// <summary>The good the stalled step needs, or null (§4.3).</summary>
         public string WantedGood { get; }
 
+        /// <summary>
+        /// The target is the Clock Tower or a civic work's site, and no stage left asks for what
+        /// the golem holds: it will never take it again, so the card says so rather than "full".
+        /// </summary>
+        public bool TargetNoLongerNeeds { get; }
+
         public StallFacts(AppendageActionType stalledAction, bool sourceGives, bool sourceFed,
-            bool targetDrained, bool sourceRefills, string wantedGood)
+            bool targetDrained, bool sourceRefills, string wantedGood, bool targetNoLongerNeeds = false)
         {
+            TargetNoLongerNeeds = targetNoLongerNeeds;
             StalledAction = stalledAction;
             SourceGives = sourceGives;
             SourceFed = sourceFed;
