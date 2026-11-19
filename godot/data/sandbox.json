@@ -25,7 +25,7 @@
     ]
   },
   "endlessContracts": {
-    "_doc": "Contracts after the authored sequence (docs/endless-design.md §1.1): a formula, one at a time, once the Clock Tower stands. Contract k asks goods[k % 10] and goods[(k + offset) % 10] for a share of a raw-goods budget that grows over growthContracts and then holds at plateauRaw; its reward is rewardShare of that in rewardGoods[k % 5]; its bonus is an endless cart rung for the first rungBonuses, then bonusShare in goods. {goods} in a line is the asked goods.",
+    "_doc": "Contracts after the authored sequence (docs/endless-design.md §1.1): a formula, one at a time, once the Clock Tower stands. Contract k asks goods[k % 10] and goods[(k + offset) % 10] for a share of a raw-goods budget that grows over growthContracts and then holds at plateauRaw; its reward is rewardShare of that in rewardGoods[k % 10], goods five on from its first ask, so a contract never pays in a good it asks, and over ten contracts no good is paid out more than it is asked; its bonus is an endless cart rung for the first rungBonuses, then bonusShare in goods. {goods} in a line is the asked goods.",
     "goods": ["Casing", "Lens", "Mainspring", "AetherCell", "Mechanism", "Regulator", "FrameSection", "GreatCog", "AetherConduit", "ChronometerCore"],
     "secondOffset": 3,
     "firstShare": 0.6,
@@ -33,7 +33,7 @@
     "growthContracts": 8,
     "parSecondsFirst": 300,
     "parSecondsPlateau": 600,
-    "rewardGoods": ["Casing", "Mainspring", "Mechanism", "Regulator", "Lens"],
+    "rewardGoods": ["Regulator", "FrameSection", "GreatCog", "AetherConduit", "ChronometerCore", "Casing", "Lens", "Mainspring", "AetherCell", "Mechanism"],
     "rewardShare": 0.5,
     "bonusShare": 0.25,
     "rungBonuses": 20,
