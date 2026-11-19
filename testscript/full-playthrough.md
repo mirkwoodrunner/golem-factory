@@ -150,7 +150,7 @@ Carts on the street at the end: ___   Rungs bought: ___
 |---|---|---|
 | Steam | 3 Coke a minute per working golem, 8 golems per boiler | `SteamNetwork` |
 | Supply carts | One Scrap cart to start (120 a minute, holds 200); Coal 80 Scrap; Copper Ore 60 Iron Plate + 20 Gear; each with Rate and Capacity rungs | `sandbox.json` `supply` (supply-design.md §3) |
-| Brass Presser | 60 Scrap + 10 Iron Plate + 5 Gear | `chassis.json` |
+| Brass Presser | 50 Scrap + 10 Iron Plate + 4 Gear | `chassis.json` |
 | Aether-Hauler | 20 Iron Plate + 10 Gear + 30 Coke | `chassis.json` |
 | Lens | 3 Glass + 1 Brass | `recipes.json` R10 |
 | Late prices | Overclocker + 120 Iron Plate, Zeppelin + 150, Freight Mast + 120: past a base pack of 100, so the pack upgrade matters; Post crate + 40 | `chassis.json`, `placeables.json` |

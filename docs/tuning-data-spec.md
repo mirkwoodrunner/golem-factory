@@ -436,6 +436,17 @@ Any real player adds walking and reading, so chapter 2 has 15 seconds of slack. 
 it is harvested at 6.7/s, not cranked, and it keeps the Presser a purchase that needs the first
 Scavenger's crate. The card follows (§9). `gears` asks for 5 Gears.
 
+**Lowered again, 2026-11-19: 50 Scrap + 10 Iron Plate + 4 Gear** (card 12 + 2 + 1). After the
+Aether-Hauler fell to 20 Iron Plate + 10 Gear + 30 Coke (70 raw goods, 4 slots), it beat the
+Presser (80 raw, 3 slots) on every count, so the Presser was never worth building once the Hauler
+was out (the design audit). Now the Presser is the cheaper chassis (68 raw), and
+`ChassisCostAcyclicityTests.AChassisWithMoreSlots_CostsMoreRawGoods` keeps it so. Raising the
+Hauler instead put chapter 8 over its 30:00 ceiling at every price tried (20 to 30 Iron Plate,
+10 to 16 Gear, 30 to 50 Coke). Measured by `FullRunFloorTests`: chapter 8 26:14 (was 28:27),
+chapter 3 2:00 (was 2:07), chapter 2 2:07 (was 2:21), the full run 1:16:27 (was 1:19:44). Neighbours checked, as §18 correction 10
+asks: 45, 55 Scrap; 9, 11 Iron Plate; 3 Gear all pass; 5 Gear (70 raw) puts chapter 8 at 30:33,
+over, as it does beside the old price.
+
 **Expected floors** [M: measured 5:16 (1:26, 2:20, 1:22, 0:06), §18 M8]:
 
 | Ch. | Budget | Floor today | Expected floor | Ceiling (§14) |

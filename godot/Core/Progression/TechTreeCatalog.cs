@@ -114,7 +114,7 @@ namespace GolemFactory.Progression
                 TechTreeUnlockSignal.Item, ItemType.Coke,
                 new[] { "bench.handcrank" }),
             new TechTreeNode(
-                "chassis.presser", "Brass Presser", "3 slots · 1 input · 60 Scrap + 10 Plate + 5 Gear",
+                "chassis.presser", "Brass Presser", "3 slots · 1 input · 50 Scrap + 10 Plate + 4 Gear",
                 TechTreeNodeKind.Chassis, 1, 3,
                 TechTreeUnlockSignal.Chassis, ChassisPresser,
                 new[] { "chassis.scavenger", "r2.reclamation", "r8.gearcutting" }, isKeystone: true),

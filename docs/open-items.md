@@ -16,7 +16,7 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 | **The boiler fuel ratio** | 3 Coke/min per working golem. progression-design §12: "mis-tuned, this becomes a coal simulator." |
 | **The manual era** | Budgeted at 12-15 minutes. The guide's step timings now measure it. |
 | **Whether the Workbench still decides anything** | Recipes and chassis fix most of a program; the Haul good and batch dials are what's left to choose. |
-| **Whether the market is an economy or a toll booth** | Truckloads are priced and arrive in bursts. |
+| **Whether the market is an economy or a toll booth** | Carts trickle and are upgraded for a price (`supply-design.md`); the playtest asks `carts` and `carts-late`. |
 | **Marked tiles** | The guide marks where to build. Do they help, or get in the way? Decides round 3 (below). |
 | **The carry outline** | Is it clear where a carried golem will land? |
 | **Grey for waiting, red for stuck** | Built in Phase 2 (`docs/onboarding-feedback-design.md` §3). `testscript/phase-2-playtest.md` asks whether players can tell them apart. |

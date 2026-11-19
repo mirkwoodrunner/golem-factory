@@ -916,7 +916,7 @@ namespace GolemFactory.Tutorial
         private static IEnumerable<RecipeIngredient> Lines(IReadOnlyList<RecipeIngredient> cost) =>
             cost.Where(c => c.quantity > 0 && !string.IsNullOrEmpty(c.itemType));
 
-        /// <summary>"60 Scrap + 10 Iron Plate + 5 Gear".</summary>
+        /// <summary>"50 Scrap + 10 Iron Plate + 4 Gear".</summary>
         private static string Price(IReadOnlyList<RecipeIngredient> cost) =>
             string.Join(" + ", Lines(cost).Select(c => $"{c.quantity} {ItemTiers.DisplayName(c.itemType)}"));
 

@@ -76,8 +76,8 @@ A pass that touches golem sales keeps all of these. Each gets a test in `Core.Te
   done.
 - **What counts is the chassis only** (§7 Q4). A golem sold by hand counts whatever its program;
   a Foundry's golem is a bare chassis.
-- **Which chassis:** orders rotate through the chassis the Ledger has built, cheapest first:
-  Scavenger, Presser, Hauler, Overclocker, Zeppelin. In chapter 5 that is the Scavenger and the
+- **Which chassis:** orders rotate through the chassis the Ledger has built, cheapest first in raw goods
+  (`GolemOrderBoard.Rotation`): Scavenger, Presser, Hauler, Overclocker, Zeppelin. In chapter 5 that is the Scavenger and the
   Presser; a chassis joins the rotation once the player has built one. Before any chassis but the
   Scavenger has been built, every order is Scavengers.
 - **How many:** an order's size is a raw-goods budget that grows over the first orders and then
@@ -126,8 +126,8 @@ bare one (the tabletop's "proportional to complexity"):
 | Chassis | Raw cost | Full (every slot) |
 |---|---|---|
 | Clockwork Scavenger | 12 | 14 (2 slots) |
+| Brass Presser | 68 | 88 (3) |
 | Aether Hauler | 70 | 98 (4) |
-| Brass Presser | 80 | 104 (3) |
 | Mainspring Overclocker | 398 | 597 (5) |
 | Zeppelin Freight Loader | 645 | 1,032 (6) |
 
