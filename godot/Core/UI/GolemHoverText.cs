@@ -209,6 +209,10 @@ namespace GolemFactory.UI
                 case StallReason.BeltFull:
                 {
                     string full = golem.PushStock.FullestType;
+                    if (facts.TargetNoLongerNeeds)
+                    {
+                        return string.IsNullOrEmpty(full) ? target + " needs nothing more" : target + " no longer needs " + Good(full);
+                    }
                     return string.IsNullOrEmpty(full) ? target + " is full" : target + " is full of " + Good(full);
                 }
                 case StallReason.NoSourceAtTile:
@@ -247,7 +251,9 @@ namespace GolemFactory.UI
                 case StallReason.NodeEmpty:
                     return "Nothing refills it: stand it at a cart.";
                 case StallReason.BeltFull:
-                    return $"Collect it with {KeyNames.Interact}, or stand a golem that hauls from it.";
+                    return facts.TargetNoLongerNeeds
+                        ? $"Move it ({KeyNames.Carry}) to a line that uses it, or to a crate."
+                        : $"Collect it with {KeyNames.Interact}, or stand a golem that hauls from it.";
                 case StallReason.BufferEmpty:
                 case StallReason.BeltEmpty:
                     return FillFix(good);

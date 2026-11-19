@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using GolemFactory.Economy;
 using GolemFactory.PunchCards;
@@ -154,6 +155,24 @@ namespace GolemFactory.Tests.EditMode
 
         // §6's cost table, as tuning-data-spec §8 and §8.1 amend it (progression-design §14),
         // restated independently of the authoring script so the two must agree.
+        // The design audit of 2026-11-19: at 70 raw goods and 4 slots, the Hauler beat the
+        // Presser's 80 and 3 on every count, so once it was out the Presser was never worth
+        // building. A chassis with more slots must cost more, in raw goods.
+        [Test]
+        public void AChassisWithMoreSlots_CostsMoreRawGoods()
+        {
+            GolemFactory.Data.DefinitionSet defs = AuthoredData.Load();
+            Dictionary<string, double> raw = GolemFactory.Contracts.ContractGenerator.RawCosts(defs.Recipes.Values);
+            var chassis = defs.Chassis.Values.OrderBy(c => c.maxAppendageSlots).ToList();
+            for (int i = 1; i < chassis.Count; i++)
+            {
+                double lower = chassis[i - 1].cost.Sum(c => raw[c.itemType] * c.quantity);
+                double higher = chassis[i].cost.Sum(c => raw[c.itemType] * c.quantity);
+                Assert.Greater(higher, lower,
+                    $"{chassis[i].name} ({chassis[i].maxAppendageSlots} slots, {higher} raw) must cost more than {chassis[i - 1].name} ({chassis[i - 1].maxAppendageSlots} slots, {lower} raw)");
+            }
+        }
+
         // Not a duplicate of the acyclicity check: that one proves the costs are REACHABLE, this
         // one proves they are the costs the design actually specified.
         [Test]
@@ -163,7 +182,7 @@ namespace GolemFactory.Tests.EditMode
             {
                 { "ClockworkScavenger", new[] { (ItemType.Scrap, 12) } },
                 { "BrassPresser", new[]
-                    { (ItemType.Scrap, 60), (ItemType.IronPlate, 10), (ItemType.Gear, 5) } },
+                    { (ItemType.Scrap, 50), (ItemType.IronPlate, 10), (ItemType.Gear, 4) } },
                 { "AetherHauler", new[]
                     { (ItemType.IronPlate, 20), (ItemType.Gear, 10), (ItemType.Coke, 30) } },
                 { "MainspringOverclocker", new[]

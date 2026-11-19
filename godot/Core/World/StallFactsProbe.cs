@@ -276,11 +276,13 @@ namespace GolemFactory.World
             bool sourceGives = Gives(source);
             bool refills = source is ResourceNodeEndpoint node && node.Node != null &&
                            (_refills?.Invoke(node.Node.NodeId) ?? false);
+            bool drained = IsDrained(golem, target);
             return new StallFacts(action, sourceGives,
                 sourceGives && IsFed(golem, source, wanted),
-                IsDrained(golem, target),
+                drained,
                 refills,
-                wanted);
+                wanted,
+                !drained && target is ClockTowerInputEndpoint);
         }
 
         // --- The good ------------------------------------------------------------------------
@@ -633,7 +635,11 @@ namespace GolemFactory.World
 
         private bool IsDrained(GolemEntity golem, IItemEndpoint target)
         {
-            if (target is BoilerFuelEndpoint || target is ClockTowerInputEndpoint ||
+            if (target is ClockTowerInputEndpoint site)
+            {
+                return SiteWillTake(golem, site);
+            }
+            if (target is BoilerFuelEndpoint ||
                 target is SlagHeapEndpoint || target is ScrapRecyclerEndpoint)
             {
                 return true;
@@ -650,6 +656,31 @@ namespace GolemFactory.World
                 return false;
             }
             return TakenFrom(golem, Store(target));
+        }
+
+        // The tower, or a civic work's site, takes a good while its running stage or a later one
+        // asks for it. A golem holding nothing it will ever take is stuck, not waiting: after
+        // the win, or once the stages left stop naming its good, the player must move it.
+        private static bool SiteWillTake(GolemEntity golem, ClockTowerInputEndpoint endpoint)
+        {
+            ClockTowerSite site = endpoint.Site;
+            if (site == null)
+            {
+                return false;
+            }
+            IReadOnlyList<string> held = golem.PushStock.TypesInOrder;
+            if (held.Count == 0)
+            {
+                return !site.IsComplete;
+            }
+            for (int i = 0; i < held.Count; i++)
+            {
+                if (golem.PushStock.Get(held[i]) > 0 && site.WillDemand(held[i]))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private bool TakenFrom(GolemEntity self, object store)

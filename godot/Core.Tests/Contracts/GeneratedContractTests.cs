@@ -95,6 +95,37 @@ namespace GolemFactory.Tests.Contracts
             }
         }
 
+        // The design audit of 2026-11-19: rewards paid only in Casing, Lens, Mainspring, Mechanism
+        // and Regulator, about 1.4 times what the contracts asked of each, so from contract 21 on
+        // those five piled up and half of every ask could come from the shelf.
+        [Test]
+        public void NoContractPaysInAGoodItAsks_AndOverTenNoGoodIsPaidMoreThanAsked()
+        {
+            ContractGenerator g = Generator();
+            int from = g.Setup.rungBonuses;   // every bonus is goods from here
+            var asked = new Dictionary<string, double>();
+            var paid = new Dictionary<string, double>();
+            for (int k = from; k < from + 100; k++)
+            {
+                ContractDefinition c = g.Generate(k);
+                var asks = new HashSet<string>(c.asks.Select(a => a.itemType));
+                foreach (RecipeIngredient r in c.reward.goods.Concat(c.bonus.goods))
+                {
+                    Assert.IsFalse(asks.Contains(r.itemType), $"{c.name} pays {r.itemType}, which it asks for");
+                    paid[r.itemType] = paid.TryGetValue(r.itemType, out double p) ? p + g.Raw(r.itemType) * r.quantity : g.Raw(r.itemType) * r.quantity;
+                }
+                foreach (RecipeIngredient a in c.asks)
+                {
+                    asked[a.itemType] = asked.TryGetValue(a.itemType, out double q) ? q + g.Raw(a.itemType) * a.quantity : g.Raw(a.itemType) * a.quantity;
+                }
+            }
+            foreach (KeyValuePair<string, double> p in paid)
+            {
+                Assert.Less(p.Value, asked.TryGetValue(p.Key, out double q) ? q : 0.0,
+                    p.Key + " is paid out more than it is asked: it piles up");
+            }
+        }
+
         [Test]
         public void TheFirstBonusesAreEndlessCartRungs_ThenGoods()
         {

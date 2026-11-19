@@ -130,7 +130,7 @@ namespace GolemFactory.Tests.EditMode
             { "bench R8_GearCutting", "IronPlate:2" },
             { "boiler hand-load", "Coke:20" },
             { "card Card_AetherHauler", "IronPlate:5 Gear:2 Coke:7" }, // follows its chassis
-            { "card Card_BrassPresser", "Scrap:15 IronPlate:2 Gear:1" },
+            { "card Card_BrassPresser", "Scrap:12 IronPlate:2 Gear:1" }, // follows its chassis
             { "card Card_ClockworkScavenger", "Scrap:3" },
             { "card Card_ExtractScrap", "" },
             { "card Card_FreightLaunch", "" },
@@ -144,7 +144,7 @@ namespace GolemFactory.Tests.EditMode
             // Lowered, not raised (user, 2026-10-20): chapter 8's floor was 35:39 of its 30:00
             // ceiling at 80 Iron Plate + 40 Gear, one Hauler for each two-input good (§18).
             { "chassis AetherHauler", "IronPlate:20 Gear:10 Coke:30" },
-            { "chassis BrassPresser", "Scrap:60 IronPlate:10 Gear:5" }, // §12: was 20 Iron Plate + 10 Gear
+            { "chassis BrassPresser", "Scrap:50 IronPlate:10 Gear:4" }, // §12: was 60 Scrap + 20 Iron Plate + 10 Gear; lowered under the Hauler (design audit, 2026-11-19)
             { "chassis ClockworkScavenger", "Scrap:12" },
             { "floor expansion 1", "Scrap:80 IronPlate:40" },
             { "floor expansion 2", "Scrap:120 IronPlate:60 Gear:30" }, // pack rung 1 opens with it, at "gears"

@@ -494,9 +494,9 @@ Where the code differs from §10 and §8's `post` row, and why.
    price fits a full pack, and that still holds.
 9. **The sprite is generated**: `make_pneumatic_post` in `Tools/Art/generate_building_art.py`
    writes `pneumatic_post.png`, a depot-family crate with a brass tube and a capsule window.
-10. **Open: §4.7 is not built.** The Inventory tab still sorts every buffer by id, so the Post
-    shows as "PneumaticPost" between the crates and the pack. It reads correctly and was never
-    part of a step's tests; the display headers and cell order wait for a polish pass.
+10. **§4.7 is built** (2026-11-19). The headers read as words, and `InventoryReadout.CompareBuffers`
+    lists the pack, the Post, crates in cell order, masts in cell order, then any other buffer by
+    id (`InventoryPanelTests.TheBuffers_ListThePackFirst_ThenThePost_ThenCratesInCellOrder`).
 
 ## 11. Corrections from the Phase 1 critique (2026-10-18)
 

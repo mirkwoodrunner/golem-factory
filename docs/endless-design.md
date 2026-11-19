@@ -68,7 +68,10 @@ formula, still one at a time:
 `endlessContracts`. Contract k (named `Endless_k`, what a save keeps) asks `goods[k % 10]` and
 `goods[(k + 3) % 10]`, 60:40, for a raw-goods budget that grows over the first eight and holds at
 3,300 (a quarter of what stage 4's demand already asks in ten minutes). Its reward is half that
-in Casing, Mainspring, Mechanism, Regulator or Lens; the first twenty bonuses are the carts'
+in the good five on from its first ask, round all ten goods (so a contract never pays in a good it
+asks; changed 2026-11-19 after the design audit found the old five, Casing, Mainspring, Mechanism,
+Regulator and Lens, paid out about 1.4 times what the contracts asked of them, so they piled up);
+the first twenty bonuses are the carts'
 endless rungs (each good's Rate, then its Capacity), then a quarter in goods. Each posts once
 the tower stands; before that the office says "once the Clock Tower stands". At the plateau a
 single good asks up to 330, which is what the pack's 300 and 350 rungs carry in one trip.

@@ -327,6 +327,36 @@ namespace GolemFactory.ClockTower
         }
 
         /// <summary>
+        /// Whether the running stage or any stage after it asks for <paramref name="itemType"/>:
+        /// whether a golem holding it in front of the site will ever deliver it. A complete
+        /// site, or one whose remaining stages never name the good, never takes it again, so a
+        /// golem blocked there reads red, not waiting (`StallFactsProbe`).
+        /// </summary>
+        public bool WillDemand(string itemType)
+        {
+            if (string.IsNullOrEmpty(itemType) || _complete)
+            {
+                return false;
+            }
+            for (int s = Math.Max(0, _stageIndex); s < _stages.Count; s++)
+            {
+                ClockTowerStageDefinition stage = _stages[s];
+                if (stage == null)
+                {
+                    continue;
+                }
+                for (int i = 0; i < stage.demands.Count; i++)
+                {
+                    if (string.Equals(stage.demands[i].itemType, itemType, StringComparison.Ordinal))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Whether the tower would accept ANYTHING at all -- the untyped question
         /// <c>IItemEndpoint.CanGive()</c> asks. True while a stage is running.
         /// </summary>

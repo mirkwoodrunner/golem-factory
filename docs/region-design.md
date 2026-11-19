@@ -106,7 +106,7 @@ still run their per-frame work (about 2.4 ms and 1.9 ms at 160 golems). Proposed
 ## 5. Build order
 
 1. Core: the Docks' bounds and floor purchases, the lane and gate fixture, the quay's spots on
-   the supply street, opening when the tower stands; saves. Tests first.
+   the supply street, opening once a Zeppelin is built (§3); saves. Tests first.
 2. The shell: the Docks' floor, walls and quay drawn from Core's layout (as `ShellNode` does the
    workshop), the gate's art (generated), the camera's bounds.
 3. Off-screen nodes skip presentation; the `perf` scenario's Docks load; the cap measured.

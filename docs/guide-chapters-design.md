@@ -48,8 +48,8 @@ measure it (`testscript/phase-2-playtest.md`).
 Crank times are `HandCrankRules.CrankTicks` (twice the recipe's `durationTicks`) at 10 ticks a
 second. About 5¼ of the 15 minutes was cranking that no text can shorten. **If chapter 2 overruns,
 the lever is the Presser's price (Phase 3's tuning), not its text.** Phase 3 pulled it
-(`docs/tuning-data-spec.md` §12): the Presser costs 60 Scrap + 10 Iron Plate + 5 Gear, and the
-measured floor is 5:16 with 4:14 at the bench (chapter 2: 2:20).
+(`docs/tuning-data-spec.md` §12): the Presser costs 60 Scrap + 10 Iron Plate + 5 Gear (50 Scrap + 10 Iron Plate + 4 Gear since
+2026-11-19, `tuning-data-spec.md` §12.2), and the measured floor is 5:16 with 4:14 at the bench (chapter 2: 2:20).
 
 **Text budget:** a chapter 1–4 step's body is at most **240 characters**, so it fits the guide
 plate (340 × 178) beside the counter and progress lines without the plate growing over the HUD.

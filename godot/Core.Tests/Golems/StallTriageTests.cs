@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using NUnit.Framework;
 using GolemFactory.Belts;
+using GolemFactory.ClockTower;
 using GolemFactory.Compat;
 using GolemFactory.Economy;
 using GolemFactory.Events;
@@ -225,6 +226,60 @@ namespace GolemFactory.Tests.EditMode
 
             floor.Endpoints.Register(new Vector2Int(0, 2), new BoilerFuelEndpoint(boiler, "Boiler"));
             Assert.IsTrue(floor.Probe.Read(golem).TargetDrained);
+        }
+
+        // Red means the player must act: a tower feeder whose good no stage left asks for, or
+        // any feeder once the tower is complete, can never deliver again, so it is not waiting.
+        [Test]
+        public void TheTower_DrainsAGood_OnlyWhileThisStageOrALaterOneAsksForIt()
+        {
+            var floor = new Floor();
+            var site = new ClockTowerSite();
+            site.SetStages(new[]
+            {
+                new ClockTowerStageDefinition { name = "A", stageNumber = 1, demands = { new StageDemand(ItemType.FrameSection, 6) } },
+                new ClockTowerStageDefinition { name = "B", stageNumber = 2, demands = { new StageDemand(ItemType.GreatCog, 3) } },
+            });
+            floor.Endpoints.Register(new Vector2Int(0, 2), new ClockTowerInputEndpoint(site));
+            GolemEntity frames = floor.Golem(new Vector2Int(0, 1), (AppendageActionType.Haul, ItemType.FrameSection), Push);
+            frames.Inventory.AddInput(ItemType.FrameSection, 1);
+            GolemEntity cogs = floor.Golem(new Vector2Int(1, 1), (AppendageActionType.Haul, ItemType.GreatCog), Push);
+            floor.Endpoints.Register(new Vector2Int(1, 2), new ClockTowerInputEndpoint(site));
+            cogs.Inventory.AddInput(ItemType.GreatCog, 1);
+
+            Assert.IsTrue(floor.Probe.Read(frames).TargetDrained, "stage A asks for Frame Sections");
+            Assert.IsTrue(floor.Probe.Read(cogs).TargetDrained, "stage B will ask for Great Cogs: waiting");
+
+            site.RestoreProgress(1, 0, false);
+            Assert.IsFalse(floor.Probe.Read(frames).TargetDrained, "no stage left asks for Frame Sections");
+            Assert.IsTrue(floor.Probe.Read(cogs).TargetDrained);
+
+            site.RestoreProgress(2, 0, true);
+            Assert.IsFalse(floor.Probe.Read(cogs).TargetDrained, "a complete tower takes nothing again");
+        }
+
+        [Test]
+        public void AFeederAtACompleteTower_IsRed_AndItsCardSaysTheTowerNoLongerNeedsIt()
+        {
+            var floor = new Floor();
+            var site = new ClockTowerSite();
+            site.SetStages(new[]
+            {
+                new ClockTowerStageDefinition { name = "A", stageNumber = 1, demands = { new StageDemand(ItemType.Lens, 6) } },
+            });
+            site.RestoreProgress(1, 0, true);
+            floor.Endpoints.Register(new Vector2Int(0, 2), new ClockTowerInputEndpoint(site));
+            GolemEntity pusher = floor.Golem(new Vector2Int(0, 1), Push);
+            pusher.Inventory.AddInput(ItemType.Lens, 3);
+
+            pusher.Tick(0);
+            Assert.AreEqual(StallReason.BeltFull, pusher.StallReason);
+            Assert.AreEqual(GolemMood.Stalled, pusher.Mood, "it can never deliver again: the player must act");
+            StallFacts facts = floor.Probe.Read(pusher);
+            Assert.IsTrue(facts.TargetNoLongerNeeds);
+            HoverCard card = GolemHoverText.Compose(pusher, GolemMood.Stalled, facts, null);
+            StringAssert.Contains("no longer needs Lens", card.State);
+            StringAssert.DoesNotContain("Collect", card.Fix);
         }
 
         [Test]

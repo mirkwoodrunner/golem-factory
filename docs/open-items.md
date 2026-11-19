@@ -16,7 +16,7 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 | **The boiler fuel ratio** | 3 Coke/min per working golem. progression-design §12: "mis-tuned, this becomes a coal simulator." |
 | **The manual era** | Budgeted at 12-15 minutes. The guide's step timings now measure it. |
 | **Whether the Workbench still decides anything** | Recipes and chassis fix most of a program; the Haul good and batch dials are what's left to choose. |
-| **Whether the market is an economy or a toll booth** | Truckloads are priced and arrive in bursts. |
+| **Whether the market is an economy or a toll booth** | Carts trickle and are upgraded for a price (`supply-design.md`); the playtest asks `carts` and `carts-late`. |
 | **Marked tiles** | The guide marks where to build. Do they help, or get in the way? Decides round 3 (below). |
 | **The carry outline** | Is it clear where a carried golem will land? |
 | **Grey for waiting, red for stuck** | Built in Phase 2 (`docs/onboarding-feedback-design.md` §3). `testscript/phase-2-playtest.md` asks whether players can tell them apart. |
@@ -113,10 +113,8 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 - **The art is placeholder** throughout, and the Workbench's lever housing, display face and
   card faces most of all. The City Office, the civic works' site, the Docks' gate and water and
   the Golem Foundry are generated placeholders, the user's to commission.
-- **The Inventory tab's order** (`crates-design.md` §4.7, §10.1.10): its headers read as words
-  now ("Your pack", "Pneumatic Post", "Crate (3,-2)"), but `InventoryReadout` still sorts the
-  buffers by id: crates, the pack, masts, then the Post. The spec asks for the pack
-  first, then the Post, then crates in cell order.
+- **The Inventory tab's order: closed 2026-11-19.** The pack first, then the Post, then crates in
+  cell order (`crates-design.md` §4.7), then masts and any other buffer.
 - **The side-by-side screens** (the Crate screen beside the Pack): the transfer hint is drawn
   below the panels instead of inside them, and each panel carries its own Close button, so the
   pair shows two.
