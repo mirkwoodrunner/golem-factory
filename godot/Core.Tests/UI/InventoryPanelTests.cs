@@ -47,6 +47,32 @@ namespace GolemFactory.Tests.UI
             Assert.AreEqual("FactoryStockpile", plate.BufferId, "the id stays on the row for lookups");
         }
 
+        // crates-design.md §4.7: the pack first, then the Post, then crates in cell order. Sorted
+        // by id, the tab read crates, the pack ("FactoryStockpile"), masts, then the Post, and
+        // "Crate(-3,4)" before "Crate(-12,0)" because '3' sorts after '1'.
+        [Test]
+        public void TheBuffers_ListThePackFirst_ThenThePost_ThenCratesInCellOrder()
+        {
+            var registry = new StorageBufferRegistry();
+            registry.Deposit("PneumaticPost", ItemType.Scrap);
+            registry.Deposit("Mast(5,4)", ItemType.Scrap);
+            registry.Deposit("Crate(3,-2)", ItemType.Scrap);
+            registry.Deposit("FactoryStockpile", ItemType.IronPlate);
+            registry.Deposit("Crate(-3,4)", ItemType.Scrap);
+            registry.Deposit("Crate(-12,0)", ItemType.Scrap);
+            registry.Deposit("Crate(3,-7)", ItemType.Scrap);
+            registry.Deposit("CityOffice", ItemType.Scrap);
+
+            List<InventoryRow> rows = InventoryReadout.Compose(registry, null, "FactoryStockpile", "PneumaticPost");
+            var headers = rows.FindAll(r => r.Kind == InventoryRowKind.Header).ConvertAll(r => r.BufferId);
+            CollectionAssert.AreEqual(new[]
+            {
+                "FactoryStockpile", "PneumaticPost",
+                "Crate(-12,0)", "Crate(-3,4)", "Crate(3,-7)", "Crate(3,-2)",
+                "Mast(5,4)", "CityOffice",
+            }, headers);
+        }
+
         [Test]
         public void Refresh_ClearsStaleRowsBeforeRebuilding()
         {

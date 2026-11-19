@@ -1,5 +1,9 @@
+using System;
 using System.Collections.Generic;
+using System.Globalization;
+using GolemFactory.Compat;
 using GolemFactory.Economy;
+using GolemFactory.World;
 
 namespace GolemFactory.UI
 {
@@ -47,7 +51,8 @@ namespace GolemFactory.UI
     /// Unity's InventoryPanel.Refresh with its UGUI taken out (milestone G8).
     ///
     /// <para>
-    /// Every buffer, sorted by id (dictionary order is not contractual, and a list that
+    /// Every buffer, the pack first, then the Post, then crates in cell order
+    /// (<see cref="CompareBuffers"/>: dictionary order is not contractual, and a list that
     /// re-renders every frame must not reshuffle); per buffer a header, then one row per item
     /// type in BufferTrendUtility's order. An uncapped buffer's bar is relative to the largest
     /// quantity on screen; a capped one's is against its own capacity, and its quantity reads
@@ -80,7 +85,7 @@ namespace GolemFactory.UI
             }
 
             var ids = new List<string>(buffers.Keys);
-            ids.Sort(string.CompareOrdinal);
+            ids.Sort((a, b) => CompareBuffers(a, b, packId, postId));
 
             int largest = 0;
             foreach (string id in ids)
@@ -180,6 +185,69 @@ namespace GolemFactory.UI
                 }
             }
             return bufferId;
+        }
+
+        /// <summary>
+        /// The tab's order (docs/crates-design.md §4.7): the pack, the Post, crates in cell order
+        /// (<see cref="CellOrder"/>), masts in cell order, then any other buffer by id. A total
+        /// order, so a list re-rendered every frame never reshuffles.
+        /// </summary>
+        public static int CompareBuffers(string a, string b, string packId, string postId)
+        {
+            int byGroup = Group(a, packId, postId).CompareTo(Group(b, packId, postId));
+            if (byGroup != 0)
+            {
+                return byGroup;
+            }
+            if (TryCell(a, out Vector2Int cellA) && TryCell(b, out Vector2Int cellB))
+            {
+                int byCell = CellOrder.Compare(cellA, cellB);
+                if (byCell != 0)
+                {
+                    return byCell;
+                }
+            }
+            return string.CompareOrdinal(a, b);
+        }
+
+        private static int Group(string id, string packId, string postId)
+        {
+            if (packId != null && id == packId)
+            {
+                return 0;
+            }
+            if (postId != null && id == postId)
+            {
+                return 1;
+            }
+            if (id.StartsWith("Crate(", StringComparison.Ordinal) && TryCell(id, out _))
+            {
+                return 2;
+            }
+            if (id.StartsWith("Mast(", StringComparison.Ordinal) && TryCell(id, out _))
+            {
+                return 3;
+            }
+            return 4;
+        }
+
+        // "Crate(3,-2)" -> (3, -2): the cell PlaceableDepot.CrateIdFor and MastIdFor wrote.
+        private static bool TryCell(string id, out Vector2Int cell)
+        {
+            cell = default;
+            int open = id.IndexOf('(');
+            int comma = id.IndexOf(',', open + 1);
+            if (open < 0 || comma < 0 || !id.EndsWith(")", StringComparison.Ordinal))
+            {
+                return false;
+            }
+            if (int.TryParse(id.Substring(open + 1, comma - open - 1), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int x)
+                && int.TryParse(id.Substring(comma + 1, id.Length - comma - 2), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int y))
+            {
+                cell = new Vector2Int(x, y);
+                return true;
+            }
+            return false;
         }
 
         private static InventoryRow Message(string text) => new InventoryRow { Kind = InventoryRowKind.Message, Text = text };
