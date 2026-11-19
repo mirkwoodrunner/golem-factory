@@ -68,6 +68,8 @@ namespace GolemFactory.Nodes
         private Panel _pane;
         private Label _paneTitle;
         private Label _paneBody;
+        private Label _paneUnlock;
+        private Button _paneClaim;
         private bool _panning;
 
         public LedgerTab(TechTreeProgressTracker tracker, TechTreeReadout readout)
@@ -81,6 +83,10 @@ namespace GolemFactory.Nodes
         public IEnumerable<Button> Plaques => _nodes?.Select(n => n.Plaque) ?? Enumerable.Empty<Button>();
         public string HeaderText => _header?.Text ?? "";
         public string PaneBody => _pane != null && _pane.Visible ? _paneBody.Text : "";
+
+        /// <summary>The pane's unlock line and its Claim button, for a scenario.</summary>
+        public string PaneUnlock => _pane != null && _pane.Visible ? _paneUnlock.Text : "";
+        public Button PaneClaim => _paneClaim;
         public TechTreeReadout Readout => _readout;
 
         /// <summary>
@@ -137,25 +143,48 @@ namespace GolemFactory.Nodes
             BuildChart();
 
             // The readout pane: a sibling of the chart, not a child, so a rebuild keeps it.
-            _pane = Ugui.Place(Ugui.Image("RecipeReadout", Ugui.NineSlice(Art + "tt_phase_plate.png", 10), DetailPaneColor), 0f, 0f, 0f, 0f, 12f, 12f, 300f, 92f, 0f, 0f);
+            _pane = Ugui.Place(Ugui.Image("RecipeReadout", Ugui.NineSlice(Art + "tt_phase_plate.png", 10), DetailPaneColor), 0f, 0f, 0f, 0f, 12f, 12f, 300f, 120f, 0f, 0f);
             _pane.Visible = false;
             viewport.AddChild(_pane);
             _paneTitle = Ugui.Place(Ugui.Text("Title", "", 13, ResearchedName, bold: true), 0f, 0f, 1f, 1f);
             _paneTitle.OffsetLeft = 10f;
             _paneTitle.OffsetTop = 8f;
             _paneTitle.OffsetRight = -10f;
-            _paneTitle.OffsetBottom = -68f;
+            _paneTitle.OffsetBottom = -96f;
             _paneTitle.VerticalAlignment = VerticalAlignment.Top;
             _pane.AddChild(_paneTitle);
             _paneBody = Ugui.Place(Ugui.Text("Body", "", 10, ResearchedDetail), 0f, 0f, 1f, 1f);
             _paneBody.OffsetLeft = 10f;
             _paneBody.OffsetTop = 28f;
             _paneBody.OffsetRight = -10f;
-            _paneBody.OffsetBottom = -8f;
+            _paneBody.OffsetBottom = -36f;
             _paneBody.VerticalAlignment = VerticalAlignment.Top;
             _paneBody.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             _paneBody.ClipText = true;
             _pane.AddChild(_paneBody);
+            // The plaque's unlock (2026-11-19): its card's price and a Claim, the tab's own claim.
+            _paneUnlock = Ugui.Place(Ugui.Text("Unlock", "", 11, ResearchedName, bold: true), 0f, 0f, 1f, 0f);
+            _paneUnlock.OffsetLeft = 10f;
+            _paneUnlock.OffsetRight = -88f;
+            _paneUnlock.OffsetTop = -30f;
+            _paneUnlock.OffsetBottom = -8f;
+            _paneUnlock.VerticalAlignment = VerticalAlignment.Center;
+            _pane.AddChild(_paneUnlock);
+            _paneClaim = new Button
+            {
+                Name = "Claim",
+                FocusMode = Control.FocusModeEnum.None,
+                AnchorLeft = 1f, AnchorRight = 1f, AnchorTop = 1f, AnchorBottom = 1f,
+                OffsetLeft = -82f, OffsetRight = -10f, OffsetTop = -30f, OffsetBottom = -8f,
+            };
+            StyleBoxTexture face = Ugui.NineSlice("res://art/UI/Hud/hud_button.png", 8);
+            foreach (string state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
+            {
+                _paneClaim.AddThemeStyleboxOverride(state, face);
+            }
+            _paneClaim.AddChild(Ugui.Fill(Ugui.Text("Label", "Claim", 12, Colors.Black, align: 2)));
+            _paneClaim.Pressed += () => _readout.Claim();
+            _pane.AddChild(_paneClaim);
             return holder;
         }
 
@@ -311,6 +340,13 @@ namespace GolemFactory.Nodes
             _paneTitle.Text = _readout.Title(_states);
             // The body carries a LIVE rate, so it is refreshed every frame, not only on a click.
             _paneBody.Text = _readout.Body;
+            string unlock = _readout.UnlockLine;
+            _paneUnlock.Text = unlock;
+            bool offered = unlock.StartsWith("Claim for");
+            _paneClaim.Visible = offered;
+            bool live = _readout.CanClaim;
+            _paneClaim.Disabled = !live;
+            _paneClaim.Modulate = live ? Colors.White : new Color(1f, 1f, 1f, 0.5f);
         }
 
         // --- Pieces -------------------------------------------------------------------------

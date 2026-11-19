@@ -159,7 +159,7 @@ which way in a note, or add it under the matching question in the report.
 | Supply carts | a Coal cart 80 Scrap · 30 a minute, holds 100 · the starting Scrap cart 120 a minute, holds 200 |
 | Cart upgrades | Rate and Capacity rungs, each priced in the next tier's goods (supply-design.md §3) |
 | Slag Heap | 1 Coke per 4 Slag |
-| Assembly Line card price | 4× the recipe's own inputs, decaying while it waits |
+| Assembly Line card price | 4× the recipe's own inputs, fixed |
 | Golem cap | 112, fixed |
 | Floor expansion | +2 rows, six purchases, from Scrap and Plate up to Casing and Mainspring |
 | Freight launch | a flat 24 ticks, however far |

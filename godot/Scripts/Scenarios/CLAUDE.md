@@ -44,8 +44,8 @@ Current scenarios:
   with the HUD and build menu hidden. Covers the Inventory icons, the tab exclusivity, an
   Assembly Line claim reaching the Workbench, the tab's `Pack:  ·  Post:` header, the Pack row's Upgrade (the Pack screen's cap line
   reads 150), two Extends planking and walling new rows (the second at 120 Scrap), Patents
-  Load, the Ledger's plaques and recipe pane, no drawn label holding an internal id, and one
-  screen at a time.
+  Load, the Ledger's plaques and recipe pane, R4's plaque's Claim clicked into the vault (captured
+  as `ledger-claim`), no drawn label holding an internal id, and one screen at a time.
 - `save` (Sandbox): through the Save / Load tab, build, save, wreck everything, and load. The
   buildings, golems (with program and place) and pack must come back exactly, and two
   more rounds must change nothing. Then it extends the room after a save and loads, and the

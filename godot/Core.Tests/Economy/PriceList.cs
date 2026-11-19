@@ -136,9 +136,7 @@ namespace GolemFactory.Tests.EditMode
         public static IEnumerable<(string good, int sum)> Summed(IReadOnlyList<RecipeIngredient> price) =>
             (price ?? new RecipeIngredient[0]).GroupBy(c => c.itemType).Select(g => (g.Key, g.Sum(c => c.quantity)));
 
-        public static IReadOnlyList<RecipeIngredient> ClaimPrice(DraftableCardDefinition card) =>
-            card.HasBundleCost ? card.claimCost
-                : card.baseCost > 0 ? new[] { new RecipeIngredient(ItemType.Scrap, card.baseCost) } : new RecipeIngredient[0];
+        public static IReadOnlyList<RecipeIngredient> ClaimPrice(DraftableCardDefinition card) => AssemblyLineState.PriceOf(card);
 
         public IEnumerable<DraftableCardDefinition> Cards =>
             World.Definitions.Decks.Values.SelectMany(d => d.Cards.Concat(d.OpeningHand)).Where(c => c != null).Distinct();

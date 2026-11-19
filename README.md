@@ -54,7 +54,8 @@ golem wears a badge saying what's wrong, and the alerts strip at the top names i
 ## The rest of the factory
 
 - **Steam:** every golem needs a boiler's steam, carried along pipes, and boilers burn Coke.
-- **The Assembly Line** offers the cards your factory can afford; claim one to use it.
+- **The Assembly Line** lists every card your factory can now pay for, at a fixed price; claim the
+  ones you want. A recipe's or chassis's plaque in the Ledger has the same Claim.
 - **Depots** open onto one shared stockpile; label one to make it take a single good.
 - **Belts** carry goods a golem pushes onto them; a golem at the far end takes them off.
 - **Demolish** refunds everything a building cost, so moving things around is free.

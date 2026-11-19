@@ -16,7 +16,11 @@ namespace GolemFactory.UI
         Wallet,
         Bay,
         Floor,
+
+        /// <summary>A card the player can claim now, with its price and a Claim button.</summary>
         Slot,
+
+        /// <summary>Nothing to claim: says how more unlock.</summary>
         EmptySlot,
         WaitingHeader,
         Waiting,
@@ -47,13 +51,15 @@ namespace GolemFactory.UI
         /// <summary>Whether the row reads as active (bright) rather than dim.</summary>
         public bool Bright;
 
-        public int SlotIndex = -1;
+        /// <summary>The card a Slot row claims, or null.</summary>
+        public DraftableCardDefinition Card;
     }
 
     /// <summary>
     /// The Assembly Line tab: Unity's AssemblyLinePanel with its UGUI taken out (G8). The wallet
     /// line, the golem cap's row (how many stand, of how many), the floor-expansion row (the only
-    /// place to buy more workshop), one row per draft slot with its WHOLE price and a Claim, and
+    /// place to buy more workshop), one row per card the player can claim now, at its whole fixed
+    /// price, with a Claim (2026-11-19: every unlock at once, the player's pick, no draft row), and
     /// the cards still waiting on prerequisites with what each needs.
     ///
     /// <para>
@@ -67,6 +73,9 @@ namespace GolemFactory.UI
     {
         public const string UnavailableMessage = "Assembly line unavailable: no line state wired.";
         public const int MaxWaitingRowsShown = 4;
+
+        /// <summary>The row when nothing can be claimed.</summary>
+        public const string NothingToClaim = "Nothing to claim right now: make a new good to unlock more.";
 
         private readonly AssemblyLineState _line;
         private readonly StorageBufferRegistry _buffers;
@@ -210,27 +219,29 @@ namespace GolemFactory.UI
                 }
             }
 
-            for (int i = 0; i < _line.SlotCount; i++)
+            // Every card on offer, the one the guide asks for first, then the deck's order.
+            IReadOnlyList<DraftableCardDefinition> offers = _line.Offers;
+            List<DraftableCardDefinition> ordered = offers.Where(c => _wanted?.Invoke(c) == true)
+                .Concat(offers.Where(c => _wanted?.Invoke(c) != true)).ToList();
+            if (ordered.Count == 0)
             {
-                DraftableCardDefinition card = _line.GetCard(i);
-                if (card == null)
-                {
-                    rows.Add(new AssemblyLineRow { Kind = AssemblyLineRowKind.EmptySlot, Text = "Slot " + (i + 1) + " -- empty", SlotIndex = i });
-                    continue;
-                }
+                rows.Add(new AssemblyLineRow { Kind = AssemblyLineRowKind.EmptySlot, Text = NothingToClaim });
+            }
+            foreach (DraftableCardDefinition card in ordered)
+            {
                 // THE WHOLE PRICE, not its Scrap component: R4 Iron Smelting costs Scrap AND
                 // Coke, and once advertised only the Scrap, lit Claim off a Scrap-only check,
                 // and refused the sale.
-                IReadOnlyList<RecipeIngredient> price = _line.GetCurrentCostBundle(i);
+                IReadOnlyList<RecipeIngredient> price = AssemblyLineState.PriceOf(card);
                 rows.Add(new AssemblyLineRow
                 {
                     Kind = AssemblyLineRowKind.Slot,
                     Text = WorkbenchDiagnostics.Humanize(card.DisplayName),
                     Bright = true,
-                    CostText = RecipeLedger.FormatBundle(price),
+                    CostText = price.Count == 0 ? "free" : RecipeLedger.FormatBundle(price),
                     Affordable = CanAfford(price),
                     ButtonLabel = "Claim",
-                    SlotIndex = i,
+                    Card = card,
                 });
             }
 
@@ -264,18 +275,27 @@ namespace GolemFactory.UI
         /// <summary>A card was claimed: the latch.</summary>
         public event Action Claimed;
 
-        /// <summary>The Claim button on slot <paramref name="slotIndex"/>.</summary>
-        public bool Claim(int slotIndex)
+        /// <summary>The guide's wanted card, listed first; null lists the deck's order alone.</summary>
+        public void ConfigureWanted(Func<DraftableCardDefinition, bool> wanted) => _wanted = wanted;
+
+        private Func<DraftableCardDefinition, bool> _wanted;
+
+        /// <summary>A Claim button, on the Assembly Line tab or a Ledger plaque: <paramref name="card"/> at its price.</summary>
+        public bool Claim(DraftableCardDefinition card)
         {
-            DraftableCardDefinition card = _line?.GetCard(slotIndex);
-            if (card == null)
+            if (card == null || _line == null)
             {
-                Status = "That slot is empty.";
+                Status = "Nothing to claim.";
                 return false;
             }
             string name = WorkbenchDiagnostics.Humanize(card.DisplayName);
-            IReadOnlyList<RecipeIngredient> price = _line.GetCurrentCostBundle(slotIndex);
-            if (_line.TryClaimSlot(slotIndex, _userId, _buffers, _wallet, _post))
+            if (_line.IsClaimed(card))
+            {
+                Status = $"{name} is already yours.";
+                return false;
+            }
+            IReadOnlyList<RecipeIngredient> price = AssemblyLineState.PriceOf(card);
+            if (_line.TryClaim(card, _userId, _buffers, _wallet, _post))
             {
                 Status = $"Claimed {name}.";
                 Claimed?.Invoke();
@@ -334,6 +354,9 @@ namespace GolemFactory.UI
                 ButtonLabel = button,
             };
         }
+
+        /// <summary>Whether the wallet can pay for <paramref name="card"/> now.</summary>
+        public bool CanAffordCard(DraftableCardDefinition card) => card != null && CanAfford(AssemblyLineState.PriceOf(card));
 
         // What the charge (PlayerWallet.TryCharge) would take: Creative's waiver included.
         private bool CanAfford(IReadOnlyList<RecipeIngredient> price) =>

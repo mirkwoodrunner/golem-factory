@@ -112,7 +112,6 @@ namespace GolemFactory.World
         public sealed class AssemblyLineSetup
         {
             public string deck;
-            public int slots = 3;
             public string claimUserId = "LocalPlayer";
             public bool gateWorkbench;
         }

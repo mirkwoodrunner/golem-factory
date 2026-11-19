@@ -535,14 +535,12 @@ namespace GolemFactory.Tutorial
             {
                 return;
             }
-            for (int i = 0; i < line.SlotCount; i++)
+            DraftableCardDefinition offered = line.Offers.FirstOrDefault(c => CardKey(c) == appendageName);
+            if (offered != null)
             {
-                if (CardKey(line.GetCard(i)) == appendageName)
-                {
-                    GrantCost(line.GetCurrentCostBundle(i));
-                    _world.AssemblyLineBoard.Claim(i);
-                    return;
-                }
+                GrantCost(AssemblyLineState.PriceOf(offered));
+                _world.AssemblyLineBoard.Claim(offered);
+                return;
             }
             string deck = _world.Setup.assemblyLine.deck;
             DraftableCardDefinition card = _world.Definitions.Decks.TryGetValue(deck, out DraftableCardCatalog catalog)

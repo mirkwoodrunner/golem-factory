@@ -30,7 +30,7 @@ namespace GolemFactory.Nodes.Scenarios
     ///   draft and closes Management.</item>
     ///   <item>Ledger: one clickable plaque per node; clicking R4 opens its recipe; redrawing the
     ///   chart keeps the selection and the pane (the two TechTreeRecipeReadoutTests that were
-    ///   about the drawn chart).</item>
+    ///   about the drawn chart); the pane's Claim, clicked, claims R4's card into the vault.</item>
     ///   <item>Escape closes; Tab while the Workbench is up does not stack Management on it.</item>
     /// </list>
     /// </summary>
@@ -241,13 +241,13 @@ namespace GolemFactory.Nodes.Scenarios
             });
             int vaultBefore = 0;
             string claimed = null;
-            // The line opens on cards the player can actually use: never the opening hand,
-            // which the player already owns (seeding before granting it once offered all three).
+            // The tab lists cards the player can actually use: never the opening hand, which the
+            // player already owns.
             Do("the line offers nothing the player already owns", () =>
             {
                 var owned = new HashSet<DraftableCardDefinition>(_world.AssemblyLine.GetClaimedCards("LocalPlayer"));
-                var offered = Enumerable.Range(0, _world.AssemblyLine.SlotCount).Select(_world.AssemblyLine.GetCard).ToList();
-                return offered.Any(c => c == null || owned.Contains(c))
+                var offered = _world.AssemblyLine.Offers.ToList();
+                return offered.Count == 0 || offered.Any(owned.Contains)
                     ? $"line offers [{string.Join(", ", offered.Select(c => c?.name ?? "empty"))}]"
                     : null;
             });
@@ -431,7 +431,50 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "the rebuild lost the selection or the pane";
                 }
-                _log.Add($"Ledger: {TechTreeCatalog.Nodes.Count} clickable plaques; R4's recipe opened and survived a rebuild; '{_screen.Ledger.HeaderText.Split("·")[0].Trim()}'");
+                return null;
+            });
+            // 2026-11-19: a plaque is an unlock button. R4's card offered (its goods seen) and paid for.
+            Do("R4's card on offer, its price in the pack", () =>
+            {
+                _world.TechTree.Ledger.RecordItem(ItemType.Scrap);
+                _world.TechTree.Ledger.RecordItem(ItemType.Coke);
+                GolemFactory.AssemblyLine.DraftableCardDefinition card = _screen.Ledger.Readout.SelectedCard;
+                if (card == null || card.appendage?.name != "AssembleIronSmelting")
+                {
+                    return "R4's plaque names no card: " + (card?.name ?? "none");
+                }
+                if (_world.AssemblyLine.IsClaimed(card))
+                {
+                    return "R4 was already claimed";
+                }
+                foreach (var cost in GolemFactory.AssemblyLine.AssemblyLineState.PriceOf(card))
+                {
+                    _world.Buffers.Deposit(_world.StockpileBufferId, cost.itemType, cost.quantity);
+                }
+                return null;
+            });
+            Do("a frame for the pane to redraw", () => null);
+            Do("the pane offers it, with a live Claim", () =>
+            {
+                if (!_screen.Ledger.PaneUnlock.StartsWith("Claim for ") || !_screen.Ledger.PaneClaim.IsVisibleInTree() || _screen.Ledger.PaneClaim.Disabled)
+                {
+                    return $"pane unlock '{_screen.Ledger.PaneUnlock}', Claim visible {_screen.Ledger.PaneClaim.IsVisibleInTree()} disabled {_screen.Ledger.PaneClaim.Disabled}";
+                }
+                ScenarioCapture.Shot(_tree.Root.GetViewport(), "ledger-claim");
+                Click(_screen.Ledger.PaneClaim);
+                return null;
+            });
+            Do("claimed from the plaque: the vault has it, the pane says so", () =>
+            {
+                if (!_world.Workbench.VaultAppendages.Any(a => a.name == "AssembleIronSmelting"))
+                {
+                    return "the Workbench's vault doesn't offer Iron Smelting: " + _world.AssemblyLineBoard.Status;
+                }
+                if (_screen.Ledger.PaneUnlock != "Claimed" || _screen.Ledger.PaneClaim.IsVisibleInTree())
+                {
+                    return $"pane unlock '{_screen.Ledger.PaneUnlock}', Claim visible {_screen.Ledger.PaneClaim.IsVisibleInTree()}";
+                }
+                _log.Add($"Ledger: {TechTreeCatalog.Nodes.Count} clickable plaques; R4's recipe opened and survived a rebuild, and its plaque claimed its card; '{_screen.Ledger.HeaderText.Split("·")[0].Trim()}'");
                 return null;
             });
         }

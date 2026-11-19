@@ -63,7 +63,7 @@ namespace GolemFactory.Tests.Tutorial
             {
                 world.Advance(1f / 30f);
                 var line = world.AssemblyLine;
-                var shown = Enumerable.Range(0, line.SlotCount).Select(line.GetCard).Where(c => c != null).ToList();
+                var shown = line.Offers.ToList();
                 Assert.IsTrue(shown.Any(c => c.appendage?.name == appendage),
                     $"{step}, frame {frame}: {appendage} is on the line (shows {string.Join(", ", shown.Select(c => c.name))})");
                 foreach (var card in shown)

@@ -7,7 +7,7 @@ namespace GolemFactory.Nodes
 {
     /// <summary>
     /// The Management screen's Assembly Line tab: draws Core's <see cref="AssemblyLineBoard"/>
-    /// rows (wallet, bays, floor expansion, the pack, draft slots, waiting cards) with Unity's
+    /// rows (wallet, the golem cap, floor expansion, the pack, the cards to claim, waiting cards) with Unity's
     /// AssemblyLinePanel layout -- 28px rows, a 260px right-aligned cost column, 60-74px brass
     /// buttons disabled when unaffordable -- and the status line under them.
     /// </summary>
@@ -128,11 +128,11 @@ namespace GolemFactory.Nodes
                 }
                 button.Modulate = row.Affordable ? Colors.White : new Color(1f, 1f, 1f, 0.5f);
                 button.AddChild(Ugui.Fill(Ugui.Text("Label", row.ButtonLabel, 13, Colors.Black, align: 2)));
-                int slot = row.SlotIndex;
+                AssemblyLine.DraftableCardDefinition card = row.Card;
                 switch (row.Kind)
                 {
                     case AssemblyLineRowKind.Slot:
-                        button.Pressed += () => _board.Claim(slot);
+                        button.Pressed += () => _board.Claim(card);
                         break;
                     case AssemblyLineRowKind.Floor:
                         button.Pressed += () => _board.ExtendFloor();

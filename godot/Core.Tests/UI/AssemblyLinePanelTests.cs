@@ -20,15 +20,13 @@ namespace GolemFactory.Tests.UI
 
         private static (AssemblyLineBoard board, AssemblyLineState line, StorageBufferRegistry buffers) Build()
         {
-            var line = new AssemblyLineState(3);
+            var line = new AssemblyLineState();
             var buffers = new StorageBufferRegistry();
-            // One real card in slot 0; DisplayName reads the WRAPPED appendage's name.
+            // One real card; DisplayName reads the WRAPPED appendage's name.
             var card = new DraftableCardDefinition
             {
                 appendage = new AppendageActionDefinition { name = "Coking" },
-                baseCost = 10,
-                minCost = 2,
-                decayPerSecond = 0f,
+                claimCost = new List<RecipeIngredient> { new RecipeIngredient(ItemType.Scrap, 10) },
             };
             line.SeedCandidates(new[] { card });
             return (new AssemblyLineBoard(line, buffers, Wallet), line, buffers);
@@ -38,14 +36,37 @@ namespace GolemFactory.Tests.UI
             board.Rows().First(r => r.ButtonLabel == "Claim");
 
         [Test]
-        public void Refresh_BuildsOneRowPerSlot_PlusTheWalletHeader()
+        public void Refresh_BuildsOneRowPerOffer_PlusTheWalletHeader()
         {
             var (board, line, _) = Build();
 
             // Row 0 is the wallet balance -- the cost columns below are meaningless without it.
             List<AssemblyLineRow> rows = board.Rows();
-            Assert.AreEqual(line.SlotCount + 1, rows.Count);
+            Assert.AreEqual(line.Offers.Count + 1, rows.Count);
             Assert.AreEqual(AssemblyLineRowKind.Wallet, rows[0].Kind);
+            Assert.AreEqual("10 Scrap", rows[1].CostText, "its whole fixed price");
+        }
+
+        [Test]
+        public void WithNothingOnOffer_TheRowSaysHowMoreUnlock()
+        {
+            var board = new AssemblyLineBoard(new AssemblyLineState(), new StorageBufferRegistry(), Wallet);
+            AssemblyLineRow row = board.Rows().Single(r => r.Kind == AssemblyLineRowKind.EmptySlot);
+            Assert.AreEqual(AssemblyLineBoard.NothingToClaim, row.Text);
+            Assert.IsNull(row.ButtonLabel);
+        }
+
+        [Test]
+        public void TheGuidesCard_IsListedFirst()
+        {
+            var line = new AssemblyLineState();
+            DraftableCardDefinition a = new DraftableCardDefinition { name = "A", appendage = new AppendageActionDefinition { name = "A" } };
+            DraftableCardDefinition b = new DraftableCardDefinition { name = "B", appendage = new AppendageActionDefinition { name = "B" } };
+            line.SeedCandidates(new[] { a, b });
+            var board = new AssemblyLineBoard(line, new StorageBufferRegistry(), Wallet);
+            board.ConfigureWanted(c => c == b);
+
+            CollectionAssert.AreEqual(new[] { b, a }, board.Rows().Where(r => r.Kind == AssemblyLineRowKind.Slot).Select(r => r.Card));
         }
 
         // The header used to read "Wallet: 7 Scrap (ScrapBuffer)": a buffer id shown to the
@@ -62,7 +83,7 @@ namespace GolemFactory.Tests.UI
         [Test]
         public void TheHeader_AddsThePost_OnceOneExists()
         {
-            var line = new AssemblyLineState(3);
+            var line = new AssemblyLineState();
             var buffers = new StorageBufferRegistry();
             bool postBuilt = false;
             var board = new AssemblyLineBoard(line, buffers, Wallet, postBufferId: "PostStore");
@@ -97,7 +118,7 @@ namespace GolemFactory.Tests.UI
         {
             var (board, _, _) = Build();
 
-            board.Claim(ClaimRow(board).SlotIndex);
+            board.Claim(ClaimRow(board).Card);
 
             // The refusal names the PRICE, not just the fact of it.
             StringAssert.Contains("Cannot afford", board.Status);
@@ -106,15 +127,16 @@ namespace GolemFactory.Tests.UI
         }
 
         [Test]
-        public void ClaimButton_SufficientFunds_WithdrawsAndRefillsSlot()
+        public void ClaimButton_SufficientFunds_WithdrawsAndTheRowGoes()
         {
             var (board, _, buffers) = Build();
             buffers.Deposit(Wallet, ItemType.Scrap, 10);
 
-            Assert.IsTrue(board.Claim(ClaimRow(board).SlotIndex));
+            Assert.IsTrue(board.Claim(ClaimRow(board).Card));
 
             Assert.AreEqual(0, buffers.GetQuantity(Wallet, ItemType.Scrap));
             Assert.IsTrue(board.Status.StartsWith("Claimed"));
+            Assert.IsFalse(board.Rows().Any(r => r.ButtonLabel == "Claim"), "claimed once and gone");
         }
     }
 }

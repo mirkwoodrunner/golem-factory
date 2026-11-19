@@ -89,7 +89,7 @@ As built, which differs from `progression-design.md` §2 only where §14 of that
 | Steam burn | 1 Coke per working golem per 200 ticks = **3 Coke/min** | `Steam/SteamNetwork.TicksPerCokePerPoweredGolem` |
 | Crank time | `durationTicks × 100 / SpeedPercent` = 2 × the recipe | `Buildings/HandCrankRules.CrankTicks`, `SpeedPercent` = 50 |
 | Hand harvest | 1 at once, then one per 0.15 s after 0.35 s held: ~6.7/s | `PlayerInteractor.HarvestRepeatDelay`, `HarvestRepeatInterval` |
-| Claim decay | price × max(0.25, 1 − 0.01 × seconds on the line) | `AssemblyLineState`, card `decayFractionPerSecond`, `minCostFraction` |
+| Claim price | the card's whole `claimCost`, never less (decay cut 2026-11-19) | `AssemblyLineState.PriceOf` |
 | Tower progress | per tick, min over lines of clamp(effective ÷ demand, 0, 3), 0 if a meter is empty | `ClockTower/ClockTowerSite.Evaluate` |
 | Supply meter | +1 per unit delivered, −demand/60 per second, clamped to [0, 60] | `ClockTower/SupplyPressureMeter` |
 | Orders per minute | Σ over raw goods of raw demand ÷ truckload size (§4.2) | new, §15.5 |
@@ -342,8 +342,9 @@ free cards (Extract, Haul, Push, Repeat, Freight Launch): claimCost [], baseCost
 | `Card_BrassPresser` | 15 Scrap + 5 Iron Plate + 2 Gear | 15 Scrap + **2 Iron Plate + 1 Gear** | The formula, at the new Presser price |
 | `Card_RepeatAssembly` | `prerequisiteItemProduced` "" | **"Mainspring"** | A free, cycling card no chassis before the Overclocker can hold; today it is the deck's fourth card, so it is the first refill into a slot from chapter 2 on, offering nothing [M: it showed through chapter 1, §18 M6] |
 | Every other card | | keep | They follow the formula |
-| Decay | `decayFractionPerSecond` 0.01, `minCostFraction` 0.25 (all cards) | keep | A card reaches its floor after 75 s on the line |
-| `baseCost`, `decayPerSecond`, `minCost` | 20, 1, 2 (legacy Scrap price) | keep | Unread where `claimCost` is set (`HasBundleCost`) |
+| Decay | `decayFractionPerSecond` 0.01, `minCostFraction` 0.25 (all cards) | **cut 2026-11-19** | Every card costs its whole price; the keys are gone from the data |
+| `baseCost`, `decayPerSecond`, `minCost` | 20, 1, 2 (legacy Scrap price) | **cut 2026-11-19** | Unread where `claimCost` is set; gone with the decay |
+| `Card_FreightLaunch` | no prerequisite | **`prerequisiteCards`: the Zeppelin's card** (2026-11-19) | With every card on offer at once, a free Zeppelin verb would have shown from chapter 1 |
 
 ## 10. The Clock Tower
 

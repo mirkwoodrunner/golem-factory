@@ -23,7 +23,8 @@ Every change to the guide keeps these (root `CLAUDE.md`; `crates-design.md` §8)
    `TutorialPanel.Dock(true)`, `Crate` steps in the usual dock. The Workbench dock must also stay
    clear of the hint's outlines (`onboarding-feedback-design.md` §8, `tutorial`).
 6. **A step that wants a card claimed names it** (`TutorialStep.Card`), and the Assembly Line
-   keeps it on show (`AssemblyLineState.Wanted`).
+   tab lists it first (`AssemblyLineBoard.ConfigureWanted`; every card is on offer at once since
+   2026-11-19).
 7. **A program step names its program once** (`TutorialStep.Program`, new): the Workbench hint
    shows it, the kit performs it, and its `Matches` is the step's `Done`
    (`onboarding-feedback-design.md` §2.1).

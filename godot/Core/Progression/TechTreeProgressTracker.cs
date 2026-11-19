@@ -107,17 +107,13 @@ namespace GolemFactory.Progression
 
         public void Poll()
         {
-            int before = Ledger.Version;
             SweepBuffers();
             SweepChassis();
             SweepBuildings();
             SweepClockTower();
             SweepClaimedCards();
-
-            if (Ledger.Version != before && assemblyLine != null)
-            {
-                assemblyLine.PromoteUnlockedCards();
-            }
+            // The Assembly Line asks the Ledger live (AssemblyLineState.IsUnlocked), so a newly
+            // seen good offers its cards at once: nothing to promote.
         }
 
         private void SweepClaimedCards()

@@ -225,7 +225,7 @@ namespace GolemFactory.Tutorial
 
         /// <summary>
         /// The card the current step asks the player to claim (by its appendage), or null. The
-        /// Assembly Line keeps it on show.
+        /// Assembly Line tab lists it first.
         /// </summary>
         public string WantedCardAppendage => IsShowing || KitRunning ? Current?.Card : null;
 
@@ -1033,20 +1033,9 @@ namespace GolemFactory.Tutorial
 
         private bool IsCoker(GolemEntity golem) => CokerPlan.Matches(golem.Program);
 
-        /// <summary>
-        /// What claiming a card costs in one good right now: its slot's current price if the line
-        /// shows it (prices decay), else the card's full claimCost.
-        /// </summary>
+        /// <summary>What claiming a card costs in one good: the card's whole claimCost, which never changes.</summary>
         private int ClaimCost(string card, string item)
         {
-            AssemblyLineState line = _world.AssemblyLine;
-            for (int i = 0; line != null && i < line.SlotCount; i++)
-            {
-                if (CardKey(line.GetCard(i)) == card)
-                {
-                    return line.GetCurrentCostBundle(i).Where(c => c.itemType == item).Sum(c => c.quantity);
-                }
-            }
             string deck = _world.Setup?.assemblyLine?.deck;
             DraftableCardDefinition def = deck != null && _world.Definitions.Decks.TryGetValue(deck, out DraftableCardCatalog catalog)
                 ? catalog.Cards.FirstOrDefault(c => CardKey(c) == card)

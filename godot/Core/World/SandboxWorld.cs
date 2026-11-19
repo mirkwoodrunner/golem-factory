@@ -337,10 +337,7 @@ namespace GolemFactory.World
                 Tutorial = new Tutorial.TutorialGuide(this);
                 // The Workbench's next-drag hint follows the guide's program plans.
                 Workbench.HintSource = Tutorial.PlanFor;
-                if (AssemblyLine != null)
-                {
-                    AssemblyLine.Wanted = card => card != null && GolemFactory.Tutorial.TutorialGuide.CardKey(card) == Tutorial.WantedCardAppendage;
-                }
+                AssemblyLineBoard?.ConfigureWanted(card => card != null && GolemFactory.Tutorial.TutorialGuide.CardKey(card) == Tutorial.WantedCardAppendage);
                 if (setup.playtest)
                 {
                     Tutorial.AttachPlaytest(new Tutorial.PlaytestSession(), () => _realSeconds);
@@ -380,13 +377,9 @@ namespace GolemFactory.World
 
             _deck = deck;
             _claimUserId = setup.claimUserId;
-            AssemblyLine = new AssemblyLineState(setup.slots);
+            AssemblyLine = new AssemblyLineState();
             AssemblyLine.ConfigureUnlockContext(itemType => TechTree.Ledger.HasItem(itemType));
-            // The opening hand BEFORE the deck. The line skips a card its player already owns
-            // only when it fills a slot, so seeding first filled all three slots with the
-            // opening verbs -- free to claim, buying nothing -- and no real card appeared until
-            // the player had cleared them. (Unity's SandboxBootstrap had the same order; fixed
-            // in the port at the user's call.) The unlock context is still wired first.
+            // The opening hand: the movement verbs, held from the first minute.
             foreach (DraftableCardDefinition card in deck.OpeningHand)
             {
                 AssemblyLine.GrantClaim(setup.claimUserId, card);
@@ -627,8 +620,18 @@ namespace GolemFactory.World
         /// The Ledger's recipe pane (G10: on the world rather than the tab, so the guide can see a
         /// recipe was opened). The Godot Ledger tab draws this one.
         /// </summary>
-        public TechTreeReadout LedgerReadout =>
-            _ledgerReadout ??= new TechTreeReadout(Definitions.Recipes.Values.ToList(), Throughput, ProductionTally.SeriesId, Clock.TicksPerSecond);
+        public TechTreeReadout LedgerReadout
+        {
+            get
+            {
+                if (_ledgerReadout == null)
+                {
+                    _ledgerReadout = new TechTreeReadout(Definitions.Recipes.Values.ToList(), Throughput, ProductionTally.SeriesId, Clock.TicksPerSecond);
+                    _ledgerReadout.ConfigureUnlocks(AssemblyLine, AssemblyLineBoard);
+                }
+                return _ledgerReadout;
+            }
+        }
 
         private TechTreeReadout _ledgerReadout;
 
@@ -1454,7 +1457,6 @@ namespace GolemFactory.World
                 FillPack();
             }
             Alerts?.Update(seconds);
-            AssemblyLine?.Tick(seconds);
             TechTree.Update(_realSeconds);
             // After the Ledger's poll, so a contract posts the frame its good is first seen; and
             // every frame, so goods put in by hand count while the clock is paused.

@@ -342,9 +342,7 @@ namespace GolemFactory.Nodes.Scenarios
                 Give(ItemType.Scrap, 200);
                 for (int attempt = 0; attempt < 6 && !_world.AssemblyLine.GetClaimedCards("LocalPlayer").Any(c => c.appendage?.name == "AssembleScrapReclamation"); attempt++)
                 {
-                    int slot = Enumerable.Range(0, _world.AssemblyLine.SlotCount)
-                        .FirstOrDefault(i => _world.AssemblyLine.GetCard(i)?.appendage?.name == "AssembleScrapReclamation");
-                    _world.AssemblyLineBoard.Claim(slot);
+                    _world.AssemblyLineBoard.Claim(_world.AssemblyLine.Offers.FirstOrDefault(c => c.appendage?.name == "AssembleScrapReclamation"));
                 }
                 return _world.StarterStation.TryConstructGolem(_world.Definitions.Chassis["BrassPresser"], out _) ? null : "no Presser";
             });
@@ -391,16 +389,14 @@ namespace GolemFactory.Nodes.Scenarios
             Do("its first Iron Plate opens chapter 3", () => _panel.TitleText == "Claim Coking" ? null : Wait);
             Do("claim Coking, build a second Presser and the coal line's boiler", () =>
             {
-                // No fallback slot: a missing Coking card must fail HERE, naming itself, rather than
-                // buy whatever sits in slot 0 and fail a step later as "on 'Claim Coking'".
-                int slot = Enumerable.Range(0, _world.AssemblyLine.SlotCount)
-                    .Where(i => _world.AssemblyLine.GetCard(i)?.appendage?.name == "AssembleCoking")
-                    .DefaultIfEmpty(-1).First();
-                if (slot < 0)
+                // A missing Coking card must fail HERE, naming itself, rather than fail a step later
+                // as "on 'Claim Coking'".
+                var coking = _world.AssemblyLine.Offers.FirstOrDefault(c => c.appendage?.name == "AssembleCoking");
+                if (coking == null)
                 {
-                    return "Coking is not on show";
+                    return "Coking is not offered";
                 }
-                if (!_world.AssemblyLineBoard.Claim(slot))
+                if (!_world.AssemblyLineBoard.Claim(coking))
                 {
                     return "the Coking claim was refused: " + _world.AssemblyLineBoard.Status;
                 }

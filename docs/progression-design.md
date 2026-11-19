@@ -61,7 +61,7 @@ Verified against live code, not docs.
 | Spatial routing | `BeginSpatialTransfer` — **Haul, ExtractFromNode and LoadIntoBuffer are literally the same code path** ("Every spatially routed action reduces to the same physical verb"). `Refine` is **explicitly exempt**: the source comment states that routing it spatially "would let it grab the wrong input off a mixed buffer and silently transmute it… until `IItemEndpoint` grows a typed take." |
 | `StorageBuffer` | **No capacity model at all.** `Deposit` always succeeds; `CanGive()` is unconditionally `true`. |
 | `ChassisDefinition.tier` | Field exists. Nothing reads it. |
-| `AssemblyLineState` | Fully implemented cycling draft with cost decay. **Gates nothing** (deferred in M9). |
+| `AssemblyLineState` | Fully implemented cycling draft with cost decay. **Gates nothing** (deferred in M9). *(Since 2026-11-19 a list of direct unlocks, §8.)* |
 | `AssemblyBayStructure` | `MaxGolemSlots` + `TryUpgrade` implemented. **Not in the loop.** |
 | `FloorLayout` | `public const int HalfExtent = 12` → a **25 × 25** floor. Read by `PlayerController.ClampToFloor` at runtime and by `SandboxFloorGenerator`, which is **Editor-only**. |
 | `BeltPlacementRules.ShouldLink` | **Directional** — requires `TargetCell(from, facing) == to` and rejects head-on pairs. |
@@ -614,6 +614,13 @@ condition." The Clock Tower is a win, not a game-over.
 ---
 
 ## 8. Unlock and gating mechanism
+
+> **Changed 2026-11-19 (the user's call): the draft row is gone.** Every card whose prerequisites
+> hold is offered at once, at its whole fixed price, claimed once, from the Assembly Line tab or
+> its plaque in the Ledger. The slots, the refill queue, cost decay and `isUnique` are cut: solo,
+> no rival could take a card, so waiting for decay was always right, and the player could not
+> choose what to unlock next (three playtest fixes had already bent the row toward a tree). Changes
+> 1–3 below stand; 4 and the decay paragraph are history.
 
 **Use `AssemblyLineState`.** This is the exact follow-up M9 deferred, and the system already has
 cost decay, claiming and drip-feed refill, all tested. Four changes:

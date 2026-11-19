@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using GolemFactory.AssemblyLine;
 using GolemFactory.Buildings;
 using GolemFactory.Data;
 using GolemFactory.Economy;
@@ -142,10 +143,9 @@ namespace GolemFactory.Tests.Tutorial
             var claimed = new System.Collections.Generic.List<string>();
             for (int attempt = 0; attempt < 30 && StepId(world) == "claim"; attempt++)
             {
-                int slot = Enumerable.Range(0, world.AssemblyLine.SlotCount)
-                    .FirstOrDefault(i => world.AssemblyLine.GetCard(i)?.appendage?.name == "AssembleScrapReclamation");
-                claimed.Add(world.AssemblyLine.GetCard(slot)?.name);
-                Assert.IsTrue(world.AssemblyLineBoard.Claim(slot), world.AssemblyLineBoard.Status + " after " + string.Join(", ", claimed)
+                var offered = world.AssemblyLine.Offers.FirstOrDefault(c => c.appendage?.name == "AssembleScrapReclamation");
+                claimed.Add(offered?.name);
+                Assert.IsTrue(world.AssemblyLineBoard.Claim(offered), world.AssemblyLineBoard.Status + " after " + string.Join(", ", claimed)
                     + " | waiting: " + string.Join(", ", world.AssemblyLine.WaitingCards.Select(c => c.name)));
             }
             Assert.AreEqual(1, claimed.Count, "Scrap Reclamation is on show without claiming anything else: " + string.Join(", ", claimed));
@@ -181,10 +181,9 @@ namespace GolemFactory.Tests.Tutorial
                 $"the Presser's first cycle ends chapter 2 (presser {presser.Program.State}, {presser.StallReason} {presser.StallResourceId})");
 
             // --- Chapter 3: the Coke line -------------------------------------------------------
-            int cokingSlot = Enumerable.Range(0, world.AssemblyLine.SlotCount)
-                .FirstOrDefault(i => world.AssemblyLine.GetCard(i)?.appendage?.name == "AssembleCoking");
-            Assert.AreEqual("AssembleCoking", world.AssemblyLine.GetCard(cokingSlot)?.appendage?.name, "Coking is on show");
-            Assert.IsTrue(world.AssemblyLineBoard.Claim(cokingSlot), world.AssemblyLineBoard.Status);
+            var coking = world.AssemblyLine.Offers.FirstOrDefault(c => c.appendage?.name == "AssembleCoking");
+            Assert.AreEqual("AssembleCoking", coking?.appendage?.name, "Coking is offered");
+            Assert.IsTrue(world.AssemblyLineBoard.Claim(coking), world.AssemblyLineBoard.Status);
             Assert.AreEqual("presser2", StepId(world));
 
             Give(world, ItemType.Scrap, 200);
@@ -272,9 +271,8 @@ namespace GolemFactory.Tests.Tutorial
             Give(world, ItemType.IronPlate, 200);
             Give(world, ItemType.Gear, 60);
             Give(world, ItemType.Coke, 120);
-            int r4 = Enumerable.Range(0, world.AssemblyLine.SlotCount)
-                .FirstOrDefault(i => world.AssemblyLine.GetCard(i)?.appendage?.name == "AssembleIronSmelting");
-            Assert.AreEqual("AssembleIronSmelting", world.AssemblyLine.GetCard(r4)?.appendage?.name, "Iron Smelting is on show");
+            var r4 = world.AssemblyLine.Offers.FirstOrDefault(c => c.appendage?.name == "AssembleIronSmelting");
+            Assert.AreEqual("AssembleIronSmelting", r4?.appendage?.name, "Iron Smelting is offered");
             Assert.IsTrue(world.AssemblyLineBoard.Claim(r4), world.AssemblyLineBoard.Status);
             Assert.AreEqual("hauler", StepId(world));
 
@@ -489,16 +487,16 @@ namespace GolemFactory.Tests.Tutorial
                 }
                 Assert.AreEqual(step, StepId(world));
                 var line = world.AssemblyLine;
-                int slot = Enumerable.Range(0, line.SlotCount).FirstOrDefault(i => line.GetCard(i)?.appendage?.name == card, -1);
-                Assert.GreaterOrEqual(slot, 0, $"{step}: {card} is on the line");
+                var offered = line.Offers.FirstOrDefault(c => c.appendage?.name == card);
+                Assert.IsNotNull(offered, $"{step}: {card} is offered");
                 Give(world, ItemType.Scrap, 100);
                 Give(world, ItemType.IronPlate, 100);
                 Give(world, ItemType.Gear, 50);
-                foreach (var cost in line.GetCurrentCostBundle(slot))
+                foreach (var cost in AssemblyLineState.PriceOf(offered))
                 {
                     Give(world, cost.itemType, cost.quantity);
                 }
-                Assert.IsTrue(world.AssemblyLineBoard.Claim(slot), $"{step}: claimed {card}");
+                Assert.IsTrue(world.AssemblyLineBoard.Claim(offered), $"{step}: claimed {card}");
                 Give(world, good, 10);
                 for (int frame = 0; frame < 60; frame++) // the tech tree polls the stockpile, not every frame
                 {
@@ -509,25 +507,21 @@ namespace GolemFactory.Tests.Tutorial
 
             // --- Chapter 9: the Zeppelin --------------------------------------------------------------
             var zline = world.AssemblyLine;
-            int zslot = Enumerable.Range(0, zline.SlotCount).FirstOrDefault(i => zline.GetCard(i)?.chassis?.name == "ZeppelinFreightLoader", -1);
-            Assert.GreaterOrEqual(zslot, 0, "the Zeppelin's card is on the line");
-            foreach (var cost in zline.GetCurrentCostBundle(zslot))
+            var zcard = zline.Offers.FirstOrDefault(c => c.chassis?.name == "ZeppelinFreightLoader");
+            Assert.IsNotNull(zcard, "the Zeppelin's card is offered");
+            foreach (var cost in AssemblyLineState.PriceOf(zcard))
             {
                 Give(world, cost.itemType, cost.quantity);
             }
-            Assert.IsTrue(world.AssemblyLineBoard.Claim(zslot));
+            Assert.IsTrue(world.AssemblyLineBoard.Claim(zcard));
             Assert.AreEqual("freight-card", StepId(world));
 
             // The Workbench offers only owned cards from its roster: Freight Launch must be both,
             // or the Zeppelin can never be programmed by hand (it once was neither).
             Assert.IsFalse(world.Workbench.VaultAppendages.Any(a => a.name == "FreightLaunch"), "precondition: not owned yet");
-            for (int frame = 0; frame < 3; frame++)
-            {
-                world.Advance(1f / 30f); // the line rebalances on its tick
-            }
-            int launchSlot = Enumerable.Range(0, zline.SlotCount).FirstOrDefault(i => zline.GetCard(i)?.appendage?.name == "FreightLaunch", -1);
-            Assert.GreaterOrEqual(launchSlot, 0, "the guide keeps Freight Launch on show");
-            Assert.IsTrue(world.AssemblyLineBoard.Claim(launchSlot), world.AssemblyLineBoard.Status);
+            var launch = zline.Offers.FirstOrDefault(c => c.appendage?.name == "FreightLaunch");
+            Assert.IsNotNull(launch, "Freight Launch is offered");
+            Assert.IsTrue(world.AssemblyLineBoard.Claim(launch), world.AssemblyLineBoard.Status);
             Assert.IsTrue(world.Workbench.VaultAppendages.Any(a => a.name == "FreightLaunch"), "claimed, the vault offers it");
             Assert.AreEqual("zeppelin", StepId(world));
 
@@ -586,18 +580,18 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual("frame-section", StepId(world));
 
             var fline = world.AssemblyLine;
-            int fslot = -1;
-            for (int frame = 0; frame < 60 && fslot < 0; frame++)
+            DraftableCardDefinition fcard = null;
+            for (int frame = 0; frame < 60 && fcard == null; frame++)
             {
                 world.Advance(1f / 30f);
-                fslot = Enumerable.Range(0, fline.SlotCount).FirstOrDefault(i => fline.GetCard(i)?.appendage?.name == "AssembleFrameSection", -1);
+                fcard = fline.Offers.FirstOrDefault(c => c.appendage?.name == "AssembleFrameSection");
             }
-            Assert.GreaterOrEqual(fslot, 0, "the Frame Section card is on the line");
-            foreach (var cost in fline.GetCurrentCostBundle(fslot))
+            Assert.IsNotNull(fcard, "the Frame Section card is offered");
+            foreach (var cost in AssemblyLineState.PriceOf(fcard))
             {
                 Give(world, cost.itemType, cost.quantity);
             }
-            Assert.IsTrue(world.AssemblyLineBoard.Claim(fslot));
+            Assert.IsTrue(world.AssemblyLineBoard.Claim(fcard));
             Give(world, ItemType.FrameSection, 1);
             for (int frame = 0; frame < 60; frame++)
             {

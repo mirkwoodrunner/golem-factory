@@ -156,12 +156,13 @@ namespace GolemFactory.Nodes.Scenarios
             AppendageActionDefinition card = _world.Definitions.Appendages["PushOutput"];
             Expect(AudioRules.CardSnap, () => bench.HandleDrop(WorkbenchCardRef.FromVault(card), WorkbenchZone.Socket(1)), "a card dropped in a socket");
 
-            if (_world.AssemblyLine != null && _world.AssemblyLine.GetCard(0) != null)
+            GolemFactory.AssemblyLine.DraftableCardDefinition offer = _world.AssemblyLine?.Offers.FirstOrDefault();
+            if (offer != null)
             {
-                EndgameLoad.Grant(_world, _world.AssemblyLine.GetCurrentCostBundle(0));
+                EndgameLoad.Grant(_world, GolemFactory.AssemblyLine.AssemblyLineState.PriceOf(offer));
                 Expect(AudioRules.Claim, () =>
                 {
-                    if (!_world.AssemblyLineBoard.Claim(0))
+                    if (!_world.AssemblyLineBoard.Claim(offer))
                     {
                         _problems.Add("Claim refused: " + _world.AssemblyLineBoard.Status);
                     }

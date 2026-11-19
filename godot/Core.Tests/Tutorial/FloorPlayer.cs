@@ -332,15 +332,8 @@ namespace GolemFactory.Tests.Tutorial
 
         private IEnumerable<RecipeIngredient> CardCost(string card)
         {
-            AssemblyLineState line = _w.AssemblyLine;
-            for (int i = 0; i < line.SlotCount; i++)
-            {
-                if (TutorialGuide.CardKey(line.GetCard(i)) == card)
-                {
-                    return line.GetCurrentCostBundle(i).ToList();
-                }
-            }
-            return Enumerable.Empty<RecipeIngredient>();
+            DraftableCardDefinition offered = _w.AssemblyLine.Offers.FirstOrDefault(c => TutorialGuide.CardKey(c) == card);
+            return offered == null ? Enumerable.Empty<RecipeIngredient>() : AssemblyLineState.PriceOf(offered).ToList();
         }
 
         private static int Line(IEnumerable<RecipeIngredient> cost, string good) => cost.Where(c => c.itemType == good).Sum(c => c.quantity);
@@ -993,16 +986,14 @@ namespace GolemFactory.Tests.Tutorial
             {
                 return;
             }
-            for (int i = 0; i < line.SlotCount; i++)
+            DraftableCardDefinition offered = line.Offers.FirstOrDefault(c => c.appendage?.recipe == recipe);
+            if (offered != null)
             {
-                if (line.GetCard(i)?.appendage?.recipe == recipe)
-                {
-                    AcquireAll(line.GetCurrentCostBundle(i).ToList());
-                    Assert.IsTrue(_w.AssemblyLineBoard.Claim(i), _w.AssemblyLineBoard.Status);
-                    return;
-                }
+                AcquireAll(AssemblyLineState.PriceOf(offered).ToList());
+                Assert.IsTrue(_w.AssemblyLineBoard.Claim(offered), _w.AssemblyLineBoard.Status);
+                return;
             }
-            // Not on show: paid at its full price, as the line would ask once it came round.
+            // Not offered yet (its goods unseen): paid at its full price, as the line asks once it is.
             DraftableCardDefinition card = _w.Definitions.Decks[_w.Setup.assemblyLine.deck].Cards.First(c => c.appendage?.recipe == recipe);
             AcquireAll(card.claimCost);
             foreach (RecipeIngredient c in card.claimCost)
