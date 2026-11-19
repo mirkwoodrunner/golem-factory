@@ -482,7 +482,7 @@ Factorio's breadth.
    up), and its lower panel between the alerts and the market, every cart with its stock and
    its goods in and out a minute.
 1. **City contracts** (decision 12): requests that fill the gaps between tower stages, and give
-   the Artificer's flexible half of the tabletop design a job. Open-ended, with a bonus for
+   the Artificer's flexible half of the game a job. Open-ended, with a bonus for
    speed (decision 13). **Done (2026-11-07):** first the tower's fresh-production rule went, so
    any delivered good counts there (`contracts-design.md` §11). Then the City Office went up
    beside the tower: eighteen contracts in `data/contracts.json`, one at a time, opening with

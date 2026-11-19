@@ -38,8 +38,8 @@ namespace GolemFactory.AssemblyLine
         public List<RecipeIngredient> claimCost = new List<RecipeIngredient>();
 
         // Fraction of the whole bundle removed per second the card sits unclaimed. Decay scales
-        // every good in it, so a bundle gets cheaper the way a Scrap price did -- the tabletop's
-        // take-it-now-or-wait tension, unchanged.
+        // every good in it, so a bundle gets cheaper the way a Scrap price did: take it now, or
+        // wait for it to get cheaper.
         public float decayFractionPerSecond = 0.01f;
 
         // "Floor, as a fraction of the authored bundle. A card never becomes free."

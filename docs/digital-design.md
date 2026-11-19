@@ -2,10 +2,8 @@
 
 ## Relationship to the other docs
 
-- `docs/game-design.md` is the original tabletop concept (spiral Time Track, Brass
-  Cog triggers, physical punch-card tiles).
-- `docs/history/unity-implementation-plan.md` is the solo-digital architecture/milestone plan
-  derived from it.
+- `docs/game-design.md` is the core concept: the loop, golems and the punch-card model.
+- `docs/history/unity-implementation-plan.md` is the Unity-era architecture/milestone plan.
 - This doc captures three settled design decisions for the digital version that
   sharpen or supersede earlier calls: the **visual style**, the **concrete golem
   roster**, and the **programming interface**. It does not introduce new mechanics —
@@ -16,7 +14,7 @@
 
 - **Gameplay loop**: the deep logistical engineering of Factorio/Satisfactory —
   physical resource lines, machine building, automation via the golem/punch-card
-  system — not the abstracted or turn-based feel of the board game.
+  system.
 - **Superseded (2026-10-18): the game is top-down, and that is final** (`docs/roadmap.md`,
   decision 2). The isometric call below, and its follow-up at the end of this doc, were an older
   version. The rest of the aesthetic (cozy, warm wood and brass) stands.
@@ -53,7 +51,7 @@ than adapts) is identical for all five.
 - **Fully linear actions.** A golem pulls from a designated **Source** tile
   (behind/beside it) and pushes to a **Target** tile (in front of it), both determined
   by its fixed facing. This is the spatial implementation of the "golems cannot pivot"
-  rigidity rule from the tabletop design.
+  rigidity rule in `game-design.md`.
 
 ## The Programming Interface: Menu-Based Punch Card System
 

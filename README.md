@@ -1,6 +1,6 @@
 # golem-factory
 
-Prototyping an automation game that could be implemented as either a video game or board game.
+A prototype of a cozy, top-down factory-automation game.
 
 You play an Artificer who builds and programs clockwork **golems**: rigid, automated workers
 that harvest resources, refine them, and haul them around a workshop floor. You don't control

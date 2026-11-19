@@ -7,13 +7,12 @@ invariants first; §12 records what the build decided.
 ## What's already decided
 
 - **Roadmap decision 12:** city contracts come first among the depth additions, as requests that
-  fill the gaps between Clock Tower stages and give the Artificer's flexible half of the tabletop
-  design a job.
+  fill the gaps between Clock Tower stages and give the Artificer's flexible half of the game a
+  job.
 - **Roadmap decision 13:** contracts are **open-ended, with a bonus for finishing quickly**. A hard
   deadline fights the cozy tone.
-- **The tabletop design** (`game-design.md`): golems do rigid, automated logistics; Artificers do
-  the flexible work, "drafting components, filing patents, swapping golem parts, and fulfilling
-  contracts".
+- **The core concept** (`game-design.md`): golems do rigid, automated logistics; the Artificer does
+  the flexible work, including filling the city's contracts.
 - **`supply-design.md`:** a contract can grant a cart's next upgrade.
 
 **The user's calls (2026-11-06):**

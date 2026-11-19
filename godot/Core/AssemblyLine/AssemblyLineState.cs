@@ -7,12 +7,10 @@ using GolemFactory.PunchCards;
 
 namespace GolemFactory.AssemblyLine
 {
-    // Solo digital translation of the tabletop Assembly Line: a fixed number of slots,
-    // each holding a card that gets cheaper to draft the longer it sits unclaimed.
-    // Claiming refills that slot from a cycling candidate pool ("drip-feeds new unlocks
-    // over time" per the multiplayer-compatible-seams note in the implementation plan).
-    // TryClaimSlot is keyed by userId from day one, even though v1 only ever has one
-    // claimer -- same convention as PatentRegistry/Blueprint.
+    // The Assembly Line: a fixed number of slots, each holding a card that gets cheaper to
+    // claim the longer it sits unclaimed. Claiming refills that slot from a cycling candidate
+    // pool, so new unlocks drip-feed over time. TryClaimSlot is keyed by userId, the same
+    // ownership convention as Blueprint's OwnerId, even though only one claimer exists.
     public sealed class AssemblyLineState
     {
         private readonly DraftableCardDefinition[] _slots;

@@ -94,7 +94,7 @@ namespace GolemFactory.Tests.EditMode
             SaveLoadService.RestoreState(
                 data, new StorageBufferRegistry(), destPatents, new List<GolemEntity>(), catalog);
 
-            Assert.IsTrue(destPatents.TryUseBlueprint("BP-001", "LocalPlayer", out Blueprint restored));
+            Assert.IsTrue(destPatents.TryUseBlueprint("BP-001", out Blueprint restored));
             Assert.AreEqual(chassis, restored.Chassis);
             Assert.AreEqual(logicCore, restored.LogicCore);
             Assert.AreEqual(appendage, restored.Appendages[0]);
@@ -127,7 +127,7 @@ namespace GolemFactory.Tests.EditMode
             SaveLoadService.RestoreState(data, new StorageBufferRegistry(), destPatents, new List<GolemEntity>(),
                 new DefinitionCatalog(new[] { chassis }, new[] { core }, new[] { haul, push })); // no AssembleRenamed
 
-            Assert.IsTrue(destPatents.TryUseBlueprint("BP-001", "LocalPlayer", out Blueprint restored));
+            Assert.IsTrue(destPatents.TryUseBlueprint("BP-001", out Blueprint restored));
             Assert.AreEqual(haul, restored.Appendages[0]);
             Assert.AreEqual(ItemType.Coke, restored.ItemTypes[0], "the Haul keeps its good");
             Assert.AreEqual(3, restored.Quantities[0], "and its batch size");

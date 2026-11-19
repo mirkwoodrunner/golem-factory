@@ -5,9 +5,8 @@ using GolemFactory.Golems;
 
 namespace GolemFactory.Buildings
 {
-    // N golem mount slots -- the spatial translation of the tabletop Assembly Bay's tableau
-    // capacity (per game-design.md), and since §8 the CAP ON CONCURRENT GOLEMS: the
-    // construction station refuses to build past it.
+    // N golem mount slots (game-design.md, "Progression"), and since §8 the CAP ON CONCURRENT
+    // GOLEMS: the construction station refuses to build past it.
     //
     // §8's numbers, and the reasoning attached to each:
     //   * TEN slots to start, "above the natural Phase-2 count of ~8" -- the cap is meant to
