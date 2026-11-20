@@ -13,6 +13,10 @@ sets: the S1 golems (the Brass Presser 8f09b0e, then the Scavenger, Overclocker,
 Zeppelin), the Artificer kept and adjusted (S1b), floor and walls kept (S2), lighting (L), the
 buildings (S3), the Workbench (S4), goods (S5) and the HUD (S6); each approved by the user (§9).
 
+**For new art, read these first:** §2 (the per-set workflow), §3.2 (the Presser, the template),
+§3.3 (the rules the reviews taught), §5 (the tools) and §9 (the user's decisions). §1 is the
+before-Phase-4 snapshot and §4 the per-set inventory as planned, both history now.
+
 ## 1. Where things stand (measured 2026-10-22, at 8b3ec0b)
 
 ### 1.1 The art
