@@ -82,7 +82,7 @@ namespace GolemFactory.Nodes
             var b = new StringBuilder();
             foreach (AssemblyLineRow r in rows)
             {
-                b.Append(r.Kind).Append(r.Text).Append(r.CostText).Append(r.Affordable).Append('\n');
+                b.Append(r.Kind).Append(r.Text).Append(r.CostText).Append(r.Affordable).Append(r.VoucherButton).Append('\n');
             }
             return b.ToString();
         }
@@ -145,6 +145,27 @@ namespace GolemFactory.Nodes
                         break;
                 }
                 line.AddChild(button);
+            }
+
+            // The same step for a city voucher instead of goods (2026-11-19).
+            if (row.VoucherButton)
+            {
+                var voucher = new Button
+                {
+                    Name = "Voucher",
+                    CustomMinimumSize = new Vector2(74f, 24f),
+                    SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+                    FocusMode = Control.FocusModeEnum.None,
+                };
+                StyleBoxTexture face = Ugui.NineSlice("res://art/UI/Hud/hud_button.png", 8);
+                foreach (string state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
+                {
+                    voucher.AddThemeStyleboxOverride(state, face);
+                }
+                voucher.SelfModulate = new Color(0.78f, 0.92f, 1f);
+                voucher.AddChild(Ugui.Fill(Ugui.Text("Label", "Voucher", 13, Colors.Black, align: 2)));
+                voucher.Pressed += () => _board.PayWithVoucher(row);
+                line.AddChild(voucher);
             }
             return plate;
         }

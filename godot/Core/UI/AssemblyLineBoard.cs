@@ -53,6 +53,12 @@ namespace GolemFactory.UI
 
         /// <summary>The card a Slot row claims, or null.</summary>
         public DraftableCardDefinition Card;
+
+        /// <summary>
+        /// Whether the row also offers its purchase for a city voucher (a second button, "Voucher"):
+        /// the player holds one and the row could be bought (2026-11-19).
+        /// </summary>
+        public bool VoucherButton;
     }
 
     /// <summary>
@@ -122,6 +128,11 @@ namespace GolemFactory.UI
 
         public void ConfigurePackUpgrade(PackUpgradeService pack) => _pack = pack;
 
+        /// <summary>The city's vouchers, spent by each row's Voucher button; null offers none.</summary>
+        public void ConfigureVouchers(Contracts.CityVouchers vouchers) => _vouchers = vouchers;
+
+        private Contracts.CityVouchers _vouchers;
+
         /// <summary>
         /// Whether the factory has made a good (the Ledger). An Extend or Pack price naming one it
         /// hasn't reads "Requires: Brass", greyed (docs/pack-upgrades-design.md §0.11). Unset, all are seen.
@@ -143,12 +154,12 @@ namespace GolemFactory.UI
         {
             int pack = _buffers?.GetQuantity(_wallet, ItemType.Scrap) ?? 0;
             string line = "Pack: " + pack + " Scrap";
-            if (_post == null)
+            int post = _post == null ? 0 : _buffers?.GetQuantity(_post, ItemType.Scrap) ?? 0;
+            if (_post != null && (post > 0 || (_postShown?.Invoke() ?? false)))
             {
-                return line;
+                line += "  ·  Post: " + post + " Scrap";
             }
-            int post = _buffers?.GetQuantity(_post, ItemType.Scrap) ?? 0;
-            return post > 0 || (_postShown?.Invoke() ?? false) ? line + "  ·  Post: " + post + " Scrap" : line;
+            return _vouchers?.Any == true ? line + "  ·  " + Contracts.CityVouchers.Describe(_vouchers.Count) + " to spend" : line;
         }
 
         /// <summary>The status line under the rows: what the last action did, or why it could not.</summary>
@@ -269,6 +280,16 @@ namespace GolemFactory.UI
                     rows.Add(new AssemblyLineRow { Kind = AssemblyLineRowKind.More, Text = "... and " + (waiting.Count - shown) + " more further up the tree" });
                 }
             }
+            // A voucher buys any row's next step that goods could buy now (2026-11-19).
+            if (_vouchers?.Any == true)
+            {
+                foreach (AssemblyLineRow row in rows)
+                {
+                    row.VoucherButton = row.ButtonLabel != null && !row.CostText.StartsWith("Requires")
+                        && (row.Kind == AssemblyLineRowKind.Slot || row.Kind == AssemblyLineRowKind.Floor
+                            || row.Kind == AssemblyLineRowKind.Docks || row.Kind == AssemblyLineRowKind.Pack);
+                }
+            }
             return rows;
         }
 
@@ -308,6 +329,42 @@ namespace GolemFactory.UI
                 ? $"Cannot afford {name}: it costs {RecipeLedger.FormatBundle(price)}."
                 : $"{name} is still locked. Needs: {WorkbenchDiagnostics.Humanize(missing)}.";
             return false;
+        }
+
+        /// <summary>A row's Voucher button: its next step for one city voucher instead of goods.</summary>
+        public bool PayWithVoucher(AssemblyLineRow row)
+        {
+            if (row == null || _vouchers?.Any != true)
+            {
+                Status = "No vouchers to spend: the City Office pays them for contracts and golem orders.";
+                return false;
+            }
+            bool done;
+            switch (row.Kind)
+            {
+                case AssemblyLineRowKind.Slot:
+                    done = row.Card != null && _vouchers.TrySpend(() => _line.TryClaimFree(row.Card, _userId));
+                    Status = done ? $"Claimed {WorkbenchDiagnostics.Humanize(row.Card.DisplayName)} with a voucher." : "That card can't be claimed now.";
+                    if (done)
+                    {
+                        Claimed?.Invoke();
+                    }
+                    return done;
+                case AssemblyLineRowKind.Floor:
+                    done = _floor != null && _vouchers.TrySpend(() => _floor.TryPurchaseExpansion(free: true));
+                    Status = done ? "Extended with a voucher." : _floor?.LastStatusMessage ?? "";
+                    return done;
+                case AssemblyLineRowKind.Docks:
+                    done = _docks != null && _vouchers.TrySpend(() => _docks.TryPurchase(free: true));
+                    Status = done ? "Extended with a voucher." : _docks?.LastStatusMessage ?? "";
+                    return done;
+                case AssemblyLineRowKind.Pack:
+                    done = _pack != null && _vouchers.TrySpend(() => _pack.TryUpgrade(free: true));
+                    Status = done ? "Upgraded with a voucher." : _pack?.LastStatusMessage ?? "";
+                    return done;
+                default:
+                    return false;
+            }
         }
 
         public bool ExtendFloor()

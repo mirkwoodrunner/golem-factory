@@ -206,9 +206,9 @@ Current scenarios:
   opens. Slag seen, the first contract posts and the rope comes down; E opens the notice (no
   id drawn) and a click takes it, the bonus counting down in plain words, the HUD and the
   prompt showing it. I opens the office's crate: a click puts one Iron Plate in, a Shift-click
-  all the pack holds; a golem hauling from a depot fills the rest within par. The reward is in
-  the pack, the bonus rung on the shelf; a Coal cart added, a click on the notice gives it the
-  rung for nothing. The next contract posts and is taken, five delivered, saved to Slot 1,
+  all the pack holds; a golem hauling from a depot fills the rest within par. The reward and the
+  bonus are two vouchers, nothing on the shelf; Tab, the Assembly Line tab and a click on the first
+  row's Voucher buy its step for no goods; E reopens the notice. The next contract posts and is taken, five delivered, saved to Slot 1,
   five more, loaded with two clicks: five again. Captures `contracts-roped`,
   `contracts-office`, `contracts-notice`, `contracts-taken`, `contracts-reward`,
   `contracts-next`.
@@ -236,7 +236,7 @@ Current scenarios:
   it, gone for good with the hands empty and the HUD counting one. E empty-handed opens the notice
   with the order (no id drawn). A Golem Foundry fed by a golem hauling Scrap from a kept-stocked
   depot builds and ships Scavengers, its prompt and I's Crate screen saying so, its golems never
-  in the world; the order completes, its reward in the pack, the next posted, and the running
+  in the world; the order completes, a voucher paid, the next posted, and the running
   totals count the golems sold. Saved to Slot 1 mid-build, the Foundry demolished, loaded with
   two clicks: the Foundry, its build and the order as saved. Captures `sales-office`,
   `sales-notice`, `sales-foundry`, `sales-foundry-intake`.

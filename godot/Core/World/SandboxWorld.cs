@@ -68,6 +68,12 @@ namespace GolemFactory.World
         public ClockTowerSiteHolder ClockTower { get; } = new ClockTowerSiteHolder();
         public NodeExtractorRegistry ExtractorCap { get; } = new NodeExtractorRegistry();
         public AssemblyBayStructure AssemblyBay { get; } = new AssemblyBayStructure();
+
+        /// <summary>
+        /// The city's vouchers: what contracts and golem orders pay (2026-11-19), each the next step
+        /// of any upgrade or unlock, spent on the Assembly Line tab or at a cart.
+        /// </summary>
+        public CityVouchers Vouchers { get; } = new CityVouchers();
         public BuildModeController Build { get; } = new BuildModeController();
         public FloorExpansionService FloorExpansion { get; } = new FloorExpansionService();
 
@@ -85,7 +91,7 @@ namespace GolemFactory.World
         public SupplyStreet Supply { get; private set; }
 
         /// <summary>The cart panel's rules (docs/supply-design.md §2).</summary>
-        public SupplyPanel SupplyPanel => _supplyPanel ??= new SupplyPanel(Supply, () => Wallet, item => TechTree.Ledger.HasItem(item));
+        public SupplyPanel SupplyPanel => _supplyPanel ??= new SupplyPanel(Supply, () => Wallet, item => TechTree.Ledger.HasItem(item)) { Vouchers = Vouchers };
         private SupplyPanel _supplyPanel;
 
         /// <summary>The City Office's notice: its lines and rows, and what a click does.</summary>
@@ -400,6 +406,7 @@ namespace GolemFactory.World
             AssemblyLineBoard.ConfigureFloorExpansion(FloorExpansion);
             AssemblyLineBoard.ConfigureDocks(DocksExpansion);
             AssemblyLineBoard.ConfigurePackUpgrade(PackUpgrade);
+            AssemblyLineBoard.ConfigureVouchers(Vouchers);
             AssemblyLineBoard.ConfigureSeen(item => TechTree.Ledger.HasItem(item));
             AssemblyLineBoard.ConfigurePostShown(() => TechTree.Ledger.HasBuilding(TechTreeCatalog.BuildingPneumaticPost));
         }
@@ -869,6 +876,7 @@ namespace GolemFactory.World
                 docksRows = Bounds.DocksRows,
                 floorNorthExtent = Bounds.NorthExtent,
                 packUpgradeTier = PackUpgrade.Tier,
+                vouchers = Vouchers.Count,
                 clockSpeed = Clock.Speed,
                 clockPaused = Clock.State == ClockState.Paused,
                 tutorialStep = Tutorial?.Index ?? 0,
@@ -929,6 +937,7 @@ namespace GolemFactory.World
             FloorExpansion.Restore(progress.floorNorthExtent);
             Bounds.RestoreDocks(progress.docksRows);
             PackUpgrade.Restore(progress.packUpgradeTier);
+            Vouchers.Restore(progress.vouchers);
 
             // The tower on its site (G10), a fixture the building list never holds.
             if (ClockTowerBuilding != null)
@@ -1112,6 +1121,7 @@ namespace GolemFactory.World
                 ? null
                 : new ContractGenerator(Setup.endlessContracts, Definitions.Recipes.Values);
             Contracts.TowerComplete = () => site.IsComplete;
+            Contracts.Vouchers = Vouchers;
             Clock.Register(Contracts);
             OfficeCrate = new CityOfficeCrate(Contracts);
             ContractBoard board = Contracts;
@@ -1121,8 +1131,7 @@ namespace GolemFactory.World
                 Definitions == null ? null : ContractGenerator.RawCosts(Definitions.Recipes.Values),
                 () => board.IsOpen,
                 chassis => TechTree.Ledger.HasChassis(chassis),
-                item => TechTree.Ledger.HasItem(item),
-                goods => board.Pay(goods),
+                count => board.PayVouchers(count),
                 enabled: !Creative);
             Clock.Register(GolemOrders);
 
@@ -1515,12 +1524,11 @@ namespace GolemFactory.World
                 return GolemSaleResult.Refused("No golem to sell.");
             }
             GolemOrder order = GolemOrders.Current;
-            int filled = golem.Program.appendages.Count(a => a != null);
             if (!_stationTemplate.TrySellGolem(golem, out IReadOnlyList<RecipeIngredient> cargo, out string why))
             {
                 return GolemSaleResult.Refused(why);
             }
-            GolemOrders.Deliver(chassis, filled);
+            GolemOrders.Deliver(chassis);
             return GolemSaleResult.Sold(order, GolemOrders.Current == order ? GolemOrders.Delivered : order.Count, cargo);
         }
 

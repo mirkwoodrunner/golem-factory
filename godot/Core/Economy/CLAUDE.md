@@ -45,7 +45,9 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   any node. There is no truckload market and no per-load price. `SupplyStreet` owns the carts:
   add, the Rate and Capacity rungs, change and remove all charge or refund through the wallet (a
   removal refunds everything paid for the cart and its rungs, with the stock, or is refused whole;
-  a change gives back the old cart's price). **A cart is
+  a change gives back the old cart's price). A city voucher (`Contracts/CityVouchers`) pays for an
+  upgrade step or a card instead of goods, through each purchase's `free` path; what it buys
+  refunds nothing. **A cart is
   offered once the Ledger has seen every good its add price names** (the user's call: a raw good
   is never seen before its cart). The starting Scrap cart's good is kept: its last cart can't go.
   A cart is saved in `SaveData.supply`; `SaveData.market` is only read, to migrate an old save's

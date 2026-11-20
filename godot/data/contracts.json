@@ -11,17 +11,10 @@
     ],
     "parSeconds": 360,
     "reward": {
-      "goods": [
-        {
-          "itemType": "Gear",
-          "quantity": 15
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "Coal",
-      "rungKind": 1
+      "vouchers": 1
     },
     "postWhenSeen": [
       "Slag",
@@ -44,21 +37,10 @@
     ],
     "parSeconds": 480,
     "reward": {
-      "goods": [
-        {
-          "itemType": "IronPlate",
-          "quantity": 20
-        },
-        {
-          "itemType": "Gear",
-          "quantity": 10
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "Coal",
-      "rungKind": 2
+      "vouchers": 1
     },
     "postWhenSeen": [
       "Slag",
@@ -82,17 +64,10 @@
     ],
     "parSeconds": 480,
     "reward": {
-      "goods": [
-        {
-          "itemType": "Gear",
-          "quantity": 30
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "CopperOre",
-      "rungKind": 1
+      "vouchers": 1
     },
     "postWhenSeen": [
       "CopperOre",
@@ -112,21 +87,10 @@
     ],
     "parSeconds": 600,
     "reward": {
-      "goods": [
-        {
-          "itemType": "IronPlate",
-          "quantity": 40
-        },
-        {
-          "itemType": "Coke",
-          "quantity": 10
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "Scrap",
-      "rungKind": 2
+      "vouchers": 1
     },
     "postWhenSeen": [
       "CopperOre",
@@ -145,21 +109,10 @@
     ],
     "parSeconds": 600,
     "reward": {
-      "goods": [
-        {
-          "itemType": "Gear",
-          "quantity": 20
-        },
-        {
-          "itemType": "IronPlate",
-          "quantity": 20
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "CopperOre",
-      "rungKind": 2
+      "vouchers": 1
     },
     "postWhenSeen": [
       "CopperIngot"
@@ -177,21 +130,10 @@
     ],
     "parSeconds": 600,
     "reward": {
-      "goods": [
-        {
-          "itemType": "CopperIngot",
-          "quantity": 10
-        },
-        {
-          "itemType": "Gear",
-          "quantity": 15
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "ZincOre",
-      "rungKind": 1
+      "vouchers": 1
     },
     "postWhenSeen": [
       "Brass"
@@ -213,17 +155,10 @@
     ],
     "parSeconds": 600,
     "reward": {
-      "goods": [
-        {
-          "itemType": "Casing",
-          "quantity": 8
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "CopperOre",
-      "rungKind": 1
+      "vouchers": 1
     },
     "postWhenSeen": [
       "Glass",
@@ -242,17 +177,10 @@
     ],
     "parSeconds": 720,
     "reward": {
-      "goods": [
-        {
-          "itemType": "Brass",
-          "quantity": 20
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "ZincOre",
-      "rungKind": 2
+      "vouchers": 1
     },
     "postWhenSeen": [
       "Casing"
@@ -274,21 +202,10 @@
     ],
     "parSeconds": 720,
     "reward": {
-      "goods": [
-        {
-          "itemType": "Casing",
-          "quantity": 6
-        },
-        {
-          "itemType": "Glass",
-          "quantity": 10
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "Aether",
-      "rungKind": 1
+      "vouchers": 1
     },
     "postWhenSeen": [
       "Lens",
@@ -311,21 +228,10 @@
     ],
     "parSeconds": 840,
     "reward": {
-      "goods": [
-        {
-          "itemType": "Mainspring",
-          "quantity": 4
-        },
-        {
-          "itemType": "Brass",
-          "quantity": 20
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "Scrap",
-      "rungKind": 1
+      "vouchers": 1
     },
     "postWhenSeen": [
       "Mainspring",
@@ -348,17 +254,10 @@
     ],
     "parSeconds": 840,
     "reward": {
-      "goods": [
-        {
-          "itemType": "FrameSection",
-          "quantity": 2
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "CopperOre",
-      "rungKind": 1
+      "vouchers": 1
     },
     "postWhenSeen": [
       "Casing",
@@ -383,21 +282,10 @@
     ],
     "parSeconds": 840,
     "reward": {
-      "goods": [
-        {
-          "itemType": "Mainspring",
-          "quantity": 4
-        },
-        {
-          "itemType": "Casing",
-          "quantity": 4
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "ZincOre",
-      "rungKind": 1
+      "vouchers": 1
     },
     "postWhenSeen": [
       "Brass",
@@ -422,21 +310,10 @@
     ],
     "parSeconds": 900,
     "reward": {
-      "goods": [
-        {
-          "itemType": "Mainspring",
-          "quantity": 3
-        },
-        {
-          "itemType": "Brass",
-          "quantity": 10
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "Aether",
-      "rungKind": 2
+      "vouchers": 1
     },
     "postWhenSeen": [
       "Mechanism",
@@ -460,21 +337,10 @@
     ],
     "parSeconds": 900,
     "reward": {
-      "goods": [
-        {
-          "itemType": "Mechanism",
-          "quantity": 2
-        },
-        {
-          "itemType": "Gear",
-          "quantity": 10
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "Scrap",
-      "rungKind": 1
+      "vouchers": 1
     },
     "postWhenSeen": [
       "Mainspring",
@@ -499,21 +365,10 @@
     ],
     "parSeconds": 960,
     "reward": {
-      "goods": [
-        {
-          "itemType": "Lens",
-          "quantity": 4
-        },
-        {
-          "itemType": "Brass",
-          "quantity": 10
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "Aether",
-      "rungKind": 1
+      "vouchers": 1
     },
     "postWhenSeen": [
       "AetherCell",
@@ -537,21 +392,10 @@
     ],
     "parSeconds": 960,
     "reward": {
-      "goods": [
-        {
-          "itemType": "AetherCell",
-          "quantity": 4
-        },
-        {
-          "itemType": "CopperWire",
-          "quantity": 10
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "CopperOre",
-      "rungKind": 2
+      "vouchers": 1
     },
     "postWhenSeen": [
       "Lens",
@@ -576,21 +420,10 @@
     ],
     "parSeconds": 1080,
     "reward": {
-      "goods": [
-        {
-          "itemType": "Mechanism",
-          "quantity": 2
-        },
-        {
-          "itemType": "Lens",
-          "quantity": 2
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "Aether",
-      "rungKind": 2
+      "vouchers": 1
     },
     "postWhenSeen": [
       "Regulator",
@@ -614,21 +447,10 @@
     ],
     "parSeconds": 1080,
     "reward": {
-      "goods": [
-        {
-          "itemType": "Regulator",
-          "quantity": 2
-        },
-        {
-          "itemType": "CopperWire",
-          "quantity": 10
-        }
-      ]
+      "vouchers": 1
     },
     "bonus": {
-      "goods": [],
-      "rungGood": "ZincOre",
-      "rungKind": 2
+      "vouchers": 1
     },
     "postWhenSeen": [
       "Mechanism",

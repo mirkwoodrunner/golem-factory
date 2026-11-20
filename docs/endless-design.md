@@ -67,7 +67,9 @@ formula, still one at a time:
 **Built (2026-11-07):** `Contracts/ContractGenerator`, set by `sandbox.json`'s
 `endlessContracts`. Contract k (named `Endless_k`, what a save keeps) asks `goods[k % 10]` and
 `goods[(k + 3) % 10]`, 60:40, for a raw-goods budget that grows over the first eight and holds at
-3,300 (a quarter of what stage 4's demand already asks in ten minutes). Its reward is half that
+3,300 (a quarter of what stage 4's demand already asks in ten minutes). *Since 2026-11-19 it pays
+1 voucher and 1 more within par (`rewardVouchers`, `bonusVouchers`; `contracts-design.md` §4); what
+follows is the goods reward it replaced.* Its reward was half that
 in the good five on from its first ask, round all ten goods (so a contract never pays in a good it
 asks; changed 2026-11-19 after the design audit found the old five, Casing, Mainspring, Mechanism,
 Regulator and Lens, paid out about 1.4 times what the contracts asked of them, so they piled up);

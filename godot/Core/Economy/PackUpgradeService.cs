@@ -80,7 +80,8 @@ namespace GolemFactory.Economy
         public bool CanAfford() => !IsMaxed && Wallet != null && Wallet.CanAfford(NextCost());
 
         /// <summary>The Pack row's Upgrade: charges the next rung through the wallet, then raises the cap.</summary>
-        public bool TryUpgrade()
+        /// <param name="free">Paid with a city voucher instead of goods (2026-11-19).</param>
+        public bool TryUpgrade(bool free = false)
         {
             LastStatusMessage = "";
             if (Wallet == null)
@@ -93,7 +94,7 @@ namespace GolemFactory.Economy
                 LastStatusMessage = "Your pack is as big as it gets.";
                 return false;
             }
-            IReadOnlyList<RecipeIngredient> cost = NextCost();
+            IReadOnlyList<RecipeIngredient> cost = free ? new RecipeIngredient[0] : NextCost();
             if (!Wallet.TryCharge(cost))
             {
                 LastStatusMessage = UI.ConstructionCostPolicy.FormatShortfall(Wallet, cost) + " to carry " + NextCapacity + " of each good.";

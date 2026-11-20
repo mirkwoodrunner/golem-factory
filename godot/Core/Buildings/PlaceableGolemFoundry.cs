@@ -154,7 +154,7 @@ namespace GolemFactory.Buildings
             }
             if (Holding)
             {
-                if (_orders.Deliver(Chassis, 0))
+                if (_orders.Deliver(Chassis))
                 {
                     Shipped++;
                     EventBus.Publish(new FoundryShippedEvent(_cell, Chassis));

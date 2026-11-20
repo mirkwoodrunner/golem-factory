@@ -85,8 +85,10 @@ with the program already engaged. Patenting is free.
 - **Contracts:** the City Office posts orders for goods, one at a time, with a bonus for finishing
   quickly and no deadline (`contracts-design.md`).
 - **Selling golems:** the city also orders golems. The player fills an order by selling golems by
-  hand or by building them in a Golem Foundry, and is paid in goods in proportion to the golems'
-  complexity (`golem-sales-design.md`).
+  hand or by building them in a Golem Foundry (`golem-sales-design.md`).
+- **Vouchers:** contracts and golem orders pay city vouchers, never goods. A voucher buys the next
+  step of any upgrade or unlock the player could buy with goods now: a card, more floor, a bigger
+  pack, a cart's next rung (`contracts-design.md` §4).
 
 ## The Clock Tower
 

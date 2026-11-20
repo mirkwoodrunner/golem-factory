@@ -98,7 +98,8 @@ namespace GolemFactory.World
 
         public bool CanAfford() => Wallet?.CanAfford(NextCost()) ?? UI.ConstructionCostPolicy.CanAfford(StockOf, NextCost());
 
-        public bool TryPurchaseExpansion()
+        /// <param name="free">Paid with a city voucher instead of goods (2026-11-19).</param>
+        public bool TryPurchaseExpansion(bool free = false)
         {
             LastStatusMessage = "";
             if (bounds == null)
@@ -113,7 +114,7 @@ namespace GolemFactory.World
                 return false;
             }
 
-            IReadOnlyList<RecipeIngredient> cost = NextCost();
+            IReadOnlyList<RecipeIngredient> cost = free ? new RecipeIngredient[0] : NextCost();
             if (Wallet != null && !Wallet.TryCharge(cost))
             {
                 LastStatusMessage = UI.ConstructionCostPolicy.FormatShortfall(Wallet, cost);

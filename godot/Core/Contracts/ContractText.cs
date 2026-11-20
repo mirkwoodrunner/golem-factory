@@ -33,19 +33,8 @@ namespace GolemFactory.Contracts
             $"a {(kind == ContractRungKind.Capacity ? "Capacity" : "Rate")} rung on a {ItemTiers.DisplayName(itemType)} cart";
 
         /// <summary>"15 Gear", "15 Gear and a Rate rung on a Coal cart", "nothing".</summary>
-        public static string Reward(ContractReward reward)
-        {
-            if (reward == null || reward.IsEmpty)
-            {
-                return "nothing";
-            }
-            var parts = reward.goods.Where(g => g.quantity > 0).Select(g => g.quantity + " " + ItemTiers.DisplayName(g.itemType)).ToList();
-            if (reward.HasRung)
-            {
-                parts.Add(Rung(reward.rungGood, reward.rungKind));
-            }
-            return And(parts);
-        }
+        public static string Reward(ContractReward reward) =>
+            reward == null || reward.IsEmpty ? "nothing" : CityVouchers.Describe(reward.vouchers);
 
         private static string And(IReadOnlyList<string> parts) =>
             parts.Count == 0 ? "nothing"
@@ -127,7 +116,10 @@ namespace GolemFactory.Contracts
         }
 
         /// <summary>The notice's reward line: "Reward: 15 Gear".</summary>
-        public static string RewardLine(ContractDefinition c) => "Reward: " + Reward(c.reward);
+        public static string RewardLine(ContractDefinition c) => "Reward: " + Reward(c.reward) + SpendNote;
+
+        /// <summary>Where a voucher goes, after a reward line.</summary>
+        public const string SpendNote = ", for any upgrade or unlock on the Assembly Line tab or at a cart";
 
         /// <summary>
         /// The notice's bonus line, never red: "Bonus within 6:00 of taking it: ...", "Bonus if done
@@ -222,11 +214,11 @@ namespace GolemFactory.Contracts
                 case Events.ContractEventKind.Posted:
                     return "The " + e.Requester + " posted a contract at the City Office";
                 case Events.ContractEventKind.Completed:
-                    return "Contract done for the " + e.Requester + (e.BonusEarned ? " · bonus earned" : "");
+                    return "Contract done for the " + e.Requester + (e.BonusEarned ? " · bonus earned" : "") + " · vouchers to spend";
                 case Events.ContractEventKind.OrderPosted:
                     return "The " + e.Requester + " posted an order for golems at the City Office";
                 case Events.ContractEventKind.OrderCompleted:
-                    return "Golem order done for the " + e.Requester;
+                    return "Golem order done for the " + e.Requester + " · a voucher to spend";
                 default:
                     return "You took the " + e.Requester + "'s contract";
             }

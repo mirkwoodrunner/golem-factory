@@ -4,7 +4,7 @@ using GolemFactory.PunchCards;
 
 namespace GolemFactory.Contracts
 {
-    /// <summary>Which of a cart's two ladders a rung reward climbs (docs/supply-design.md §2). Serialized by value.</summary>
+    /// <summary>Which of a cart's two ladders a rung climbs (docs/supply-design.md §2). Serialized by value: an older save's shelved rungs.</summary>
     public enum ContractRungKind
     {
         None = 0,
@@ -13,19 +13,16 @@ namespace GolemFactory.Contracts
     }
 
     /// <summary>
-    /// What finishing a contract gives (docs/contracts-design.md §4): goods, and at most one
-    /// cart rung, the next rung of <see cref="rungKind"/> on a cart of <see cref="rungGood"/> the
-    /// player chooses when collecting it.
+    /// What finishing a contract gives (docs/contracts-design.md §4): vouchers, each the next step
+    /// of any upgrade or unlock the player chooses (<see cref="CityVouchers"/>). It paid goods and
+    /// a cart rung until 2026-11-19, never worth more than the goods asked, so the only real draw
+    /// was the rung.
     /// </summary>
     public sealed class ContractReward
     {
-        public List<RecipeIngredient> goods = new List<RecipeIngredient>();
-        public string rungGood;
-        public ContractRungKind rungKind;
+        public int vouchers;
 
-        public bool HasRung => rungKind != ContractRungKind.None && !string.IsNullOrEmpty(rungGood);
-
-        public bool IsEmpty => !HasRung && goods.All(g => g.quantity <= 0);
+        public bool IsEmpty => vouchers <= 0;
     }
 
     /// <summary>

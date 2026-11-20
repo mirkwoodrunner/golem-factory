@@ -236,7 +236,7 @@ namespace GolemFactory.Nodes.Scenarios
                 feeder.Program.TryAddAppendage(Sandbox.Definitions.Appendages["PushOutput"]);
                 // South-east of it, so the player stands clear of its picture.
                 Hands.Teleport(new CoreVector3(FoundryCell.x + 1, FoundryCell.y - 1, 0f));
-                _rewardBefore = Pack(_first.RewardGood);
+                _rewardBefore = Sandbox.Vouchers.Count;
                 return null;
             });
             Until("the Foundry has a whole Scavenger's Scrap, and builds", 30, () =>
@@ -266,18 +266,17 @@ namespace GolemFactory.Nodes.Scenarios
             Do("its golem never entered the world", () =>
                 Sandbox.Golems.Count(g => !g.IsRemoved && g.Program?.chassis?.name == Scavenger) == 1
                     ? null : "golems in the world: " + Sandbox.Golems.Count(g => !g.IsRemoved));
-            Until("the Foundry fills the order: done, the reward in the pack, the next posted", 300, () =>
+            Until("the Foundry fills the order: done, a voucher paid, the next posted", 300, () =>
             {
                 TopUp();
                 if (Orders.Done < 1)
                 {
                     return $"delivered {Orders.Delivered} of {_first.Count}";
                 }
-                int paid = Pack(_first.RewardGood) - _rewardBefore;
-                int expected = Orders.RewardFor(_first, Orders.ChassisRaw(Scavenger) * _first.Count).Single().quantity;
-                if (paid != expected)
+                int paid = Sandbox.Vouchers.Count - _rewardBefore;
+                if (paid != Orders.Setup.vouchers)
                 {
-                    return $"{_first.RewardGood} paid {paid}, expected {expected}";
+                    return $"paid {paid} vouchers, expected {Orders.Setup.vouchers}";
                 }
                 return Orders.Current != null && Orders.Current != _first ? null : "no next order";
             });
@@ -329,7 +328,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("Escape", () =>
             {
                 Tap(Key.Escape);
-                Log($"the first order ({_first.Count} Scavengers for the {_first.Requester}): one carried to the office and sold with E, the rest built and shipped by a Golem Foundry fed by a golem; paid in {_first.RewardGood}; saved mid-build and loaded back");
+                Log($"the first order ({_first.Count} Scavengers for the {_first.Requester}): one carried to the office and sold with E, the rest built and shipped by a Golem Foundry fed by a golem; paid a voucher; saved mid-build and loaded back");
                 return null;
             });
         }

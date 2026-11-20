@@ -116,6 +116,11 @@ A building in the build menu, offered once golem orders open.
 
 ## 3. The reward
 
+> **Changed 2026-11-19 (the user's call):** an order pays 1 city voucher (`golemOrders.vouchers`),
+> never goods, and a golem with cards counts the same as a bare one: the card bonus only rewarded
+> pulling a working golem off its own line. See `contracts-design.md` §4 for what a voucher buys.
+> The rest of this section is the original design.
+
 A golem's worth is its chassis's raw cost (`ContractGenerator.RawCosts`, as contracts count it),
 plus a tenth for each filled card slot, so a programmed golem sold by hand is worth more than a
 bare one ("in proportion to the golems' complexity", `game-design.md`):

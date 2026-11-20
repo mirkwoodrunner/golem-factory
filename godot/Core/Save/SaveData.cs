@@ -116,9 +116,10 @@ namespace GolemFactory.Save
         /// <summary>The open order's chassis, or null with none.</summary>
         public string chassis;
         public int count;
-        public string rewardGood;
         public int delivered;
-        public double worthDelivered;
+
+        // rewardGood and worthDelivered went when orders started paying vouchers (2026-11-19); an
+        // older save's are ignored.
     }
 
     /// <summary>The civic works: the one under way by name, works built, and its stage and progress.</summary>
@@ -220,6 +221,9 @@ namespace GolemFactory.Save
 
         /// <summary>Pack upgrades bought (docs/pack-upgrades-design.md): absent in an older save, so 0, the base cap.</summary>
         public int packUpgradeTier;
+
+        /// <summary>City vouchers held (2026-11-19): absent in an older save, so 0.</summary>
+        public int vouchers;
         public float clockSpeed = 1f;
         public bool clockPaused;
         public int tutorialStep;

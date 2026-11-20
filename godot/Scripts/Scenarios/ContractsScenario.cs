@@ -25,8 +25,9 @@ namespace GolemFactory.Nodes.Scenarios
     ///   opens the notice; a click takes it, its bonus timer running in plain ink.</item>
     ///   <item>I opens the office's crate: a click puts one Iron Plate in, a Shift-click all the
     ///   pack holds; the rest comes from a golem hauling from a depot and pushing into the office.</item>
-    ///   <item>Done within par: the reward is in the pack, the bonus rung on the shelf; a Coal cart
-    ///   added, E and a click put the rung on it for nothing. The next contract posts.</item>
+    ///   <item>Done within par: the reward and the bonus are two vouchers (2026-11-19); Tab, the
+    ///   Assembly Line tab and a click on a row's Voucher buy its step for no goods. The
+    ///   next contract posts.</item>
     ///   <item>Taken and part filled, saved to Slot 1, filled further, and loaded with two clicks:
     ///   the board is as saved.</item>
     /// </list>
@@ -53,8 +54,9 @@ namespace GolemFactory.Nodes.Scenarios
 
         private ContractDefinition _first;
         private ContractDefinition _second;
-        private int _gear;
-        private CoreVector2Int _coalSpot;
+        private int _vouchers;
+        private int _north;
+        private string _spentOn;
 
         protected override void Plan()
         {
@@ -274,7 +276,7 @@ namespace GolemFactory.Nodes.Scenarios
                 golem.Program.SetItemTypeAt(0, plate);
                 golem.Program.SetQuantityAt(0, 5);
                 golem.Program.TryAddAppendage(Sandbox.Definitions.Appendages["PushOutput"]);
-                _gear = Pack(_first.reward.goods[0].itemType);
+                _vouchers = Sandbox.Vouchers.Count;
                 return null;
             });
             Until("the golem fills the rest: done, within par", 30, () =>
@@ -285,52 +287,48 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void PlanReward()
         {
-            Do("the reward in the pack, the bonus earned, its rung on the shelf", () =>
+            Do("two vouchers, the reward and the bonus, and nothing to collect", () =>
             {
-                PunchCards.RecipeIngredient reward = _first.reward.goods[0];
-                if (Pack(reward.itemType) != _gear + reward.quantity)
+                if (Sandbox.Vouchers.Count != _vouchers + 2)
                 {
-                    return $"{reward.itemType} {_gear} -> {Pack(reward.itemType)}";
+                    return $"vouchers {_vouchers} -> {Sandbox.Vouchers.Count}";
                 }
-                if (!Board.EarnedBonus(_first.name) || Board.ShelfRungs.Count != 1 || Board.ShelfRungs[0].ItemType != _first.bonus.rungGood)
+                if (!Board.EarnedBonus(_first.name) || !Board.ShelfEmpty)
                 {
-                    return $"bonus {Board.EarnedBonus(_first.name)}, shelf {Board.ShelfRungs.Count}";
+                    return $"bonus {Board.EarnedBonus(_first.name)}, shelf empty {Board.ShelfEmpty}";
                 }
                 return null;
             });
             Until("the HUD's contract line clears", 1, () => Hud.ContractLine == "" ? null : $"HUD still '{Hud.ContractLine}'");
-            Do("a Coal cart on the street; E at the office", () =>
+            Do("Tab", () => { _north = Sandbox.Bounds.NorthExtent; Tap(Key.Tab); return null; });
+            Do("click Assembly Line", () => { Click(Management.TabButtons[ManagementTab.AssemblyLine]); return null; });
+            Wait(0.1); // the rows are rebuilt; a button has no size until the frame after
+            Do("click the first row's Voucher", () =>
             {
-                CartSpot spot = Sandbox.Supply.Spots.First(s => s.IsEmpty);
-                _coalSpot = spot.Cell;
-                SupplyResult added = Sandbox.GrantCart(spot.Cell, _first.bonus.rungGood);
-                if (!added.Done)
+                Button voucher = Management.AssemblyLine.RowList.GetChildren().OfType<Control>()
+                    .Select(r => r.FindChild("Voucher", true, false) as Button).FirstOrDefault(b => b != null);
+                if (voucher == null)
                 {
-                    return added.Message;
+                    return "no Voucher button on the tab: " + string.Join(", ", Management.AssemblyLine.RowList.GetChildren().Select(c => c.Name.ToString()));
                 }
-                Tap(Key.E);
-                return null;
-            });
-            Do("the notice offers the rung on that cart", () =>
-            {
-                if (!Notice.IsOpen || Notice.Rows.Count(r => r.row.Action == ContractAction.Rung && r.row.Enabled) != 1)
-                {
-                    return $"open {Notice.IsOpen}, rows {string.Join(" | ", Notice.Rows.Select(r => r.row.Label + " " + r.row.Detail))}";
-                }
+                _spentOn = voucher.GetParent().GetParent().Name;
                 ScenarioCapture.Shot(Runner.GetViewport(), "contracts-reward");
-                Click(Notice.Button(ContractAction.Rung));
+                Click(voucher);
                 return null;
             });
-            Do("the cart has its rung, for nothing", () =>
+            Do("its step bought for no goods, a voucher spent", () =>
             {
-                SupplyCart cart = Sandbox.Supply.SpotAt(_coalSpot).Cart;
-                bool rate = _first.bonus.rungKind == ContractRungKind.Rate;
-                if ((rate ? cart.RateRung : cart.CapacityRung) != 1 || Board.ShelfRungs.Count != 0)
+                string status = Sandbox.AssemblyLineBoard.Status;
+                if (Sandbox.Vouchers.Count != _vouchers + 1 || !(status.StartsWith("Claimed") || status.StartsWith("Extended") || status.StartsWith("Upgraded")))
                 {
-                    return $"rate {cart.RateRung} capacity {cart.CapacityRung}, shelf {Board.ShelfRungs.Count}: '{Notice.Status}'";
+                    return $"{_spentOn}: vouchers {Sandbox.Vouchers.Count}, status '{status}'";
                 }
-                return cart.RungsPaid.Count == 0 ? null : "a given rung was recorded as paid";
+                Tap(Key.Escape);
+                return null;
             });
+            Wait(0.2); // E is ignored for the frame after a screen closes
+            Do("E at the office", () => { Tap(Key.E); return null; });
+            Until("the notice is open", 1, () => Notice.IsOpen ? null : "the notice didn't open: " + Hands.CurrentPrompt);
             Do("the next contract's goods are seen", () =>
             {
                 foreach (string good in _second.postWhenSeen)
@@ -390,7 +388,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("Escape; the HUD shows the loaded contract", () =>
             {
                 Tap(Key.Escape);
-                Log($"the office opened with the first smelter; {_first.requester}'s contract taken with a click, filled by hand (one, then Shift) and by a golem, its bonus rung put on a Coal cart; {_second.requester}'s taken, saved part filled and loaded back");
+                Log($"the office opened with the first smelter; {_first.requester}'s contract taken with a click, filled by hand (one, then Shift) and by a golem, its two vouchers held and one spent with a click on the Assembly Line tab; {_second.requester}'s taken, saved part filled and loaded back");
                 return null;
             });
             Until("the HUD line", 1, () => Hud.ContractLine.Contains("5 of ") ? null : $"HUD '{Hud.ContractLine}'");

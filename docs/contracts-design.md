@@ -134,6 +134,16 @@ that stage's build-out. After the tower is complete, contracts continue as endle
 
 ## 4. Rewards
 
+> **Changed 2026-11-19 (the user's call): rewards are city vouchers, not goods.** A contract pays
+> 1 voucher and its bonus 1 more; a golem order pays 1 (`CityVouchers`). A voucher buys the next
+> step of any upgrade or unlock goods could buy now: a card, Floor Expansion's or the Docks' next
+> rows or the pack's next rung (a Voucher button beside each row's own on the Assembly Line tab),
+> or a cart's next Rate or Capacity rung (voucher rows in the cart panel). It never skips the tree:
+> a step whose price names an unseen good offers no voucher. What a voucher buys refunds nothing,
+> so the city is still never a cheaper way to make goods. Goods rewards paid at most what the
+> contract took, so the only real draw was the bonus rung. An older save's shelf of goods and
+> rungs still pays out. The rest of this section is the original design.
+
 - **Goods**, chosen to help the next build-out: the components a stage's new lines need first.
 - **A cart rung** (`supply-design.md` §2): the next Rate or Capacity rung, for nothing, on a cart
   the player chooses when collecting. A cart at the top can't be chosen; with no cart below the

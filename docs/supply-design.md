@@ -18,7 +18,8 @@ player at the stalls. Written before the code, like `pack-upgrades-design.md`.
 6. **A cart's good is offered once that good is needed**, and its price follows progression: a
    Coal cart costs only Scrap, later carts cost more advanced goods, and upgrades climb from there.
 7. **The guide teaches the Coal cart where Coal and Coke are first needed** (chapter 1's `coal`).
-8. **Contracts can grant an upgrade**, as well as the player paying for one.
+8. **Contracts can grant an upgrade**, as well as the player paying for one. *Since 2026-11-19 a
+   contract pays vouchers, and the cart panel spends one on the next Rate or Capacity rung.*
 9. **Removing a cart refunds in full**, as a building does. *Changed 2026-11-19 (the user's
    call): it was half, which punished rearranging the street.*
 10. **Chapter 3 teaches an upgrade**: the Coal cart's first Rate rung (§6).

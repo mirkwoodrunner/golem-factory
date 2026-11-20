@@ -170,6 +170,10 @@ namespace GolemFactory.AssemblyLine
             return true;
         }
 
+        /// <summary>Claims an offered card for nothing: paid with a city voucher (2026-11-19).</summary>
+        public bool TryClaimFree(DraftableCardDefinition card, string userId) =>
+            IsOffered(card) && GrantClaim(userId, card);
+
         /// <summary>
         /// Puts a card in a player's claimed set without payment. TWO CALLERS, neither of which
         /// charges: the opening hand (the movement verbs, held from the first minute), and a load,
