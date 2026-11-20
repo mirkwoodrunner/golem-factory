@@ -283,7 +283,7 @@ Chapters 1–4's texts are as §2 writes them, every one within 240 characters
 2. **The unloader's and the Zeppelin's `Matches` need a logic core**, as every other plan's do.
 3. **`stall` reads red in every wrong facing only after a fix**: facing the Scrap stall read grey,
    because the first Scavenger extracts from it and the probe counted that as draining it. A
-   stall is never drained now (`onboarding-feedback-design.md` §15).
+   stall is never drained now (`onboarding-feedback-design.md` §3.2).
 4. **The kit's program steps all call `PerformPlan`**, which writes through
    `GolemProgramWriter`; the kit's behaviour is otherwise unchanged.
 

@@ -15,7 +15,7 @@ namespace GolemFactory.UI
     /// The one naming path for player text: the badge-free places that name a golem (the
     /// alerts strip, the hover card's title, the Workbench header, the [E] prompt and the
     /// carry/turn messages) all read it, so a golem has one name on every screen
-    /// (Phase 2 critique, docs/onboarding-feedback-design.md §16).
+    /// (Phase 2 critique, docs/onboarding-feedback-design.md §4.3).
     /// </para>
     /// </summary>
     public static class GolemNames

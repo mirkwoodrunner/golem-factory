@@ -217,7 +217,7 @@ namespace GolemFactory.UI
         // A stall's resource id is a key: "Crate(2,-1)", "ScrapNode", "IronPlate", "(3, -1)".
         // The badge and the strip used to print it verbatim. These name it as the player does,
         // through the same TileNames the hover card uses, and the golem through GolemNames, so
-        // every readout of one stall says the same words (onboarding-feedback-design §16).
+        // every readout of one stall says the same words (onboarding-feedback-design §4.3).
 
         /// <summary>
         /// <paramref name="resourceId"/>, which <paramref name="golem"/>'s stall of

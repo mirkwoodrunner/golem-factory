@@ -75,7 +75,7 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 - **The Workbench hint's free-play fallback is tested only in Core.** Without a guide plan, a
   bare golem gets STEP 1, then the lever framed (TRIGGER went with the trigger slot, 2026-11-19), and a programmed golem nothing
   (`WorkbenchHintTests`). No scenario draws it on screen: the `workbench` scenario's golem is the
-  guide's, so it sees the plan's hint (`onboarding-feedback-design.md` §15.1).
+  guide's, so it sees the plan's hint (`onboarding-feedback-design.md` §8).
 - **The full-run floor jumps by minutes when a price moves a little.** `FullRunFloorTests`
   measures chapter 8 at 23:05 with the Aether-Hauler at 20 Iron Plate + 10 Gear, 22:57 at
   36 + 18, 31:11 at 34 + 17 (over its 30:00 ceiling) and 30:01 at 32 + 16. `FloorPlayer` adds
