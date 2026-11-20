@@ -41,7 +41,7 @@ namespace GolemFactory.Nodes.Scenarios
     }
 
     /// <summary>
-    /// The headless end-to-end checks (docs/godot-conversion-plan.md, "Verification"):
+    /// The headless end-to-end checks (docs/history/godot-conversion-plan.md, "Verification"):
     ///
     /// <code>
     /// Godot_console.exe --headless --path godot --fixed-fps 60 -- --scenario &lt;name&gt;

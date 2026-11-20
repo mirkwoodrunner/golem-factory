@@ -53,7 +53,7 @@ Three causes, one fix each:
 |---|---|---|
 | First program 8 min | The step names three cards and three sockets in one sentence; the vault is a list; nothing on screen says which card is next or that ENGAGE commits | §2: the next drag pulses, card and socket |
 | Turning 4½ min | `turn` says "stand next to it and press R". R turns the *nearest* golem, and chapter 4's new Scavenger stands diagonal to the first, so R can turn the wrong one. Facing shows only as a small arrow on the body | `guide-chapters-design.md`: turn while carrying (R then turns only the carried golem); §4: arrows on the source and target tiles |
-| Badge read "vaguely" | A badge is a short sentence in red, and every waiting golem wears one too (`godot-conversion-plan.md`, chapter 6 frames: a carrier with "no Slag" yet, an unloader "waiting on Belt(0,-12)#3") | §3: waiting goes grey; §4: hovering a red golem names the tile, the good and the fix |
+| Badge read "vaguely" | A badge is a short sentence in red, and every waiting golem wears one too (`history/godot-conversion-plan.md`, chapter 6 frames: a carrier with "no Slag" yet, an unloader "waiting on Belt(0,-12)#3") | §3: waiting goes grey; §4: hovering a red golem names the tile, the good and the fix |
 
 The second cause is a reading of the code, not a measurement: the playtest didn't record which
 golem turned. The Phase 2 playtest asks (`testscript/phase-2-playtest.md`).

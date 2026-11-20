@@ -1,6 +1,6 @@
 """Where the art generators write: the Godot project's art folder.
 
-Milestone G3 of docs/godot-conversion-plan.md moved the generators' output from Unity's
+Milestone G3 of docs/history/godot-conversion-plan.md moved the generators' output from Unity's
 Assets/_Project/Art/ to godot/art/, and the G10 cutover removed the Unity project (tag
 unity-final). godot/art/ is the only copy.
 

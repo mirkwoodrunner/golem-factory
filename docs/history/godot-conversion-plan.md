@@ -1,5 +1,7 @@
 # Full conversion: golem-factory from Unity to Godot
 
+> **History, finished.** The port's milestone log, G0 to G10. Current work starts at `docs/roadmap.md`.
+
 ## Status
 
 Updated by each milestone's PR. The first row that isn't **done** is the current milestone.
@@ -18,10 +20,6 @@ Updated by each milestone's PR. The first row that isn't **done** is the current
 | G8: Management HUD and remaining screens | **done**: PR #40 |
 | G9: Save and load end to end | **done**: PR #41 (all of #30–#42 landed on `main` through #43, 2026-10-08) |
 | G10: Parity playtest and cutover | **done**: playtest fixes #42-#52, then the cutover PR #53 (tag `unity-final`) |
-
-## Next session: start here
-
-Moved to `docs/roadmap.md` ("Next session: start here"); the conversion is finished.
 
 ## Context
 

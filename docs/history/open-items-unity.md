@@ -1,8 +1,21 @@
 # Golem Factory — Open Items
 
+> **History, not instructions.** The Unity-era backlog. The live backlog is `docs/open-items.md`. Read one section at a time: the file is about 1,500 lines.
+
+**Sections** (line numbers as of this index):
+
+- L92: 1. The progression design, and how far it has been implemented
+- L454: 2. Decisions
+- L573: 3. Known gaps carried forward
+- L1180: 3y. Playtest session 1 — findings and dispositions
+- L1214: 3y2. Playtest session 2 — findings and dispositions
+- L1343: 3z. WHAT IS ACTUALLY LEFT
+- L1440: 3a. What the backlog pass deliberately did not take
+- L1463: 4. Deliberate scope cuts still standing
+
 > **The game is now the Godot build (`godot/`).** This file still describes the Unity project
 > and is rewritten in the G10 cutover PR. Until then, the current state and what's next live in
-> `docs/godot-conversion-plan.md`, under "Next session: start here".
+> `docs/history/godot-conversion-plan.md`, under "Next session: start here".
 
 Consolidated backlog as of the progression-design pass, on branch
 `polish/production-quality-pass` (17 commits, **not merged to `main`**).
