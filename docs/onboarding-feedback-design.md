@@ -1,8 +1,10 @@
 # Onboarding and feedback: the hint, grey and red, and hover
 
-**Status: approved 2026-10-19, with every recommendation in §11. Built: §3, §4 and §13 (§14 records the corrections), then §2 and §9 (§15); critique fixes in §16. §17 (the feeder on the hover card) is approved for Phase 3, not yet built.** Phase 2 of
-`docs/roadmap.md`, from decisions 4, 5 and 6. Like `crates-design.md`, it is written before the
-code and kept as written afterwards, with corrections recorded rather than hidden. Its sibling,
+**Status: built.** Approved 2026-10-19 with every recommendation in §11. All of it is built,
+§17 (the feeder on the hover card) in Phase 3. Phase 2 of `docs/roadmap.md`, from decisions 4, 5
+and 6. Each section says what is true in the code now: the corrections found while building it
+(§14 to §16, §17.9) are written into the sections they correct, and their dated record, with the
+reasons, is `docs/history/onboarding-feedback-changelog.md`. Its sibling,
 `docs/guide-chapters-design.md`, rewrites the guide's texts around what this one builds.
 
 ## 0. Invariants
@@ -53,7 +55,7 @@ Three causes, one fix each:
 |---|---|---|
 | First program 8 min | The step names three cards and three sockets in one sentence; the vault is a list; nothing on screen says which card is next or that ENGAGE commits | §2: the next drag pulses, card and socket |
 | Turning 4½ min | `turn` says "stand next to it and press R". R turns the *nearest* golem, and chapter 4's new Scavenger stands diagonal to the first, so R can turn the wrong one. Facing shows only as a small arrow on the body | `guide-chapters-design.md`: turn while carrying (R then turns only the carried golem); §4: arrows on the source and target tiles |
-| Badge read "vaguely" | A badge is a short sentence in red, and every waiting golem wears one too (`godot-conversion-plan.md`, chapter 6 frames: a carrier with "no Slag" yet, an unloader "waiting on Belt(0,-12)#3") | §3: waiting goes grey; §4: hovering a red golem names the tile, the good and the fix |
+| Badge read "vaguely" | A badge is a short sentence in red, and every waiting golem wears one too (`history/godot-conversion-plan.md`, chapter 6 frames: a carrier with "no Slag" yet, an unloader "waiting on Belt(0,-12)#3") | §3: waiting goes grey; §4: hovering a red golem names the tile, the good and the fix |
 
 The second cause is a reading of the code, not a measurement: the playtest didn't record which
 golem turned. The Phase 2 playtest asks (`testscript/phase-2-playtest.md`).
@@ -80,11 +82,12 @@ means). Nine steps carry one: `program`, `program-presser`, `program-coker`, `st
 `program-smelter`, `program-carrier`, `scav3`, `unloader` and `program-zeppelin`
 (`guide-chapters-design.md` §3 lists each plan). Their targets are the golems the kit already
 programs (`Pressers.FirstOrDefault()`, `NewestPresser`, the `scav2`/`extractor`/`unloader` roles,
-and so on).
+and so on). `program-carrier`'s target is the newest Presser that is neither the iron Presser nor
+a coker: looking ahead from `r4-card`, the newest Presser is the coker.
 
-**The plan is the kit's action too.** Each of those steps' kit entry becomes
-`PerformPlan(step)`: the same cards, goods and batch sizes `Program`/`ProgramSlots` pass today,
-read from the plan instead of repeated in `TutorialGuide.Kit.cs`. **The plan's `Matches` is the
+**The plan is the kit's action too.** Each of those steps' kit entry is `PerformPlan(step)`: the
+plan's cards, goods and batch sizes, written through `GolemProgramWriter` as ENGAGE does (the
+program rewinds to step 0). The kit's old `Program`/`ProgramSlots` are gone. **The plan's `Matches` is the
 step's `Done` predicate**, moved onto the plan (`IsProgrammed`, `IsIronPresser`, `IsCoker`,
 `IsSmelter`, `IsCarrier`, the unloader's and the Zeppelin's checks), so the hint stops exactly
 when the step would pass. Lenient checks stay lenient: `IsSmelter` accepts its two Hauls in
@@ -102,42 +105,41 @@ Why not the other sources the brief offered:
 - **`TutorialStep.Card`** names a card to *claim* on the Assembly Line, one per step. A program is
   a core and up to six cards in order, with goods and dials.
 - **The golem's role** (`RoleOpenings`) covers four golems and says nothing about cards.
-> **Changed 2026-11-19:** the TRIGGER socket is gone (every program runs Always On), so the hint
-> and its fallback start at STEP 1. Where this section names TRIGGER or the core's card, read it
-> as history.
-
-- **A rule from the empty sockets alone** can say *where* (TRIGGER, then STEP 1) but never
+- **A rule from the empty sockets alone** can say *where* (STEP 1, then the lever) but never
   *which card*. It is kept as the fallback (§2.3), not the hint.
 
 ### 2.2 The rule
 
 ```
-UI/WorkbenchHint.cs              (new, engine-free static)
-    WorkbenchHintTarget Next(IWorkbenchDraftView draft, ProgramPlan plan, bool committedMatches)
-    WorkbenchHintTarget Fallback(IWorkbenchDraftView draft, bool targetHasRunnableProgram)
+UI/WorkbenchHint.cs              (engine-free static)
+    WorkbenchHintTarget Next(WorkbenchSession draft, ProgramPlan plan, bool committedMatches)
+    WorkbenchHintTarget Fallback(WorkbenchSession draft, bool targetHasRunnableProgram)
     float PulseAlpha(float seconds)            0.35..0.95, 1.2 s period (TUNING)
 
     readonly struct WorkbenchHintTarget
-        WorkbenchHintKind Kind                 None, VaultCard, GoodPicker, QuantityDial, Lever
+        WorkbenchHintKind Kind                 None, VaultCard, DragOut, GoodPicker, QuantityDial, Lever
         string Card                            the vault card's name (VaultCard)
         WorkbenchZone Zone                     the socket it goes to (VaultCard, GoodPicker, QuantityDial)
         int Delta                              +1 or -1 (QuantityDial)
 ```
 
-`WorkbenchSession` implements `IWorkbenchDraftView` (the draft core, each socket's card, good and
-batch size, the chassis's slot count) and exposes `Hint`, evaluated on read. `Next` walks the plan
-in order and returns the first thing that differs:
+`WorkbenchSession` exposes `Hint`, evaluated on read. There is no TRIGGER socket: every program
+runs Always On (the design pass of 2026-11-19). `Next` returns `None` when the committed program
+already matches (`committedMatches`), when the draft overflows, when no chassis is fitted, when
+the plan has more slots than the chassis, or when a plan card isn't offered
+(`WorkbenchSession.OffersCard`: not claimed yet). Otherwise:
 
-1. **The trigger.** `DraftLogicCore` isn't the plan's core: the core's vault card, to TRIGGER.
+1. **The draft matches** (`plan.Matches` over the draft, asked first): the lever. So an order the
+   step accepts goes straight to the lever, and the hint ends as soon as the committed program
+   matches, even while the player edits the draft.
 2. **Each slot `i`, in order:**
-   - socket `i` doesn't hold the plan's card: that vault card, to STEP `i+1` (dropping replaces
-     whatever is there, so a wrong card needs no "drag it out" hint);
-   - the card is right, its good isn't: the good picker on STEP `i+1`;
+   - socket `i` doesn't hold the plan's card: that vault card, to STEP `i+1`. A drop on a filled
+     socket replaces its card (a socketed `WorkbenchCardControl` passes the drop on to its socket
+     row), so a wrong card needs no "drag it out" hint;
+   - the card is right, its good isn't: the good picker on STEP `i+1`, always on `>` (`Delta` +1);
    - the good is right, its batch size isn't: the dial on STEP `i+1`, `Delta` toward the plan.
-3. **A socket past the plan holds a card:** that socket, as a VaultCard target with `Card` null,
-   which draws as "drag this out" (§2.4).
-4. **The draft matches** (`plan.Matches` over the draft): the lever, unless the golem's committed
-   program already matches (`committedMatches`), in which case `None`.
+3. **A socket past the plan holds a card:** `DragOut` on that socket (§2.4).
+4. Otherwise the lever.
 
 Socket-by-socket rather than all cards first: a card arrives with its own default good and
 batch, so the good and the dial are fixed while the player's eye is still on that socket.
@@ -148,8 +150,8 @@ batch, so the good and the dial are fixed while the player's eye is still on tha
   golem until `Next` returns `None`, i.e. until the step's own check passes on the committed
   program. Retargeting re-asks `PlanFor`.
 - **Without a plan, on a golem that has never been told what to do** (`!HasRunnableProgram`):
-  `Fallback` outlines TRIGGER while the draft has no core, then STEP 1 while it has no steps,
-  then the lever once the draft has both. No vault card is outlined, because no rule knows which.
+  `Fallback` outlines STEP 1 while the draft has no steps (a `VaultCard` target with no card,
+  the socket alone), then the lever. No vault card is outlined, because no rule knows which.
   This covers a player who skipped the guide.
 - **Never** on a programmed golem without a plan: reprogramming is the player's design.
 - F1 or Skip guide stop the guide's plans at once (the fallback still applies). The kit's
@@ -159,13 +161,17 @@ batch, so the good and the dial are fixed while the player's eye is still on tha
 
 `WorkbenchScreen` draws `Session.Hint`; it decides nothing.
 
-- **A pulsing brass outline** (`HintOutline`, a `StyleBoxFlat` border, 3 px, colour
-  `#FFCC6A`, alpha `WorkbenchHint.PulseAlpha(t)`) around two things at once: the hinted vault
-  card and the target socket. One colour, two places, so the pair reads as "this, there".
+- **A pulsing, glowing brass frame** (`HintOutline`, colour `#FFCC6A`, alpha
+  `WorkbenchHint.PulseAlpha(t)`) around two things at once: the hinted vault card and the target
+  socket. One colour, two places, so the pair reads as "this, there". The frames are two `Panel`s
+  (a `StyleBoxFlat` 3 px border) on the screen's root, laid each frame over the target's rect
+  grown 4 px. The vault card's frame is clipped to the vault's view. Each **glows**, an 8 px
+  shadow in the frame's colour at 0.55 of its alpha, since a bare border was lost against the
+  brass vault at the pulse's low point. The guide calls them "the glowing card and socket".
 - **The good picker and the dial** get the same outline on their arrow button (the `Delta`'s
   side for the dial).
 - **The lever** gets the outline on `EngageLever`.
-- **A card to drag out** (step 3) gets the outline in a dimmer red-brown (`#C0603A`) on its
+- **A card to drag out** (`DragOut`) gets the outline in a dimmer red-brown (`#C0603A`) on its
   socket.
 - **No ghost card, no arrow across the screen, no pre-filled socket.** The outline is a frame
   around controls that already exist, so the screen's layout numbers (`Ugui.Place`) don't
@@ -187,8 +193,8 @@ every outline; the `tutorial` scenario checks it (§8).
 
 | Situation | What happens |
 |---|---|
-| The plan's card isn't owned (not claimed yet) | `Next` returns `None` and the step's text says to claim it. `PlaytestKitTests` pins that every plan's cards are owned when its step comes (§7) |
-| The chassis has fewer slots than the plan | `None`. Can't happen in the guide (each plan fits its chassis); pinned by a test |
+| The plan's card isn't owned (not claimed yet; `OffersCard` is false) | `Next` returns `None` and the step's text says to claim it. `PlaytestKitTests` pins that every plan's cards are owned when its step comes (§7) |
+| The chassis has fewer slots than the plan, or no chassis is fitted | `None`. Can't happen in the guide (each plan fits its chassis); pinned by a test |
 | The player drops cards in another order the step accepts | `Matches` passes; the hint goes to the lever |
 | The player engages a program that doesn't match | The step isn't done, so the hint stays on the first difference |
 | The draft overflows (`DraftOverflowCount > 0`) | `None`: the status plate already says why ENGAGE is refused |
@@ -247,21 +253,36 @@ GolemMoodRules.Classify(state, StallReason, HasRunnableProgram, FullestTypeUnits
 The probe runs only for a stalled golem, so a running factory pays nothing.
 
 **Fed.** A cell is fed with good *g* when another golem (live, not held, `HasRunnableProgram`)
-whose `TargetCell` is that cell has a Push step and may push *g*: its program's Assemble outputs
-and byproducts, its typed Hauls' goods, and, for an untyped Haul or an Extract, any good (its
-source isn't known well enough to rule *g* out). A belt cell is fed when walking its run upstream
+whose `TargetCell` is that cell has a Push step and may push *g*. A golem with an Assemble pushes only
+its recipe's output and byproduct (its Hauls fill its hold, not its target). One without an
+Assemble pushes its typed Hauls' goods, and, for an untyped Haul or an Extract, any good (its
+source isn't known well enough to rule *g* out). The Scrap Recycler counts as a source, since it
+gives Scrap. A belt cell is fed when walking its run upstream
 (a belt whose cell plus its facing step is this cell; a visited set bounds it) reaches a cell some
 golem pushes into. A mast's crate is fed while any Zeppelin has Freight Launch. A Post crate is fed
 when any Post crate is (they share one store). **The golem itself never counts**: chapter 4's
 Scavenger, turned round to face its own depot, is not fed by itself.
 
 **Drained.** A target cell is drained when another golem (as above) has it as its `SourceCell`
-and has a Haul, Extract or Load step; when it is a belt whose run downstream ends at such a
+and has a Haul or Extract step that could take a good in the pusher's push stock (an untyped Haul
+or an Extract may take anything; `LoadIntoBuffer` on a placed golem is a Push, so it never takes);
+when it is a belt whose run downstream ends at such a
 golem's source; or when it is a building that consumes what it takes: a boiler, a Slag Heap or a
 Scrap Recycler. The Clock Tower and a civic work's site drain a good only while their running
 stage or a later one asks for it (`ClockTowerSite.WillDemand`, added 2026-11-19): after the win,
 or once no stage left names the good, a feeder there can never deliver again, so it reads red and
 its card says the tower "no longer needs" the good. A Post crate is drained when any Post crate is.
+**A stall is never drained**: it never accepts a push, so chapter 4's Scavenger turned to face the
+Scrap stall reads red.
+
+**A feeder must deliver.** A feeder that is itself stalled on an empty take (`BufferEmpty`,
+`BeltEmpty`, `MissingItem` at a Haul or Extract) counts only if its own feeders deliver, walked
+depth-first with a visited set. A walk that comes back round to a golem already asking does not
+deliver. So an empty loop (golem A hauls crate X into crate Y, golem B hauls Y into X, both empty)
+reads red, since nothing will ever start it. A feeder that nothing feeds still counts, so the golems
+behind it stay grey (below). The walk is bounded by the golems once each, per stalled golem per
+frame. The probe indexes who pushes into and takes from each store (Phase 3's profile,
+`docs/performance-report-phase3.md` §8).
 
 A golem waiting behind another that is itself stuck reads grey. That is deliberate: one red at
 the root and a line of grey behind it reads as one fault with one fix, the same argument
@@ -318,10 +339,16 @@ stall branch (`Starved` for steam, `Waiting` or `Stalled` for the rest), then `S
   owns only the stopwatch.
 - **`Waiting` → `Stalled` is immediate** (dwell 0), so taking a line's feeder away turns the
   golem behind it red at once.
-- **The entry shake** plays only when the mood the frame after a `GolemStalledEvent` is `Stalled`
-  or `Starved`. A golem that starts waiting doesn't jolt.
-- **The red badge drops the golem's id line.** It read `[!] PlayerGolem-007` over the reason;
-  the id is on the hover card now, so the badge is `[!] ` plus `StallDiagnostics.DescribeShort`.
+- **The entry shake** plays when a golem goes from not stopped to stopped (`Stalled` or
+  `Starved`), not on every stall event: a collecting Haul republishes its stall each time a good
+  arrives. A golem that starts waiting doesn't jolt.
+- **The red badge has no id line.** It is `[!] ` plus `StallDiagnostics.DescribeShort(golem,
+  tiles)`, which names places through `TileNames` and goods through `ItemTiers.DisplayName`
+  (§4.3), never by id.
+- **Neighbouring badges don't overlap.** A label gives its drawn half-width and height
+  (`WorldHudRequest`), and `WorldHudLayout`'s second pass places such labels south first, then by
+  owner id, each climbing by its own height while it overlaps one already placed. A row of red
+  badges staggers, each still over its golem. Labels with no size are laid out in one column.
 - `IsStopped` stays `Stalled || Starved`. `Waiting` is not stopped in that sense: it is not
   counted, shaken or drawn loud.
 
@@ -345,7 +372,11 @@ stall branch (`Starved` for steam, `Waiting` or `Stalled` for the rest), then `S
 `StallTracker`'s event path takes a filter (`Func<string, bool> isStopped`, a roster lookup), so a
 waiting golem never shows for the half second before the next reconcile. With nothing stopped
 and some golems waiting, the strip reads **"No golem needs you · 3 waiting for goods."**; with
-none waiting, "All golems running." as today (the ported tests keep passing).
+none waiting, "All golems running." as today (the ported tests keep passing). It counts a stall
+event from a golem the roster doesn't know, as every stall counted before. Its red line names the
+golem and the place in player text, `StallDiagnostics.Describe(golem, stall, tiles)` through
+`AlertsStrip.Names` (wired by `SandboxWorld`); without names wired, the ported id sentences are
+unchanged.
 
 ### 3.7 Failure states
 
@@ -353,6 +384,7 @@ none waiting, "All golems running." as today (the ported tests keep passing).
 |---|---|
 | A crate is fed, but with a different good than the golem wants | Red when the feeder's possible outputs exclude the good; grey when unknown (an untyped Haul feeding it). Erring grey costs a little time; the hover still names the good |
 | The feeder is itself stuck | The golem behind it is grey; the feeder is red. One fault, one red |
+| Two golems each waiting on the other, both empty | Red: neither feeder delivers (§3.2) |
 | A heap or recycler out of Coke | Consumers count as drained, so the carrier pushing into it is grey. The heap's Coke is the carrier's own load (chapter 5), so this clears itself; a recycler starved for Coke is the open question in §11 |
 | The player carries the feeder away | It is held, so it stops feeding: the golem behind turns red on the next frame |
 | A golem with no facts source | Today's behaviour: `Stalled`, red (invariant 6) |
@@ -390,49 +422,59 @@ focused golem and for a carried golem's landing. Hover draws through the same ti
 
 ```
 World/GolemTileOverlay.cs        (new, engine-free static)
-    TileOverlay Decide(bool hovered, bool focused, Vector2Int? carryLanding, Vector2Int cell)
-        -> show, and the cell the tiles hang off (the landing while carried, else the golem's cell)
+    TileOverlay Decide(bool hovered, bool focused, bool carried, Vector2Int? carryLanding, Vector2Int cell)
+        -> show, and the cell the tiles hang off (the landing while carried, hidden while carried
+           with no landing, else the golem's cell)
 ```
 
 `GolemNode.SyncToEntity` replaces its `tiles` boolean with `Decide`. Each tile gains a child
 `facing_arrow.png`, rotated to the golem's facing on both tiles, since goods flow one way: into
 the golem on the teal tile, out of it on the gold one. The arrow sits at the tile's centre, scaled
-0.6.
+0.6, and is cream (the tile's tint is its self-modulate, so the arrow keeps its colour).
 
 **Z-order:** the tiles are floor level, z −1 global (`ZAsRelative = false`), as today and as the
 root `CLAUDE.md` sets for floor things; the arrows are their children at relative z 0, so −1 too.
-Never below −10 (`FloorLayer.FloorZ`). A hovered golem's tiles show **only while hovered**: no
+Never below −10 (`FloorLayer.FloorZ`). A tile whose cell holds a building other than a belt
+(`GolemTileOverlay.Covered`) draws its arrow at global z 1, above the standing sprites, so a crate
+doesn't hide it. A hovered golem's tiles show **only while hovered**: no
 dwell, no fade, so sweeping the mouse across a line reads each golem in turn.
 
 At most three golems show tiles at once: the hovered one, the focused one, and the carried one.
 
 ### 4.3 The hover card
 
-A small plate on the badge layer (`CanvasLayer` 4), 16 px right of and below the pointer, kept on
-screen, shown after the golem has been hovered 0.25 s (TUNING) so the card doesn't flicker as the
+A small plate on `CanvasLayer` 42 (above the guide's arrow on 40, which covered it on the badge
+layer), 16 px right of and below the pointer, kept on screen, never shown over a control, shown after the golem has been hovered 0.25 s (TUNING) so the card doesn't flicker as the
 mouse crosses a line. The hovered golem's badge hides while its card is up: one golem, one
-readout.
+readout. The pointer is read from motion events, as the GUI tracks it, so a scenario's pointer is
+the pointer hover sees.
 
 Every sentence is composed in Core:
 
 ```
-UI/GolemHoverText.cs             (new, engine-free static)
-    HoverCard Compose(GolemHoverFacts facts)     four lines, any may be ""
-UI/TileNames.cs                  (new, engine-free static)
-    string Describe(string endpointDisplayName, Vector2Int cell)
+UI/GolemHoverText.cs             (engine-free static)
+    HoverCard Compose(GolemEntity golem, GolemMood mood, StallFacts facts, TileNames tiles,
+                      bool strainingHeld = false, IReadOnlyList<GolemEntity> feeders = null)
+                                                 four lines, any may be ""
+UI/TileNames.cs                  (engine-free, an instance over the endpoint registry and the masts)
+    string Name(Vector2Int cell)
 ```
 
-**`TileNames`** turns ids into names: `Crate(3,4)` → `Crate (3,4)`, `Mast(9,1)` → `Freight Mast
+Every fact the card needs is already on the golem, so it is passed whole.
+`SandboxWorld.HoverCard(golem, mood, strainingHeld)` wires it.
+
+**`TileNames`** names a tile from what stands on it and its cell, never by parsing an id: `Crate(3,4)` → `Crate (3,4)`, `Mast(9,1)` → `Freight Mast
 (9,1)`, `PneumaticPost` → `Pneumatic Post`, a placed belt's `Belt(0,-12)#3` → `Belt (0,-12)`
 (`StallDiagnostics.PlacedBeltCell`), a node id → its good's stall (`ScrapNode` → `Scrap stall`),
-a boiler → `Boiler (5,2)`, nothing there → `the floor at (3,2)`. Cells print as `(x,y)`, no space,
+a boiler → `Boiler (5,2)`, the Clock Tower → `the Clock Tower`, nothing there → `the floor at
+(3,2)`. Cells print as `(x,y)`, no space,
 in Core's frame, as the crate headers already do.
 
 **The card's four lines:**
 
 | Line | Format | Example |
 |---|---|---|
-| Title | `{chassis display name} · {GolemId}` | `Brass Presser · PlayerGolem-004` |
+| Title | `UI/GolemNames.Full` | `Brass Presser #4` |
 | State | by mood, below | `Stuck: Crate (3,4) is empty, needs Scrap` |
 | Fix | stuck only: the fix column of §3.3, one sentence | `Nothing fills it. Put Scrap in by hand (I), or stand a golem that pushes into it.` |
 | Route | `From {source} → to {target}` | `From Crate (3,4) → to Crate (3,6)` |
@@ -442,9 +484,9 @@ in Core's frame, as the crate headers already do.
 | Mood | State line |
 |---|---|
 | `Working` | `Working · step 2 of 3, {card label}` |
-| `Working`, push stock ≥ `StrainingUnits` for 2 s | `Working · output {n}/12 {good}, nearly full` |
+| `Working`, a stock ≥ `StrainingUnits` for 2 s | `Working · output {n}/12 {good}, nearly full` (`hold` for the input stock) |
 | `Sleeping` | `Sleeping until its trigger: {CardSubtitle of the core}` |
-| `Waiting` | `Waiting for {good} · {source} is empty` (or `· {target} is full`, or `· a truckload is on its way`) |
+| `Waiting` | `Waiting for {good} · {source} is empty` (or `· {target} is full`, or `· a truckload is on its way`); naming the feeder instead when there is one (§17.4); a collecting Haul adds its progress, `· 5/10 ·` (§13.2) |
 | `Stalled` | `Stuck: {what}`, from the table below |
 | `Starved` | `No steam: {DescribeShort's steam cause}` with the alerts strip's fix as the fix line |
 | `Unprogrammed` | `No program · press E at it to open the Workbench` |
@@ -455,7 +497,8 @@ colon after `Stuck:` so a line has one colon.
 
 | Reason | `Stuck: …` |
 |---|---|
-| `BufferEmpty`, `BeltEmpty`, `MissingItem` at a take | `{source} is empty, needs {good}` (no good known: `{source} is empty`) |
+| `BufferEmpty`, `BeltEmpty`, `MissingItem` at a take | `{source} is empty, needs {good}` (no good known: `{source} is empty`); a collecting Haul: `{source} is empty, needs {good} (5/10)` |
+| `MissingItem` at a take, the source holding other goods | `{source} has no {good}` |
 | `NodeEmpty` | `{stall} is empty` |
 | `BeltFull` | `{target} is full of {good}` (`{target} is full`) |
 | `NoSourceAtTile` | `nothing to take from at {cell}, behind it` |
@@ -466,6 +509,25 @@ colon after `Stuck:` so a line has one colon.
 | `MissingItem` at an Assemble | `needs {n} more {good} than its Hauls bring` |
 | `NodeCrowded` | `{stall} already has 2 golems` |
 | `Unconfigured` | `its program can't run` |
+
+**No steam's fix lines** are written per cause: `Lay a steam pipe to it from a lit boiler.`,
+`Fuel its boiler with Coke (E at the boiler).`, `Build another boiler: this one already powers 8
+golems.`
+
+**Player names, never ids** (root `CLAUDE.md`). A golem's name is `UI/GolemNames`: `Short` =
+`Scavenger #4`, `Full` = `Clockwork Scavenger #4`, from the chassis's short name (Scavenger,
+Presser, Hauler, Overclocker, Zeppelin) and the number in its `GolemId`. The number is the id's, so
+it is unique across chassis, survives a load and never renumbers when a golem is dismantled.
+`GolemId` stays the identity everywhere else; an id the station didn't hand out prints as itself.
+A stall's resource is named by the side of the golem it is on (the tile behind for an empty
+source, the tile in front or the bound mast for a full target): `StallDiagnostics.PlayerResource`.
+`UI/PlayerText.RawIdIn` finds an id in drawn text (`PlayerGolem-`, `Crate(`, `…Node`, `…Buffer`,
+`…BeltA`, camel-cased names); `moods`, `hover` and `workbench` run it over what they draw. The
+Workbench's card subtitles say where a card acts: `from the tile behind`, `onto the tile in front`,
+`to its Freight Mast`, `in its hold`.
+
+**The [E] prompt** at a stopped golem puts its problem first in its detail, from the state line,
+then its facing and the turn and carry keys.
 
 **`WantedGood`** (for "needs Scrap" when the stall reason carries a place, not a good): the
 stalled step's own good (`GetItemTypeAt` or the card's `inputItemType`); else, for an untyped
@@ -483,6 +545,9 @@ character set the `font-glyphs` scenario pins.
 `GolemMoodRules.ShouldShowBadge(Straining, _)` returns false, and `Caption(Straining)` is no longer
 drawn. The classification is unchanged, so `Straining` still exists for anything that asks; the
 hover card's state line shows it once held `AdvisoryDwellSeconds` (2 s). `StrainingUnits` stays 9.
+The dwell is timed over the hold, not the mood: an Always On golem is `Idle` for a tick at the end
+of each cycle, which would restart a mood stopwatch every cycle. The hover node counts how long the
+fullest good has held `StrainingUnits` or more, and passes `strainingHeld`.
 
 ### 4.5 Failure states
 
@@ -521,26 +586,29 @@ covers it. The roadmap's Phase 2 bullet and the open item are closed.
 | `TutorialStep` | `Card`, `Workbench`, `Crate` | adds `Program`, `ProgramTarget` |
 | `TutorialGuide` | | `PlanFor(golem)`; the nine program steps' `Done` read `plan.Matches`; texts per `guide-chapters-design.md` |
 | `TutorialGuide.Kit.cs` | `Program`/`ProgramSlots` per step | `PerformPlan(step)` for the nine |
-| `WorkbenchSession` | | implements `IWorkbenchDraftView`; `Hint`; `HintSource` (`Func<GolemEntity, ProgramPlan>`, wired by `SandboxWorld` to `Guide.PlanFor`) |
+| `WorkbenchSession` | | `Hint`; `HintSource` (`Func<GolemEntity, ProgramPlan>`, wired by `SandboxWorld` to `Guide.PlanFor`) |
 | `WorkbenchHint` | none | new |
 | `WorkbenchScreen` | socket tints | `HintOutline` frames on card, socket, picker, dial and lever; vault scroll |
 | `PlaytestSession` | | the questions in §9; the report's chapter 1–4 total (`testscript/phase-2-playtest.md`) |
 
 ## 7. Tests (Core)
 
-- **`WorkbenchHintTests`**: an empty draft hints the core to TRIGGER; each plan slot in order; a
+- **`WorkbenchHintTests`**: an empty draft hints the first card to STEP 1; each plan slot in order; a
   wrong card in a socket hints the right one to it; a good mismatch hints the picker, a batch
   mismatch the dial with the right sign; a card past the plan hints "drag out"; a matching draft
   hints the lever; a matching committed program hints `None`; `IsSmelter`'s either order passes;
-  evaluating `Hint` leaves `Version` unchanged; the fallback outlines TRIGGER, STEP 1, the lever;
-  no hint on a programmed golem without a plan.
+  evaluating `Hint` leaves `Version` unchanged; the fallback outlines STEP 1, then the lever;
+  no hint on a programmed golem without a plan. The free-play fallback is pinned here, not on
+  screen.
 - **`ProgramPlanTests`**: each of the nine steps' `Matches` agrees with the predicate it replaced
   on the programs those tests already build; every plan fits its chassis.
 - **`PlaytestKitTests`** (extended): every plan's cards are owned when its step comes; the kit's
   `PerformPlan` passes each step; `PlanFor` finds `program-presser`'s plan while `presser` is
   current.
-- **`StallTriageTests`**: every `StallReason` value has an answer (enumerated, like `ItemTiers`'
-  reflection test, so a new reason can't be added without one); each row of §3.3, both ways.
+- **`StallTriageTests`** (triage, probe, mood, strip): every `StallReason` value has an answer
+  (`StallTriage.Urgency` throws for a reason it doesn't name, and the test walks the enum, so a new
+  reason fails a test, not a frame); each row of §3.3, both ways; the empty loop and the wrong good
+  (§3.2).
 - **`StallFactsProbeTests`** (`SandboxWorld`): a crate fed by a golem; the golem itself never
   feeds; a belt fed upstream; a Post crate fed through another; a boiler never gives and always
   drains; a truckload in transit; a feeder carried away stops feeding; a feeder that can't push
@@ -552,32 +620,25 @@ covers it. The roadmap's Phase 2 bullet and the open item are closed.
   "N waiting" text; the ported texts unchanged.
 - **`GolemInspectorTests`**: the pointer's cell, then the cell south; a held golem never; `null`
   clears.
-- **`GolemHoverTextTests`**: every mood's state line, every reason's `Stuck:` sentence and fix,
-  `TileNames` for each id shape, and every string within the font's character set.
+- **`GolemHoverTextTests`** (card, tile names, the pick, the overlay, the font): every mood's
+  state line, every reason's `Stuck:` sentence and fix, `TileNames` for each tile, and every
+  string within the font's character set.
+- **`HaulCollectsTests`** (§13.3).
 - **`TutorialGuideTests`** (extended): chapter 4's three wrong facings each read `Stalled` (red),
   not `Waiting`; the guide-text budgets of `guide-chapters-design.md` §1.
 - **`LayoutMattersTests`** unchanged: nothing here changes what a golem does.
 
 ## 8. Scenarios
 
-Three new, one extended. Each prints `[scenario <name>] PASS|FAIL` and is registered in
-`ScenarioRunner.Scenarios`.
+Two new, two extended. Each prints `[scenario <name>] PASS|FAIL` and is registered in
+`ScenarioRunner.Scenarios`. `moods` and `hover` share `Scripts/Scenarios/StreetFixture`.
 
-**`hint`** (Sandbox, new). From a fresh game, the scenario grants chapter 1's goods and places
-and fuels the boiler as the kit's actions would, so the guide settles on `golem`; then it builds
-the Scavenger at the station with real input, which puts the guide on `program`:
-
-1. The Workbench opens on the new golem: Always On's vault card and TRIGGER are outlined, and no
-   socket holds a card.
-2. A real mouse drag of Always On to TRIGGER: the outline moves to Extract and STEP 1.
-3. A wrong card dropped into STEP 1: the hint still points Extract at STEP 1.
-4. Extract, then Push Output, by real drags: the lever is outlined.
-5. Pull ENGAGE: no outline, and the guide passes `program`.
-6. At no point did a socket change except by a drop (the scenario compares the draft before and
-   after each frame without a drop).
-7. Free play: guide skipped, a new bare golem: TRIGGER outlined, no vault card outlined; a
-   programmed golem: no outline.
-8. Frames for `--write-movie`: the outline is visible on the card and the socket.
+**The hint lives in `workbench`** (extended; there is no `hint` scenario). Its golem is built while
+the guide is on chapter 1, so it is the guide's first Scavenger and the "Program it" plan applies.
+It checks the frames on the vault card and the socket, real drags following them, a wrong card
+keeping the hint, the lever framed last, ENGAGE clearing it, the vault frame hiding while the card
+is in hand, and no frame without a drop changing the draft. The free-play case (the fallback, and
+nothing on a programmed golem) is pinned in `WorkbenchHintTests`.
 
 **`moods`** (Sandbox, new). On steam, with real golems and crates:
 
@@ -604,11 +665,12 @@ the Scavenger at the station with real input, which puts the guide on `program`:
    tiles too (three at most).
 7. Frames: the arrows and the card are visible.
 
-**`tutorial`** (extended): on "Program it", the guide plate is clear of every hint outline as
-well as the sockets, lever and vault.
+**`moods`** also checks that no two drawn badges intersect.
 
-**`golems`, `golem-motion`, `workbench`** keep passing unchanged: the `workbench` scenario's golem
-has no plan and is programmed, so it sees no hint.
+**`tutorial`** (extended): on "Program it", the guide plate is clear of both hint frames as well
+as the sockets, lever and vault.
+
+**`golems`** and **`golem-motion`** keep passing unchanged.
 
 ## 9. Playtest questions
 
@@ -616,7 +678,7 @@ Added to `PlaytestSession.Questions` (ids new; `AfterStepId` is where each is as
 
 | Id | Asked at | Question | Answers |
 |---|---|---|---|
-| `hint` | `depot` | The glowing card and socket: did they show you what to drag? | Clear · Took a moment · In my way |
+| `hint` | `depot` (queued after the `workbench` question) | The glowing card and socket: did they show you what to drag? | Clear · Took a moment · In my way |
 | `turning` | `r4-card` | Turning golems with R: how did it go? | Easy · Fiddly · I turned the wrong one |
 | `grey-red` | `r4-card` | Waiting golems go grey, stuck ones red. Could you tell which needed you? | Always · Mostly · No |
 | `hover` | `r4-card` | Hovering a golem shows its arrows and, when stuck, why. Did you use it? | Often · Once or twice · Didn't know |
@@ -624,7 +686,9 @@ Added to `PlaytestSession.Questions` (ids new; `AfterStepId` is where each is as
 
 `badge` (asked at `r4-card`) is reworded, id kept: "When the golem stopped red, did its badge and
 hover tell you what was wrong?" (Clearly · Vaguely · I didn't hover it). Four questions open
-chapter 5; the playtest script says so, since a player may skip some.
+chapter 5; the playtest script says so, since a player may skip some. The report's first lines
+add "Chapters 1–4: mm:ss (target 15:00) · kit used: no" once `r4-card` is reached
+(`PlaytestSession.ChaptersOneToFour`).
 
 ## 10. Order of work
 
@@ -714,6 +778,9 @@ names isn't available where it needs it", and §3.3 already maps it at a Haul: g
 is fed with the good (or a truckload is on its way to the stall behind), red when nothing will
 bring it.
 
+**A load mid-collect resumes it**: the progress is derived from the saved hold and step index
+(`HaulCollectsTests.CollectProgress_IsDerivedFromTheHold…`). A lowered batch runs on what is held.
+
 **Which good an untyped Haul collects:** what the source offers (as today); with the source empty,
 the first good its input already holds, so a half-collected batch keeps its good.
 
@@ -753,175 +820,30 @@ didn't move (103, 0, 82, 101, 50): its lines haul batches their sources always h
 
 ## 14. Corrections, as built (§3, §4 and §13; 2026-10-19)
 
-Built: §3 and §4 in full, §11 question 5, §12.2 and §13. Not built here: §2 (the hint,
-`ProgramPlan`), §9's questions and the guide texts, which come next. Where the build differs from
-the text above:
-
-1. **`GolemHoverText.Compose(golem, mood, facts, tiles, strainingHeld)`** takes the golem, its
-   drawn mood, its `StallFacts` and a `TileNames`, not a `GolemHoverFacts` struct: every fact the
-   struct would carry is already on the golem. `SandboxWorld.HoverCard(golem, mood)` wires it.
-2. **`TileNames` is an instance** over the endpoint registry and the masts, and names a tile from
-   what stands on it and its cell, never by parsing an id (a placed belt is `Belt (0,-12)` because
-   a belt endpoint stands there). The Clock Tower reads "the Clock Tower".
-3. **`GolemTileOverlay.Decide` takes a `carried` flag**: a carried golem's tiles hang off its
-   landing, or hide while there is none.
-4. **Straining's hover dwell is timed over the hold**, not the mood: an AlwaysOn golem is `Idle`
-   for a tick at the end of each cycle, which restarted a mood stopwatch every cycle, so "nearly
-   full" never reached the card. The hover node counts how long the fullest good has held
-   `StrainingUnits` or more. The line reads `output` or `hold` for the stock that is full, since
-   `FullestTypeUnits` reads both: `Working · hold 11/12 Coal, nearly full`.
-5. **The hover card is on layer 42**, not 4: the guide's arrow (layer 40) covered its text in the
-   frames. It is transient and never shown over a control. The pointer is read from motion
-   events, as the GUI tracks it, so a scenario's pointer is the pointer hover sees.
-6. **Drained** counts golems with a Haul or Extract step at the cell (§3.2 also named Load):
-   `LoadIntoBuffer` on a placed golem is a Push, so it never takes.
-7. **Fed**: a golem with an Assemble pushes only its recipe's output and byproduct; its Hauls
-   fill its hold, not its target. The Scrap Recycler counts as a source (it gives Scrap), against
-   §3.2's parenthesis.
-8. **Stuck sentences at a take:** `MissingItem` where the source holds other goods reads
-   `{source} has no {good}`; a collecting Haul reads `{source} is empty, needs {good} (5/10)`.
-   No steam's fix lines are written per cause (`Lay a steam pipe to it from a lit boiler.`, `Fuel
-   its boiler with Coke (E at the boiler).`, `Build another boiler: this one already powers 8
-   golems.`).
-9. **The entry shake** plays when a golem goes from not stopped to stopped, not on every stall
-   event: a collecting Haul republishes its stall each time a good arrives.
-10. **The alerts strip** counts a stall event from a golem the roster doesn't know, as every stall
-    counted before. Its red line keeps `StallDiagnostics.Describe`'s ids (`Crate(2,-1)`).
-11. **`StallTriage.Urgency` throws** for a reason it doesn't name; `StallTriageTests` walks the
-    enum, so a new reason fails a test, not a frame.
-12. **The [E] prompt** puts a stopped golem's problem first in its detail:
-    `[E]  Program PlayerGolem-003  -  Stuck: nothing to take from at (-4,-1), behind it · faces E · [R] turn · [G] carry`.
-13. **Tile arrows** are cream on the tinted tiles (the tile's tint is its self-modulate, so the
-    arrow keeps its colour). A tile under a crate is covered by the crate, arrow and all, as any
-    floor-level thing is.
-14. **Tests** are `StallTriageTests` (triage, probe, mood, strip), `GolemHoverTextTests` (card,
-    tile names, the pick, the overlay, the font) and `HaulCollectsTests`; the scenarios `moods`
-    and `hover` share `Scripts/Scenarios/StreetFixture`. Not written yet: `TutorialGuideTests`'
-    chapter 4 facings and the guide-text budgets (with the guide texts).
+Written into §3, §4, §7 and §8. The dated list is in `docs/history/onboarding-feedback-changelog.md`.
 
 ## 15. Corrections, as built (§2 and §9; 2026-10-19)
 
-Built: §2 (`ProgramPlan`, `PlanFor`, `PerformPlan`, `WorkbenchHint`, the outlines), §9's
-questions, and `guide-chapters-design.md`'s texts. Where the build differs from the text above:
-
-1. **No `hint` scenario.** §8's checks live in the `workbench` scenario instead: its golem is
-   built while the guide is on chapter 1, so it is the guide's first Scavenger and the "Program
-   it" plan applies. It checks the frames on the vault card and the socket, real drags following
-   them, a wrong card keeping the hint, the lever framed last, ENGAGE clearing it, the vault
-   frame hiding while the card is in hand, and no frame without a drop changing the draft. §8's
-   free-play case (the fallback, and nothing on a programmed golem) is pinned in
-   `WorkbenchHintTests`, not on screen. `tutorial` checks the plate is clear of both frames.
-2. **A drop on a filled socket now replaces its card.** §2.2 assumed it did; the session always
-   did, but on screen the socketed card swallowed the drop, so a wrong card had to be dragged out
-   first. A socketed `WorkbenchCardControl` now passes a drop on to its socket row.
-3. **`WorkbenchHintKind.DragOut`** is its own kind (§2.2 step 3 used `VaultCard` with no card).
-   `VaultCard` with no card is the fallback's socket-only frame.
-4. **`Next` asks `plan.Matches` before walking**, so an order the step accepts goes straight to
-   the lever, and returns `None` as soon as the committed program matches, even while the player
-   edits the draft. The good picker's frame is always on `>` (`Delta` +1).
-5. **`IWorkbenchDraftView.OffersCard`** answers §2.6's "the card isn't owned"; `Next` also
-   returns `None` with no chassis fitted.
-6. **The frames** are two `Panel`s (a `StyleBoxFlat` border) on the screen's root, laid each frame
-   over the target's rect grown 4 px; the vault card's frame is clipped to the vault's view. They
-   also **glow**: an 8 px shadow in the frame's colour at 0.55 of its alpha. In the frames a bare
-   3 px border was lost against the brass vault at the pulse's low point, and the guide calls
-   them "the glowing card and socket".
-7. **Targets:** `program-carrier`'s is the newest Presser that is neither the iron Presser nor a
-   coker (§2.1 said the newest Presser): looking ahead from `r4-card`, the newest Presser is the
-   coker. The unloader's and the Zeppelin's `Matches` now need a logic core, so the lever is
-   never framed for a program with no trigger; the programs the old checks were tested on all
-   had one.
-8. **`PerformPlan` writes through `GolemProgramWriter`**, as ENGAGE does (the program rewinds to
-   step 0); the kit's own `Program`/`ProgramSlots` are gone.
-9. **`StallFactsProbe`: a stall is never drained.** §3.2's rule counted a golem extracting from
-   the stall as draining it, so chapter 4's Scavenger turned to face the Scrap stall read grey.
-   A stall never accepts a push. Found by `TutorialGuideTests`' wrong-facings test.
-10. **The `hint` question** is queued after `workbench`, both at `depot`. The report's first
-    lines add "Chapters 1–4: mm:ss (target 15:00) · kit used: no" once `r4-card` is reached
-    (`PlaytestSession.ChaptersOneToFour`).
+Written into §2, §8 and §9. The dated list is in `docs/history/onboarding-feedback-changelog.md`.
 
 ## 16. Corrections from the Phase 2 critique (2026-10-19)
 
-A review of `phase1/crates..7c89d53` against §0, §13, the guide spec and root `CLAUDE.md`.
-Fixed, each with a regression test that failed first:
-
-1. **An empty loop read grey forever.** Golem A hauls crate X into crate Y, golem B hauls Y into
-   X, both empty: each "fed" the other, so both were `Waiting` and nothing would ever start the
-   loop (invariant 4). `StallFactsProbe` now asks whether a feeder will **deliver**: a feeder
-   stalled on an empty take (`BufferEmpty`, `BeltEmpty`, `MissingItem` at a Haul or Extract)
-   delivers only if its own feeders do, walked depth-first with a visited set; a walk that comes
-   back round to a golem already asking does not deliver. §3.2's "one red at the root, grey
-   behind it" is kept: a feeder that nothing feeds still counts, so the golems behind it stay
-   grey. Cost: the walk is bounded by the golems once each, per stalled golem per frame (§3.7).
-   `StallTriageTests.AnEmptyLoop_OfGolemsEachWaitingOnTheOther_IsRed`.
-2. **Drained ignored the good.** A golem hauling Coal from a crate full of Scrap counted as
-   draining it, so the golem pushing Scrap there read grey forever. A taker now drains only if a
-   take step could take a good in the pusher's push stock (an untyped Haul or an Extract may take
-   anything). `AGolemHaulingAnotherGood_DoesNotDrainAFullCrate`.
-3. **Player text printed ids.** The alerts strip (`[!] PlayerGolem-004 stalled: Crate(2,-1) is
-   full`), the red badges (`no input in Crate(2,-1)`, `ScrapNode depleted`, `need 2 more
-   IronPlate`), the hover title (`Clockwork Scavenger · PlayerGolem-001`), the Workbench header
-   (`TARGET · PlayerGolem-001`), its card subtitles (`ScrapNode → ScrapBeltA`: the id-routed
-   demo route, meaningless on a placed golem), the [E] prompt and the carry/turn messages.
-   - **A golem's player name is `UI/GolemNames`**: `Short` = `Scavenger #4`, `Full` =
-     `Clockwork Scavenger #4` (the hover title), from the chassis's short name (Scavenger,
-     Presser, Hauler, Overclocker, Zeppelin) and the number in its `GolemId`. The number is the
-     id's, so it is unique across chassis, survives a load and never renumbers when a golem is
-     dismantled; `GolemId` stays the identity everywhere else. An id the station didn't hand
-     out prints as itself.
-   - **A stall's resource is named through `TileNames`** by the side of the golem it is on (the
-     tile behind for an empty source, the tile in front or the bound mast for a full target),
-     goods through `ItemTiers.DisplayName`, cells as `(x,y)`:
-     `StallDiagnostics.PlayerResource`, `DescribeShort(golem, tiles)` for the badge and
-     `Describe(golem, stall, tiles)` for the strip (`AlertsStrip.Names`, wired by
-     `SandboxWorld`). Without names wired the ported id sentences are unchanged. This replaces
-     §14.10's "the strip keeps `Describe`'s ids".
-   - **Card subtitles say where a card acts**: `from the tile behind`, `onto the tile in
-     front`, `to its Freight Mast`, `in its hold`.
-   - `UI/PlayerText.RawIdIn` finds an id in drawn text (`PlayerGolem-`, `Crate(`, `…Node`,
-     `…Buffer`, `…BeltA`, camel-cased names). `moods` runs it over every badge, the strip and
-     the prompt; `hover` over the card; `workbench` over every visible label.
-4. **Neighbouring badges overlapped.** `WorldHudLayout` stacked only labels in one column (0.9
-   cells), but a red badge is several cells wide, and zoomed out taller than a row: golems two
-   cells apart in a row, as every guide line stands, wore overlapping badges. A label now gives
-   its drawn half-width and height (`WorldHudRequest`), and a second pass places such labels
-   south first, then by owner id, each climbing by its own height while it overlaps one already
-   placed: a row of red badges staggers, each still over its golem. Labels with no size are
-   laid out exactly as before. `moods` checks no two drawn badges intersect.
-5. **Tile arrows vanished under crates** (§14.13). A tile whose cell holds a building other than
-   a belt (`GolemTileOverlay.Covered`) draws its arrow at global z 1, above the standing sprites;
-   on bare floor it stays with its tile at −1.
-
-Checked and not defects: the hint never writes the draft (`Next` reads the session and builds
-`AsProgram` on a scratch `GolemProgram`; `GolemProgramWriter.TryWrite` publishes nothing). A drop
-on a filled socket replaces the card in the draft only; the vault is a catalogue, not a stock,
-so nothing is lost, and `workbench`'s no-orphans check passes. `PlanFor` only reads. Collect
-progress is derived from the saved hold and step index, so a load mid-collect resumes it
-(`HaulCollectsTests.CollectProgress_IsDerivedFromTheHold…`); a lowered batch runs on what is
-held; a labelled crate gives only its good and a Haul of another stays on its step. The 2 s
-dwell can't hide red: `Presented` returns `Stalled` at once and holds the previous mood only
-for `Waiting`. Guide step ids are unchanged since `phase1/crates`; every step has a kit action.
-
-Open, for the user: a feeder that sleeps on a trigger that never comes (an Interval core set
-very long, a Signal nobody sends) still counts as feeding, so the golem behind it reads grey.
-The probe can't know a trigger will never fire without simulating; recommended: leave it, and
-have the hover card of a waiting golem name its feeder ("Waiting for Scrap · Scavenger #1 brings
-it"), so the player can follow the chain.
-
-The workbench scenario's Coke step now polls the tech-tree ledger after its deposit: the ledger
-sweeps once a second, and the picker's options depended on where in that second the steps fell.
+Written into §3.2 (the empty loop, the wrong good), §3.4 (badges), §3.6 (the strip), §4.2 (arrows
+under crates) and §4.3 (player names). Its open item, a feeder sleeping on a trigger that never
+comes, is answered by §17. The critique, its regression tests and what it checked and found sound
+are in `docs/history/onboarding-feedback-changelog.md`.
 
 ## 17. The waiting golem names its feeder (Phase 3; approved by the user)
 
-**Status: approved by the user as a Phase 2 follow-up, to be built in Phase 3; spec written
-2026-10-19.** It answers §16's open item and `docs/open-items.md` §2's "the user's call,
-pending" with the recommendation taken: the rule stays, and the hover card names the feeder.
+**Status: built in Phase 3** (2026-10-20), approved by the user as a Phase 2 follow-up. It
+answers §16's open item with the recommendation taken: the rule stays, and the hover card names
+the feeder.
 
 ### 17.1 The case
 
 A golem waits grey behind a feeder that will never deliver: an Interval core set very long, a
 Signal nobody sends. The probe counts a feeder as delivering unless it is itself stalled on an
-empty take (§16.1), and a sleeping feeder isn't stalled, so the golem behind it is `Waiting`
+empty take (§3.2), and a sleeping feeder isn't stalled, so the golem behind it is `Waiting`
 forever. The probe can't know a trigger will never fire without simulating it, and invariant 9
 keeps it from trying. So the card points the player up the chain instead: "Waiting for Scrap ·
 Scavenger #1 brings it when its trigger fires". Hovering Scavenger #1 then reads "Sleeping until
@@ -942,7 +864,7 @@ All of §0 holds. In particular:
    every golem whose facts read not fed, it is empty. A test pins the agreement (§17.6).
 3. **No cost per frame.** The names are found only for the hovered golem, when its card is
    composed. `StallFactsProbe.Read`, which runs for every stalled golem every frame, is unchanged.
-4. **Player names only**: `UI/GolemNames.Short`, never a `GolemId` (§16.3). Text keeps the font
+4. **Player names only**: `UI/GolemNames.Short`, never a `GolemId` (§4.3). Text keeps the font
    rule.
 
 ### 17.3 Where the feeders come from
@@ -964,8 +886,12 @@ IReadOnlyList<GolemEntity> FeedersOf(GolemEntity golem, int max = 3)
   `{ golem }` for each direct feeder, so one feeder's walk can't mark a golem another feeder
   reaches.
 - **Stops** at `max` delivering feeders (3 is enough to tell one, two and "others" apart).
-- Empty when the source doesn't give (`Gives`), when the stalled step isn't a take, or when
-  nothing delivers.
+- Empty when the source doesn't give (`Gives`) or when nothing delivers. `FeedersOf` mirrors
+  `IsFed` exactly and doesn't check that the stalled step is a take, since `Read`'s `SourceFed`
+  doesn't either and §17.2's agreement is the invariant. The take check is
+  `SandboxWorld.HoverCard`'s (§17.4).
+- It reads the same who-pushes-where indices as `Read` (§3.2), so the card and the colour come
+  from one search.
 
 It names the **direct** feeder, not the root of a chain: P behind S2 behind S1 names S2. Hovering
 S2 then names S1. Each hover is one link, which is the chain the player follows.
@@ -994,7 +920,7 @@ names the source ("From Crate (-9,1) → to …"), so nothing is lost.
 - **Collecting** keeps its progress: `Waiting for Scrap · 5/10 · Scavenger #1 brings it`.
 - **No good known** keeps the head `Waiting`: `Waiting · Scavenger #1 brings it`.
 - **The trigger clause** reads the feeder's `Program.logicCore.triggerType`, not its state, so it
-  doesn't flicker as an Always On golem idles a tick between cycles (§14.4). A null core gets no
+  doesn't flicker as an Always On golem idles a tick between cycles (§4.4). A null core gets no
   clause.
 - Names come from `GolemNames.Short` (chassis short name and number); goods from
   `ItemTiers.DisplayName`; places, where the line still names one, from `TileNames`.
@@ -1023,6 +949,8 @@ as their existing cases are:
 - `AWaitingGolem_NamesASleepingFeeder_WhenItsTriggerFires`: the feeder on an Interval core; the
   line ends `brings it when its trigger fires`.
 - `TwoFeeders_AreNamedInNumberOrder` and `ThreeFeeders_ReadAsOthers`.
+- `FeedersOf_TwoFeedersOneInAnEmptyLoop_NamesOnlyTheDeliveringOne` (§17.5's row). The agreement
+  test's fixtures also cover the Post and a carried feeder.
 - `AFeederUpABelt_IsNamed`.
 - `AChain_NamesTheNearFeeder_NotTheRoot`.
 - `ATruckloadComing_NamesNoFeeder`: the line is unchanged.
@@ -1056,20 +984,7 @@ reuses `TakenFrom`'s search the way §17.3 reuses `Feeders`.
 
 ### 17.9 As built (Code agent B, 2026-10-20)
 
-Built as §17.3–§17.7 say, with one difference and two additions:
-
-1. **`FeedersOf` doesn't check that the stalled step is a take.** §17.3 lists it among the cases
-   that answer empty, but `Read`'s `SourceFed` doesn't check it either, and §17.2's agreement
-   ("non-empty exactly when the facts read `SourceGives && SourceFed`") is the invariant. So
-   `FeedersOf` mirrors `IsFed` exactly, and the take check is `SandboxWorld.HoverCard`'s, which
-   passes feeders only for `Waiting` with `IsTake && SourceGives && SourceFed`, as §17.4 says.
-   The card reads the same.
-2. `FeedersOf_TwoFeedersOneInAnEmptyLoop_NamesOnlyTheDeliveringOne` pins §17.5's row. The
-   agreement test's fixtures also cover the Post and a carried feeder.
-3. The probe now indexes who pushes into and takes from each store (Phase 3's profile,
-   `docs/performance-report-phase3.md` §8), and `FeedersOf` reads the same indices, so the card
-   and the colour still come from one search.
-
+Written into §17.3 and §17.6; the record is in `docs/history/onboarding-feedback-changelog.md`.
 The `critique-hover-feeder` capture shows the card readable over the street: "Clockwork Scavenger
 #2 / Waiting for Scrap · Scavenger #1 brings it when its trigger fires / From Crate (-7,1) → to
 Crate (-5,1)".

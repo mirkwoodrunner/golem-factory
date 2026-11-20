@@ -1,5 +1,43 @@
 # Golem Factory — Unity Implementation Plan (Solo Digital Prototype)
 
+> **History, not instructions.** The Unity-era build log, M0 to M9 and the passes after it. The rules it records were ported to `godot/Core` and are pinned by `Core.Tests`; where this file and the Godot docs disagree, the Godot docs win. Read one section at a time: the file is about 3,700 lines.
+
+**Sections** (line numbers as of this index):
+
+- L41: Context
+- L69: Recommended Approach
+- L273: Critical Files (first to create)
+- L282: Verification
+- L304: M1 implementation notes (grid + placement)
+- L375: M2 implementation notes (tick clock + one hardcoded golem)
+- L426: M3 implementation notes (punch-card data model + list-based programming UI)
+- L482: M4 implementation notes (belts)
+- L588: M5 implementation notes (multiple resource chains)
+- L689: M6 implementation notes (stall handling + status UI)
+- L746: M7 implementation notes (Threshold + Signal triggers, vertical slice)
+- L834: M8 implementation notes (Artificer Focus meter + full Workbench UI)
+- L951: Graphics demo implementation notes
+- L1058: M9 implementation notes (Assembly Line, Patent Registry UI, save/load)
+- L1186: Player-driven starting scenario implementation notes
+- L1329: Walkable Main.unity demo + UGUI HUD redesign implementation notes
+- L1480: Steampunk & Fantasy UI Pack reskin implementation notes
+- L1542: Graphics & presentation quality pass implementation notes
+- L1644: Workbench production-quality pass implementation notes
+- L1742: World/environment production-quality pass implementation notes
+- L1854: Belt readability production-quality pass implementation notes
+- L2000: Belt readability follow-up fix pass
+- L2119: Economy / storage readout + Management HUD production-quality pass
+- L2269: Facing-based spatial routing, part 2: made strict, reachable, and visible
+- L2392: The isometric → top-down projection switch
+- L2541: The market street
+- L2698: The Artificer's Ledger: an in-game tech tree chart
+- L2821: The backlog pass: eight items off `open-items.md`
+- L3047: The Director's queue, and retiring Main.unity
+- L3128: The cozy automation pass
+- L3316: Cutting the Artificer Focus meter
+- L3401: Dismantling a golem: the wrecking bar's other half
+- L3535: Turning, joining and dragging: belts and pipes as connected tiles
+
 ## Context
 
 `docs/game-design.md` documents "Golem Factory: The Clockwork Metropolis," a concept built

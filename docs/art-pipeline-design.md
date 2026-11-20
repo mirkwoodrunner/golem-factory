@@ -13,6 +13,10 @@ sets: the S1 golems (the Brass Presser 8f09b0e, then the Scavenger, Overclocker,
 Zeppelin), the Artificer kept and adjusted (S1b), floor and walls kept (S2), lighting (L), the
 buildings (S3), the Workbench (S4), goods (S5) and the HUD (S6); each approved by the user (§9).
 
+**For new art, read these first:** §2 (the per-set workflow), §3.2 (the Presser, the template),
+§3.3 (the rules the reviews taught), §5 (the tools) and §9 (the user's decisions). §1 is the
+before-Phase-4 snapshot and §4 the per-set inventory as planned, both history now.
+
 ## 1. Where things stand (measured 2026-10-22, at 8b3ec0b)
 
 ### 1.1 The art
@@ -326,6 +330,40 @@ What the Presser's three review rounds settled (2026-10-23), so the next chassis
   recomposes its 28 frames pixel for pixel from the kept renders.
 - **Still plainer than the carts**, and the profile is mostly iron with a small ram; the user
   accepted it. A later pass may raise detail where the light check allows.
+
+### 3.3 Rules the chassis reviews taught
+
+Gathered from the reviews of S1 and S1b (2026-10-24 to 2026-10-28). The dated record is in
+`docs/history/roadmap-log.md`, under Phase 4.
+
+- **How a chassis is made** (the user's call, 2026-10-24). The lead writes the chassis' draft script
+  and `chassis.json` (copy the Presser's). **The user runs `golem_set.py <set> run` in their own
+  terminal**: a helper agent's render was killed by Claude Code's low-memory reaper, since ComfyUI
+  holds most of the 16 GB. Don't restart a reaper-killed render unasked. Install and verify need no
+  ComfyUI, so the lead or a helper on Sonnet (`Tools/Art/golem-helper.md`) runs those. Each chassis
+  goes to its review sheet and a compact numbered grid. The user marks frames, and nothing enters
+  `godot/art/` until they approve.
+- **Golems are creatures** with a head, arms and legs, wearing or wielding their chassis motif
+  (`art-style-bible.md` invariant 17). A chassis' look follows its function, not the others' style.
+  Draw detail in: a plainer first draft read as "lacking".
+- **Silhouettes.** The overlap limit is 0.50. The draft step stops a run whose south draft is over
+  it, before any render. A redraw must differ clearly from every chassis it is near.
+- **From the north.** It is the toughest view, so compare it with the south pose by pose. What a
+  golem holds in front is hidden by its body. What's worn on the back is drawn over the head and
+  upper arms. The north view is the south mirrored and re-lit, so a one-handed tool stays on the
+  golem's own side. What a hand holds on the golem's own side is hidden with it. Arms that come out
+  over the shoulders from the front go under them from behind.
+- **Layer order.** One order per facing can't suit every pose. A fist holding something in front is
+  clipped by the body and legs in the draft, and a raised or hanging fist shows. Arms are the draft's
+  in every frame (a recompose fixes them), but a change to a base draft needs that facing rendered
+  again. To redo one facing, move its `raw/base_<facing>/` aside and `run` again.
+- **Figures** (from the rejected Artificer redraw). Sleeves are part of the shirt, not ovals laid on
+  top, and as long from the front as from the side. A traced head needs a neck under it. Limbs are
+  the same length in every view. From behind, the arms go under the body but stay visible. An arm
+  swinging back moves from the shoulder with the elbow slightly bent.
+- **Don't draw or rotate an arm by script** onto an AI-rendered sprite. It doesn't sit ("like a
+  noodle floating on top of the sprite"). Move the sprite's own pixels whole, or regenerate.
+- **Red is the player's-action colour**, so no chassis is painted red (the Hauler is cream).
 
 ## 4. Inventory, by set
 

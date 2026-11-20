@@ -1,6 +1,6 @@
 # Golem Factory — Phase 3 playtest: the full playthrough
 
-**Runnable now: `docs/tuning-data-spec.md` §16 is built.** This judges Phase 3
+**Runnable now: `docs/tuning-data-spec.md` §16 is built** (its list is in `docs/history/tuning-data-spec-record.md`). This judges Phase 3
 (`docs/roadmap.md`): a complete run of chapters 1–10, to the Clock Tower's Foundation, **without
 the playtest kit (F9)**, with no step anyone stalls on and the frame rate holding at the end.
 

@@ -21,7 +21,7 @@ namespace GolemFactory.Buildings
     // Workbench so the player programs it exactly like any other golem.
     //
     // PORTED FROM Unity's MonoBehaviour of the same name (milestone G2 of
-    // docs/godot-conversion-plan.md). The rules are unchanged; the engine glue became:
+    // docs/history/godot-conversion-plan.md). The rules are unchanged; the engine glue became:
     //   * the golem PREFAB  -> a golem FACTORY (Func<GolemEntity>). Its presence still means
     //     "this station can build" (HasBuildRoster); the scene a golem lives in is the host's
     //     business, which it learns from GolemSpawned.

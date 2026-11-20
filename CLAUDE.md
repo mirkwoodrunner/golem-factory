@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 `golem-factory` is a solo-play **Godot 4** prototype of "Golem Factory: The Clockwork Metropolis" -- a
 Factorio/Satisfactory-style automation game (cozy top-down pixel art) where the player places "golems" programmed with
 punch-card-style Appendage / Chassis combinations that run rigidly on a world tick clock. It began as a
-Unity prototype and was ported to Godot (milestones G0-G10, `docs/godot-conversion-plan.md`). **The Unity project was removed at the G10 cutover; the tag `unity-final` holds its
+Unity prototype and was ported to Godot (milestones G0-G10, `docs/history/godot-conversion-plan.md`). **The Unity project was removed at the G10 cutover; the tag `unity-final` holds its
 last state.**
 
 The game lives in `godot/`. Paths in the engine sections below are relative to `godot/` unless they say otherwise.
@@ -17,8 +17,8 @@ Read the docs before making design calls, not just the code:
 - `docs/game-design.md` -- the core concept and loop. Source of truth for *mechanics*.
 - `docs/digital-design.md` -- visual style, the golem roster, and the Workbench spec.
 - `docs/progression-design.md` -- the tech tree, steam scarcity, chassis unlocks, Clock Tower endgame.
+- `docs/tuning-data-spec.md` -- every tuned number, where it lives in `data/`, and the test that pins it.
 - `docs/cozy-automation-design.md` -- depots, moods, loop labels, Recycler; §0: eight invariants.
-- `docs/godot-conversion-plan.md` -- the port's milestone log (G0-G10). Finished.
 - `docs/roadmap.md` -- **"Next session: start here"**. Read it before planning any work.
 - `docs/crates-design.md` -- crates, capped pack, wallet, Pneumatic Post; Phase 1. §0: invariants.
 - `docs/inventory-screens-design.md` -- the Pack and Crate screens and the label picker; Phase 1.
@@ -35,11 +35,12 @@ Read the docs before making design calls, not just the code:
 - `docs/endless-design.md` -- Phase 8: endless play after the Clock Tower.
 - `docs/region-design.md` -- the second region, the Docks: east of the street, from chapter 9.
 - `docs/golem-sales-design.md` -- golem orders at the City Office from chapter 5; the Golem Foundry.
-- `docs/steam-deck-design.md` -- running on the Steam Deck (not a store release); planned, not started.
+- `docs/steam-deck-design.md` -- running on the Steam Deck (not a store release); D1 and D4-D8's machine side built, the Deck's own steps wait for it.
 - `docs/performance-report-template.md` -- the endgame profile's spec; `-phase3.md` is a run.
+- `docs/scenarios.md` -- what each scenario checks, in full.
 - `docs/open-items.md` -- the backlog: open decisions, known gaps, deliberate scope cuts.
 - `docs/godot-spike.md` -- what the port measured before it began.
-- `docs/history/` -- the Unity era (M0-M9, test ledger, MCP setup). History, not instructions.
+- `docs/history/` -- the Unity era (M0-M9, test ledger, MCP setup), the port (G0-G10), the roadmap's phase log. History, not instructions.
 - `testscript/phase-1-playtest.md` -- how to run a playtest; the guide asks the questions.
 - `testscript/phase-2-playtest.md` -- chapters 1–4 without F9 in 15 minutes; run it first.
 - `testscript/endless-soak.md` -- two hours of endless play, sampled by `Tools/Soak/soak-sample.ps1`.
@@ -100,8 +101,8 @@ opens straight on a new game. It is the only scene.
 **Scenarios** (`Scripts/Scenarios/`) are the scene-level checks. `ScenarioRunner` is a node in the scene; `--
 --scenario <name>` runs one to a verdict, prints `[scenario <name>] PASS|FAIL …` and exits 0/1. An unknown name fails
 and lists the known ones. Current scenarios: `world`, `build`, `interact`, `golems`, `golem-motion`, `workbench`,
-`management`, `save`, `tutorial`, `playtest-kit`, `inventory`, `moods`, `hover`, `font-glyphs`, `perf`, `art`, `audio`, `feel`, `settings`, `accessibility`, `title`, `slots`, `overview`, `creative`, `supply`, `contracts`, `endless`, `docks`, `golem-sales`, `gamepad`, `guide-ahead`, `gamepad-ui`, `tick-visuals`; what
-each checks is in `godot/Scripts/Scenarios/CLAUDE.md`.
+`management`, `save`, `tutorial`, `playtest-kit`, `inventory`, `moods`, `hover`, `font-glyphs`, `perf`, `art`, `audio`, `feel`, `settings`, `accessibility`, `title`, `slots`, `overview`, `creative`, `supply`, `contracts`, `endless`, `docks`, `golem-sales`, `gamepad`, `guide-ahead`, `gamepad-ui`, `tick-visuals`; a line on
+each is in `godot/Scripts/Scenarios/CLAUDE.md`, and what each checks in full is in `docs/scenarios.md`.
 
 To add a scenario, implement `IScenario` and register it in `ScenarioRunner.Scenarios`. `--demo` (alias `--spike-demo`)
 only runs the scripted setup, for `--write-movie` captures. A windowed scenario run given `-- --scenario <name>
