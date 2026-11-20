@@ -21,7 +21,7 @@ namespace GolemFactory.Nodes.Scenarios
     ///   <item>A click adds a Coal cart: the price leaves the pack, the rope becomes the Coal
     ///   cart on the street, and it fills by itself on the clock.</item>
     ///   <item>E at the cart takes Coal; I opens its panel; a click buys a Rate rung.</item>
-    ///   <item>Saved to Slot 1, removed (half its price back, the rope again), and loaded from
+    ///   <item>Saved to Slot 1, removed (its price back, the rope again), and loaded from
     ///   Slot 1 with two clicks: the cart comes back at its rung.</item>
     /// </list>
     /// Writes only <c>user://scenario-saves</c> and <c>user://scenario-settings.cfg</c>.
@@ -316,9 +316,9 @@ namespace GolemFactory.Nodes.Scenarios
                 Click(Panel.Button(SupplyAction.Remove));
                 return null;
             });
-            Do("half back, and the rope again", () =>
+            Do("its price back, and the rope again", () =>
             {
-                if (!Spot.IsEmpty || Pack(ItemType.Scrap) != _scrap + Line(CoalLadder.AddPrice, ItemType.Scrap) / 2 || Pack(ItemType.Coal) <= _coal)
+                if (!Spot.IsEmpty || Pack(ItemType.Scrap) != _scrap + Line(CoalLadder.AddPrice, ItemType.Scrap) || Pack(ItemType.Coal) <= _coal)
                 {
                     return $"empty {Spot.IsEmpty}, Scrap {_scrap} -> {Pack(ItemType.Scrap)}, Coal {_coal} -> {Pack(ItemType.Coal)}: {Panel.Status}";
                 }
@@ -354,7 +354,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "shows " + View.Shown;
                 }
-                Log("saved, removed for half its price, loaded back at its rung");
+                Log("saved, removed for its full price, loaded back at its rung");
                 return null;
             });
         }

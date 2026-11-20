@@ -124,7 +124,7 @@ namespace GolemFactory.UI
         // player-visible text is asserted in tests rather than assembled ad hoc in
         // Update().
         public static string ComposeTicker(
-            string chassisName, int usedSlots, int maxSlots, string triggerName,
+            string chassisName, int usedSlots, int maxSlots,
             int cycleTicks, int steamDraw, float cyclesPerMinute)
         {
             var sb = new StringBuilder(160);
@@ -146,7 +146,6 @@ namespace GolemFactory.UI
             {
                 sb.Append("--");
             }
-            sb.Append("   TRIGGER ").Append(string.IsNullOrEmpty(triggerName) ? "-- none --" : Humanize(triggerName));
             sb.Append("   CYCLE ");
             if (cycleTicks > 0)
             {

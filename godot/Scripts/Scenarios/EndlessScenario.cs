@@ -18,10 +18,9 @@ namespace GolemFactory.Nodes.Scenarios
     /// <summary>
     /// Endless play (docs/endless-design.md), with real keys and clicks:
     /// <list type="number">
-    ///   <item>Before the tower: the bays at 100 say "more once the Clock Tower stands" with no
-    ///   button, and the pack stops at 250.</item>
-    ///   <item>The tower complete: the Assembly Line tab's bay row takes two Upgrade clicks to the
-    ///   golem cap of 112, then says so; the Pack row's Upgrade makes the pack 300.</item>
+    ///   <item>Before the tower: the golem row reads the fixed cap of 112 with no button, and the
+    ///   pack stops at 250.</item>
+    ///   <item>The tower complete: the Pack row's Upgrade makes the pack 300.</item>
     ///   <item>A Coal cart at rung 3: I opens its panel, and a click buys rung 4.</item>
     ///   <item>The authored contracts done: E at the City Office shows the first generated
     ///   contract (docs/endless-design.md §1.1), and a click takes it.</item>
@@ -60,7 +59,7 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 return null;
             });
-            Do("a campaign's endgame: bays at 100, the pack at 250, tower goods in the pack", () =>
+            Do("a campaign's endgame: the pack at 250, tower goods in the pack", () =>
             {
                 if ((Tree.Root.FindChild("Playtest", true, false) as PlaytestNode)?.Card.Visible == true)
                 {
@@ -68,7 +67,6 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 Sandbox.Tutorial?.Dismiss();
                 Sandbox.Clock.Play();
-                Sandbox.AssemblyBay.RestoreTier(AssemblyBayStructure.TierFor(100));
                 Sandbox.PackUpgrade.Restore(3);
                 foreach (string good in new[] { ItemType.Mechanism, ItemType.Regulator, ItemType.GreatCog, ItemType.Casing, ItemType.ChronometerCore })
                 {
@@ -78,7 +76,7 @@ namespace GolemFactory.Nodes.Scenarios
                 return Sandbox.EndlessOpen ? "endless play is open before the tower" : null;
             });
             PlanBeforeTheTower();
-            PlanTheBays();
+            PlanTheRungs();
             PlanTheCart();
             PlanGeneratedContracts();
             PlanCivicWorks();
@@ -90,19 +88,19 @@ namespace GolemFactory.Nodes.Scenarios
         {
             Do("Tab", () => { Tap(Key.Tab); return null; });
             Do("click Assembly Line", () => { Click(Management.TabButtons[ManagementTab.AssemblyLine]); return null; });
-            Do("the bays wait for the tower, with no button", () =>
+            Do("the golem cap is fixed, with no button", () =>
             {
                 string text = RowText("BayRow")?.Text ?? "";
-                if (!text.Contains("more once the Clock Tower stands") || RowButton("BayRow") != null)
+                if (!text.Contains("/ 112") || !text.Contains("the most the workshop holds") || RowButton("BayRow") != null)
                 {
-                    return $"bay row '{text}', button {RowButton("BayRow") != null}";
+                    return $"golem row '{text}', button {RowButton("BayRow") != null}";
                 }
                 return RowButton("PackRow") == null ? null : "the pack offers a rung before the tower";
             });
             Do("Escape", () => { Tap(Key.Escape); return null; });
         }
 
-        private void PlanTheBays()
+        private void PlanTheRungs()
         {
             Do("the Clock Tower completes", () =>
             {
@@ -112,34 +110,6 @@ namespace GolemFactory.Nodes.Scenarios
             Do("Tab", () => { Tap(Key.Tab); return null; });
             Do("click Assembly Line", () => { Click(Management.TabButtons[ManagementTab.AssemblyLine]); return null; });
             Wait(0.1); // the rows are rebuilt; a button has no size until the frame after
-            Do("click Upgrade on the bay row", () =>
-            {
-                Button upgrade = RowButton("BayRow");
-                if (upgrade == null || upgrade.Disabled)
-                {
-                    return $"no live Upgrade on the bay row: '{RowText("BayRow")?.Text}', open {Management.IsOpen}, rows {string.Join(",", Management.AssemblyLine.RowList.GetChildren().Select(c => c.Name.ToString()))}";
-                }
-                Click(upgrade);
-                return null;
-            });
-            Until("106 slots", 1, () => Sandbox.AssemblyBay.MaxGolemSlots == 106 ? null : $"{Sandbox.AssemblyBay.MaxGolemSlots} ({Sandbox.AssemblyLineBoard.Status})");
-            Wait(0.1); // the row is rebuilt; its button has no size until the frame after
-            Do("click Upgrade again", () =>
-            {
-                Button upgrade = RowButton("BayRow");
-                if (upgrade == null || upgrade.Disabled)
-                {
-                    return "no live Upgrade on the bay row";
-                }
-                Click(upgrade);
-                return null;
-            });
-            Until("112: the golem cap, said so", 1, () =>
-            {
-                string text = RowText("BayRow")?.Text ?? "";
-                return Sandbox.AssemblyBay.MaxGolemSlots == 112 && text.Contains("the most the city allows") && RowButton("BayRow") == null
-                    ? null : $"{Sandbox.AssemblyBay.MaxGolemSlots}, '{text}'";
-            });
             Do("click Upgrade on the Pack row", () =>
             {
                 Button upgrade = RowButton("PackRow");
@@ -198,7 +168,7 @@ namespace GolemFactory.Nodes.Scenarios
                     return $"rung {_coal.Cart.RateRung}: {Carts.Status}";
                 }
                 Tap(Key.Escape);
-                Log($"bays 100 -> 112 (the golem cap) and the pack 250 -> 300 through the Assembly Line tab, a Coal cart to rung 4 ({_coal.Cart.RatePerMinute} a minute) through its panel");
+                Log($"the golem cap fixed at 112 with no button, the pack 250 -> 300 through the Assembly Line tab, a Coal cart to rung 4 ({_coal.Cart.RatePerMinute} a minute) through its panel");
                 return null;
             });
         }

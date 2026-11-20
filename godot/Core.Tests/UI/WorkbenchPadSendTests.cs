@@ -32,19 +32,6 @@ namespace GolemFactory.Tests.UI
             new AppendageActionDefinition { name = name, haulQuantity = haul };
 
         [Test]
-        public void ALogicCore_GoesToTheTrigger_ReplacingTheOneThere()
-        {
-            WorkbenchSession session = Session(3, out _);
-            var first = new LogicCoreDefinition { name = "First" };
-            var second = new LogicCoreDefinition { name = "Second" };
-
-            Assert.AreEqual(WorkbenchZone.Trigger.Kind, session.SendToNextSocket(WorkbenchCardRef.FromVault(first))?.Kind);
-            session.SendToNextSocket(WorkbenchCardRef.FromVault(second));
-
-            Assert.AreEqual(second, session.DraftLogicCore);
-        }
-
-        [Test]
         public void Appendages_FillTheStepsInOrder_AndAGapIsFilledFirst()
         {
             WorkbenchSession session = Session(3, out _);
@@ -104,7 +91,6 @@ namespace GolemFactory.Tests.UI
             Assert.AreEqual(dropped.DraftQuantityAt(0), sent.DraftQuantityAt(0));
             Assert.AreEqual(dropped.DraftItemTypeAt(0), sent.DraftItemTypeAt(0));
             Assert.AreEqual(DropZoneHighlight.Neutral, sent.AppendageHighlights[0]);
-            Assert.AreEqual(DropZoneHighlight.Neutral, sent.LogicHighlight);
         }
     }
 }

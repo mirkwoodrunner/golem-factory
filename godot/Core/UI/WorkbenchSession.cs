@@ -19,31 +19,27 @@ namespace GolemFactory.UI
     }
 
     /// <summary>
-    /// A card as the Workbench sees it: what it carries, and where it was picked up from.
-    /// Exactly one of <see cref="LogicCore"/> / <see cref="Appendage"/> is set.
+    /// A card as the Workbench sees it: the appendage it carries, and where it was picked up from.
+    /// There are no trigger cards: every program the Workbench writes runs Always On (2026-11-19).
     /// </summary>
     public readonly struct WorkbenchCardRef
     {
-        public readonly LogicCoreDefinition LogicCore;
         public readonly AppendageActionDefinition Appendage;
         public readonly bool IsVaultOrigin;
         public readonly int SourceAppendageIndex;
 
-        private WorkbenchCardRef(LogicCoreDefinition core, AppendageActionDefinition appendage, bool vault, int source)
+        private WorkbenchCardRef(AppendageActionDefinition appendage, bool vault, int source)
         {
-            LogicCore = core;
             Appendage = appendage;
             IsVaultOrigin = vault;
             SourceAppendageIndex = source;
         }
 
-        public static WorkbenchCardRef FromVault(LogicCoreDefinition core) => new WorkbenchCardRef(core, null, true, -1);
-        public static WorkbenchCardRef FromVault(AppendageActionDefinition appendage) => new WorkbenchCardRef(null, appendage, true, -1);
-        public static WorkbenchCardRef FromTriggerSocket(LogicCoreDefinition core) => new WorkbenchCardRef(core, null, false, -1);
-        public static WorkbenchCardRef FromSocket(AppendageActionDefinition appendage, int index) => new WorkbenchCardRef(null, appendage, false, index);
+        public static WorkbenchCardRef FromVault(AppendageActionDefinition appendage) => new WorkbenchCardRef(appendage, true, -1);
+        public static WorkbenchCardRef FromSocket(AppendageActionDefinition appendage, int index) => new WorkbenchCardRef(appendage, false, index);
     }
 
-    /// <summary>Where a card was released: the trigger socket, an action socket, or nowhere (null).</summary>
+    /// <summary>Where a card was released: an action socket, or nowhere (null).</summary>
     public readonly struct WorkbenchZone
     {
         public readonly DropZoneKind Kind;
@@ -55,7 +51,6 @@ namespace GolemFactory.UI
             AppendageIndex = appendageIndex;
         }
 
-        public static WorkbenchZone Trigger => new WorkbenchZone(DropZoneKind.LogicCore, -1);
         public static WorkbenchZone Socket(int index) => new WorkbenchZone(DropZoneKind.Appendage, index);
     }
 
@@ -92,6 +87,9 @@ namespace GolemFactory.UI
         private string _claimUserId = PlaceableBuilding.LocalPlayerOwnerId;
 
         private ChassisDefinition _draftChassis;
+
+        // Always the roster's Always On core (DefaultCore): the player never picks a trigger. A
+        // roster with no core (a bare test) keeps whatever the golem or patent had.
         private LogicCoreDefinition _draftLogicCore;
         private readonly AppendageActionDefinition[] _draftAppendages;
         private readonly int[] _draftQuantities;
@@ -106,7 +104,6 @@ namespace GolemFactory.UI
             _draftAppendages = new AppendageActionDefinition[socketCount];
             _draftQuantities = Enumerable.Repeat(WorkbenchQuantityPolicy.MinQuantity, socketCount).ToArray();
             _draftItemTypes = Enumerable.Repeat("", socketCount).ToArray();
-            LogicHighlight = DropZoneHighlight.Neutral;
             AppendageHighlights = new DropZoneHighlight[socketCount];
         }
 
@@ -134,8 +131,18 @@ namespace GolemFactory.UI
             _chassisRoster = chassis ?? new ChassisDefinition[0];
             _coreRoster = cores ?? new LogicCoreDefinition[0];
             _appendageRoster = appendages ?? new AppendageActionDefinition[0];
+            _draftLogicCore = DefaultCore ?? _draftLogicCore;
             Version++;
         }
+
+        /// <summary>
+        /// The trigger every program the Workbench writes gets: the roster's Always On core (its
+        /// first core if none is Always On), or null for a roster with none. Never the player's
+        /// choice: a trigger slot with one right answer was a drag that decided nothing.
+        /// </summary>
+        public LogicCoreDefinition DefaultCore =>
+            _coreRoster.FirstOrDefault(c => c != null && c.triggerType == TriggerType.AlwaysOn)
+            ?? _coreRoster.FirstOrDefault(c => c != null);
 
         public void ConfigurePatents(PatentRegistry patents) => _patents = patents;
 
@@ -171,7 +178,6 @@ namespace GolemFactory.UI
             chassis != null && (!IsRosterGated || _line.GetClaimedCards(_claimUserId).Any(c => c != null && c.chassis == chassis));
 
         public IEnumerable<ChassisDefinition> RackChassis => _chassisRoster.Where(IsChassisAvailable);
-        public IEnumerable<LogicCoreDefinition> VaultLogicCores => _coreRoster.Where(c => c != null);
         public IEnumerable<AppendageActionDefinition> VaultAppendages => _appendageRoster.Where(IsCardAvailable);
 
         // --- The screen and its target -----------------------------------------------------
@@ -208,7 +214,7 @@ namespace GolemFactory.UI
 
             GolemProgram program = TargetGolem.Program;
             _draftChassis = program.chassis;
-            _draftLogicCore = program.logicCore;
+            _draftLogicCore = DefaultCore ?? program.logicCore;
             // EVERY socket is cleared before the incoming program fills any: the draft used to
             // overwrite only the indices the new program filled, so a retarget onto a golem with
             // fewer steps leaked the old golem's tail onto it.
@@ -269,26 +275,21 @@ namespace GolemFactory.UI
 
         // --- Drag and drop -----------------------------------------------------------------
 
-        public DropZoneHighlight LogicHighlight { get; private set; }
         public DropZoneHighlight[] AppendageHighlights { get; }
 
         /// <summary>Lights the sockets that would take <paramref name="card"/>, and reds the rest.</summary>
         public void BeginCardDrag(WorkbenchCardRef card)
         {
-            bool isCore = card.LogicCore != null;
             int maxSlots = DraftMaxSlots;
-            LogicHighlight = WorkbenchDropRules.AcceptsCard(DropZoneKind.LogicCore, -1, isCore, maxSlots)
-                ? DropZoneHighlight.Valid : DropZoneHighlight.Invalid;
             for (int i = 0; i < AppendageHighlights.Length; i++)
             {
-                AppendageHighlights[i] = WorkbenchDropRules.AcceptsCard(DropZoneKind.Appendage, i, isCore, maxSlots)
+                AppendageHighlights[i] = card.Appendage != null && WorkbenchDropRules.SlotWithinChassis(i, maxSlots)
                     ? DropZoneHighlight.Valid : DropZoneHighlight.Invalid;
             }
         }
 
         public void EndCardDrag()
         {
-            LogicHighlight = DropZoneHighlight.Neutral;
             for (int i = 0; i < AppendageHighlights.Length; i++)
             {
                 AppendageHighlights[i] = DropZoneHighlight.Neutral;
@@ -306,24 +307,12 @@ namespace GolemFactory.UI
             bool seated = false;
             if (zone == null)
             {
-                if (!card.IsVaultOrigin)
+                if (!card.IsVaultOrigin && card.SourceAppendageIndex >= 0 && card.SourceAppendageIndex < _draftAppendages.Length)
                 {
-                    if (card.LogicCore != null)
-                    {
-                        _draftLogicCore = null;
-                    }
-                    else if (card.SourceAppendageIndex >= 0 && card.SourceAppendageIndex < _draftAppendages.Length)
-                    {
-                        _draftAppendages[card.SourceAppendageIndex] = null;
-                        _draftQuantities[card.SourceAppendageIndex] = WorkbenchQuantityPolicy.MinQuantity;
-                        _draftItemTypes[card.SourceAppendageIndex] = "";
-                    }
+                    _draftAppendages[card.SourceAppendageIndex] = null;
+                    _draftQuantities[card.SourceAppendageIndex] = WorkbenchQuantityPolicy.MinQuantity;
+                    _draftItemTypes[card.SourceAppendageIndex] = "";
                 }
-            }
-            else if (zone.Value.Kind == DropZoneKind.LogicCore && card.LogicCore != null)
-            {
-                _draftLogicCore = card.LogicCore;
-                seated = true;
             }
             else if (zone.Value.Kind == DropZoneKind.Appendage && card.Appendage != null
                      && zone.Value.AppendageIndex >= 0 && zone.Value.AppendageIndex < _draftAppendages.Length
@@ -360,16 +349,11 @@ namespace GolemFactory.UI
         public const string NoChassisMessage = "Fit a chassis from the rack first.";
 
         /// <summary>
-        /// The socket a pad's send puts a vault card in (docs/steam-deck-design.md D6.W): a logic
-        /// core goes to TRIGGER, replacing the one there as a drop does; an appendage goes to the
+        /// The socket a pad's send puts a vault card in (docs/steam-deck-design.md D6.W): the
         /// first empty step inside the chassis. Null when no step is free.
         /// </summary>
         public WorkbenchZone? NextSocketFor(WorkbenchCardRef card)
         {
-            if (card.LogicCore != null)
-            {
-                return WorkbenchZone.Trigger;
-            }
             if (card.Appendage == null)
             {
                 return null;
@@ -557,7 +541,7 @@ namespace GolemFactory.UI
                 return;
             }
             _draftChassis = blueprint.Chassis;
-            _draftLogicCore = blueprint.LogicCore;
+            _draftLogicCore = DefaultCore ?? blueprint.LogicCore;
             for (int i = 0; i < _draftAppendages.Length; i++)
             {
                 bool inPatent = i < blueprint.Appendages.Count;
@@ -607,13 +591,10 @@ namespace GolemFactory.UI
         /// <summary><see cref="ReadHeadRow"/>: the golem isn't running the cards on the bench.</summary>
         public const int NoReadHead = -2;
 
-        /// <summary><see cref="ReadHeadRow"/>: the golem is waiting on its trigger.</summary>
-        public const int ReadHeadOnTrigger = -1;
-
         /// <summary>
         /// The socket whose card the target golem is on this tick: a step's index while it works
-        /// or is stopped on that step, <see cref="ReadHeadOnTrigger"/> while it waits for its
-        /// trigger. <see cref="NoReadHead"/> unless the cards on the bench are, in order, the cards
+        /// or is stopped on that step, or between cycles, the first step's, which runs next.
+        /// <see cref="NoReadHead"/> unless the cards on the bench are, in order, the cards
         /// the golem runs: once the draft moves on from the engaged program, a mark on it would
         /// point at a card the golem isn't reading. A readout only; it decides nothing.
         /// </summary>
@@ -626,7 +607,7 @@ namespace GolemFactory.UI
                     return NoReadHead;
                 }
                 GolemProgram program = TargetGolem.Program;
-                if (program.chassis != _draftChassis || program.logicCore != _draftLogicCore)
+                if (program.chassis != _draftChassis)
                 {
                     return NoReadHead;
                 }
@@ -652,7 +633,7 @@ namespace GolemFactory.UI
                 {
                     return NoReadHead;
                 }
-                return program.State == GolemState.Idle ? ReadHeadOnTrigger : row;
+                return row;
             }
         }
 
@@ -702,10 +683,6 @@ namespace GolemFactory.UI
         public string SlotCaption(int index) =>
             WorkbenchLoopLabels.Compose(index + 1, DraftAppendageAt(index) != null, LastFilledStep, DraftMaxSlots);
 
-        /// <summary>The trigger socket's caption, teaching whichever thing is missing.</summary>
-        public string TriggerCaption =>
-            WorkbenchLoopLabels.Compose(WorkbenchLoopLabels.TriggerRow, _draftLogicCore != null, LastFilledStep, DraftMaxSlots);
-
         private int LastFilledStep => WorkbenchLoopLabels.LastFilledStep(
             _draftAppendages.Length, step => step >= 1 && step <= _draftAppendages.Length && _draftAppendages[step - 1] != null);
 
@@ -718,7 +695,6 @@ namespace GolemFactory.UI
             int tier = _draftChassis != null ? _draftChassis.tier : 1;
             return WorkbenchDiagnostics.ComposeTicker(
                 _draftChassis?.name, steps, DraftMaxSlots,
-                _draftLogicCore != null ? CardDisplayName(_draftLogicCore, null) : null,
                 cycle, WorkbenchDiagnostics.ComputeSteamDraw(steps, tier),
                 WorkbenchDiagnostics.ComputeCyclesPerMinute(cycle, ticksPerSecond));
         }

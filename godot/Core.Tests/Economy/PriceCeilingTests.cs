@@ -41,7 +41,7 @@ namespace GolemFactory.Tests.EditMode
         /// <summary>The Assembly Line tab's purchases a step makes, by step id.</summary>
         private static readonly Dictionary<string, string> Purchased = new Dictionary<string, string>
         {
-            { "expand", "floor expansion 1" }, { "bays", "assembly bays" }, { "pack", "pack rung 1" },
+            { "expand", "floor expansion 1" }, { "pack", "pack rung 1" },
         };
 
         /// <summary>Every price a guide step's kit pays: (step index, what, price).</summary>
@@ -124,13 +124,12 @@ namespace GolemFactory.Tests.EditMode
         /// </summary>
         private static readonly Dictionary<string, string> ChaptersOneToFour = new Dictionary<string, string>
         {
-            { "assembly bays", "Scrap:40 IronPlate:20" },
             { "bench R1_Coking", "Coal:1" },
             { "bench R2_ScrapReclamation", "Scrap:1" },
             { "bench R8_GearCutting", "IronPlate:2" },
             { "boiler hand-load", "Coke:20" },
             { "card Card_AetherHauler", "IronPlate:5 Gear:2 Coke:7" }, // follows its chassis
-            { "card Card_BrassPresser", "Scrap:12 IronPlate:2 Gear:1" }, // follows its chassis
+            { "card Card_BrassPresser", "Scrap:12 IronPlate:1 Gear:1" }, // follows its chassis
             { "card Card_ClockworkScavenger", "Scrap:3" },
             { "card Card_ExtractScrap", "" },
             { "card Card_FreightLaunch", "" },
@@ -144,7 +143,7 @@ namespace GolemFactory.Tests.EditMode
             // Lowered, not raised (user, 2026-10-20): chapter 8's floor was 35:39 of its 30:00
             // ceiling at 80 Iron Plate + 40 Gear, one Hauler for each two-input good (§18).
             { "chassis AetherHauler", "IronPlate:20 Gear:10 Coke:30" },
-            { "chassis BrassPresser", "Scrap:50 IronPlate:10 Gear:4" }, // §12: was 60 Scrap + 20 Iron Plate + 10 Gear; lowered under the Hauler (design audit, 2026-11-19)
+            { "chassis BrassPresser", "Scrap:50 IronPlate:3 Gear:2" }, // §12: was 60 Scrap + 20 Iron Plate + 10 Gear, then 50 + 10 + 4 under the Hauler (design audit); 3 Plate + 2 Gear cut chapter 2's cranking by half (2026-11-19)
             { "chassis ClockworkScavenger", "Scrap:12" },
             { "floor expansion 1", "Scrap:80 IronPlate:40" },
             { "floor expansion 2", "Scrap:120 IronPlate:60 Gear:30" }, // pack rung 1 opens with it, at "gears"

@@ -14,9 +14,9 @@ namespace GolemFactory.Tests.EditMode
         private const int Capacity = 3;
 
         [Test]
-        public void RowZeroIsTheTrigger_AndTheRestAreNumberedSteps()
+        public void EveryRowIsANumberedStep()
         {
-            Assert.AreEqual("TRIGGER", WorkbenchLoopLabels.Caption(WorkbenchLoopLabels.TriggerRow));
+            // No TRIGGER row since 2026-11-19: every program runs Always On.
             Assert.AreEqual("STEP 1", WorkbenchLoopLabels.Caption(1));
             Assert.AreEqual("STEP 6", WorkbenchLoopLabels.Caption(6));
         }
@@ -77,22 +77,6 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void TheTriggerRowTeachesWhicheverThingIsMissing()
-        {
-            // A progressive teacher: the trigger row is always on screen, so it carries the
-            // sentence the player needs at their current stage.
-            Assert.AreEqual(
-                "TRIGGER  ·  fit a chassis first",
-                WorkbenchLoopLabels.Compose(0, false, lastFilledStep: 0, capacitySteps: 0));
-            Assert.AreEqual(
-                "TRIGGER  ·  drop cards below to build a cycle",
-                WorkbenchLoopLabels.Compose(0, false, lastFilledStep: 0, capacitySteps: Capacity));
-            Assert.AreEqual(
-                "TRIGGER  ·  when to start",
-                WorkbenchLoopLabels.Compose(0, true, lastFilledStep: 1, capacitySteps: Capacity));
-        }
-
-        [Test]
         public void LastFilledStepReadsFromTheTop()
         {
             Assert.AreEqual(0, WorkbenchLoopLabels.LastFilledStep(6, step => false));
@@ -110,9 +94,7 @@ namespace GolemFactory.Tests.EditMode
             // The middle dot (U+00B7) is in the atlas and already used by the vault headings.
             string[] all =
             {
-                WorkbenchLoopLabels.Separator, WorkbenchLoopLabels.TriggerCaption,
-                WorkbenchLoopLabels.TriggerHint, WorkbenchLoopLabels.NoChassisHint,
-                WorkbenchLoopLabels.EmptyProgramHint, WorkbenchLoopLabels.ThenHint,
+                WorkbenchLoopLabels.Separator, WorkbenchLoopLabels.ThenHint,
                 WorkbenchLoopLabels.LoopHint, WorkbenchLoopLabels.UnusedHint,
             };
 

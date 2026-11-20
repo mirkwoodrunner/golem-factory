@@ -32,28 +32,17 @@ namespace GolemFactory.Tests.UI
             _session.Open();
         }
 
-        private void Drop(string card, WorkbenchZone zone)
-        {
-            if (_defs.LogicCores.TryGetValue(card, out LogicCoreDefinition core))
-            {
-                _session.HandleDrop(WorkbenchCardRef.FromVault(core), zone);
-            }
-            else
-            {
-                _session.HandleDrop(WorkbenchCardRef.FromVault(_defs.Appendages[card]), zone);
-            }
-        }
+        private void Drop(string card, WorkbenchZone zone) =>
+            _session.HandleDrop(WorkbenchCardRef.FromVault(_defs.Appendages[card]), zone);
 
         private static WorkbenchHintTarget Card(string card, WorkbenchZone zone) =>
             new WorkbenchHintTarget(WorkbenchHintKind.VaultCard, card, zone, 0);
 
         [Test]
-        public void AnEmptyDraft_HintsTheCoreToTrigger_ThenEachSlotInOrder_ThenTheLever()
+        public void AnEmptyDraft_HintsEachSlotInOrder_ThenTheLever()
         {
             Open("ClockworkScavenger", TutorialGuide.ScavengerPlan);
-            Assert.AreEqual(Card("AlwaysOnCore", WorkbenchZone.Trigger), _session.Hint);
-
-            Drop("AlwaysOnCore", WorkbenchZone.Trigger);
+            Assert.AreEqual("AlwaysOnCore", _session.DraftLogicCore?.name, "no trigger to hint: it is always Always On");
             Assert.AreEqual(Card("ExtractScrap", WorkbenchZone.Socket(0)), _session.Hint);
 
             Drop("ExtractScrap", WorkbenchZone.Socket(0));
@@ -70,7 +59,6 @@ namespace GolemFactory.Tests.UI
         public void AWrongCardInASocket_HintsTheRightOneToIt()
         {
             Open("ClockworkScavenger", TutorialGuide.ScavengerPlan);
-            Drop("AlwaysOnCore", WorkbenchZone.Trigger);
             Drop("HaulScrap", WorkbenchZone.Socket(0));
 
             Assert.AreEqual(Card("ExtractScrap", WorkbenchZone.Socket(0)), _session.Hint, "dropping replaces, so no drag-out first");
@@ -83,7 +71,6 @@ namespace GolemFactory.Tests.UI
         public void AGoodMismatch_HintsThePicker_AndABatchMismatch_TheDialTowardThePlan()
         {
             Open("AetherHauler", TutorialGuide.SmelterPlanFor(AuthoredData.Load()));
-            Drop("AlwaysOnCore", WorkbenchZone.Trigger);
             Drop("HaulScrap", WorkbenchZone.Socket(0));
             Assert.AreEqual(new WorkbenchHintTarget(WorkbenchHintKind.QuantityDial, null, WorkbenchZone.Socket(0), +1), _session.Hint,
                 "Scrap is right; the batch is 1, the plan 2");
@@ -101,7 +88,6 @@ namespace GolemFactory.Tests.UI
         public void TheSmeltersHauls_InEitherOrder_GoToTheLever()
         {
             Open("AetherHauler", TutorialGuide.SmelterPlanFor(AuthoredData.Load()));
-            Drop("AlwaysOnCore", WorkbenchZone.Trigger);
             Drop("HaulScrap", WorkbenchZone.Socket(0));
             Drop("HaulScrap", WorkbenchZone.Socket(1));
             while (_session.DraftItemTypeAt(0) != ItemType.Coke)
@@ -119,7 +105,6 @@ namespace GolemFactory.Tests.UI
         {
             var exact = new ProgramPlan("AlwaysOnCore", null, new PlanSlot("ExtractScrap"), new PlanSlot("PushOutput"));
             Open("BrassPresser", exact);
-            Drop("AlwaysOnCore", WorkbenchZone.Trigger);
             Drop("ExtractScrap", WorkbenchZone.Socket(0));
             Drop("PushOutput", WorkbenchZone.Socket(1));
             Drop("HaulScrap", WorkbenchZone.Socket(2));
@@ -131,7 +116,6 @@ namespace GolemFactory.Tests.UI
         public void ReadingTheHint_NeverChangesTheDraftOrTheGolem()
         {
             Open("ClockworkScavenger", TutorialGuide.ScavengerPlan);
-            Drop("AlwaysOnCore", WorkbenchZone.Trigger);
             int version = _session.Version;
 
             for (int i = 0; i < 10; i++)
@@ -158,12 +142,9 @@ namespace GolemFactory.Tests.UI
         }
 
         [Test]
-        public void WithoutAPlan_ABareGolem_GetsTrigger_ThenStepOne_ThenTheLever_AndNoCard()
+        public void WithoutAPlan_ABareGolem_GetsStepOne_ThenTheLever_AndNoCard()
         {
             Open("ClockworkScavenger", null);
-            Assert.AreEqual(Card(null, WorkbenchZone.Trigger), _session.Hint);
-
-            Drop("IntervalCore10", WorkbenchZone.Trigger);
             Assert.AreEqual(Card(null, WorkbenchZone.Socket(0)), _session.Hint);
 
             Drop("HaulScrap", WorkbenchZone.Socket(0));

@@ -112,36 +112,14 @@ namespace GolemFactory.Tests.Contracts
         }
 
         [Test]
-        public void NoRewardsGoods_AreWorthMoreThanTheContractCostsToFill()
+        public void EveryContract_PaysVouchers_NeverGoods()
         {
-            // §4, counted in raw goods, reward and bonus together. A rung is not goods: a given
-            // rung is never paid, so removing its cart refunds nothing of it (GivenRung tests).
-            Dictionary<string, double> cost = RawCosts();
+            // §4 since 2026-11-19: a voucher buys an upgrade or unlock, and what it buys refunds
+            // nothing, so the city is never a cheaper way to make goods than making them.
             foreach (ContractDefinition c in Sequence())
             {
-                double asked = Raw(c.asks, cost);
-                double given = Raw(c.reward.goods, cost) + Raw(c.bonus.goods, cost);
-                Assert.LessOrEqual(given, asked, $"{c.name}: {given} raw given for {asked} raw asked");
-            }
-        }
-
-        [Test]
-        public void EveryRung_IsForACartTheStreetSells()
-        {
-            SandboxWorld world = CrateWorld.Compose();
-            try
-            {
-                foreach (ContractDefinition c in Sequence())
-                {
-                    foreach (ContractReward reward in new[] { c.reward, c.bonus }.Where(r => r.HasRung))
-                    {
-                        Assert.IsTrue(world.Supply.TryGetLadder(reward.rungGood, out _), $"{c.name}: no {reward.rungGood} cart");
-                    }
-                }
-            }
-            finally
-            {
-                world.Dispose();
+                Assert.AreEqual(1, c.reward.vouchers, c.name);
+                Assert.AreEqual(1, c.bonus.vouchers, c.name);
             }
         }
 
@@ -353,17 +331,17 @@ namespace GolemFactory.Tests.Contracts
         {
             ContractDefinition c = TakeFirst();
             StringAssert.StartsWith("Bonus if done in ", ContractText.BonusLine(Board));
-            int before = CrateWorld.Pack(_world, c.reward.goods[0].itemType);
+            StringAssert.StartsWith("Reward: 1 voucher, for any upgrade or unlock", ContractText.RewardLine(c));
+            int before = _world.Vouchers.Count;
             Fill(c);
 
-            Assert.AreEqual(before + c.reward.goods[0].quantity, CrateWorld.Pack(_world, c.reward.goods[0].itemType), "the reward is in the pack");
+            Assert.AreEqual(before + 2, _world.Vouchers.Count, "the reward and the bonus, a voucher each");
             Assert.IsTrue(Board.EarnedBonus(c.name));
-            Assert.AreEqual(1, Board.ShelfRungs.Count, "the bonus rung waits for its cart");
-            Assert.AreEqual(c.bonus.rungGood, Board.ShelfRungs[0].ItemType);
+            Assert.IsTrue(Board.ShelfEmpty, "nothing to collect: vouchers go straight to the player");
             ContractEvent done = _events.Last();
             Assert.AreEqual(ContractEventKind.Completed, done.Kind);
             Assert.IsTrue(done.BonusEarned);
-            Assert.AreEqual("Contract done for the " + c.requester + " · bonus earned", ContractText.Alert(done));
+            Assert.AreEqual("Contract done for the " + c.requester + " · bonus earned · vouchers to spend", ContractText.Alert(done));
         }
 
         [Test]
@@ -379,11 +357,10 @@ namespace GolemFactory.Tests.Contracts
             Assert.AreEqual("Bonus missed", ContractText.BonusLine(Board));
             Assert.IsTrue(OfficeEndpoint().CanGive(c.asks[0].itemType), "and still takes goods");
 
-            int before = CrateWorld.Pack(_world, c.reward.goods[0].itemType);
+            int before = _world.Vouchers.Count;
             Fill(c);
-            Assert.AreEqual(before + c.reward.goods[0].quantity, CrateWorld.Pack(_world, c.reward.goods[0].itemType), "the full ordinary reward");
+            Assert.AreEqual(before + 1, _world.Vouchers.Count, "the full ordinary reward, and no bonus");
             Assert.IsFalse(Board.EarnedBonus(c.name));
-            Assert.AreEqual(0, Board.ShelfRungs.Count, "no bonus");
             Assert.IsFalse(_events.Last().BonusEarned);
         }
 
@@ -408,35 +385,47 @@ namespace GolemFactory.Tests.Contracts
 
         // --- Rewards are never lost (§0.5, §4) --------------------------------------------------
 
-        [Test]
-        public void ARewardTooBigForThePack_WaitsOnTheShelf_UntilCollected()
+        // An older save's shelf: until 2026-11-19 a reward was goods (kept here when the pack was
+        // full) and a cart rung (kept until the player picked a cart). It still pays out.
+        private void SeedOldShelf(string good, int count, string rungGood, ContractRungKind kind)
         {
-            ContractDefinition c = TakeFirst();
-            RecipeIngredient reward = c.reward.goods[0];
-            StorageBuffer pack = _world.Wallet.Pack;
-            int cap = pack.CapacityPerType;
-            Assume.That(cap, Is.GreaterThan(0), "the pack has a cap");
-            pack.Deposit(reward.itemType, cap - pack.GetQuantity(reward.itemType) - 2);
-
-            Fill(c);
-            Assert.AreEqual(cap, pack.GetQuantity(reward.itemType), "what fits went in");
-            Assert.AreEqual(reward.quantity - 2, Board.ShelfGoods.Single().quantity, "the rest is on the shelf");
-            StringAssert.StartsWith("Waiting for you: ", ContractText.ShelfGoodsLine(Board));
-
-            Assert.AreEqual(0, Board.CollectGoods().Count, "no room yet: nothing moves, nothing is lost");
-            pack.TryWithdraw(reward.itemType, 5);
-            List<RecipeIngredient> moved = Board.CollectGoods();
-            Assert.AreEqual(5, moved.Single().quantity);
-            Assert.AreEqual(reward.quantity - 7, Board.ShelfGoods.Single().quantity);
+            Save.ContractsEntry entry = Board.Capture();
+            if (good != null)
+            {
+                entry.shelfItems.Add(good);
+                entry.shelfCounts.Add(count);
+            }
+            if (rungGood != null)
+            {
+                entry.shelfRungItems.Add(rungGood);
+                entry.shelfRungKinds.Add((int)kind);
+            }
+            Board.Restore(entry);
         }
 
         [Test]
-        public void AGivenRung_GoesOnTheCartPicked_ForNothing()
+        public void AnOldSavesShelfGoods_WaitUntilCollected()
         {
-            ContractDefinition c = TakeFirst();
-            Fill(c);
+            StorageBuffer pack = _world.Wallet.Pack;
+            int cap = pack.CapacityPerType;
+            Assume.That(cap, Is.GreaterThan(0), "the pack has a cap");
+            pack.Deposit(ItemType.Gear, cap - pack.GetQuantity(ItemType.Gear));
+            SeedOldShelf(ItemType.Gear, 12, null, ContractRungKind.None);
+
+            StringAssert.StartsWith("Waiting for you: ", ContractText.ShelfGoodsLine(Board));
+            Assert.AreEqual(0, Board.CollectGoods().Count, "no room yet: nothing moves, nothing is lost");
+            pack.TryWithdraw(ItemType.Gear, 5);
+            List<RecipeIngredient> moved = Board.CollectGoods();
+            Assert.AreEqual(5, moved.Single().quantity);
+            Assert.AreEqual(7, Board.ShelfGoods.Single().quantity);
+        }
+
+        [Test]
+        public void AnOldSavesShelfRung_GoesOnTheCartPicked_ForNothing()
+        {
+            SeedOldShelf(null, 0, ItemType.Coal, ContractRungKind.Rate);
             ShelfRung rung = Board.ShelfRungs.Single();
-            Assert.IsEmpty(Board.CartsFor(rung), "no " + rung.ItemType + " cart yet");
+            Assert.IsEmpty(Board.CartsFor(rung), "no Coal cart yet");
 
             CartSpot spot = _world.Supply.Spots.First(s => s.IsEmpty);
             Assert.IsTrue(_world.GrantCart(spot.Cell, rung.ItemType).Done);
@@ -444,23 +433,21 @@ namespace GolemFactory.Tests.Contracts
             int paid = spot.Cart.Paid.Sum(p => p.quantity);
 
             Assert.IsTrue(Board.ApplyRung(0, spot).Done);
-            Assert.AreEqual(rung.Kind == ContractRungKind.Rate ? 1 : 0, spot.Cart.RateRung);
-            Assert.AreEqual(rung.Kind == ContractRungKind.Capacity ? 1 : 0, spot.Cart.CapacityRung);
+            Assert.AreEqual(1, spot.Cart.RateRung);
             Assert.AreEqual(paid, spot.Cart.Paid.Sum(p => p.quantity), "a given rung is recorded as paid nothing, so a removal refunds nothing of it");
             Assert.IsEmpty(Board.ShelfRungs);
         }
 
         [Test]
-        public void ARung_RefusesACartAtTheTop_AndACartOfAnotherGood()
+        public void AnOldSavesShelfRung_RefusesACartAtTheTop_AndACartOfAnotherGood()
         {
-            Fill(TakeFirst());
+            SeedOldShelf(null, 0, ItemType.Coal, ContractRungKind.Rate);
             ShelfRung rung = Board.ShelfRungs.Single();
             CartSpot spot = _world.Supply.Spots.First(s => s.IsEmpty);
             _world.GrantCart(spot.Cell, rung.ItemType);
-            bool rate = rung.Kind == ContractRungKind.Rate;
-            while ((rate ? SupplyStreet.NextRateCost(spot.Cart) : SupplyStreet.NextCapacityCost(spot.Cart)) != null)
+            while (SupplyStreet.NextRateCost(spot.Cart) != null)
             {
-                Assert.IsTrue(_world.Supply.GiveRung(spot, rate).Done);
+                Assert.IsTrue(_world.Supply.GiveRung(spot, true).Done);
             }
             Assert.IsEmpty(Board.CartsFor(rung), "a cart at the top can't be chosen");
             Assert.IsFalse(Board.ApplyRung(0, spot).Done);
@@ -478,7 +465,7 @@ namespace GolemFactory.Tests.Contracts
             string path = Path.Combine(Path.GetTempPath(), "golem-factory-contracts-" + Guid.NewGuid().ToString("N") + ".json");
             try
             {
-                // One done with a rung on the shelf, the next taken and part filled.
+                // One done (its vouchers held), the next taken and part filled.
                 ContractDefinition first = TakeFirst();
                 Fill(first);
                 ContractDefinition second = Board.Sequence[1];
@@ -510,8 +497,7 @@ namespace GolemFactory.Tests.Contracts
                     Assert.AreEqual(elapsed, board.ElapsedTicks);
                     CollectionAssert.AreEqual(new[] { first.name }, board.Done);
                     Assert.IsTrue(board.EarnedBonus(first.name));
-                    Assert.AreEqual(first.bonus.rungGood, board.ShelfRungs.Single().ItemType);
-                    Assert.AreEqual(first.bonus.rungKind, board.ShelfRungs.Single().Kind);
+                    Assert.AreEqual(2, loaded.Vouchers.Count, "the first contract's reward and bonus");
                 }
                 finally
                 {
@@ -596,7 +582,7 @@ namespace GolemFactory.Tests.Contracts
             Fill(c);
             List<GolemFactory.Overview.AlertEntry> notes = _world.Alerts.Log.Entries.Where(e => e.IsNote).ToList();
             Assert.AreEqual(2, notes.Count, "posted and done; taking it isn't logged");
-            Assert.AreEqual("Contract done for the " + c.requester + " · bonus earned", notes[0].Text);
+            Assert.AreEqual("Contract done for the " + c.requester + " · bonus earned · vouchers to spend", notes[0].Text);
             Assert.AreEqual("The " + c.requester + " posted a contract at the City Office", notes[1].Text);
             Assert.IsFalse(notes[0].Open, "a note is never a stop that is still open");
             StringAssert.EndsWith(" · City Office", GolemFactory.Overview.AlertLog.Line(notes[0], _world.Alerts.Seconds));

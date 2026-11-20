@@ -32,8 +32,8 @@ Current scenarios:
   capturing the motions with `--write-movie`.
 - `workbench` (Sandbox): program a golem end to end through the Workbench with real mouse
   drags. Also covers socket highlights, the dial, failed drags leaving no orphans, Engage,
-  Patent, and close/reopen. Its golem is the guide's first, so it checks the next-drag hint
-  first: the frames on the vault card and the socket, real drags following them (a wrong card
+  Patent, and close/reopen. There is no TRIGGER socket and no logic core in the vault: the draft
+  runs Always On. Its golem is the guide's first, so it checks the next-drag hint first: the frames on the vault card and the socket, real drags following them (a wrong card
   keeps the hint, and a drop on a filled socket replaces), the lever framed last, ENGAGE
   clearing it, and no frame without a drop changing the draft. Reopened on the engaged golem,
   the read head (`WorkbenchSession.ReadHeadRow`) is drawn on exactly the socket the golem is on,
@@ -44,8 +44,8 @@ Current scenarios:
   with the HUD and build menu hidden. Covers the Inventory icons, the tab exclusivity, an
   Assembly Line claim reaching the Workbench, the tab's `Pack:  ·  Post:` header, the Pack row's Upgrade (the Pack screen's cap line
   reads 150), two Extends planking and walling new rows (the second at 120 Scrap), Patents
-  Load, the Ledger's plaques and recipe pane, no drawn label holding an internal id, and one
-  screen at a time.
+  Load, the Ledger's plaques and recipe pane, R4's plaque's Claim clicked into the vault (captured
+  as `ledger-claim`), no drawn label holding an internal id, and one screen at a time.
 - `save` (Sandbox): through the Save / Load tab, build, save, wreck everything, and load. The
   buildings, golems (with program and place) and pack must come back exactly, and two
   more rounds must change nothing. Then it extends the room after a save and loads, and the
@@ -198,7 +198,7 @@ Current scenarios:
   S and A walk to the spot at x = −20, drawn as its rope; the prompt offers a cart and E opens the
   panel, listing the carts the Ledger allows. A click adds a Coal cart for its price and the rope
   becomes the Coal cart; it fills on the clock; E takes from it; I opens its panel and a click
-  buys a Rate rung. Saved to Slot 1, removed for half its price (the rope again), and loaded with
+  buys a Rate rung. Saved to Slot 1, removed for its full price (the rope again), and loaded with
   two clicks: the cart is back at its rung, with one marker. Captures `supply-spot`,
   `supply-street`, `supply-cart`.
 - `contracts` (Sandbox): city contracts (`docs/contracts-design.md` §9) with real keys and
@@ -206,16 +206,16 @@ Current scenarios:
   opens. Slag seen, the first contract posts and the rope comes down; E opens the notice (no
   id drawn) and a click takes it, the bonus counting down in plain words, the HUD and the
   prompt showing it. I opens the office's crate: a click puts one Iron Plate in, a Shift-click
-  all the pack holds; a golem hauling from a depot fills the rest within par. The reward is in
-  the pack, the bonus rung on the shelf; a Coal cart added, a click on the notice gives it the
-  rung for nothing. The next contract posts and is taken, five delivered, saved to Slot 1,
+  all the pack holds; a golem hauling from a depot fills the rest within par. The reward and the
+  bonus are two vouchers, nothing on the shelf; Tab, the Assembly Line tab and a click on the first
+  row's Voucher buy its step for no goods; E reopens the notice. The next contract posts and is taken, five delivered, saved to Slot 1,
   five more, loaded with two clicks: five again. Captures `contracts-roped`,
   `contracts-office`, `contracts-notice`, `contracts-taken`, `contracts-reward`,
   `contracts-next`.
 - `endless` (Sandbox): endless play (`docs/endless-design.md`) with real keys and clicks. Before
-  the tower, the bays at 100 say "more once the Clock Tower stands" with no button and the pack
-  offers nothing past 250. The tower complete, two Upgrade clicks on the bay row reach the golem
-  cap of 112, which the row then says; the Pack row's Upgrade makes the pack 300; I at a Coal
+  the tower, the golem row reads the fixed cap ("/ 112 · the most the workshop holds") with no
+  button and the pack offers nothing past 250. The tower complete, the Pack row's Upgrade makes
+  the pack 300; I at a Coal
   cart at rung 3 and a click on Rate buy rung 4 in Regulators. With every authored contract
   done, the first generated one posts; E at the City Office shows it (no id) and a click takes
   it. The last stage's banner points at the office, and the Overview tab's running totals
@@ -236,7 +236,7 @@ Current scenarios:
   it, gone for good with the hands empty and the HUD counting one. E empty-handed opens the notice
   with the order (no id drawn). A Golem Foundry fed by a golem hauling Scrap from a kept-stocked
   depot builds and ships Scavengers, its prompt and I's Crate screen saying so, its golems never
-  in the world; the order completes, its reward in the pack, the next posted, and the running
+  in the world; the order completes, a voucher paid, the next posted, and the running
   totals count the golems sold. Saved to Slot 1 mid-build, the Foundry demolished, loaded with
   two clicks: the Foundry, its build and the order as saved. Captures `sales-office`,
   `sales-notice`, `sales-foundry`, `sales-foundry-intake`.
@@ -268,7 +268,7 @@ Current scenarios:
   note gives it focus and B takes it back; A on the second answer answers, harvesting nothing at
   the Scrap cart beside. A at the station opens the panel with the ring on the row the pack pays for; A on
   a greyed row says what's short; A builds, and the Workbench opens with nothing sent by that A and
-  the ring on the hinted Always On. A sends Always On, Extract and Push Output, the ring following the
+  the ring on the hinted Extract. A sends Extract and Push Output, the ring following the
   hint to the lever; LB and the d-pad change nothing behind the screen. The d-pad walks the ring
   to STEP 1; RT and LT step its dial (reading `LT`/`RT`); X takes it out and A sends it back. With
   every step full, A moves nothing and says why. A Haul in STEP 2: RB and LB step its good

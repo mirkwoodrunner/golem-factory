@@ -39,6 +39,12 @@ namespace GolemFactory.Supply
         Capacity = 2,
         Change = 3,
         Remove = 4,
+
+        /// <summary>The next Rate rung for a city voucher (2026-11-19). Appended.</summary>
+        RateVoucher = 5,
+
+        /// <summary>The next Capacity rung for a city voucher. Appended.</summary>
+        CapacityVoucher = 6,
     }
 
     /// <summary>One row of the cart panel: what it does, what it costs, whether it can now.</summary>
@@ -120,16 +126,29 @@ namespace GolemFactory.Supply
                 : Priced(SupplyAction.Capacity, null, "Capacity",
                     $"holds {cart.Capacity} to {cart.Ladder.Capacities[cart.CapacityRung + 1]}", capacity, wallet));
 
+            // The same rungs for a city voucher (2026-11-19), while one is held and the rung is open.
+            if (Vouchers?.Any == true)
+            {
+                if (rate != null && rows[0].Note?.StartsWith("Requires") != true)
+                {
+                    rows.Add(VoucherRow(SupplyAction.RateVoucher, "Rate for a voucher", rows[0].Detail));
+                }
+                if (capacity != null && rows[1].Note?.StartsWith("Requires") != true)
+                {
+                    rows.Add(VoucherRow(SupplyAction.CapacityVoucher, "Capacity for a voucher", rows[1].Detail));
+                }
+            }
+
             bool kept = _street.IsLastKept(cart);
             foreach (CartLadder ladder in _street.Offers().Where(l => l.ItemType != cart.ItemType))
             {
                 SupplyRow change = Priced(SupplyAction.Change, ladder.ItemType, "Change to " + SupplyText.CartName(ladder.ItemType),
-                    "keeps its rungs", ladder.AddPrice, wallet);
+                    "keeps its rungs, its price back", ladder.AddPrice, wallet);
                 if (kept)
                 {
                     Grey(change, KeptNote(cart));
                 }
-                else if (change.Enabled && wallet.FirstMisfit(Stock(cart)) is string full)
+                else if (change.Enabled && wallet.FirstMisfit(SupplyStreet.ChangeNet(cart, ladder.AddPrice)) is string full)
                 {
                     Grey(change, "pack full of " + ItemTiers.DisplayName(full));
                 }
@@ -141,7 +160,7 @@ namespace GolemFactory.Supply
             {
                 Action = SupplyAction.Remove,
                 Label = "Remove",
-                Detail = "half its price back",
+                Detail = "its price back",
                 Price = back.Count == 0 ? "nothing back" : "returns " + ConstructionCostPolicy.FormatCost(back),
                 Enabled = true,
             };
@@ -171,6 +190,12 @@ namespace GolemFactory.Supply
                 case SupplyAction.Capacity: return _street.UpgradeCapacity(spot);
                 case SupplyAction.Change: return _street.Change(spot, row.ItemType);
                 case SupplyAction.Remove: return _street.Remove(spot);
+                case SupplyAction.RateVoucher:
+                case SupplyAction.CapacityVoucher:
+                    // A voucher's rung refunds nothing on removal, as a granted rung never did.
+                    SupplyResult given = SupplyResult.Refused("No vouchers to spend.");
+                    Vouchers?.TrySpend(() => (given = _street.GiveRung(spot, row.Action == SupplyAction.RateVoucher)).Done);
+                    return given;
                 default: return SupplyResult.Refused("Nothing to do.");
             }
         }
@@ -202,6 +227,18 @@ namespace GolemFactory.Supply
             return row;
         }
 
+        /// <summary>The city's vouchers, spent by the voucher rows; null offers none.</summary>
+        public Contracts.CityVouchers Vouchers { get; set; }
+
+        private SupplyRow VoucherRow(SupplyAction action, string label, string detail) => new SupplyRow
+        {
+            Action = action,
+            Label = label,
+            Detail = detail,
+            Price = "1 of " + Contracts.CityVouchers.Describe(Vouchers.Count),
+            Enabled = true,
+        };
+
         private static SupplyRow Top(SupplyAction action, string label, string detail) =>
             new SupplyRow { Action = action, Label = label, Detail = detail, Price = "At the top", Enabled = false, Note = "At the top" };
 
@@ -213,9 +250,5 @@ namespace GolemFactory.Supply
 
         private static string KeptNote(SupplyCart cart) => $"the street needs one {SupplyText.CartName(cart.ItemType)}";
 
-        private static List<RecipeIngredient> Stock(SupplyCart cart) =>
-            cart.IsInfinite || cart.Stock <= 0
-                ? new List<RecipeIngredient>()
-                : new List<RecipeIngredient> { new RecipeIngredient { itemType = cart.ItemType, quantity = cart.Stock } };
     }
 }

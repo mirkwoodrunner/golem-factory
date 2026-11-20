@@ -2,19 +2,14 @@
 
 ## Context
 
-`docs/game-design.md` documents "Golem Factory: The Clockwork Metropolis," a tabletop
-concept built around rival Artificers programming automated "golems" via punch-card
-tiles, competing on a shared "Time Track." This plan adapts it into a **solo digital
-video game in Unity**, explicitly styled like Factorio/Satisfactory — not a digitized
-board-game UI.
+`docs/game-design.md` documents "Golem Factory: The Clockwork Metropolis," a concept built
+around an Artificer programming automated "golems" via punch-card tiles. This plan builds it as a
+**solo digital video game in Unity**, explicitly styled like Factorio/Satisfactory.
 
 Settled design decisions:
 
-- **Solo scope for v1**, not multiplayer. Mechanics that only make sense with rival
-  players — Patent Registry royalties paid to *other* players, competitive turn order
-  on a shared time track, contested Assembly Line drafting — are **sidelined**, but
-  systems should be architected so they can grow into their multiplayer board-game
-  form later without a rewrite.
+- **Solo scope for v1**, not multiplayer. Systems carry an owner from day one so they could grow
+  into multiplayer later without a rewrite.
 - **World model: spatial**, Factorio/Satisfactory-style — golems and conveyors are
   physically placed on a map and resources visibly flow between them (not an
   abstracted logic-graph/schematic game).
@@ -26,7 +21,7 @@ Settled design decisions:
   the tilemap/rendering/camera setup differs from a plain orthographic top-down grid.
 - **Primary focus for the first build**: factory automation mechanics and golem
   programming (the punch-card Logic Core / Appendages / Chassis system), since that's
-  the mechanic most unique to this design and least dependent on other players.
+  the mechanic most unique to this design.
 
 This is a from-scratch architecture and milestone plan. **Status: the M0 project
 scaffold is done** — see `docs/unity-mcp-setup-guide.md` for the setup steps
@@ -54,14 +49,13 @@ below installed, `ProjectSettings`/`Packages`/`Assets` committed to `main`).
 - Deterministic grid math for placement/movement/flow; no physics-driven simulation
   logic (physics reserved for cosmetic effects only, if used at all).
 
-### Translating the Time Track / Brass Cog mechanic into a solo real-time game
-This is the key design translation, since the tabletop mechanic is fundamentally
-turn-based and competitive:
+### Time and triggers in a real-time game
+Golems act on one clock, and a trigger decides when each one runs:
 
 - **World Simulation Clock**: a `SimulationClock` advances a `Tick` counter at a fixed
   rate (play/pause/speed controls), independent of player input — golems act on this
   clock, Factorio-style.
-- **Brass Cog → generalized Cog Trigger types**, evaluated each tick by a
+- **Trigger types**, evaluated each tick by a
   `GolemTriggerSystem`, exposed via an event bus (`TickAdvanced`, `ThresholdCrossed`,
   `GolemCompleted`):
   - **Interval** — fires every N ticks (default/simplest).
@@ -123,14 +117,13 @@ check. Chassis capacity is enforced only at authoring time in the programming UI
   occupancy, instantiates the golem prefab, opens the programming UI.
 - **Assembly Bays** become a concrete placeable `AssemblyBayStructure` with N golem
   mount slots; upgrading with Scrap/Brass unlocks more simultaneous golems and bigger
-  chassis tiers — a direct spatial translation of the tableau mechanic.
+  chassis tiers.
 
 ### Multiplayer-compatible seams (build clean now, no networking yet)
 - Every `Blueprint`/patent/drafted card carries an explicit `OwnerId` from day one
   (hardcoded to a single `LocalPlayer` in v1).
 - `PatentRegistry`/`Blueprint` is implemented as real single-player QoL (named/reusable
-  saved programs) with a `TryUseBlueprint(blueprintId, userId)` API that already has
-  the royalty-charge branch, no-op'd when `userId == OwnerId`.
+  saved programs) with a `TryUseBlueprint(blueprintId, userId)` API.
 - `AssemblyLineState` (drip-feeds new unlocks over time) exposes `ClaimSlot(userId)`
   from the start, even though only one user calls it in v1.
 - No Netcode/Mirror packages, no client-authority split — just avoid hardcoding
@@ -814,8 +807,7 @@ EventSystem + drag-and-drop) -- every prior milestone's UI was `OnGUI` immediate
   tests, not by manual inspection).
 - `Blueprints/Blueprint.cs`/`PatentRegistry.cs`/`PatentRegistryHolder.cs` -- headless,
   per the "multiplayer-compatible seams" section: `Blueprint` carries `OwnerId` from
-  day one, `TryUseBlueprint` already has the royalty-charge branch (a documented no-op
-  in solo v1, since there's no other player's wallet to pay into). No browse/reuse UI
+  day one. No browse/reuse UI
   -- that's M9's explicit scope.
 - `Buildings/AssemblyBayStructure.cs` -- `TryAssignGolem`/`ReleaseGolem` capacity
   bookkeeping, `TryUpgrade` (withdraws Scrap then Brass from a `StorageBufferRegistry`
@@ -901,7 +893,7 @@ patterns that wouldn't compile under C# 6.
 ### Testing
 - EditMode: `ArtificerFocusMeterTests.cs` (consume/refund/regen, including the
   negative-amount edge cases from bug #2), `PatentRegistryTests.cs` (patent/duplicate-
-  id/unknown-id/royalty-no-op), `AssemblyBayStructureTests.cs` (assign/release/
+  id/unknown-id), `AssemblyBayStructureTests.cs` (assign/release/
   capacity, upgrade success/insufficient-Scrap/insufficient-Brass-with-refund).
 - PlayMode (`Tests/PlayMode/UI/WorkbenchControllerTests.cs` -- needs Play Mode since
   `WorkbenchController.Start()`, like `GolemEntity.OnEnable` in M7, doesn't run in
@@ -1081,7 +1073,7 @@ shows -- see the deferred-integration note below.
   below.
 
 ### Deferred: Assembly Line doesn't gate the Workbench (yet)
-The tabletop mechanic (`docs/game-design.md`) is a competitive draft; "claim a card"
+The design (`docs/game-design.md`) has the Assembly Line gate unlocks; "claim a card"
 should plausibly mean "now it's available in your Workbench roster," not just "now
 it's available" (everything already is, via the M3-authored roster passed straight
 into `WorkbenchController.ConfigureRoster`). Wiring that properly -- the vault
@@ -2511,10 +2503,9 @@ clicking through the Editor is why the previous attempt had been left half-conve
 ## The market street
 
 The first time the map grew since M1 drew the room. Until this pass the workshop **was** the map:
-one 25×25 square of planks, walls on three sides, and nothing beyond them. `docs/game-design.md` —
-the tabletop source of truth — describes something the digital adaptation had quietly lost:
-*"Loading Docks: resource markets on the edge of the board where raw materials arrive in full
-truckload shipments."* There was no edge of the board to put one on.
+one 25×25 square of planks, walls on three sides, and nothing beyond them. The design wanted
+something the build had quietly lost: resource markets at the edge of the world, where raw
+materials arrive in full truckload shipments. There was no edge of the world to put one on.
 
 So raw goods are **bought from stalls**, not dug out of boulders standing on the factory floor.
 Five traders, one per raw good, on a cobbled street outside the shop front.
@@ -3296,8 +3287,8 @@ lever, the Patent Registry and its browser tab.
 
 ### Why
 
-The question that started it was whether Focus and Patents were board-game residue. Half of that is
-true and half is not, and the answer differs per system.
+The question that started it was whether Focus and Patents earned their place. Half of that held
+up and half did not, and the answer differs per system.
 
 - **Focus never bound.** 100 cap, 5/s regen, two spend sites in the entire game (`EngageGears` at
   `8 + 6 × appendageCount`, `Patent` at a flat 20), and nothing else — building, placing,
@@ -3308,9 +3299,7 @@ true and half is not, and the answer differs per system.
   a flat 10 specifically so patenting would pay off from three appendages up. That is circular: the
   patent system's justification was a tax the patent system also owned. Remove the tax and the
   patent system loses an argument, not a feature.
-- **Patents are not residue.** The *royalty* branch in `TryUseBlueprint` is (it is the tabletop's
-  "pay the patent holder", and it is still one empty `if` reserved for multiplayer), but the
-  registry itself is real single-player QoL: a named, saved, reloadable program. It keeps working,
+- **Patents stay.** The registry is real single-player QoL: a named, saved, reloadable program. It keeps working,
   and now it is free.
 
 ### A bug found on the way out

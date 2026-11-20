@@ -104,7 +104,7 @@ reads as different):
 
 | # | Call | Why |
 |---|---|---|
-| 1 | No marks on cards. | A card's family is already in words wherever it is: the vault's "LOGIC CORES · triggers" and "APPENDAGES · actions", each subtitle's "trigger ·" or "action ·", an empty socket's "drop a logic core". Colour is not the only cue there, so a mark would only crowd the card. |
+| 1 | No marks on cards. | A card's family is already in words wherever it is: the vault's "APPENDAGES · actions", each subtitle's "action ·", an empty socket's "drop an appendage" (the logic cores left the vault 2026-11-19). Colour is not the only cue there, so a mark would only crowd the card. |
 | 2 | The marks go on a golem's source tile: diagonal stripes (`ColourMarks.StripeAt`), so source and target differ in shape. | It is the weakest pair, and the guide steers by it ("press R until gold is on the depot"): the one place colour was the only cue. |
 | 3 | With the marks on, the guide says "striped teal" and "plain gold" (tokens, like the key names). | The words must match what a player who can't see the colour sees. |
 | 4 | The moods need no mark. | Their badges say what is wrong in words, and red/blue/grey stay at least 18 apart in every simulation. |

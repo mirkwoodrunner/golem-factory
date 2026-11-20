@@ -61,7 +61,7 @@ Chapter 7's Save and Load, done by F9, use their own file (`kit-save.json`), nev
 | 4 | Patents; turning a golem with R; a stall on purpose | C |
 | 5 | The Aether-Hauler, Iron Smelting, and its Slag; **feeding the smelter's crate by hand** | F |
 | 6 | Belts and a labelled depot at the Copper stall (label set on the crate screen) | F, I2 |
-| 7 | Floor Expansion, the bay upgrade, **the pack upgrade**, the Ledger, save and load | F, G, H, I4 |
+| 7 | Floor Expansion, **the pack upgrade**, the Ledger, save and load | F, H, I4 |
 | 8 | Goal steps: every good the Zeppelin costs; **the Pneumatic Post** | F, G |
 | 9 | The Zeppelin, its Freight Launch card, a Freight Mast, and **unloading the mast's crate** | G |
 | 10 | The Clock Tower in the town square: Frame Sections, and its Foundation | (new) |
@@ -159,8 +159,8 @@ which way in a note, or add it under the matching question in the report.
 | Supply carts | a Coal cart 80 Scrap · 30 a minute, holds 100 · the starting Scrap cart 120 a minute, holds 200 |
 | Cart upgrades | Rate and Capacity rungs, each priced in the next tier's goods (supply-design.md §3) |
 | Slag Heap | 1 Coke per 4 Slag |
-| Assembly Line card price | 4× the recipe's own inputs, decaying while it waits |
-| Golem bays | 10, then +6 per upgrade |
+| Assembly Line card price | 4× the recipe's own inputs, fixed |
+| Golem cap | 112, fixed |
 | Floor expansion | +2 rows, six purchases, from Scrap and Plate up to Casing and Mainspring |
 | Freight launch | a flat 24 ticks, however far |
 | A golem's "hold nearly full" warning | 9 of 12 units |

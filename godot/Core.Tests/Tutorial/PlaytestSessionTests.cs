@@ -228,7 +228,7 @@ namespace GolemFactory.Tests.Tutorial
             SandboxWorld world = Compose();
             var ids = world.Tutorial.Steps.Select(s => s.Id).ToList();
             Assert.AreEqual(ids.IndexOf("pack") + 1, ids.IndexOf("ledger"), "`ledger` comes straight after `pack`");
-            Assert.AreEqual(ids.IndexOf("bays") + 1, ids.IndexOf("pack"), "`pack` comes straight after `bays`");
+            Assert.AreEqual(ids.IndexOf("expand") + 1, ids.IndexOf("pack"), "`pack` comes straight after `expand`");
         }
 
         [Test]

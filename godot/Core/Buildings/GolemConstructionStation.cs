@@ -366,8 +366,8 @@ namespace GolemFactory.Buildings
             if (assemblyBay != null && !assemblyBay.HasFreeSlot)
             {
                 LastRefusalReason =
-                    $"All {assemblyBay.MaxGolemSlots} assembly bays are full. " +
-                    "Upgrade the bays, or dismantle a golem.";
+                    $"The workshop holds {assemblyBay.MaxGolemSlots} golems, the most it can. " +
+                    "Dismantle one to build another.";
                 return false;
             }
 

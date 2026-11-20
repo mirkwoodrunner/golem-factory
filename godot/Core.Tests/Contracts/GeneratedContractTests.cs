@@ -83,62 +83,21 @@ namespace GolemFactory.Tests.Contracts
         }
 
         [Test]
-        public void NoRewardOrBonusBeatsItsContract()
+        public void EveryGeneratedContract_PaysVouchers_NeverGoods()
         {
-            // contracts-design §4, as the authored ones: goods given never exceed goods asked, in raw goods.
+            // contracts-design §4 since 2026-11-19, as the authored ones: a voucher, and one more
+            // within par. The goods rewards piled up (the design audit), and paid at most what the
+            // contract cost, so they were never worth the trip.
             ContractGenerator g = Generator();
             for (int k = 0; k < 60; k++)
             {
                 ContractDefinition c = g.Generate(k);
+                Assert.AreEqual(g.Setup.rewardVouchers, c.reward.vouchers, c.name);
+                Assert.AreEqual(g.Setup.bonusVouchers, c.bonus.vouchers, c.name);
                 Assert.IsFalse(c.reward.IsEmpty, c.name);
-                Assert.LessOrEqual(Raw(g, c.reward.goods) + Raw(g, c.bonus.goods), Raw(g, c.asks), c.name);
             }
-        }
-
-        // The design audit of 2026-11-19: rewards paid only in Casing, Lens, Mainspring, Mechanism
-        // and Regulator, about 1.4 times what the contracts asked of each, so from contract 21 on
-        // those five piled up and half of every ask could come from the shelf.
-        [Test]
-        public void NoContractPaysInAGoodItAsks_AndOverTenNoGoodIsPaidMoreThanAsked()
-        {
-            ContractGenerator g = Generator();
-            int from = g.Setup.rungBonuses;   // every bonus is goods from here
-            var asked = new Dictionary<string, double>();
-            var paid = new Dictionary<string, double>();
-            for (int k = from; k < from + 100; k++)
-            {
-                ContractDefinition c = g.Generate(k);
-                var asks = new HashSet<string>(c.asks.Select(a => a.itemType));
-                foreach (RecipeIngredient r in c.reward.goods.Concat(c.bonus.goods))
-                {
-                    Assert.IsFalse(asks.Contains(r.itemType), $"{c.name} pays {r.itemType}, which it asks for");
-                    paid[r.itemType] = paid.TryGetValue(r.itemType, out double p) ? p + g.Raw(r.itemType) * r.quantity : g.Raw(r.itemType) * r.quantity;
-                }
-                foreach (RecipeIngredient a in c.asks)
-                {
-                    asked[a.itemType] = asked.TryGetValue(a.itemType, out double q) ? q + g.Raw(a.itemType) * a.quantity : g.Raw(a.itemType) * a.quantity;
-                }
-            }
-            foreach (KeyValuePair<string, double> p in paid)
-            {
-                Assert.Less(p.Value, asked.TryGetValue(p.Key, out double q) ? q : 0.0,
-                    p.Key + " is paid out more than it is asked: it piles up");
-            }
-        }
-
-        [Test]
-        public void TheFirstBonusesAreEndlessCartRungs_ThenGoods()
-        {
-            ContractGenerator g = Generator();
-            for (int k = 0; k < g.Setup.rungBonuses; k++)
-            {
-                Assert.IsTrue(g.Generate(k).bonus.HasRung, $"contract {k + 1}");
-            }
-            Assert.IsFalse(g.Generate(g.Setup.rungBonuses).bonus.HasRung);
-            Assert.IsNotEmpty(g.Generate(g.Setup.rungBonuses).bonus.goods);
-            // Rate then Capacity on every cart's good: each of the 20 endless rungs can be given.
-            var rungs = Enumerable.Range(0, g.Setup.rungBonuses).Select(k => g.Generate(k).bonus).Select(b => b.rungGood + b.rungKind).ToList();
-            Assert.AreEqual(10, rungs.Distinct().Count(), "five goods, two ladders");
+            Assert.AreEqual(1, g.Setup.rewardVouchers);
+            Assert.AreEqual(1, g.Setup.bonusVouchers);
         }
 
         [Test]

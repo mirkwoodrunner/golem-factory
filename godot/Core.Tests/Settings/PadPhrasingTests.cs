@@ -77,7 +77,6 @@ namespace GolemFactory.Tests.Settings
                 texts.Add(("build menu " + key, BuildMenuLabels.DescriptionFor(key)));
             }
             texts.Add(("the golem order's how-to", GolemFactory.Contracts.GolemOrderText.HowTo));
-            texts.Add(("the Workbench's empty program", TextTokens.Fill(WorkbenchLoopLabels.EmptyProgramHint)));
 
             List<string> left = texts
                 .SelectMany(t => PadPhrasing.Leftover(t.text).Select(word => $"{t.where}: '{word}' in \"{t.text}\""))

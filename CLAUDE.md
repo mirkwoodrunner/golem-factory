@@ -6,16 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `golem-factory` is a solo-play **Godot 4** prototype of "Golem Factory: The Clockwork Metropolis" -- a
 Factorio/Satisfactory-style automation game (cozy top-down pixel art) where the player places "golems" programmed with
-punch-card-style Logic Core / Appendage / Chassis combinations that run rigidly on a world tick clock. It began as a
-tabletop board-game design, became a Unity prototype, and was ported to Godot (milestones G0-G10,
-`docs/godot-conversion-plan.md`). **The Unity project was removed at the G10 cutover; the tag `unity-final` holds its
+punch-card-style Appendage / Chassis combinations that run rigidly on a world tick clock. It began as a
+Unity prototype and was ported to Godot (milestones G0-G10, `docs/godot-conversion-plan.md`). **The Unity project was removed at the G10 cutover; the tag `unity-final` holds its
 last state.**
 
 The game lives in `godot/`. Paths in the engine sections below are relative to `godot/` unless they say otherwise.
 
 Read the docs before making design calls, not just the code:
 
-- `docs/game-design.md` -- the original tabletop concept. Source of truth for *mechanics*.
+- `docs/game-design.md` -- the core concept and loop. Source of truth for *mechanics*.
 - `docs/digital-design.md` -- visual style, the golem roster, and the Workbench spec.
 - `docs/progression-design.md` -- the tech tree, steam scarcity, chassis unlocks, Clock Tower endgame.
 - `docs/cozy-automation-design.md` -- depots, moods, loop labels, Recycler; §0: eight invariants.
@@ -181,9 +180,8 @@ pinned by a test in `Core.Tests`.
   second copy of it. Birth and death of a golem stay in one file (`GolemConstructionStation`).
 - **Events** go through `Events/EventBus`, a static bus of `readonly struct` events. Add event types there rather than a
   second bus.
-- **Multiplayer-compatible seams**: ownable things carry an explicit `OwnerId` (a single `LocalPlayer` for now), and
-  `PatentRegistry.TryUseBlueprint(id, userId)` already has the royalty branch. Global systems (`SimulationClock`,
-  `GridMap`) may stay simple singletons.
+- **Multiplayer-compatible seams**: ownable things carry an explicit `OwnerId` (a single `LocalPlayer` for now).
+  Global systems (`SimulationClock`, `GridMap`) may stay simple singletons.
 
 ### Verifying
 

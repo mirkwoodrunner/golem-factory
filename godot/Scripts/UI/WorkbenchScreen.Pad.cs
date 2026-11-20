@@ -27,7 +27,6 @@ namespace GolemFactory.Nodes
         public enum PadStopKind
         {
             Close,
-            Trigger,
             Step,
             Chassis,
             Vault,
@@ -61,9 +60,9 @@ namespace GolemFactory.Nodes
         {
             _pad = new PadFocus(_root)
             {
-                // No hint to follow: the first vault card, else the trigger.
+                // No hint to follow: the first vault card, else the first step.
                 Default = stops => stops.Where(s => s.Kind == nameof(PadStopKind.Vault)).Cast<Stop?>().FirstOrDefault()
-                    ?? PadFocus.Find(stops, nameof(PadStopKind.Trigger), 0),
+                    ?? PadFocus.Find(stops, nameof(PadStopKind.Step), 0),
             };
         }
 
@@ -148,7 +147,6 @@ namespace GolemFactory.Nodes
             var stops = new List<Stop>
             {
                 new Stop(nameof(PadStopKind.Close), 0, _close),
-                new Stop(nameof(PadStopKind.Trigger), 0, _triggerRow.Socket),
             };
             for (int i = 0; i < _stepRows.Count; i++)
             {
@@ -193,9 +191,7 @@ namespace GolemFactory.Nodes
                 case WorkbenchHintKind.GoodPicker:
                 case WorkbenchHintKind.QuantityDial:
                 case WorkbenchHintKind.DragOut:
-                    return hint.Zone.Kind == DropZoneKind.LogicCore
-                        ? PadFocus.Find(stops, nameof(PadStopKind.Trigger), 0)
-                        : PadFocus.Find(stops, nameof(PadStopKind.Step), hint.Zone.AppendageIndex);
+                    return PadFocus.Find(stops, nameof(PadStopKind.Step), hint.Zone.AppendageIndex);
                 default:
                     return null;
             }
@@ -209,28 +205,19 @@ namespace GolemFactory.Nodes
             {
                 Press(at);
             }
-            bool trigger = at.Kind == nameof(PadStopKind.Trigger);
-            if (!trigger && at.Kind != nameof(PadStopKind.Step))
+            if (at.Kind != nameof(PadStopKind.Step))
             {
                 return;
             }
-            int slot = trigger ? -1 : at.Index;
+            int slot = at.Index;
             if (Input.IsActionJustPressed(PlayerNode.Carry))
             {
                 // X takes the card out, as dragging it off its socket does.
-                if (slot < 0 && _session.DraftLogicCore != null)
-                {
-                    _session.RemoveFromSlot(WorkbenchCardRef.FromTriggerSocket(_session.DraftLogicCore));
-                }
-                else if (slot >= 0 && _session.DraftAppendageAt(slot) is PunchCards.AppendageActionDefinition card)
+                if (_session.DraftAppendageAt(slot) is PunchCards.AppendageActionDefinition card)
                 {
                     _session.RemoveFromSlot(WorkbenchCardRef.FromSocket(card, slot));
                 }
                 _padFollowHint = true;
-            }
-            if (slot < 0)
-            {
-                return;
             }
             // The dials leave the ring where it is (see the class summary).
             if (Input.IsActionJustPressed(PadBindings.BuildNext))

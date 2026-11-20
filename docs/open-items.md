@@ -73,7 +73,7 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
   than a batch (`docs/onboarding-feedback-design.md` §13). An Assemble now only runs on full
   batches.
 - **The Workbench hint's free-play fallback is tested only in Core.** Without a guide plan, a
-  bare golem gets TRIGGER, then STEP 1, then the lever framed, and a programmed golem nothing
+  bare golem gets STEP 1, then the lever framed (TRIGGER went with the trigger slot, 2026-11-19), and a programmed golem nothing
   (`WorkbenchHintTests`). No scenario draws it on screen: the `workbench` scenario's golem is the
   guide's, so it sees the plan's hint (`onboarding-feedback-design.md` §15.1).
 - **The full-run floor jumps by minutes when a price moves a little.** `FullRunFloorTests`

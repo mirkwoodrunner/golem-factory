@@ -64,6 +64,19 @@ call): built, reviewed, critiqued and tested. Done:
   `slagPerCoke` in `placeables.json` (9dcca18); the guide's Scavenger and Depot counts read
   their prices (7a79046). 1925 Core tests pass.
 
+**The design pass of 2026-11-19 (the user's calls), on `claude/vibrant-hypatia-ekqgk7`:** the
+board-game origin is gone from every doc and comment; then six changes, each with its tests,
+scenarios and docs. (1) Unlocks are picked directly at a fixed price, from the Assembly Line tab or
+a Ledger plaque: no draft slots, queue or decay (`progression-design.md` §8). (2) The Workbench has
+no trigger socket; every program runs Always On. (3) The golem cap is a fixed 112, with no bay
+upgrades. (4) Contracts and golem orders pay city vouchers, each the next step of any upgrade or
+unlock (`contracts-design.md` §4). (5) The Presser costs 50 Scrap + 3 Iron Plate + 2 Gear: chapters
+1–4 measure 4:22 (3:15 at the bench), chapter 2 halved (`tuning-data-spec.md` §12.2). (6) A cart
+refunds in full when removed or changed. Every Core test and scenario passes, run here on Linux.
+Open questions for play: what vouchers buy once every upgrade is maxed in endless play (nothing,
+today), and whether chapters 1 and 3 still crank too long (the boiler's 10 Plate and the Coal
+cart's first rung are the next levers).
+
 **Resume here:**
 - **Selling golems to the city is built** (2026-11-08, `golem-sales-design.md`), on branch
   `depth/golem-sales` from `main` (Phases 7 and 8 and the Docks went in as PR #62): golem orders
@@ -482,7 +495,7 @@ Factorio's breadth.
    up), and its lower panel between the alerts and the market, every cart with its stock and
    its goods in and out a minute.
 1. **City contracts** (decision 12): requests that fill the gaps between tower stages, and give
-   the Artificer's flexible half of the tabletop design a job. Open-ended, with a bonus for
+   the Artificer's flexible half of the game a job. Open-ended, with a bonus for
    speed (decision 13). **Done (2026-11-07):** first the tower's fresh-production rule went, so
    any delivered good counts there (`contracts-design.md` §11). Then the City Office went up
    beside the tower: eighteen contracts in `data/contracts.json`, one at a time, opening with

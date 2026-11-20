@@ -139,7 +139,7 @@ namespace GolemFactory.Tests.EditMode
 
             Assert.IsTrue(fresh.Supply.Remove(fresh.Supply.SpotAt(CoalHome)).Done);
             Assert.AreEqual(30, Pack(fresh, ItemType.Coal), "its stock comes back");
-            Assert.AreEqual(0, Pack(fresh, ItemType.Scrap), "it was never paid for, so half of nothing");
+            Assert.AreEqual(0, Pack(fresh, ItemType.Scrap), "it was never paid for, so nothing");
         }
 
         [Test]

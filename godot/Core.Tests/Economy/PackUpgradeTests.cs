@@ -173,7 +173,7 @@ namespace GolemFactory.Tests.EditMode
             Assert.AreEqual(1, node.PhaseIndex);
             Assert.AreEqual(8, node.Row);
             CollectionAssert.AreEqual(new[] { "r8.gearcutting" }, node.Prerequisites);
-            Assert.AreEqual(47, TechTreeCatalog.Nodes.Count);
+            Assert.AreEqual(46, TechTreeCatalog.Nodes.Count, "47 less the bays node, gone with the bay upgrades");
         }
 
         [Test]

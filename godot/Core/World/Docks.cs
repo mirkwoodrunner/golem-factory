@@ -181,7 +181,8 @@ namespace GolemFactory.World
 
         public bool CanAfford() => Wallet != null && Wallet.CanAfford(NextCost());
 
-        public bool TryPurchase()
+        /// <param name="free">Paid with a city voucher instead of goods (2026-11-19).</param>
+        public bool TryPurchase(bool free = false)
         {
             LastStatusMessage = "";
             if (_bounds == null || !_bounds.DocksOpen)
@@ -194,7 +195,7 @@ namespace GolemFactory.World
                 LastStatusMessage = "The Docks cannot be extended any further.";
                 return false;
             }
-            IReadOnlyList<RecipeIngredient> cost = NextCost();
+            IReadOnlyList<RecipeIngredient> cost = free ? new RecipeIngredient[0] : NextCost();
             if (Wallet != null && !Wallet.TryCharge(cost))
             {
                 LastStatusMessage = UI.ConstructionCostPolicy.FormatShortfall(Wallet, cost);

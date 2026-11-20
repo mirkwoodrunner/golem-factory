@@ -30,11 +30,11 @@
       },
       {
         "itemType": "IronPlate",
-        "quantity": 10
+        "quantity": 3
       },
       {
         "itemType": "Gear",
-        "quantity": 4
+        "quantity": 2
       }
     ],
     "allowsRepeat": 0,

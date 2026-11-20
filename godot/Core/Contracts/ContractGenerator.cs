@@ -17,11 +17,9 @@ namespace GolemFactory.Contracts
         public int growthContracts = 8;
         public int parSecondsFirst = 300;
         public int parSecondsPlateau = 600;
-        public List<string> rewardGoods = new List<string>();
-        public float rewardShare = 0.5f;
-        public float bonusShare = 0.25f;
-        public int rungBonuses = 20;
-        public List<string> rungGoods = new List<string>();
+        /// <summary>What a generated contract pays, and its bonus within par (2026-11-19: vouchers, not goods).</summary>
+        public int rewardVouchers = 1;
+        public int bonusVouchers = 1;
         public List<RequesterLines> requesters = new List<RequesterLines>();
 
         public sealed class RequesterLines
@@ -58,7 +56,7 @@ namespace GolemFactory.Contracts
 
         public EndlessContractsSetup Setup => _setup;
 
-        public bool CanGenerate => _setup.goods.Count >= 2 && _setup.requesters.Count > 0 && _setup.rewardGoods.Count > 0;
+        public bool CanGenerate => _setup.goods.Count >= 2 && _setup.requesters.Count > 0;
 
         /// <summary>The raw goods a contract of index <paramref name="k"/> asks for: growing, then level.</summary>
         public int BudgetRaw(int k)
@@ -100,8 +98,6 @@ namespace GolemFactory.Contracts
             {
                 asks.Add(new RecipeIngredient(second, Amount(second, budget * (1f - _setup.firstShare))));
             }
-            double askedRaw = asks.Sum(a => Raw(a.itemType) * a.quantity);
-
             EndlessContractsSetup.RequesterLines who = _setup.requesters[k % _setup.requesters.Count];
             string line = who.lines.Count == 0 ? "The city needs {goods}." : who.lines[k / _setup.requesters.Count % who.lines.Count];
 
@@ -113,8 +109,8 @@ namespace GolemFactory.Contracts
                 words = line.Replace("{goods}", ContractText.Goods(asks)),
                 asks = asks,
                 parSeconds = Par(k),
-                reward = new ContractReward { goods = Share(_setup.rewardGoods[k % _setup.rewardGoods.Count], askedRaw * _setup.rewardShare) },
-                bonus = Bonus(k, askedRaw),
+                reward = new ContractReward { vouchers = _setup.rewardVouchers },
+                bonus = new ContractReward { vouchers = _setup.bonusVouchers },
                 postWhenTowerComplete = true,
             };
             contract.postWhenSeen.AddRange(asks.Select(a => a.itemType));
@@ -129,22 +125,6 @@ namespace GolemFactory.Contracts
             return (int)Math.Round(_setup.parSecondsFirst + (_setup.parSecondsPlateau - _setup.parSecondsFirst) * t);
         }
 
-        // The first rungBonuses bonuses are endless cart rungs, Rate then Capacity, round the carts'
-        // goods; after that, goods in the next reward good.
-        private ContractReward Bonus(int k, double askedRaw)
-        {
-            if (k < _setup.rungBonuses && _setup.rungGoods.Count > 0)
-            {
-                return new ContractReward
-                {
-                    rungGood = _setup.rungGoods[k % _setup.rungGoods.Count],
-                    rungKind = k / _setup.rungGoods.Count % 2 == 0 ? ContractRungKind.Rate : ContractRungKind.Capacity,
-                };
-            }
-            string good = _setup.rewardGoods[(k + 1) % _setup.rewardGoods.Count];
-            return new ContractReward { goods = Share(good, askedRaw * _setup.bonusShare) };
-        }
-
         // At least one, else a multiple of five when there are ten or more: amounts that read as
         // a city's order, not a calculation.
         private int Amount(string good, double raw)
@@ -155,13 +135,6 @@ namespace GolemFactory.Contracts
                 return Math.Max(1, (int)Math.Floor(n));
             }
             return (int)Math.Floor(n / 5) * 5;
-        }
-
-        // Rounded down, so a reward never exceeds its share (§4: never worth more than the contract).
-        private List<RecipeIngredient> Share(string good, double raw)
-        {
-            int n = (int)Math.Floor(raw / Raw(good));
-            return n > 0 ? new List<RecipeIngredient> { new RecipeIngredient(good, n) } : new List<RecipeIngredient>();
         }
 
         /// <summary>A good's cost in raw goods, as the contracts design counts it (§4).</summary>

@@ -17,7 +17,7 @@ namespace GolemFactory.Nodes.Scenarios
     /// playtest card is answered. So far the Workbench (D6.W, the owner's answers):
     /// <list type="number">
     ///   <item>The Workbench opens on a new Scavenger with the ring on the hinted card.</item>
-    ///   <item>A sends Always On, Extract and Push Output to the next socket each, the ring
+    ///   <item>A sends Extract and Push Output to the next socket each, the ring
     ///   following the hint to the lever; LB and the d-pad do nothing behind the screen.</item>
     ///   <item>The d-pad walks the ring to STEP 1; RT and LT change its batch size, and the dial
     ///   names them; X takes the card out and A sends it back.</item>
@@ -622,7 +622,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("the last card is scrolled into the window, the ring around it", () =>
             {
                 WorkbenchCardControl last = Bench.VaultList.GetChildren().OfType<WorkbenchCardControl>().Last(c => !c.IsQueuedForDeletion());
-                string name = last.CardRef.Appendage?.name ?? last.CardRef.LogicCore?.name;
+                string name = last.CardRef.Appendage?.name;
                 string ring = RingOn(name);
                 if (ring != null)
                 {
@@ -834,21 +834,21 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
             Wait(0.1);
-            Do("the Workbench is open on it, nothing sent by the A that built it, the ring on Always On, the card the guide lights", () =>
+            Do("the Workbench is open on it, nothing sent by the A that built it, the ring on Extract, the card the guide lights", () =>
             {
                 if (!Bench.IsOpen || Bench.TargetGolem != _golem)
                 {
                     return $"open {Bench.IsOpen} on {Bench.TargetGolem?.GolemId}: {Sandbox.Interactor.LastStatusMessage}";
                 }
-                if (Session.DraftLogicCore != null || Session.AssignedAppendageCount != 0)
+                if (Session.AssignedAppendageCount != 0)
                 {
                     return "the A that built the golem also sent a card";
                 }
-                if (Bench.TriggerRow.Hint.Text != "send a logic core" || Bench.StepRows[0].Hint.Text != "send an appendage")
+                if (Bench.StepRows[0].Hint.Text != "send an appendage")
                 {
-                    return $"the empty sockets read '{Bench.TriggerRow.Hint.Text}' and '{Bench.StepRows[0].Hint.Text}'";
+                    return $"the empty socket reads '{Bench.StepRows[0].Hint.Text}'";
                 }
-                string ring = RingOn("AlwaysOnCore");
+                string ring = RingOn("ExtractScrap");
                 if (ring != null)
                 {
                     return ring;
@@ -908,17 +908,19 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void PlanSend()
         {
-            PressButton("A on Always On", JoyButton.A);
-            Do("Always On in TRIGGER, landing; the ring on Extract", () =>
+            PressButton("A on Extract", JoyButton.A);
+            Do("Extract in STEP 1, landing; the ring on Push Output; the draft runs Always On", () =>
             {
                 if (Session.DraftLogicCore?.name != "AlwaysOnCore")
                 {
-                    return "the trigger holds " + (Session.DraftLogicCore?.name ?? "nothing");
+                    return "the draft's trigger is " + (Session.DraftLogicCore?.name ?? "nothing");
                 }
-                return Bench.CardLanding ? RingOn("ExtractScrap") : "no landing";
+                if (Draft(0) != "ExtractScrap")
+                {
+                    return $"STEP 1 holds {Draft(0)}";
+                }
+                return Bench.CardLanding ? RingOn("PushOutput") : "no landing";
             });
-            PressButton("A on Extract", JoyButton.A);
-            Do("Extract in STEP 1; the ring on Push Output", () => Draft(0) != "ExtractScrap" ? $"STEP 1 holds {Draft(0)}" : RingOn("PushOutput"));
             PressButton("A on Push Output", JoyButton.A);
             Do("Push Output in STEP 2; the ring on the lever; the golem untouched", () =>
             {
@@ -1073,11 +1075,11 @@ namespace GolemFactory.Nodes.Scenarios
 
         private int VaultIndex(string card) =>
             Bench.VaultList.GetChildren().OfType<WorkbenchCardControl>().Where(c => !c.IsQueuedForDeletion())
-                .Select((c, i) => (c, i)).FirstOrDefault(p => p.c.CardRef.Appendage?.name == card || p.c.CardRef.LogicCore?.name == card).i;
+                .Select((c, i) => (c, i)).FirstOrDefault(p => p.c.CardRef.Appendage?.name == card).i;
 
         private WorkbenchCardControl VaultCard(string card) =>
             Bench.VaultList.GetChildren().OfType<WorkbenchCardControl>().FirstOrDefault(c => !c.IsQueuedForDeletion()
-                && (c.CardRef.Appendage?.name == card || c.CardRef.LogicCore?.name == card));
+                && c.CardRef.Appendage?.name == card);
 
         /// <summary>Null if the ring rests on <paramref name="card"/> in the vault, drawn around it, in the vault's window.</summary>
         private string RingOn(string card)

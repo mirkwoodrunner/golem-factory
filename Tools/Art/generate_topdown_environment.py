@@ -948,10 +948,8 @@ def make_barrel():
 # =========================================================================================
 # THE MARKET STREET
 #
-# docs/game-design.md, the tabletop source of truth, has this and the digital adaptation lost
-# it: "The Loading Docks: Resource markets on the edge of the board where raw materials
-# (Scrap, Brass, Aether) arrive in full truckload shipments." What the digital version built
-# instead was five ore boulders standing on the workshop floor.
+# The design wanted a market at the edge of the world, where raw goods are bought. What the
+# first build had instead was five ore boulders standing on the workshop floor.
 #
 # So raw goods are BOUGHT, not dug, and that finally makes the code honest: every node has been
 # infinite since 5.1 (scarcity is access, not depletion). A seam that never empties is a fiction

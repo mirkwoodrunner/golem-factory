@@ -200,7 +200,7 @@ namespace GolemFactory.Tests.World
             CollectionAssert.AreEquivalent(new[] { "ExtractScrap", "HaulScrap", "PushOutput" },
                 world.Workbench.VaultAppendages.Select(a => a.name));
             Assert.AreEqual(0, world.Workbench.RackChassis.Count());
-            Assert.AreEqual(2, world.Workbench.VaultLogicCores.Count(), "logic cores are not gated");
+            Assert.AreEqual("AlwaysOnCore", world.Workbench.DefaultCore?.name, "no trigger to pick: every program runs Always On");
         }
 
         [Test]
@@ -322,18 +322,14 @@ namespace GolemFactory.Tests.World
         [Test]
         public void TheAssemblyLineOpens_OnCardsThePlayerDoesNotOwn()
         {
-            // The opening hand is granted before the deck is seeded, so the line's skip-owned
-            // rule applies to its very first fill. Seeded first, all three slots held the
-            // opening verbs -- free to claim and buying nothing.
+            // The opening hand is owned from the start, so it is never offered.
             SandboxWorld world = Compose();
             var owned = world.AssemblyLine.GetClaimedCards("LocalPlayer");
             Assert.AreEqual(3, owned.Count, "precondition: the opening hand is owned");
 
-            for (int i = 0; i < world.AssemblyLine.SlotCount; i++)
+            foreach (DraftableCardDefinition card in world.AssemblyLine.Offers)
             {
-                DraftableCardDefinition card = world.AssemblyLine.GetCard(i);
-                Assert.IsNotNull(card, "slot " + i + " is empty");
-                CollectionAssert.DoesNotContain(owned, card, "slot " + i + " offers an owned card");
+                CollectionAssert.DoesNotContain(owned, card, "an owned card is offered");
             }
         }
 

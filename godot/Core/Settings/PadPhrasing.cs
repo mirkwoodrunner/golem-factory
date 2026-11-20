@@ -22,8 +22,6 @@ namespace GolemFactory.Settings
             P(@"Drag the glowing card onto the glowing socket", "Press A on the glowing card to send it to the glowing socket"),
             P(@"Drag the glowing cards", "Press A on each glowing card"),
             P(@"On the second Haul, click the arrow until it says (\w+)", "On the second Haul, press R1 until it says $1"),
-            P(@"\bdrop cards below to build a cycle", "send cards below to build a cycle"),
-            P(@"\bdrop a logic core\b", "send a logic core"),
             P(@"\bdrop an appendage\b", "send an appendage"),
 
             // The build tool.

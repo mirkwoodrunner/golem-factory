@@ -1,6 +1,6 @@
 # golem-factory
 
-Prototyping an automation game that could be implemented as either a video game or board game.
+A prototype of a cozy, top-down factory-automation game.
 
 You play an Artificer who builds and programs clockwork **golems**: rigid, automated workers
 that harvest resources, refine them, and haul them around a workshop floor. You don't control
@@ -40,9 +40,9 @@ To run the rules' unit tests without the engine: `dotnet test godot/GolemFactory
 
 Press `E` at a golem to open the **Workbench**:
 
-- Drag a **Logic Core** (the trigger: *when* the golem acts) and up to a chassis-limited number
-  of **Appendages** (the steps: *what* it does) into the sockets. A Haul step lets you pick which
-  good it takes and how many.
+- Drag up to a chassis-limited number of **Appendages** (the steps: *what* the golem does) into
+  the sockets. A Haul step lets you pick which good it takes and how many. Every golem runs
+  continuously; there's no trigger to set.
 - Nothing takes effect until you pull **ENGAGE**.
 - **Patent** saves the program as a named blueprint you can stamp onto any golem later, from
   the Patents tab. It's free.
@@ -54,7 +54,8 @@ golem wears a badge saying what's wrong, and the alerts strip at the top names i
 ## The rest of the factory
 
 - **Steam:** every golem needs a boiler's steam, carried along pipes, and boilers burn Coke.
-- **The Assembly Line** offers the cards your factory can afford; claim one to use it.
+- **The Assembly Line** lists every card your factory can now pay for, at a fixed price; claim the
+  ones you want. A recipe's or chassis's plaque in the Ledger has the same Claim.
 - **Depots** open onto one shared stockpile; label one to make it take a single good.
 - **Belts** carry goods a golem pushes onto them; a golem at the far end takes them off.
 - **Demolish** refunds everything a building cost, so moving things around is free.

@@ -7,13 +7,12 @@ invariants first; §12 records what the build decided.
 ## What's already decided
 
 - **Roadmap decision 12:** city contracts come first among the depth additions, as requests that
-  fill the gaps between Clock Tower stages and give the Artificer's flexible half of the tabletop
-  design a job.
+  fill the gaps between Clock Tower stages and give the Artificer's flexible half of the game a
+  job.
 - **Roadmap decision 13:** contracts are **open-ended, with a bonus for finishing quickly**. A hard
   deadline fights the cozy tone.
-- **The tabletop design** (`game-design.md`): golems do rigid, automated logistics; Artificers do
-  the flexible work, "drafting components, filing patents, swapping golem parts, and fulfilling
-  contracts".
+- **The core concept** (`game-design.md`): golems do rigid, automated logistics; the Artificer does
+  the flexible work, including filling the city's contracts.
 - **`supply-design.md`:** a contract can grant a cart's next upgrade.
 
 **The user's calls (2026-11-06):**
@@ -134,6 +133,16 @@ that stage's build-out. After the tower is complete, contracts continue as endle
 (`endless-design.md`, to come).
 
 ## 4. Rewards
+
+> **Changed 2026-11-19 (the user's call): rewards are city vouchers, not goods.** A contract pays
+> 1 voucher and its bonus 1 more; a golem order pays 1 (`CityVouchers`). A voucher buys the next
+> step of any upgrade or unlock goods could buy now: a card, Floor Expansion's or the Docks' next
+> rows or the pack's next rung (a Voucher button beside each row's own on the Assembly Line tab),
+> or a cart's next Rate or Capacity rung (voucher rows in the cart panel). It never skips the tree:
+> a step whose price names an unseen good offers no voucher. What a voucher buys refunds nothing,
+> so the city is still never a cheaper way to make goods. Goods rewards paid at most what the
+> contract took, so the only real draw was the bonus rung. An older save's shelf of goods and
+> rungs still pays out. The rest of this section is the original design.
 
 - **Goods**, chosen to help the next build-out: the components a stage's new lines need first.
 - **A cart rung** (`supply-design.md` §2): the next Rate or Capacity rung, for nothing, on a cart

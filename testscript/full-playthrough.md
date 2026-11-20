@@ -45,7 +45,7 @@ add the sittings' chapter times by hand in the notes.
 | 4 | 2:00 | `turn`, `stall` |
 | 5 | 20:00 | The Hauler's price (20 Iron Plate + 10 Gear + 30 Coke, `tuning-data-spec.md` §18 correction 10): how did they make it? `work-smelter` (a full Slag slot stops it) |
 | 6 | 15:00 | `belts` pointing the right way; `copper-depot`'s label |
-| 7 | 10:00 | `expand`, `bays`, `pack`: did they find the Assembly Line tab's rows? |
+| 7 | 10:00 | `expand`, `pack`: did they find the Assembly Line tab's rows? |
 | 8 | 45:00 | Goal steps with no marks: did they know what to build? Brass's two ingots in one golem; Glass from Slag; Lens at 3 Glass |
 | 9 | 30:00 | Collecting the Zeppelin's price; `launch` facing away from the depot |
 | 10 | 45:00 | Building an Overclocker (the guide only mentions it); the Frame Section line; `stage1` at whatever rate they reach |
@@ -150,7 +150,7 @@ Carts on the street at the end: ___   Rungs bought: ___
 |---|---|---|
 | Steam | 3 Coke a minute per working golem, 8 golems per boiler | `SteamNetwork` |
 | Supply carts | One Scrap cart to start (120 a minute, holds 200); Coal 80 Scrap; Copper Ore 60 Iron Plate + 20 Gear; each with Rate and Capacity rungs | `sandbox.json` `supply` (supply-design.md §3) |
-| Brass Presser | 50 Scrap + 10 Iron Plate + 4 Gear | `chassis.json` |
+| Brass Presser | 50 Scrap + 3 Iron Plate + 2 Gear | `chassis.json` |
 | Aether-Hauler | 20 Iron Plate + 10 Gear + 30 Coke | `chassis.json` |
 | Lens | 3 Glass + 1 Brass | `recipes.json` R10 |
 | Late prices | Overclocker + 120 Iron Plate, Zeppelin + 150, Freight Mast + 120: past a base pack of 100, so the pack upgrade matters; Post crate + 40 | `chassis.json`, `placeables.json` |

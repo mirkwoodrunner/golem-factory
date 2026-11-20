@@ -98,14 +98,14 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void ComposeTicker_ReportsChassisSlotsTriggerCycleAndSteam()
+        public void ComposeTicker_ReportsChassisSlotsCycleAndSteam()
         {
             string tape = WorkbenchDiagnostics.ComposeTicker(
-                "AetherHauler", 2, 3, "IntervalCore10", 14, 16, 8.57f);
+                "AetherHauler", 2, 3, 14, 16, 8.57f);
 
             StringAssert.Contains("Aether Hauler", tape);
             StringAssert.Contains("SLOTS 2/3", tape);
-            StringAssert.Contains("Interval Core 10", tape);
+            StringAssert.DoesNotContain("TRIGGER", tape, "no trigger to report since 2026-11-19");
             StringAssert.Contains("14 ticks", tape);
             StringAssert.Contains("16 psi", tape);
         }
@@ -113,10 +113,9 @@ namespace GolemFactory.Tests.EditMode
         [Test]
         public void ComposeTicker_EmptyDraft_ShowsPlaceholdersNotZeroCycle()
         {
-            string tape = WorkbenchDiagnostics.ComposeTicker(null, 0, 0, null, 0, 0, 0f);
+            string tape = WorkbenchDiagnostics.ComposeTicker(null, 0, 0, 0, 0, 0f);
 
             StringAssert.Contains("CHASSIS -- none --", tape);
-            StringAssert.Contains("TRIGGER -- none --", tape);
             StringAssert.Contains("CYCLE --", tape);
             StringAssert.Contains("SLOTS --", tape);
         }
@@ -128,7 +127,7 @@ namespace GolemFactory.Tests.EditMode
             // GolemProgram.TryAddAppendage's no-chassis guard), and the tape read
             // "SLOTS 1/0" while the blueprint viewport -- which has no sockets without a
             // chassis -- drew nothing at all.
-            string tape = WorkbenchDiagnostics.ComposeTicker(null, 1, 0, "AlwaysOnCore", 2, 4, 60f);
+            string tape = WorkbenchDiagnostics.ComposeTicker(null, 1, 0, 2, 4, 60f);
 
             StringAssert.DoesNotContain("SLOTS 1/0", tape);
             StringAssert.Contains("no chassis", tape);

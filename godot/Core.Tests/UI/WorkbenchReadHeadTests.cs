@@ -21,7 +21,6 @@ namespace GolemFactory.Tests.UI
             session.ConfigureGolem(golem);
             session.ConfigureRoster(new[] { chassis }, new[] { core }, new[] { a, b });
             session.SelectChassis(chassis);
-            session.SendToNextSocket(WorkbenchCardRef.FromVault(core));
             session.SendToNextSocket(WorkbenchCardRef.FromVault(a));
             session.SendToNextSocket(WorkbenchCardRef.FromVault(b));
             Assert.IsTrue(session.Engage(), session.StatusText);
@@ -45,12 +44,13 @@ namespace GolemFactory.Tests.UI
         }
 
         [Test]
-        public void TheHead_IsOnTheStepTheGolemIsOn_AndOnTheTriggerWhileItWaits()
+        public void TheHead_IsOnTheStepTheGolemIsOn_AndOnStepOneBetweenCycles()
         {
             WorkbenchSession session = Engaged(out GolemEntity golem, out _, out _);
 
             golem.Program.State = GolemState.Idle;
-            Assert.AreEqual(WorkbenchSession.ReadHeadOnTrigger, session.ReadHeadRow);
+            golem.Program.CurrentStepIndex = 0;
+            Assert.AreEqual(0, session.ReadHeadRow, "no trigger row: between cycles the head waits on step 1");
 
             golem.Program.State = GolemState.Running;
             golem.Program.CurrentStepIndex = 0;
@@ -96,7 +96,6 @@ namespace GolemFactory.Tests.UI
             session.ConfigureGolem(golem);
             session.ConfigureRoster(new[] { chassis }, new[] { core }, new[] { a, b, filler });
             session.SelectChassis(chassis);
-            session.SendToNextSocket(WorkbenchCardRef.FromVault(core));
             session.SendToNextSocket(WorkbenchCardRef.FromVault(a));
             session.SendToNextSocket(WorkbenchCardRef.FromVault(b));
             Assert.IsTrue(session.Engage(), session.StatusText);

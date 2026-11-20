@@ -43,33 +43,19 @@ namespace GolemFactory.Tests.EditMode
         {
             var registry = new PatentRegistry();
 
-            Assert.IsFalse(registry.TryUseBlueprint("NoSuchId", "LocalPlayer", out _));
+            Assert.IsFalse(registry.TryUseBlueprint("NoSuchId", out _));
         }
 
         [Test]
-        public void TryUseBlueprint_KnownId_OwnerUses_Succeeds()
+        public void TryUseBlueprint_KnownId_Succeeds()
         {
             var registry = new PatentRegistry();
             registry.TryPatent(MakeBlueprint("BP1", "LocalPlayer"));
 
-            bool result = registry.TryUseBlueprint("BP1", "LocalPlayer", out Blueprint blueprint);
+            bool result = registry.TryUseBlueprint("BP1", out Blueprint blueprint);
 
             Assert.IsTrue(result);
             Assert.AreEqual("BP1", blueprint.BlueprintId);
-        }
-
-        [Test]
-        public void TryUseBlueprint_KnownId_DifferentUser_StillSucceeds()
-        {
-            // Royalty charge is a no-op in solo v1 -- using someone else's patent still
-            // works, it just doesn't (yet) charge anything.
-            var registry = new PatentRegistry();
-            registry.TryPatent(MakeBlueprint("BP1", "OtherPlayer"));
-
-            bool result = registry.TryUseBlueprint("BP1", "LocalPlayer", out Blueprint blueprint);
-
-            Assert.IsTrue(result);
-            Assert.AreEqual("OtherPlayer", blueprint.OwnerId);
         }
     }
 }

@@ -34,9 +34,10 @@ passed. Revision 3 is a tightening pass fixing two must-fix defects and a set of
 | Phase 2's blackout was an ambush | **§8**: Boiler fuel gauge with a countdown and a 25 % alert. |
 
 **Relationship to the other docs:**
-- `docs/game-design.md` — tabletop source. Four mechanics promoted: the **Clock Tower** (endgame),
-  the **Assembly Line** draft (tech unlock), the **Patent Registry** (replication), **Assembly
-  Bays** (golem cap).
+- `docs/game-design.md` — the core concept. Four of its mechanics carry the progression: the
+  **Clock Tower** (endgame), the **Assembly Line** (tech unlock), the **Patent Registry**
+  (replication), **Assembly Bays** (golem cap; since 2026-11-19 a fixed 112, with nothing to
+  buy).
 - `docs/digital-design.md` — the five-chassis roster and its order is the spine of §6. One
   deliberate deviation is flagged there.
 - `docs/history/unity-implementation-plan.md` — §11 lists everything this needs that doesn't exist.
@@ -60,7 +61,7 @@ Verified against live code, not docs.
 | Spatial routing | `BeginSpatialTransfer` — **Haul, ExtractFromNode and LoadIntoBuffer are literally the same code path** ("Every spatially routed action reduces to the same physical verb"). `Refine` is **explicitly exempt**: the source comment states that routing it spatially "would let it grab the wrong input off a mixed buffer and silently transmute it… until `IItemEndpoint` grows a typed take." |
 | `StorageBuffer` | **No capacity model at all.** `Deposit` always succeeds; `CanGive()` is unconditionally `true`. |
 | `ChassisDefinition.tier` | Field exists. Nothing reads it. |
-| `AssemblyLineState` | Fully implemented cycling draft with cost decay. **Gates nothing** (deferred in M9). |
+| `AssemblyLineState` | Fully implemented cycling draft with cost decay. **Gates nothing** (deferred in M9). *(Since 2026-11-19 a list of direct unlocks, §8.)* |
 | `AssemblyBayStructure` | `MaxGolemSlots` + `TryUpgrade` implemented. **Not in the loop.** |
 | `FloorLayout` | `public const int HalfExtent = 12` → a **25 × 25** floor. Read by `PlayerController.ClampToFloor` at runtime and by `SandboxFloorGenerator`, which is **Editor-only**. |
 | `BeltPlacementRules.ShouldLink` | **Directional** — requires `TargetCell(from, facing) == to` and rejects head-on pairs. |
@@ -115,7 +116,7 @@ N × Haul   +   1 × Assemble   +   1 × Push      =   N + 2 slots
 
 So **`maxAppendageSlots` alone decides how many input types a chassis can run.** There is no
 `recipeTier >= chassis.tier` stat check anywhere in this design — the gate is the physical size of
-the frame, which is exactly the tabletop's *"Chassis — The Constraint."* Roster slots change from
+the frame, which is exactly `game-design.md`'s *"Chassis — The Constraint."* Roster slots change from
 2/3/3/4/5 to **2/3/4/5/6** (a one-field asset edit each):
 
 | Chassis | Slots | Input types it can run |
@@ -614,6 +615,13 @@ condition." The Clock Tower is a win, not a game-over.
 
 ## 8. Unlock and gating mechanism
 
+> **Changed 2026-11-19 (the user's call): the draft row is gone.** Every card whose prerequisites
+> hold is offered at once, at its whole fixed price, claimed once, from the Assembly Line tab or
+> its plaque in the Ledger. The slots, the refill queue, cost decay and `isUnique` are cut: solo,
+> no rival could take a card, so waiting for decay was always right, and the player could not
+> choose what to unlock next (three playtest fixes had already bent the row toward a tree). Changes
+> 1–3 below stand; 4 and the decay paragraph are history.
+
 **Use `AssemblyLineState`.** This is the exact follow-up M9 deferred, and the system already has
 cost decay, claiming and drip-feed refill, all tested. Four changes:
 
@@ -629,16 +637,20 @@ cost decay, claiming and drip-feed refill, all tested. Four changes:
    Add `isUnique`: recipe and chassis cards are removed on claim; generic Logic Cores and
    `Haul`/`Push` appendages keep cycling. Without this the tech tree never terminates.
 
-Cost decay stays — it preserves the tabletop's "wait for it to get cheaper, or take it now" tension
-and gives the player something to spend surplus on while a stage grinds.
+Cost decay stays — it gives a "wait for it to get cheaper, or take it now" choice and gives the
+player something to spend surplus on while a stage grinds.
 
 ### Two supporting gates, both promoting unused systems
 
-- **Assembly Bays cap concurrent golems.** Introduced in **Phase 1**, starting at **10 slots**,
+- > **Cut 2026-11-19 (the user's call):** the bay upgrades went. At a flat 40 Scrap + 20 Iron
+  > Plate they never bound, so they were a toll, not a decision; steam upkeep already prices each
+  > golem. The cap is a fixed 112 (`sandbox.json` `golemCap`), where the frame budget holds. The
+  > original proposal follows.
+
+  **Assembly Bays cap concurrent golems.** Introduced in **Phase 1**, starting at **10 slots**,
   above the natural Phase-2 count of ~8. Each upgrade is **+6 slots for 40 Scrap + 20 Iron Plate** —
   **Presser-tier goods only**, deliberately, so the cap can never gate on something the cap itself
-  prevents you from making. This is the tabletop's Assembly Bay rule verbatim, and combined with
-  steam upkeep it is what makes 5- and 6-slot chassis worth their cost: one Overclocker running a
+  prevents you from making. Combined with steam upkeep it is what makes 5- and 6-slot chassis worth their cost: one Overclocker running a
   3-input recipe replaces a cluster and costs one bay slot and one golem's 6 Coke/min.
 - **Patents become the scaling tool.** Scale `EngageGears` Focus cost with program length
   (`8 + 6 × appendageCount`); make committing an already-patented blueprint via
@@ -985,7 +997,7 @@ What the decision costs, accepted knowingly:
 > at its rate up to its capacity; the market's cost is per cart and per rung. Creative Mode's
 > carts cost nothing and never run out. What follows is the truckload market's record.
 
-`docs/game-design.md` promises "full truckload shipments" and the street shipped as five `Infinite`
+The design called for "full truckload shipments", and the street shipped as five `Infinite`
 `ResourceNode`s: buying from a trader was presentation, and extraction was byte-for-byte what it
 had been when the stalls were boulders.
 

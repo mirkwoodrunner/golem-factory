@@ -182,7 +182,7 @@ namespace GolemFactory.Tests.EditMode
             {
                 { "ClockworkScavenger", new[] { (ItemType.Scrap, 12) } },
                 { "BrassPresser", new[]
-                    { (ItemType.Scrap, 50), (ItemType.IronPlate, 10), (ItemType.Gear, 4) } },
+                    { (ItemType.Scrap, 50), (ItemType.IronPlate, 3), (ItemType.Gear, 2) } },
                 { "AetherHauler", new[]
                     { (ItemType.IronPlate, 20), (ItemType.Gear, 10), (ItemType.Coke, 30) } },
                 { "MainspringOverclocker", new[]

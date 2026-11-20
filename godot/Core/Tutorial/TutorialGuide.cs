@@ -225,7 +225,7 @@ namespace GolemFactory.Tutorial
 
         /// <summary>
         /// The card the current step asks the player to claim (by its appendage), or null. The
-        /// Assembly Line keeps it on show.
+        /// Assembly Line tab lists it first.
         /// </summary>
         public string WantedCardAppendage => IsShowing || KitRunning ? Current?.Card : null;
 
@@ -1033,20 +1033,9 @@ namespace GolemFactory.Tutorial
 
         private bool IsCoker(GolemEntity golem) => CokerPlan.Matches(golem.Program);
 
-        /// <summary>
-        /// What claiming a card costs in one good right now: its slot's current price if the line
-        /// shows it (prices decay), else the card's full claimCost.
-        /// </summary>
+        /// <summary>What claiming a card costs in one good: the card's whole claimCost, which never changes.</summary>
         private int ClaimCost(string card, string item)
         {
-            AssemblyLineState line = _world.AssemblyLine;
-            for (int i = 0; line != null && i < line.SlotCount; i++)
-            {
-                if (CardKey(line.GetCard(i)) == card)
-                {
-                    return line.GetCurrentCostBundle(i).Where(c => c.itemType == item).Sum(c => c.quantity);
-                }
-            }
             string deck = _world.Setup?.assemblyLine?.deck;
             DraftableCardDefinition def = deck != null && _world.Definitions.Decks.TryGetValue(deck, out DraftableCardCatalog catalog)
                 ? catalog.Cards.FirstOrDefault(c => CardKey(c) == card)
@@ -1332,7 +1321,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "program", "Program it",
-                "Drag the glowing card onto the glowing socket, then the next: Always On, Extract, Push Output. "
+                "Drag the glowing card onto the glowing socket, then the next: Extract, Push Output. "
                 + "Then pull ENGAGE GEARS. Closed it? Press [[interact]] at the golem.",
                 w => LiveGolems.Any(IsProgrammed),
                 w => FirstGolem,
@@ -1424,7 +1413,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "program-presser", "Program the Presser",
-                "Drag the glowing cards: Always On, Haul, Assemble Scrap Reclamation, Push Output. Then ENGAGE. "
+                "Drag the glowing cards: Haul, Assemble Scrap Reclamation, Push Output. Then ENGAGE. "
                 + "Closed it? Press [[interact]] at the Presser.",
                 w => Pressers.Any(IsIronPresser),
                 w => Pressers.Select(g => (Vector2Int?)g.Cell).FirstOrDefault(),
@@ -1499,7 +1488,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "program-coker", "Program the coking Presser",
-                "Drag the glowing cards: Always On, Extract, Assemble Coking, Push Output, then ENGAGE. Extract "
+                "Drag the glowing cards: Extract, Assemble Coking, Push Output, then ENGAGE. Extract "
                 + "takes whatever the cart behind holds: here, Coal.",
                 w => Pressers.Any(IsCoker),
                 w => NewestPresser?.Cell,
@@ -1552,7 +1541,7 @@ namespace GolemFactory.Tutorial
             // a golem built bare.
             new TutorialStep(
                 "stamp", "Program the new Scavenger",
-                "This one arrived bare. Drag the glowing cards (Always On, Extract, Push Output) and pull ENGAGE. "
+                "This one arrived bare. Drag the glowing cards (Extract, Push Output) and pull ENGAGE. "
                 + "Next time, build from the patent.",
                 w => SecondScavenger != null && IsProgrammed(SecondScavenger),
                 w => SecondScavenger != null ? SecondScavenger.Cell : (Vector2Int?)null,
@@ -1647,7 +1636,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "program-smelter", "Two Hauls, two goods",
-                "In the Workbench: Always On, then Haul, Haul, Assemble Iron Smelting and Push Output. On the "
+                "In the Workbench: Haul, Haul, Assemble Iron Smelting and Push Output. On the "
                 + $"second Haul, click the arrow until it says Coke. Set the first to {SmeltScrap}"
                 + (SmeltCoke > 1 ? $" and the second to {SmeltCoke}" : "")
                 + $": the recipe takes {Takes("AssembleIronSmelting")}.",
@@ -1699,7 +1688,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "program-carrier", "Carry Slag and its fuel",
-                $"Program it: Always On, Haul set to Slag with the dial at {CarrySlag}, Haul set to Coke at {CarryCoke}, then Push "
+                $"Program it: Haul set to Slag with the dial at {CarrySlag}, Haul set to Coke at {CarryCoke}, then Push "
                 + $"Output. {CarrySlag} Slag and the one Coke that burns them, every trip.",
                 w => Pressers.Any(IsCarrier),
                 w => NewestPresser?.Cell,
@@ -1825,8 +1814,9 @@ namespace GolemFactory.Tutorial
                 spotFacing: () => CopperFacing),
 
             // --- Chapter 7: room to grow, and keeping it -------------------------------------------
-            // The playtest script's Floor Expansion, bay cap, card-gating and Ledger items (F, G,
-            // I4), and its save/load round trip (H).
+            // The playtest script's Floor Expansion, card-gating and Ledger items (F, I4), and its
+            // save/load round trip (H). The bay step went with the bay upgrades (2026-11-19); a save
+            // on it resumes at the step that followed it.
 
             new TutorialStep(
                 "expand", "More room",
@@ -1835,14 +1825,6 @@ namespace GolemFactory.Tutorial
                 w => _world.Bounds.NorthExtent > _world.Bounds.MinNorthExtent,
                 w => ScrapFirst(LineOf(FirstFloorCost, ItemType.Scrap), null),
                 w => CostCounts(FirstFloorCost)),
-
-            new TutorialStep(
-                "bays", "More golems",
-                $"The station builds at most {AssemblyBayStructure.DefaultSlots} golems. On the same tab, click "
-                + "Upgrade on the assembly bays for six more.",
-                w => _world.AssemblyBay.Tier >= 2,
-                w => ScrapFirst(40, null),
-                w => $"Golems  {LiveGolems.Count()} / {_world.AssemblyBay.MaxGolemSlots}"),
 
             // docs/pack-upgrades-design.md §6: the next extension asks more than a 100 pack holds.
             new TutorialStep(
@@ -1981,7 +1963,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "program-zeppelin", "Program the Zeppelin",
-                "Always On, Haul set to Copper Ore, then Freight Launch: it flies whatever it holds to the mast.",
+                "Haul set to Copper Ore, then Freight Launch: it flies whatever it holds to the mast.",
                 w => Zeppelin != null && ZeppelinPlan.Matches(Zeppelin.Program),
                 w => null,
                 workbench: true,

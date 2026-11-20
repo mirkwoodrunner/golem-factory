@@ -62,7 +62,6 @@ namespace GolemFactory.Tests.UI
         private static LogicCoreDefinition MakeLogicCore() => new LogicCoreDefinition();
         private static AppendageActionDefinition MakeAppendage() => new AppendageActionDefinition();
 
-        private static WorkbenchCardRef VaultCard(LogicCoreDefinition core) => WorkbenchCardRef.FromVault(core);
         private static WorkbenchCardRef VaultCard(AppendageActionDefinition appendage) => WorkbenchCardRef.FromVault(appendage);
         private static WorkbenchCardRef SlotCard(AppendageActionDefinition appendage, int index) => WorkbenchCardRef.FromSocket(appendage, index);
 
@@ -83,7 +82,6 @@ namespace GolemFactory.Tests.UI
 
             rig.SelectChassis(0);
             rig.Session.HandleDrop(VaultCard(appendage), WorkbenchZone.Socket(0));
-            rig.Session.HandleDrop(VaultCard(core), WorkbenchZone.Trigger);
             rig.Session.Engage();
 
             Assert.AreEqual(core, rig.Golem.Program.logicCore);
@@ -261,26 +259,21 @@ namespace GolemFactory.Tests.UI
             Assert.AreEqual(DropZoneHighlight.Valid, rig.Session.AppendageHighlights[0]);
             Assert.AreEqual(DropZoneHighlight.Valid, rig.Session.AppendageHighlights[1]);
             Assert.AreEqual(DropZoneHighlight.Invalid, rig.Session.AppendageHighlights[2]);
-            Assert.AreEqual(DropZoneHighlight.Invalid, rig.Session.LogicHighlight,
-                "the trigger socket must visibly reject an action card");
 
             rig.Session.EndCardDrag();
             Assert.AreEqual(DropZoneHighlight.Neutral, rig.Session.AppendageHighlights[0]);
-            Assert.AreEqual(DropZoneHighlight.Neutral, rig.Session.LogicHighlight);
         }
 
         [Test]
-        public void BeginCardDrag_LogicCoreCard_HighlightsTheTriggerSocketAndRejectsTheActionSockets()
+        public void TheDraftsTrigger_IsTheRostersAlwaysOn_NeverAPick()
         {
             ChassisDefinition chassis = MakeChassis(3);
-            LogicCoreDefinition core = MakeLogicCore();
-            Rig rig = Build(new[] { chassis }, new[] { core }, new AppendageActionDefinition[0]);
-            rig.SelectChassis(0);
+            var interval = new LogicCoreDefinition { name = "Interval", triggerType = TriggerType.Interval };
+            var always = new LogicCoreDefinition { name = "Always", triggerType = TriggerType.AlwaysOn };
+            Rig rig = Build(new[] { chassis }, new[] { interval, always }, new AppendageActionDefinition[0]);
 
-            rig.Session.BeginCardDrag(VaultCard(core));
-
-            Assert.AreEqual(DropZoneHighlight.Valid, rig.Session.LogicHighlight);
-            Assert.AreEqual(DropZoneHighlight.Invalid, rig.Session.AppendageHighlights[0]);
+            Assert.AreSame(always, rig.Session.DefaultCore);
+            Assert.AreSame(always, rig.Session.DraftLogicCore, "no trigger to drag: 2026-11-19");
         }
 
         // --- The lever, driven by the commit result ------------------------------------------
@@ -524,20 +517,6 @@ namespace GolemFactory.Tests.UI
             Assert.AreEqual("STEP 1  ·  then", rig.Session.SlotCaption(0));
             Assert.AreEqual("STEP 2  ·  loops back to 1", rig.Session.SlotCaption(1));
             Assert.AreEqual("STEP 3  ·  unused", rig.Session.SlotCaption(2));
-        }
-
-        [Test]
-        public void TriggerCaption_TeachesWhicheverThingIsMissing()
-        {
-            ChassisDefinition chassis = MakeChassis(3);
-            AppendageActionDefinition appendage = MakeAppendage();
-            Rig rig = Build(new[] { chassis }, new LogicCoreDefinition[0], new[] { appendage });
-
-            Assert.AreEqual("TRIGGER  ·  fit a chassis first", rig.Session.TriggerCaption);
-            rig.SelectChassis(0);
-            Assert.AreEqual("TRIGGER  ·  drop cards below to build a cycle", rig.Session.TriggerCaption);
-            rig.Session.HandleDrop(VaultCard(appendage), WorkbenchZone.Socket(0));
-            Assert.AreEqual("TRIGGER  ·  when to start", rig.Session.TriggerCaption);
         }
 
         // --- The TARGET header ------------------------------------------------------------

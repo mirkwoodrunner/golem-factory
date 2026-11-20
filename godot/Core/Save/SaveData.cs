@@ -116,9 +116,10 @@ namespace GolemFactory.Save
         /// <summary>The open order's chassis, or null with none.</summary>
         public string chassis;
         public int count;
-        public string rewardGood;
         public int delivered;
-        public double worthDelivered;
+
+        // rewardGood and worthDelivered went when orders started paying vouchers (2026-11-19); an
+        // older save's are ignored.
     }
 
     /// <summary>The civic works: the one under way by name, works built, and its stage and progress.</summary>
@@ -161,7 +162,7 @@ namespace GolemFactory.Save
 
     /// <summary>
     /// One supply cart: its spot, its good, its two rungs, its stock and the trickle's remainder,
-    /// and what was paid for it, which a removal refunds half of.
+    /// and what was paid for it, which a removal refunds.
     /// </summary>
     [Serializable]
     public sealed class SupplyCartEntry
@@ -193,7 +194,7 @@ namespace GolemFactory.Save
 
     /// <summary>
     /// Progress a session earns beyond its goods and buildings: Assembly Line claims, the tech
-    /// tree's ledger, the Floor Expansion and assembly-bay purchases, and the clock's setting.
+    /// tree's ledger, the Floor Expansion purchases, and the clock's setting.
     /// Cards, chassis and buildings are by NAME, like the rest of this file.
     /// </summary>
     [Serializable]
@@ -215,10 +216,14 @@ namespace GolemFactory.Save
         /// <summary>Rows bought north of the Docks' opening floor (docs/region-design.md). Absent in an older save: 0.</summary>
         public int docksRows;
         public int floorNorthExtent;
-        public int assemblyBayTier = 1;
+
+        // assemblyBayTier went with the bay upgrades (2026-11-19); an older save's is ignored.
 
         /// <summary>Pack upgrades bought (docs/pack-upgrades-design.md): absent in an older save, so 0, the base cap.</summary>
         public int packUpgradeTier;
+
+        /// <summary>City vouchers held (2026-11-19): absent in an older save, so 0.</summary>
+        public int vouchers;
         public float clockSpeed = 1f;
         public bool clockPaused;
         public int tutorialStep;

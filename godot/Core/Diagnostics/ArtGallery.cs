@@ -106,13 +106,9 @@ namespace GolemFactory.Diagnostics
         {
             ChassisDefinition chassis = world.Definitions.Chassis[chassisName];
             int wanted = Facings.Length * FramesOf(Facing.South).Count;
-            while (world.AssemblyBay.MaxGolemSlots < wanted + world.AssemblyBay.OccupiedSlots)
+            if (world.AssemblyBay.MaxGolemSlots < wanted + world.AssemblyBay.OccupiedSlots)
             {
-                EndgameLoad.Grant(world, world.AssemblyBay.UpgradeCost);
-                if (!world.AssemblyBay.TryUpgrade(world.Buffers, world.StockpileBufferId, SandboxWorld.PostBufferId))
-                {
-                    throw new InvalidOperationException("ArtGallery: bay upgrade refused");
-                }
+                world.AssemblyBay.ConfigureCap(0); // a gallery of pictures, past the cap
             }
 
             var built = new List<GalleryGolem>();

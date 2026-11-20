@@ -151,8 +151,8 @@ namespace GolemFactory.Nodes
 
             LastBuilt = golem;
             Close();
-            // Unity opened the Workbench on the new golem: it arrives bare, and fitting its
-            // logic core is the next thing to do.
+            // Unity opened the Workbench on the new golem: it arrives bare, and programming it
+            // is the next thing to do.
             IWorkbenchScreen workbench = WorldNode.Find(this).Sandbox.WorkbenchScreen;
             if (workbench != null)
             {
@@ -434,7 +434,7 @@ namespace GolemFactory.Nodes
             title.AddThemeFontOverride("font", _bold);
             column.AddChild(title);
             column.AddChild(MakeLabel(
-                "Pick a chassis. It arrives bare -- the Workbench opens next to fit its logic core.", SubtitleColor, 12));
+                "Pick a chassis. It arrives bare -- the Workbench opens next to program it.", SubtitleColor, 12));
             _stockLabel = MakeLabel("", StockColor, 14);
             _stockLabel.AddThemeFontOverride("font", _bold);
             column.AddChild(_stockLabel);

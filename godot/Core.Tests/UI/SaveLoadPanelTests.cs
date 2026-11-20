@@ -154,10 +154,11 @@ namespace GolemFactory.Tests.UI
 
         private static string ClaimFirstAffordable(SandboxWorld world)
         {
-            for (int i = 0; i < world.AssemblyLine.SlotCount; i++)
+            // A factory that has handled Scrap, so cards priced in it are on offer.
+            world.TechTree.Ledger.RecordItem(ItemType.Scrap);
+            foreach (DraftableCardDefinition card in world.AssemblyLine.Offers)
             {
-                DraftableCardDefinition card = world.AssemblyLine.GetCard(i);
-                if (card != null && world.AssemblyLineBoard.Claim(i))
+                if (world.AssemblyLineBoard.Claim(card))
                 {
                     return card.name;
                 }
@@ -170,7 +171,7 @@ namespace GolemFactory.Tests.UI
             string.Join(",", world.AssemblyLine.GetClaimedCards("LocalPlayer").Select(c => c.name).OrderBy(n => n));
 
         private static string Offered(SandboxWorld world) =>
-            string.Join(",", Enumerable.Range(0, world.AssemblyLine.SlotCount).Select(i => world.AssemblyLine.GetCard(i)?.name));
+            string.Join(",", world.AssemblyLine.Offers.Select(c => c.name));
 
         [Test]
         public void Progress_RoundTrips_AndALoadReplacesWhatCameAfterTheSave()
@@ -187,20 +188,18 @@ namespace GolemFactory.Tests.UI
             ClaimFirstAffordable(world);
             Assert.IsTrue(world.AssemblyLineBoard.ExtendFloor(), world.AssemblyLineBoard.Status);
             Fund(world);
-            Assert.IsTrue(world.AssemblyLineBoard.UpgradeBays(), world.AssemblyLineBoard.Status);
             Assert.IsTrue(world.AssemblyLineBoard.UpgradePack(), world.AssemblyLineBoard.Status);
             world.TechTree.Ledger.RecordItem(ItemType.Coke);
             world.Clock.Speed = 2f;
             world.Clock.Pause();
             string claims = Claims(world);
-            int north = world.Bounds.NorthExtent, tier = world.AssemblyBay.Tier, slots = world.AssemblyBay.MaxGolemSlots;
+            int north = world.Bounds.NorthExtent;
             world.SaveTo(_path);
 
             Fund(world);
             ClaimFirstAffordable(world);
             Assert.IsTrue(world.AssemblyLineBoard.ExtendFloor());
             Fund(world);
-            Assert.IsTrue(world.AssemblyLineBoard.UpgradeBays());
             Assert.IsTrue(world.AssemblyLineBoard.UpgradePack(), world.AssemblyLineBoard.Status);
             world.Clock.Speed = 4f;
             world.Clock.Play();
@@ -209,18 +208,15 @@ namespace GolemFactory.Tests.UI
             world.LoadFrom(_path);
 
             Assert.AreEqual(claims, Claims(world));
-            // The line is rebuilt as a fresh session holding those claims would build it -- not
-            // in the exact queue order the session had reached -- so it offers no gap and
-            // nothing the player owns.
+            // The line is rebuilt as a fresh session holding those claims would build it, so it
+            // offers nothing the player owns.
             var owned = world.AssemblyLine.GetClaimedCards("LocalPlayer");
-            for (int i = 0; i < world.AssemblyLine.SlotCount; i++)
+            Assert.IsNotEmpty(world.AssemblyLine.Offers);
+            foreach (DraftableCardDefinition card in world.AssemblyLine.Offers)
             {
-                Assert.IsNotNull(world.AssemblyLine.GetCard(i), "slot " + i);
-                CollectionAssert.DoesNotContain(owned, world.AssemblyLine.GetCard(i), "slot " + i);
+                CollectionAssert.DoesNotContain(owned, card);
             }
             Assert.AreEqual(north, world.Bounds.NorthExtent);
-            Assert.AreEqual(tier, world.AssemblyBay.Tier);
-            Assert.AreEqual(slots, world.AssemblyBay.MaxGolemSlots);
             Assert.AreEqual(1, world.PackUpgrade.Tier, "the pack's rung, as saved");
             Assert.AreEqual(150, world.Wallet.Pack.CapacityPerType);
             Assert.IsTrue(world.TechTree.Ledger.HasItem(ItemType.Coke));

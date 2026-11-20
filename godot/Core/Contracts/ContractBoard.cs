@@ -203,6 +203,8 @@ namespace GolemFactory.Contracts
         }
 
         // --- Goods and rungs waiting at the office -----------------------------------------------
+        // An older save's only: until 2026-11-19 rewards were goods, kept here when the pack was
+        // full, and cart rungs, which waited for the player to pick a cart. Rewards are vouchers now.
 
         /// <summary>Reward goods that didn't fit the pack, in the game's order (invariant 5).</summary>
         public IReadOnlyList<RecipeIngredient> ShelfGoods =>
@@ -348,41 +350,25 @@ namespace GolemFactory.Contracts
             EventBus.Publish(new ContractEvent(ContractEventKind.Completed, done.name, done.requester, bonus));
         }
 
-        // Goods into the pack as far as they fit, the rest on the shelf; a rung always waits on the
-        // shelf, because the player picks its cart (§4).
+        /// <summary>The vouchers a reward pays go here; null pays nothing (a bare test board).</summary>
+        public CityVouchers Vouchers { get; set; }
+
+        // Vouchers, straight to the player: nothing to collect, nothing to fit in the pack (§4).
         private void Give(ContractReward reward)
         {
-            if (reward == null)
+            if (reward != null)
             {
-                return;
-            }
-            StorageBuffer pack = _wallet?.Invoke()?.Pack;
-            foreach (RecipeIngredient line in reward.goods.Where(g => g.quantity > 0))
-            {
-                int put = pack?.Deposit(line.itemType, line.quantity) ?? 0;
-                if (put < line.quantity)
-                {
-                    _shelfGoods.TryGetValue(line.itemType, out int shelved);
-                    _shelfGoods[line.itemType] = shelved + line.quantity - put;
-                }
-            }
-            if (reward.HasRung)
-            {
-                _shelfRungs.Add(new ShelfRung(reward.rungGood, reward.rungKind));
+                Vouchers?.Give(reward.vouchers);
             }
         }
 
         /// <summary>
-        /// Goods the office pays for something other than a contract (a golem order,
-        /// docs/golem-sales-design.md §3): into the pack as far as they fit, the rest on this shelf.
+        /// Vouchers the office pays for something other than a contract (a golem order,
+        /// docs/golem-sales-design.md §3).
         /// </summary>
-        public void Pay(IReadOnlyList<RecipeIngredient> goods)
+        public void PayVouchers(int count)
         {
-            if (goods == null || goods.Count == 0)
-            {
-                return;
-            }
-            Give(new ContractReward { goods = goods.ToList() });
+            Vouchers?.Give(count);
             Version++;
         }
 

@@ -102,6 +102,10 @@ Why not the other sources the brief offered:
 - **`TutorialStep.Card`** names a card to *claim* on the Assembly Line, one per step. A program is
   a core and up to six cards in order, with goods and dials.
 - **The golem's role** (`RoleOpenings`) covers four golems and says nothing about cards.
+> **Changed 2026-11-19:** the TRIGGER socket is gone (every program runs Always On), so the hint
+> and its fallback start at STEP 1. Where this section names TRIGGER or the core's card, read it
+> as history.
+
 - **A rule from the empty sockets alone** can say *where* (TRIGGER, then STEP 1) but never
   *which card*. It is kept as the fallback (§2.3), not the hint.
 

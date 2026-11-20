@@ -7,11 +7,8 @@ its invariants first. The points marked *(default)* are mine, not the user's; ea
 
 ## What's already decided
 
-- **The tabletop design** (`game-design.md`, "Liquidating Assets"): "Because golems are the
-  ultimate commodity, an Artificer can take an action to permanently remove a fully functioning
-  golem from their tableau and sell it to the city. This grants a massive burst of wealth
-  proportional to the golem's complexity, but intentionally breaks the player's automated
-  logistics chain, forcing them to rebuild."
+- **The core concept** (`game-design.md`, "The city"): the city orders golems, and pays in
+  proportion to the golems' complexity.
 - **Roadmap decision 1:** no new good, tier or currency. The game has no money: every price and
   reward is goods. "Wealth" can only be goods.
 - **Demolition refunds the full cost** (settled). The wrecking bar already takes a golem and hands
@@ -92,7 +89,7 @@ A pass that touches golem sales keeps all of these. Each gets a test in `Core.Te
 Carry a golem (the existing carry) to the City Office and press E: "Sell Presser #4 to the
 Tramway Company". The notice's prompt says it while carrying a golem of the ordered chassis. A
 golem of another chassis is refused with the reason ("The order is for Brass Pressers"), and so is
-one whose cargo the pack can't take. This is the tabletop's sale: the golem leaves its line.
+one whose cargo the pack can't take. The golem leaves its line.
 
 ### 2.2 The Golem Foundry
 
@@ -119,14 +116,19 @@ A building in the build menu, offered once golem orders open.
 
 ## 3. The reward
 
+> **Changed 2026-11-19 (the user's call):** an order pays 1 city voucher (`golemOrders.vouchers`),
+> never goods, and a golem with cards counts the same as a bare one: the card bonus only rewarded
+> pulling a working golem off its own line. See `contracts-design.md` §4 for what a voucher buys.
+> The rest of this section is the original design.
+
 A golem's worth is its chassis's raw cost (`ContractGenerator.RawCosts`, as contracts count it),
 plus a tenth for each filled card slot, so a programmed golem sold by hand is worth more than a
-bare one (the tabletop's "proportional to complexity"):
+bare one ("in proportion to the golems' complexity", `game-design.md`):
 
 | Chassis | Raw cost | Full (every slot) |
 |---|---|---|
 | Clockwork Scavenger | 12 | 14 (2 slots) |
-| Brass Presser | 68 | 88 (3) |
+| Brass Presser | 68 (57 since its price fell, 2026-11-19) | 88 (3) |
 | Aether Hauler | 70 | 98 (4) |
 | Mainspring Overclocker | 398 | 597 (5) |
 | Zeppelin Freight Loader | 645 | 1,032 (6) |

@@ -63,7 +63,7 @@ namespace GolemFactory.Tests.Tutorial
             {
                 world.Advance(1f / 30f);
                 var line = world.AssemblyLine;
-                var shown = Enumerable.Range(0, line.SlotCount).Select(line.GetCard).Where(c => c != null).ToList();
+                var shown = line.Offers.ToList();
                 Assert.IsTrue(shown.Any(c => c.appendage?.name == appendage),
                     $"{step}, frame {frame}: {appendage} is on the line (shows {string.Join(", ", shown.Select(c => c.name))})");
                 foreach (var card in shown)
@@ -114,9 +114,8 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual("expand", world.Tutorial.Current.Id, "chapter 6 done: ore down a belt into a labelled depot");
 
             RunKit(world);
-            Assert.AreEqual("copper-ingot", world.Tutorial.Current.Id, "chapter 7 done: room, bays, the Ledger, a save and a load");
+            Assert.AreEqual("copper-ingot", world.Tutorial.Current.Id, "chapter 7 done: room, the pack, the Ledger, a save and a load");
             Assert.Greater(world.Bounds.NorthExtent, world.Bounds.MinNorthExtent);
-            Assert.AreEqual(2, world.AssemblyBay.Tier);
 
             RunKit(world);
             Assert.AreEqual("zeppelin-card", world.Tutorial.Current.Id, "chapter 8 done: every good the Zeppelin costs");

@@ -62,13 +62,10 @@ namespace GolemFactory.Tests.EndlessPlay
             Assert.IsNull(SupplyStreet.NextRateCost(coal.Cart), "rung 3 is the campaign's top");
             Assert.IsNull(SupplyStreet.NextCapacityCost(coal.Cart));
 
-            _world.AssemblyBay.RestoreTier(AssemblyBayStructure.TierFor(100));
-            Assert.AreEqual(100, _world.AssemblyBay.MaxGolemSlots);
-            Assert.IsTrue(_world.AssemblyBay.IsMaxed);
-            Assert.IsFalse(_world.AssemblyBay.TryUpgrade(_world.Buffers, _world.StockpileBufferId, SandboxWorld.PostBufferId));
+            Assert.AreEqual(112, _world.AssemblyBay.MaxGolemSlots, "the golem cap is fixed, before the tower too");
             AssemblyLineRow bay = _world.AssemblyLineBoard.Rows().Single(r => r.Kind == AssemblyLineRowKind.Bay);
-            StringAssert.EndsWith("more once the Clock Tower stands", bay.Text);
-            Assert.IsNull(bay.ButtonLabel, "no button that always refuses");
+            StringAssert.EndsWith("the most the workshop holds", bay.Text);
+            Assert.IsNull(bay.ButtonLabel, "nothing to buy");
         }
 
         [Test]
@@ -116,25 +113,11 @@ namespace GolemFactory.Tests.EndlessPlay
         }
 
         [Test]
-        public void OnceTheTowerStands_TheBaysGrowToTheGolemCap_AndNoFurther()
+        public void OnceTheTowerStands_TheGolemCapStays112()
         {
             CompleteTheTower();
             Assert.AreEqual(112, _world.AssemblyBay.GolemCap, "docs/performance-report-endless.md");
-            _world.AssemblyBay.RestoreTier(AssemblyBayStructure.TierFor(100));
-            IReadOnlyList<RecipeIngredient> tier = _world.AssemblyBay.UpgradeCost;
-            Assert.Greater(Sum(tier, ItemType.GreatCog), 0, "priced in Mechanisms and Great Cogs");
-            while (!_world.AssemblyBay.IsMaxed)
-            {
-                EndgameLoad.Grant(_world, _world.AssemblyBay.UpgradeCost);
-                Assert.IsTrue(_world.AssemblyBay.TryUpgrade(_world.Buffers, _world.StockpileBufferId, SandboxWorld.PostBufferId));
-            }
-            Assert.AreEqual(112, _world.AssemblyBay.MaxGolemSlots);
-            // Refused by the cap, not the wallet: whatever it would charge is in the pack.
-            EndgameLoad.Grant(_world, _world.AssemblyBay.UpgradeCost);
-            Assert.IsFalse(_world.AssemblyBay.TryUpgrade(_world.Buffers, _world.StockpileBufferId, SandboxWorld.PostBufferId));
-            Assert.AreEqual(112, _world.AssemblyBay.MaxGolemSlots, "no further");
-            AssemblyLineRow bay = _world.AssemblyLineBoard.Rows().Single(r => r.Kind == AssemblyLineRowKind.Bay);
-            StringAssert.EndsWith("the most the city allows", bay.Text);
+            Assert.AreEqual(112, _world.AssemblyBay.MaxGolemSlots, "nothing in endless play raises it");
         }
 
         [Test]
@@ -155,10 +138,6 @@ namespace GolemFactory.Tests.EndlessPlay
                 {
                     Assert.IsTrue(price.All(c => c.quantity <= 250), cart.itemType);
                 }
-            }
-            foreach (List<RecipeIngredient> price in setup.assemblyBays.endless)
-            {
-                Assert.IsTrue(price.All(c => c.quantity <= 250), "a bay tier");
             }
         }
 
@@ -189,7 +168,6 @@ namespace GolemFactory.Tests.EndlessPlay
             {
                 CompleteTheTower();
                 _world.PackUpgrade.Restore(5);
-                _world.AssemblyBay.RestoreTier(AssemblyBayStructure.TierFor(112));
                 CartSpot coal = CoalCart();
                 Climb(coal, rate: true, 5);
                 Climb(coal, rate: false, 4);

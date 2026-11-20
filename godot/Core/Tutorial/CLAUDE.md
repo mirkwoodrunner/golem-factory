@@ -42,9 +42,10 @@ through chapter 10, building reference lines from chapter 8, in about 6 s of wal
 (`docs/tuning-data-spec.md` §15.4, §18). A new step whose kit action grants goods instead of
 placing or building needs a case in `FloorPlayer.Perform` (or its `Needs`).
 
-A step that wants a card claimed names it (`TutorialStep.Card`), and the Assembly Line always
-shows that card (`AssemblyLineState.Wanted`). The line otherwise offers a card only once the
-factory has made every good its price asks for, so a claim is never one the player can't pay.
+A step that wants a card claimed names it (`TutorialStep.Card`), and the Assembly Line tab lists
+that card first (`AssemblyLineBoard.ConfigureWanted`). The line offers every card at once, at its
+fixed price, but only once the factory has made every good its price asks for, so a claim is never
+one the player can't pay (2026-11-19: no draft slots, no decay).
 A step shown over the Workbench sets `TutorialStep.Workbench`. A kit action that moves the
 player calls `PlayerInteractor.Teleport`; a bare `Position` write is overwritten by
 `PlayerNode` on its next frame.
@@ -60,7 +61,7 @@ player calls `PlayerInteractor.Teleport`; a bare `Position` write is overwritten
   (`ProgramStepFor`; `docs/guide-chapters-design.md` §9): the station opens the Workbench on a new
   golem before its program step comes up. **The hint never fills a socket**: reading it changes nothing (`WorkbenchSession.Version` holds), and
   `WorkbenchScreen` only draws frames around controls that already exist. Without a plan, only a
-  golem never programmed gets the fallback (TRIGGER, STEP 1, the lever).
+  golem never programmed gets the fallback (STEP 1, then the lever).
 
 **A quoted price is the data's** (tuning-data-spec invariant 12): a guide text or progress count
 that names a price builds it from the definition (`TutorialGuide.Price`, `CostCounts`,

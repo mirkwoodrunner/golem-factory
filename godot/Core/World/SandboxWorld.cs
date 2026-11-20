@@ -68,6 +68,12 @@ namespace GolemFactory.World
         public ClockTowerSiteHolder ClockTower { get; } = new ClockTowerSiteHolder();
         public NodeExtractorRegistry ExtractorCap { get; } = new NodeExtractorRegistry();
         public AssemblyBayStructure AssemblyBay { get; } = new AssemblyBayStructure();
+
+        /// <summary>
+        /// The city's vouchers: what contracts and golem orders pay (2026-11-19), each the next step
+        /// of any upgrade or unlock, spent on the Assembly Line tab or at a cart.
+        /// </summary>
+        public CityVouchers Vouchers { get; } = new CityVouchers();
         public BuildModeController Build { get; } = new BuildModeController();
         public FloorExpansionService FloorExpansion { get; } = new FloorExpansionService();
 
@@ -85,7 +91,7 @@ namespace GolemFactory.World
         public SupplyStreet Supply { get; private set; }
 
         /// <summary>The cart panel's rules (docs/supply-design.md §2).</summary>
-        public SupplyPanel SupplyPanel => _supplyPanel ??= new SupplyPanel(Supply, () => Wallet, item => TechTree.Ledger.HasItem(item));
+        public SupplyPanel SupplyPanel => _supplyPanel ??= new SupplyPanel(Supply, () => Wallet, item => TechTree.Ledger.HasItem(item)) { Vouchers = Vouchers };
         private SupplyPanel _supplyPanel;
 
         /// <summary>The City Office's notice: its lines and rows, and what a click does.</summary>
@@ -259,12 +265,10 @@ namespace GolemFactory.World
             DocksExpansion.Configure(Bounds, Buffers, _stockpileBufferId, PostBufferId,
                 setup.docks?.purchases.Select(c => (IReadOnlyList<RecipeIngredient>)c).ToList(), setup.docks?.rowsPerPurchase ?? 2);
             PackUpgrade.EndlessOpen = () => EndlessOpen;
-            if (setup.assemblyBays != null)
+            if (setup.golemCap > 0)
             {
-                AssemblyBay.ConfigureTiers(setup.assemblyBays.campaignTopSlots,
-                    setup.assemblyBays.endless.Select(c => (IReadOnlyList<RecipeIngredient>)c));
+                AssemblyBay.ConfigureCap(setup.golemCap);
             }
-            AssemblyBay.EndlessOpen = () => EndlessOpen;
 
             // Ticked whether or not a tower is built: an unbuilt tower accrues nothing.
             // EMPTY, as ManagerHolders.prefab's site holder was (stages: []): the site stays
@@ -339,10 +343,7 @@ namespace GolemFactory.World
                 Tutorial = new Tutorial.TutorialGuide(this);
                 // The Workbench's next-drag hint follows the guide's program plans.
                 Workbench.HintSource = Tutorial.PlanFor;
-                if (AssemblyLine != null)
-                {
-                    AssemblyLine.Wanted = card => card != null && GolemFactory.Tutorial.TutorialGuide.CardKey(card) == Tutorial.WantedCardAppendage;
-                }
+                AssemblyLineBoard?.ConfigureWanted(card => card != null && GolemFactory.Tutorial.TutorialGuide.CardKey(card) == Tutorial.WantedCardAppendage);
                 if (setup.playtest)
                 {
                     Tutorial.AttachPlaytest(new Tutorial.PlaytestSession(), () => _realSeconds);
@@ -382,13 +383,9 @@ namespace GolemFactory.World
 
             _deck = deck;
             _claimUserId = setup.claimUserId;
-            AssemblyLine = new AssemblyLineState(setup.slots);
+            AssemblyLine = new AssemblyLineState();
             AssemblyLine.ConfigureUnlockContext(itemType => TechTree.Ledger.HasItem(itemType));
-            // The opening hand BEFORE the deck. The line skips a card its player already owns
-            // only when it fills a slot, so seeding first filled all three slots with the
-            // opening verbs -- free to claim, buying nothing -- and no real card appeared until
-            // the player had cleared them. (Unity's SandboxBootstrap had the same order; fixed
-            // in the port at the user's call.) The unlock context is still wired first.
+            // The opening hand: the movement verbs, held from the first minute.
             foreach (DraftableCardDefinition card in deck.OpeningHand)
             {
                 AssemblyLine.GrantClaim(setup.claimUserId, card);
@@ -405,10 +402,11 @@ namespace GolemFactory.World
             Workbench.HaulableGood = item => TechTree.Ledger.HasItem(item);
 
             AssemblyLineBoard = new AssemblyLineBoard(AssemblyLine, Buffers, _stockpileBufferId, setup.claimUserId, PostBufferId);
-            AssemblyLineBoard.ConfigureBays(AssemblyBay, _stockpileBufferId);
+            AssemblyLineBoard.ConfigureBays(AssemblyBay);
             AssemblyLineBoard.ConfigureFloorExpansion(FloorExpansion);
             AssemblyLineBoard.ConfigureDocks(DocksExpansion);
             AssemblyLineBoard.ConfigurePackUpgrade(PackUpgrade);
+            AssemblyLineBoard.ConfigureVouchers(Vouchers);
             AssemblyLineBoard.ConfigureSeen(item => TechTree.Ledger.HasItem(item));
             AssemblyLineBoard.ConfigurePostShown(() => TechTree.Ledger.HasBuilding(TechTreeCatalog.BuildingPneumaticPost));
         }
@@ -629,8 +627,18 @@ namespace GolemFactory.World
         /// The Ledger's recipe pane (G10: on the world rather than the tab, so the guide can see a
         /// recipe was opened). The Godot Ledger tab draws this one.
         /// </summary>
-        public TechTreeReadout LedgerReadout =>
-            _ledgerReadout ??= new TechTreeReadout(Definitions.Recipes.Values.ToList(), Throughput, ProductionTally.SeriesId, Clock.TicksPerSecond);
+        public TechTreeReadout LedgerReadout
+        {
+            get
+            {
+                if (_ledgerReadout == null)
+                {
+                    _ledgerReadout = new TechTreeReadout(Definitions.Recipes.Values.ToList(), Throughput, ProductionTally.SeriesId, Clock.TicksPerSecond);
+                    _ledgerReadout.ConfigureUnlocks(AssemblyLine, AssemblyLineBoard);
+                }
+                return _ledgerReadout;
+            }
+        }
 
         private TechTreeReadout _ledgerReadout;
 
@@ -867,8 +875,8 @@ namespace GolemFactory.World
                 goodsMadeEver = GoodsMadeEver,
                 docksRows = Bounds.DocksRows,
                 floorNorthExtent = Bounds.NorthExtent,
-                assemblyBayTier = AssemblyBay.Tier,
                 packUpgradeTier = PackUpgrade.Tier,
+                vouchers = Vouchers.Count,
                 clockSpeed = Clock.Speed,
                 clockPaused = Clock.State == ClockState.Paused,
                 tutorialStep = Tutorial?.Index ?? 0,
@@ -895,7 +903,7 @@ namespace GolemFactory.World
 
         /// <summary>
         /// Restores progress BEFORE the world: the ledger first (the Assembly Line's unlock
-        /// context reads it), then the line, the bay tier (respawned golems take bay slots) and
+        /// context reads it), then the line and
         /// the floor (a building beyond the original back wall needs its row to rebuild on).
         /// </summary>
         private void RestoreProgress(ProgressEntry progress)
@@ -926,10 +934,10 @@ namespace GolemFactory.World
                     _deck.Cards);
             }
 
-            AssemblyBay.RestoreTier(progress.assemblyBayTier);
             FloorExpansion.Restore(progress.floorNorthExtent);
             Bounds.RestoreDocks(progress.docksRows);
             PackUpgrade.Restore(progress.packUpgradeTier);
+            Vouchers.Restore(progress.vouchers);
 
             // The tower on its site (G10), a fixture the building list never holds.
             if (ClockTowerBuilding != null)
@@ -1113,6 +1121,7 @@ namespace GolemFactory.World
                 ? null
                 : new ContractGenerator(Setup.endlessContracts, Definitions.Recipes.Values);
             Contracts.TowerComplete = () => site.IsComplete;
+            Contracts.Vouchers = Vouchers;
             Clock.Register(Contracts);
             OfficeCrate = new CityOfficeCrate(Contracts);
             ContractBoard board = Contracts;
@@ -1122,8 +1131,7 @@ namespace GolemFactory.World
                 Definitions == null ? null : ContractGenerator.RawCosts(Definitions.Recipes.Values),
                 () => board.IsOpen,
                 chassis => TechTree.Ledger.HasChassis(chassis),
-                item => TechTree.Ledger.HasItem(item),
-                goods => board.Pay(goods),
+                count => board.PayVouchers(count),
                 enabled: !Creative);
             Clock.Register(GolemOrders);
 
@@ -1158,7 +1166,7 @@ namespace GolemFactory.World
 
         /// <summary>
         /// Endless play (docs/endless-design.md): not a mode but what follows the Clock Tower. Its
-        /// rungs on the pack, the carts and the bays are offered once the tower stands, and in
+        /// rungs on the pack and the carts are offered once the tower stands, and in
         /// Creative, where every rung is free.
         /// </summary>
         public bool EndlessOpen => Creative || ClockTower.Site.IsComplete;
@@ -1458,7 +1466,6 @@ namespace GolemFactory.World
                 FillPack();
             }
             Alerts?.Update(seconds);
-            AssemblyLine?.Tick(seconds);
             TechTree.Update(_realSeconds);
             // After the Ledger's poll, so a contract posts the frame its good is first seen; and
             // every frame, so goods put in by hand count while the clock is paused.
@@ -1517,12 +1524,11 @@ namespace GolemFactory.World
                 return GolemSaleResult.Refused("No golem to sell.");
             }
             GolemOrder order = GolemOrders.Current;
-            int filled = golem.Program.appendages.Count(a => a != null);
             if (!_stationTemplate.TrySellGolem(golem, out IReadOnlyList<RecipeIngredient> cargo, out string why))
             {
                 return GolemSaleResult.Refused(why);
             }
-            GolemOrders.Deliver(chassis, filled);
+            GolemOrders.Deliver(chassis);
             return GolemSaleResult.Sold(order, GolemOrders.Current == order ? GolemOrders.Delivered : order.Count, cargo);
         }
 

@@ -4,7 +4,6 @@ namespace GolemFactory.UI
     // WorkbenchDropRules can name it. Same members, same order.
     public enum DropZoneKind
     {
-        LogicCore,
         Appendage
     }
 }

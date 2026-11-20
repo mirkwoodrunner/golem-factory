@@ -10,10 +10,9 @@ namespace GolemFactory.World
     // analog movement on the ground.
     //
     // TWO REGIONS NOW, NOT ONE. Until the market street, the workshop WAS the map: one square of
-    // planks, walls on three sides, and nothing beyond them. docs/game-design.md -- the tabletop
-    // source of truth -- describes something else: "Resource markets on the edge of the board
-    // where raw materials arrive in full truckload shipments." So the workshop becomes a building
-    // standing on a larger world, and the street is ground outside it.
+    // planks, walls on three sides, and nothing beyond them. The design wanted a market at the
+    // edge of the world, where raw goods are bought. So the workshop becomes a building standing
+    // on a larger world, and the street is ground outside it.
     //
     // The split matters because the two regions answer different questions, and conflating them
     // is what made "grow the world" look impossible:

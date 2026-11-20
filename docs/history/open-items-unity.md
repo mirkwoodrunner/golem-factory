@@ -462,8 +462,8 @@ steam adjacency still fits.
 
 - ~~**The Sandbox map layout is "Quadrants"**~~ — **SUPERSEDED by the market street.** Quadrants
   was right while the workshop was the whole map, and wrong the moment there was an outside: it
-  left five ore boulders standing on the factory floor, and `docs/game-design.md` puts the resource
-  markets on the *edge of the board*. The five traders now stand on the street at `y = -16`, four
+  left five ore boulders standing on the factory floor, and the design puts the resource
+  markets at the *edge of the world*. The five traders now stand on the street at `y = -16`, four
   cells apart; the Hand-Crank Bench and the construction station stay inside, because they are
   workshop equipment and §9's Phase 1 is spent in a cold workshop rather than in the road. See the
   market-street milestone in `docs/history/unity-implementation-plan.md`. The `StartingLayout` table at the

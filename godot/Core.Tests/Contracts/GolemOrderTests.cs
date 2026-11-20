@@ -198,75 +198,58 @@ namespace GolemFactory.Tests.Contracts
         // --- The reward (§3) ---------------------------------------------------------------------
 
         [Test]
-        public void TheLastGolem_CompletesTheOrder_PaysHalfTheWorth_AndTheNextPosts()
+        public void TheLastGolem_CompletesTheOrder_PaysAVoucher_AndTheNextPosts()
         {
             Build(Scavenger);
             OpenOffice();
             GolemOrder order = Orders.Current;
-            int gearBefore = CrateWorld.Pack(_world, order.RewardGood);
+            int before = _world.Vouchers.Count;
             for (int i = 0; i < order.Count; i++)
             {
                 Assert.IsTrue(_world.SellGolem(Build(Scavenger)).Done, "golem " + i);
             }
 
             Assert.AreEqual(1, Orders.Done);
-            int paid = CrateWorld.Pack(_world, order.RewardGood) - gearBefore;
-            double worth = 12.0 * order.Count;
-            Assert.AreEqual((int)(worth * 0.5 / Orders.Raw(order.RewardGood)), paid);
-            Assert.LessOrEqual(paid * Orders.Raw(order.RewardGood), worth, "never worth more than the golems");
+            Assert.AreEqual(before + 1, _world.Vouchers.Count, "an order pays a voucher, never goods (2026-11-19)");
+            Assert.IsTrue(_world.Contracts.ShelfEmpty, "nothing to collect");
             Assert.IsNotNull(Orders.Current, "the next order posts");
             Assert.AreNotSame(order, Orders.Current);
             Assert.AreEqual(1, _events.Count(e => e.Kind == ContractEventKind.OrderCompleted));
         }
 
         [Test]
-        public void AGolemWithCards_IsWorthATenthMore_PerFilledSlot()
+        public void AGolemWithCards_CountsTheSameAsABareOne()
         {
-            Assert.AreEqual(12.0, Orders.Worth(Scavenger, 0), 1e-9);
-            Assert.AreEqual(14.4, Orders.Worth(Scavenger, 2), 1e-9);
-            Assert.AreEqual(645.0 * 1.6, Orders.Worth("ZeppelinFreightLoader", 6), 1e-9);
+            // The card bonus rewarded pulling a working golem off its own line (2026-11-19).
+            Build(Scavenger);
+            OpenOffice();
+            GolemOrder order = Orders.Current;
+            int before = _world.Vouchers.Count;
+            for (int i = 0; i < order.Count; i++)
+            {
+                GolemEntity golem = Build(Scavenger);
+                golem.Program.TryAddAppendage(_world.Definitions.Appendages["ExtractScrap"]);
+                golem.Program.TryAddAppendage(_world.Definitions.Appendages["PushOutput"]);
+                Assert.IsTrue(_world.SellGolem(golem).Done);
+            }
+            Assert.AreEqual(before + 1, _world.Vouchers.Count, "the same voucher as bare golems");
         }
 
         [Test]
-        public void NoReward_IsEverWorthMoreThanTheGolems_ForAnyOrder()
+        public void EveryOrder_PaysTheSetupsVouchers()
         {
             foreach (string chassis in _world.Definitions.Chassis.Keys)
             {
                 _world.TechTree.Ledger.RecordChassis(chassis);
             }
-            foreach (string good in Orders.Setup.rewardGoods)
-            {
-                _world.TechTree.Ledger.RecordItem(good);
-            }
+            Assert.AreEqual(1, Orders.Setup.vouchers);
             for (int k = 0; k < 60; k++)
             {
-                GolemOrder order = Orders.Generate(k);
-                double bare = Orders.ChassisRaw(order.Chassis) * order.Count;
-                double full = Orders.Worth(order.Chassis, _world.Definitions.Chassis[order.Chassis].maxAppendageSlots) * order.Count;
-                foreach (double worth in new[] { bare, full })
-                {
-                    double paid = Orders.RewardFor(order, worth).Sum(g => g.quantity * Orders.Raw(g.itemType));
-                    Assert.LessOrEqual(paid, worth, "order " + k);
-                    Assert.Greater(paid, 0.0, "order " + k + " pays something");
-                }
+                Assert.IsNotNull(Orders.Generate(k), "order " + k);
             }
-        }
-
-        [Test]
-        public void ARewardThePackCantHold_WaitsOnTheOfficesShelf()
-        {
             Build(Scavenger);
             OpenOffice();
-            GolemOrder order = Orders.Current;
-            CrateWorld.Give(_world, order.RewardGood, 1000);
-            for (int i = 0; i < order.Count; i++)
-            {
-                _world.SellGolem(Build(Scavenger));
-            }
-            Assert.AreEqual(1, Orders.Done);
-            RecipeIngredient shelved = _world.Contracts.ShelfGoods.Single();
-            Assert.AreEqual(order.RewardGood, shelved.itemType);
-            Assert.AreEqual(Orders.RewardFor(order, 12.0 * order.Count).Single().quantity, shelved.quantity);
+            StringAssert.StartsWith("Reward: 1 voucher, for any upgrade or unlock", GolemOrderText.RewardLine(Orders));
         }
 
         // --- Saves, Creative, text (§0) ----------------------------------------------------------
@@ -290,11 +273,9 @@ namespace GolemFactory.Tests.Contracts
                     GolemOrderBoard board = loaded.GolemOrders;
                     Assert.AreEqual(order.Chassis, board.Current.Chassis);
                     Assert.AreEqual(order.Count, board.Current.Count);
-                    Assert.AreEqual(order.RewardGood, board.Current.RewardGood);
                     Assert.AreEqual(order.Words, board.Current.Words);
                     Assert.AreEqual(2, board.Delivered);
                     Assert.AreEqual(2, board.GolemsSold);
-                    Assert.AreEqual(24.0, board.WorthDelivered, 1e-9);
                 }
                 finally
                 {

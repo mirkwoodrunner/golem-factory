@@ -24,13 +24,9 @@ namespace GolemFactory.Contracts
         public static string Asks(GolemOrderBoard board) =>
             "Wants " + Golems(board.Current.Chassis, board.Current.Count) + " · " + board.Delivered + " delivered";
 
-        /// <summary>"Reward: 40 Gear, more for golems with cards".</summary>
-        public static string RewardLine(GolemOrderBoard board)
-        {
-            List<PunchCards.RecipeIngredient> goods = board.BaseReward;
-            string paid = goods.Count == 0 ? "nothing" : ContractText.Goods(goods);
-            return "Reward: " + paid + ", more for golems with cards";
-        }
+        /// <summary>"Reward: 1 voucher, for any upgrade or unlock ...".</summary>
+        public static string RewardLine(GolemOrderBoard board) =>
+            "Reward: " + (board.RewardVouchers > 0 ? CityVouchers.Describe(board.RewardVouchers) + ContractText.SpendNote : "nothing");
 
         /// <summary>"Carry one here and press E, or build a Golem Foundry": how an order is filled, naming the device's key.</summary>
         public static string HowTo =>

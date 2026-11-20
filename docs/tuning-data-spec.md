@@ -89,7 +89,7 @@ As built, which differs from `progression-design.md` §2 only where §14 of that
 | Steam burn | 1 Coke per working golem per 200 ticks = **3 Coke/min** | `Steam/SteamNetwork.TicksPerCokePerPoweredGolem` |
 | Crank time | `durationTicks × 100 / SpeedPercent` = 2 × the recipe | `Buildings/HandCrankRules.CrankTicks`, `SpeedPercent` = 50 |
 | Hand harvest | 1 at once, then one per 0.15 s after 0.35 s held: ~6.7/s | `PlayerInteractor.HarvestRepeatDelay`, `HarvestRepeatInterval` |
-| Claim decay | price × max(0.25, 1 − 0.01 × seconds on the line) | `AssemblyLineState`, card `decayFractionPerSecond`, `minCostFraction` |
+| Claim price | the card's whole `claimCost`, never less (decay cut 2026-11-19) | `AssemblyLineState.PriceOf` |
 | Tower progress | per tick, min over lines of clamp(effective ÷ demand, 0, 3), 0 if a meter is empty | `ClockTower/ClockTowerSite.Evaluate` |
 | Supply meter | +1 per unit delivered, −demand/60 per second, clamped to [0, 60] | `ClockTower/SupplyPressureMeter` |
 | Orders per minute | Σ over raw goods of raw demand ÷ truckload size (§4.2) | new, §15.5 |
@@ -193,8 +193,7 @@ not a number: a standing order per stall. That is a user's call (§17 Q3), not p
 | Crate | `sandbox.json` `crateCapacityPerType` | 50 | **keep** | Phase 1's "Done when" (`LayoutMattersTests`) rests on it |
 | Post | `sandbox.json` `postCapacityPerType` | 200 | **keep** | `pack-upgrades-design.md` §7 Q2: its own upgrade only if play asks |
 | Golem stock, per good | `GolemInventory.CapacityPerType` | 12 | **keep** | The Haul dial's top (`WorkbenchQuantityPolicy.MaxQuantity`) and Repeat's bind (§13) |
-| Assembly bays, start | `AssemblyBayStructure.DefaultSlots` | 10 | **keep** | |
-| Bay upgrade | `AssemblyBayStructure.SlotsPerUpgrade`, `upgradeCost` | +6 for 40 Scrap + 20 Iron Plate, unlimited | **keep** | 96 golems = 15 upgrades = 600 Scrap + 300 Plate over the campaign, never more than 40 at once |
+| Golem cap | `sandbox.json` `golemCap` | 112, fixed | **changed 2026-11-19** | The bay upgrades (10, +6 for 40 Scrap + 20 Iron Plate) were cut: a flat toll that never bound. Steam upkeep prices each golem |
 | Floor | `FloorLayout.HalfExtent`, `MaxNorthExtent`, `rowsPerPurchase` | 25 × 25, +12 rows, 2 a purchase | **keep** | |
 
 ## 6. Pack rungs and Floor Expansion
@@ -343,8 +342,9 @@ free cards (Extract, Haul, Push, Repeat, Freight Launch): claimCost [], baseCost
 | `Card_BrassPresser` | 15 Scrap + 5 Iron Plate + 2 Gear | 15 Scrap + **2 Iron Plate + 1 Gear** | The formula, at the new Presser price |
 | `Card_RepeatAssembly` | `prerequisiteItemProduced` "" | **"Mainspring"** | A free, cycling card no chassis before the Overclocker can hold; today it is the deck's fourth card, so it is the first refill into a slot from chapter 2 on, offering nothing [M: it showed through chapter 1, §18 M6] |
 | Every other card | | keep | They follow the formula |
-| Decay | `decayFractionPerSecond` 0.01, `minCostFraction` 0.25 (all cards) | keep | A card reaches its floor after 75 s on the line |
-| `baseCost`, `decayPerSecond`, `minCost` | 20, 1, 2 (legacy Scrap price) | keep | Unread where `claimCost` is set (`HasBundleCost`) |
+| Decay | `decayFractionPerSecond` 0.01, `minCostFraction` 0.25 (all cards) | **cut 2026-11-19** | Every card costs its whole price; the keys are gone from the data |
+| `baseCost`, `decayPerSecond`, `minCost` | 20, 1, 2 (legacy Scrap price) | **cut 2026-11-19** | Unread where `claimCost` is set; gone with the decay |
+| `Card_FreightLaunch` | no prerequisite | **`prerequisiteCards`: the Zeppelin's card** (2026-11-19) | With every card on offer at once, a free Zeppelin verb would have shown from chapter 1 |
 
 ## 10. The Clock Tower
 
@@ -446,6 +446,16 @@ Hauler instead put chapter 8 over its 30:00 ceiling at every price tried (20 to 
 chapter 3 2:00 (was 2:07), chapter 2 2:07 (was 2:21), the full run 1:16:27 (was 1:19:44). Neighbours checked, as §18 correction 10
 asks: 45, 55 Scrap; 9, 11 Iron Plate; 3 Gear all pass; 5 Gear (70 raw) puts chapter 8 at 30:33,
 over, as it does beside the old price.
+
+**Lowered a third time, 2026-11-19 (the user's call): 50 Scrap + 3 Iron Plate + 2 Gear** (card
+12 + 1 + 1; 57 raw). Chapters 1–4 were mostly cranking: their floor was 5:47, 4:43 of it at the
+bench, and the Presser's 10 Plate and 4 Gear were nearly all of chapter 2. Measured after: chapters
+1–4 **4:22** (1:33, 0:56, 1:46, 0:05), 3:15 at the bench (Iron Plate 119 s, Gear 29 s, Coke
+48 s); chapter 2 halved, 2:05 to 0:56; the full run 1:19:21 with chapter 8 at 27:47. Neighbours
+checked: 4 + 2 (chapter 8 29:06, the outlier, too near its ceiling), 5 + 2 (27:23), 4 + 3 (27:24)
+and 4 + 1 (27:52) all pass. What chapters 1 and 3 still crank is the boiler's 10 Plate, the
+second boiler and the Coal cart's first Rate rung (10 Plate + 5 Gear): the next levers if play
+asks for less.
 
 **Expected floors** [M: measured 5:16 (1:26, 2:20, 1:22, 0:06), §18 M8]:
 
@@ -556,7 +566,7 @@ plays every action instantly but earns every good at the player's real rates (§
 | 4 | 7 | 2:00 | 1:20 | 0:06 | 0:06 | |
 | 5 | 12 | 20:00 | 13:20 | | 7:28 | the Hauler's 20 Plate + 10 Gear + 30 Coke (§18 correction 10; 12:51 at 80 + 40) |
 | 6 | 8 | 15:00 | 10:00 | | 0:20 | copper belts |
-| 7 | 6 | 10:00 | 6:40 | | 4:14 | Floor 1, bays, pack rung 1, Ledger, save, load |
+| 7 | 6 | 10:00 | 6:40 | | 4:14 | Floor 1, bays, pack rung 1, Ledger, save, load (the `bays` step was cut 2026-11-19) |
 | 8 | 9 | 45:00 | 30:00 | | 23:05 | 35:39 before §18 correction 10 |
 | 9 | 8 | 30:00 | 20:00 | | 7:34 | the Zeppelin's 1,093 raw |
 | 10 | 5 | 45:00 | 30:00 | | 27:21 | `stage1` 6:15 (§15.4); 12 Frame Sections the kit grants |
@@ -870,7 +880,8 @@ it; the test is named.
      comes out of the smelter's output crate and its Slag stays.
    - The full run steps one tick (0.1 s) a frame; harvests within a frame are counted exactly.
      Chapters 1–4 keep 1/30 s and measure exactly as before the refactor.
-   - Bays are upgraded when the player's lines fill them before a guide golem is built.
+   - Bays were upgraded when the player's lines filled them before a guide golem was built (until
+     the cap was fixed at 112, 2026-11-19).
    - `stage1` is held to 360 s + 60 s (the tower's one-minute windows fill first) + 1; it measures
      6:15.
 7. **Chapter 8 passed its ceiling: 35:39 against 30:00. Decided by correction 10.** The floor's chapter
