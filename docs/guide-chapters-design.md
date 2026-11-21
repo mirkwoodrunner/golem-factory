@@ -203,6 +203,7 @@ flags and kit are as built (`TutorialGuide.cs`, `TutorialGuide.Kit.cs`, `crates-
 | `ledger` | 7 | kept | a Ledger node selected | none | | `Select("r2.reclamation")` |
 | `save` | 7 | kept | a save made | none | | `SaveTo(kit-save.json)` |
 | `load` | 7 | kept | a load made | none | | `LoadFrom(kit-save.json)` |
+| `scrap-rate` | 8 | **new** (2026-11-15): "Upgrade the Scrap cart" (supply-design §6) | a Scrap cart at Rate rung ≥ 1 | the Scrap cart | | buy the rung (its price granted) |
 | `copper-ingot` | 8 | kept | the Ledger has Copper Ingot | none | `Card`; `Workbench` | `MakeGood` |
 | `zinc-ingot` | 8 | "Add a Zinc Ore cart on the marked spot" | … Zinc Ingot | spot x 4 until a Zinc Ore cart stands; then the cart | `Card`; `Workbench` | add the cart, `MakeGood` |
 | `brass` | 8 | kept | … Brass | none | `Card`; `Workbench` | `MakeGood` |
@@ -237,7 +238,8 @@ the point of the step).
 
 ## 5. Steps to add or retire
 
-**None.** Considered and left out:
+**None at first.** Added since: `scrap-rate`, chapter 8's first step (2026-11-15), when the
+starting Scrap cart's rate dropped from 120 to 60 a minute (supply-design §3, §6). Considered and left out:
 
 - **A "hover to read why" step** after `stall`. Its `Done` would read `SandboxWorld.Inspector`,
   which is allowed (the `ledger` step reads `LedgerReadout.HasSelection`), but it adds a step to a

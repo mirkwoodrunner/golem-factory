@@ -444,14 +444,19 @@ namespace GolemFactory.Tests.Tutorial
                 world.SaveTo(savePath);
                 Assert.AreEqual("load", StepId(world));
                 world.LoadFrom(savePath);
-                Assert.AreEqual("copper-ingot", StepId(world), "the load lands past the Save step, and completes Load");
+                Assert.AreEqual("scrap-rate", StepId(world), "the load lands past the Save step, and completes Load");
             }
             finally
             {
                 System.IO.File.Delete(savePath);
             }
 
-            // --- Chapter 8: goal steps ---------------------------------------------------------------
+            // --- Chapter 8: the Scrap cart's Rate rung, then goal steps ------------------------------
+            Assert.AreEqual("scrap-rate", StepId(world));
+            Assert.IsTrue(world.GrantRateRung(Home(world, ItemType.Scrap)).Done);
+            world.Advance(1f / 30f);
+            Assert.AreEqual("copper-ingot", StepId(world), "the rung does it");
+
             // Each asks for a card -- which the line must be showing -- then a good. Made here by
             // depositing it: the lines that make them are chapters 2-6's shapes again.
             (string step, string card, string good)[] goals =
@@ -833,6 +838,26 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual(Home(world, ItemType.Coal), world.Tutorial.TargetCell);
             Assert.IsTrue(world.GrantRateRung(Home(world, ItemType.Coal)).Done);
             Assert.AreEqual("program-coker", StepId(world));
+        }
+
+        [Test]
+        public void TheScrapUpgradeStep_OpensChapterEight_IsDoneByTheRateRung_AndQuotesItsPrice()
+        {
+            SandboxWorld world = Compose();
+            GoTo(world, "scrap-rate");
+            Assert.AreEqual(8, world.Tutorial.ChapterOf(world.Tutorial.Index));
+            world.Supply.TryGetLadder(ItemType.Scrap, out GolemFactory.Supply.CartLadder scrap);
+            string body = world.Tutorial.Current.Body;
+            foreach (RecipeIngredient line in scrap.RateCosts[0])
+            {
+                StringAssert.Contains($"{line.quantity} {ItemTiers.DisplayName(line.itemType)}", body);
+            }
+            StringAssert.Contains($"{scrap.Rates[1]} Scrap a minute, not {scrap.Rates[0]}", body);
+            Assert.LessOrEqual(body.Length, 240);
+
+            Assert.AreEqual(Home(world, ItemType.Scrap), world.Tutorial.TargetCell, "the starting Scrap cart");
+            Assert.IsTrue(world.GrantRateRung(Home(world, ItemType.Scrap)).Done);
+            Assert.AreEqual("copper-ingot", StepId(world));
         }
 
         [Test]

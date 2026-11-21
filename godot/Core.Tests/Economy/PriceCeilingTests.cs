@@ -35,7 +35,7 @@ namespace GolemFactory.Tests.EditMode
         private static readonly Dictionary<string, string> CartBought = new Dictionary<string, string>
         {
             { "coal", "cart Coal" }, { "coal-order", "cart Coal rate 1" }, { "copper", "cart CopperOre" },
-            { "zinc-ingot", "cart ZincOre" }, { "aether-cell", "cart Aether" },
+            { "scrap-rate", "cart Scrap rate 1" }, { "zinc-ingot", "cart ZincOre" }, { "aether-cell", "cart Aether" },
         };
 
         /// <summary>The Assembly Line tab's purchases a step makes, by step id.</summary>
@@ -164,8 +164,10 @@ namespace GolemFactory.Tests.EditMode
             { "cart Coal rate 1", "IronPlate:10 Gear:5" },
             { "cart CopperOre", "IronPlate:60 Gear:20" },
             { "cart Scrap", "Scrap:60" },
-            { "cart Scrap capacity 1", "IronPlate:20 Gear:5" },
-            { "cart Scrap rate 1", "IronPlate:40 Gear:10" },
+            // The Scrap rung chapter 8 teaches, lowered with the cart's first rate (60 a minute) so
+            // chapter 8 fits its ceiling (§6; user, 2026-11-15).
+            { "cart Scrap capacity 1", "IronPlate:5 Gear:1" },
+            { "cart Scrap rate 1", "IronPlate:10 Gear:2" },
         };
 
         private static string Text(IReadOnlyList<RecipeIngredient> price) =>

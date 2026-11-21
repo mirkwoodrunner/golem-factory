@@ -364,7 +364,8 @@ namespace GolemFactory.Tests.Supply
             SupplyCart now = Spot(West).Cart;
             Assert.AreEqual(ItemType.Scrap, now.ItemType);
             Assert.AreEqual(1, now.RateRung, "its rung stays");
-            Assert.AreEqual(180, now.RatePerMinute, "the Scrap ladder's rung 1");
+            Assert.IsTrue(Street.TryGetLadder(ItemType.Scrap, out CartLadder scrapLadder));
+            Assert.AreEqual(scrapLadder.Rates[1], now.RatePerMinute, "the Scrap ladder's rung 1");
             Assert.AreEqual(0, now.Stock, "starts empty as its new good");
             Assert.AreEqual(scrap - 60 + 80, Pack(ItemType.Scrap), "the Scrap cart's price paid, the Coal cart's 80 back");
             Assert.AreEqual(coalHeld + 60, Pack(ItemType.Coal), "the Coal it held comes back");

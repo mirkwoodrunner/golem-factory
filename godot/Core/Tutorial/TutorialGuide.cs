@@ -1053,8 +1053,8 @@ namespace GolemFactory.Tutorial
         private Vector2Int? Boiler2OrFirst =>
             BoilerBuildings.OrderBy(b => b.Cell == Boiler2Spot ? 0 : 1).Select(b => (Vector2Int?)b.Cell).FirstOrDefault();
 
-        /// <summary>Chapter 3's upgrade (supply-design §6): a Coal cart past its first Rate rung.</summary>
-        private bool CoalCartUpgraded => _world.Supply?.Carts.Any(c => c.ItemType == ItemType.Coal && c.RateRung >= 1) == true;
+        /// <summary>A cart of this good past its first Rate rung: chapter 3's Coal, chapter 8's Scrap (supply-design §6).</summary>
+        private bool CartUpgraded(string item) => _world.Supply?.Carts.Any(c => c.ItemType == item && c.RateRung >= 1) == true;
 
         // Chapter 4 copies the first golem's program onto a second Scavenger with a patent, and
         // stands it on the Scrap cart's EAST side, facing east into a third depot -- the first
@@ -1482,7 +1482,7 @@ namespace GolemFactory.Tutorial
                 "coal-order", "Upgrade the Coal cart",
                 "Your coker will eat nearly all the Coal your cart brings. At the Coal cart, press [[inventory]] and buy Rate "
                 + $"({Price(FirstRatePrice(ItemType.Coal))}): {RateAt(ItemType.Coal, 1)} Coal a minute, not {RateAt(ItemType.Coal, 0)}.",
-                w => CoalCartUpgraded,
+                w => CartUpgraded(ItemType.Coal),
                 w => Cart(ItemType.Coal),
                 w => CostCounts(FirstRatePrice(ItemType.Coal))),
 
@@ -1859,6 +1859,16 @@ namespace GolemFactory.Tutorial
             // --- Chapter 8: Brass, and the goods beyond --------------------------------------------
             // The playtest script's tier-2 and tier-3 chain (Parts F and G): every good the Zeppelin
             // costs. Goal steps, no marked tiles.
+
+            // The starting Scrap cart's slow first rung (supply-design §3) is enough for chapters
+            // 1-7; chapter 8's lines, all paid in Iron Plate from Scrap, need its next.
+            new TutorialStep(
+                "scrap-rate", "Upgrade the Scrap cart",
+                "Your lines will eat Scrap faster than one cart brings it. At the Scrap cart, press [[inventory]] and buy Rate "
+                + $"({Price(FirstRatePrice(ItemType.Scrap))}): {RateAt(ItemType.Scrap, 1)} Scrap a minute, not {RateAt(ItemType.Scrap, 0)}.",
+                w => CartUpgraded(ItemType.Scrap),
+                w => Cart(ItemType.Scrap),
+                w => CostCounts(FirstRatePrice(ItemType.Scrap))),
 
             Goal("copper-ingot", "Smelt Copper",
                 "From here the guide names a good and its card, and you choose where to build. Claim Copper "
