@@ -32,7 +32,7 @@ namespace GolemFactory.Tutorial
             ("r4-card", 5, "Metal, and its Slag"),
             ("copper", 6, "Belts, and a label"),
             ("expand", 7, "Room to grow, and keeping it"),
-            ("copper-ingot", 8, "Brass, and the goods beyond"),
+            ("scrap-rate", 8, "Brass, and the goods beyond"),
             ("zeppelin-card", 9, "The Zeppelin"),
             ("tower-visit", 10, "The Clock Tower"),
         };
@@ -308,6 +308,7 @@ namespace GolemFactory.Tutorial
             ["save"] = () => _world.SaveTo(KitSavePath),
             ["load"] = () => _world.LoadFrom(KitSavePath),
             // Chapter 8's goals: claim the card, then the good, as its line would have made it.
+            ["scrap-rate"] = () => UpgradeRateGranted(ItemType.Scrap),
             ["copper-ingot"] = () => MakeGood("AssembleCopperSmelting", ItemType.CopperIngot, 10),
             ["zinc-ingot"] = () =>
             {

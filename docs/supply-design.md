@@ -134,23 +134,24 @@ extracts about 60 Scrap a minute (`tuning-data-spec.md`, Extract(1) and Push), s
 
 | Rung | Scrap cart | Other carts | Aether cart |
 |---|---|---|---|
-| Bought | 120 · 200 | 30 · 100 | 10 · 40 |
-| 1 | 180 · 300 | 60 · 200 | 20 · 80 |
-| 2 | 240 · 400 | 120 · 300 | 40 · 120 |
-| 3 | 300 · 500 | 180 · 400 | 60 · 160 |
+| Bought | 60 · 200 | 30 · 100 | 10 · 40 |
+| 1 | 120 · 300 | 60 · 200 | 20 · 80 |
+| 2 | 180 · 400 | 120 · 300 | 40 · 120 |
+| 3 | 240 · 500 | 180 · 400 | 60 · 160 |
 
 **Scrap is the exception, because the manual era runs on it.** Today the free Scrap stall gives
 100 for each order, as fast as the player orders. Chapter 1 alone spends about 170 Scrap (the
 Coal cart, a boiler, a golem, a depot, the Plate cranked from Scrap). The starting Scrap cart
-starts full at 200 and refills at 120 a minute, so chapter 1 never waits on it. The floor test
-confirms it, or the numbers move.
+starts full at 200, so chapter 1 never waits on it, and refills at 60 a minute: at 120 it was
+full again before the player had turned away (user, 2026-11-15). Chapter 8 teaches its first Rate
+rung, back to 120 (§6). The floor test confirms it, or the numbers move.
 
 **Prices follow progression.** Each good has its own ladder, starting at about the tier its good is
 first needed and climbing a tier per rung:
 
 | Cart | Offered from | Add | Rate 1 | Rate 2 | Rate 3 |
 |---|---|---|---|---|---|
-| Scrap | the start | 60 Scrap | 40 Iron Plate + 10 Gear | 40 Copper Ingot + 20 Brass | 20 Casing + 4 Mainspring |
+| Scrap | the start | 60 Scrap | 10 Iron Plate + 2 Gear | 40 Copper Ingot + 20 Brass | 20 Casing + 4 Mainspring |
 | Coal | chapter 1 (`coal`) | 80 Scrap | 10 Iron Plate + 5 Gear | 40 Copper Ingot + 20 Brass | 20 Casing + 4 Mainspring |
 | Copper Ore | chapter 3, asked for in chapter 6 (`copper`) | 60 Iron Plate + 20 Gear | 40 Copper Ingot + 20 Gear | 20 Brass + 10 Casing | 20 Casing + 4 Mainspring |
 | Zinc Ore | chapter 8 (`zinc-ingot`) | 40 Iron Plate + 30 Copper Ingot | 20 Brass + 10 Casing | 20 Casing + 4 Mainspring | 10 Mainspring + 4 Aether Cell |
@@ -160,12 +161,16 @@ first needed and climbing a tier per rung:
 - **Coal's first Rate rung is lower than the table's pattern** (10 Iron Plate + 5 Gear, not 40 +
   10): chapter 3 teaches it, and at 40 + 10 chapter 3's floor was 3:31 against its 2:20 ceiling.
   At 10 + 5 it is 2:06.
+- **Scrap's first Rate rung is lower too** (10 Iron Plate + 2 Gear, not 40 + 10): chapter 8
+  teaches it, and at 40 + 10, with the cart at 60, chapter 8's floor was 33:31 against its 30:00
+  ceiling. At 20 + 5 it was 29:25, then 30:01 once the Presser got cheaper and the bays went
+  (2026-11-21). At 10 + 2 it is 26:40 (27:47 with the cart at 120 and no step).
 - Every cart of a good costs the same: the second Coal cart costs what the first did.
 - Every line fits the pack reachable when it opens: 100 from the start, 150 from chapter 7.
 
 **Stage 1 check.** At full demand, stage 1 needs about 276 Scrap, 411 Coal, 112 Copper Ore and 56
-Zinc Ore a minute (`tuning-data-spec.md` §4.2). At the top rates that's one Scrap cart, three Coal,
-one Copper Ore and one Zinc Ore: six spots of seventeen. But a cart gives only what two
+Zinc Ore a minute (`tuning-data-spec.md` §4.2). At the top rates that's two Scrap carts, three Coal,
+one Copper Ore and one Zinc Ore: seven spots of seventeen. But a cart gives only what two
 extractors pull, so at the Scavenger's 120 a minute it's three Scrap, four Coal, one Copper Ore
 and one Zinc Ore: nine. **Stage 4 is the real limit.** This doc first estimated it at 856 Coal a
 minute and fifteen spots, with steam upkeep at 6 Coke a golem; a working golem burns 3
@@ -227,6 +232,7 @@ guide asks for has a marked spot, so its later plans keep their geometry.
 | `coal` | 1 | order a Coal truckload (30 Scrap) and take Coal | **Buy a Coal cart** on the marked spot (x = −4) and take 5 Coal |
 | `coal-order` | 3 | stock the empty Coal stall for the coker | **Upgrade the Coal cart**: its first Rate rung, before the coker is programmed |
 | `copper` | 6 | order a Copper Ore truckload | buy a Copper Ore cart on the marked spot (x = 0) |
+| `scrap-rate` | 8 | (new, 2026-11-15) | **Upgrade the Scrap cart**: its first Rate rung, 60 to 120 a minute, before the first goal |
 | `zinc-ingot`, `aether-cell` | 8 | target the Zinc and Aether stalls | buy each cart on its marked spot (x = 4, x = 8) first |
 
 Every step keeps its `Id` (a renamed `Id` breaks saves) and its check where it still makes sense.
@@ -239,7 +245,8 @@ Coal cart stands, and points at the Scrap cart while the player is short of the 
 **Chapter 3 teaches an upgrade, on the Coal cart.** Coal rather than Scrap, because chapter 3 is
 where Coal starts to run short: its coking Presser extracts from the Coal cart and makes 27 Coke a
 minute, nearly all of the cart's 30, with the player still taking Coal by hand. The Rate rung takes
-it to 60. Scrap isn't short yet in chapter 3: its cart gives 120 a minute.
+it to 60. Scrap isn't short yet in chapter 3: its cart gives 60 a minute, and the floor's
+chapters 1–7 take no longer at 60 than at 120.
 
 - **Check:** the Coal cart's Rate rung is at least 1.
 - **Text** (built from the ladder, under 240 characters): "Your coker will eat nearly all the Coal
@@ -248,6 +255,16 @@ it to 60. Scrap isn't short yet in chapter 3: its cart gives 120 a minute.
 - **Kit action:** grant the rung's price and buy it.
 - **What it costs chapter 3:** 10 Iron Plate and 5 Gears, about 44 s of the floor player's time.
   Chapter 3's floor went from 1:22 to 2:06, under its 2:20 ceiling.
+
+**Chapter 8 opens with an upgrade, on the Scrap cart** (`scrap-rate`, 2026-11-15). The starting
+cart's 60 a minute carries chapters 1–7; chapter 8's lines are all paid in Iron Plate from Scrap,
+and at 60 its floor was 44:35 against a 30:00 ceiling.
+
+- **Check:** a Scrap cart's Rate rung is at least 1. A player who bought it earlier passes it.
+- **Text** (built from the ladder, under 240 characters): "Your lines will eat Scrap faster than
+  one cart brings it. At the Scrap cart, press I and buy Rate (10 Iron Plate + 2 Gear): 120 Scrap a
+  minute, not 60."
+- **Kit action:** grant the rung's price and buy it.
 
 **What it costs chapter 1.** 80 Scrap where the truckload cost 30, which the full Scrap cart pays
 at once. The cart's 30 a minute gives the step's 5 Coal in 10 s, against the truckload's 9 s

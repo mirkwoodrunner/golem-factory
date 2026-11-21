@@ -129,17 +129,17 @@
         "itemType": "Scrap",
         "campaignRungs": 3,
         "add": [{"itemType": "Scrap", "quantity": 60}],
-        "rates": [120, 180, 240, 300, 360, 420],
+        "rates": [60, 120, 180, 240, 300, 360],
         "capacities": [200, 300, 400, 500, 600, 700],
         "rateCosts": [
-          [{"itemType": "IronPlate", "quantity": 40}, {"itemType": "Gear", "quantity": 10}],
+          [{"itemType": "IronPlate", "quantity": 10}, {"itemType": "Gear", "quantity": 2}],
           [{"itemType": "CopperIngot", "quantity": 40}, {"itemType": "Brass", "quantity": 20}],
           [{"itemType": "Casing", "quantity": 20}, {"itemType": "Mainspring", "quantity": 4}],
           [{"itemType": "Regulator", "quantity": 4}, {"itemType": "Casing", "quantity": 20}],
           [{"itemType": "ChronometerCore", "quantity": 2}, {"itemType": "Regulator", "quantity": 4}]
         ],
         "capacityCosts": [
-          [{"itemType": "IronPlate", "quantity": 20}, {"itemType": "Gear", "quantity": 5}],
+          [{"itemType": "IronPlate", "quantity": 5}, {"itemType": "Gear", "quantity": 1}],
           [{"itemType": "CopperIngot", "quantity": 20}, {"itemType": "Brass", "quantity": 10}],
           [{"itemType": "Casing", "quantity": 10}, {"itemType": "Mainspring", "quantity": 2}],
           [{"itemType": "Regulator", "quantity": 2}, {"itemType": "Casing", "quantity": 10}],

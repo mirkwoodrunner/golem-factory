@@ -175,13 +175,15 @@ namespace GolemFactory.Tests.Tutorial
                     Assert.IsTrue(_w.Interactor.TryRefuelBoiler(Boilers().First()), _w.Interactor.LastStatusMessage);
                     return;
                 case "coal-order":
+                case "scrap-rate":
                 {
-                    // Chapter 3's upgrade: the Coal cart's first Rate rung, paid with earned goods.
-                    GolemFactory.Supply.CartSpot coal = CartSpot(ItemType.Coal);
-                    Assert.IsNotNull(coal, "a Coal cart stands since chapter 1");
-                    AcquireAll(GolemFactory.Supply.SupplyStreet.NextRateCost(coal.Cart).ToList());
+                    // Chapter 3's and chapter 8's upgrades: a cart's first Rate rung, paid with earned goods.
+                    string good = stepId == "coal-order" ? ItemType.Coal : ItemType.Scrap;
+                    GolemFactory.Supply.CartSpot spot = CartSpot(good);
+                    Assert.IsNotNull(spot, $"a {good} cart stands since chapter 1");
+                    AcquireAll(GolemFactory.Supply.SupplyStreet.NextRateCost(spot.Cart).ToList());
                     _w.TechTree.Poll();
-                    GolemFactory.Supply.SupplyResult upgraded = _w.Supply.UpgradeRate(coal);
+                    GolemFactory.Supply.SupplyResult upgraded = _w.Supply.UpgradeRate(spot);
                     Assert.IsTrue(upgraded.Done, upgraded.Message);
                     return;
                 }
