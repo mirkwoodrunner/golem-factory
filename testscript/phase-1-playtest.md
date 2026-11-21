@@ -1,9 +1,8 @@
 # Golem Factory — Playtest How-To
 
 **The script is in the game now.** The step-by-step guide walks the whole run this file used to
-spell out, and in **playtest mode** it asks its questions as you reach the moments they are
-about. Your answers, how long each step took, which chapters you skipped, and every error the
-game logged go into a report file. This page only tells you how to start, what the keys are,
+spell out, and in **playtest mode** how long each chapter and step took, which chapters you
+skipped, the frame rate, and every error the game logged go into a report file. This page only tells you how to start, what the keys are,
 and what to look at that the guide does not reach.
 
 ---
@@ -16,8 +15,8 @@ and what to look at that the guide does not reach.
    ```
 2. Playtest mode is on while `"playtest": true` is set in `godot/data/sandbox.json`, as it is on
    this branch. The guide's header then ends in `F9 skips`.
-3. Play. Answer the cards titled **PLAYTEST · your call** as they come up. Add a note whenever you
-   have one: notes are the most useful part of the report.
+3. Play. Keep notes as you go: the guide no longer asks questions (cleared 2026-11-21), so your
+   notes and the questions below are the only judgement the report doesn't carry.
 
 **The report** is `user://playtest-report.md`, which on Windows is
 `%APPDATA%\Godot\app_userdata\Golem Factory\playtest-report.md`. It is rewritten as you go, so
@@ -171,8 +170,9 @@ which way in a note, or add it under the matching question in the report.
 
 ## The questions
 
-The guide asks these as **PLAYTEST · your call** cards (`PlaytestSession`), each at the step named,
-just after you have lived through what it asks about. New in Phase 1 are marked.
+The guide no longer asks these in game (cleared 2026-11-21); ask them after the run, or answer them
+in your notes. Each is about the step named, just after you have lived through it.
+New in Phase 1 are marked.
 
 | Asked at step | Question | New |
 |---|---|---|

@@ -40,8 +40,8 @@ namespace GolemFactory.Nodes
 
         public override void _Ready()
         {
-            // Above the guide (40) and the playtest card (41): the guide's arrow covered the card's
-            // text in the frames. Transient, and never shown over a control, so it hides nothing.
+            // Above the guide (40): the guide's arrow covered the card's text in the frames.
+            // Transient, and never shown over a control, so it hides nothing.
             Layer = 42;
             _world = WorldNode.Find(this);
 

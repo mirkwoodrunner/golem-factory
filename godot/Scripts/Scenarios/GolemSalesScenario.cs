@@ -76,21 +76,8 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void PlanStart()
         {
-            Do("answer the playtest's first question", () =>
+            Do("the guide put away, the clock running", () =>
             {
-                var playtest = Tree.Root.FindChild("Playtest", true, false) as PlaytestNode;
-                if (playtest?.Card.Visible == true)
-                {
-                    Click(playtest.Options.GetChildren().OfType<Button>().First());
-                }
-                return null;
-            });
-            Do("the card down, the guide put away, the clock running", () =>
-            {
-                if ((Tree.Root.FindChild("Playtest", true, false) as PlaytestNode)?.Card.Visible == true)
-                {
-                    return "the card is still up";
-                }
                 Sandbox.Tutorial?.Dismiss();
                 Sandbox.Clock.Play();
                 return Orders.Current != null ? "an order on a fresh game" : null;

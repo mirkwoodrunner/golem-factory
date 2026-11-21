@@ -71,7 +71,7 @@ namespace GolemFactory.Nodes.Scenarios
                     return "Sandbox.tscn is missing TickVisuals, GridOverlay, the build cursor, the HUD, Management or the player";
                 }
                 GameSettingsStore.ResetForScenario(Tree.Root);
-                // The guide and the playtest card ask nothing here.
+                // The guide asks nothing here.
                 _world.Tutorial?.Restore(GolemFactory.Tutorial.TutorialGuide.FinishedStepId, 0, true);
                 _world.Buffers.SetCapacity(_world.StockpileBufferId, StorageBuffer.Unlimited);
                 foreach (PlaceableEntry entry in _world.Placeables)

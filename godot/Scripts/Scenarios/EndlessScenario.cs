@@ -50,21 +50,8 @@ namespace GolemFactory.Nodes.Scenarios
             GameSettingsStore.ResetForScenario(Tree.Root);
             Do("no saves", () => { ScenarioSaves.Clear(); return null; });
             Wait(0.5);
-            Do("answer the playtest's first question", () =>
-            {
-                var playtest = Tree.Root.FindChild("Playtest", true, false) as PlaytestNode;
-                if (playtest?.Card.Visible == true)
-                {
-                    Click(playtest.Options.GetChildren().OfType<Button>().First());
-                }
-                return null;
-            });
             Do("a campaign's endgame: the pack at 250, tower goods in the pack", () =>
             {
-                if ((Tree.Root.FindChild("Playtest", true, false) as PlaytestNode)?.Card.Visible == true)
-                {
-                    return "the card is still up";
-                }
                 Sandbox.Tutorial?.Dismiss();
                 Sandbox.Clock.Play();
                 Sandbox.PackUpgrade.Restore(3);

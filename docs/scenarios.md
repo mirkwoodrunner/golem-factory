@@ -240,8 +240,7 @@ writing a scenario. Update this file when a scenario's checks change. Paths are 
   totals count the golems sold. Saved to Slot 1 mid-build, the Foundry demolished, loaded with
   two clicks: the Foundry, its build and the order as saved. Captures `sales-office`,
   `sales-notice`, `sales-foundry`, `sales-foundry-intake`.
-- `gamepad` (Sandbox): the pad (`docs/steam-deck-design.md` D4) with joypad events only, after the
-  playtest card's one click. Every pad action has its joypad event and the keys stay. The left
+- `gamepad` (Sandbox): the pad (`docs/steam-deck-design.md` D4) with joypad events only. Every pad action has its joypad event and the keys stay. The left
   stick walks, no faster on a diagonal; A harvests at the Scrap cart; X picks a golem up and sets
   it down. The hover card at the pad's cursor (D5.2): facing the golem shows its card, hung from
   the cell ahead; turning away hides it; the right stick looks back at it, drawing the brass tile;
@@ -262,11 +261,8 @@ writing a scenario. Update this file when a scenario's checks change. Paths are 
   each glowing card inside the vault's window, STEP 4 never under the plate) engages the smelter
   in 9 moves, and the plate steps aside. Captures `guide-ahead`, `guide-ahead-step4`.
 - `gamepad-ui` (Sandbox): the screens by pad (`docs/steam-deck-design.md` D6), joypad events only
-  throughout; so far the playtest card, the station's panel, the Workbench (D6.W), the Crate, the
-  Pack and the Management screen. The card first: it says the d-pad's left answers it, which
-  takes the pad (the stick held then doesn't walk); B lets go with the question waiting; A on the
-  note gives it focus and B takes it back; A on the second answer answers, harvesting nothing at
-  the Scrap cart beside. A at the station opens the panel with the ring on the row the pack pays for; A on
+  throughout; so far the station's panel, the Workbench (D6.W), the Crate, the
+  Pack and the Management screen. A at the station opens the panel with the ring on the row the pack pays for; A on
   a greyed row says what's short; A builds, and the Workbench opens with nothing sent by that A and
   the ring on the hinted Extract. A sends Extract and Push Output, the ring following the
   hint to the lever; LB and the d-pad change nothing behind the screen. The d-pad walks the ring

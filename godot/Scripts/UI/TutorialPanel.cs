@@ -162,7 +162,7 @@ namespace GolemFactory.Nodes
             Dock(false);
         }
 
-        /// <summary>Wraps at words and asks for every line's height; a clipping label asks for none (see PlaytestNode).</summary>
+        /// <summary>Wraps at words and asks for every line's height; a clipping label asks for none, so in a container a wrapped text collapsed to nothing.</summary>
         private static Label Wrap(Label label)
         {
             label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -269,11 +269,8 @@ namespace GolemFactory.Nodes
 
             // Over a full screen the guide shows only for the step that happens there; every other
             // step is about the world behind the screen, and the screens have no room to spare.
-            // A playtest question takes the plate's place while it waits (PlaytestNode); the arrow,
-            // markers and outline stay, so the step is still pointed at.
-            bool asking = guide?.Playtest?.Current != null && !screenOpen;
             bool showing = guide != null && guide.IsShowing && (!screenOpen || inWorkbench || inCrate);
-            _plate.Visible = showing && !asking;
+            _plate.Visible = showing;
             if (!showing)
             {
                 _arrow.Visible = false;

@@ -13,8 +13,7 @@ using Stop = GolemFactory.Nodes.WorkbenchScreen.PadStopKind;
 namespace GolemFactory.Nodes.Scenarios
 {
     /// <summary>
-    /// The screens by pad (docs/steam-deck-design.md D6), with joypad events only once the
-    /// playtest card is answered. So far the Workbench (D6.W, the owner's answers):
+    /// The screens by pad (docs/steam-deck-design.md D6), with joypad events only. So far the Workbench (D6.W, the owner's answers):
     /// <list type="number">
     ///   <item>The Workbench opens on a new Scavenger with the ring on the hinted card.</item>
     ///   <item>A sends Extract and Push Output to the next socket each, the ring
@@ -653,7 +652,7 @@ namespace GolemFactory.Nodes.Scenarios
             ScenarioSaves.Clear();
         }
 
-        // --- 0.A fresh game, the playtest card answered (a click), the pad picked up ----------
+        // --- 0. A fresh game, the pad picked up -----------------------------------------------
 
         private void PlanStart()
         {
@@ -669,94 +668,7 @@ namespace GolemFactory.Nodes.Scenarios
                 Axis(JoyAxis.LeftX, 0f);
                 return InputDevices.PadInUse ? null : "the stick didn't count as the pad";
             });
-            PlanCard();
             Do("the clock running", () => { Sandbox.Clock.Play(); return null; });
-        }
-
-        // --- 0b. The playtest card by pad -------------------------------------------------------
-
-        private PlaytestNode Card => Tree.Root.FindChild("Playtest", true, false) as PlaytestNode;
-        private Tutorial.PlaytestQuestion _question;
-        private Compat.Vector3 _standing;
-        private int _scrapBefore;
-
-        private void PlanCard()
-        {
-            Wait(0.2);
-            Do("the card is up, saying the d-pad's left answers it", () =>
-            {
-                if (Card?.Card.Visible != true)
-                {
-                    return "no playtest card";
-                }
-                _question = Sandbox.Tutorial.Playtest.Current;
-                return Card.CounterLine == PlaytestNode.PadCounterText ? null : $"the counter reads '{Card.CounterLine}'";
-            });
-            PressButton("d-pad left", JoyButton.DpadLeft);
-            Do("the card holds the pad, the ring on the first answer", () =>
-            {
-                if (!Card.PadHeld || !InputDevices.OverlayHoldsPad)
-                {
-                    return "the d-pad's left didn't take the pad into the card";
-                }
-                if (Card.PadFocusKind != PlaytestNode.StopOption || Card.PadFocusIndex != 0 || !Card.PadRingVisible)
-                {
-                    return $"the ring ({Card.PadRingVisible}) is on {Card.PadFocusKind} {Card.PadFocusIndex}";
-                }
-                return Card.CounterLine == PlaytestNode.CounterText ? null : $"the counter still reads '{Card.CounterLine}'";
-            });
-            Do("hold the left stick", () => { _standing = Sandbox.Interactor.Position; Axis(JoyAxis.LeftX, 1f); return null; });
-            Wait(0.3);
-            Do("let go: the Artificer stood still", () =>
-            {
-                Axis(JoyAxis.LeftX, 0f);
-                Compat.Vector3 now = Sandbox.Interactor.Position;
-                return Mathf.Abs(now.x - _standing.x) < 0.01f ? null : $"walked {now.x - _standing.x:0.00} cells while the card held the pad";
-            });
-            Do("d-pad up while the card holds the pad", () => { _zoom = Camera.OrthographicSize; Button(JoyButton.DpadUp, true); return null; });
-            Do("d-pad up let go", () => { Button(JoyButton.DpadUp, false); return null; });
-            Wait(0.3);
-            Do("the camera didn't zoom behind the card", () =>
-                Mathf.Abs(Camera.OrthographicSize - _zoom) > 0.01f ? "the d-pad zoomed the camera while the card held the pad" : null);
-            PressButton("B", JoyButton.B);
-            Do("B let go of the card; the question still waits", () =>
-                Card.PadHeld || InputDevices.OverlayHoldsPad ? "B didn't let go" : Sandbox.Tutorial.Playtest.Current == _question ? null : "B answered it");
-            PressButton("d-pad left again", JoyButton.DpadLeft);
-            Walk("the note", () => Card.PadFocusKind, () => Card.PadFocusIndex, PlaytestNode.StopNote, () => 0, () => Card.Note, () => Card.PadRingRect, list: false);
-            PressButton("A on the note", JoyButton.A);
-            Do("the note takes typing", () => Card.Note.HasFocus() ? null : "A didn't open the note");
-            PressButton("B", JoyButton.B);
-            Do("B is back on the ring, still holding the card", () =>
-                !Card.Note.HasFocus() && Card.PadHeld ? null : $"note focused {Card.Note.HasFocus()}, held {Card.PadHeld}");
-            Walk("the second answer", () => Card.PadFocusKind, () => Card.PadFocusIndex, PlaytestNode.StopOption, () => 1,
-                () => Card.Options.GetChildren().OfType<Button>().ElementAt(1), () => Card.PadRingRect, list: false);
-            Do("capture; A", () =>
-            {
-                ScenarioCapture.Shot(Runner.GetViewport(), "pad-card");
-                _scrapBefore = Sandbox.Buffers.GetQuantity(Sandbox.StockpileBufferId, ItemType.Scrap);
-                Button(JoyButton.A, true);
-                return null;
-            });
-            Do("let go of A", () => { Button(JoyButton.A, false); return null; });
-            Wait(0.1);
-            Do("answered with the second option; the pad back in the world, and no Scrap harvested by that A", () =>
-            {
-                if (Sandbox.Tutorial.Playtest.Current == _question)
-                {
-                    return "still on the same question";
-                }
-                if (Card.PadHeld || InputDevices.OverlayHoldsPad)
-                {
-                    return "the card kept the pad";
-                }
-                int scrap = Sandbox.Buffers.GetQuantity(Sandbox.StockpileBufferId, ItemType.Scrap);
-                if (scrap != _scrapBefore)
-                {
-                    return $"the A that answered also harvested ({_scrapBefore} -> {scrap})";
-                }
-                Log("the playtest card by pad: the d-pad's left took it, the stick didn't walk, B let go, A opened the note and B closed it, A answered");
-                return null;
-            });
         }
 
         // --- 1. The Workbench opens with the ring on the hinted card ----------------------------

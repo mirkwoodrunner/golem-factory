@@ -78,10 +78,9 @@ and fails on the leftover word, naming the step.
 
 **Playtest mode writes `user://playtest-report.md`**, and keeps the previous session's as
 `playtest-report-<date>-<time>.md` before a new one starts (`PlaytestReportArchive`): every
-launch used to overwrite it. A question is asked as the chapter after its experience opens
-(`PlaytestQuestion.AfterStepId`); only the end-of-run ones (`tower`, `overclocker`,
-`stage-rate`, `whole-run`, `guide`) wait for `done`. A new question needs a new id: saves store
-the ids already asked, so reusing one (chapter 3's `market`) skips it. The
+launch used to overwrite it. It holds timings, frame rate, kit uses and errors; **the guide
+asks no playtest questions** (the user cleared them, 2026-11-21, with the "Your call" card and its
+pad binding). The
 kit's chapter 7 Save and Load use `kit-save.json` in the save folder, which is never a slot
 (`SaveSlots.KitFileName`). Scenario runs write
 `user://scenario-playtest-report.md` instead, and save to `user://scenario-saves`

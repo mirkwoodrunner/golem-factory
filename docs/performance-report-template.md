@@ -166,7 +166,7 @@ histograms) each frame with the frame's wall milliseconds, keyed by the guide's 
 The golems and belt items are counted at the chapter's last frame. `PlaytestSessionTests` checks the
 section's shape and the percentiles from a known series.
 
-Also in `PlaytestSession.Compose`, before "Your answers" (`testscript/full-playthrough.md`):
+Also in `PlaytestSession.Compose`, before the step timings (`testscript/full-playthrough.md`):
 
 - a "Time per chapter" table (chapter, time, budget from `tuning-data-spec.md` §14), from the step
   timings already recorded;

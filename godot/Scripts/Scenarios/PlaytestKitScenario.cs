@@ -33,8 +33,6 @@ namespace GolemFactory.Nodes.Scenarios
                 return;
             }
 
-            // The first question waits in the guide's place; the kit does not need it answered.
-            Do("skip the light question", () => { _world.Tutorial.Playtest.Skip(0f); return null; });
             foreach ((string next, string label) in new[] { ("gears", "chapter 1"), ("coking-card", "chapter 2"), ("patent", "chapter 3"), ("r4-card", "chapter 4"), ("copper", "chapter 5"), ("expand", "chapter 6"), ("scrap-rate", "chapter 7"), ("zeppelin-card", "chapter 8"), ("tower-visit", "chapter 9"), ("done", "chapter 10") })
             {
                 string expect = next;

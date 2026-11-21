@@ -52,7 +52,7 @@ click or key that causes it; the reload can land between two steps.
 
 **Screen captures:** a windowed run with `--capture-dir=<dir>` writes `screen-*.png`, one per
 screen (`world` the room, `management` the HUD and every tab, `build` the menu, `tutorial` the
-playtest card and the guide panel, `interact` the construction panel, `inventory` the Pack and
+guide panel, `interact` the construction panel, `inventory` the Pack and
 Crate screens), beside the `critique-*` shots. They are deterministic under `--fixed-fps 60`,
 so an art change that shouldn't move a screen is checked by comparing them pixel for pixel
 (`docs/art-pipeline-design.md` §3.1).

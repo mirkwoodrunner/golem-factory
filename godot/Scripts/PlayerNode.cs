@@ -115,7 +115,7 @@ namespace GolemFactory.Nodes
             using var perf = NodePerf.Measure("node.player");
             // A full screen owns the keys: the player does not walk off while choosing a chassis.
             Vector2 input = ScriptedMove
-                ?? (ModalScreens.AnyOpen(GetTree()) || TextEntry.IsTyping(GetViewport()) || InputDevices.OverlayHoldsPad
+                ?? (ModalScreens.AnyOpen(GetTree()) || TextEntry.IsTyping(GetViewport())
                     ? Vector2.Zero
                     : Input.GetVector(MoveLeft, MoveRight, MoveDown, MoveUp)); // +y = north
             Walking = input != Vector2.Zero;
@@ -139,9 +139,7 @@ namespace GolemFactory.Nodes
             // whether [E] is held (the crank), then re-pick and refresh the prompt.
             _interactor.Position = _walker.Position;
             // Typing a note counts too: "e" in a sentence must not crank a bench.
-            // The playtest card holding the pad counts as a screen, for the frame after too:
-            // the A that answers it must not also harvest.
-            bool openNow = ModalScreens.AnyOpen(GetTree()) || InputDevices.OverlayHoldsPad;
+            bool openNow = ModalScreens.AnyOpen(GetTree());
             bool screenOpen = openNow || _screenWasOpen || TextEntry.IsTyping(GetViewport());
             _screenWasOpen = openNow;
             _interactor.SetInteractHeld(!screenOpen && Input.IsActionPressed(Interact));

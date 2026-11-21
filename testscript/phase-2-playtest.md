@@ -59,7 +59,8 @@ where; a chapter over budget by its cranking alone goes to Phase 3's tuning, not
 
 ## The questions
 
-Asked as **PLAYTEST · your call** cards at the step named (`PlaytestSession`). New in Phase 2:
+The guide no longer asks these in game (cleared 2026-11-21); ask them after the run, or answer them
+in your notes. New in Phase 2:
 
 | Asked at step | Question | Answers |
 |---|---|---|
@@ -70,7 +71,7 @@ Asked as **PLAYTEST · your call** cards at the step named (`PlaytestSession`). 
 | `r4-card` | When the golem stopped red, did its badge and hover tell you what was wrong? (`badge`, reworded) | Clearly · Vaguely · I didn't hover it |
 | `expand` | A busy golem's "nearly full" is on hover only. Did you ever miss a warning? | Never · Once (say where) · Often |
 
-The existing questions stay where they are. Four cards open chapter 5; a player may skip some.
+Four of them are about the opening of chapter 5.
 
 ## Numbers to judge
 

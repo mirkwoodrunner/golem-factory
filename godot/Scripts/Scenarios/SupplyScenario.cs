@@ -81,18 +81,6 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void PlanGuide()
         {
-            // Playtest mode asks its first question before anything else; a card up is modal.
-            Do("answer the playtest's first question", () =>
-            {
-                var playtest = Tree.Root.FindChild("Playtest", true, false) as PlaytestNode;
-                if (playtest?.Card.Visible == true)
-                {
-                    Click(playtest.Options.GetChildren().OfType<Button>().First());
-                }
-                return null;
-            });
-            Do("the card is down", () =>
-                (Tree.Root.FindChild("Playtest", true, false) as PlaytestNode)?.Card.Visible == true ? "the card is still up" : null);
             Do("the guide asks for Scrap, at the starting Scrap cart", () =>
             {
                 Sandbox.Clock.Play();

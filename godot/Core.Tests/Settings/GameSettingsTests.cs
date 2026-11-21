@@ -304,14 +304,10 @@ namespace GolemFactory.Tests.EditMode
         }
 
         [Test]
-        public void BuildMenuAndPlaytestText_ShowNoToken()
+        public void BuildMenuText_ShowsNoToken()
         {
             KeyNames.Bindings = KeyBindings.Defaults();
             StringAssert.Contains("Hold E to crank, R to change recipe.", BuildMenuLabels.DescriptionFor("HandCrankBenchPrefab"));
-            foreach (var q in GolemFactory.Tutorial.PlaytestSession.Questions)
-            {
-                StringAssert.DoesNotContain("[[", q.Prompt, q.Id);
-            }
         }
     }
 }

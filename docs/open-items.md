@@ -9,7 +9,8 @@ on the Ledger is flagged as planned. What is left needs a person, a decision, or
 
 ## 1. Needs a person in front of the running game
 
-`testscript/phase-1-playtest.md` runs it; the guide asks the questions and writes the report.
+`testscript/phase-1-playtest.md` runs it; the guide writes the report (timings, frame rate, errors).
+It no longer asks questions (cleared 2026-11-21), so the script's questions are asked by hand.
 
 | What | Why only play can answer it |
 |---|---|

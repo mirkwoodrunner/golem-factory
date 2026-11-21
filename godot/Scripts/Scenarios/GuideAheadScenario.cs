@@ -40,15 +40,7 @@ namespace GolemFactory.Nodes.Scenarios
             GameSettingsStore.ResetForScenario(Tree.Root);
             Do("no saves", () => { ScenarioSaves.Clear(); return null; });
             Wait(0.5);
-            Do("the first question put by (the kit doesn't need it)", () =>
-            {
-                if (Sandbox.Tutorial?.Playtest == null)
-                {
-                    return "no guide in playtest mode";
-                }
-                Sandbox.Tutorial.Playtest.Skip(0f);
-                return null;
-            });
+            Do("the guide in playtest mode", () => Sandbox.Tutorial?.Playtest == null ? "no guide in playtest mode" : null);
             foreach (string next in new[] { "gears", "coking-card", "patent", "r4-card" })
             {
                 string expect = next;
