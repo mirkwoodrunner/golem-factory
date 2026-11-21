@@ -74,7 +74,7 @@ namespace GolemFactory.Nodes.Scenarios
         private void PlanBeforeTheTower()
         {
             Do("Tab", () => { Tap(Key.Tab); return null; });
-            Do("click Assembly Line", () => { Click(Management.TabButtons[ManagementTab.AssemblyLine]); return null; });
+            Do("click Workshop", () => { Click(Management.TabButtons[ManagementTab.AssemblyLine]); return null; });
             Do("the golem cap is fixed, with no button", () =>
             {
                 string text = RowText("BayRow")?.Text ?? "";
@@ -95,7 +95,7 @@ namespace GolemFactory.Nodes.Scenarios
                 return Sandbox.EndlessOpen ? null : "endless play didn't open";
             });
             Do("Tab", () => { Tap(Key.Tab); return null; });
-            Do("click Assembly Line", () => { Click(Management.TabButtons[ManagementTab.AssemblyLine]); return null; });
+            Do("click Workshop", () => { Click(Management.TabButtons[ManagementTab.AssemblyLine]); return null; });
             Wait(0.1); // the rows are rebuilt; a button has no size until the frame after
             Do("click Upgrade on the Pack row", () =>
             {
@@ -155,7 +155,7 @@ namespace GolemFactory.Nodes.Scenarios
                     return $"rung {_coal.Cart.RateRung}: {Carts.Status}";
                 }
                 Tap(Key.Escape);
-                Log($"the golem cap fixed at 112 with no button, the pack 250 -> 300 through the Assembly Line tab, a Coal cart to rung 4 ({_coal.Cart.RatePerMinute} a minute) through its panel");
+                Log($"the golem cap fixed at 112 with no button, the pack 250 -> 300 through the Workshop tab, a Coal cart to rung 4 ({_coal.Cart.RatePerMinute} a minute) through its panel");
                 return null;
             });
         }

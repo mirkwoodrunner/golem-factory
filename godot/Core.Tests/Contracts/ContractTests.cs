@@ -331,7 +331,7 @@ namespace GolemFactory.Tests.Contracts
         {
             ContractDefinition c = TakeFirst();
             StringAssert.StartsWith("Bonus if done in ", ContractText.BonusLine(Board));
-            StringAssert.StartsWith("Reward: 1 voucher, for any upgrade or unlock", ContractText.RewardLine(c));
+            StringAssert.StartsWith("Reward: 1 voucher, for any card in the Ledger, an upgrade", ContractText.RewardLine(c));
             int before = _world.Vouchers.Count;
             Fill(c);
 

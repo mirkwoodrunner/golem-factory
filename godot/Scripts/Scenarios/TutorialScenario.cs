@@ -4,6 +4,7 @@ using System.Linq;
 using Godot;
 using GolemFactory.Economy;
 using GolemFactory.Tutorial;
+using GolemFactory.UI;
 using GolemFactory.World;
 using CoreVector2Int = GolemFactory.Compat.Vector2Int;
 
@@ -38,6 +39,8 @@ namespace GolemFactory.Nodes.Scenarios
         private PlayerNode _player;
 
         private TutorialGuide Guide => _world.Tutorial;
+
+        private ManagementScreen _management;
 
         public void Begin(ScenarioRunner runner)
         {
@@ -265,17 +268,66 @@ namespace GolemFactory.Nodes.Scenarios
                 _log.Add($"E at the depot collected ('{_world.Interactor.LastStatusMessage}'), and chapter 2 opened");
                 return null;
             });
-            Do("cut the Gears, claim Scrap Reclamation, build the Presser", () =>
+            Do("cut the Gears", () =>
             {
                 Give(ItemType.Gear, 30);
                 Give(ItemType.IronPlate, 60);
                 Give(ItemType.Scrap, 200);
-                for (int attempt = 0; attempt < 6 && !_world.AssemblyLine.GetClaimedCards("LocalPlayer").Any(c => c.appendage?.name == "AssembleScrapReclamation"); attempt++)
-                {
-                    _world.AssemblyLineBoard.Claim(_world.AssemblyLine.Offers.FirstOrDefault(c => c.appendage?.name == "AssembleScrapReclamation"));
-                }
-                return _world.StarterStation.TryConstructGolem(_world.Definitions.Chassis["BrassPresser"], out _) ? null : "no Presser";
+                return null;
             });
+            // 2026-11-21: cards are claimed in the Ledger, which opens on the guide's card.
+            Do("the claim step sends the player to the Ledger", () =>
+            {
+                if (_panel.TitleText != "Claim Scrap Reclamation")
+                {
+                    return Wait;
+                }
+                return _panel.BodyText.Contains("open the Ledger") ? null : $"body '{_panel.BodyText}'";
+            });
+            Do("Tab", () => { Tap(Key.Tab); return null; });
+            Do("click the Ledger tab", () =>
+            {
+                _management ??= _tree.Root.FindChild("Management", true, false) as ManagementScreen;
+                if (_management == null || !_management.TabButtons.TryGetValue(ManagementTab.TechTree, out Button tab))
+                {
+                    return "no Management screen with a Ledger tab";
+                }
+                Click(tab);
+                return null;
+            });
+            Do("the Ledger opens on Scrap Reclamation's plaque, tagged, with a live Claim", () =>
+            {
+                LedgerTab ledger = _management.Ledger;
+                if (ledger.Readout.SelectedNodeId != "r2.reclamation")
+                {
+                    return Wait; // the tab draws a frame after the click
+                }
+                if (!ledger.TagShown("r2.reclamation") || !ledger.PaneClaim.IsVisibleInTree() || ledger.PaneClaim.Disabled)
+                {
+                    return $"tag {ledger.TagShown("r2.reclamation")}, Claim visible {ledger.PaneClaim.IsVisibleInTree()} disabled {ledger.PaneClaim.Disabled}, '{ledger.PaneUnlock}'";
+                }
+                Button plaque = ledger.PlaqueFor("r2.reclamation");
+                if (!plaque.GetGlobalRect().Intersects(ledger.Chart.GetParent<Control>().GetGlobalRect()))
+                {
+                    return "the plaque was not scrolled into view";
+                }
+                ScenarioCapture.Shot(_tree.Root, "tutorial-ledger-claim");
+                Click(ledger.PaneClaim);
+                return null;
+            });
+            Do("claimed from the Ledger", () =>
+            {
+                bool claimed = _world.AssemblyLine.GetClaimedCards("LocalPlayer").Any(c => c.appendage?.name == "AssembleScrapReclamation");
+                if (!claimed)
+                {
+                    return "not claimed: " + _world.AssemblyLineBoard.Status;
+                }
+                _log.Add("chapter 2: the Ledger opened on Scrap Reclamation's tagged plaque, and its Claim claimed it");
+                Tap(Key.Escape);
+                return null;
+            });
+            Do("build the Presser", () =>
+                _world.StarterStation.TryConstructGolem(_world.Definitions.Chassis["BrassPresser"], out _) ? null : "no Presser");
             Do("the pipe step marks both pipe tiles", () =>
             {
                 if (_panel.TitleText != "Lay a steam pipe")

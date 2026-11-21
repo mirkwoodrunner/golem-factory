@@ -220,9 +220,9 @@ namespace GolemFactory.Tests.World
             // §8.3: no card whose prerequisite the factory has never produced sits in a slot.
             SandboxWorld world = Compose();
             Assert.That(world.AssemblyLine.WaitingCards.Count, Is.GreaterThan(0), "cards wait on prerequisites");
-            foreach (AssemblyLineRow row in world.AssemblyLineBoard.Rows().Where(r => r.Kind == AssemblyLineRowKind.Slot))
+            foreach (DraftableCardDefinition card in world.AssemblyLine.Offers)
             {
-                StringAssert.DoesNotContain("Coking", row.Text, "R1 Coking in a slot before the factory has seen coal");
+                StringAssert.DoesNotContain("Coking", card.DisplayName, "R1 Coking on offer before the factory has seen coal");
             }
 
             int waiting = world.AssemblyLine.WaitingCards.Count;

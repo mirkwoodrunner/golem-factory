@@ -87,7 +87,7 @@ namespace GolemFactory.Tutorial
 
         /// <summary>
         /// The card this step asks the player to claim (its appendage's name), or null. The
-        /// Assembly Line keeps it on show while the step is current.
+        /// Ledger opens on its plaque while the step is current.
         /// </summary>
         public string Card { get; }
 
@@ -225,7 +225,7 @@ namespace GolemFactory.Tutorial
 
         /// <summary>
         /// The card the current step asks the player to claim (by its appendage), or null. The
-        /// Assembly Line tab lists it first.
+        /// Ledger opens its pane on that card's plaque.
         /// </summary>
         public string WantedCardAppendage => IsShowing || KitRunning ? Current?.Card : null;
 
@@ -1375,7 +1375,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "claim", "Claim Scrap Reclamation",
-                "A golem can only use cards you own. Press [[menu]], open the Assembly Line and click Claim on "
+                "A golem can only use cards you own. Press [[menu]], open the Ledger and click Claim on "
                 + $"Assemble Scrap Reclamation ({ClaimCost("AssembleScrapReclamation", ItemType.Scrap)} Scrap): Scrap in, Iron Plate out.",
                 w => HasClaimed("AssembleScrapReclamation"),
                 w => null,
@@ -1437,7 +1437,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "coking-card", "Claim Coking",
-                "Your boiler burns Coke you crank, and it will run dry. Press [[menu]], open the Assembly Line and claim "
+                "Your boiler burns Coke you crank, and it will run dry. Press [[menu]], open the Ledger and claim "
                 + "Assemble Coking. It costs Coal: short? Take some at the Coal cart.",
                 w => HasClaimed("AssembleCoking"),
                 // Chapter 1 cranks every Coal into Coke, so the stockpile is usually out.
@@ -1597,7 +1597,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "r4-card", "Claim Iron Smelting",
                 "Iron Smelting makes twice the Iron Plate from the same Scrap, but it needs Coke too: two "
-                + "inputs. Press [[menu]], open the Assembly Line and claim Assemble Iron Smelting.",
+                + "inputs. Press [[menu]], open the Ledger and claim Assemble Iron Smelting.",
                 w => HasClaimed("AssembleIronSmelting"),
                 w => null,
                 card: "AssembleIronSmelting"),
@@ -1820,7 +1820,7 @@ namespace GolemFactory.Tutorial
 
             new TutorialStep(
                 "expand", "More room",
-                "Eight golems fill a workshop fast. Press [[menu]], open the Assembly Line, and click Extend "
+                "Eight golems fill a workshop fast. Press [[menu]], open the Workshop tab, and click Extend "
                 + $"({Price(FirstFloorCost)}): two more rows of workshop, floored and walled.",
                 w => _world.Bounds.NorthExtent > _world.Bounds.MinNorthExtent,
                 w => ScrapFirst(LineOf(FirstFloorCost, ItemType.Scrap), null),
@@ -1927,7 +1927,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "zeppelin-card", "Claim the Zeppelin",
                 "Your factory has made everything it costs: collect what the card asks for into your pack. Press "
-                + "[[menu]], open the Assembly Line and claim the Zeppelin Freight Loader.",
+                + "[[menu]], open the Ledger and claim the Zeppelin Freight Loader.",
                 w => HasClaimed("ZeppelinFreightLoader"),
                 w => null,
                 card: "ZeppelinFreightLoader"),
@@ -1937,7 +1937,7 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "freight-card", "Claim Freight Launch",
                 "A Zeppelin flies what it holds with Freight Launch, and a golem can only use cards you own. "
-                + "Press [[menu]], open the Assembly Line and claim it: it's free.",
+                + "Press [[menu]], open the Ledger and claim it: it's free.",
                 w => HasClaimed("FreightLaunch"),
                 w => null,
                 card: "FreightLaunch"),

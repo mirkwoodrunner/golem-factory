@@ -249,7 +249,7 @@ namespace GolemFactory.Tests.Contracts
             }
             Build(Scavenger);
             OpenOffice();
-            StringAssert.StartsWith("Reward: 1 voucher, for any upgrade or unlock", GolemOrderText.RewardLine(Orders));
+            StringAssert.StartsWith("Reward: 1 voucher, for any card in the Ledger, an upgrade", GolemOrderText.RewardLine(Orders));
         }
 
         // --- Saves, Creative, text (§0) ----------------------------------------------------------

@@ -992,6 +992,11 @@ namespace GolemFactory.Player
             {
                 string full = "pack full of " + ItemTiers.DisplayName(misfit);
                 LastStatusMessage = "Not demolished: " + full + ".";
+                // A boiler empties by hand (2026-11-21): say how, since its Coke is the usual misfit.
+                if (misfit == ItemType.Coke && building.GetPart<PlaceableBoiler>()?.Boiler?.CokeStock > 0)
+                {
+                    LastStatusMessage += " Take its Coke out with [" + Settings.KeyNames.Inventory + "] first: what fits goes in your pack.";
+                }
                 Popup(cell, full, BuildPopupKind.Refused);
                 return;
             }

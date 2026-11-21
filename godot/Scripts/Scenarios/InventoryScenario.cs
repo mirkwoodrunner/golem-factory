@@ -94,6 +94,7 @@ namespace GolemFactory.Nodes.Scenarios
             PlanMast();
             PlanPost();
             PlanDemolition();
+            PlanBoiler();
         }
 
         public ScenarioResult? Step(double delta)
@@ -684,6 +685,81 @@ namespace GolemFactory.Nodes.Scenarios
                     return drift;
                 }
                 _log.Add($"demolition: refused into a full pack, then refunded {string.Join(", ", cost.Select(c => c.quantity + " " + c.itemType))} and {string.Join(", ", held.Select(h => h.Value + " " + h.Key))}");
+                return null;
+            });
+            Do("put the wrecking bar down", () => { Push(Key.Escape); return null; });
+        }
+
+        // A boiler empties like a crate (2026-11-21): [I] takes its Coke into the pack, so one
+        // holding more than the pack (a save from the old 240 cap) can still be emptied and moved.
+        private void PlanBoiler()
+        {
+            PlaceableBoiler boiler = null;
+            int cap = 0;
+            Do("a boiler holding more Coke than a pack, the pack's Coke empty", () =>
+            {
+                PlaceableBuilding prefab = _world.Placeables.Single(p => p.Key == "BoilerPrefab").Prefab;
+                foreach (RecipeIngredient c in prefab.Cost)
+                {
+                    Give(c.itemType, c.quantity);
+                }
+                _world.Build.SetActivePrefab(prefab);
+                _world.Build.PlaceOrRemove(DepotCell);
+                _world.Build.CancelPlacement();
+                boiler = _world.Build.Buildings.SingleOrDefault(b => b.Cell == DepotCell && !b.IsRemoved)?.GetPart<PlaceableBoiler>();
+                if (boiler == null)
+                {
+                    return "no boiler placed: " + _world.Build.LastStatusMessage;
+                }
+                cap = _world.Wallet.Pack.CapacityPerType;
+                boiler.Boiler.SetCoke(cap + 140);
+                SetPack(ItemType.Coke, 0);
+                Stand(DepotCell.x, DepotCell.y + 2f);
+                return null;
+            });
+            Do("press X", () => { Push(Key.X); return null; });
+            Do("click the boiler", () => _world.Build.IsDemolishActive ? ClickCell(DepotCell) : "X did not pick up the wrecking bar");
+            Do("refused, and told how to empty it", () =>
+            {
+                if (boiler.Boiler == null || _world.Build.Buildings.All(b => b.Cell != DepotCell || b.IsRemoved))
+                {
+                    return "the boiler was demolished with more Coke than the pack holds";
+                }
+                string said = _world.Build.LastStatusMessage;
+                return said.StartsWith("Not demolished: pack full of Coke.") && said.Contains("[I]") ? null : $"status '{said}'";
+            });
+            Do("put the wrecking bar down", () => { Push(Key.Escape); return null; });
+            Do("stand at the boiler", () => { Stand(DepotCell.x, DepotCell.y + 1f); return null; });
+            Do("the prompt offers [I] take Coke", () =>
+                _world.Interactor.CurrentPrompt.Contains("[I] take Coke") ? null : $"prompt '{_world.Interactor.CurrentPrompt}'");
+            Do("press I", () => { Tap(Key.I); return null; });
+            Do("a packful came out, the rest still burns, no screen opened", () =>
+            {
+                if (Pack(ItemType.Coke) != cap || boiler.Boiler.CokeStock != 140)
+                {
+                    return $"pack Coke {Pack(ItemType.Coke)}, boiler {boiler.Boiler.CokeStock}: {_world.Interactor.LastStatusMessage}";
+                }
+                if (_pack.IsOpen || _crate.IsOpen)
+                {
+                    return "I opened a screen at the boiler";
+                }
+                Shot("[I] at a boiler took a packful");
+                return null;
+            });
+            Do("spend the pack's Coke and press I again", () => { SetPack(ItemType.Coke, 0); Tap(Key.I); return null; });
+            Do("another packful came out", () =>
+                Pack(ItemType.Coke) == Math.Min(cap, 140) && boiler.Boiler.CokeStock == 140 - Math.Min(cap, 140)
+                    ? null : $"pack Coke {Pack(ItemType.Coke)}, boiler {boiler.Boiler.CokeStock}");
+            Do("empty the pack's Coke, stand back", () => { SetPack(ItemType.Coke, 0); Stand(DepotCell.x, DepotCell.y + 2f); return null; });
+            Do("press X", () => { Push(Key.X); return null; });
+            Do("click the boiler again", () => _world.Build.IsDemolishActive ? ClickCell(DepotCell) : "X did not pick up the wrecking bar");
+            Do("demolished, what was left in it refunded", () =>
+            {
+                if (_world.Build.Buildings.Any(b => b.Cell == DepotCell && !b.IsRemoved))
+                {
+                    return "still standing: " + _world.Build.LastStatusMessage;
+                }
+                _log.Add($"boiler: {cap + 140} Coke refused by the wrecking bar with the [I] hint, [I] took {cap} twice, then it was demolished with the last {Pack(ItemType.Coke)} Coke back");
                 return null;
             });
             Do("put the wrecking bar down", () => { Push(Key.Escape); return null; });

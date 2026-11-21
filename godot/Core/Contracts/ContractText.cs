@@ -119,7 +119,7 @@ namespace GolemFactory.Contracts
         public static string RewardLine(ContractDefinition c) => "Reward: " + Reward(c.reward) + SpendNote;
 
         /// <summary>Where a voucher goes, after a reward line.</summary>
-        public const string SpendNote = ", for any upgrade or unlock on the Assembly Line tab or at a cart";
+        public const string SpendNote = ", for any card in the Ledger, an upgrade on the Workshop tab, or a cart";
 
         /// <summary>
         /// The notice's bonus line, never red: "Bonus within 6:00 of taking it: ...", "Bonus if done

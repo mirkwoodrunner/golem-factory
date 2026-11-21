@@ -19,7 +19,7 @@ namespace GolemFactory.Nodes.Scenarios
     ///   <item>A Zeppelin built, the gate opens and the Docks are paved; D walks down the lane onto
     ///   them.</item>
     ///   <item>E at a quay spot opens the cart panel, and a click adds a Coal barge.</item>
-    ///   <item>The Assembly Line tab's Docks row: a click buys two rows north, paved at once.</item>
+    ///   <item>The Workshop tab's Docks row: a click buys two rows north, paved at once.</item>
     ///   <item>Saved to Slot 1, a row and the barge removed, loaded with two clicks: back as saved.</item>
     /// </list>
     /// Writes only <c>user://scenario-saves</c> and <c>user://scenario-settings.cfg</c>.
@@ -168,7 +168,7 @@ namespace GolemFactory.Nodes.Scenarios
                 Tap(Key.Tab);
                 return null;
             });
-            Do("click Assembly Line", () => { Click(Management.TabButtons[ManagementTab.AssemblyLine]); return null; });
+            Do("click Workshop", () => { Click(Management.TabButtons[ManagementTab.AssemblyLine]); return null; });
             Wait(0.1);
             Do("click Extend on the Docks row", () =>
             {

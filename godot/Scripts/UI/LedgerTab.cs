@@ -21,6 +21,13 @@ namespace GolemFactory.Nodes
     /// only when the ledger's version moves. The chart is wider than the screen; drag it to pan.
     /// It is a readout, never a gate.
     /// </para>
+    ///
+    /// <para>
+    /// CARDS ARE CLAIMED HERE, AND ONLY HERE (2026-11-21). A plaque whose card is on offer wears a
+    /// CLAIM tag on its top edge (bright when the wallet can pay, faded when not), the header
+    /// counts them, and the pane has Claim and, with a voucher held, Voucher. While a guide step
+    /// asks for a card, the tab opens its pane on that plaque and scrolls to it.
+    /// </para>
     /// </summary>
     public sealed class LedgerTab : IManagementTab
     {
@@ -53,6 +60,7 @@ namespace GolemFactory.Nodes
             public TextureRect Badge;
             public Label Name;
             public Label Detail;
+            public Panel Tag;
         }
 
         private readonly TechTreeProgressTracker _tracker;
@@ -70,7 +78,12 @@ namespace GolemFactory.Nodes
         private Label _paneBody;
         private Label _paneUnlock;
         private Button _paneClaim;
+        private Button _paneVoucher;
         private bool _panning;
+        private ClaimMark[] _marks;
+        private string _headerBase = "";
+        private string _lastWanted;
+        private int _offered = -1;
 
         public LedgerTab(TechTreeProgressTracker tracker, TechTreeReadout readout)
         {
@@ -87,6 +100,20 @@ namespace GolemFactory.Nodes
         /// <summary>The pane's unlock line and its Claim button, for a scenario.</summary>
         public string PaneUnlock => _pane != null && _pane.Visible ? _paneUnlock.Text : "";
         public Button PaneClaim => _paneClaim;
+        public Button PaneVoucher => _paneVoucher;
+
+        /// <summary>Whether a node's plaque shows its CLAIM tag, for a scenario.</summary>
+        public bool TagShown(string nodeId)
+        {
+            for (int i = 0; i < TechTreeCatalog.Nodes.Count && _nodes != null; i++)
+            {
+                if (TechTreeCatalog.Nodes[i].Id == nodeId)
+                {
+                    return _nodes[i].Tag.Visible;
+                }
+            }
+            return false;
+        }
         public TechTreeReadout Readout => _readout;
 
         /// <summary>
@@ -131,6 +158,7 @@ namespace GolemFactory.Nodes
             LegendChip(legend, 1, "tt_node_available.png", "Available now");
             LegendChip(legend, 2, "tt_node_locked.png", "Locked");
             LegendChip(legend, 3, "tt_node_planned.png", "Designed, not built");
+            TagChip(legend, 4);
 
             var viewport = Ugui.Place(Ugui.Rect("ChartScroll", new Color(0.06f, 0.05f, 0.04f, 1f)), 0f, 0f, 1f, 1f, 0f, -26f, 0f, -52f);
             viewport.MouseFilter = Control.MouseFilterEnum.Pass;
@@ -185,6 +213,23 @@ namespace GolemFactory.Nodes
             _paneClaim.AddChild(Ugui.Fill(Ugui.Text("Label", "Claim", 12, Colors.Black, align: 2)));
             _paneClaim.Pressed += () => _readout.Claim();
             _pane.AddChild(_paneClaim);
+            // The same card for a city voucher instead of goods (2026-11-19; here since 2026-11-21).
+            _paneVoucher = new Button
+            {
+                Name = "Voucher",
+                FocusMode = Control.FocusModeEnum.None,
+                AnchorLeft = 1f, AnchorRight = 1f, AnchorTop = 1f, AnchorBottom = 1f,
+                OffsetLeft = -160f, OffsetRight = -88f, OffsetTop = -30f, OffsetBottom = -8f,
+                Visible = false,
+            };
+            foreach (string state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
+            {
+                _paneVoucher.AddThemeStyleboxOverride(state, face);
+            }
+            _paneVoucher.SelfModulate = new Color(0.78f, 0.92f, 1f);
+            _paneVoucher.AddChild(Ugui.Fill(Ugui.Text("Label", "Voucher", 12, Colors.Black, align: 2)));
+            _paneVoucher.Pressed += () => _readout.ClaimWithVoucher();
+            _pane.AddChild(_paneVoucher);
             return holder;
         }
 
@@ -219,6 +264,8 @@ namespace GolemFactory.Nodes
 
             _nodes = new NodeView[nodes.Count];
             _states = new TechTreeNodeState[nodes.Count];
+            _marks = new ClaimMark[nodes.Count];
+            _offered = -1;
             for (int i = 0; i < nodes.Count; i++)
             {
                 _nodes[i] = NodePlaque(nodes[i]);
@@ -238,7 +285,68 @@ namespace GolemFactory.Nodes
                 _appliedVersion = version;
                 ApplyStates(ledger);
             }
+            RefreshMarks();
+            OpenOnWanted();
             RefreshPane();
+        }
+
+        // The CLAIM tags follow the wallet as well as the ledger, so they are checked every frame
+        // the tab shows, and a tag is only touched when its mark changes.
+        private void RefreshMarks()
+        {
+            IReadOnlyList<TechTreeNode> nodes = TechTreeCatalog.Nodes;
+            bool first = _offered < 0;
+            for (int i = 0; i < _nodes.Length; i++)
+            {
+                ClaimMark mark = _readout.MarkFor(nodes[i]);
+                if (mark == _marks[i] && !first)
+                {
+                    continue;
+                }
+                _marks[i] = mark;
+                Panel tag = _nodes[i].Tag;
+                tag.Visible = mark == ClaimMark.Affordable || mark == ClaimMark.OnOffer;
+                tag.Modulate = mark == ClaimMark.Affordable ? Colors.White : new Color(1f, 1f, 1f, 0.55f);
+            }
+            int offered = _readout.OfferedCount;
+            if (offered != _offered)
+            {
+                _offered = offered;
+                UpdateHeader();
+            }
+        }
+
+        // While a guide step asks for a card, open the pane on its plaque, once per card, and
+        // bring the plaque into view (the old card list put the guide's card first).
+        private void OpenOnWanted()
+        {
+            string wanted = _readout.WantedNodeId;
+            if (wanted == _lastWanted)
+            {
+                return;
+            }
+            _lastWanted = wanted;
+            if (wanted == null || !TechTreeCatalog.TryGetNode(wanted, out TechTreeNode node))
+            {
+                return;
+            }
+            _readout.Select(wanted);
+            CoreRect rect = TechTreeChartLayout.NodeRect(node);
+            // Deferred: on the frame the tab first shows, the scroll range is not laid out yet.
+            // Right of the pane, which covers the viewport's bottom-left corner. Down only when the
+            // plaque is below the bottom edge: scrolled down always, the phase plates went.
+            _scroll.SetDeferred(ScrollContainer.PropertyName.ScrollHorizontal, Mathf.Max(0, (int)rect.x - 340));
+            float clear = _scroll.Size.Y - 20f;
+            if (clear > 0f && rect.y + rect.height > clear)
+            {
+                _scroll.SetDeferred(ScrollContainer.PropertyName.ScrollVertical, Mathf.Max(0, (int)(rect.y + rect.height - clear)));
+            }
+        }
+
+        private void UpdateHeader()
+        {
+            string claim = _offered > 0 ? "    ·    " + _offered + " to claim" : "";
+            _header.Text = _headerBase + claim + "    ·    drag the chart to pan";
         }
 
         private void ApplyStates(TechTreeProgressLedger ledger)
@@ -270,8 +378,9 @@ namespace GolemFactory.Nodes
             }
             int researched = TechTreeStatusRules.CountResearched(_states);
             TechTreeNode next = TechTreeStatusRules.FindNextObjective(nodes, _states);
-            _header.Text = $"THE ARTIFICER'S LEDGER    {researched} / {nodes.Count} researched    ·    " +
-                           Settings.TextTokens.Fill($"Next: {(next != null ? next.DisplayName : "everything on the track")}    ·    drag the chart to pan");
+            _headerBase = $"THE ARTIFICER'S LEDGER    {researched} / {nodes.Count} researched    ·    " +
+                          Settings.TextTokens.Fill($"Next: {(next != null ? next.DisplayName : "everything on the track")}");
+            UpdateHeader();
         }
 
         private void ApplyNodeState(NodeView view, TechTreeNode node, TechTreeNodeState state)
@@ -347,6 +456,9 @@ namespace GolemFactory.Nodes
             bool live = _readout.CanClaim;
             _paneClaim.Disabled = !live;
             _paneClaim.Modulate = live ? Colors.White : new Color(1f, 1f, 1f, 0.5f);
+            bool voucher = offered && _readout.CanClaimWithVoucher;
+            _paneVoucher.Visible = voucher;
+            _paneUnlock.OffsetRight = voucher ? -164f : -88f;
         }
 
         // --- Pieces -------------------------------------------------------------------------
@@ -412,7 +524,12 @@ namespace GolemFactory.Nodes
             detail.Size = new Vector2(rect.width - textLeft - 8f, rect.height * 0.5f - 5f);
             detail.VerticalAlignment = VerticalAlignment.Top;
             plaque.AddChild(detail);
-            return new NodeView { Plaque = plaque, Badge = badge, Name = name, Detail = detail };
+            Panel tag = ClaimTag("Tag");
+            // On the plaque's top edge, half into the gap above it, so it never covers the name.
+            tag.Position = new Vector2(rect.width - TagWidth - 8f, -TagHeight * 0.5f - 1f);
+            tag.Visible = false;
+            plaque.AddChild(tag);
+            return new NodeView { Plaque = plaque, Badge = badge, Name = name, Detail = detail, Tag = tag };
         }
 
         private static string BadgeFor(TechTreeNodeKind kind) => kind switch
@@ -423,6 +540,39 @@ namespace GolemFactory.Nodes
             TechTreeNodeKind.Technique => "tt_badge_hand.png",
             _ => "tt_badge_tower.png",
         };
+
+        private const float TagWidth = 46f;
+        private const float TagHeight = 14f;
+        private static readonly Color TagFill = new Color(1f, 0.80f, 0.34f, 1f);
+        private static readonly Color TagEdge = new Color(0.36f, 0.24f, 0.08f, 1f);
+
+        /// <summary>The CLAIM tag: a small brass label, the Available route's colour.</summary>
+        private static Panel ClaimTag(string name)
+        {
+            var tag = new Panel { Name = name, Size = new Vector2(TagWidth, TagHeight), MouseFilter = Control.MouseFilterEnum.Ignore };
+            var box = new StyleBoxFlat { BgColor = TagFill, BorderColor = TagEdge };
+            box.SetBorderWidthAll(1);
+            box.SetCornerRadiusAll(2);
+            tag.AddThemeStyleboxOverride("panel", box);
+            Label text = Ugui.Fill(Ugui.Text("Label", "CLAIM", 9, TagEdge, align: 2, bold: true));
+            text.VerticalAlignment = VerticalAlignment.Center;
+            tag.AddChild(text);
+            return tag;
+        }
+
+        private static void TagChip(Control legend, int index)
+        {
+            const float chipWidth = 150f;
+            var chip = new Control { Name = "Legend" + index, Position = new Vector2(index * chipWidth, 0f), Size = new Vector2(chipWidth, 18f), MouseFilter = Control.MouseFilterEnum.Ignore };
+            legend.AddChild(chip);
+            Panel swatch = ClaimTag("Swatch");
+            swatch.Position = new Vector2(0f, 2f);
+            chip.AddChild(swatch);
+            Label label = Ugui.Text("Label", "Ready to claim", 11, LegendCaption);
+            label.Position = new Vector2(TagWidth + 6f, 0f);
+            label.Size = new Vector2(chipWidth - TagWidth - 6f, 18f);
+            chip.AddChild(label);
+        }
 
         private static void LegendChip(Control legend, int index, string sprite, string caption)
         {

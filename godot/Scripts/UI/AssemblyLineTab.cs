@@ -6,8 +6,9 @@ using GolemFactory.UI;
 namespace GolemFactory.Nodes
 {
     /// <summary>
-    /// The Management screen's Assembly Line tab: draws Core's <see cref="AssemblyLineBoard"/>
-    /// rows (wallet, the golem cap, floor expansion, the pack, the cards to claim, waiting cards) with Unity's
+    /// The Management screen's Workshop tab (it was the Assembly Line tab; cards are claimed in the
+    /// Ledger since 2026-11-21): draws Core's <see cref="AssemblyLineBoard"/>
+    /// rows (wallet, the golem cap, floor expansion, the Docks, the pack, the cards waiting in the Ledger) with Unity's
     /// AssemblyLinePanel layout -- 28px rows, a 260px right-aligned cost column, 60-74px brass
     /// buttons disabled when unaffordable -- and the status line under them.
     /// </summary>

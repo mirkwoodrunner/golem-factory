@@ -22,9 +22,9 @@ Every change to the guide keeps these (root `CLAUDE.md`; `crates-design.md` §8)
 5. **A step over a full screen docks clear of its controls**: `Workbench` steps in
    `TutorialPanel.Dock(true)`, `Crate` steps in the usual dock. The Workbench dock must also stay
    clear of the hint's outlines (`onboarding-feedback-design.md` §8, `tutorial`).
-6. **A step that wants a card claimed names it** (`TutorialStep.Card`), and the Assembly Line
-   tab lists it first (`AssemblyLineBoard.ConfigureWanted`; every card is on offer at once since
-   2026-11-19).
+6. **A step that wants a card claimed names it** (`TutorialStep.Card`), and the Ledger opens its
+   pane on that card's plaque (`TechTreeReadout.WantedNodeId`; cards are claimed in the Ledger only
+   since 2026-11-21, and every card is on offer at once since 2026-11-19).
 7. **A program step names its program once** (`TutorialStep.Program`, new): the Workbench hint
    shows it, the kit performs it, and its `Matches` is the step's `Done`
    (`onboarding-feedback-design.md` §2.1).
@@ -97,7 +97,7 @@ Columns: the step's **id** (unchanged), its **title and body** as the player rea
 | Id | Title · body | Done | Marks · target | Flags | Kit |
 |---|---|---|---|---|---|
 | `gears` | **Cut Gears** · "The Brass Presser crafts, and costs 10 Gears. Press R at the bench until it shows R8 Gear Cutting (2 Iron Plate make 1 Gear), then hold E. Short of Plate? Back to R2." | pack Gear ≥ 10 | bench | | grant 10 Gear |
-| `claim` | **Claim Scrap Reclamation** · "A golem can only use cards you own. Press Tab, open the Assembly Line and click Claim on Assemble Scrap Reclamation (4 Scrap): Scrap in, Iron Plate out." | claimed `AssembleScrapReclamation` | none | `Card` | unchanged (`Claim`) |
+| `claim` | **Claim Scrap Reclamation** · "A golem can only use cards you own. Press Tab, open the Ledger and click Claim on Assemble Scrap Reclamation (4 Scrap): Scrap in, Iron Plate out." | claimed `AssembleScrapReclamation` | none | `Card` | unchanged (`Claim`) |
 | `presser` | **Build a Brass Presser** · "At the station, build the Brass Presser (60 Scrap + 20 Iron Plate + 10 Gear). Short of Scrap? Collect from your Scavenger's crate. Program it now if you like: the cards glow." | a Presser stands | station (Scrap stall while short) | | unchanged |
 | `pipe` | **Lay a steam pipe** · "The Presser will stand two tiles from the boiler, out of its reach. Lay Steam Pipe (1 Iron Plate each) on the marked tiles: steam reaches any golem beside a pipe." | unchanged (steam reaches `PresserSpot`) | spots `PipeSpots` | `menuKey` Steam Pipe | unchanged |
 | `depot2` | **A depot for its output** · "Build a second Depot on the marked tile. The Presser will take Scrap from the first crate, behind it, and push Iron Plate into this one." | unchanged | spot `PresserDepotSpot`, exact | `menuKey` Depot | unchanged |
@@ -108,7 +108,7 @@ Columns: the step's **id** (unchanged), its **title and body** as the player rea
 
 | Id | Title · body | Done | Marks · target | Flags | Kit |
 |---|---|---|---|---|---|
-| `coking-card` | **Claim Coking** · "Your boiler burns Coke you crank, and it will run dry. Press Tab, open the Assembly Line and claim Assemble Coking. It costs Coal: short? Take some at the Coal stall." | claimed `AssembleCoking` | Coal stall while short | `Card` | unchanged |
+| `coking-card` | **Claim Coking** · "Your boiler burns Coke you crank, and it will run dry. Press Tab, open the Ledger and claim Assemble Coking. It costs Coal: short? Take some at the Coal stall." | claimed `AssembleCoking` | Coal stall while short | `Card` | unchanged |
 | `presser2` | **A second Presser** · "Build another Brass Presser (60 Scrap + 20 Iron Plate + 10 Gear). Take Plate from the first Presser's crate (E); crank the Gears (R8). A full crate turns its golem red." | two Pressers stand | station | | unchanged |
 | `boiler2` | **A boiler for the coal line** · "Build a second Boiler on the marked tile, two out from the Coal stall. The coking Presser will stand between them and push Coke into it." | unchanged | spot `Boiler2Spot`, exact | `menuKey` Boiler | unchanged |
 | `pipes2` | **Join the boilers** · "Lay Steam Pipe on the marked tiles, from your first boiler to the new one. Joined boilers share steam: the first powers the coking Presser until the new one has Coke, then the new one powers the rest. Your own route counts too." (2026-11-01: joined boilers share) | unchanged (`FirstBoilerPowersCokerAndJoins`) | spots `Pipe2Spots` | `menuKey` Steam Pipe | unchanged |

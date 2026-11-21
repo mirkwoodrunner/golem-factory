@@ -7,6 +7,21 @@ using GolemFactory.PunchCards;
 
 namespace GolemFactory.UI
 {
+    /// <summary>A Ledger plaque's card, for its corner mark.</summary>
+    public enum ClaimMark
+    {
+        /// <summary>No card, or one still locked.</summary>
+        None,
+
+        /// <summary>On offer, but the wallet can't pay yet.</summary>
+        OnOffer,
+
+        /// <summary>On offer and affordable: Claim would work now.</summary>
+        Affordable,
+
+        Claimed,
+    }
+
     /// <summary>
     /// The Ledger's recipe readout (docs/cozy-automation-design.md §4a), without the chart: which
     /// node is selected, and what its pane says -- Unity's TechTreePanel.RefreshDetailPane taken
@@ -44,11 +59,12 @@ namespace GolemFactory.UI
         private AssemblyLineState _line;
         private AssemblyLineBoard _board;
 
-        /// <summary>Lets a plaque claim its card through the Assembly Line tab's own Claim. Null leaves the pane read-only.</summary>
+        /// <summary>Lets a plaque claim its card through the board's Claim (cards are claimed only here). Null leaves the pane read-only.</summary>
         public void ConfigureUnlocks(AssemblyLineState line, AssemblyLineBoard board)
         {
             _line = line;
             _board = board;
+            _cards.Clear();
         }
 
         /// <summary>The card the selected plaque unlocks, or null: a recipe's Assemble card, a chassis's card, Repeat, Freight Launch.</summary>
@@ -76,7 +92,23 @@ namespace GolemFactory.UI
             }
         }
 
-        private DraftableCardDefinition CardFor(TechTreeNode node) => _line == null ? null : CardFor(node, _line.Deck, _recipes);
+        // By node id, resolved once: the deck and the recipes are fixed for a world, and the chart
+        // asks every plaque's card every frame it shows (its CLAIM tags).
+        private readonly Dictionary<string, DraftableCardDefinition> _cards = new Dictionary<string, DraftableCardDefinition>();
+
+        private DraftableCardDefinition CardFor(TechTreeNode node)
+        {
+            if (_line == null || node == null)
+            {
+                return null;
+            }
+            if (!_cards.TryGetValue(node.Id, out DraftableCardDefinition card))
+            {
+                card = CardFor(node, _line.Deck, _recipes);
+                _cards[node.Id] = card;
+            }
+            return card;
+        }
 
         /// <summary>
         /// The pane's unlock line: "Claim for 4 Scrap", "Claim for free", "Claimed", "Locked: needs
@@ -114,8 +146,73 @@ namespace GolemFactory.UI
             }
         }
 
-        /// <summary>The pane's Claim: the same claim the Assembly Line tab makes.</summary>
+        /// <summary>The pane's Claim: the board's claim at the card's price.</summary>
         public bool Claim() => SelectedCard is DraftableCardDefinition card && _board != null && _board.Claim(card);
+
+        /// <summary>Whether the pane offers its card for a city voucher: on offer, and a voucher held.</summary>
+        public bool CanClaimWithVoucher
+        {
+            get
+            {
+                DraftableCardDefinition card = SelectedCard;
+                return card != null && _board != null && _board.HasVoucher && _line.IsOffered(card);
+            }
+        }
+
+        /// <summary>The pane's Voucher: the selected card for one city voucher.</summary>
+        public bool ClaimWithVoucher() => SelectedCard is DraftableCardDefinition card && _board != null && _board.ClaimWithVoucher(card);
+
+        /// <summary>What the last Claim or Voucher did, or why it could not: the pane's status line.</summary>
+        public string Status => _board?.Status ?? "";
+
+        /// <summary>
+        /// Where a plaque's card stands, for its corner mark (2026-11-21: cards are claimed here
+        /// only, so the chart has to show which are ready without a click).
+        /// </summary>
+        public ClaimMark MarkFor(TechTreeNode node)
+        {
+            DraftableCardDefinition card = CardFor(node);
+            if (card == null || _board == null)
+            {
+                return ClaimMark.None;
+            }
+            if (_line.IsClaimed(card))
+            {
+                return ClaimMark.Claimed;
+            }
+            if (!_line.IsOffered(card))
+            {
+                return ClaimMark.None;
+            }
+            return _board.CanAffordCard(card) ? ClaimMark.Affordable : ClaimMark.OnOffer;
+        }
+
+        /// <summary>How many cards are on offer: the chart's header counts them.</summary>
+        public int OfferedCount => _line?.Offers.Count ?? 0;
+
+        /// <summary>
+        /// The plaque of the card the guide's step asks for, while it is still to claim, or null.
+        /// The Ledger opens its pane on it, as the old card list put it first.
+        /// </summary>
+        public string WantedNodeId
+        {
+            get
+            {
+                if (_board == null)
+                {
+                    return null;
+                }
+                foreach (TechTreeNode node in TechTreeCatalog.Nodes)
+                {
+                    DraftableCardDefinition card = CardFor(node);
+                    if (card != null && _board.IsWanted(card) && !_line.IsClaimed(card))
+                    {
+                        return node.Id;
+                    }
+                }
+                return null;
+            }
+        }
 
         /// <summary>The selected node's id, or null until a plaque is clicked.</summary>
         public string SelectedNodeId { get; private set; }

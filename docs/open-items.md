@@ -51,6 +51,11 @@ It no longer asks questions (cleared 2026-11-21), so the script's questions are 
 
 ## 3. Known gaps
 
+- **A Slag Heap or Scrap Recycler can hold more Coke than a pack.** Their Coke has no cap, and
+  demolition hands it back or refuses, so one fed past the pack's cap can't be demolished until the
+  pack grows or the Coke burns down. The boiler had the same trap and was fixed 2026-11-21 (a 100
+  cap and [I] to take Coke out, `BoilerCapacityTests`); the same pair would fix these.
+
 - **Old saves resume the guide a few steps off.** Saves from before the guide stored its step by
   id (#49), or its golems' roles (#52), fall back to the step's index and to build order. A fresh
   game is unaffected.

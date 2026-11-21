@@ -43,7 +43,7 @@ namespace GolemFactory.Settings
             P(@"Shift-click (\w+)", "press X on $1"),
 
             // Management's tabs.
-            P(@"open (the Assembly Line|the Ledger|Save / Load)", "open $1 with L1 or R1"),
+            P(@"open (the Workshop tab|the Ledger|Save / Load)", "open $1 with L1 or R1"),
             P(@"click Claim on ", "press A on Claim beside "),
             P(@"click Upgrade on the ", "press A on Upgrade beside the "),
 

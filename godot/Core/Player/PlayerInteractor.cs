@@ -903,6 +903,12 @@ namespace GolemFactory.Player
             {
                 detail = InteractionTargeting.AppendDetail(detail, "[" + InventoryKeyLabel + "] open");
             }
+            // [I] takes a boiler's Coke whatever E would do there (2026-11-21).
+            if (pick.Kind == InteractionKind.Refuel && CurrentAffordance != InteractionAffordance.OutOfRange
+                && (target as PlaceableBoiler)?.Boiler?.CokeStock > 0)
+            {
+                detail = InteractionTargeting.AppendDetail(detail, "[" + InventoryKeyLabel + "] take Coke");
+            }
 
             // [G] AND [R] ACT ON THE NEAREST GOLEM, NOT ON THE WINNER OF THE [E] PICK, and the two
             // differ at exactly the moment the player most needs to be told the keys exist. A
@@ -1194,7 +1200,8 @@ namespace GolemFactory.Player
 
         /// <summary>
         /// [I] (docs/inventory-screens-design.md §1): the nearest crate within arm's reach opens
-        /// the Crate screen on it; anywhere else, the Pack screen.
+        /// the Crate screen on it; at a boiler it takes the boiler's Coke (<see cref="TryTakeCoke"/>);
+        /// anywhere else, the Pack screen.
         /// </summary>
         public bool OpenInventory()
         {
@@ -1202,6 +1209,14 @@ namespace GolemFactory.Player
             if (spot != null && _supplyScreen != null)
             {
                 return TryOpenSupply(spot);
+            }
+            // A boiler empties like a crate (2026-11-21): [I] takes its Coke into the pack, so a
+            // boiler can always be emptied, and then demolished.
+            InteractionPick pick = SelectNearestPick();
+            if (pick.Kind == InteractionKind.Refuel && pick.IsInRange(_interactRange)
+                && ResolveTarget(pick, out _) is PlaceableBoiler boiler)
+            {
+                return TryTakeCoke(boiler);
             }
             ICrate crate = SelectNearestCrate(_interactRange);
             if (crate != null && _crateScreen != null)
@@ -1411,6 +1426,44 @@ namespace GolemFactory.Player
             // How long it lasts, said at the moment the player pays for it (G10).
             LastStatusMessage = $"Loaded {amount} Coke: {SteamGaugeUtility.FormatLastsOneGolem(amount)} for one golem, "
                 + $"{SteamGaugeUtility.CokePerMinutePerGolem} Coke a minute per working golem.";
+            Popup(at, YieldPopupText.Gain(ItemType.Coke, amount), InteractionPopupKind.Gain);
+            return true;
+        }
+
+        /// <summary>
+        /// [I] at a boiler (2026-11-21): its Coke into the pack, as much as fits, the rest left
+        /// burning, as [E] at a crate collects. The pack only, never the Post, as any collect.
+        /// </summary>
+        public bool TryTakeCoke(PlaceableBoiler boiler)
+        {
+            // No pack wired, nowhere to put it: refused, so no Coke leaves the boiler for nothing.
+            if (boiler == null || boiler.Boiler == null || _stockpile == null)
+            {
+                LastStatusMessage = "No boiler in range.";
+                return false;
+            }
+
+            Vector3 at = BoilerPosition(boiler);
+            if (boiler.Boiler.CokeStock <= 0)
+            {
+                LastStatusMessage = "The boiler is empty.";
+                Popup(at, "Empty", InteractionPopupKind.Refused);
+                return false;
+            }
+
+            int room = PackRoomFor(ItemType.Coke);
+            if (room <= 0)
+            {
+                LastStatusMessage = "Your pack is full of Coke.";
+                Popup(at, "Pack full", InteractionPopupKind.Refused);
+                return false;
+            }
+
+            int amount = boiler.Boiler.TakeCoke(room < boiler.Boiler.CokeStock ? room : boiler.Boiler.CokeStock);
+            // Room was asked first, so the whole amount lands.
+            _stockpile.Deposit(_stockpileBufferId, ItemType.Coke, amount);
+            LastStatusMessage = "Took " + amount + " Coke from the boiler.";
+            Collected?.Invoke();
             Popup(at, YieldPopupText.Gain(ItemType.Coke, amount), InteractionPopupKind.Gain);
             return true;
         }

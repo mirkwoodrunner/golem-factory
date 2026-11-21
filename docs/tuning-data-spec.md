@@ -127,7 +127,7 @@ Coke/min, idle golems free).
 |---|---|---|---|---|---|
 | Burn per working golem | `SteamNetwork.TicksPerCokePerPoweredGolem` | 200 ticks (3 Coke/min) | §3.1, halved in G10 | **keep** | Invariant 7 holds exactly at 3 (27.3 ≥ 27). At 4/min a guide coker no longer feeds a full boiler (27.3 < 36). The full playthrough asks (`full-playthrough.md`, `coal-share`) |
 | Golems per boiler | `SteamNetwork.MaxGolemsPerBoiler` | 8 | §3.1 | **keep** | Invariant 7 |
-| Boiler Coke capacity | `SteamBoiler.CokeCapacity` | 240 | §8's gauge reference | **keep** | 80 golem-minutes of runway; the gauge's 25 % alert reads off it |
+| Boiler Coke capacity | `SteamBoiler.CokeCapacity` | 100 | `BoilerCapacityTests` | **keep** | 2026-11-21 (the user's call; it was 240): at most the base pack (`packCapacityPerType`), so a full boiler's Coke fits an empty pack slot and it can always be demolished, as a crate (50) can. 33 golem-minutes of runway; [I] at a boiler takes its Coke out |
 | Boiler hand-load | `BoilerRefuelPolicy.HandLoadBatch` | 20 Coke | | **keep**; add to the price list (invariant 1) | It charges the wallet like a price |
 | Boiler price | `placeables.json` `BoilerPrefab` cost | 30 Scrap + 10 Iron Plate | §3.1 | **keep** | Chapter 1's floor counts it; changing it moves `ChaptersOneToFourFloorTests` |
 | Steam Pipe price | `placeables.json` `SteamPipePrefab` | 1 Iron Plate | §3.1 | **keep** | |

@@ -46,7 +46,7 @@ world, EndgameLoadSpec spec)`, defaults `Golems = 96`, `BeltItems = 500`, `Boile
   it (`SetPlacement`), and programs it through `GolemProgramWriter.TryWrite`;
 - uses Creative Mode (`GameMode.IsCreativeMode`) so stalls never empty and the load stays steady
   [M: confirm Creative Mode leaves steam burn and crates untouched];
-- powers every golem: 12 boilers, each with ≤ 8 golems in reach and 240 Coke, plus pipe;
+- powers every golem: 12 boilers, each with ≤ 8 golems in reach and full (100 Coke since 2026-11-21; 240 before), plus pipe;
 - returns the golems by role, the crates, and the belt cells, for the scenario's phases.
 
 **The golem mix**, from `progression-design.md` §7's stage-4 factory, each on the program the guide
