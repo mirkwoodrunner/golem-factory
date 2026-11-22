@@ -4,6 +4,7 @@ using System.Linq;
 using Godot;
 using GolemFactory.Economy;
 using GolemFactory.Tutorial;
+using GolemFactory.UI;
 using GolemFactory.World;
 using CoreVector2Int = GolemFactory.Compat.Vector2Int;
 
@@ -36,9 +37,10 @@ namespace GolemFactory.Nodes.Scenarios
         private int _waited;
         private const string Wait = "wait";
         private PlayerNode _player;
-        private int _skipClickedAt = -1;
 
         private TutorialGuide Guide => _world.Tutorial;
+
+        private ManagementScreen _management;
 
         public void Begin(ScenarioRunner runner)
         {
@@ -52,62 +54,6 @@ namespace GolemFactory.Nodes.Scenarios
                 Do("scene", () => "Sandbox.tscn is missing the Tutorial panel, the build menu, or the guide");
                 return;
             }
-
-            // Playtest mode: the first "your call" question is up before anything else, in the
-            // guide plate's place, and answering it lands in the report on disk.
-            var playtest = _tree.Root.FindChild("Playtest", true, false) as PlaytestNode;
-            Compat.Vector3 standing = default;
-            Do("the light question is asked first, in the guide's place", () =>
-            {
-                if (playtest == null || !playtest.Card.Visible)
-                {
-                    return "no playtest card";
-                }
-                if (!playtest.PromptText.Contains("too dark"))
-                {
-                    return $"asked '{playtest.PromptText}'";
-                }
-                return _panel.Plate.Visible ? "the guide plate shows over the question" : null;
-            });
-            Do("capture the playtest card", () => { ScenarioCapture.Shot(_tree.Root, "screen-playtest-card"); return null; });
-            Do("type a note with a W in it", () =>
-            {
-                standing = _player.CorePosition;
-                playtest.Note.GrabFocus();
-                // A real key press carries its character; a synthetic one must be given it.
-                Input.ParseInputEvent(new InputEventKey { Keycode = Key.W, PhysicalKeycode = Key.W, Unicode = 'w', Pressed = true });
-                _heldTap = Key.W;
-                return null;
-            });
-            Do("the W went into the note, not into the player's legs", () =>
-            {
-                if (!playtest.Note.Text.ToLowerInvariant().Contains("w"))
-                {
-                    return $"note '{playtest.Note.Text}'";
-                }
-                Compat.Vector3 now = _player.CorePosition;
-                return now.x == standing.x && now.y == standing.y ? null : "the player walked while typing";
-            });
-            Do("answer 'About right'", () =>
-            {
-                playtest.Note.Text = "scenario note";
-                Click(playtest.Options.GetChildren().OfType<Button>().Single(b => b.Text == "About right"));
-                return null;
-            });
-            Do("the answer is in the report, and the guide is back", () =>
-            {
-                if (playtest.Card.Visible)
-                {
-                    return "the card is still up";
-                }
-                string report = System.IO.File.Exists(PlaytestNode.ReportFile) ? System.IO.File.ReadAllText(PlaytestNode.ReportFile) : "";
-                if (!report.Contains("Is the room too dark?** About right") || !report.Contains("scenario note"))
-                {
-                    return "the report does not have the answer: " + report.Split('\n').FirstOrDefault(l => l.Contains("too dark"));
-                }
-                _log.Add("playtest: light question answered with a note (typing W did not walk), report written to " + PlaytestNode.ReportFile);
-                return null;
-            });
 
             Do("the guide opens on step 1", () =>
                 _panel.Plate.Visible && _panel.TitleText == "Gather Scrap" && _panel.ProgressText == "Scrap  0 / 20"
@@ -297,19 +243,6 @@ namespace GolemFactory.Nodes.Scenarios
             });
             // Its Scrap lands in the depot's crate, not the pack: chapter 1 ends on collecting it.
             Do("its first cycle asks for a collect", () => _panel.TitleText == "Collect from the crate" ? null : Wait);
-            // The Workbench question waits in the plate's place; skip it so the step shows.
-            Do("skip the question over the collect step", () =>
-            {
-                if (_world.Tutorial.Playtest.Current == null)
-                {
-                    return null;
-                }
-                if (playtest.Card.Visible && ++_skipClickedAt % 10 == 0)
-                {
-                    Click(playtest.SkipButton);
-                }
-                return Wait;
-            });
             Do("stand at the depot and press E", () =>
             {
                 CoreVector2Int depot = _world.Tutorial.DepotSpot;
@@ -335,17 +268,66 @@ namespace GolemFactory.Nodes.Scenarios
                 _log.Add($"E at the depot collected ('{_world.Interactor.LastStatusMessage}'), and chapter 2 opened");
                 return null;
             });
-            Do("cut the Gears, claim Scrap Reclamation, build the Presser", () =>
+            Do("cut the Gears", () =>
             {
                 Give(ItemType.Gear, 30);
                 Give(ItemType.IronPlate, 60);
                 Give(ItemType.Scrap, 200);
-                for (int attempt = 0; attempt < 6 && !_world.AssemblyLine.GetClaimedCards("LocalPlayer").Any(c => c.appendage?.name == "AssembleScrapReclamation"); attempt++)
-                {
-                    _world.AssemblyLineBoard.Claim(_world.AssemblyLine.Offers.FirstOrDefault(c => c.appendage?.name == "AssembleScrapReclamation"));
-                }
-                return _world.StarterStation.TryConstructGolem(_world.Definitions.Chassis["BrassPresser"], out _) ? null : "no Presser";
+                return null;
             });
+            // 2026-11-21: cards are claimed in the Ledger, which opens on the guide's card.
+            Do("the claim step sends the player to the Ledger", () =>
+            {
+                if (_panel.TitleText != "Claim Scrap Reclamation")
+                {
+                    return Wait;
+                }
+                return _panel.BodyText.Contains("open the Ledger") ? null : $"body '{_panel.BodyText}'";
+            });
+            Do("Tab", () => { Tap(Key.Tab); return null; });
+            Do("click the Ledger tab", () =>
+            {
+                _management ??= _tree.Root.FindChild("Management", true, false) as ManagementScreen;
+                if (_management == null || !_management.TabButtons.TryGetValue(ManagementTab.TechTree, out Button tab))
+                {
+                    return "no Management screen with a Ledger tab";
+                }
+                Click(tab);
+                return null;
+            });
+            Do("the Ledger opens on Scrap Reclamation's plaque, tagged, with a live Claim", () =>
+            {
+                LedgerTab ledger = _management.Ledger;
+                if (ledger.Readout.SelectedNodeId != "r2.reclamation")
+                {
+                    return Wait; // the tab draws a frame after the click
+                }
+                if (!ledger.TagShown("r2.reclamation") || !ledger.PaneClaim.IsVisibleInTree() || ledger.PaneClaim.Disabled)
+                {
+                    return $"tag {ledger.TagShown("r2.reclamation")}, Claim visible {ledger.PaneClaim.IsVisibleInTree()} disabled {ledger.PaneClaim.Disabled}, '{ledger.PaneUnlock}'";
+                }
+                Button plaque = ledger.PlaqueFor("r2.reclamation");
+                if (!plaque.GetGlobalRect().Intersects(ledger.Chart.GetParent<Control>().GetGlobalRect()))
+                {
+                    return "the plaque was not scrolled into view";
+                }
+                ScenarioCapture.Shot(_tree.Root, "tutorial-ledger-claim");
+                Click(ledger.PaneClaim);
+                return null;
+            });
+            Do("claimed from the Ledger", () =>
+            {
+                bool claimed = _world.AssemblyLine.GetClaimedCards("LocalPlayer").Any(c => c.appendage?.name == "AssembleScrapReclamation");
+                if (!claimed)
+                {
+                    return "not claimed: " + _world.AssemblyLineBoard.Status;
+                }
+                _log.Add("chapter 2: the Ledger opened on Scrap Reclamation's tagged plaque, and its Claim claimed it");
+                Tap(Key.Escape);
+                return null;
+            });
+            Do("build the Presser", () =>
+                _world.StarterStation.TryConstructGolem(_world.Definitions.Chassis["BrassPresser"], out _) ? null : "no Presser");
             Do("the pipe step marks both pipe tiles", () =>
             {
                 if (_panel.TitleText != "Lay a steam pipe")
@@ -426,32 +408,6 @@ namespace GolemFactory.Nodes.Scenarios
                     }
                 }
                 _log.Add($"chapter 3: Coking claimed, second Presser and boiler built; the pipe step marks {_world.Tutorial.Pipe2Spots.Length} tiles, '{_panel.ProgressText}'");
-                return null;
-            });
-
-            // The questions chapter 2 queued (the Workbench, the manual era) wait in the guide
-            // plate's place; skip them with the card's own button, one click at a time.
-            Do("skip the questions waiting since chapter 2", () =>
-            {
-                if (_world.Tutorial.Playtest.Current == null)
-                {
-                    return null;
-                }
-                // One click every ten frames: a skip takes effect a frame after its click.
-                if (playtest.Card.Visible && ++_skipClickedAt % 10 == 0)
-                {
-                    Click(playtest.SkipButton);
-                }
-                return Wait;
-            });
-            Do("they went into the report as skipped", () =>
-            {
-                int skipped = _world.Tutorial.Playtest.Answers.Count(a => a.Choice == "skipped");
-                if (skipped < 2)
-                {
-                    return $"{skipped} skipped answers";
-                }
-                _log.Add($"{skipped} queued questions skipped with the card's button");
                 return null;
             });
 

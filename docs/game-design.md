@@ -65,9 +65,10 @@ and gives to the tile in front.
 ## Progression
 
 - **The Assembly Line** offers every card the factory can now pay for (recipes, steps and
-  chassis) at a fixed price, and the player picks which to claim, there or from the card's plaque
-  in the Ledger, the tech tree. Claiming one makes it available at the Workbench
-  (`progression-design.md` §8).
+  chassis) at a fixed price, and the player picks which to claim from the card's plaque in the
+  Ledger, the tech tree, where a CLAIM tag marks each card on offer. Claiming one makes it
+  available at the Workbench (`progression-design.md` §8). The Workshop tab sells the workshop's
+  own growth: the floor, the Docks and the pack.
 - **The golem cap:** at most 112 golems stand at once, where the frame budget holds. Nothing
   buys more; steam upkeep is what each golem costs.
 - **Chassis tiers:** five chassis, from the two-slot Clockwork Scavenger to the six-slot Zeppelin

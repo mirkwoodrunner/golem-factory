@@ -11,7 +11,8 @@ namespace GolemFactory.Buildings
     /// </summary>
     public sealed class PlaceableBoiler : IBuildingPart
     {
-        public const int DefaultStartingCoke = 240;
+        /// <summary>An unconfigured boiler starts full. Placed boilers start at 0 (placeables.json).</summary>
+        public const int DefaultStartingCoke = SteamBoiler.CokeCapacity;
 
         private string boilerId;
         private int startingCoke = DefaultStartingCoke;

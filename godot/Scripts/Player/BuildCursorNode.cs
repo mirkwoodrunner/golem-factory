@@ -257,7 +257,7 @@ namespace GolemFactory.Nodes
         /// </summary>
         private bool StepPadCursor(double delta)
         {
-            if (TextEntry.IsTyping(GetViewport()) || InputDevices.OverlayHoldsPad)
+            if (TextEntry.IsTyping(GetViewport()))
             {
                 return false;
             }

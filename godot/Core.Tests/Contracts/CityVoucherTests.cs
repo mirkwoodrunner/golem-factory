@@ -4,6 +4,7 @@ using System.Linq;
 using GolemFactory.AssemblyLine;
 using GolemFactory.Contracts;
 using GolemFactory.Economy;
+using GolemFactory.Progression;
 using GolemFactory.Supply;
 using GolemFactory.Tests.EditMode;
 using GolemFactory.UI;
@@ -49,14 +50,20 @@ namespace GolemFactory.Tests.Contracts
             _world.TechTree.Ledger.RecordItem(ItemType.Scrap);
             _world.Vouchers.Give(1);
             EmptyThePack();
-            AssemblyLineRow row = _world.AssemblyLineBoard.Rows().First(r => r.Kind == AssemblyLineRowKind.Slot && r.Card.HasBundleCost);
-            Assert.IsTrue(row.VoucherButton);
-            Assert.IsFalse(row.Affordable, "precondition: no goods to pay with");
+            // From its Ledger plaque (2026-11-21: cards are claimed there only).
+            TechTreeNode node = TechTreeCatalog.Nodes.First(n =>
+                _world.LedgerReadout.MarkFor(n) == ClaimMark.OnOffer);
+            _world.LedgerReadout.Select(node.Id);
+            DraftableCardDefinition card = _world.LedgerReadout.SelectedCard;
+            Assert.IsTrue(card.HasBundleCost, "precondition: a card with a price");
+            Assert.IsTrue(_world.LedgerReadout.CanClaimWithVoucher);
+            Assert.IsFalse(_world.LedgerReadout.CanClaim, "precondition: no goods to pay with");
 
-            Assert.IsTrue(_world.AssemblyLineBoard.PayWithVoucher(row), _world.AssemblyLineBoard.Status);
+            Assert.IsTrue(_world.LedgerReadout.ClaimWithVoucher(), _world.LedgerReadout.Status);
 
-            Assert.IsTrue(_world.AssemblyLine.IsClaimed(row.Card));
+            Assert.IsTrue(_world.AssemblyLine.IsClaimed(card));
             Assert.AreEqual(0, _world.Vouchers.Count, "one spent");
+            Assert.IsFalse(_world.LedgerReadout.CanClaimWithVoucher, "none left to offer");
             Assert.IsFalse(_world.AssemblyLineBoard.Rows().Any(r => r.VoucherButton), "none left to offer");
         }
 

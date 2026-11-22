@@ -27,8 +27,15 @@ namespace GolemFactory.Steam
         /// coking Presser pushing into its boiler never meets a full destination, so it burned
         /// every lump of Coal the factory had into a firebox that would take it all. Full, the
         /// boiler refuses, the Presser stalls "Boiler full" like any golem at a full crate, and
-        /// the Coal stays put. 240 is the Phase-1 boiler's starting stock, so a fresh boiler
-        /// starts full rather than over the line.
+        /// the Coal stays put.
+        ///
+        /// <para>
+        /// 100, the base pack's <c>packCapacityPerType</c> (2026-11-21, the user's call; it was
+        /// 240). A demolished boiler hands its Coke back, and the demolition is refused when the
+        /// pack can't take it, so a boiler that held more than a pack stood stuck until the pack
+        /// was upgraded. A crate (50) always fits an empty pack slot; now a boiler does too.
+        /// <c>BoilerCapacityTests</c> pins it at or under the pack.
+        /// </para>
         ///
         /// <para>
         /// §10's soft-lock audit, run when this was added: a full boiler is by definition
@@ -39,7 +46,7 @@ namespace GolemFactory.Steam
         /// its job, not a lock.
         /// </para>
         /// </summary>
-        public const int CokeCapacity = 240;
+        public const int CokeCapacity = 100;
 
         /// <summary>Coke on hand. Never negative -- see <see cref="Accrue"/>.</summary>
         public int CokeStock { get; private set; }
@@ -96,6 +103,27 @@ namespace GolemFactory.Steam
                 PeakCokeStock = CokeStock;
             }
 
+            return quantity;
+        }
+
+        /// <summary>
+        /// Takes up to <paramref name="quantity"/> Coke out, for the player's [I] at a boiler
+        /// (it empties like a crate). Returns how much came out; never more than it holds.
+        /// <see cref="PeakCokeStock"/> stays: the gauge still warns against the fullest it was.
+        /// </summary>
+        public int TakeCoke(int quantity)
+        {
+            if (quantity > CokeStock)
+            {
+                quantity = CokeStock;
+            }
+
+            if (quantity <= 0)
+            {
+                return 0;
+            }
+
+            CokeStock -= quantity;
             return quantity;
         }
 

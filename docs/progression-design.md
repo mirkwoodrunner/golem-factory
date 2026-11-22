@@ -614,6 +614,13 @@ condition." The Clock Tower is a win, not a game-over.
 > no rival could take a card, so waiting for decay was always right, and the player could not
 > choose what to unlock next (three playtest fixes had already bent the row toward a tree). Changes
 > 1–3 below stand; 4 and the decay paragraph are history.
+>
+> **Changed 2026-11-21 (the user's call): cards are claimed in the Ledger only.** With the draft
+> gone, the tab's card list was a second copy of the plaques, and the Ledger is the one that shows
+> what a card needs and leads to. A plaque whose card is on offer wears a CLAIM tag (faded when the
+> wallet can't pay), the header counts them, the pane has Claim and, with a voucher, Voucher, and a
+> guide step that wants a card opens the pane on its plaque. The tab is renamed **Workshop** and
+> keeps the floor, Docks and pack rows, with one line counting the cards waiting in the Ledger.
 
 **Use `AssemblyLineState`.** This is the exact follow-up M9 deferred, and the system already has
 cost decay, claiming and drip-feed refill, all tested. Four changes:

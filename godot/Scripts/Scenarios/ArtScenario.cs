@@ -76,11 +76,10 @@ namespace GolemFactory.Nodes.Scenarios
             Do("every manifest entry loads at its size", CheckManifestLoads);
             Do("every sprite under res://art has an entry", CheckEveryFileListed);
             Do("every name the data and the code build exists", CheckBuiltNames);
-            Do("hide the player and the guide", () =>
+            Do("hide the player", () =>
             {
                 _player.TeleportTo(new Compat.Vector3(-2f, -19f, 0f));
                 _player.Visible = false;
-                _world.Tutorial?.Playtest?.Skip(0f);
                 return null;
             });
             foreach (string chassis in _world.Definitions.Chassis.Keys.OrderBy(k => k, StringComparer.Ordinal))

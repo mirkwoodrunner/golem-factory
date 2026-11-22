@@ -87,25 +87,12 @@ namespace GolemFactory.Nodes.Scenarios
             BackgroundFrameCap.EvenUnderScenario = false;
         }
 
-        // --- 0. A fresh game, the playtest card answered (a click: the screens are D6) --------
+        // --- 0. A fresh game, the guide put away -----------------------------------------------
 
         private void PlanStart()
         {
-            Do("answer the playtest's first question", () =>
+            Do("the guide put away, the clock running", () =>
             {
-                var playtest = Tree.Root.FindChild("Playtest", true, false) as PlaytestNode;
-                if (playtest?.Card.Visible == true)
-                {
-                    Click(playtest.Options.GetChildren().OfType<Button>().First());
-                }
-                return null;
-            });
-            Do("the card down, the guide put away, the clock running", () =>
-            {
-                if ((Tree.Root.FindChild("Playtest", true, false) as PlaytestNode)?.Card.Visible == true)
-                {
-                    return "the card is still up";
-                }
                 Sandbox.Tutorial?.Dismiss();
                 Sandbox.Clock.Play();
                 return null;

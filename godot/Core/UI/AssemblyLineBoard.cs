@@ -29,6 +29,12 @@ namespace GolemFactory.UI
 
         /// <summary>The Docks' floor (docs/region-design.md §1). Appended.</summary>
         Docks,
+
+        /// <summary>
+        /// Where cards are claimed: the Ledger's plaques, with how many are ready (2026-11-21).
+        /// Appended. The tab lists no cards of its own any more.
+        /// </summary>
+        Cards,
     }
 
     /// <summary>One row of the Assembly Line tab, decided; the screen only lays it out.</summary>
@@ -62,11 +68,17 @@ namespace GolemFactory.UI
     }
 
     /// <summary>
-    /// The Assembly Line tab: Unity's AssemblyLinePanel with its UGUI taken out (G8). The wallet
-    /// line, the golem cap's row (how many stand, of how many), the floor-expansion row (the only
-    /// place to buy more workshop), one row per card the player can claim now, at its whole fixed
-    /// price, with a Claim (2026-11-19: every unlock at once, the player's pick, no draft row), and
-    /// the cards still waiting on prerequisites with what each needs.
+    /// The Workshop tab (it was the Assembly Line tab): Unity's AssemblyLinePanel with its UGUI
+    /// taken out (G8). The wallet line, the golem cap's row (how many stand, of how many), the
+    /// floor-expansion row (the only place to buy more workshop), the Docks' and the pack's rows,
+    /// and one line saying how many cards the Ledger has ready to claim.
+    ///
+    /// <para>
+    /// CARDS ARE CLAIMED IN THE LEDGER (2026-11-21, the user's call). With the draft row gone
+    /// (2026-11-19) the tab's card list was a second copy of the Ledger's plaques, and the Ledger
+    /// is the one that shows what a card needs and leads to. The claim itself still lives here
+    /// (<see cref="Claim"/>, <see cref="ClaimWithVoucher"/>): the Ledger's pane calls it.
+    /// </para>
     ///
     /// <para>
     /// THE WALLET IS THE STOCKPILE. Unity's panel charged claims from <c>ScrapBuffer</c> -- a
@@ -78,10 +90,13 @@ namespace GolemFactory.UI
     public sealed class AssemblyLineBoard
     {
         public const string UnavailableMessage = "Assembly line unavailable: no line state wired.";
-        public const int MaxWaitingRowsShown = 4;
 
-        /// <summary>The row when nothing can be claimed.</summary>
-        public const string NothingToClaim = "Nothing to claim right now: make a new good to unlock more.";
+        /// <summary>The cards row when nothing can be claimed.</summary>
+        public const string NothingToClaim = "Cards: nothing to claim right now. Make a new good to unlock more.";
+
+        /// <summary>The cards row when some can: "Cards: 3 ready to claim in the Ledger".</summary>
+        public static string ReadyToClaim(int count) =>
+            "Cards: " + count + (count == 1 ? " is" : " are") + " ready to claim on the Ledger tab";
 
         private readonly AssemblyLineState _line;
         private readonly StorageBufferRegistry _buffers;
@@ -230,63 +245,22 @@ namespace GolemFactory.UI
                 }
             }
 
-            // Every card on offer, the one the guide asks for first, then the deck's order.
-            IReadOnlyList<DraftableCardDefinition> offers = _line.Offers;
-            List<DraftableCardDefinition> ordered = offers.Where(c => _wanted?.Invoke(c) == true)
-                .Concat(offers.Where(c => _wanted?.Invoke(c) != true)).ToList();
-            if (ordered.Count == 0)
+            // The cards are the Ledger's (2026-11-21): one line saying how many wait there.
+            int offered = _line.Offers.Count;
+            rows.Add(new AssemblyLineRow
             {
-                rows.Add(new AssemblyLineRow { Kind = AssemblyLineRowKind.EmptySlot, Text = NothingToClaim });
-            }
-            foreach (DraftableCardDefinition card in ordered)
-            {
-                // THE WHOLE PRICE, not its Scrap component: R4 Iron Smelting costs Scrap AND
-                // Coke, and once advertised only the Scrap, lit Claim off a Scrap-only check,
-                // and refused the sale.
-                IReadOnlyList<RecipeIngredient> price = AssemblyLineState.PriceOf(card);
-                rows.Add(new AssemblyLineRow
-                {
-                    Kind = AssemblyLineRowKind.Slot,
-                    Text = WorkbenchDiagnostics.Humanize(card.DisplayName),
-                    Bright = true,
-                    CostText = price.Count == 0 ? "free" : RecipeLedger.FormatBundle(price),
-                    Affordable = CanAfford(price),
-                    ButtonLabel = "Claim",
-                    Card = card,
-                });
-            }
+                Kind = AssemblyLineRowKind.Cards,
+                Text = offered == 0 ? NothingToClaim : ReadyToClaim(offered),
+                Bright = offered > 0,
+            });
 
-            IReadOnlyList<DraftableCardDefinition> waiting = _line.WaitingCards;
-            if (waiting != null && waiting.Count > 0)
-            {
-                rows.Add(new AssemblyLineRow { Kind = AssemblyLineRowKind.WaitingHeader, Text = "Waiting on prerequisites: " + waiting.Count });
-                int shown = 0;
-                for (int i = 0; i < waiting.Count && shown < MaxWaitingRowsShown; i++)
-                {
-                    if (waiting[i] == null)
-                    {
-                        continue;
-                    }
-                    rows.Add(new AssemblyLineRow
-                    {
-                        Kind = AssemblyLineRowKind.Waiting,
-                        Text = WorkbenchDiagnostics.Humanize(waiting[i].DisplayName),
-                        CostText = "needs " + WorkbenchDiagnostics.Humanize(_line.DescribeMissingPrerequisites(waiting[i])),
-                    });
-                    shown++;
-                }
-                if (waiting.Count > shown)
-                {
-                    rows.Add(new AssemblyLineRow { Kind = AssemblyLineRowKind.More, Text = "... and " + (waiting.Count - shown) + " more further up the tree" });
-                }
-            }
             // A voucher buys any row's next step that goods could buy now (2026-11-19).
             if (_vouchers?.Any == true)
             {
                 foreach (AssemblyLineRow row in rows)
                 {
                     row.VoucherButton = row.ButtonLabel != null && !row.CostText.StartsWith("Requires")
-                        && (row.Kind == AssemblyLineRowKind.Slot || row.Kind == AssemblyLineRowKind.Floor
+                        && (row.Kind == AssemblyLineRowKind.Floor
                             || row.Kind == AssemblyLineRowKind.Docks || row.Kind == AssemblyLineRowKind.Pack);
                 }
             }
@@ -296,12 +270,18 @@ namespace GolemFactory.UI
         /// <summary>A card was claimed: the latch.</summary>
         public event Action Claimed;
 
-        /// <summary>The guide's wanted card, listed first; null lists the deck's order alone.</summary>
+        /// <summary>The guide's wanted card, which the Ledger opens on; null wants none.</summary>
         public void ConfigureWanted(Func<DraftableCardDefinition, bool> wanted) => _wanted = wanted;
 
         private Func<DraftableCardDefinition, bool> _wanted;
 
-        /// <summary>A Claim button, on the Assembly Line tab or a Ledger plaque: <paramref name="card"/> at its price.</summary>
+        /// <summary>Whether the guide's current step asks for <paramref name="card"/>.</summary>
+        public bool IsWanted(DraftableCardDefinition card) => card != null && _wanted?.Invoke(card) == true;
+
+        /// <summary>Whether the player holds a city voucher to spend.</summary>
+        public bool HasVoucher => _vouchers?.Any == true;
+
+        /// <summary>A Ledger plaque's Claim: <paramref name="card"/> at its price.</summary>
         public bool Claim(DraftableCardDefinition card)
         {
             if (card == null || _line == null)
@@ -343,13 +323,7 @@ namespace GolemFactory.UI
             switch (row.Kind)
             {
                 case AssemblyLineRowKind.Slot:
-                    done = row.Card != null && _vouchers.TrySpend(() => _line.TryClaimFree(row.Card, _userId));
-                    Status = done ? $"Claimed {WorkbenchDiagnostics.Humanize(row.Card.DisplayName)} with a voucher." : "That card can't be claimed now.";
-                    if (done)
-                    {
-                        Claimed?.Invoke();
-                    }
-                    return done;
+                    return ClaimWithVoucher(row.Card);
                 case AssemblyLineRowKind.Floor:
                     done = _floor != null && _vouchers.TrySpend(() => _floor.TryPurchaseExpansion(free: true));
                     Status = done ? "Extended with a voucher." : _floor?.LastStatusMessage ?? "";
@@ -365,6 +339,23 @@ namespace GolemFactory.UI
                 default:
                     return false;
             }
+        }
+
+        /// <summary>A Ledger plaque's Voucher: <paramref name="card"/> for one city voucher instead of goods.</summary>
+        public bool ClaimWithVoucher(DraftableCardDefinition card)
+        {
+            if (_vouchers?.Any != true)
+            {
+                Status = "No vouchers to spend: the City Office pays them for contracts and golem orders.";
+                return false;
+            }
+            bool done = card != null && _line != null && _vouchers.TrySpend(() => _line.TryClaimFree(card, _userId));
+            Status = done ? $"Claimed {WorkbenchDiagnostics.Humanize(card.DisplayName)} with a voucher." : "That card can't be claimed now.";
+            if (done)
+            {
+                Claimed?.Invoke();
+            }
+            return done;
         }
 
         public bool ExtendFloor()

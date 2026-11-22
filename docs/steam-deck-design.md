@@ -4,7 +4,7 @@
 owner's. D4, the gamepad's model, is built, with D5.1's build cursor pulled in so a pad can place
 (§7's input audit and "D4 as built"). D5.2, the hover card at the pad's cursor, is built (§7's
 "D5.2 as built"). D6's screens are built: the Workbench (D6.W, decided and built), the station's panel, the Crate
-and Pack screens, the playtest card, the Management screen with all its tabs, the title with its
+and Pack screens, the Management screen with all its tabs, the title with its
 Settings and Load, the cart panel and the City Office's notice. Still pointer-only: the Overview
 map's hover card and its click on a golem. D6's exit, the playtest script played with no mouse or
 keyboard, is the owner's to try. D7 is built: text names the pad's buttons by the Deck's labels
@@ -270,7 +270,7 @@ shoulders for a card's dials, and focus follows the hint. As decided, it replace
   the device changes.
 - **The ring** is cream, solid and 3 px, set 7 px out from the stop, beside the hint's pulsing
   brass. It shows only while the pad is in use.
-- **Checked by** `gamepad-ui` (joypad events only after the playtest card's click): open by A at
+- **Checked by** `gamepad-ui` (joypad events only): open by A at
   the golem with nothing sent; three sends, the ring following the hint to the lever; LB and the
   d-pad heard by nothing behind the screen; RT and LT on STEP 1's dial; X and a send back; every
   step full; RB and LB on a Haul's good; A on the lever engages; B closes; a long vault walked to
@@ -311,7 +311,10 @@ shoulders for a card's dials, and focus follows the hint. As decided, it replace
   caught). Frames `pad-station`, `pad-crate`, `pad-crate-picker`,
   `pad-pack`.
 
-**The playtest card and the Management screen by pad, as built 2026-11-09** (same branch):
+**The playtest card and the Management screen by pad, as built 2026-11-09** (same branch). The
+playtest card, its `card_answer` binding and `InputDevices.OverlayHoldsPad` were removed on
+2026-11-21 with the guide's playtest questions, so the d-pad's left is free again; the card's
+bullet is kept as history.
 - **The playtest card isn't a full screen.** It sits over the world while the player plays, so
   the pad isn't the card's until the player asks. **The d-pad's left** (`card_answer`, the one
   pad button the world left free) takes the pad into the card, and with the pad in use the card

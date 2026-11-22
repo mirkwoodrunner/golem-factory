@@ -8,45 +8,21 @@ using GolemFactory.Tutorial;
 namespace GolemFactory.Nodes
 {
     /// <summary>
-    /// Playtest mode's Godot half (G10): the "Your call" card that asks Core's
-    /// <see cref="PlaytestSession"/> questions, the hook that records what the game logs as an
-    /// error, and the report file, kept current on disk as the session changes so a crash still
-    /// leaves one behind.
-    ///
-    /// <para>
-    /// The card takes the guide plate's place, under the Clock Tower panel, and the guide hides
-    /// while it is up; neither shows over a full screen. Typing a note does not walk the player
-    /// (<see cref="TextEntry"/>).
-    /// </para>
+    /// Playtest mode's Godot half (G10): the hook that records what the game logs as an error,
+    /// each frame's wall time, and Core's <see cref="PlaytestSession"/> report, kept current on
+    /// disk as the session changes so a crash still leaves one behind. (Its "Your call" card,
+    /// which asked the playtest questions, was removed on 2026-11-21.)
     /// </summary>
     public partial class PlaytestNode : CanvasLayer
     {
         public const string ReportPath = "user://playtest-report.md";
 
-        private static readonly Color Amber = new Color(0.95f, 0.72f, 0.33f, 1f);
-        private static readonly Color Ink = new Color(0.93f, 0.89f, 0.80f, 1f);
-        private static readonly Color Dim = new Color(0.70f, 0.66f, 0.58f, 1f);
-        private const float CardWidth = 340f;
-
         private WorldNode _world;
         private PlaytestSession _session;
         private PlaytestLogger _logger;
-        private Panel _card;
-        private Label _prompt;
-        private HFlowContainer _options;
-        private LineEdit _note;
-        private Button _skip;
-        private VBoxContainer _column;
-        private PlaytestQuestion _shown;
         private int _writtenVersion = -1;
         private float _sinceWrite;
 
-        /// <summary>For scenarios.</summary>
-        public Control Card => _card;
-        public string PromptText => _prompt?.Text ?? "";
-        public HFlowContainer Options => _options;
-        public LineEdit Note => _note;
-        public Button SkipButton => _skip;
         /// <summary>
         /// Where the report goes. Scenario runs write their own file, so a test run can never
         /// overwrite the report from a real playtest.
@@ -81,17 +57,12 @@ namespace GolemFactory.Nodes
 
             _logger = new PlaytestLogger();
             OS.AddLogger(_logger);
-            BuildCard();
             ArchivePreviousReport();
             WriteReport();
         }
 
         public override void _ExitTree()
         {
-            if (_padHeld)
-            {
-                InputDevices.OverlayHoldsPad = false; // a reload under the card must not leave the world deaf to the pad
-            }
             if (_logger != null)
             {
                 OS.RemoveLogger(_logger);
@@ -119,21 +90,6 @@ namespace GolemFactory.Nodes
             }
 
             RecordFrame();
-
-            PlaytestQuestion question = _session.Current;
-            bool show = question != null && !ModalScreens.AnyOpen(GetTree());
-            _card.Visible = show;
-            if (show && question != _shown)
-            {
-                ShowQuestion(question);
-            }
-            PadProcess(delta, show);
-            if (show)
-            {
-                // Grows to the question: a long prompt or a second row of answers pushed the Skip
-                // button out of a fixed-height card.
-                _card.Size = new Vector2(CardWidth, _column.GetCombinedMinimumSize().Y + 18f);
-            }
 
             // Rewrite the report when it changed, at most once a second.
             _sinceWrite += (float)delta;
@@ -167,97 +123,6 @@ namespace GolemFactory.Nodes
             }
             _session.RecordFrame(sandbox.Tutorial.ChapterOf(sandbox.Tutorial.Index), (now - last) / 1000.0,
                 sandbox.Golems.Count(g => !g.IsRemoved), belts);
-        }
-
-        private void BuildCard()
-        {
-            _card = Ugui.Image("PlaytestCard", Ugui.NineSlice("res://art/UI/Hud/hud_panel_bolted.png", 12, 10, 12, 10), new Color(0.12f, 0.08f, 0.05f, 0.97f));
-            // Only its buttons and note field take clicks; the plate's empty area passes them to
-            // the world beneath, as the guide plate's does (a build click there was swallowed).
-            _card.MouseFilter = Control.MouseFilterEnum.Ignore;
-            _card.Visible = false;
-            Ugui.Place(_card, 1f, 1f, 1f, 1f, -12f, -168f, CardWidth, 210f, 1f, 1f);
-            AddChild(_card);
-
-            var column = Ugui.Fill(new VBoxContainer { Name = "Column", MouseFilter = Control.MouseFilterEnum.Ignore });
-            _column = column;
-            column.OffsetLeft = 14f;
-            column.OffsetRight = -14f;
-            column.OffsetTop = 10f;
-            column.OffsetBottom = -8f;
-            column.AddThemeConstantOverride("separation", 6);
-            _card.AddChild(column);
-
-            Label counter = _counter = Ugui.Text("Counter", CounterText, 12, Dim);
-            column.AddChild(counter);
-            _prompt = Ugui.Text("Prompt", "", 14, Amber, bold: true);
-            _prompt.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            // Ugui.Text clips (a one-line HUD label); a clipping label asks for no height, so in a
-            // container a wrapped prompt collapsed to nothing. This one grows to its lines.
-            _prompt.ClipText = false;
-            _prompt.TextOverrunBehavior = TextServer.OverrunBehavior.NoTrimming;
-            _prompt.CustomMinimumSize = new Vector2(CardWidth - 28f, 0f);
-            column.AddChild(_prompt);
-
-            _options = new HFlowContainer { Name = "Options", MouseFilter = Control.MouseFilterEnum.Ignore };
-            _options.AddThemeConstantOverride("h_separation", 6);
-            _options.AddThemeConstantOverride("v_separation", 6);
-            column.AddChild(_options);
-
-            _note = new LineEdit { Name = "Note", PlaceholderText = "Add a note (optional), then pick an answer" };
-            _note.AddThemeFontSizeOverride("font_size", 12);
-            column.AddChild(_note);
-
-            var footer = new HBoxContainer();
-            footer.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill });
-            _skip = new Button { Name = "Skip", Flat = true, FocusMode = Control.FocusModeEnum.None, Text = "Skip question" };
-            _skip.AddThemeFontSizeOverride("font_size", 12);
-            _skip.AddThemeColorOverride("font_color", Dim);
-            _skip.Pressed += () => Answer(null);
-            footer.AddChild(_skip);
-            column.AddChild(footer);
-            _pad = new PadFocus(_card);
-        }
-
-        private void ShowQuestion(PlaytestQuestion question)
-        {
-            _shown = question;
-            _prompt.Text = question.Prompt;
-            foreach (Node child in _options.GetChildren())
-            {
-                _options.RemoveChild(child);
-                child.QueueFree();
-            }
-            foreach (string option in question.Options)
-            {
-                var button = new Button
-                {
-                    Name = option.Replace(" ", "").Replace(",", ""),
-                    Text = option,
-                    FocusMode = Control.FocusModeEnum.None,
-                };
-                button.AddThemeFontSizeOverride("font_size", 12);
-                string choice = option;
-                button.Pressed += () => Answer(choice);
-                _options.AddChild(button);
-            }
-            _note.Text = "";
-        }
-
-        private void Answer(string choice)
-        {
-            if (choice == null)
-            {
-                _session.Skip(Now);
-            }
-            else
-            {
-                _session.Answer(choice, _note.Text, Now);
-            }
-            _note.Text = "";
-            _note.ReleaseFocus();
-            _shown = null;
-            WriteReport();
         }
 
         /// <summary>

@@ -97,8 +97,8 @@ input and note the console's lowest FPS in that minute. That is the run's endgam
 
 ## The questions
 
-Asked as **PLAYTEST · your call** cards (`PlaytestSession`), at the step named. New in Phase 3;
-the existing questions stay where they are.
+The guide no longer asks these in game (cleared 2026-11-21); ask them after the run, or answer them
+in your notes. New in Phase 3.
 
 | Id | Asked at step | Question | Answers |
 |---|---|---|---|
@@ -109,10 +109,8 @@ the existing questions stay where they are.
 | `stage-rate` | `done` | How fast did the Foundation build at your rate? | Fair · Slow · It kept freezing |
 | `whole-run` | `done` | Which chapter dragged? | None · 5 · 6 · 7 · 8 · 9 · 10 |
 
-The ids are the questions' saved names, like a step's `Id`; don't rename one. `carts-late`
-replaced `market-late` when supply carts replaced truckloads (docs/supply-design.md), with a new
-id so a save that answered the old question is asked the new one; chapter 3's `market` became
-`carts` the same way.
+`carts-late` replaced `market-late` when supply carts replaced truckloads
+(docs/supply-design.md); chapter 3's `market` became `carts` the same way.
 
 ## After the run
 

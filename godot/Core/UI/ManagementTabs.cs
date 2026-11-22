@@ -66,14 +66,15 @@ namespace GolemFactory.UI
 
         /// <summary>
         /// The tab bar's labels, as the docs name the tabs (docs/pack-upgrades-design.md §8.15):
-        /// "Assembly Line", "Save / Load", and the tech tree as "Ledger". Display text only;
-        /// nothing finds a tab by it.
+        /// "Save / Load", and the tech tree as "Ledger". The AssemblyLine tab reads "Workshop"
+        /// (2026-11-21): its cards moved to the Ledger, and what it still sells is the workshop's
+        /// own growth (floor, Docks, pack). Display text only; nothing finds a tab by it.
         /// </summary>
         public static string Label(ManagementTab tab)
         {
             switch (tab)
             {
-                case ManagementTab.AssemblyLine: return "Assembly Line";
+                case ManagementTab.AssemblyLine: return "Workshop";
                 case ManagementTab.SaveLoad: return "Save / Load";
                 case ManagementTab.TechTree: return "Ledger";
                 default: return tab.ToString();

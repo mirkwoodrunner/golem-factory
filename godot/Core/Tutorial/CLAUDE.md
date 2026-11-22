@@ -42,8 +42,10 @@ through chapter 10, building reference lines from chapter 8, in about 6 s of wal
 (`docs/tuning-data-spec.md` §15.4, §18). A new step whose kit action grants goods instead of
 placing or building needs a case in `FloorPlayer.Perform` (or its `Needs`).
 
-A step that wants a card claimed names it (`TutorialStep.Card`), and the Assembly Line tab lists
-that card first (`AssemblyLineBoard.ConfigureWanted`). The line offers every card at once, at its
+A step that wants a card claimed names it (`TutorialStep.Card`), and the Ledger opens its pane on
+that card's plaque (`AssemblyLineBoard.ConfigureWanted`, `TechTreeReadout.WantedNodeId`). Cards are
+claimed in the Ledger only (2026-11-21); the Workshop tab (it was the Assembly Line tab) sells the
+floor, the Docks and the pack. The line offers every card at once, at its
 fixed price, but only once the factory has made every good its price asks for, so a claim is never
 one the player can't pay (2026-11-19: no draft slots, no decay).
 A step shown over the Workbench sets `TutorialStep.Workbench`. A kit action that moves the
@@ -78,10 +80,9 @@ and fails on the leftover word, naming the step.
 
 **Playtest mode writes `user://playtest-report.md`**, and keeps the previous session's as
 `playtest-report-<date>-<time>.md` before a new one starts (`PlaytestReportArchive`): every
-launch used to overwrite it. A question is asked as the chapter after its experience opens
-(`PlaytestQuestion.AfterStepId`); only the end-of-run ones (`tower`, `overclocker`,
-`stage-rate`, `whole-run`, `guide`) wait for `done`. A new question needs a new id: saves store
-the ids already asked, so reusing one (chapter 3's `market`) skips it. The
+launch used to overwrite it. It holds timings, frame rate, kit uses and errors; **the guide
+asks no playtest questions** (the user cleared them, 2026-11-21, with the "Your call" card and its
+pad binding). The
 kit's chapter 7 Save and Load use `kit-save.json` in the save folder, which is never a slot
 (`SaveSlots.KitFileName`). Scenario runs write
 `user://scenario-playtest-report.md` instead, and save to `user://scenario-saves`

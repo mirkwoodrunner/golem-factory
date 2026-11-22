@@ -50,21 +50,8 @@ namespace GolemFactory.Nodes.Scenarios
             GameSettingsStore.ResetForScenario(Tree.Root);
             Do("no saves", () => { ScenarioSaves.Clear(); return null; });
             Wait(0.5);
-            Do("answer the playtest's first question", () =>
-            {
-                var playtest = Tree.Root.FindChild("Playtest", true, false) as PlaytestNode;
-                if (playtest?.Card.Visible == true)
-                {
-                    Click(playtest.Options.GetChildren().OfType<Button>().First());
-                }
-                return null;
-            });
             Do("a campaign's endgame: the pack at 250, tower goods in the pack", () =>
             {
-                if ((Tree.Root.FindChild("Playtest", true, false) as PlaytestNode)?.Card.Visible == true)
-                {
-                    return "the card is still up";
-                }
                 Sandbox.Tutorial?.Dismiss();
                 Sandbox.Clock.Play();
                 Sandbox.PackUpgrade.Restore(3);
@@ -87,7 +74,7 @@ namespace GolemFactory.Nodes.Scenarios
         private void PlanBeforeTheTower()
         {
             Do("Tab", () => { Tap(Key.Tab); return null; });
-            Do("click Assembly Line", () => { Click(Management.TabButtons[ManagementTab.AssemblyLine]); return null; });
+            Do("click Workshop", () => { Click(Management.TabButtons[ManagementTab.AssemblyLine]); return null; });
             Do("the golem cap is fixed, with no button", () =>
             {
                 string text = RowText("BayRow")?.Text ?? "";
@@ -108,7 +95,7 @@ namespace GolemFactory.Nodes.Scenarios
                 return Sandbox.EndlessOpen ? null : "endless play didn't open";
             });
             Do("Tab", () => { Tap(Key.Tab); return null; });
-            Do("click Assembly Line", () => { Click(Management.TabButtons[ManagementTab.AssemblyLine]); return null; });
+            Do("click Workshop", () => { Click(Management.TabButtons[ManagementTab.AssemblyLine]); return null; });
             Wait(0.1); // the rows are rebuilt; a button has no size until the frame after
             Do("click Upgrade on the Pack row", () =>
             {
@@ -168,7 +155,7 @@ namespace GolemFactory.Nodes.Scenarios
                     return $"rung {_coal.Cart.RateRung}: {Carts.Status}";
                 }
                 Tap(Key.Escape);
-                Log($"the golem cap fixed at 112 with no button, the pack 250 -> 300 through the Assembly Line tab, a Coal cart to rung 4 ({_coal.Cart.RatePerMinute} a minute) through its panel");
+                Log($"the golem cap fixed at 112 with no button, the pack 250 -> 300 through the Workshop tab, a Coal cart to rung 4 ({_coal.Cart.RatePerMinute} a minute) through its panel");
                 return null;
             });
         }

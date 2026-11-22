@@ -683,9 +683,20 @@ namespace GolemFactory.Tests.Tutorial
                     int runs = (plates + r4.outputQuantity - 1) / r4.outputQuantity;
                     foreach (RecipeIngredient input in r4.inputs)
                     {
-                        int want = Math.Min(crate.Buffer.CapacityPerType, input.quantity * runs) - crate.Buffer.GetQuantity(input.itemType);
-                        // Topped up a batch at a time, so the smelter runs while the next is earned.
-                        if (want < input.quantity * 4)
+                        int have = crate.Buffer.GetQuantity(input.itemType);
+                        int need = Math.Min(crate.Buffer.CapacityPerType, input.quantity * runs);
+                        // Topped up a batch at a time, so the smelter runs while the next is earned:
+                        // fed only once the crate holds less than four runs, or less than the
+                        // order's last runs when fewer remain. Skipping every top-up under four
+                        // runs left a crate short of an order's last runs empty for good (found
+                        // when the boiler's cap fell to 100 and the timing moved).
+                        int batch = Math.Min(crate.Buffer.CapacityPerType, input.quantity * 4);
+                        if (have >= Math.Min(need, batch))
+                        {
+                            continue;
+                        }
+                        int want = need - have;
+                        if (want <= 0)
                         {
                             continue;
                         }

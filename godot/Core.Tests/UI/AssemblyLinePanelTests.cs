@@ -32,41 +32,48 @@ namespace GolemFactory.Tests.UI
             return (new AssemblyLineBoard(line, buffers, Wallet), line, buffers);
         }
 
-        private static AssemblyLineRow ClaimRow(AssemblyLineBoard board) =>
-            board.Rows().First(r => r.ButtonLabel == "Claim");
+        private static DraftableCardDefinition OnlyCard(AssemblyLineState line) => line.Offers.Single();
 
+        // 2026-11-21: cards are claimed in the Ledger. The tab lists none, only how many wait there.
         [Test]
-        public void Refresh_BuildsOneRowPerOffer_PlusTheWalletHeader()
+        public void Rows_ListNoCards_OnlyTheWalletAndTheLedgersCount()
         {
             var (board, line, _) = Build();
 
             // Row 0 is the wallet balance -- the cost columns below are meaningless without it.
             List<AssemblyLineRow> rows = board.Rows();
-            Assert.AreEqual(line.Offers.Count + 1, rows.Count);
             Assert.AreEqual(AssemblyLineRowKind.Wallet, rows[0].Kind);
-            Assert.AreEqual("10 Scrap", rows[1].CostText, "its whole fixed price");
+            Assert.IsFalse(rows.Any(r => r.ButtonLabel == "Claim" || r.Kind == AssemblyLineRowKind.Slot), "no card rows");
+            AssemblyLineRow cards = rows.Single(r => r.Kind == AssemblyLineRowKind.Cards);
+            Assert.AreEqual(AssemblyLineBoard.ReadyToClaim(line.Offers.Count), cards.Text);
+            Assert.IsTrue(cards.Bright);
+            Assert.IsNull(cards.ButtonLabel);
         }
 
         [Test]
-        public void WithNothingOnOffer_TheRowSaysHowMoreUnlock()
+        public void WithNothingOnOffer_TheCardsRowSaysHowMoreUnlock()
         {
             var board = new AssemblyLineBoard(new AssemblyLineState(), new StorageBufferRegistry(), Wallet);
-            AssemblyLineRow row = board.Rows().Single(r => r.Kind == AssemblyLineRowKind.EmptySlot);
+            AssemblyLineRow row = board.Rows().Single(r => r.Kind == AssemblyLineRowKind.Cards);
             Assert.AreEqual(AssemblyLineBoard.NothingToClaim, row.Text);
-            Assert.IsNull(row.ButtonLabel);
+            Assert.IsFalse(row.Bright);
         }
 
         [Test]
-        public void TheGuidesCard_IsListedFirst()
+        public void TheGuidesCard_IsTheWantedOne()
         {
             var line = new AssemblyLineState();
             DraftableCardDefinition a = new DraftableCardDefinition { name = "A", appendage = new AppendageActionDefinition { name = "A" } };
             DraftableCardDefinition b = new DraftableCardDefinition { name = "B", appendage = new AppendageActionDefinition { name = "B" } };
             line.SeedCandidates(new[] { a, b });
             var board = new AssemblyLineBoard(line, new StorageBufferRegistry(), Wallet);
+            Assert.IsFalse(board.IsWanted(b), "nothing wanted until the guide says");
+
             board.ConfigureWanted(c => c == b);
 
-            CollectionAssert.AreEqual(new[] { b, a }, board.Rows().Where(r => r.Kind == AssemblyLineRowKind.Slot).Select(r => r.Card));
+            Assert.IsTrue(board.IsWanted(b));
+            Assert.IsFalse(board.IsWanted(a));
+            Assert.IsFalse(board.IsWanted(null));
         }
 
         // The header used to read "Wallet: 7 Scrap (ScrapBuffer)": a buffer id shown to the
@@ -103,22 +110,22 @@ namespace GolemFactory.Tests.UI
         }
 
         [Test]
-        public void Refresh_UnaffordableSlot_DisablesItsClaimButton()
+        public void AnUnaffordableCard_SaysSoBeforeTheClick()
         {
-            var (board, _, buffers) = Build();
-            Assert.IsFalse(ClaimRow(board).Affordable, "An unaffordable card should say so before the click, not after");
+            var (board, line, buffers) = Build();
+            Assert.IsFalse(board.CanAffordCard(OnlyCard(line)), "An unaffordable card should say so before the click, not after");
 
             buffers.Deposit(Wallet, ItemType.Scrap, 1000);
 
-            Assert.IsTrue(ClaimRow(board).Affordable);
+            Assert.IsTrue(board.CanAffordCard(OnlyCard(line)));
         }
 
         [Test]
-        public void ClaimButton_InsufficientFunds_ShowsStatusMessage()
+        public void Claim_InsufficientFunds_ShowsStatusMessage()
         {
-            var (board, _, _) = Build();
+            var (board, line, _) = Build();
 
-            board.Claim(ClaimRow(board).Card);
+            board.Claim(OnlyCard(line));
 
             // The refusal names the PRICE, not just the fact of it.
             StringAssert.Contains("Cannot afford", board.Status);
@@ -127,16 +134,17 @@ namespace GolemFactory.Tests.UI
         }
 
         [Test]
-        public void ClaimButton_SufficientFunds_WithdrawsAndTheRowGoes()
+        public void Claim_SufficientFunds_WithdrawsAndTheCountDrops()
         {
-            var (board, _, buffers) = Build();
+            var (board, line, buffers) = Build();
             buffers.Deposit(Wallet, ItemType.Scrap, 10);
 
-            Assert.IsTrue(board.Claim(ClaimRow(board).Card));
+            Assert.IsTrue(board.Claim(OnlyCard(line)));
 
             Assert.AreEqual(0, buffers.GetQuantity(Wallet, ItemType.Scrap));
             Assert.IsTrue(board.Status.StartsWith("Claimed"));
-            Assert.IsFalse(board.Rows().Any(r => r.ButtonLabel == "Claim"), "claimed once and gone");
+            Assert.AreEqual(AssemblyLineBoard.NothingToClaim, board.Rows().Single(r => r.Kind == AssemblyLineRowKind.Cards).Text,
+                "claimed once and gone");
         }
     }
 }

@@ -69,7 +69,7 @@ namespace GolemFactory.Tests.UI
         public void TabLabels_ReadAsTheDocsNameThem()
         {
             CollectionAssert.AreEqual(
-                new[] { "Overview", "Inventory", "Assembly Line", "Patents", "Save / Load", "Ledger", "Settings" },
+                new[] { "Overview", "Inventory", "Workshop", "Patents", "Save / Load", "Ledger", "Settings" },
                 ManagementTabs.BarOrder.Select(ManagementTabs.Label));
         }
 

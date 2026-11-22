@@ -1,6 +1,4 @@
-using System.Linq;
 using GolemFactory.Data;
-using GolemFactory.Economy;
 using GolemFactory.Tests.Data;
 using GolemFactory.Tests.World;
 using GolemFactory.Tutorial;
@@ -16,71 +14,6 @@ namespace GolemFactory.Tests.Tutorial
         {
             DefinitionSet definitions = AuthoredData.Load();
             return SandboxWorld.Compose(definitions, SandboxSetupTests.LoadReal(), PlaceableCatalogTests.LoadReal(definitions));
-        }
-
-        [Test]
-        public void EveryQuestion_WaitsForAStepTheGuideHas()
-        {
-            SandboxWorld world = Compose();
-            var stepIds = world.Tutorial.Steps.Select(s => s.Id).ToList();
-            foreach (PlaytestQuestion question in PlaytestSession.Questions)
-            {
-                CollectionAssert.Contains(stepIds, question.AfterStepId, question.Id);
-                Assert.GreaterOrEqual(question.Options.Count, 2, question.Id);
-            }
-            CollectionAssert.AllItemsAreUnique(PlaytestSession.Questions.Select(q => q.Id));
-        }
-
-        [Test]
-        public void TheSandboxRunsPlaytestMode_AndAsksAboutTheLightFirst()
-        {
-            SandboxWorld world = Compose();
-            PlaytestSession playtest = world.Tutorial.Playtest;
-
-            Assert.IsNotNull(playtest, "sandbox.json turns playtest mode on");
-            Assert.AreEqual("light", playtest.Current?.Id);
-        }
-
-        [Test]
-        public void AQuestion_WaitsUntilItsStep_ThenAnAnswerIsRecorded()
-        {
-            SandboxWorld world = Compose();
-            PlaytestSession playtest = world.Tutorial.Playtest;
-            playtest.Skip(1f);
-            Assert.IsNull(playtest.Current, "nothing else is due on step 1");
-
-            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 20);
-            world.Tutorial.Update();
-            Assert.IsNull(playtest.Current, "the Workbench question waits for the Workbench");
-
-            // Straight to the depot step: the first golem has been programmed.
-            foreach (string item in new[] { ItemType.Coal, ItemType.Coke, ItemType.IronPlate })
-            {
-                world.Buffers.Deposit(world.StockpileBufferId, item, 50);
-            }
-            world.Buffers.Deposit(world.StockpileBufferId, ItemType.Scrap, 200);
-            world.Build.SetActivePrefab(world.Placeables.Single(p => p.Key == "BoilerPrefab").Prefab);
-            world.Build.PlaceOrRemove(world.Tutorial.BoilerSpot);
-            world.Build.CancelPlacement();
-            world.Tutorial.Update();
-            var boiler = world.Build.Buildings.Single(b => !b.IsRemoved && b.Cell == world.Tutorial.BoilerSpot);
-            world.Interactor.TryRefuelBoiler(boiler.GetPart<Buildings.PlaceableBoiler>());
-            world.StarterStation.TryConstructGolem(world.Definitions.Chassis["ClockworkScavenger"], out var golem);
-            golem.Program.logicCore = world.Definitions.LogicCores["AlwaysOnCore"];
-            golem.Program.TryAddAppendage(world.Definitions.Appendages["ExtractScrap"]);
-            golem.Program.TryAddAppendage(world.Definitions.Appendages["PushOutput"]);
-            world.Tutorial.Update();
-            Assert.AreEqual("depot", world.Tutorial.Current.Id);
-
-            Assert.AreEqual("workbench", playtest.Current?.Id, "asked once the first program is written");
-            playtest.Answer("A real decision", "  the dial is nice  ", 120f);
-
-            Assert.AreEqual("hint", playtest.Current?.Id, "Phase 2's hint question waits behind it, at the same step");
-            playtest.Skip(121f);
-            Assert.IsNull(playtest.Current);
-            PlaytestAnswer answer = playtest.Answers.Single(a => a.QuestionId == "workbench");
-            Assert.AreEqual("A real decision", answer.Choice);
-            Assert.AreEqual("the dial is nice", answer.Note, "trimmed");
         }
 
         /// <summary>testscript/phase-2-playtest.md: the first fifteen minutes, timed to chapter 5.</summary>
@@ -105,7 +38,7 @@ namespace GolemFactory.Tests.Tutorial
         /// <summary>
         /// Phase 2's test pass: F9 in chapter 5 or later (the Phase 1 script carries on from
         /// here) doesn't void the chapters 1-4 time, an overrun prints past 15:00 as it is, and
-        /// the line sits at the top of the report, before the answers.
+        /// the line sits at the top of the report, before the chapter table.
         /// </summary>
         [Test]
         public void TheChaptersOneToFourLine_IgnoresLaterKitUse_AndPrintsAnOverrun()
@@ -120,12 +53,12 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual("Chapters 1–4: 18:05 (target 15:00) · kit used: no", playtest.ChaptersOneToFour());
             string report = playtest.Compose("Build: test", 1300f);
             Assert.Less(report.IndexOf("Chapters 1–4: 18:05", System.StringComparison.Ordinal),
-                report.IndexOf("## Your answers", System.StringComparison.Ordinal), "the line opens the report");
+                report.IndexOf("## Time per chapter", System.StringComparison.Ordinal), "the line opens the report");
             StringAssert.Contains("fast-forwarded chapter 5", report, "the later kit use is still reported");
         }
 
         /// <summary>
-        /// performance-report-template.md §5: "Time per chapter" (before the answers, each chapter
+        /// performance-report-template.md §5: "Time per chapter" (before the step timings, each chapter
         /// against its budget), the "Chapters 1–10" line once `done` is reached, and "Frame rate"
         /// (after the step timings) with each chapter's percentiles and its last counts.
         /// </summary>
@@ -142,7 +75,7 @@ namespace GolemFactory.Tests.Tutorial
             StringAssert.Contains("| 1 | 4:50 | 5:00 |", report);
             StringAssert.Contains("| 2 | 1:50 (so far) | 4:30 |", report);
             Assert.Less(report.IndexOf("## Time per chapter", System.StringComparison.Ordinal),
-                report.IndexOf("## Your answers", System.StringComparison.Ordinal));
+                report.IndexOf("## Time on each step", System.StringComparison.Ordinal));
 
             playtest.RecordKit("fast-forwarded chapter 8", 5000f);
             playtest.StepEntered("tower-visit", "Visit the tower", 7000f, 10);
@@ -183,11 +116,10 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
-        public void TheReport_HasAnswers_Timings_KitUses_AndErrors()
+        public void TheReport_HasTimings_KitUses_AndErrors_AndNoAnswers()
         {
             var playtest = new PlaytestSession();
             playtest.StepEntered("scrap", "Gather Scrap", 0f);
-            playtest.Answer("Too dark", "", 5f);
             playtest.StepEntered("coal", "Buy Coal", 95f);
             playtest.RecordKit("jumped to chapter 4", 100f);
             playtest.RecordError("NullReferenceException in Foo", 101f);
@@ -195,86 +127,11 @@ namespace GolemFactory.Tests.Tutorial
             string report = playtest.Compose("Build: test", 130f);
 
             StringAssert.Contains("Build: test", report);
-            StringAssert.Contains("**Look around the workshop. Is the room too dark?** Too dark", report);
+            StringAssert.DoesNotContain("## Your answers", report, "the guide asks no questions (cleared 2026-11-21)");
             StringAssert.Contains("| Gather Scrap | 0:00 | 1:35 |", report);
             StringAssert.Contains("| Buy Coal | 1:35 | 0:35 |", report);
             StringAssert.Contains("1:40  jumped to chapter 4", report);
             StringAssert.Contains("1:41  NullReferenceException in Foo", report);
-        }
-
-        [Test]
-        public void AQuestionIsAskedOnce_EvenIfItsStepComesRoundAgain()
-        {
-            var playtest = new PlaytestSession();
-            playtest.StepEntered("scrap", "Gather Scrap", 0f);
-            playtest.Skip(1f);
-            playtest.StepEntered("coal", "Buy Coal", 2f);
-            playtest.StepEntered("scrap", "Gather Scrap", 3f); // F1 after finishing restarts the guide
-
-            Assert.IsNull(playtest.Current);
-            Assert.AreEqual(1, playtest.Answers.Count);
-            Assert.AreEqual("skipped", playtest.Answers[0].Choice);
-        }
-
-        [Test]
-        public void ThePackUpgradeQuestions_AreAskedWhereTheDocSays()
-        {
-            // docs/pack-upgrades-design.md §6 and §8.5: the upgrade's question as `ledger` opens
-            // (the step after `pack`), the dear-room one as `frame-section` opens.
-            var after = PlaytestSession.Questions.ToDictionary(q => q.Id, q => q.AfterStepId);
-            Assert.AreEqual("ledger", after["pack-upgrade"]);
-            Assert.AreEqual("frame-section", after["dear-room"]);
-
-            SandboxWorld world = Compose();
-            var ids = world.Tutorial.Steps.Select(s => s.Id).ToList();
-            Assert.AreEqual(ids.IndexOf("pack") + 1, ids.IndexOf("ledger"), "`ledger` comes straight after `pack`");
-            Assert.AreEqual(ids.IndexOf("expand") + 1, ids.IndexOf("pack"), "`pack` comes straight after `expand`");
-        }
-
-        [Test]
-        public void OnlyTheTowerTheRunAndTheGuideItself_WaitForTheLastStep()
-        {
-            // A chapter's question is asked as the next chapter opens. Nine once waited for
-            // "done", after the Clock Tower's Foundation, so a playtest that stopped sooner never
-            // asked them at all. Chapter 10's own (the Overclocker it builds, the stage's rate)
-            // and the whole run's have nowhere later to go.
-            CollectionAssert.AreEquivalent(
-                new[] { "tower", "overclocker", "stage-rate", "whole-run", "guide" },
-                PlaytestSession.Questions.Where(q => q.AfterStepId == "done").Select(q => q.Id));
-        }
-
-        [Test]
-        public void ThePhaseThreeQuestions_AreAskedWhereTheFullPlaythroughSays()
-        {
-            // testscript/full-playthrough.md, "The questions" (its market question is `carts-late`).
-            var after = PlaytestSession.Questions.ToDictionary(q => q.Id, q => q.AfterStepId);
-            Assert.AreEqual("copper-ingot", after["coal-share"]);
-            Assert.AreEqual("post", after["carts-late"]);
-            Assert.AreEqual("aether-cell", after["lens-glass"]);
-            Assert.AreEqual("done", after["overclocker"]);
-            Assert.AreEqual("done", after["stage-rate"]);
-            Assert.AreEqual("done", after["whole-run"]);
-            Assert.AreEqual("program-coker", after["carts"], "chapter 3's market question, after the Coal cart's rung");
-            Assert.IsFalse(after.ContainsKey("market") || after.ContainsKey("market-late"),
-                "the truckload questions' ids aren't reused: a save that answered them must be asked these");
-        }
-
-        [Test]
-        public void EachChaptersQuestion_IsAskedBeforeTheChapterAfterNextBegins()
-        {
-            SandboxWorld world = Compose();
-            TutorialGuide guide = world.Tutorial;
-            int StepIndex(string id) => guide.Steps.ToList().FindIndex(s => s.Id == id);
-            var askedAt = PlaytestSession.Questions.ToDictionary(q => q.Id, q => guide.ChapterOf(StepIndex(q.AfterStepId)));
-
-            // Where each experience happens, and so the latest chapter its question may wait for.
-            Assert.LessOrEqual(askedAt["badge"], 5, "the stall on purpose is chapter 4");
-            Assert.LessOrEqual(askedAt["slag"], 6, "Slag is chapter 5");
-            Assert.LessOrEqual(askedAt["drag"], 6, "dragging is chapter 6");
-            Assert.LessOrEqual(askedAt["save-load"], 8, "save and load are chapter 7");
-            Assert.LessOrEqual(askedAt["goals"], 9, "the goal steps are chapter 8");
-            Assert.LessOrEqual(askedAt["zeppelin"], 10, "the Zeppelin is chapter 9");
-            Assert.LessOrEqual(askedAt["carry"], 2, "the first golem is carried in chapter 1");
         }
 
         [Test]

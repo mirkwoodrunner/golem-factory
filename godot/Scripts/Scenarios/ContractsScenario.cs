@@ -7,6 +7,7 @@ using GolemFactory.Economy;
 using GolemFactory.Golems;
 using GolemFactory.Menus;
 using GolemFactory.Player;
+using GolemFactory.Progression;
 using GolemFactory.PunchCards;
 using GolemFactory.Supply;
 using GolemFactory.UI;
@@ -26,7 +27,7 @@ namespace GolemFactory.Nodes.Scenarios
     ///   <item>I opens the office's crate: a click puts one Iron Plate in, a Shift-click all the
     ///   pack holds; the rest comes from a golem hauling from a depot and pushing into the office.</item>
     ///   <item>Done within par: the reward and the bonus are two vouchers (2026-11-19); Tab, the
-    ///   Assembly Line tab and a click on a row's Voucher buy its step for no goods. The
+    ///   Ledger and a click on a CLAIM-tagged plaque's Voucher claim its card for no goods. The
     ///   next contract posts.</item>
     ///   <item>Taken and part filled, saved to Slot 1, filled further, and loaded with two clicks:
     ///   the board is as saved.</item>
@@ -55,7 +56,6 @@ namespace GolemFactory.Nodes.Scenarios
         private ContractDefinition _first;
         private ContractDefinition _second;
         private int _vouchers;
-        private int _north;
         private string _spentOn;
 
         protected override void Plan()
@@ -78,21 +78,8 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void PlanStart()
         {
-            Do("answer the playtest's first question", () =>
+            Do("the guide put away; out in the square", () =>
             {
-                var playtest = Tree.Root.FindChild("Playtest", true, false) as PlaytestNode;
-                if (playtest?.Card.Visible == true)
-                {
-                    Click(playtest.Options.GetChildren().OfType<Button>().First());
-                }
-                return null;
-            });
-            Do("the card is down; the guide put away; out in the square", () =>
-            {
-                if ((Tree.Root.FindChild("Playtest", true, false) as PlaytestNode)?.Card.Visible == true)
-                {
-                    return "the card is still up";
-                }
                 Sandbox.Tutorial?.Dismiss();
                 Sandbox.Clock.Play();
                 _first = Board.Sequence[0];
@@ -300,26 +287,40 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
             Until("the HUD's contract line clears", 1, () => Hud.ContractLine == "" ? null : $"HUD still '{Hud.ContractLine}'");
-            Do("Tab", () => { _north = Sandbox.Bounds.NorthExtent; Tap(Key.Tab); return null; });
-            Do("click Assembly Line", () => { Click(Management.TabButtons[ManagementTab.AssemblyLine]); return null; });
-            Wait(0.1); // the rows are rebuilt; a button has no size until the frame after
-            Do("click the first row's Voucher", () =>
+            Do("Tab", () => { Tap(Key.Tab); return null; });
+            // 2026-11-21: cards are claimed in the Ledger, and a voucher buys one from its pane.
+            Do("click the Ledger", () => { Click(Management.TabButtons[ManagementTab.TechTree]); return null; });
+            Wait(0.1); // the tags are set on the tab's first frame
+            Do("click a plaque wearing its CLAIM tag", () =>
             {
-                Button voucher = Management.AssemblyLine.RowList.GetChildren().OfType<Control>()
-                    .Select(r => r.FindChild("Voucher", true, false) as Button).FirstOrDefault(b => b != null);
-                if (voucher == null)
+                TechTreeNode tagged = TechTreeCatalog.Nodes.FirstOrDefault(n => Management.Ledger.TagShown(n.Id));
+                if (tagged == null)
                 {
-                    return "no Voucher button on the tab: " + string.Join(", ", Management.AssemblyLine.RowList.GetChildren().Select(c => c.Name.ToString()));
+                    return "no plaque wears a CLAIM tag";
                 }
-                _spentOn = voucher.GetParent().GetParent().Name;
+                Button plaque = Management.Ledger.PlaqueFor(tagged.Id);
+                ((ScrollContainer)Management.Ledger.Chart.GetParent()).EnsureControlVisible(plaque);
+                _spentOn = tagged.Id;
+                return null;
+            });
+            Wait(0.1); // the scroll lands
+            Do("its pane opens", () => { Click(Management.Ledger.PlaqueFor(_spentOn)); return null; });
+            Wait(0.1); // the pane draws a frame after the click
+            Do("click the pane's Voucher", () =>
+            {
+                Button voucher = Management.Ledger.PaneVoucher;
+                if (Management.Ledger.Readout.SelectedNodeId != _spentOn || !voucher.IsVisibleInTree())
+                {
+                    return $"pane on '{Management.Ledger.Readout.SelectedNodeId}', Voucher visible {voucher.IsVisibleInTree()}, '{Management.Ledger.PaneUnlock}'";
+                }
                 ScenarioCapture.Shot(Runner.GetViewport(), "contracts-reward");
                 Click(voucher);
                 return null;
             });
-            Do("its step bought for no goods, a voucher spent", () =>
+            Do("its card claimed for no goods, a voucher spent", () =>
             {
                 string status = Sandbox.AssemblyLineBoard.Status;
-                if (Sandbox.Vouchers.Count != _vouchers + 1 || !(status.StartsWith("Claimed") || status.StartsWith("Extended") || status.StartsWith("Upgraded")))
+                if (Sandbox.Vouchers.Count != _vouchers + 1 || !status.StartsWith("Claimed") || !status.EndsWith("with a voucher."))
                 {
                     return $"{_spentOn}: vouchers {Sandbox.Vouchers.Count}, status '{status}'";
                 }
@@ -388,7 +389,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("Escape; the HUD shows the loaded contract", () =>
             {
                 Tap(Key.Escape);
-                Log($"the office opened with the first smelter; {_first.requester}'s contract taken with a click, filled by hand (one, then Shift) and by a golem, its two vouchers held and one spent with a click on the Assembly Line tab; {_second.requester}'s taken, saved part filled and loaded back");
+                Log($"the office opened with the first smelter; {_first.requester}'s contract taken with a click, filled by hand (one, then Shift) and by a golem, its two vouchers held and one spent on a card from its Ledger plaque; {_second.requester}'s taken, saved part filled and loaded back");
                 return null;
             });
             Until("the HUD line", 1, () => Hud.ContractLine.Contains("5 of ") ? null : $"HUD '{Hud.ContractLine}'");

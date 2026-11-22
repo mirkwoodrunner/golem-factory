@@ -32,8 +32,6 @@ namespace GolemFactory.Nodes
         public const string CursorUp = "cursor_up";
         public const string CursorDown = "cursor_down";
         public const string AlertNext = "alert_next";
-        /// <summary>The d-pad's left takes the pad into the playtest card (a click answers it with the mouse).</summary>
-        public const string CardAnswer = "card_answer";
         /// <summary>The left stick pressed in puts the guide away and brings it back, as F1 does.</summary>
         public const string GuideToggle = "guide_toggle";
         /// <summary>The right stick pressed in runs the playtest kit through a chapter (playtest mode only), as F9 does.</summary>
@@ -69,7 +67,6 @@ namespace GolemFactory.Nodes
             [CursorUp] = new InputEvent[] { Axis(JoyAxis.RightY, -1f) },
             [CursorDown] = new InputEvent[] { Axis(JoyAxis.RightY, 1f) },
             [AlertNext] = new InputEvent[] { Button(JoyButton.DpadRight) },
-            [CardAnswer] = new InputEvent[] { Button(JoyButton.DpadLeft) },
             [GuideToggle] = new InputEvent[] { Button(JoyButton.LeftStick) },
             [KitSkip] = new InputEvent[] { Button(JoyButton.RightStick) },
             [Pause] = new InputEvent[] { Button(JoyButton.Back), Key(Godot.Key.Space) },
@@ -84,7 +81,7 @@ namespace GolemFactory.Nodes
         /// </summary>
         public static void RegisterAll()
         {
-            foreach (string own in new[] { BuildNext, BuildDemolish, BuildPlace, CursorLeft, CursorRight, CursorUp, CursorDown, AlertNext, CardAnswer, GuideToggle, KitSkip, Pause })
+            foreach (string own in new[] { BuildNext, BuildDemolish, BuildPlace, CursorLeft, CursorRight, CursorUp, CursorDown, AlertNext, GuideToggle, KitSkip, Pause })
             {
                 if (!InputMap.HasAction(own))
                 {
@@ -176,14 +173,7 @@ namespace GolemFactory.Nodes
         {
             Last = InputDeviceKind.KeyboardMouse;
             Settings.KeyNames.Pad = false;
-            OverlayHoldsPad = false;
         }
-
-        /// <summary>
-        /// An overlay that isn't a full screen (the playtest card) has taken the pad: the world's
-        /// polling (walking, the right stick's cursor) ignores it until the overlay lets go.
-        /// </summary>
-        public static bool OverlayHoldsPad { get; set; }
     }
 
     /// <summary>

@@ -135,7 +135,8 @@ still run their per-frame work (about 2.4 ms and 1.9 ms at 160 golems). Proposed
   stops while it is roped. The lane is paved and kerbed from the start, its far end walled while
   shut; walking and building there stay gated in Core. Open, the shell edges the Docks
   (`SandboxLayout.DocksEdges`) and the floor paints them in cobbles over harbour water.
-- **The rows** are bought from the Assembly Line tab's Docks row (Extend), beside the floor's.
+- **The rows** are bought from the Workshop tab's Docks row (Extend), beside the floor's (the
+  tab was the Assembly Line tab until 2026-11-21).
 - **The HUD** names the region in a plate at the top while the player stands on the Docks' floor.
 - **The guide's step** `docks` follows `mast-collect` in chapter 9; its check is standing on the
   floor, and the kit walks there and back. Nothing after it needs the Docks.

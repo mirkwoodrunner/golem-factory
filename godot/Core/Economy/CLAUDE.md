@@ -69,8 +69,11 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   a version-0 save keeps its stockpile as the pack (above the cap if need be), starts every crate
   empty, and says so once.
 - **The pack's cap grows only by upgrade** (`SandboxWorld.PackUpgrade`, `sandbox.json`'s
-  `packUpgrades`, the Assembly Line tab's Pack row): never lowered in play, restored by rung on a
-  load (`packUpgradeTier`) without clamping. Crates stay at 50 and the Post at 200. **Every price
+  `packUpgrades`, the Workshop tab's Pack row): never lowered in play, restored by rung on a
+  load (`packUpgradeTier`) without clamping. Crates stay at 50 and the Post at 200. **A crate (50)
+  and a boiler (100 Coke, `BoilerCapacityTests`) hold at most the base pack per good**, so an empty
+  pack slot always takes what demolition hands back; a boiler also empties by [I]. The Slag Heap's
+  and Scrap Recycler's Coke is uncapped (`docs/open-items.md`). **Every price
   fits the pack reachable when it opens** on the guide's path, pack only
   (`PriceReachTests`): a new price or rung must pass it. Floor Expansion charges
   `floorExpansion.purchases`, one bundle per purchase, unclamped. A next price naming a good the

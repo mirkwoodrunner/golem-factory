@@ -42,10 +42,12 @@ writing a scenario. Update this file when a scenario's checks change. Paths are 
   controls' sizes. Captures `critique-workbench`, `critique-workbench-head`.
 - `management` (Sandbox): the HUD (alerts strip, pause and play), and Tab opening Management
   with the HUD and build menu hidden. Covers the Inventory icons, the tab exclusivity, an
-  Assembly Line claim reaching the Workbench, the tab's `Pack:  ·  Post:` header, the Pack row's Upgrade (the Pack screen's cap line
+  Workshop tab (the Assembly Line tab until 2026-11-21) with no Claim and a line counting the
+  Ledger's cards, its `Pack:  ·  Post:` header, the Pack row's Upgrade (the Pack screen's cap line
   reads 150), two Extends planking and walling new rows (the second at 120 Scrap), Patents
-  Load, the Ledger's plaques and recipe pane, R4's plaque's Claim clicked into the vault (captured
-  as `ledger-claim`), no drawn label holding an internal id, and one screen at a time.
+  Load, the Ledger's plaques and recipe pane, R4's plaque wearing its CLAIM tag and the header
+  counting the cards to claim, its Claim clicked into the vault (captured as `ledger-claim`), no
+  drawn label holding an internal id, and one screen at a time.
 - `save` (Sandbox): through the Save / Load tab, build, save, wreck everything, and load. The
   buildings, golems (with program and place) and pack must come back exactly, and two
   more rounds must change nothing. Then it extends the room after a save and loads, and the
@@ -57,6 +59,9 @@ writing a scenario. Update this file when a scenario's checks change. Paths are 
     clear of the HUD bars.
   - Gathering advances it to "Buy a Coal cart", and the Boiler step outlines its build-menu row.
   - F1 hides and shows it, it steps aside over Management, and Skip guide puts it away.
+  - On "Claim Scrap Reclamation" its text sends the player to the Ledger; Tab and a click on the
+    Ledger tab open the pane on that card's plaque, scrolled into view and wearing its CLAIM tag,
+    and a click on Claim claims it (captured as `tutorial-ledger-claim`).
   - In the Workbench on "Program it", it sits clear of the sockets, the lever, the vault and
     the hint's frames.
 - `playtest-kit` (Sandbox): F9 once per chapter from a fresh game (all ten). The kit must
@@ -71,7 +76,10 @@ writing a scenario. Update this file when a scenario's checks change. Paths are 
   is the Pneumatic Post, a Shift-click fills the store every Post crate shares, and the Pack screen
   lists it under the pack. The guide's plate clears both
   panels, and the wrecking bar refuses a crate whose goods won't fit in the pack (the Post's
-  room doesn't count), then refunds it exactly.
+  room doesn't count), then refunds it exactly. A boiler holding more Coke than the pack (a save
+  from the old 240 cap) is refused by the wrecking bar with the [I] hint; at the boiler the
+  prompt offers "[I] take Coke", I takes a packful twice with no screen opening, and then it
+  demolishes with the rest refunded.
   Logs the frames worth a look for `--write-movie`.
 - `moods` (Sandbox, `Scripts/Scenarios/StreetFixture`'s street on steam): a golem a sleeping
   feeder will serve goes grey after its dwell, badge "waiting for Scrap", no shake, uncounted,
@@ -207,8 +215,8 @@ writing a scenario. Update this file when a scenario's checks change. Paths are 
   id drawn) and a click takes it, the bonus counting down in plain words, the HUD and the
   prompt showing it. I opens the office's crate: a click puts one Iron Plate in, a Shift-click
   all the pack holds; a golem hauling from a depot fills the rest within par. The reward and the
-  bonus are two vouchers, nothing on the shelf; Tab, the Assembly Line tab and a click on the first
-  row's Voucher buy its step for no goods; E reopens the notice. The next contract posts and is taken, five delivered, saved to Slot 1,
+  bonus are two vouchers, nothing on the shelf; Tab, the Ledger, a click on a CLAIM-tagged plaque
+  and a click on its pane's Voucher claim its card for no goods; E reopens the notice. The next contract posts and is taken, five delivered, saved to Slot 1,
   five more, loaded with two clicks: five again. Captures `contracts-roped`,
   `contracts-office`, `contracts-notice`, `contracts-taken`, `contracts-reward`,
   `contracts-next`.
@@ -227,7 +235,7 @@ writing a scenario. Update this file when a scenario's checks change. Paths are 
   the street stops at its end, the gate roped and no region named. A Zeppelin in the Ledger opens
   the gate and paves the Docks; D walks down the lane onto them and the HUD's plate names them.
   At a quay spot the prompt offers a cart, E opens the panel and a click adds a Coal barge. The
-  Assembly Line tab's Docks row's Extend buys two rows, paved at once. Saved to Slot 1, the barge
+  Workshop tab's Docks row's Extend buys two rows, paved at once. Saved to Slot 1, the barge
   removed and the rows taken back, loaded with two clicks: both as saved. Captures `docks-gate`,
   `docks-open`, `docks-quay`.
 - `golem-sales` (Sandbox): selling golems (`docs/golem-sales-design.md`) with real keys. The office
@@ -240,8 +248,7 @@ writing a scenario. Update this file when a scenario's checks change. Paths are 
   totals count the golems sold. Saved to Slot 1 mid-build, the Foundry demolished, loaded with
   two clicks: the Foundry, its build and the order as saved. Captures `sales-office`,
   `sales-notice`, `sales-foundry`, `sales-foundry-intake`.
-- `gamepad` (Sandbox): the pad (`docs/steam-deck-design.md` D4) with joypad events only, after the
-  playtest card's one click. Every pad action has its joypad event and the keys stay. The left
+- `gamepad` (Sandbox): the pad (`docs/steam-deck-design.md` D4) with joypad events only. Every pad action has its joypad event and the keys stay. The left
   stick walks, no faster on a diagonal; A harvests at the Scrap cart; X picks a golem up and sets
   it down. The hover card at the pad's cursor (D5.2): facing the golem shows its card, hung from
   the cell ahead; turning away hides it; the right stick looks back at it, drawing the brass tile;
@@ -262,11 +269,8 @@ writing a scenario. Update this file when a scenario's checks change. Paths are 
   each glowing card inside the vault's window, STEP 4 never under the plate) engages the smelter
   in 9 moves, and the plate steps aside. Captures `guide-ahead`, `guide-ahead-step4`.
 - `gamepad-ui` (Sandbox): the screens by pad (`docs/steam-deck-design.md` D6), joypad events only
-  throughout; so far the playtest card, the station's panel, the Workbench (D6.W), the Crate, the
-  Pack and the Management screen. The card first: it says the d-pad's left answers it, which
-  takes the pad (the stick held then doesn't walk); B lets go with the question waiting; A on the
-  note gives it focus and B takes it back; A on the second answer answers, harvesting nothing at
-  the Scrap cart beside. A at the station opens the panel with the ring on the row the pack pays for; A on
+  throughout; so far the station's panel, the Workbench (D6.W), the Crate, the
+  Pack and the Management screen. A at the station opens the panel with the ring on the row the pack pays for; A on
   a greyed row says what's short; A builds, and the Workbench opens with nothing sent by that A and
   the ring on the hinted Extract. A sends Extract and Push Output, the ring following the
   hint to the lever; LB and the d-pad change nothing behind the screen. The d-pad walks the ring

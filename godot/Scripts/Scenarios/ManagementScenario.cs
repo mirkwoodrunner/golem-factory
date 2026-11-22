@@ -23,14 +23,16 @@ namespace GolemFactory.Nodes.Scenarios
     ///   (HudScreenExclusivityTests' build-menu case).</item>
     ///   <item>Inventory: a header and one row per good, each with an icon slot.</item>
     ///   <item>Every tab button shows only its own content and lights only itself.</item>
-    ///   <item>Assembly Line: claim an unlocked card from the stockpile -- it reaches the
-    ///   Workbench's vault; the Pack row's Upgrade makes the pack 150, which the Pack screen's cap
-    ///   line shows; Extend twice (the second at 120 Scrap) buys four rows, planked and walled.</item>
+    ///   <item>Workshop (the Assembly Line tab until 2026-11-21): no card rows, one line saying how
+    ///   many cards wait in the Ledger; the Pack row's Upgrade makes the pack 150, which the Pack
+    ///   screen's cap line shows; Extend twice (the second at 120 Scrap) buys four rows, planked
+    ///   and walled.</item>
     ///   <item>Patents: a patented program is listed; Load opens the Workbench with it in the
     ///   draft and closes Management.</item>
     ///   <item>Ledger: one clickable plaque per node; clicking R4 opens its recipe; redrawing the
     ///   chart keeps the selection and the pane (the two TechTreeRecipeReadoutTests that were
-    ///   about the drawn chart); the pane's Claim, clicked, claims R4's card into the vault.</item>
+    ///   about the drawn chart); R4's plaque wears its CLAIM tag once on offer and the header counts
+    ///   the cards to claim; the pane's Claim, clicked, claims R4's card into the vault.</item>
     ///   <item>Escape closes; Tab while the Workbench is up does not stack Management on it.</item>
     /// </list>
     /// </summary>
@@ -226,7 +228,7 @@ namespace GolemFactory.Nodes.Scenarios
 
         private void PlanAssemblyLine()
         {
-            Do("open the Assembly Line tab", () => { Click(_screen.TabButtons[ManagementTab.AssemblyLine]); return null; });
+            Do("open the Workshop tab", () => { Click(_screen.TabButtons[ManagementTab.AssemblyLine]); return null; });
             // The header used to read "Wallet: 500 Scrap (FactoryStockpile)", blind to the Post.
             Do("the header names the pack and the Post, never a buffer id", () =>
             {
@@ -237,11 +239,9 @@ namespace GolemFactory.Nodes.Scenarios
                     return $"header '{expected}', labels [{string.Join(" | ", texts.Take(3))}]";
                 }
                 string id = texts.FirstOrDefault(IsInternalId);
-                return id == null ? null : $"the Assembly Line shows an internal id: '{id}'";
+                return id == null ? null : $"the Workshop tab shows an internal id: '{id}'";
             });
-            int vaultBefore = 0;
-            string claimed = null;
-            // The tab lists cards the player can actually use: never the opening hand, which the
+            // The line offers cards the player can actually use: never the opening hand, which the
             // player already owns.
             Do("the line offers nothing the player already owns", () =>
             {
@@ -251,27 +251,18 @@ namespace GolemFactory.Nodes.Scenarios
                     ? $"line offers [{string.Join(", ", offered.Select(c => c?.name ?? "empty"))}]"
                     : null;
             });
-            Do("click Claim on an affordable card", () =>
+            // 2026-11-21: cards are claimed in the Ledger. The tab has no Claim, and says how many wait.
+            Do("no Claim on the tab, and a line counting the Ledger's cards", () =>
             {
-                vaultBefore = _world.Workbench.VaultAppendages.Count() + _world.Workbench.RackChassis.Count();
-                Button claim = _screen.AssemblyLine.RowList.GetChildren().OfType<Control>()
-                    .Select(r => r.FindChild("Claim", true, false) as Button).FirstOrDefault(b => b != null && !b.Disabled);
-                if (claim == null)
+                List<string> texts = Texts(_screen.AssemblyLine.RowList).ToList();
+                bool claim = _screen.AssemblyLine.RowList.GetChildren().OfType<Control>()
+                    .Any(r => r.FindChild("Claim", true, false) != null);
+                string cards = AssemblyLineBoard.ReadyToClaim(_world.AssemblyLine.Offers.Count);
+                if (claim || !texts.Contains(cards))
                 {
-                    return "no affordable card on the line";
+                    return $"Claim button {claim}; looked for '{cards}' in [{string.Join(" | ", texts)}]";
                 }
-                claimed = (claim.GetParent().GetChild(0) as Label)?.Text;
-                Click(claim);
                 return null;
-            });
-            Do("the card is claimed and reaches the Workbench", () =>
-            {
-                if (!_world.AssemblyLineBoard.Status.StartsWith("Claimed"))
-                {
-                    return $"status '{_world.AssemblyLineBoard.Status}'";
-                }
-                int after = _world.Workbench.VaultAppendages.Count() + _world.Workbench.RackChassis.Count();
-                return after == vaultBefore + 1 ? null : $"claimed '{claimed}' ({_world.AssemblyLineBoard.Status}); Workbench offers {after} cards/chassis, was {vaultBefore}";
             });
 
             // docs/pack-upgrades-design.md §5: the Pack row's Upgrade, then two extensions -- the
@@ -312,7 +303,7 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
             Do("press Tab", () => { Tap(Key.Tab); return null; });
-            Do("back to the Assembly Line tab", () => { Click(_screen.TabButtons[ManagementTab.AssemblyLine]); return null; });
+            Do("back to the Workshop tab", () => { Click(_screen.TabButtons[ManagementTab.AssemblyLine]); return null; });
 
             int northBefore = 0;
             for (int purchase = 1; purchase <= 2; purchase++)
@@ -362,7 +353,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return $"the north wall stands at y={wall?.Position.Y}, expected {expectedY}";
                 }
-                _log.Add($"Assembly Line: claimed '{claimed}', it reached the Workbench; the Pack row's Upgrade made the pack 150; Extend twice {northBefore}->{north} (the second at 120 Scrap), planked and walled");
+                _log.Add($"Workshop: no card rows, the Ledger's count shown; the Pack row's Upgrade made the pack 150; Extend twice {northBefore}->{north} (the second at 120 Scrap), planked and walled");
                 return null;
             });
         }
@@ -454,6 +445,15 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
             Do("a frame for the pane to redraw", () => null);
+            Do("R4's plaque wears its CLAIM tag, and the header counts the cards", () =>
+            {
+                if (!_screen.Ledger.TagShown("r4.ironsmelting"))
+                {
+                    return "R4's card is on offer but its plaque has no CLAIM tag";
+                }
+                return _screen.Ledger.HeaderText.Contains(_world.AssemblyLine.Offers.Count + " to claim")
+                    ? null : $"header '{_screen.Ledger.HeaderText}'";
+            });
             Do("the pane offers it, with a live Claim", () =>
             {
                 if (!_screen.Ledger.PaneUnlock.StartsWith("Claim for ") || !_screen.Ledger.PaneClaim.IsVisibleInTree() || _screen.Ledger.PaneClaim.Disabled)
@@ -470,7 +470,8 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "the Workbench's vault doesn't offer Iron Smelting: " + _world.AssemblyLineBoard.Status;
                 }
-                if (_screen.Ledger.PaneUnlock != "Claimed" || _screen.Ledger.PaneClaim.IsVisibleInTree())
+                if (_screen.Ledger.PaneUnlock != "Claimed" || _screen.Ledger.PaneClaim.IsVisibleInTree()
+                    || _screen.Ledger.TagShown("r4.ironsmelting"))
                 {
                     return $"pane unlock '{_screen.Ledger.PaneUnlock}', Claim visible {_screen.Ledger.PaneClaim.IsVisibleInTree()}";
                 }

@@ -68,10 +68,6 @@ namespace GolemFactory.Tests.Settings
                 texts.Add(("step " + step.Id + " title", step.Title));
                 texts.Add(("step " + step.Id, step.Body));
             }
-            foreach (PlaytestQuestion question in PlaytestSession.Questions)
-            {
-                texts.Add(("question " + question.Id, question.Prompt));
-            }
             foreach (string key in world.Placeables.Select(p => p.Key))
             {
                 texts.Add(("build menu " + key, BuildMenuLabels.DescriptionFor(key)));
