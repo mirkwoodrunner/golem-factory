@@ -24,3 +24,9 @@ public/images/S1/brass_presser/v1/
 
 # Audio sample comparisons (docs/audio-design.md §9): files stay local
 public/audio/
+
+# Art pipeline source poses (identity_poses.json under each golem's source*/): local working files
+public/images/**/source*/
+
+# Local Claude Code skills
+.claude/skills/rtk/

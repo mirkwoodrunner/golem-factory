@@ -1,0 +1,3 @@
+# Godot writes its .import files with LF; with core.autocrlf=true, Git would otherwise flag every
+# one Godot touches as modified though its bytes match the commit.
+*.import text eol=lf
