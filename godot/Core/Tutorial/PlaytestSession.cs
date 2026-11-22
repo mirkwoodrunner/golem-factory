@@ -91,7 +91,7 @@ namespace GolemFactory.Tutorial
         // --- Chapters ------------------------------------------------------------------------
 
         /// <summary>Each chapter's human budget, in seconds (docs/tuning-data-spec.md §14), chapters 1-10.</summary>
-        public static readonly float[] ChapterBudgetSeconds = { 300, 270, 210, 120, 1200, 900, 600, 2700, 1800, 2700 };
+        public static readonly float[] ChapterBudgetSeconds = { 300, 270, 210, 120, 1200, 900, 600, 3300, 1200, 2700 };
 
         /// <summary>The guide's last step: chapters 1-10 are timed to it.</summary>
         public const string DoneStepId = "done";

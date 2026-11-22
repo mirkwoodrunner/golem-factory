@@ -204,6 +204,12 @@ flags and kit are as built (`TutorialGuide.cs`, `TutorialGuide.Kit.cs`, `crates-
 | `save` | 7 | kept | a save made | none | | `SaveTo(kit-save.json)` |
 | `load` | 7 | kept | a load made | none | | `LoadFrom(kit-save.json)` |
 | `scrap-rate` | 8 | **new** (2026-11-15): "Upgrade the Scrap cart" (supply-design §6) | a Scrap cart at Rate rung ≥ 1 | the Scrap cart | | buy the rung (its price granted) |
+| `fed-coker` | 8 | **new** (2026-11-22, §11): "A second coker" | role `coker2` (a Presser built on this step) runs the coker's plan | none | `Workbench`; plan `CokerPlan` | build a Presser, write the plan |
+| `fed-pipes` | 8 | **new**: "Steam for a fed smelter" | steam reaches the coker's, Scavenger's, smelter's and carrier's fed tiles | `FeedPipeSpots` | `menuKey` Steam Pipe | lay the route; Coke into any dry boiler |
+| `fed-coke` | 8 | **new**: "Coke into a crate" | `coker2` on its tile facing the crate, a depot there, a cycle since entry | coker's tile (facing), the crate | `menuKey` Depot | place the depot, set the coker down |
+| `fed-scrap` | 8 | **new**: "Scrap into the same crate"; done on arrival by default | a programmed Scavenger on its tile facing the crate, a Scrap cart behind it | Scavenger's tile (facing), the cart spot while empty | | add the cart if the spot is empty, build and place a Scavenger if none |
+| `fed-smelter` | 8 | **new**: "Move the smelter" | a smelter on its fed tile, a depot in front, a cycle since entry | smelter's tile (facing), its depot | `menuKey` Depot | place the depot, set the smelter down |
+| `fed-slag` | 8 | **new**: "Move the carrier" | the heap on its fed tile has burned Slag | carrier's tile (facing), the heap | `menuKey` Slag Heap; `Crate` | place the heap, set the carrier down, Coke and Slag into its depot |
 | `copper-ingot` | 8 | kept | the Ledger has Copper Ingot | none | `Card`; `Workbench` | `MakeGood` |
 | `zinc-ingot` | 8 | "Add a Zinc Ore cart on the marked spot" | … Zinc Ingot | spot x 4 until a Zinc Ore cart stands; then the cart | `Card`; `Workbench` | add the cart, `MakeGood` |
 | `brass` | 8 | kept | … Brass | none | `Card`; `Workbench` | `MakeGood` |
@@ -239,7 +245,8 @@ the point of the step).
 ## 5. Steps to add or retire
 
 **None at first.** Added since: `scrap-rate`, chapter 8's first step (2026-11-15), when the
-starting Scrap cart's rate dropped from 120 to 60 a minute (supply-design §3, §6). Considered and left out:
+starting Scrap cart's rate dropped from 120 to 60 a minute (supply-design §3, §6); and the six
+`fed-*` steps after it (2026-11-22, §11), a smelter golems feed. Considered and left out:
 
 - **A "hover to read why" step** after `stall`. Its `Done` would read `SandboxWorld.Inspector`,
   which is allowed (the `ledger` step reads `LedgerReadout.HasSelection`), but it adds a step to a
@@ -315,3 +322,56 @@ step, so the player had the glow alone, which can't say "Coke" or "2".
   answering "risky to expect two different inputs in the same depot". Hauling from two depots
   (each Haul naming its side) is the user's open call, not built.
 - Checked by the `guide-ahead` scenario and `PlaytestKitTests`.
+
+## 10. From playtest: a hand-fed crate runs dry (2026-11-22)
+
+A player who followed every mark in chapter 5 found the smelter stopped at `work-carrier` with
+its crate out of Coke, and asked why it was stuck. The design is unchanged: chapter 5's smelter
+and carrier are fed by hand, and lines of the player's own come in chapter 8
+(`tuning-data-spec.md` §18). What was missing was any word that a hand-fed crate only empties.
+
+- **`smelt-feed` and `carrier-feed` say so**: nothing refills the crate, so fill it well and top
+  it up whenever the golem stops. Their Done checks are unchanged (one batch).
+- **A notice names the dry crate** (`TutorialGuide.HandFedCrateNotice`), from `work-smelter` to
+  `contract`: "The smelter has stopped: its crate is out of Coke, and no golem fills it…", or the
+  carrier's, out of Coke. It shows only while the golem is red (its `Mood`), so a crate a golem
+  fills reads grey and draws none; the carrier's names Coke only, since its Slag is the smelter's
+  to bring; and it is not shown on the feed step that already says it. A marked-tile notice
+  (a building on the tile, no steam) comes first.
+- Checked by `TutorialGuideTests` (smelter, carrier, a carrier waiting on Slag) and the
+  `tutorial` scenario (`tutorial-notice-crate-dry`).
+
+## 11. From playtest: a smelter golems feed (2026-11-22)
+
+The user, after §10: chapter 8 should teach the fix, not only name the problem. It opens with
+six steps after `scrap-rate`, before the first goal step, that take the player's hands off the
+smelter's crate. Belts were considered and left out: a belt can't fill a crate, and a Haul takes
+one good, so a belt carrying Scrap and Coke jams its unloader on the first wrong good. A
+belt-fed smelter needs a belt and an unloader per good, about four golems to this layout's two.
+
+- **The layout** (`TutorialGuide.Layout.cs`, `PlanFeed`). A golem works two tiles from its source
+  and target, and cart spots are four apart, so the crate is the street-row tile halfway between
+  a Coal cart and the next spot: a second coker between it and the Coal cart, a Scavenger between
+  it and a Scrap cart on that next spot (bought there if the spot is empty). The smelter, its
+  depot, the carrier and a heap run in a column off the crate, away from the row. The plan picks
+  the line with fewest blocked tiles, then the most already built, then north, then west. It
+  reads golems as well as buildings, so it is recomputed when a golem is placed or reprogrammed
+  (`GolemLayout.Epoch`), not only when a building changes.
+- **By default** the crate is chapter 4's depot (`Depot3Spot`): its Scavenger already fills it
+  from the first Scrap cart, so `fed-scrap` is done on arrival. North of it is chapter 3's pipe,
+  so the column runs south across the street.
+- **The player moves the smelter and carrier** (lift, set down) rather than building new ones;
+  the old column's depots and heap can come up with the wrecking bar. The carrier's Coke is still
+  hand-fed, 1 a trip against the smelter's 1 a cycle, and `HandFedCrateNotice` covers the `fed-*`
+  steps too.
+- **Steam**: the second coker is the ninth golem, past one boiler's 8, so `fed-pipes` says to keep
+  Coke in every boiler.
+- **Floor time.** The new coker shares the Coal cart and the smelter turns chapter 4's Scrap into
+  Iron Plate, so the floor player (`FloorPlayer`, which now leaves a golem-fed crate to its
+  golems) harvests more in chapter 8 and less in chapter 9: chapter 8 went from 28:37 to 35:24 and
+  chapter 9 from 10:56 to 6:40, the whole run 2:31 longer, nearly all of it the six steps themselves.
+  Ten minutes of budget moved with it (the user's call): chapter 8 is 55:00 (ceiling 36:40),
+  chapter 9 20:00 (ceiling 13:20), the total still 3:00:00 (`tuning-data-spec.md` §14).
+- Checked by the whole-guide walk in `TutorialGuideTests` (every step with real placements),
+  `PlaytestKitTests` (ten golems), `FullRunFloorTests`, and the `tutorial` scenario
+  (`tutorial-fed-line`: the coker's tile and the crate marked).

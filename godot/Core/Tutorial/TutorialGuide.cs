@@ -343,6 +343,7 @@ namespace GolemFactory.Tutorial
             ("scav2", "scav2", "ClockworkScavenger"),
             ("extractor", "scav3", "ClockworkScavenger"),
             ("unloader", "unloader", "ClockworkScavenger"),
+            ("coker2", "fed-coker", "BrassPresser"),
         };
 
         private readonly Dictionary<string, string> _roles = new Dictionary<string, string>();
@@ -360,6 +361,85 @@ namespace GolemFactory.Tutorial
         public string Notice => IsShowing ? Settings.TextTokens.Fill(NoticeFor(Current)) : "";
 
         private string NoticeFor(TutorialStep step)
+        {
+            string spots = SpotNoticeFor(step);
+            return spots != "" ? spots : HandFedCrateNotice(step);
+        }
+
+        // --- A crate only the player fills, run dry ---------------------------------------------
+        //
+        // From playtest (2026-11-22): chapter 5's smelter stopped on an empty crate and the guide
+        // said nothing. Its feed step says "fill it by hand" once, and the crate only empties.
+        // Shown from the smelter's first cycle to the chapter's end, but not on the feed step
+        // that already says it. Red only (the golem's mood): a crate a golem fills reads grey,
+        // and no notice is due.
+
+        private string HandFedCrateNotice(TutorialStep step)
+        {
+            // Chapter 5 from the first smelt, and chapter 8's move onto a fed crate, while some
+            // crate is still the player's to fill.
+            int at = IndexOf(step);
+            bool Within(string first, string last)
+            {
+                int from = _steps.FindIndex(s => s.Id == first);
+                return from >= 0 && at >= from && at <= _steps.FindIndex(s => s.Id == last);
+            }
+            if (!Within("work-smelter", "contract") && !Within("fed-coker", "fed-slag"))
+            {
+                return "";
+            }
+
+            foreach (GolemEntity smelter in Haulers.Where(IsSmelter))
+            {
+                string dry = HaulShortOfCrate(smelter);
+                if (dry != null)
+                {
+                    return $"The smelter has stopped: its crate is out of {ItemTiers.DisplayName(dry)}, and no golem fills it. "
+                        + "Stand at the depot behind it, press [[inventory]] and move more in from your pack.";
+                }
+            }
+
+            if (step.Id == "carrier-feed")
+            {
+                return "";
+            }
+            foreach (GolemEntity carrier in Pressers.Where(IsCarrier))
+            {
+                if (HaulShortOfCrate(carrier) == ItemType.Coke)
+                {
+                    return "The carrier has stopped: its crate is out of Coke. The smelter pushes Slag there but no Coke, "
+                        + "so stand at that depot, press [[inventory]] and move Coke in from your pack.";
+                }
+            }
+            return "";
+        }
+
+        /// <summary>
+        /// The good a red golem's current Haul is short of, when the crate behind it can't make up
+        /// the batch; null otherwise.
+        /// </summary>
+        private string HaulShortOfCrate(GolemEntity golem)
+        {
+            GolemProgram program = golem.Program;
+            if (golem.Mood != GolemMood.Stalled || program == null || program.appendages.Count == 0)
+            {
+                return null;
+            }
+            int step = program.CurrentStepIndex;
+            if (step < 0 || step >= program.appendages.Count || program.appendages[step]?.actionType != AppendageActionType.Haul)
+            {
+                return null;
+            }
+            string item = program.GetItemTypeAt(step);
+            if (string.IsNullOrEmpty(item) || CrateOn(golem.SourceCell) == null)
+            {
+                return null;
+            }
+            int needed = program.GetQuantityAt(step) - golem.Inventory.GetInput(item);
+            return InCrate(golem.SourceCell, item) < needed ? item : null;
+        }
+
+        private string SpotNoticeFor(TutorialStep step)
         {
             if (step == null || step.Spots.Count == 0)
             {
@@ -1181,6 +1261,56 @@ namespace GolemFactory.Tutorial
         private static bool Withdrawn(PlaceableBuilding building, string item) =>
             building?.GetPart<ICrate>()?.Buffer?.TotalWithdrawn(item) > 0;
 
+        // Chapter 8 opens by taking the player's hands off the smelter's crate (from playtest,
+        // 2026-11-22: chapter 5's smelter stopped on an empty crate). A second coker and a
+        // Scavenger fill a crate on the street row from the carts on either side, and the smelter
+        // and its carrier are lifted onto a column off that crate (TutorialGuide.Layout.cs,
+        // PlanFeed).
+
+        /// <summary>The second coker's tile: beside a Coal cart, along the street row.</summary>
+        public Vector2Int FeedCokerSpot => Plan.FeedCoker;
+
+        /// <summary>Which way the coker faces: from the Coal cart toward the crate.</summary>
+        public Facing FeedCokerFacing => Plan.FeedRow;
+
+        /// <summary>The crate both golems fill, and the smelter hauls from.</summary>
+        public Vector2Int FeedCrateSpot => Plan.FeedCrate;
+
+        /// <summary>The Scavenger's tile, on the crate's other side.</summary>
+        public Vector2Int FeedScavSpot => Plan.FeedScav;
+
+        /// <summary>Which way the Scavenger faces: from the Scrap cart toward the crate.</summary>
+        public Facing FeedScavFacing => Opposite(Plan.FeedRow);
+
+        /// <summary>The cart spot behind the Scavenger: a Scrap cart's.</summary>
+        public Vector2Int FeedScrapCartSpot => Plan.FeedScrapCart;
+
+        public Vector2Int FeedSmelterSpot => Plan.FeedSmelter;
+
+        /// <summary>Which way the fed column runs, and its golems face: away from the street row.</summary>
+        public Facing FeedFacing => Plan.FeedColumn;
+
+        public Vector2Int FeedOutSpot => Plan.FeedOut;
+
+        public Vector2Int FeedCarrierSpot => Plan.FeedCarrier;
+
+        public Vector2Int FeedHeapSpot => Plan.FeedHeap;
+
+        /// <summary>Pipe to the fed line's four golem tiles, where steam doesn't reach them yet.</summary>
+        public Vector2Int[] FeedPipeSpots => Plan.FeedPipe;
+
+        private GolemEntity FeedCoker => Role("coker2");
+
+        private bool FeedCokerPlaced => FeedCoker != null && FeedCoker.Cell == FeedCokerSpot && FeedCoker.Facing == FeedCokerFacing;
+
+        private bool FeedScrapPlaced => Scavengers.Any(g => IsProgrammed(g) && g.Cell == FeedScavSpot && g.Facing == FeedScavFacing);
+
+        private bool ScrapCartAtFeed => _world.Supply?.SpotAt(FeedScrapCartSpot)?.Cart?.ItemType == ItemType.Scrap;
+
+        private GolemEntity FeedSmelter => Haulers.FirstOrDefault(g => IsSmelter(g) && g.Cell == FeedSmelterSpot && g.Facing == FeedFacing);
+
+        private GolemEntity FeedCarrier => Pressers.FirstOrDefault(g => IsCarrier(g) && g.Cell == FeedCarrierSpot && g.Facing == FeedFacing);
+
         /// <summary>
         /// Chapter 8's shape: claim a recipe card, then make the good. No marked tiles -- by now the
         /// player has built every kind of line the recipe needs, and choosing where is the game.
@@ -1651,7 +1781,8 @@ namespace GolemFactory.Tutorial
                 "smelt-feed", "Feed the smelter",
                 "No golem brings Scrap or Coke to the smelter's crate yet, so you do. Stand at the depot behind the "
                 + "smelter's tile, press [[inventory]], and Shift-click Scrap, then Coke, in your pack: Shift-click moves all "
-                + $"that fits, a click moves one. Each cycle takes {Takes("AssembleIronSmelting")}.",
+                + $"that fits, a click moves one. Each cycle takes {Takes("AssembleIronSmelting")}, and nothing refills "
+                + "the crate, so fill it well and top it up whenever the smelter stops.",
                 w => (InCrate(SmeltInSpot, ItemType.Scrap) >= SmeltScrap && InCrate(SmeltInSpot, ItemType.Coke) >= SmeltCoke)
                     || Haulers.Any(g => IsSmelter(g) && _completedSinceEntry.Contains(g.GolemId)),
                 w => SmeltInSpot,
@@ -1701,7 +1832,8 @@ namespace GolemFactory.Tutorial
             new TutorialStep(
                 "carrier-feed", "Coke for the carrier",
                 "The carrier hauls from the smelter's output crate, and the smelter pushes Slag there but no Coke. "
-                + "Stand at that depot, press [[inventory]], and Shift-click Coke in your pack to move all that fits.",
+                + "Stand at that depot, press [[inventory]], and Shift-click Coke in your pack to move all that fits. "
+                + $"Every trip takes {CarryCoke}, so top it up whenever the carrier stops.",
                 w => InCrate(SmeltOutSpot, ItemType.Coke) >= CarryCoke
                     || Pressers.Any(g => IsCarrier(g) && _completedSinceEntry.Contains(g.GolemId)),
                 w => SmeltOutSpot,
@@ -1869,6 +2001,92 @@ namespace GolemFactory.Tutorial
                 w => CartUpgraded(ItemType.Scrap),
                 w => Cart(ItemType.Scrap),
                 w => CostCounts(FirstRatePrice(ItemType.Scrap))),
+
+            // From playtest (2026-11-22): the smelter stopped on an empty crate the player fills.
+            // Before the lines that eat Iron Plate, golems take that job (Layout.cs, PlanFeed).
+            new TutorialStep(
+                "fed-coker", "A second coker",
+                "Your smelter stops whenever its crate runs dry. Golems can fill that crate for you. Build another "
+                + $"Brass Presser at the station ({Price(PresserCost)}) and program it like your coker: Extract, Assemble "
+                + "Coking, Push Output.",
+                w => FeedCoker != null && IsCoker(FeedCoker),
+                w => FeedCoker == null ? ScrapFirst(LineOf(PresserCost, ItemType.Scrap), Station) : FeedCoker.Cell,
+                w => FeedCoker == null ? CostCounts(PresserCost) : "",
+                workbench: true,
+                program: CokerPlan,
+                programTarget: g => g == FeedCoker),
+
+            new TutorialStep(
+                "fed-pipes", "Steam for a fed smelter",
+                "Lay Steam Pipe on the marked tiles: they steam the tiles of the four golems that will feed and run "
+                + "the smelter. Any route that steams them counts. Each boiler with Coke runs 8 golems, so keep Coke in "
+                + "every boiler, or a golem goes without steam.",
+                w => new[] { FeedCokerSpot, FeedScavSpot, FeedSmelterSpot, FeedCarrierSpot }.All(SteamReaches),
+                w => FeedPipeSpots.Where(c => !_world.Steam.HasPipe(c)).Select(c => (Vector2Int?)c).FirstOrDefault(),
+                w => PipesLeft(FeedPipeSpots),
+                menuKey: "SteamPipePrefab",
+                moreSpots: () => FeedPipeSpots,
+                builds: IsPipe),
+
+            new TutorialStep(
+                "fed-coke", "Coke into a crate",
+                "Lift the new coker ([[carry]]) onto the marked tile beside the Coal cart: [[source-tile]] on the cart, "
+                + "[[target-tile]] on the marked tile past it. Build a Depot there if none stands. That depot is the "
+                + "smelter's new crate, and the coker fills it with Coke.",
+                w => FeedCokerPlaced && DepotAt(FeedCrateSpot) != null && _completedSinceEntry.Contains(FeedCoker.GolemId),
+                w => DepotAt(FeedCrateSpot) == null ? ScrapFirst(DepotScrap, FeedCrateSpot)
+                    : FeedCokerPlaced ? FeedCokerSpot : FeedCoker?.Cell ?? FeedCokerSpot,
+                menuKey: "DepotPrefab",
+                spot: () => FeedCokerSpot,
+                spotFacing: () => FeedCokerFacing,
+                moreSpots: () => new[] { FeedCrateSpot },
+                builds: IsDepot, exactTile: true),
+
+            // By default chapter 4's Scavenger already fills that crate from the first Scrap cart,
+            // and this step is done on arrival.
+            new TutorialStep(
+                "fed-scrap", "Scrap into the same crate",
+                "The crate needs Scrap too, from a Scavenger on its other side with its back to a Scrap cart. Add a "
+                + $"Scrap cart on the marked spot if it's empty ({Price(CartPrice(ItemType.Scrap))}), build a Scavenger and "
+                + "program it Extract, Push Output, then set it on the marked tile facing the crate.",
+                w => FeedScrapPlaced && ScrapCartAtFeed,
+                w => !ScrapCartAtFeed ? FeedScrapCartSpot : FeedScavSpot,
+                w => !ScrapCartAtFeed ? CostCounts(CartPrice(ItemType.Scrap)) : "",
+                spot: () => FeedScavSpot,
+                spotFacing: () => FeedScavFacing,
+                moreSpots: () => ScrapCartAtFeed ? new Vector2Int[0] : new[] { FeedScrapCartSpot }),
+
+            new TutorialStep(
+                "fed-smelter", "Move the smelter",
+                "Golems now fill that crate: Coke from the coker, Scrap from the Scavenger. Lift your smelter ([[carry]]) "
+                + "onto the marked tile, [[source-tile]] on that crate, and build a Depot on the marked tile in front of it "
+                + "for its Iron Plate. Nobody has to fill this smelter's crate.",
+                w => FeedSmelter != null && DepotAt(FeedOutSpot) != null && _completedSinceEntry.Contains(FeedSmelter.GolemId),
+                w => DepotAt(FeedOutSpot) == null ? ScrapFirst(DepotScrap, FeedOutSpot)
+                    : FeedSmelter != null ? FeedSmelterSpot
+                    : Haulers.Where(IsSmelter).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? FeedSmelterSpot,
+                menuKey: "DepotPrefab",
+                spot: () => FeedSmelterSpot,
+                spotFacing: () => FeedFacing,
+                moreSpots: () => new[] { FeedOutSpot },
+                builds: IsDepot, exactTile: true),
+
+            new TutorialStep(
+                "fed-slag", "Move the carrier",
+                "The Slag lands in the new depot now. Lift the carrier onto the marked tile past it, and build a Slag Heap "
+                + $"on the marked tile beyond ({Price(PlaceableCost("SlagHeapPrefab"))}). The carrier still takes {CarryCoke} Coke "
+                + "a trip from that depot, so put Coke in it by hand. Take up the old depots and heap with the wrecking bar "
+                + "if you like (full refund).",
+                w => HeapAt(FeedHeapSpot)?.TotalVoided > 0,
+                w => HeapAt(FeedHeapSpot) == null ? ScrapFirst(LineOf(PlaceableCost("SlagHeapPrefab"), ItemType.Scrap), FeedHeapSpot)
+                    : FeedCarrier == null ? Pressers.Where(IsCarrier).Select(g => (Vector2Int?)g.Cell).FirstOrDefault() ?? FeedCarrierSpot
+                    : FeedOutSpot,
+                w => HeapAt(FeedHeapSpot) == null ? CostCounts(PlaceableCost("SlagHeapPrefab")) : CrateCount(FeedOutSpot, ItemType.Coke, CarryCoke),
+                menuKey: "SlagHeapPrefab",
+                spot: () => FeedCarrierSpot,
+                spotFacing: () => FeedFacing,
+                moreSpots: () => new[] { FeedHeapSpot },
+                builds: b => b.GetPart<PlaceableSlagHeap>() != null, exactTile: true, crate: true),
 
             Goal("copper-ingot", "Smelt Copper",
                 "From here the guide names a good and its card, and you choose where to build. Claim Copper "

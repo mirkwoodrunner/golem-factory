@@ -46,8 +46,8 @@ add the sittings' chapter times by hand in the notes.
 | 5 | 20:00 | The Hauler's price (20 Iron Plate + 10 Gear + 30 Coke, `tuning-data-spec.md` §18 correction 10): how did they make it? `work-smelter` (a full Slag slot stops it) |
 | 6 | 15:00 | `belts` pointing the right way; `copper-depot`'s label |
 | 7 | 10:00 | `expand`, `pack`: did they find the Assembly Line tab's rows? |
-| 8 | 45:00 | `scrap-rate`, the Scrap cart's Rate rung: had they felt Scrap run short? Goal steps with no marks: did they know what to build? Brass's two ingots in one golem; Glass from Slag; Lens at 3 Glass |
-| 9 | 30:00 | Collecting the Zeppelin's price; `launch` facing away from the depot |
+| 8 | 55:00 | `scrap-rate`, the Scrap cart's Rate rung: had they felt Scrap run short? `fed-*`: did they see why the smelter moved? Goal steps with no marks: did they know what to build? Brass's two ingots in one golem; Glass from Slag; Lens at 3 Glass |
+| 9 | 20:00 | Collecting the Zeppelin's price; `launch` facing away from the depot |
 | 10 | 45:00 | Building an Overclocker (the guide only mentions it); the Frame Section line; `stage1` at whatever rate they reach |
 | 1–10 | **3:00:00** | |
 
@@ -133,8 +133,8 @@ Ch | time  | budget | over by | stuck steps (signal #) | notes
 5  |       | 20:00  |         |                        |
 6  |       | 15:00  |         |                        |
 7  |       | 10:00  |         |                        |
-8  |       | 45:00  |         |                        |
-9  |       | 30:00  |         |                        |
+8  |       | 55:00  |         |                        |
+9  |       | 20:00  |         |                        |
 10 |       | 45:00  |         |                        |
 
 Frame rate at the end:  p50 ___ ms   p95 ___ ms   worst ___ ms   golems ___   belt items ___

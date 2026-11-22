@@ -309,6 +309,68 @@ namespace GolemFactory.Tutorial
             ["load"] = () => _world.LoadFrom(KitSavePath),
             // Chapter 8's goals: claim the card, then the good, as its line would have made it.
             ["scrap-rate"] = () => UpgradeRateGranted(ItemType.Scrap),
+            ["fed-coker"] = () =>
+            {
+                if (FeedCoker == null)
+                {
+                    BuildGolem("BrassPresser");
+                }
+                PerformPlan("fed-coker");
+            },
+            ["fed-pipes"] = () =>
+            {
+                foreach (Vector2Int cell in FeedPipeSpots)
+                {
+                    PlaceGranted("SteamPipePrefab", cell, Facing.North);
+                }
+                // What the step tells the player: Coke in every boiler, so a ninth golem has steam.
+                foreach (PlaceableBoiler boiler in Boilers.Where(b => b.Boiler != null && b.Boiler.CokeStock == 0).ToList())
+                {
+                    Grant(ItemType.Coke, 10);
+                    _world.Interactor.TryRefuelBoiler(boiler);
+                }
+            },
+            ["fed-coke"] = () =>
+            {
+                PlaceGranted("DepotPrefab", FeedCrateSpot, Facing.North);
+                FeedCoker?.SetPlacement(FeedCokerSpot, FeedCokerFacing);
+            },
+            ["fed-scrap"] = () =>
+            {
+                if (FeedScrapPlaced && ScrapCartAtFeed)
+                {
+                    return;
+                }
+                if (_world.Supply?.SpotAt(FeedScrapCartSpot)?.IsEmpty == true)
+                {
+                    GrantCost(CartPrice(ItemType.Scrap));
+                    _world.Supply.Add(_world.Supply.SpotAt(FeedScrapCartSpot), ItemType.Scrap);
+                }
+                if (!FeedScrapPlaced)
+                {
+                    var before = new HashSet<string>(LiveGolems.Select(g => g.GolemId));
+                    BuildGolem("ClockworkScavenger");
+                    GolemEntity scavenger = Scavengers.LastOrDefault(g => !before.Contains(g.GolemId));
+                    if (scavenger != null)
+                    {
+                        WritePlan(ScavengerPlan, scavenger);
+                        scavenger.SetPlacement(FeedScavSpot, FeedScavFacing);
+                    }
+                }
+            },
+            ["fed-smelter"] = () =>
+            {
+                PlaceGranted("DepotPrefab", FeedOutSpot, Facing.North);
+                Haulers.FirstOrDefault(IsSmelter)?.SetPlacement(FeedSmelterSpot, FeedFacing);
+            },
+            ["fed-slag"] = () =>
+            {
+                PlaceGranted("SlagHeapPrefab", FeedHeapSpot, Facing.North);
+                Pressers.FirstOrDefault(IsCarrier)?.SetPlacement(FeedCarrierSpot, FeedFacing);
+                // As chapter 5's: the carrier's Coke by hand, and Slag for the heap's first burn.
+                Feed(FeedOutSpot, ItemType.Slag, 8);
+                Feed(FeedOutSpot, ItemType.Coke, 4);
+            },
             ["copper-ingot"] = () => MakeGood("AssembleCopperSmelting", ItemType.CopperIngot, 10),
             ["zinc-ingot"] = () =>
             {
@@ -498,7 +560,13 @@ namespace GolemFactory.Tutorial
         {
             TutorialStep step = _steps.FirstOrDefault(s => s.Id == stepId);
             GolemEntity golem = step?.ProgramTarget == null ? null : LiveGolems.FirstOrDefault(step.ProgramTarget);
-            var resolved = step?.Program?.Resolve(_world.Definitions.LogicCores, _world.Definitions.Appendages);
+            WritePlan(step?.Program, golem);
+        }
+
+        /// <summary><paramref name="plan"/> written onto <paramref name="golem"/>, through GolemProgramWriter.</summary>
+        private void WritePlan(ProgramPlan plan, GolemEntity golem)
+        {
+            var resolved = plan?.Resolve(_world.Definitions.LogicCores, _world.Definitions.Appendages);
             if (golem == null || resolved == null)
             {
                 return;

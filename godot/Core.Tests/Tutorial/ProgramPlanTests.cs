@@ -13,7 +13,7 @@ using NUnit.Framework;
 namespace GolemFactory.Tests.Tutorial
 {
     /// <summary>
-    /// The guide's program plans (docs/guide-chapters-design.md §3): nine steps, each naming its
+    /// The guide's program plans (docs/guide-chapters-design.md §3): ten steps, each naming its
     /// program once, read by the hint, the step's Done check and the kit.
     /// </summary>
     public class ProgramPlanTests
@@ -29,6 +29,7 @@ namespace GolemFactory.Tests.Tutorial
             ["program-carrier"] = "BrassPresser",
             ["scav3"] = "ClockworkScavenger",
             ["unloader"] = "ClockworkScavenger",
+            ["fed-coker"] = "BrassPresser",
             ["program-zeppelin"] = "ZeppelinFreightLoader",
         };
 
@@ -39,7 +40,7 @@ namespace GolemFactory.Tests.Tutorial
         }
 
         [Test]
-        public void ExactlyTheNineProgramSteps_CarryAPlan_AndATarget()
+        public void ExactlyTheTenProgramSteps_CarryAPlan_AndATarget()
         {
             SandboxWorld world = Compose();
             CollectionAssert.AreEquivalent(Steps.Keys,

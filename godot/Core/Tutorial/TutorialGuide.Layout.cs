@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Linq;
 using GolemFactory.Buildings;
 using GolemFactory.Compat;
+using GolemFactory.Economy;
+using GolemFactory.Golems;
 using GolemFactory.Steam;
 using GolemFactory.World;
 
@@ -47,6 +49,11 @@ namespace GolemFactory.Tutorial
             public Vector2Int[] Pipe1, Pipe2, Pipe3, Pipe4, ZeppelinPipe;
             public Vector2Int[] Post;
             public bool Golem1Steamable;
+            // Chapter 8's fed smelter: a crate on the street row between a coker (Coal cart side)
+            // and a Scavenger (Scrap cart side), the smelter's column running off it.
+            public Vector2Int FeedCoker, FeedCrate, FeedScav, FeedScrapCart, FeedSmelter, FeedOut, FeedCarrier, FeedHeap;
+            public Facing FeedRow, FeedColumn;
+            public Vector2Int[] FeedPipe;
         }
 
         private LayoutPlan _plan;
@@ -54,6 +61,7 @@ namespace GolemFactory.Tutorial
         private bool _planWired;
         private int _planNorthExtent = int.MinValue;
         private int _planStreet = int.MinValue;
+        private long _planGolems = long.MinValue;
 
         /// <summary>Bumped each time the plan is recomputed, so a step can cache its marks.</summary>
         internal int PlanVersion
@@ -83,11 +91,14 @@ namespace GolemFactory.Tutorial
                 // street's carts anchor the lines beside them, so its version is too.
                 int north = _world.Bounds?.NorthExtent ?? 0;
                 int street = _world.Supply?.Version ?? 0;
-                if (_planDirty || _plan == null || north != _planNorthExtent || street != _planStreet)
+                // Chapter 8's fed line reads which golems stand where, and how they're programmed.
+                long golems = GolemLayout.Epoch;
+                if (_planDirty || _plan == null || north != _planNorthExtent || street != _planStreet || golems != _planGolems)
                 {
                     _planDirty = false;
                     _planNorthExtent = north;
                     _planStreet = street;
+                    _planGolems = golems;
                     _buildOrder = null;
                     _plan = ComputePlan();
                     _planVersion++;
@@ -311,9 +322,14 @@ namespace GolemFactory.Tutorial
             p.ZeppelinPipe = HandRoute(defaultCh6, new[] { p.Zeppelin + new Vector2Int(-1, 0) }, p.Zeppelin)
                 ?? RouteTo(AllNetworks(), new[] { p.Zeppelin }, reserved);
 
+            // Chapter 8's fed smelter, after every earlier route, so planning it never moves one.
+            PlanFeed(p);
+            reserved.UnionWith(new[] { p.FeedCoker, p.FeedCrate, p.FeedScav, p.FeedScrapCart, p.FeedSmelter, p.FeedOut, p.FeedCarrier, p.FeedHeap });
+            p.FeedPipe = RouteTo(AllNetworks(), new[] { p.FeedCoker, p.FeedScav, p.FeedSmelter, p.FeedCarrier }, reserved);
+
             // Chapter 8's Post crates, last: unmarked, so only the kit reads them. Off every
             // tile above and every pipe, and not beside any of them, so they never close a line.
-            reserved.UnionWith(p.Pipe1.Concat(p.Pipe2).Concat(p.Pipe3).Concat(p.Pipe4).Concat(p.ZeppelinPipe));
+            reserved.UnionWith(p.Pipe1.Concat(p.Pipe2).Concat(p.Pipe3).Concat(p.Pipe4).Concat(p.ZeppelinPipe).Concat(p.FeedPipe));
             // The starter bench and station are not grid occupants, so they are named here.
             reserved.UnionWith(_world.AuthoredBuildings.Select(b => b.Cell));
             p.Post = PostPair(reserved);
@@ -362,6 +378,94 @@ namespace GolemFactory.Tutorial
             }
             return Usable(copper + run) && Usable(copper + run * 5)
                 && (Usable(copper + run * 6) || IsAt(copper + run * 6, IsDepot)) && Usable(copper + run * 7);
+        }
+
+        // --- Chapter 8's fed smelter -------------------------------------------------------------
+        //
+        // From playtest (2026-11-22): chapter 5's smelter stops whenever the crate the player fills
+        // runs dry. Golems can fill it, but only from two apart: a crate on the street row, two
+        // along from a Coal cart and two from a Scrap cart's spot, has a coker on one side and a
+        // Scavenger on the other. Spots are four apart, so that crate is the tile halfway between.
+        // The smelter's column runs off the crate, away from the row. By default that is chapter
+        // 4's depot, which its Scavenger already fills from the first Scrap cart:
+        //
+        //     Scrap cart  Scavenger  crate  coker  Coal cart
+        //                            smelter
+        //                            depot
+        //                            carrier
+        //                            Slag Heap
+
+        private void PlanFeed(LayoutPlan p)
+        {
+            var column5 = new HashSet<Vector2Int> { p.Smelter, p.SmeltIn, p.SmeltOut, p.Carrier, p.SlagHeap };
+            var later = new HashSet<Vector2Int>(p.Belts) { p.Extractor, p.Unloader, p.CopperDepot, p.Zeppelin, p.Mast };
+            List<GolemEntity> golems = LiveGolems.Where(g => !g.IsHeld).ToList();
+            // Chapter 5's column may stand on the line (its depots taken up, it plans onto this
+            // pair), so its tiles don't count against it; every other chapter's do.
+            bool Free(Vector2Int c) => Open(c) && !later.Contains(c) && (!_taken.Contains(c) || column5.Contains(c))
+                && !golems.Any(g => g.Cell == c);
+            bool Golem(Vector2Int c, System.Func<GolemEntity, bool> kind) =>
+                !_world.Grid.IsOccupied(c) && golems.Any(g => g.Cell == c && kind(g));
+
+            List<Vector2Int> coals = (_world.Supply?.Spots ?? new List<Supply.CartSpot>())
+                .Where(s => s.Cart?.ItemType == ItemType.Coal).Select(s => s.Cell).ToList();
+            if (coals.Count == 0)
+            {
+                coals.Add(CoalCell);
+            }
+
+            (int blocked, int committed, int order)? best = null;
+            for (int i = 0; i < coals.Count; i++)
+            {
+                foreach (Facing row in new[] { Facing.West, Facing.East })
+                {
+                    foreach (Facing col in new[] { Facing.North, Facing.South })
+                    {
+                        Vector2Int coal = coals[i];
+                        Vector2Int k = coal + D(row), x = coal + D(row) * 2, f = coal + D(row) * 3, s = coal + D(row) * 4;
+                        Vector2Int smelter = x + D(col), output = x + D(col) * 2, carrier = x + D(col) * 3, heap = x + D(col) * 4;
+                        int blocked = 0, committed = 0;
+                        void Check(bool free, bool holds)
+                        {
+                            if (holds)
+                            {
+                                committed++;
+                            }
+                            else if (!free)
+                            {
+                                blocked++;
+                            }
+                        }
+                        Check(Free(k), Golem(k, g => IsCoker(g) && g.TargetCell == x));
+                        Check(Free(x), IsAt(x, IsDepot));
+                        Check(Free(f), Golem(f, g => IsProgrammed(g) && g.TargetCell == x));
+                        Supply.CartSpot spot = _world.Supply?.SpotAt(s);
+                        Check(spot != null && spot.IsEmpty, spot?.Cart?.ItemType == ItemType.Scrap);
+                        Check(Free(smelter), Golem(smelter, g => IsSmelter(g) && g.SourceCell == x));
+                        Check(Free(output), IsAt(output, IsDepot));
+                        Check(Free(carrier), Golem(carrier, g => IsCarrier(g) && g.SourceCell == output));
+                        Check(Free(heap), IsAt(heap, b => b.GetPart<PlaceableSlagHeap>() != null));
+                        // Fewest blocked, then most already standing, then north, then west.
+                        int order = i * 4 + (col == Facing.North ? 0 : 2) + (row == Facing.West ? 0 : 1);
+                        if (best == null || blocked < best.Value.blocked
+                            || (blocked == best.Value.blocked && (committed > best.Value.committed
+                                || (committed == best.Value.committed && order < best.Value.order))))
+                        {
+                            best = (blocked, committed, order);
+                            p.FeedRow = row;
+                            p.FeedColumn = col;
+                            p.FeedCoker = k;
+                            p.FeedCrate = x;
+                            p.FeedScav = f;
+                            p.FeedScrapCart = s;
+                            p.FeedSmelter = smelter;
+                            p.FeedOut = output;
+                            p.FeedCarrier = carrier;
+                            p.FeedHeap = heap;
+                        }
+                    }
+                }
+            }
         }
 
         // --- Chapter 5's pair of depots ---------------------------------------------------------

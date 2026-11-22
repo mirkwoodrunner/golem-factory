@@ -312,6 +312,10 @@ namespace GolemFactory.Tests.Tutorial
                 case "pipes3": return Cost("SteamPipePrefab", _w.Tutorial.Pipe3Spots.Length);
                 case "pipes4": return Cost("SteamPipePrefab", _w.Tutorial.Pipe4Spots.Length);
                 case "zeppelin-pipe": return Cost("SteamPipePrefab", _w.Tutorial.ZeppelinPipeSpots.Length);
+                case "fed-pipes": return Cost("SteamPipePrefab", _w.Tutorial.FeedPipeSpots.Length);
+                case "fed-coke": return DepotIfNone(_w.Tutorial.FeedCrateSpot);
+                case "fed-smelter": return DepotIfNone(_w.Tutorial.FeedOutSpot);
+                case "fed-slag": return Cost("SlagHeapPrefab", 1);
                 case "belts": return Cost("BeltPrefab", _w.Tutorial.BeltSpots.Length);
                 case "post": return Cost("PneumaticPostPrefab", _w.Tutorial.PostSpots.Length);
                 case "mast": return Cost("FreightMastPrefab", 1);
@@ -331,6 +335,9 @@ namespace GolemFactory.Tests.Tutorial
         private IEnumerable<RecipeIngredient> Cost(string key, int count) =>
             _w.Placeables.First(p => p.Key == key).Prefab.Cost
                 .Select(c => new RecipeIngredient(c.itemType, c.quantity * count));
+
+        private IEnumerable<RecipeIngredient> DepotIfNone(Vector2Int cell) =>
+            _w.Build.Buildings.Any(b => !b.IsRemoved && b.Cell == cell) ? Enumerable.Empty<RecipeIngredient>() : Cost("DepotPrefab", 1);
 
         private IEnumerable<RecipeIngredient> CardCost(string card)
         {
@@ -676,7 +683,8 @@ namespace GolemFactory.Tests.Tutorial
                     && g.Program.appendages.Any(a => a?.recipe == r4)).ToList())
                 {
                     ICrate crate = CrateOn(smelter.SourceCell);
-                    if (crate?.Buffer == null)
+                    // Chapter 8's fed smelter: golems fill its crate, and the player leaves it to them.
+                    if (crate?.Buffer == null || _w.Golems.Any(g => !g.IsRemoved && g.TargetCell == smelter.SourceCell))
                     {
                         continue;
                     }

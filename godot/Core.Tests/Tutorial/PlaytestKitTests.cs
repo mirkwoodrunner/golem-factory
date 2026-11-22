@@ -130,7 +130,7 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual(1, world.ClockTower.Site.StageIndex);
 
             // The ground is real: the layouts stand, and the golems are the ones a player builds.
-            Assert.AreEqual(9, world.Golems.Count(g => !g.IsRemoved));
+            Assert.AreEqual(10, world.Golems.Count(g => !g.IsRemoved), "chapter 8's second coker the tenth");
             Assert.IsTrue(world.Build.Buildings.Any(b => !b.IsRemoved && b.Cell == world.Tutorial.Boiler2Spot));
 
             var kit = world.Tutorial.Playtest.KitUses;
