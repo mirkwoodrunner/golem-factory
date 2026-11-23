@@ -148,7 +148,7 @@ namespace GolemFactory.Tests.EditMode
         {
             { "golem", "ClockworkScavenger" }, { "scav2", "ClockworkScavenger" }, { "scav3", "ClockworkScavenger" },
             { "unloader", "ClockworkScavenger" }, { "presser", "BrassPresser" }, { "presser2", "BrassPresser" },
-            { "carrier", "BrassPresser" }, { "hauler", "AetherHauler" }, { "zeppelin", "ZeppelinFreightLoader" },
+            { "carrier", "BrassPresser" }, { "hauler", "AetherHauler" }, { "fed-coker", "BrassPresser" }, { "zeppelin", "ZeppelinFreightLoader" },
         };
 
         /// <summary>The card a step asks the player to claim.</summary>

@@ -61,7 +61,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("the factory stands and the report says so", () =>
             {
                 int golems = _world.Golems.Count(g => !g.IsRemoved);
-                if (golems != 9)
+                if (golems != 10)
                 {
                     return $"{golems} golems";
                 }
@@ -70,7 +70,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "the report does not record the kit";
                 }
-                _log.Add($"9 golems working, {_world.Build.Buildings.Count(b => !b.IsRemoved)} buildings, report records {_world.Tutorial.Playtest.KitUses.Count} kit uses");
+                _log.Add($"10 golems working (chapter 8 adds a second coker), {_world.Build.Buildings.Count(b => !b.IsRemoved)} buildings, report records {_world.Tutorial.Playtest.KitUses.Count} kit uses");
                 return null;
             });
         }

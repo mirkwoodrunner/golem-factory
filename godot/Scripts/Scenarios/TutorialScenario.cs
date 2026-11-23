@@ -411,6 +411,110 @@ namespace GolemFactory.Nodes.Scenarios
                 return null;
             });
 
+            // From playtest (2026-11-22): chapter 5's smelter ran its hand-fed crate dry and the guide
+            // said nothing. Now the plate names the empty crate under the step.
+            Golems.GolemEntity smelter = null;
+            Do("chapter 5: a smelter on its guide tile, its crate short of Coke", () =>
+            {
+                Give(ItemType.Scrap, 200);
+                Give(ItemType.IronPlate, 60);
+                Give(ItemType.Coke, 60);
+                Tutorial.TutorialGuide guide = _world.Tutorial;
+                PlaceAt("DepotPrefab", guide.SmeltInSpot);
+                PlaceAt("DepotPrefab", guide.SmeltOutSpot);
+                if (!_world.Steam.Reaches(guide.SmelterSpot, _world.Clock.CurrentTick))
+                {
+                    CoreVector2Int side = new[] { new CoreVector2Int(1, 0), new CoreVector2Int(-1, 0), new CoreVector2Int(0, 1), new CoreVector2Int(0, -1) }
+                        .Select(d => guide.SmelterSpot + d)
+                        .First(c => !_world.Grid.TryGetOccupant(c, out _) && _world.Build.IsCellBuildable(c));
+                    PlaceAt("BoilerPrefab", side);
+                    _world.Build.Buildings.Single(b => !b.IsRemoved && b.Cell == side).GetPart<Buildings.PlaceableBoiler>().Boiler.AddCoke(50);
+                }
+                if (!_world.StarterStation.TryConstructGolem(_world.Definitions.Chassis["AetherHauler"], out smelter))
+                {
+                    return "the station built no Aether-Hauler";
+                }
+                var p = smelter.Program;
+                p.logicCore = _world.Definitions.LogicCores["AlwaysOnCore"];
+                p.TryAddAppendage(_world.Definitions.Appendages["HaulScrap"]);
+                p.SetItemTypeAt(0, ItemType.Scrap);
+                p.SetQuantityAt(0, 2);
+                p.TryAddAppendage(_world.Definitions.Appendages["HaulScrap"]);
+                p.SetItemTypeAt(1, ItemType.Coke);
+                p.TryAddAppendage(_world.Definitions.Appendages["AssembleIronSmelting"]);
+                p.TryAddAppendage(_world.Definitions.Appendages["PushOutput"]);
+                Buildings.ICrate crate = _world.Build.Buildings.Single(b => !b.IsRemoved && b.Cell == guide.SmeltInSpot).GetPart<Buildings.ICrate>();
+                CrateTransfer.Put(_world.Wallet.Pack, crate, ItemType.Scrap, 2);
+                smelter.SetPlacement(guide.SmelterSpot, guide.SmelterFacing);
+                guide.Restore("contract", 0, false);
+                return null;
+            });
+            Do("the plate says the smelter's crate is out of Coke", () =>
+            {
+                if (!_panel.NoticeVisible || !_panel.NoticeText.Contains("out of Coke"))
+                {
+                    if (_waited < 1100)
+                    {
+                        return Wait;
+                    }
+                    return $"no notice: step '{_world.Tutorial.CurrentStepId}', smelter {smelter.Mood} {smelter.StallReason} step {smelter.Program.CurrentStepIndex} at {smelter.Cell} (spot {_world.Tutorial.SmelterSpot}), notice '{_world.Tutorial.Notice}', panel '{_panel.NoticeText}' {_panel.NoticeVisible}";
+                }
+                _log.Add($"chapter 5: the smelter red on an empty crate, the plate notes '{_panel.NoticeText}'");
+                return null;
+            });
+            // A control has no size until the frame after it is shown (Scripts/UI/CLAUDE.md).
+            int settle = 0;
+            Do("capture the notice", () =>
+            {
+                if (++settle < 3)
+                {
+                    return Wait;
+                }
+                ScenarioCapture.Shot(_tree.Root, "tutorial-notice-crate-dry");
+                return null;
+            });
+            Do("top up the crate", () =>
+            {
+                Buildings.ICrate crate = _world.Build.Buildings.Single(b => !b.IsRemoved && b.Cell == _world.Tutorial.SmeltInSpot).GetPart<Buildings.ICrate>();
+                CrateTransfer.Put(_world.Wallet.Pack, crate, ItemType.Coke, 20);
+                return null;
+            });
+            Do("the notice goes", () => _panel.NoticeVisible ? Wait : null);
+
+            // Chapter 8 opens by taking the player's hands off that crate: a coker and a Scavenger
+            // fill one on the street row, and the smelter moves onto it.
+            Do("chapter 8: the fed line's coker and crate are marked", () =>
+            {
+                Tutorial.TutorialGuide guide = _world.Tutorial;
+                guide.Restore("fed-coke", 0, false);
+                return null;
+            });
+            int fedSettle = 0;
+            Do("the marks stand on the coker's tile and the crate's", () =>
+            {
+                if (++fedSettle < 3)
+                {
+                    return Wait;
+                }
+                if (_panel.TitleText != "Coke into a crate")
+                {
+                    return $"on '{_panel.TitleText}'";
+                }
+                Tutorial.TutorialGuide guide = _world.Tutorial;
+                var markers = _panel.SpotMarkers.Where(m => m.Visible).Select(m => m.GetGlobalRect()).ToList();
+                foreach (CoreVector2Int cell in new[] { guide.FeedCokerSpot, guide.FeedCrateSpot })
+                {
+                    Vector2 tile = _tree.Root.GetCanvasTransform() * GridConversions.CellToWorld(cell);
+                    if (!markers.Any(r => r.HasPoint(tile)))
+                    {
+                        return $"no marker on {cell} (coker {guide.FeedCokerSpot}, crate {guide.FeedCrateSpot})";
+                    }
+                }
+                ScenarioCapture.Shot(_tree.Root, "tutorial-fed-line");
+                _log.Add($"chapter 8: the fed line marks the coker at {guide.FeedCokerSpot} facing {guide.FeedCokerFacing} and its crate at {guide.FeedCrateSpot}");
+                return null;
+            });
+
             Do("click Skip guide", () => { Click(_panel.SkipButton); return null; });
             Do("Skip put it away", () =>
             {

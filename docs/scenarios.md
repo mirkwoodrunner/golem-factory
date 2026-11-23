@@ -64,9 +64,14 @@ writing a scenario. Update this file when a scenario's checks change. Paths are 
     and a click on Claim claims it (captured as `tutorial-ledger-claim`).
   - In the Workbench on "Program it", it sits clear of the sockets, the lever, the vault and
     the hint's frames.
+  - Chapter 5's smelter on its guide tile, with its hand-fed crate out of Coke: the plate's notice
+    says the crate is out of Coke and no golem fills it (captured as `tutorial-notice-crate-dry`),
+    and topping the crate up clears it (`guide-chapters-design.md` §10).
+  - Chapter 8's first fed step ("Coke into a crate"): the coker's tile and the crate's are marked
+    on the street (captured as `tutorial-fed-line`; `guide-chapters-design.md` §11).
 - `playtest-kit` (Sandbox): F9 once per chapter from a fresh game (all ten). The kit must
   fast-forward every guide chapter, leaving the golems and buildings a player would have
-  built, and the report must record it. Its Save and Load steps use
+  built (ten golems, chapter 8's second coker among them), and the report must record it. Its Save and Load steps use
   `user://scenario-saves/kit-save.json`.
 - `inventory` (Sandbox): the Pack and Crate screens with real keys and clicks. I opens the pack
   away from a crate and the crate's screen at one; I, E and Escape close them. A click moves

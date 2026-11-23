@@ -580,14 +580,18 @@ plays every action instantly but earns every good at the player's real rates (§
 | 5 | 12 | 20:00 | 13:20 | | 7:28 | the Hauler's 20 Plate + 10 Gear + 30 Coke (§18 correction 10; 12:51 at 80 + 40) |
 | 6 | 8 | 15:00 | 10:00 | | 0:20 | copper belts |
 | 7 | 6 | 10:00 | 6:40 | | 4:14 | Floor 1, bays, pack rung 1, Ledger, save, load (the `bays` step was cut 2026-11-19) |
-| 8 | 9 | 45:00 | 30:00 | | 23:05 | 35:39 before §18 correction 10 |
-| 9 | 8 | 30:00 | 20:00 | | 7:34 | the Zeppelin's 1,093 raw |
+| 8 | 15 | 55:00 | 36:40 | 28:37 | 35:24 | 35:39 before §18 correction 10; the six `fed-*` steps (2026-11-22) |
+| 9 | 8 | 20:00 | 13:20 | 10:56 | 6:40 | the Zeppelin's 1,093 raw; the fed smelter's Iron Plate arrives with it |
 | 10 | 5 | 45:00 | 30:00 | | 27:21 | `stage1` 6:15 (§15.4); 12 Frame Sections the kit grants |
-| 1–10 | 80 | **3:00:00** | 2:00:00 | | 1:15:23 | |
+| 1–10 | 86 | **3:00:00** | 2:00:00 | | 1:24:27 | |
 
 A full run of three hours to the Foundation leaves stages 2–4 an hour or more, inside roadmap
 decision 1's 4–5 hour campaign. If a measured floor passes its ceiling, the numbers in this spec
 are revisited; the ceiling is not raised to fit (as `ChaptersOneToFourFloorTests` treats 10:00).
+
+One exception, the user's call (2026-11-22): chapter 8's six `fed-*` steps (`guide-chapters-design.md`
+§11) moved about ten minutes of floor from chapter 9 into chapter 8, so ten minutes of budget moved
+with them, 45:00 → 55:00 and 30:00 → 20:00. The total stays 3:00:00.
 
 ## 15. Tests
 

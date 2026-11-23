@@ -455,7 +455,59 @@ namespace GolemFactory.Tests.Tutorial
             Assert.AreEqual("scrap-rate", StepId(world));
             Assert.IsTrue(world.GrantRateRung(Home(world, ItemType.Scrap)).Done);
             world.Advance(1f / 30f);
-            Assert.AreEqual("copper-ingot", StepId(world), "the rung does it");
+            Assert.AreEqual("fed-coker", StepId(world), "the rung does it");
+
+            // A smelter golems feed (from playtest, 2026-11-22). By default chapter 4's depot,
+            // between the Scrap and Coal carts, is the crate: its Scavenger already fills it, and
+            // the column runs south off it, across the street.
+            Assert.AreEqual(world.Tutorial.Depot3Spot, world.Tutorial.FeedCrateSpot, "chapter 4's depot");
+            Assert.AreEqual(world.Tutorial.Scav2Spot, world.Tutorial.FeedScavSpot, "and its Scavenger's tile");
+            Assert.AreEqual(Home(world, ItemType.Scrap), world.Tutorial.FeedScrapCartSpot);
+            Assert.AreEqual(Facing.South, world.Tutorial.FeedFacing, "north of the crate is chapter 3's pipe");
+            Restock(world);
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["BrassPresser"], out GolemEntity coker2));
+            Assert.AreEqual("fed-coker", StepId(world), "built, not yet programmed");
+            Program(world, coker2, "ExtractScrap", "AssembleCoking", "PushOutput");
+            Assert.AreEqual("fed-pipes", StepId(world));
+
+            Assert.Greater(world.Tutorial.FeedPipeSpots.Length, 0, "steam doesn't reach the street's far side yet");
+            foreach (Vector2Int pipe in world.Tutorial.FeedPipeSpots)
+            {
+                Place(world, "SteamPipePrefab", pipe.x, pipe.y);
+            }
+            Assert.AreEqual("fed-coke", StepId(world));
+            // Nine golems: the first boiler needs Coke as well as the coal line's.
+            foreach (PlaceableBuilding fedBoiler in world.Build.Buildings.Where(b => !b.IsRemoved && b.GetPart<PlaceableBoiler>() != null).ToList())
+            {
+                world.Interactor.TryRefuelBoiler(fedBoiler.GetPart<PlaceableBoiler>());
+            }
+
+            Assert.AreEqual(world.Tutorial.FeedCokerSpot, world.Tutorial.Current.Spot);
+            Assert.AreEqual(world.Tutorial.FeedCokerFacing, world.Tutorial.Current.SpotFacing);
+            coker2.SetPlacement(world.Tutorial.FeedCokerSpot, world.Tutorial.FeedCokerFacing);
+            for (int frame = 0; frame < 1800 && StepId(world) == "fed-coke"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("fed-smelter", StepId(world), $"Coke in the crate, and its Scrap already comes ({coker2.StallReason} {coker2.StallResourceId})");
+
+            Place(world, "DepotPrefab", world.Tutorial.FeedOutSpot.x, world.Tutorial.FeedOutSpot.y);
+            smelter.SetPlacement(world.Tutorial.FeedSmelterSpot, world.Tutorial.FeedFacing);
+            for (int frame = 0; frame < 1800 && StepId(world) == "fed-smelter"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("fed-slag", StepId(world), $"the smelter runs on what the golems bring ({smelter.StallReason} {smelter.StallResourceId})");
+
+            Restock(world);
+            Place(world, "SlagHeapPrefab", world.Tutorial.FeedHeapSpot.x, world.Tutorial.FeedHeapSpot.y);
+            carrier.SetPlacement(world.Tutorial.FeedCarrierSpot, world.Tutorial.FeedFacing);
+            CrateTransfer.Put(world.Wallet.Pack, CrateAt(world, world.Tutorial.FeedOutSpot), ItemType.Coke, 4);
+            for (int frame = 0; frame < 3600 && StepId(world) == "fed-slag"; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            Assert.AreEqual("copper-ingot", StepId(world), $"the new heap burns Slag ({carrier.StallReason} {carrier.StallResourceId})");
 
             // Each asks for a card -- which the line must be showing -- then a good. Made here by
             // depositing it: the lines that make them are chapters 2-6's shapes again.
@@ -857,7 +909,7 @@ namespace GolemFactory.Tests.Tutorial
 
             Assert.AreEqual(Home(world, ItemType.Scrap), world.Tutorial.TargetCell, "the starting Scrap cart");
             Assert.IsTrue(world.GrantRateRung(Home(world, ItemType.Scrap)).Done);
-            Assert.AreEqual("copper-ingot", StepId(world));
+            Assert.AreEqual("fed-coker", StepId(world), "then a smelter golems feed");
         }
 
         [Test]
@@ -1094,6 +1146,118 @@ namespace GolemFactory.Tests.Tutorial
             heap.AddCoke(1);
             Assert.IsTrue(heap.TryVoid(), "precondition: it burns");
             Assert.AreNotEqual("work-carrier", StepId(world));
+        }
+
+        /// <summary>
+        /// Chapter 5's two crates the player fills by hand, and a golem with steam on its guide
+        /// tile behind each: a boiler with Coke on the tile beside it.
+        /// </summary>
+        private static SandboxWorld HandFedColumn(out GolemEntity smelter, out GolemEntity carrier)
+        {
+            SandboxWorld world = Plenty();
+            world.Clock.Play();
+            Give(world, ItemType.Gear, 100);
+            Give(world, ItemType.Coke, 100);
+            TutorialGuide guide = world.Tutorial;
+            DefinitionSet defs = world.Definitions;
+            Place(world, "DepotPrefab", guide.SmeltInSpot.x, guide.SmeltInSpot.y);
+            Place(world, "DepotPrefab", guide.SmeltOutSpot.x, guide.SmeltOutSpot.y);
+            foreach (Vector2Int tile in new[] { guide.SmelterSpot, guide.CarrierSpot })
+            {
+                Vector2Int side = tile + (guide.SmelterFacing == Facing.North || guide.SmelterFacing == Facing.South
+                    ? new Vector2Int(1, 0) : new Vector2Int(0, 1));
+                Place(world, "BoilerPrefab", side.x, side.y).GetPart<PlaceableBoiler>().Boiler.AddCoke(50);
+            }
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["AetherHauler"], out smelter));
+            smelter.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            smelter.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
+            smelter.Program.SetItemTypeAt(0, ItemType.Scrap);
+            smelter.Program.SetQuantityAt(0, 2);
+            smelter.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
+            smelter.Program.SetItemTypeAt(1, ItemType.Coke);
+            smelter.Program.TryAddAppendage(defs.Appendages["AssembleIronSmelting"]);
+            smelter.Program.TryAddAppendage(defs.Appendages["PushOutput"]);
+
+            Assert.IsTrue(world.StarterStation.TryConstructGolem(defs.Chassis["BrassPresser"], out carrier));
+            carrier.Program.logicCore = defs.LogicCores["AlwaysOnCore"];
+            carrier.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
+            carrier.Program.SetItemTypeAt(0, ItemType.Slag);
+            carrier.Program.SetQuantityAt(0, 4);
+            carrier.Program.TryAddAppendage(defs.Appendages["HaulScrap"]);
+            carrier.Program.SetItemTypeAt(1, ItemType.Coke);
+            carrier.Program.TryAddAppendage(defs.Appendages["PushOutput"]);
+            return world;
+        }
+
+        private static void RunFrames(SandboxWorld world, int frames)
+        {
+            for (int frame = 0; frame < frames; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+        }
+
+        [Test]
+        public void TheSmelterOutOfAGood_ItsCrateOnlyThePlayerFills_IsNamedUnderTheStep()
+        {
+            // From playtest (2026-11-22): the smelter stopped on an empty crate in chapter 5, and the
+            // guide said nothing; its feed step had said "fill it by hand" once.
+            SandboxWorld world = HandFedColumn(out GolemEntity smelter, out _);
+            TutorialGuide guide = world.Tutorial;
+            ICrate crate = CrateAt(world, guide.SmeltInSpot);
+            CrateTransfer.Put(world.Wallet.Pack, crate, ItemType.Scrap, 2);
+            smelter.SetPlacement(guide.SmelterSpot, guide.SmelterFacing);
+            GoTo(world, "work-carrier");
+
+            RunFrames(world, 90);
+            Assert.AreEqual(GolemMood.Stalled, smelter.Mood, $"precondition: red ({smelter.StallReason})");
+            StringAssert.StartsWith("The smelter has stopped: its crate is out of Coke", guide.Notice);
+            StringAssert.Contains("press " + GolemFactory.Settings.TextTokens.Fill("[[inventory]]"), guide.Notice, "the key is a token");
+
+            CrateTransfer.Put(world.Wallet.Pack, crate, ItemType.Coke, 10);
+            Assert.AreEqual("", guide.Notice, "topped up: a red golem with a full crate is not this notice");
+
+            GoTo(world, "smelt-feed");
+            CrateTransfer.Take(crate, world.Wallet.Pack, ItemType.Coke, 10);
+            RunFrames(world, 30);
+            Assert.AreEqual("", guide.Notice, "not before the smelter's own step: the feed step says it");
+        }
+
+        [Test]
+        public void TheCarrierOutOfCoke_IsNamedUnderTheStep_ButNotOnTheStepThatFeedsIt()
+        {
+            SandboxWorld world = HandFedColumn(out _, out GolemEntity carrier);
+            TutorialGuide guide = world.Tutorial;
+            ICrate crate = CrateAt(world, guide.SmeltOutSpot);
+            Give(world, ItemType.Slag, 4);
+            CrateTransfer.Put(world.Wallet.Pack, crate, ItemType.Slag, 4);
+            carrier.SetPlacement(guide.CarrierSpot, guide.CarrierFacing);
+            GoTo(world, "contract");
+
+            RunFrames(world, 90);
+            Assert.AreEqual(GolemMood.Stalled, carrier.Mood, $"precondition: red ({carrier.StallReason})");
+            StringAssert.StartsWith("The carrier has stopped: its crate is out of Coke", guide.Notice);
+
+            GoTo(world, "carrier-feed");
+            Assert.AreEqual("", guide.Notice, "the step says it already");
+
+            GoTo(world, "copper");
+            Assert.AreEqual("", guide.Notice, "chapter 5's notice ends with the chapter");
+        }
+
+        [Test]
+        public void ACarrierWaitingOnSlag_IsNotTold_ToFillItsCrate()
+        {
+            // Slag is the smelter's to bring, not the player's: the notice names only Coke.
+            SandboxWorld world = HandFedColumn(out _, out GolemEntity carrier);
+            TutorialGuide guide = world.Tutorial;
+            carrier.SetPlacement(guide.CarrierSpot, guide.CarrierFacing);
+            GoTo(world, "work-carrier");
+
+            RunFrames(world, 90);
+            Assert.AreEqual(GolemState.Stalled, carrier.Program.State, "precondition: waiting on Slag");
+            Assert.AreEqual("", guide.Notice);
         }
 
         [Test]
