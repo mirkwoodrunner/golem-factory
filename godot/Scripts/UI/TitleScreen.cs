@@ -99,7 +99,7 @@ namespace GolemFactory.Nodes
             {
                 case LaunchKind.Title:
                     Layer = LayerIndex;
-                    _menu = new TitleMenu(SavePaths.AllSaves(), DateTime.Now);
+                    _menu = new TitleMenu(SavePaths.AllSaves(), DateTime.Now, chapterStarts: _world.PlaytestMode);
                     Build();
                     _shown = true;
                     _world.Sandbox.Screens.Register(this);
@@ -108,6 +108,11 @@ namespace GolemFactory.Nodes
                     break;
                 case LaunchKind.Continue:
                     Callable.From(LoadSave).CallDeferred();
+                    SetProcess(false);
+                    break;
+                case LaunchKind.NewGame when GameLaunch.StartChapter > 1:
+                    // Deferred, as the showcase is: every node must be ready to draw what it builds.
+                    Callable.From(StageChapterStart).CallDeferred();
                     SetProcess(false);
                     break;
                 default:
@@ -158,6 +163,18 @@ namespace GolemFactory.Nodes
                 Settings.Refresh(ManagementTab.Settings);
             }
             PadProcess(delta);
+        }
+
+        // --- A chapter start, on the scene it started -------------------------------------------
+
+        /// <summary>The chapter the new game was taken to (<see cref="ChapterStart"/>); 0 before, or without one.</summary>
+        public int ChapterStartReached { get; private set; }
+
+        private void StageChapterStart()
+        {
+            ChapterStartReached = ChapterStart.Stage(_world.Sandbox, GameLaunch.StartChapter);
+            GD.Print($"[chapter start] asked for chapter {GameLaunch.StartChapter}, the guide is on " +
+                     (ChapterStartReached >= ChapterStart.Finished ? "its end" : "chapter " + ChapterStartReached));
         }
 
         // --- Continue's load, on the scene it started -----------------------------------------
@@ -214,6 +231,9 @@ namespace GolemFactory.Nodes
                 case TitleChoice.Creative:
                     Leave(LaunchKind.NewGame, null, creative: true);
                     break;
+                case TitleChoice.Chapter:
+                    Leave(LaunchKind.NewGame, null, startChapter: _menu.StartChapter);
+                    break;
                 case TitleChoice.Settings:
                     OpenSettings();
                     break;
@@ -223,10 +243,10 @@ namespace GolemFactory.Nodes
             }
         }
 
-        private void Leave(LaunchKind kind, string path, bool creative = false)
+        private void Leave(LaunchKind kind, string path, bool creative = false, int startChapter = 1)
         {
             _leaving = true;
-            GameLaunch.Request(kind, path, creative: creative);
+            GameLaunch.Request(kind, path, creative: creative, startChapter: startChapter);
             GetTree().ReloadCurrentScene();
         }
 
@@ -344,6 +364,16 @@ namespace GolemFactory.Nodes
                     PickSlot(SlotBoard.Selected);
                 }
             }
+            else if (_menu.Selected == TitleChoice.Chapter &&
+                     (e.IsActionPressed("ui_left") || e.IsActionPressed(PlayerNode.MoveLeft)))
+            {
+                StepChapter(-1);
+            }
+            else if (_menu.Selected == TitleChoice.Chapter &&
+                     (e.IsActionPressed("ui_right") || e.IsActionPressed(PlayerNode.MoveRight)))
+            {
+                StepChapter(1);
+            }
             else if (e.IsActionPressed("ui_up") || e.IsActionPressed(PlayerNode.MoveUp))
             {
                 _menu.Move(-1);
@@ -390,9 +420,9 @@ namespace GolemFactory.Nodes
 
             var column = new VBoxContainer { Name = "Entries", MouseFilter = Control.MouseFilterEnum.Pass };
             column.AddThemeConstantOverride("separation", (int)EntryGap);
-            Place(column, MenuLeft, MenuTop, MenuWidth, TitleMenu.Order.Count * (EntryHeight + EntryGap));
+            Place(column, MenuLeft, MenuTop, MenuWidth, _menu.Entries.Count * (EntryHeight + EntryGap));
             _main.AddChild(column);
-            foreach (TitleChoice choice in TitleMenu.Order)
+            foreach (TitleChoice choice in _menu.Entries)
             {
                 column.AddChild(Entry(choice));
             }
@@ -402,7 +432,10 @@ namespace GolemFactory.Nodes
             _notice.ClipText = false;
             _notice.VerticalAlignment = VerticalAlignment.Top;
             _notice.Visible = !string.IsNullOrEmpty(GameLaunch.Notice);
-            Place(_notice, MenuLeft, MenuTop + TitleMenu.Order.Count * (EntryHeight + EntryGap) + 8f, MenuWidth + 80f, 48f);
+            // "Start at chapter" (playtest mode) makes the column an entry longer: the notice and
+            // the hint move down so the two never overlap.
+            bool longMenu = _menu.Entries.Count > TitleMenu.Order.Count;
+            Place(_notice, MenuLeft, MenuTop + _menu.Entries.Count * (EntryHeight + EntryGap) + (longMenu ? 2f : 8f), MenuWidth + 80f, 48f);
             _main.AddChild(_notice);
 
             Label hint = _mainHint = Ugui.Text("Hint", MainHint, 13, ManagementScreen.DimInk);
@@ -410,8 +443,8 @@ namespace GolemFactory.Nodes
             hint.AnchorBottom = 1f;
             hint.OffsetLeft = MenuLeft;
             hint.OffsetRight = MenuLeft + 480f;
-            hint.OffsetTop = -56f;
-            hint.OffsetBottom = -34f;
+            hint.OffsetTop = longMenu ? -32f : -56f;
+            hint.OffsetBottom = longMenu ? -10f : -34f;
             _main.AddChild(hint);
 
             BuildSettings();
@@ -444,7 +477,7 @@ namespace GolemFactory.Nodes
             {
                 button.AddThemeStyleboxOverride(state, plate);
             }
-            Label label = Ugui.Text("Label", TitleMenu.Label(choice), 20, ManagementScreen.SelectedTabLabel, bold: true);
+            Label label = Ugui.Text("Label", _menu.EntryLabel(choice), 20, ManagementScreen.SelectedTabLabel, bold: true);
             Ugui.Fill(label);
             label.OffsetLeft = 22f;
             button.AddChild(label);
@@ -464,8 +497,35 @@ namespace GolemFactory.Nodes
                 }
             };
             button.Pressed += () => Pick(choice);
+            if (choice == TitleChoice.Chapter)
+            {
+                // The wheel over the entry steps the chapter, as Left and Right do.
+                button.GuiInput += e =>
+                {
+                    if (e is InputEventMouseButton { Pressed: true } wheel &&
+                        (wheel.ButtonIndex == MouseButton.WheelUp || wheel.ButtonIndex == MouseButton.WheelDown))
+                    {
+                        _menu.Select(TitleChoice.Chapter);
+                        StepChapter(wheel.ButtonIndex == MouseButton.WheelUp ? -1 : 1);
+                        button.AcceptEvent();
+                    }
+                };
+            }
             _entries[choice] = button;
             return button;
+        }
+
+        /// <summary>The chapter before or after on "Start at chapter", and its entry rewritten.</summary>
+        public void StepChapter(int step)
+        {
+            if (_leaving || !_entries.TryGetValue(TitleChoice.Chapter, out Button entry))
+            {
+                return;
+            }
+            _menu.StepChapter(step);
+            entry.GetNode<Label>("Label").Text = _menu.EntryLabel(TitleChoice.Chapter);
+            entry.GetNode<Label>("Detail").Text = _menu.Detail(TitleChoice.Chapter);
+            ShowSelection();
         }
 
         /// <summary>Lights the selected entry amber, as Management lights its tab; a greyed one stays dark.</summary>

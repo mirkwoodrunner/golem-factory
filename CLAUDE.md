@@ -82,6 +82,7 @@ G=".../Godot_v4.7.2-stable_mono_win64_console.exe"
 ./Tools/Scenarios/run-all.ps1 [-Only golems,save]                 # every scenario, about 2.5 min (PowerShell)
 "$G" --path godot --fixed-fps 60 --quit-after 240 \
      --write-movie <dir>/frame.png -- --demo                       # render frames to look at
+"$G" --path godot -- --chapter 6       # playtest: a new game at chapter 6 (the title has "Start at chapter" too)
 
 ./Tools/Deck/export-linux.ps1 [-DeckHost steamdeck]   # the Steam Deck build, into build/deck/ (PowerShell)
 ./Tools/Deck/export-linux.ps1 -Preset 'Windows Smoke' -Out build/win-smoke   # the same pack for Windows

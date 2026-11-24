@@ -84,7 +84,9 @@ launch used to overwrite it. It holds timings, frame rate, kit uses and errors; 
 asks no playtest questions** (the user cleared them, 2026-11-21, with the "Your call" card and its
 pad binding). The
 kit's chapter 7 Save and Load use `kit-save.json` in the save folder, which is never a slot
-(`SaveSlots.KitFileName`). Scenario runs write
+(`SaveSlots.KitFileName`). **A chapter start** (`Core/Menus/ChapterStart`: the title's "Start at chapter" in playtest mode,
+or `-- --chapter N`) is a new game the kit has carried through every earlier chapter, so any
+step whose kit action breaks also breaks starting past it. Scenario runs write
 `user://scenario-playtest-report.md` instead, and save to `user://scenario-saves`
 (`PlaytestNode.UnderScenario`, which reads `--scenario` off the command line itself: a flag
 set by the ScenarioRunner arrived too late, and a kit run overwrote a player's save). Never

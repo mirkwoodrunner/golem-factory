@@ -30,6 +30,7 @@ namespace GolemFactory.Menus
         private static string _nextPath;
         private static string _nextNotice;
         private static bool _nextCreative;
+        private static int _nextChapter = 1;
 
         /// <summary>What the scene now running was loaded for.</summary>
         public static LaunchKind Current { get; private set; } = LaunchKind.Title;
@@ -50,15 +51,27 @@ namespace GolemFactory.Menus
         public static bool Creative { get; private set; }
 
         /// <summary>
-        /// Names what the next scene load is for. <paramref name="savePath"/> is for Continue;
-        /// <paramref name="creative"/> for a new game or a Continue, never the title.
+        /// The chapter a new game starts at (<see cref="ChapterStart"/>): 1, the guide's first
+        /// step, unless playtest mode's "Start at chapter" or <c>--chapter</c> asked for a later one.
         /// </summary>
-        public static void Request(LaunchKind kind, string savePath = null, string notice = null, bool creative = false)
+        public static int StartChapter { get; private set; } = 1;
+
+        /// <summary>Whether a request is waiting for the next load.</summary>
+        public static bool HasRequest => _next != null;
+
+        /// <summary>
+        /// Names what the next scene load is for. <paramref name="savePath"/> is for Continue;
+        /// <paramref name="creative"/> for a new game or a Continue, never the title;
+        /// <paramref name="startChapter"/> for a campaign's new game only.
+        /// </summary>
+        public static void Request(LaunchKind kind, string savePath = null, string notice = null, bool creative = false,
+            int startChapter = 1)
         {
             _next = kind;
             _nextPath = kind == LaunchKind.Continue ? savePath : null;
             _nextNotice = notice;
             _nextCreative = creative && kind != LaunchKind.Title;
+            _nextChapter = kind == LaunchKind.NewGame && !_nextCreative && startChapter > 1 ? ChapterStart.Clamp(startChapter) : 1;
         }
 
         /// <summary>
@@ -71,10 +84,12 @@ namespace GolemFactory.Menus
             SavePath = Current == LaunchKind.Continue ? _nextPath : null;
             Notice = _nextNotice;
             Creative = _nextCreative;
+            StartChapter = _nextChapter;
             _next = null;
             _nextPath = null;
             _nextNotice = null;
             _nextCreative = false;
+            _nextChapter = 1;
             return Current;
         }
 
@@ -85,6 +100,8 @@ namespace GolemFactory.Menus
             _nextPath = null;
             _nextNotice = null;
             _nextCreative = false;
+            _nextChapter = 1;
+            StartChapter = 1;
             Current = LaunchKind.Title;
             SavePath = null;
             Notice = null;

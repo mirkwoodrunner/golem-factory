@@ -142,6 +142,15 @@ scenario or `--demo` run opens on a new game, as before, unless it asks for the 
 **Since step 4** (§7): the title has Load, Continue may resume the Autosave, and Quit to title
 returns here.
 
+**Start at chapter (2026-11-22, for testing).** In playtest mode (`sandbox.json`'s `playtest`)
+the title has one more entry after Creative: "Chapter N" with the chapter's title beside it.
+Left and Right (the d-pad, or the wheel over it) choose chapters 2 to 10 or "Guide finished";
+picking it starts a new game that the playtest kit has carried through every earlier chapter
+(`Core/Menus/ChapterStart`, the same fast-forward as the showcase), with the player moved beside
+the factory it built. `-- --chapter N` on the command line does the same from launch, skipping
+the title. The playtest report lists each chapter the kit did. Without playtest mode the menu is
+unchanged.
+
 ## 7. Step 4: save slots and autosave (done 2026-11-05)
 
 **Where it lives.** The slots in `Core/Menus` (`SaveSlots`: the files; `SaveSlotBoard`: what a

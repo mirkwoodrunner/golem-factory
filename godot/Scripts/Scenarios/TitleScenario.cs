@@ -27,6 +27,8 @@ namespace GolemFactory.Nodes.Scenarios
     ///   <item>New game reloads onto a fresh game, with no listener left on the bus by the title's
     ///   world. The game is saved, and the title offers it: Enter on Continue loads it.</item>
     ///   <item>A save that can't be read brings Continue back to the title, saying so.</item>
+    ///   <item>Playtest mode's "Start at chapter": Right steps the chapter, Enter reloads onto a
+    ///   new game the kit has carried to that chapter's first step.</item>
     /// </list>
     /// Writes only <c>user://scenario-saves</c> and <c>user://scenario-settings.cfg</c>.
     /// </summary>
@@ -74,6 +76,7 @@ namespace GolemFactory.Nodes.Scenarios
             PlanNewGame();
             PlanContinue();
             PlanBadSave();
+            PlanChapterStart();
         }
 
         // --- 1. The title over the workshop -----------------------------------------------------
@@ -444,6 +447,57 @@ namespace GolemFactory.Nodes.Scenarios
                 }
                 ScenarioCapture.Shot(Runner.GetViewport(), "title-notice");
                 return System.IO.File.ReadAllText(SaveFile) == "{ this is not a save" ? null : "the bad save was changed";
+            });
+        }
+
+        // --- Start at chapter (playtest mode) -------------------------------------------------------
+
+        private void PlanChapterStart()
+        {
+            Expect(Key.Down, TitleChoice.Creative);
+            Expect(Key.Down, TitleChoice.Chapter);
+            Do("the hint says Left and Right", () => Title.MainHintText == TitleScreen.ChapterHint ? null : $"the hint reads '{Title.MainHintText}'");
+            for (int i = 0; i < 4; i++)
+            {
+                Do("Right", () => { Tap(Key.Right); return null; });
+            }
+            Do("the entry names chapter 6", () =>
+            {
+                Button entry = Title.Entries[TitleChoice.Chapter];
+                string label = entry.GetNode<Label>("Label").Text;
+                if (Title.Menu.StartChapter != 6 || label != "Chapter 6" || DetailOf(entry) != GolemFactory.Tutorial.TutorialGuide.TitleOfChapter(6))
+                {
+                    return $"chapter {Title.Menu.StartChapter}: '{label}', '{DetailOf(entry)}'";
+                }
+                ScenarioCapture.Shot(Runner.GetViewport(), "title-chapter");
+                return null;
+            });
+            Reloading("Enter", 1, () => Tap(Key.Enter));
+            Until("the kit carried the game to chapter 6", 10, () =>
+                Title?.ChapterStartReached == 6 ? null : "reached " + Title?.ChapterStartReached);
+            Do("a game at chapter 6's first step", () =>
+            {
+                if (World.Launch != LaunchKind.NewGame || Title.IsOpen || ModalScreens.AnyOpen(Tree))
+                {
+                    return $"launch {World.Launch}, title open {Title.IsOpen}";
+                }
+                if (Sandbox.Tutorial.Current?.Id != "copper" || Sandbox.Tutorial.KitRunning)
+                {
+                    return $"guide on '{Sandbox.Tutorial.Current?.Id}', kit running {Sandbox.Tutorial.KitRunning}";
+                }
+                if (Sandbox.Golems.Count(g => !g.IsRemoved) < 5)
+                {
+                    return Sandbox.Golems.Count(g => !g.IsRemoved) + " golems: the earlier chapters' are missing";
+                }
+                return Hud.Showing && Guide.Plate.IsVisibleInTree() ? null : $"HUD {Hud.Showing}, guide {Guide.Plate.IsVisibleInTree()}";
+            });
+            Wait(0.5);
+            Do("the game view", () =>
+            {
+                var cells = Sandbox.Build.Buildings.Where(b => !b.IsRemoved).Select(b => b.Cell).ToList();
+                Log($"player at {Sandbox.Interactor.PlayerCell}; buildings x {cells.Min(c => c.x)}..{cells.Max(c => c.x)}, y {cells.Min(c => c.y)}..{cells.Max(c => c.y)}");
+                ScenarioCapture.Shot(Runner.GetViewport(), "chapter-start");
+                return null;
             });
         }
 

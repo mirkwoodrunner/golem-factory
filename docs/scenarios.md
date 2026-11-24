@@ -172,9 +172,12 @@ writing a scenario. Update this file when a scenario's checks change. Paths are 
   game with as many bus listeners as a fresh game has; the player walks. A save made there is
   offered on the title ("Saved today at ..."), and Enter on Continue brings back its depot and
   pack. A save spoiled after the title read it brings Continue back to the title with a notice,
-  Continue greyed and the file untouched. Writes only `user://scenario-saves` (emptied at the
-  end) and `user://scenario-settings.cfg`. Captures `title`, `title-settings`, `title-continue`,
-  `title-notice`.
+  Continue greyed and the file untouched. Playtest mode's "Start at chapter" (after Creative):
+  its hint names Left and Right, Right four times names chapter 6 and its title, and Enter reloads
+  onto a new game the kit has carried to chapter 6's first step (`copper`), with the earlier
+  chapters' golems standing, the player beside them, and the HUD and guide up. Writes only
+  `user://scenario-saves` (emptied at the end) and `user://scenario-settings.cfg`. Captures
+  `title`, `title-settings`, `title-continue`, `title-notice`, `title-chapter`, `chapter-start`.
 - `slots` (Sandbox, across reloads): the save slots and the autosave (`docs/menus-design.md` §7)
   with real keys and clicks. A save from before slots moves into Slot 1 and the title offers it
   (Continue, Load "1 save"); the title's Load lists the slots, the keys walk the ones that load,

@@ -36,10 +36,6 @@ namespace GolemFactory.Menus
         public const int CrateHigh = 35;
         public const int CrateKeep = 25;
 
-        /// <summary>Frames of 1/30 s each chapter may take before staging gives up on it.</summary>
-        private const int FramesPerChapter = 3600;
-        private const float FrameSeconds = 1f / 30f;
-
         private readonly SandboxWorld _world;
         private float _sinceKeep;
 
@@ -66,23 +62,7 @@ namespace GolemFactory.Menus
                 throw new InvalidOperationException("the showcase is built by the guide's kit; this world has no guide");
             }
             var showcase = new TitleShowcase(world);
-            // Built in one frame, so quietly, as a load is: no landing, dust, sound or popup.
-            world.Quietly(() =>
-            {
-                for (int chapter = 0; chapter < chapters; chapter++)
-                {
-                    if (!world.Tutorial.StartKit())
-                    {
-                        break;
-                    }
-                    for (int frame = 0; frame < FramesPerChapter && world.Tutorial.KitRunning; frame++)
-                    {
-                        world.Advance(FrameSeconds);
-                    }
-                }
-                return 0;
-            });
-            showcase.ChapterReached = world.Tutorial.ChapterOf(world.Tutorial.Index);
+            showcase.ChapterReached = ChapterStart.FastForward(world, chapters);
             showcase.Frame();
             return showcase;
         }
