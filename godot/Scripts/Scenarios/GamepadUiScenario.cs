@@ -195,7 +195,7 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return null;
                 }
-                int from = Menus.TitleMenu.Order.ToList().IndexOf(Title.Menu.Selected), to = Menus.TitleMenu.Order.ToList().IndexOf(choice);
+                int from = Title.Menu.Entries.ToList().IndexOf(Title.Menu.Selected), to = Title.Menu.Entries.ToList().IndexOf(choice);
                 _dpadHeld = to > from ? JoyButton.DpadDown : JoyButton.DpadUp;
                 Button(_dpadHeld, true);
                 _dpadDown = true;
@@ -234,7 +234,7 @@ namespace GolemFactory.Nodes.Scenarios
             Do("let go: one step down, not five; the camera unmoved", () =>
             {
                 Axis(JoyAxis.LeftY, 0f);
-                List<Menus.TitleChoice> order = Menus.TitleMenu.Order.ToList();
+                List<Menus.TitleChoice> order = Title.Menu.Entries.ToList();
                 Menus.TitleChoice next = order.Skip(order.IndexOf(_choice) + 1).FirstOrDefault(c => Title.Menu.IsEnabled(c));
                 if (Title.Menu.Selected != next)
                 {

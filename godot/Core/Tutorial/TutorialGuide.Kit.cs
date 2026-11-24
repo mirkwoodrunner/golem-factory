@@ -54,10 +54,16 @@ namespace GolemFactory.Tutorial
             return chapter;
         }
 
-        public string ChapterTitle(int chapter) =>
-            ChapterStarts.Where(c => c.chapter == chapter).Select(c => c.title).FirstOrDefault() ?? "";
+        public string ChapterTitle(int chapter) => TitleOfChapter(chapter);
 
         public int ChapterCount => ChapterStarts.Length;
+
+        /// <summary>The guide's last chapter (the Clock Tower's), with no world to ask.</summary>
+        public static int LastChapter => ChapterStarts.Length;
+
+        /// <summary>Chapter <paramref name="chapter"/>'s title, with no world to ask; "" for none.</summary>
+        public static string TitleOfChapter(int chapter) =>
+            ChapterStarts.Where(c => c.chapter == chapter).Select(c => c.title).FirstOrDefault() ?? "";
 
         private int _kitChapter;
         private int _kitPerformedIndex = -1;

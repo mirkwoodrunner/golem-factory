@@ -50,6 +50,15 @@ namespace GolemFactory.Nodes
         /// <summary>Whether this world is the title's showcase: watched, never played or saved.</summary>
         public bool IsShowcase => Launch == LaunchKind.Title;
 
+        /// <summary>
+        /// Whether the data asks for playtest mode (<c>sandbox.json</c>'s <c>playtest</c>), even
+        /// on the title, whose own world never plays it: the title offers "Start at chapter" then.
+        /// </summary>
+        public bool PlaytestMode { get; private set; }
+
+        /// <summary>The command line is read once, on the first load: a reload is the player's choice.</summary>
+        private static bool _commandLineRead;
+
         private System.Action<string> _logged, _warned, _errored;
 
         public SimulationClock Clock => Sandbox.Clock;
@@ -92,12 +101,14 @@ namespace GolemFactory.Nodes
             Compat.Debug.Warned += _warned;
             Compat.Debug.Errored += _errored;
 
+            RequestCommandLineChapter();
             Launch = GameLaunch.Take(PlaytestNode.UnderScenario);
 
             // Strict loaders: a bad data file throws here, at startup, naming the file and field.
             DefinitionSet definitions = DefinitionLoader.Load(Read);
 
             SandboxSetup setup = SandboxSetup.Parse(Read("sandbox.json"));
+            PlaytestMode = setup.playtest;
             // The showcase asks no playtest questions and writes no report: nobody is playing.
             setup.playtest &= !IsShowcase;
             // A Creative world (docs/menus-design.md §9): the setup's own Creative switch.
@@ -119,6 +130,38 @@ namespace GolemFactory.Nodes
 
             // The sound (docs/audio-design.md): plays what the world's AudioDirector decides.
             AddChild(new AudioNode { Name = "Audio" });
+        }
+
+        /// <summary>
+        /// <c>-- --chapter N</c> (or <c>--chapter=N</c>): the first load is a new game at chapter
+        /// N (<see cref="ChapterStart"/>), skipping the title, for testing a late chapter.
+        /// </summary>
+        private static void RequestCommandLineChapter()
+        {
+            if (_commandLineRead)
+            {
+                return;
+            }
+            _commandLineRead = true;
+            string[] args = OS.GetCmdlineUserArgs();
+            for (int i = 0; i < args.Length; i++)
+            {
+                string value = args[i].StartsWith("--chapter=") ? args[i].Substring("--chapter=".Length)
+                    : args[i] == "--chapter" && i + 1 < args.Length ? args[i + 1] : null;
+                if (value == null)
+                {
+                    continue;
+                }
+                if (!int.TryParse(value, out int chapter))
+                {
+                    GD.PushWarning($"--chapter wants a number from {ChapterStart.First} to {ChapterStart.Finished}, not '{value}'");
+                }
+                else if (!GameLaunch.HasRequest)
+                {
+                    GameLaunch.Request(LaunchKind.NewGame, startChapter: chapter);
+                }
+                return;
+            }
         }
 
         private void OnSettingsApplied(Settings.GameSettings settings) => Sandbox.Motion.Reduced = settings.ReducedMotion;

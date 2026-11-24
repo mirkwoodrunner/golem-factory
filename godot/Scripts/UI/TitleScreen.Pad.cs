@@ -19,6 +19,8 @@ namespace GolemFactory.Nodes
     {
         public const string MainHint = "Up and Down to choose  ·  Enter to pick";
         public const string PadMainHint = "Up and Down to choose  ·  A to pick";
+        public const string ChapterHint = "Left and Right for the chapter  ·  Enter to start there";
+        public const string PadChapterHint = "Left and Right for the chapter  ·  A to start there";
         public const string LoadHint = "Up and Down to choose  ·  Left and Right for Campaign or Creative  ·  Enter to load  ·  Escape to go back";
         public const string PadLoadHint = "Up and Down to choose  ·  Left and Right for Campaign or Creative  ·  A to load  ·  B to go back";
         public const string StopItem = "Item";
@@ -42,7 +44,8 @@ namespace GolemFactory.Nodes
                 return;
             }
             bool pad = InputDevices.PadInUse;
-            _mainHint.Text = pad ? PadMainHint : MainHint;
+            bool chapter = _menu.Selected == Menus.TitleChoice.Chapter;
+            _mainHint.Text = chapter ? (pad ? PadChapterHint : ChapterHint) : pad ? PadMainHint : MainHint;
             _loadHint.Text = pad ? PadLoadHint : LoadHint;
             _pad ??= new PadFocus(_root);
             if (!pad)
@@ -110,6 +113,10 @@ namespace GolemFactory.Nodes
             {
                 _menu.Move((int)step.Y);
                 ShowSelection();
+            }
+            else if (step.X != 0f && _menu.Selected == Menus.TitleChoice.Chapter)
+            {
+                StepChapter((int)step.X);
             }
             else if (pick)
             {

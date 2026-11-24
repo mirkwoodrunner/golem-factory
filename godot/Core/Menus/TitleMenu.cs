@@ -14,6 +14,9 @@ namespace GolemFactory.Menus
         Creative,
         Settings,
         Quit,
+
+        /// <summary>Playtest mode only: a new game from a later chapter (<see cref="ChapterStart"/>).</summary>
+        Chapter,
     }
 
     /// <summary>
@@ -73,8 +76,9 @@ namespace GolemFactory.Menus
     /// <summary>
     /// The title screen's entries and what each says: Continue resumes the newest save and is
     /// greyed without one, Load picks a slot (greyed likewise), New game starts the guide,
-    /// Settings opens the same tab Management has, Quit leaves. The node only draws these and
-    /// feeds clicks and keys.
+    /// Settings opens the same tab Management has, Quit leaves. In playtest mode "Start at chapter"
+    /// follows Creative: Left and Right choose the chapter, picking it starts a new game there.
+    /// The node only draws these and feeds clicks and keys.
     /// </summary>
     public sealed class TitleMenu
     {
@@ -93,15 +97,35 @@ namespace GolemFactory.Menus
         private readonly int _readable;
         private readonly DateTime _now;
 
-        /// <summary>The title's menu over <paramref name="saves"/>: every save found, readable or not.</summary>
-        public TitleMenu(IEnumerable<SaveSummary> saves, DateTime now)
+        /// <summary>
+        /// The title's menu over <paramref name="saves"/>: every save found, readable or not.
+        /// <paramref name="chapterStarts"/> (playtest mode) adds "Start at chapter".
+        /// </summary>
+        public TitleMenu(IEnumerable<SaveSummary> saves, DateTime now, bool chapterStarts = false)
         {
+            Entries = chapterStarts
+                ? Order.SelectMany(c => c == TitleChoice.Creative ? new[] { c, TitleChoice.Chapter } : new[] { c }).ToList()
+                : Order;
             List<SaveSummary> all = (saves ?? Enumerable.Empty<SaveSummary>()).ToList();
             _newest = SaveSummary.Newest(all);
             _found = all.Count;
             _readable = all.Count(s => s.Readable);
             _now = now;
             Selected = DefaultFocus;
+        }
+
+        /// <summary>This menu's entries, top to bottom: <see cref="Order"/>, with "Start at chapter" in playtest mode.</summary>
+        public IReadOnlyList<TitleChoice> Entries { get; }
+
+        /// <summary>The chapter "Start at chapter" starts a new game at.</summary>
+        public int StartChapter { get; private set; } = ChapterStart.First;
+
+        /// <summary>Left (-1) or right (+1) to the chapter before or after, wrapping round.</summary>
+        public void StepChapter(int step)
+        {
+            int count = ChapterStart.Finished - ChapterStart.First + 1;
+            int at = StartChapter - ChapterStart.First + Math.Sign(step);
+            StartChapter = ChapterStart.First + (at % count + count) % count;
         }
 
         /// <summary>The highlighted entry: the one Enter picks, and the one the pointer is over.</summary>
@@ -111,12 +135,12 @@ namespace GolemFactory.Menus
         public void Move(int step)
         {
             int at = IndexOf(Selected);
-            for (int i = 0; i < Order.Count; i++)
+            for (int i = 0; i < Entries.Count; i++)
             {
-                at = ((at + Math.Sign(step)) % Order.Count + Order.Count) % Order.Count;
-                if (IsEnabled(Order[at]))
+                at = ((at + Math.Sign(step)) % Entries.Count + Entries.Count) % Entries.Count;
+                if (IsEnabled(Entries[at]))
                 {
-                    Selected = Order[at];
+                    Selected = Entries[at];
                     return;
                 }
             }
@@ -133,11 +157,11 @@ namespace GolemFactory.Menus
             return true;
         }
 
-        private static int IndexOf(TitleChoice choice)
+        private int IndexOf(TitleChoice choice)
         {
-            for (int i = 0; i < Order.Count; i++)
+            for (int i = 0; i < Entries.Count; i++)
             {
-                if (Order[i] == choice)
+                if (Entries[i] == choice)
                 {
                     return i;
                 }
@@ -149,7 +173,7 @@ namespace GolemFactory.Menus
         public SaveSummary? Newest => _newest;
 
         public bool IsEnabled(TitleChoice choice) =>
-            (choice != TitleChoice.Continue && choice != TitleChoice.Load) || _newest != null;
+            Entries.Contains(choice) && ((choice != TitleChoice.Continue && choice != TitleChoice.Load) || _newest != null);
 
         /// <summary>Where the keyboard starts: Continue when there is a save, else New game.</summary>
         public TitleChoice DefaultFocus => IsEnabled(TitleChoice.Continue) ? TitleChoice.Continue : TitleChoice.NewGame;
@@ -162,8 +186,16 @@ namespace GolemFactory.Menus
             TitleChoice.Creative => "Creative",
             TitleChoice.Settings => "Settings",
             TitleChoice.Quit => "Quit",
+            TitleChoice.Chapter => "Start at chapter",
             _ => "",
         };
+
+        /// <summary>
+        /// What an entry reads: its <see cref="Label"/>, but "Start at chapter" names the chapter
+        /// chosen ("Chapter 6"), or "Guide finished" past the last.
+        /// </summary>
+        public string EntryLabel(TitleChoice choice) => choice != TitleChoice.Chapter ? Label(choice)
+            : StartChapter >= ChapterStart.Finished ? "Guide finished" : "Chapter " + StartChapter;
 
         /// <summary>
         /// The line beside an entry: when Continue's save was written, or why it is greyed; how
@@ -174,6 +206,10 @@ namespace GolemFactory.Menus
             if (choice == TitleChoice.Creative)
             {
                 return CreativeDetail;
+            }
+            if (choice == TitleChoice.Chapter)
+            {
+                return StartChapter >= ChapterStart.Finished ? "Start after chapter " + (StartChapter - 1) : Tutorial.TutorialGuide.TitleOfChapter(StartChapter);
             }
             if (choice == TitleChoice.Load)
             {
