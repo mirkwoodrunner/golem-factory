@@ -95,7 +95,7 @@ namespace GolemFactory.Buildings
         public bool CanGive() => _recycler != null;
 
         /// <summary>
-        /// The typed question. Coke always -- it is fuel, and the recovery from a dry hopper
+        /// The typed question. Coke while it has room -- it is fuel, and the recovery from a dry hopper
         /// depends on it being accepted. Everything else only while the batch it would complete
         /// can actually be paid for and stored.
         /// </summary>
@@ -106,9 +106,10 @@ namespace GolemFactory.Buildings
                 return false;
             }
 
+            // Coke while there is room for it (CokeCapacity): full, the golem keeps it and stalls.
             if (itemType == ItemType.Coke)
             {
-                return true;
+                return !_recycler.IsCokeFull;
             }
 
             return _recycler.CanAccept(itemType);
@@ -123,8 +124,7 @@ namespace GolemFactory.Buildings
 
             if (item.ItemType == ItemType.Coke)
             {
-                _recycler.AddCoke(1);
-                return true;
+                return _recycler.AddCoke(1) == 1;
             }
 
             return _recycler.TryRecycle(item.ItemType);

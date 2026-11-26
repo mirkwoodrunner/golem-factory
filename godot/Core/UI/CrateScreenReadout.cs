@@ -257,6 +257,68 @@ namespace GolemFactory.UI
             return next.Moved == 0 && next.Refusal != CrateTransfer.NoneLeft ? line + " · " + next.Refusal : line;
         }
 
+        // --- Discarding (2026-11-26, the user's call) --------------------------------------------
+        // The Pack screen can throw goods away: one, all of a good, or the whole pack. The pack only,
+        // never the Post or a crate. Goods thrown away are gone: they publish EventBus.Consumed,
+        // as every place that destroys goods does, and come back through nothing.
+
+        public const string DiscardButton = "Discard";
+        public const string DiscardDone = "Done";
+        public const string DiscardAllButton = "Discard all";
+        public const string DiscardAllConfirm = "Press Discard all again to empty your pack";
+        public const string NothingToDiscard = "Your pack is empty";
+
+        /// <summary>Goods left the pack for good: the screen's sound, if any.</summary>
+        public event Action Discarded;
+
+        /// <summary>A pack row's click while discarding: one away, or all of that good with Shift. Returns the status line.</summary>
+        public string Discard(string itemType, bool shift)
+        {
+            int held = itemType == null ? 0 : Pack.GetQuantity(itemType);
+            if (held <= 0)
+            {
+                return NothingToDiscard;
+            }
+            int amount = shift ? held : 1;
+            Throw(itemType, amount);
+            Discarded?.Invoke();
+            return "Threw away " + amount + " " + ItemTiers.DisplayName(itemType);
+        }
+
+        /// <summary>
+        /// Empties the pack. <paramref name="confirmed"/> false only asks (the first press of
+        /// Discard all); true throws everything away. Returns the status line.
+        /// </summary>
+        public string DiscardAll(bool confirmed)
+        {
+            List<string> goods = Pack.HeldGoods();
+            if (goods.Count == 0)
+            {
+                return NothingToDiscard;
+            }
+            if (!confirmed)
+            {
+                return DiscardAllConfirm;
+            }
+            int total = 0;
+            foreach (string good in goods)
+            {
+                int held = Pack.GetQuantity(good);
+                Throw(good, held);
+                total += held;
+            }
+            Discarded?.Invoke();
+            return "Emptied your pack: threw away " + total + (total == 1 ? " good" : " goods");
+        }
+
+        private void Throw(string itemType, int amount)
+        {
+            if (amount > 0 && Pack.TryWithdraw(itemType, amount))
+            {
+                Events.EventBus.Consumed(itemType, amount);
+            }
+        }
+
         // --- Labels ----------------------------------------------------------------------------
 
         /// <summary>

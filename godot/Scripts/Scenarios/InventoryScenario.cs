@@ -6,6 +6,7 @@ using GolemFactory.Buildings;
 using GolemFactory.Economy;
 using GolemFactory.Player;
 using GolemFactory.PunchCards;
+using GolemFactory.UI;
 using GolemFactory.World;
 using CoreVector3 = GolemFactory.Compat.Vector3;
 using CoreVector2Int = GolemFactory.Compat.Vector2Int;
@@ -31,6 +32,8 @@ namespace GolemFactory.Nodes.Scenarios
     ///   <item>On a guide step done in the crate screen, the guide's plate clears both panels.</item>
     ///   <item>The wrecking bar refuses a crate whose Scrap won't fit in the pack, whatever room
     ///   the Post has, then refunds it exactly.</item>
+    ///   <item>The Pack screen's Discard: a row's click does nothing until it is on, then throws one
+    ///   away, Shift all of it; Discard all asks once, then empties the pack and not the Post.</item>
     /// </list>
     ///
     /// Writes nothing to disk. The frames worth a look are logged ("frame N: ...") for a
@@ -95,6 +98,7 @@ namespace GolemFactory.Nodes.Scenarios
             PlanPost();
             PlanDemolition();
             PlanBoiler();
+            PlanDiscard();
         }
 
         public ScenarioResult? Step(double delta)
@@ -768,6 +772,92 @@ namespace GolemFactory.Nodes.Scenarios
         // --- Helpers ----------------------------------------------------------------------------
 
         private int Pack(string good) => _world.Wallet.Pack.GetQuantity(good);
+
+        // --- 11. Discarding (2026-11-26) ------------------------------------------------------------
+
+        private void PlanDiscard()
+        {
+            int post = 0;
+            Do("walk away from every crate, 20 Coke in the pack", () =>
+            {
+                SetPack(ItemType.Coke, 20);
+                post = _world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Coke);
+                Stand(-9f, 9f);
+                return null;
+            });
+            Do("press I", () => { Tap(Key.I); return null; });
+            Do("click Coke before Discard", () => _pack.IsOpen ? Click(_pack.Rows, ItemType.Coke) : "the Pack screen did not open");
+            Do("nothing went; click Discard", () =>
+            {
+                if (Pack(ItemType.Coke) != 20)
+                {
+                    return $"a plain click threw away Coke ({Pack(ItemType.Coke)} left)";
+                }
+                if (_pack.DiscardAllButton.Visible)
+                {
+                    return "Discard all shows before Discard is on";
+                }
+                Click(_pack.DiscardToggle);
+                return null;
+            });
+            Do("click Coke", () => _pack.Discarding ? Click(_pack.Rows, ItemType.Coke) : "Discard did not turn on");
+            Do("one went; Shift-click Coke", () =>
+            {
+                if (Pack(ItemType.Coke) != 19 || _pack.HintText != "Threw away 1 Coke")
+                {
+                    return $"{Pack(ItemType.Coke)} Coke, hint '{_pack.HintText}'";
+                }
+                Shot("pack screen discarding");
+                ScenarioCapture.Shot(_viewport, "screen-pack-discard");
+                return Click(_pack.Rows, ItemType.Coke, shift: true);
+            });
+            Do("all of it went; click Discard all", () =>
+            {
+                if (Pack(ItemType.Coke) != 0)
+                {
+                    return $"{Pack(ItemType.Coke)} Coke left";
+                }
+                if (!_pack.DiscardAllButton.Visible)
+                {
+                    return "no Discard all while discarding";
+                }
+                Click(_pack.DiscardAllButton);
+                return null;
+            });
+            Do("it asked; click Discard all again", () =>
+            {
+                if (_pack.HintText != CrateScreenReadout.DiscardAllConfirm || _world.Wallet.Pack.HeldGoods().Count == 0)
+                {
+                    return $"hint '{_pack.HintText}', {_world.Wallet.Pack.HeldGoods().Count} goods held";
+                }
+                Click(_pack.DiscardAllButton);
+                return null;
+            });
+            Do("the pack is empty, the Post is not; click Done", () =>
+            {
+                if (_world.Wallet.Pack.HeldGoods().Count != 0)
+                {
+                    return $"{_world.Wallet.Pack.HeldGoods().Count} goods still held";
+                }
+                if (_world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Coke) != post)
+                {
+                    return "the Post lost Coke";
+                }
+                Click(_pack.DiscardToggle);
+                return null;
+            });
+            Do("Discard is off; press I", () =>
+            {
+                if (_pack.Discarding || _pack.DiscardAllButton.Visible)
+                {
+                    return "Done left Discard on";
+                }
+                _log.Add("discard: a plain click moved nothing, then one, Shift all of it, Discard all asked once and emptied the pack, not the Post");
+                Tap(Key.I);
+                return null;
+            });
+            Do("closed", () => _pack.IsOpen ? "I left the Pack screen open" : null);
+        }
 
         private void Give(string good, int quantity) => _world.Buffers.Deposit(_world.StockpileBufferId, good, quantity);
 

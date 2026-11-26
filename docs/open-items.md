@@ -51,10 +51,17 @@ It no longer asks questions (cleared 2026-11-21), so the script's questions are 
 
 ## 3. Known gaps
 
-- **A Slag Heap or Scrap Recycler can hold more Coke than a pack.** Their Coke has no cap, and
-  demolition hands it back or refuses, so one fed past the pack's cap can't be demolished until the
-  pack grows or the Coke burns down. The boiler had the same trap and was fixed 2026-11-21 (a 100
-  cap and [I] to take Coke out, `BoilerCapacityTests`); the same pair would fix these.
+- **A Slag Heap or Scrap Recycler could hold more Coke than a pack: closed 2026-11-26.** The user
+  decided a machine always holds less than the pack. Both now hold 50 Coke, a crate's size, and a
+  golem bringing more stalls as at a full crate (`MachineStorageTests`). One from an old save over
+  the base pack still can't be demolished until it burns down to the cap or the pack grows: a load
+  never clamps, and neither machine has an [I] take, as the boiler does.
+- **The boiler holds exactly a base pack, not less.** 100 Coke against a 100 pack: it still fits an
+  empty slot, and [I] empties it. The user's 2026-11-26 rule says "smaller". Lowering it moves the
+  chapter floor tests (a new boiler starts full), so it is left for the user to call.
+- **A Slag Heap's Coke is not saved.** `SaveLoadService` saves a boiler's Coke and a recycler's
+  Coke, Scrap and points, but nothing of a heap: a load restarts every heap at the prefab's 0 Coke
+  and drops its carried Slag. Found 2026-11-26, not yet fixed. It needs a field on `BuildingEntry`.
 
 - **Old saves resume the guide a few steps off.** Saves from before the guide stored its step by
   id (#49), or its golems' roles (#52), fall back to the step's index and to build order. A fresh
@@ -116,6 +123,12 @@ It no longer asks questions (cleared 2026-11-21), so the script's questions are 
 
 ## 4. Polish, none of it blocking
 
+- **Discarding from the pack: built 2026-11-26** (the user's call). The Pack screen's Discard
+  throws one good away, Shift all of it, and Discard all empties the pack after asking once
+  (`inventory-screens-design.md` §4.6). Not yet played: whether players find it, and whether one
+  confirm is enough for Discard all. Pack rows now show a hover tint even with Discard off, when
+  a click does nothing.
+
 - **The art is placeholder** throughout, and the Workbench's lever housing, display face and
   card faces most of all. The City Office, the civic works' site, the Docks' gate and water and
   the Golem Foundry are generated placeholders, the user's to commission.
@@ -154,8 +167,9 @@ It no longer asks questions (cleared 2026-11-21), so the script's questions are 
 
 ## 5. Deliberate cuts
 
-- **No gamepad and no Linux export yet** (roadmap decision 10). The plan to run on a Steam Deck is
-  `docs/steam-deck-design.md`; it has five decisions waiting (its §2).
+- **Gamepad and the Linux export are built** (`docs/steam-deck-design.md`; decisions in its §8, the
+  machine side through D8 in its §7). What remains needs the owner's Deck (`roadmap.md`, "Resume
+  here"). Roadmap decision 10's "mouse and keyboard first" was superseded by D1 (b).
 - No player collision; the player walks through buildings and golems.
 - A belt hands off only to another belt: getting goods into a depot needs a golem.
 - `Refine` stays id-routed rather than spatial, so an untyped take can't grab the wrong input.

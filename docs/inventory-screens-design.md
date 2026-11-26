@@ -12,7 +12,7 @@ pressing E to cycle a label.
 ## 0. Invariants
 
 1. **No item is lost and none is made.** For every good, crate + pack is the same before and after
-   any click. A transfer withdraws only what the other side has room for, then deposits it.
+   any click, except Discard on the Pack screen (§4.6), the one click meant to destroy goods. A transfer withdraws only what the other side has room for, then deposits it.
 2. **Both caps hold** (50 a crate, 100 the pack, 200 the Post). A transfer moves at most the room
    on the receiving side. A good already above its cap can leave, never arrive.
 3. **A label is honoured on the way in.** A labelled crate accepts only its good from the pack,
@@ -190,6 +190,22 @@ Once the Post store holds anything, the pack panel's list gains a header row "Pn
 (24 px, Management's `HeaderPlateTint`, 14 bold `HeaderInk`) after the pack's rows, and the
 store's goods below it, read-only (no hover tint, no click). The store is reached at a Post crate.
 
+### 4.6 Discard on the Pack screen (2026-11-26, the user's call)
+
+The Pack screen can throw goods away. A **Discard** button sits at the right of the cap line,
+under Close. Off, a row's click does nothing (goods move at a crate). On, the button reads
+**Done**, the hint reads "Click a good to throw one away · Shift: all of it", and a row's click
+throws one away, Shift all of that good. A **Discard all** button shows at the right of the
+summary while Discard is on: its first press asks ("Press Discard all again to empty your pack"),
+the second empties the pack. Each result is the hint line ("Threw away 1 Coke"). Closing the
+screen turns Discard off.
+
+The pack only: the Post's rows stay read-only and crates are untouched. Goods thrown away publish
+`EventBus.Consumed`, as every place that destroys goods does, so they count as spent. The rules
+are `CrateScreenReadout.Discard` and `DiscardAll` (`MachineStorageTests`). By pad, the ring reaches
+Discard and Discard all; on a row, A throws one away and X all of it while Discard is on, and
+otherwise A closes, as before.
+
 ## 5. The guide over these screens
 
 `TutorialStep.Crate` (new, like `Workbench`) keeps the guide on show while the crate screen is
@@ -230,6 +246,10 @@ control clicked a frame after the screen opened). It checks:
    contents exactly.
 10. **The guide's dock.** On `smelt-feed`, with the crate screen open, the guide's plate rect does
     not overlap either panel's rect.
+11. **Boiler.** [I] at a boiler over the pack's cap takes a packful, and it then demolishes.
+12. **Discard.** A plain click on a pack row moves nothing; with Discard on, a click throws one
+    away and a Shift-click all of that good; Discard all asks once, then empties the pack and
+    leaves the Post. Frame `screen-pack-discard`.
 
 It writes nothing to disk. Frames for a look (`--write-movie`) are taken at steps 1, 4 and 5, since
 a UI change is verified by looking at it (root `CLAUDE.md`).

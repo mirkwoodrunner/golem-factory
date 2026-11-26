@@ -37,6 +37,15 @@ namespace GolemFactory.Buildings
         /// </summary>
         public int SlagPerCoke { get; }
 
+        /// <summary>
+        /// Coke a heap will hold (2026-11-26, the user's call: a machine always holds less than
+        /// the pack). A demolished heap hands its Coke back, and the demolition is refused when
+        /// the pack can't take it, so an uncapped heap fed past the pack's cap stood stuck. 50, a
+        /// crate's size, under the base pack's 100. Full, it refuses Coke, and the golem bringing
+        /// it stalls as at a full crate. <c>MachineStorageTests</c> pins it under the pack.
+        /// </summary>
+        public const int CokeCapacity = 50;
+
         public string HeapId { get; }
 
         /// <summary>Fuel on hand. Delivered like a boiler's -- see <c>SlagHeapEndpoint</c>.</summary>
@@ -58,12 +67,28 @@ namespace GolemFactory.Buildings
             CokeStock = startingCoke < 0 ? 0 : startingCoke;
         }
 
-        public void AddCoke(int quantity)
+        /// <summary>Whether the heap holds all the Coke it will take.</summary>
+        public bool IsCokeFull => CokeStock >= CokeCapacity;
+
+        /// <summary>
+        /// Refuel, up to <see cref="CokeCapacity"/>. Returns how much went in. A heap over the cap
+        /// (a save from before it; a load never clamps) takes none and burns down to it.
+        /// </summary>
+        public int AddCoke(int quantity)
         {
-            if (quantity > 0)
+            int room = CokeCapacity - CokeStock;
+            if (quantity > room)
             {
-                CokeStock += quantity;
+                quantity = room;
             }
+
+            if (quantity <= 0)
+            {
+                return 0;
+            }
+
+            CokeStock += quantity;
+            return quantity;
         }
 
         /// <summary>

@@ -84,7 +84,9 @@ writing a scenario. Update this file when a scenario's checks change. Paths are 
   room doesn't count), then refunds it exactly. A boiler holding more Coke than the pack (a save
   from the old 240 cap) is refused by the wrecking bar with the [I] hint; at the boiler the
   prompt offers "[I] take Coke", I takes a packful twice with no screen opening, and then it
-  demolishes with the rest refunded.
+  demolishes with the rest refunded. On the Pack screen a plain row click moves nothing; with
+  Discard on, a click throws one away and Shift-click all of that good, and Discard all asks
+  once, then empties the pack and leaves the Post (frame `screen-pack-discard`).
   Logs the frames worth a look for `--write-movie`.
 - `moods` (Sandbox, `Scripts/Scenarios/StreetFixture`'s street on steam): a golem a sleeping
   feeder will serve goes grey after its dwell, badge "waiting for Scrap", no shake, uncounted,
