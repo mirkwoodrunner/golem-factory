@@ -38,6 +38,7 @@ namespace GolemFactory.Buildings
         public string CokeHolderInSentence => "the Slag Heap";
         public bool HasCokeStore => true;
         public int CokeStock => Heap.CokeStock;
+        public int CokeCapacity => SlagHeap.CokeCapacity;
         public int CokeRoom => Heap.CokeRoom;
         public int AddCoke(int quantity) => Heap.AddCoke(quantity);
         public int TakeCoke(int quantity) => Heap.TakeCoke(quantity);

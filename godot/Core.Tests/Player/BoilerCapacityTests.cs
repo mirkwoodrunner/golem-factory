@@ -88,16 +88,26 @@ namespace GolemFactory.Tests.Player
             Assert.AreEqual(SteamBoiler.CokeCapacity - 30, boiler.Boiler.CokeStock, "nothing moved");
         }
 
+        private sealed class FakePack : GolemFactory.UI.IPackScreen
+        {
+            public bool IsOpen { get; private set; }
+            public void Open() => IsOpen = true;
+        }
+
+        // An empty boiler is passed over (2026-11-26): its prompt offers no take, so [I] opens
+        // the Pack screen, as anywhere else.
         [Test]
-        public void IAtAnEmptyBoiler_Refuses_AndOffersNoTake()
+        public void IAtAnEmptyBoiler_OffersNoTake_AndOpensThePack()
         {
             SandboxWorld world = Compose();
-            PlaceBoiler(world);
+            var pack = new FakePack();
+            world.ConfigureInventoryScreens(pack, null);
+            PlaceBoiler(world).GetPart<PlaceableBoiler>().Boiler.SetCoke(0);
             StandBy(world);
 
             StringAssert.DoesNotContain("take Coke", world.Interactor.CurrentPrompt);
-            Assert.IsFalse(world.Interactor.OpenInventory());
-            Assert.AreEqual("The boiler is empty.", world.Interactor.LastStatusMessage);
+            Assert.IsTrue(world.Interactor.OpenInventory(), world.Interactor.LastStatusMessage);
+            Assert.IsTrue(pack.IsOpen, "the Pack screen, not a refusal");
         }
 
         [Test]

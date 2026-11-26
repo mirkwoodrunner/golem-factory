@@ -493,6 +493,7 @@ namespace GolemFactory.Save
 
             AddUnclamped(pack, ItemType.Coke, entry.cokeStock);
             AddUnclamped(pack, ItemType.Coke, entry.recyclerCokeStock);
+            AddUnclamped(pack, ItemType.Coke, entry.heapCokeStock);
             AddUnclamped(pack, ItemType.Scrap, entry.recyclerScrapStock);
         }
 

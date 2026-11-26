@@ -64,7 +64,9 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   is `PlayerInteractor.TryCollect` (`InteractionKind.Sort`, "Collect from").
 - **Demolishing a crate refunds its contents** with its cost, or refuses with "pack full of ___";
   its buffer is then removed (`StorageBufferRegistry.Remove`), on a load's sweep too.
-- **A load never clamps.** Restores use `StorageBuffer.RestoreQuantity`, never `Deposit`. Crate
+- **A load never clamps** goods. Restores use `StorageBuffer.RestoreQuantity`, never `Deposit`.
+  What is not goods may be held to its bounds on a load: a meter (`SupplyPressureMeter`) or a
+  remainder below a ratio (a Slag Heap's `PendingSlag`, a recycler's `PendingPoints`). Crate
   contents save on their `BuildingEntry`, not in `SaveData.buffers`. `SaveData.version` is 1;
   a version-0 save keeps its stockpile as the pack (above the cap if need be), starts every crate
   empty, and says so once.

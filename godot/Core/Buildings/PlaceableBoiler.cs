@@ -27,6 +27,7 @@ namespace GolemFactory.Buildings
         public string CokeHolderInSentence => "the boiler";
         public bool HasCokeStore => Boiler != null;
         public int CokeStock => Boiler?.CokeStock ?? 0;
+        public int CokeCapacity => SteamBoiler.CokeCapacity;
         public int CokeRoom => Boiler?.CokeRoom ?? 0;
         public int AddCoke(int quantity) => Boiler?.AddCoke(quantity) ?? 0;
         public int TakeCoke(int quantity) => Boiler?.TakeCoke(quantity) ?? 0;

@@ -19,6 +19,9 @@ namespace GolemFactory.Buildings
 
         int CokeStock { get; }
 
+        /// <summary>Its cap: what [E] fills it to. An old save can hold more than this.</summary>
+        int CokeCapacity { get; }
+
         /// <summary>How much more it takes; 0 at or over its cap.</summary>
         int CokeRoom { get; }
 

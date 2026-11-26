@@ -1091,7 +1091,7 @@ namespace GolemFactory.Player
                     }
                     else
                     {
-                        detail = holder.CokeStock + "/" + (holder.CokeStock + holder.CokeRoom) + " Coke";
+                        detail = holder.CokeStock + "/" + holder.CokeCapacity + " Coke";
                     }
                     break;
                 }
@@ -1208,8 +1208,8 @@ namespace GolemFactory.Player
 
         /// <summary>
         /// [I] (docs/inventory-screens-design.md §1): the nearest crate within arm's reach opens
-        /// the Crate screen on it; at a boiler it takes the boiler's Coke (<see cref="TryTakeCoke"/>);
-        /// anywhere else, the Pack screen.
+        /// the Crate screen on it; at a Coke holder with Coke in it, it takes that Coke
+        /// (<see cref="TryTakeCoke"/>); anywhere else, the Pack screen.
         /// </summary>
         public bool OpenInventory()
         {
@@ -1220,10 +1220,11 @@ namespace GolemFactory.Player
             }
             // A boiler empties like a crate (2026-11-21), and so do a Slag Heap and a Scrap Recycler
             // (2026-11-26): [I] takes the Coke into the pack, so each can always be emptied, and
-            // then demolished.
+            // then demolished. An empty one is passed over (2026-11-26), as its prompt offers no
+            // take: [I] then opens the nearest crate or the Pack screen.
             InteractionPick pick = SelectNearestPick();
             if (pick.Kind == InteractionKind.Refuel && pick.IsInRange(_interactRange)
-                && ResolveTarget(pick, out _) is ICokeHolder boiler)
+                && ResolveTarget(pick, out _) is ICokeHolder { CokeStock: > 0 } boiler)
             {
                 return TryTakeCoke(boiler);
             }
@@ -1409,16 +1410,14 @@ namespace GolemFactory.Player
         {
             if (holder == null || !holder.HasCokeStore)
             {
-                LastStatusMessage = "No boiler in range.";
+                LastStatusMessage = "No machine in range.";
                 return false;
             }
 
             Vector3 at = BoilerPosition(holder);
             if (holder.CokeRoom <= 0)
             {
-                LastStatusMessage = holder is PlaceableBoiler
-                    ? $"The boiler is full ({SteamBoiler.CokeCapacity} Coke)."
-                    : $"{Capitalised(holder.CokeHolderInSentence)} is full ({holder.CokeStock} Coke).";
+                LastStatusMessage = $"{Capitalised(holder.CokeHolderInSentence)} is full ({holder.CokeCapacity} Coke).";
                 Popup(at, "Full", InteractionPopupKind.Refused);
                 return false;
             }
@@ -1462,7 +1461,7 @@ namespace GolemFactory.Player
             // No pack wired, nowhere to put it: refused, so no Coke leaves the machine for nothing.
             if (boiler == null || !boiler.HasCokeStore || _stockpile == null)
             {
-                LastStatusMessage = "No boiler in range.";
+                LastStatusMessage = "No machine in range.";
                 return false;
             }
 
