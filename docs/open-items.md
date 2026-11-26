@@ -118,10 +118,11 @@ It no longer asks questions (cleared 2026-11-21), so the script's questions are 
   sounds: loops still playing, C#'s references to the loaded sounds, and playbacks the audio thread
   hadn't let go of. `AudioNode` lets go of all of them as it leaves, and every quit goes through
   `AudioNode.Quit`, which stops the sound and waits 100 ms for the audio thread first.
-- **The `build` scenario throws on its Gear check, and still passes.** Its "stands" step reads
-  `Stock()[c.itemType]`, and once a price spends every Gear the key is gone, so a
-  `KeyNotFoundException` ends that step's checks for the building unseen (seen on Linux,
-  2026-11-26, and on the commit before). Found, not yet fixed.
+- **The `build` scenario threw on its Gear check and still passed: closed 2026-11-26.** It tracked
+  four goods by name, so the Presser's Gear price threw `KeyNotFoundException` and that step's
+  checks went unmade. It now tracks every good any price names, from the data. And a step that
+  throws now fails its scenario (`ScenarioRunner`), so this can't pass silently again. No other
+  scenario threw.
 - **No scenario flies a Zeppelin between the workshop and the Docks** (`region-design.md` §7).
   The mast and the Freight Link are unchanged and covered by `golems`; the distance is not.
 - **The golem cap stays 112** with the Docks (`performance-report-endless.md` §5): the p95s hold to

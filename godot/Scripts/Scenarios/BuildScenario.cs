@@ -44,7 +44,9 @@ namespace GolemFactory.Nodes.Scenarios
         private Dictionary<string, int> _funded;
         private int _wait;
 
-        private static readonly string[] Tracked = { "Scrap", "Brass", "IronPlate", "Casing" };
+        // Every good any placeable's price names, read from the data: a fixed list missed Gear
+        // (the Presser's price), so its check threw instead of counting it (2026-11-26).
+        private string[] Tracked = new string[0];
 
         public void Begin(ScenarioRunner runner)
         {
@@ -65,6 +67,8 @@ namespace GolemFactory.Nodes.Scenarios
             // A fixture's pack, uncapped: this run is about the menu, the cursor and the refund's
             // arithmetic, and every building at once costs more Scrap than a 100 pack holds.
             _world.Buffers.SetCapacity(_world.StockpileBufferId, StorageBuffer.Unlimited);
+            Tracked = _world.Placeables.SelectMany(p => p.Prefab.Cost).Select(c => c.itemType)
+                .Distinct().OrderBy(t => t, StringComparer.Ordinal).ToArray();
             foreach (PlaceableEntry entry in _world.Placeables)
             {
                 foreach (RecipeIngredient c in entry.Prefab.Cost)
