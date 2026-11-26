@@ -51,19 +51,29 @@ It no longer asks questions (cleared 2026-11-21), so the script's questions are 
 
 ## 3. Known gaps
 
-- **A Slag Heap or Scrap Recycler can hold more Coke than a pack.** Their Coke has no cap, and
-  demolition hands it back or refuses, so one fed past the pack's cap can't be demolished until the
-  pack grows or the Coke burns down. The boiler had the same trap and was fixed 2026-11-21 (a 100
-  cap and [I] to take Coke out, `BoilerCapacityTests`); the same pair would fix these.
+- **A Slag Heap or Scrap Recycler could hold more Coke than a pack: closed 2026-11-26.** The user
+  decided a machine always holds less than the pack. Both now hold 50 Coke, a crate's size, and a
+  golem bringing more stalls as at a full crate (`MachineStorageTests`). Both now take Coke by hand
+  as a boiler does (`ICokeHolder`): [E] loads it from the pack, [I] takes it back, so one from an
+  old save over the base pack can be emptied and demolished. The prompt's verb is "Fuel" with the
+  machine's name after it; it read "Fuel Boiler Boiler" before.
+- **The boiler held exactly a base pack: closed 2026-11-26.** The user's call: 80 Coke, under the
+  100 pack, four 20-Coke hand-loads (`tuning-data-spec.md`). Placed boilers start at 0, so the
+  chapter floors didn't move.
+- **A Slag Heap's Coke wasn't saved: closed 2026-11-26.** A load restarted every heap empty, so it
+  refused Slag and its smelter stalled. `BuildingEntry.heapCokeStock` and `heapPendingSlag` keep
+  it now; an older save's heaps still start empty.
 
 - **Old saves resume the guide a few steps off.** Saves from before the guide stored its step by
   id (#49), or its golems' roles (#52), fall back to the step's index and to build order. A fresh
   game is unaffected.
 - **A Clock Tower placed by hand in a save from before #47 is not rebuilt.** The tower is a
   fixture in the town square now; such a save restarts it at stage 1.
-- **After a load mid-stage, the tower's starved alarm can show briefly** until the first
-  delivery lands, because supply meters aren't saved. Without that, a line that broke since the
-  save would never raise the alarm.
+- **After a load mid-stage, the tower's starved alarm showed briefly: closed 2026-11-26.** The
+  supply meters are saved now (`ClockTowerSite.CaptureMeters`, for the tower and the civic works),
+  so a working line's meter is still up after a load and a broken one drains and raises the
+  alarm, as it would have without the save. The delivery windows still restart, so the rate (and
+  progress) rebuilds over the first minute.
 - **The Ledger's golem estimates were hand-written: closed 2026-10-22.** The user decided to
   drop them. The stage lines no longer say "~63 golems", "~72" or "~96", and phase VI reads
   "Four rate-scaled stages"; `NoLedgerText_EstimatesAGolemCount` keeps them out
@@ -104,8 +114,15 @@ It no longer asks questions (cleared 2026-11-21), so the script's questions are 
   fixed pixels for a 1280 x 720 canvas, so the scale is capped where it would cut a screen off
   (`menus-design.md` §4, call 6). Bigger text on the Steam Deck (`steam-deck-design.md` D3) needs
   the screens to reflow first.
-- **Godot reports "7 resources still in use at exit"** at the end of every scenario run, on
-  `phase6/feel` as well. Harmless so far; not yet traced.
+- **"7 resources still in use at exit": closed 2026-11-26.** Traced with `--verbose` to the
+  sounds: loops still playing, C#'s references to the loaded sounds, and playbacks the audio thread
+  hadn't let go of. `AudioNode` lets go of all of them as it leaves, and every quit goes through
+  `AudioNode.Quit`, which stops the sound and waits 100 ms for the audio thread first.
+- **The `build` scenario threw on its Gear check and still passed: closed 2026-11-26.** It tracked
+  four goods by name, so the Presser's Gear price threw `KeyNotFoundException` and that step's
+  checks went unmade. It now tracks every good any price names, from the data. And a step that
+  throws now fails its scenario (`ScenarioRunner`), so this can't pass silently again. No other
+  scenario threw.
 - **No scenario flies a Zeppelin between the workshop and the Docks** (`region-design.md` §7).
   The mast and the Freight Link are unchanged and covered by `golems`; the distance is not.
 - **The golem cap stays 112** with the Docks (`performance-report-endless.md` §5): the p95s hold to
@@ -115,6 +132,11 @@ It no longer asks questions (cleared 2026-11-21), so the script's questions are 
   +2.86 ms on one windowed run and +0.4 ms on the next. Not reproduced, not explained.
 
 ## 4. Polish, none of it blocking
+
+- **Discarding from the pack: built 2026-11-26** (the user's call). The Pack screen's Discard
+  throws one good away, Shift all of it, and Discard all empties the pack after asking once
+  (`inventory-screens-design.md` §4.6). Not yet played: whether players find it, and whether one
+  confirm is enough for Discard all. Pack rows take the mouse only while Discard is on.
 
 - **The art is placeholder** throughout, and the Workbench's lever housing, display face and
   card faces most of all. The City Office, the civic works' site, the Docks' gate and water and
@@ -154,8 +176,9 @@ It no longer asks questions (cleared 2026-11-21), so the script's questions are 
 
 ## 5. Deliberate cuts
 
-- **No gamepad and no Linux export yet** (roadmap decision 10). The plan to run on a Steam Deck is
-  `docs/steam-deck-design.md`; it has five decisions waiting (its §2).
+- **Gamepad and the Linux export are built** (`docs/steam-deck-design.md`; decisions in its §8, the
+  machine side through D8 in its §7). What remains needs the owner's Deck (`roadmap.md`, "Resume
+  here"). Roadmap decision 10's "mouse and keyboard first" was superseded by D1 (b).
 - No player collision; the player walks through buildings and golems.
 - A belt hands off only to another belt: getting goods into a depot needs a golem.
 - `Refine` stays id-routed rather than spatial, so an untyped take can't grab the wrong input.

@@ -35,7 +35,7 @@ namespace GolemFactory.Tests.Steam
             world.Build.PlaceOrRemove(golemCell + new Vector2Int(0, 1));
             world.Build.CancelPlacement();
             PlaceableBoiler boiler = world.Build.Buildings.Select(b => b.GetPart<PlaceableBoiler>()).Single(b => b != null);
-            boiler.Boiler.AddCoke(100);
+            boiler.Boiler.AddCoke(SteamBoiler.CokeCapacity);
 
             Assert.IsTrue(world.StarterStation.TryConstructGolem(definitions.Chassis["ClockworkScavenger"], out GolemEntity golem));
             golem.SetPlacement(golemCell, Facing.North);
@@ -66,7 +66,7 @@ namespace GolemFactory.Tests.Steam
 
             RunOneMinute(world);
 
-            Assert.AreEqual(100, boiler.CokeStock, "unprogrammed: powered, idle, free");
+            Assert.AreEqual(SteamBoiler.CokeCapacity, boiler.CokeStock, "unprogrammed: powered, idle, free");
         }
 
         [Test]
@@ -80,9 +80,9 @@ namespace GolemFactory.Tests.Steam
             RunOneMinute(world);
 
             Assert.AreNotEqual(GolemState.Stalled, golem.Program.State, $"precondition: working, not stalled ({golem.StallReason})");
-            Assert.AreEqual(SteamGaugeUtility.CokePerMinutePerGolem, 100 - boiler.CokeStock, 1,
+            Assert.AreEqual(SteamGaugeUtility.CokePerMinutePerGolem, SteamBoiler.CokeCapacity - boiler.CokeStock, 1,
                 "about 3 Coke in a minute of work");
-            Assert.AreEqual(100 - boiler.CokeStock, world.Consumption.Totals[ItemType.Coke],
+            Assert.AreEqual(SteamBoiler.CokeCapacity - boiler.CokeStock, world.Consumption.Totals[ItemType.Coke],
                 "every Coke burned is spent (docs/supply-design.md §4)");
         }
     }

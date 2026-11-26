@@ -6,6 +6,10 @@ Paths here are relative to `godot/` unless they say otherwise.
 Current scenarios, one line each. **What each checks in full is in `docs/scenarios.md`**: read the
 scenario's entry there, and its source, before changing it, and update the entry when its checks change.
 
+**A step that throws fails its scenario** (`ScenarioRunner._Process`, 2026-11-26). Before, the
+exception was logged and the run went on to PASS with that step's checks unmade. Don't catch
+broadly inside a step to get past one: return a failure string instead.
+
 | Scenario | Checks | Design doc |
 |---|---|---|
 | `world` | the shell, the sconces, the street's carts, walking the street |  |

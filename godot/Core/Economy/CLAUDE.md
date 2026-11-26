@@ -70,10 +70,12 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   empty, and says so once.
 - **The pack's cap grows only by upgrade** (`SandboxWorld.PackUpgrade`, `sandbox.json`'s
   `packUpgrades`, the Workshop tab's Pack row): never lowered in play, restored by rung on a
-  load (`packUpgradeTier`) without clamping. Crates stay at 50 and the Post at 200. **A crate (50)
-  and a boiler (100 Coke, `BoilerCapacityTests`) hold at most the base pack per good**, so an empty
-  pack slot always takes what demolition hands back; a boiler also empties by [I]. The Slag Heap's
-  and Scrap Recycler's Coke is uncapped (`docs/open-items.md`). **Every price
+  load (`packUpgradeTier`) without clamping. Crates stay at 50 and the Post at 200. **A machine holds less than the pack per good** (the user's call, 2026-11-26;
+  `MachineStorageTests`): a crate 50, a Slag Heap's and a Scrap Recycler's Coke 50, a recycler's
+  Scrap 24, a boiler's Coke 80 (`BoilerCapacityTests`). So an empty pack slot always takes what
+  demolition hands back. Each Coke holder (`ICokeHolder`: boiler, heap, recycler) also takes Coke by
+  [E] and gives it back by [I], for a save from before a cap. A new machine that stores
+  goods keeps under the base pack. **Every price
   fits the pack reachable when it opens** on the guide's path, pack only
   (`PriceReachTests`): a new price or rung must pass it. Floor Expansion charges
   `floorExpansion.purchases`, one bundle per purchase, unclamped. A next price naming a good the
@@ -92,5 +94,7 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
 - **The screens' rules are `SandboxWorld.Inventory`** (`CrateScreenReadout`): rows, clicks (one;
   Shift, all that fits, as automation games do), status lines, and the label picker's options, every good the ledger has
   seen. Moves go through `CrateTransfer`; `PlanTake`/`PlanPut` are the dry runs a row's refusal
-  reads. `CrateScreen` and `PackScreen` only draw, through one `InventoryPanel` builder, and keep
+  reads. **Discard** (Pack screen only, 2026-11-26) throws pack goods away through
+  `CrateScreenReadout.Discard`/`DiscardAll`, publishing `Consumed`; never the Post or a crate.
+  `CrateScreen` and `PackScreen` only draw, through one `InventoryPanel` builder, and keep
   their rows by good. A step done in the Crate screen sets `TutorialStep.Crate`.

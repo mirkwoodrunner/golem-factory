@@ -71,7 +71,7 @@ namespace GolemFactory.Buildings
         public bool CanGive() => _heap != null;
 
         /// <summary>
-        /// The typed question. Coke always (it is fuel); Slag only while the heap can pay to
+        /// The typed question. Coke while it has room (it is fuel); Slag only while the heap can pay to
         /// burn it. A heap that has run dry therefore refuses Slag and keeps taking Coke, which
         /// is exactly the recovery the player needs.
         /// </summary>
@@ -82,9 +82,10 @@ namespace GolemFactory.Buildings
                 return false;
             }
 
+            // Coke while there is room for it (CokeCapacity): full, the golem keeps it and stalls.
             if (itemType == ItemType.Coke)
             {
-                return true;
+                return !_heap.IsCokeFull;
             }
 
             return itemType == ItemType.Slag && _heap.CanVoid();
@@ -99,8 +100,7 @@ namespace GolemFactory.Buildings
 
             if (item.ItemType == ItemType.Coke)
             {
-                _heap.AddCoke(1);
-                return true;
+                return _heap.AddCoke(1) == 1;
             }
 
             return item.ItemType == ItemType.Slag && _heap.TryVoid();

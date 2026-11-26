@@ -88,6 +88,15 @@ namespace GolemFactory.Buildings
         /// </summary>
         public const int OutputCapacity = 24;
 
+        /// <summary>
+        /// Coke a hopper will hold (2026-11-26, the user's call: a machine always holds less than
+        /// the pack). A demolished hopper hands its Coke back, and the demolition is refused when
+        /// the pack can't take it, so an uncapped hopper fed past the pack's cap stood stuck. 50,
+        /// a crate's size, under the base pack's 100, as the Slag Heap's.
+        /// <c>MachineStorageTests</c> pins it under the pack.
+        /// </summary>
+        public const int CokeCapacity = 50;
+
         public string RecyclerId { get; }
 
         /// <summary>Fuel on hand. Delivered by golem or by hand, like a boiler's.</summary>
@@ -135,12 +144,52 @@ namespace GolemFactory.Buildings
             return tier >= 0 && tier < PointsByTier.Length ? PointsByTier[tier] : 0;
         }
 
-        public void AddCoke(int quantity)
+        /// <summary>Whether the hopper holds all the Coke it will take.</summary>
+        public bool IsCokeFull => CokeStock >= CokeCapacity;
+
+        /// <summary>How much more Coke it takes: 0 at or over the cap.</summary>
+        public int CokeRoom => CokeStock >= CokeCapacity ? 0 : CokeCapacity - CokeStock;
+
+        /// <summary>
+        /// Takes up to <paramref name="quantity"/> Coke out, for the player's [I] (2026-11-26), so
+        /// a hopper holding more than the pack (a save from before the cap) can still be emptied.
+        /// Returns how much came out; never more than it holds.
+        /// </summary>
+        public int TakeCoke(int quantity)
         {
-            if (quantity > 0)
+            if (quantity > CokeStock)
             {
-                CokeStock += quantity;
+                quantity = CokeStock;
             }
+
+            if (quantity <= 0)
+            {
+                return 0;
+            }
+
+            CokeStock -= quantity;
+            return quantity;
+        }
+
+        /// <summary>
+        /// Refuel, up to <see cref="CokeCapacity"/>. Returns how much went in. A hopper over the
+        /// cap (a save from before it; a load never clamps) takes none and burns down to it.
+        /// </summary>
+        public int AddCoke(int quantity)
+        {
+            int room = CokeCapacity - CokeStock;
+            if (quantity > room)
+            {
+                quantity = room;
+            }
+
+            if (quantity <= 0)
+            {
+                return 0;
+            }
+
+            CokeStock += quantity;
+            return quantity;
         }
 
         /// <summary>

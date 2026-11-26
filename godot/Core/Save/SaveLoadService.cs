@@ -161,6 +161,13 @@ namespace GolemFactory.Save
                     entry.recyclerPendingPoints = recycler.Recycler.PendingPoints;
                 }
 
+                var heap = building.GetPart<GolemFactory.Buildings.PlaceableSlagHeap>();
+                if (heap != null && heap.Heap != null)
+                {
+                    entry.heapCokeStock = heap.Heap.CokeStock;
+                    entry.heapPendingSlag = heap.Heap.PendingSlag;
+                }
+
                 var tower = building.GetPart<GolemFactory.Buildings.PlaceableClockTower>();
                 if (tower != null && tower.Site != null)
                 {
@@ -543,6 +550,9 @@ namespace GolemFactory.Save
                 recycler.Recycler.Restore(
                     entry.recyclerCokeStock, entry.recyclerScrapStock, entry.recyclerPendingPoints);
             }
+
+            building.GetPart<GolemFactory.Buildings.PlaceableSlagHeap>()?.Heap?.Restore(
+                entry.heapCokeStock, entry.heapPendingSlag);
 
             var tower = building.GetPart<GolemFactory.Buildings.PlaceableClockTower>();
             if (tower != null && tower.Site != null)

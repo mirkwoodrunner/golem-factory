@@ -191,7 +191,19 @@ namespace GolemFactory.Nodes.Scenarios
             }
 
             WatchFrame();
-            ScenarioResult? result = _scenario.Step(delta);
+            ScenarioResult? result;
+            try
+            {
+                result = _scenario.Step(delta);
+            }
+            catch (Exception e)
+            {
+                // A step that throws fails the scenario (2026-11-26). Before, the exception was
+                // logged, the step was already dequeued, and the run carried on to PASS with that
+                // step's checks unmade: `build` did so on every run.
+                result = new ScenarioResult(false, $"a step threw {e.GetType().Name}: {e.Message}");
+                GD.PushError(e.ToString());
+            }
             if (result.HasValue)
             {
                 Finish(result.Value);
@@ -352,7 +364,7 @@ namespace GolemFactory.Nodes.Scenarios
             GD.Print($"[scenario {_name}] {(result.Passed ? "PASS" : "FAIL")} {result.Report}");
             _scenario = null;
             SetProcess(false);
-            GetTree().Quit(result.Passed ? 0 : 1);
+            AudioNode.Quit(this, result.Passed ? 0 : 1);
         }
     }
 }

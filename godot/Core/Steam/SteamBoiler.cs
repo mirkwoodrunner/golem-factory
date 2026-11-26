@@ -30,11 +30,11 @@ namespace GolemFactory.Steam
         /// the Coal stays put.
         ///
         /// <para>
-        /// 100, the base pack's <c>packCapacityPerType</c> (2026-11-21, the user's call; it was
-        /// 240). A demolished boiler hands its Coke back, and the demolition is refused when the
-        /// pack can't take it, so a boiler that held more than a pack stood stuck until the pack
-        /// was upgraded. A crate (50) always fits an empty pack slot; now a boiler does too.
-        /// <c>BoilerCapacityTests</c> pins it at or under the pack.
+        /// 80, under the base pack's <c>packCapacityPerType</c> of 100 (2026-11-26, the user's call
+        /// that a machine holds less than the pack; 100 from 2026-11-21, 240 before). A demolished
+        /// boiler hands its Coke back, and the demolition is refused when the pack can't take it,
+        /// so a boiler that held more than a pack stood stuck until the pack was upgraded. Four of
+        /// the 20-Coke hand-loads fill it exactly. <c>BoilerCapacityTests</c> pins it under the pack.
         /// </para>
         ///
         /// <para>
@@ -46,7 +46,7 @@ namespace GolemFactory.Steam
         /// its job, not a lock.
         /// </para>
         /// </summary>
-        public const int CokeCapacity = 100;
+        public const int CokeCapacity = 80;
 
         /// <summary>Coke on hand. Never negative -- see <see cref="Accrue"/>.</summary>
         public int CokeStock { get; private set; }

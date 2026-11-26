@@ -190,7 +190,9 @@ namespace GolemFactory.Player
                 // "Fuel", not "Refuel": the case that matters most is the boiler that has never
                 // been lit, and a player told to RE-fuel one looks for the fuel they must have
                 // spilled.
-                case InteractionKind.Refuel: return "Fuel Boiler";
+                // The machine's name follows ("Fuel Boiler", "Fuel Slag Heap"); the verb named the
+                // boiler too until a heap and a recycler joined it (2026-11-26), which doubled it.
+                case InteractionKind.Refuel: return "Fuel";
                 // Sort keeps its value and now means "a crate" (crates-design §4.2): E takes what
                 // fits into the pack. The label moved to the crate screen.
                 case InteractionKind.Sort: return "Collect from";

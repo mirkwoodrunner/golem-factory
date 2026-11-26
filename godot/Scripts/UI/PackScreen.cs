@@ -7,8 +7,8 @@ namespace GolemFactory.Nodes
 {
     /// <summary>
     /// The Pack screen ([I] away from a crate, docs/inventory-screens-design.md): what the player
-    /// carries, one row a good against the pack's cap. Nothing moves from here; goods move at a
-    /// crate, on the Crate screen.
+    /// carries, one row a good against the pack's cap. Goods move at a crate, on the Crate screen;
+    /// from here they can only be thrown away (Discard, 2026-11-26).
     /// </summary>
     public partial class PackScreen : CanvasLayer, IPackScreen, IClosableScreen
     {
@@ -21,6 +21,24 @@ namespace GolemFactory.Nodes
 
         /// <summary>The hint with the pad in use: Y opens a crate as I does.</summary>
         public const string PadHint = "Stand at a crate and press Y to fill it from here.";
+
+        /// <summary>The hint while discarding.</summary>
+        public const string DiscardHint = "Click a good to throw one away · Shift: all of it";
+
+        /// <summary>The hint while discarding, with the pad in use.</summary>
+        public const string DiscardPadHint = "A throws one away · X all of it";
+
+        private Button _discard;
+        private Button _discardAll;
+        private bool _discarding;
+        private bool _discardAllArmed;
+        private string _status;
+
+        /// <summary>Whether a row's click throws goods away.</summary>
+        public bool Discarding => _discarding;
+
+        public Button DiscardToggle => _discard;
+        public Button DiscardAllButton => _discardAll;
 
         private SandboxWorld _world;
         private Control _root;
@@ -62,6 +80,7 @@ namespace GolemFactory.Nodes
 
         public void Close()
         {
+            SetDiscarding(false);
             IsOpen = false;
             _root.Visible = false;
         }
@@ -86,10 +105,13 @@ namespace GolemFactory.Nodes
         }
 
         // --- The pad (docs/steam-deck-design.md D6) --------------------------------------------
-        // Nothing moves from here, so the ring only walks the rows, scrolling a long pack; B, Y
-        // or A closes, as Escape, I or E does.
+        // The ring walks Discard, Discard all (while discarding) and the rows, scrolling a long pack.
+        // A presses a button; on a row, A throws one away and X all of it while discarding, and
+        // otherwise A closes, as E does. B or Y closes, as Escape or I does.
 
         public const string StopRow = "Row";
+        public const string StopDiscard = "Discard";
+        public const string StopDiscardAll = "DiscardAll";
 
         private PadFocus _pad;
         private ulong _padOpenedFrame;
@@ -118,13 +140,21 @@ namespace GolemFactory.Nodes
             }
             // The Y that opened the pack is still "just pressed" in the frame it opens.
             bool opening = Engine.GetProcessFrames() <= _padOpenedFrame + 1;
-            if (!opening && (Input.IsActionJustPressed(BuildCursorNode.CancelAction) || Input.IsActionJustPressed(PlayerNode.Inventory)
-                             || Input.IsActionJustPressed(PlayerNode.Interact)))
+            if (!opening && (Input.IsActionJustPressed(BuildCursorNode.CancelAction) || Input.IsActionJustPressed(PlayerNode.Inventory)))
             {
                 Close();
                 return;
             }
+            if (!opening && PadButtons())
+            {
+                return;
+            }
             var stops = new System.Collections.Generic.List<PadFocus.Stop>();
+            stops.Add(new PadFocus.Stop(StopDiscard, 0, _discard));
+            if (_discarding)
+            {
+                stops.Add(new PadFocus.Stop(StopDiscardAll, 0, _discardAll));
+            }
             for (int i = 0; i < _panel.OrderedRows.Count; i++)
             {
                 Button row = _panel.OrderedRows[i].row;
@@ -136,12 +166,83 @@ namespace GolemFactory.Nodes
             _pad.Update(stops, delta);
         }
 
+        // A and X at the ring's stop. Returns true when the screen closed.
+        private bool PadButtons()
+        {
+            bool one = Input.IsActionJustPressed(PlayerNode.Interact);
+            bool all = Input.IsActionJustPressed(PlayerNode.Carry);
+            if (!_pad.HasFocus)
+            {
+                if (one)
+                {
+                    Close();
+                }
+                return one;
+            }
+            switch (_pad.Kind)
+            {
+                case StopDiscard when one:
+                    _discard.EmitSignal(BaseButton.SignalName.Pressed);
+                    break;
+                case StopDiscardAll when one:
+                    _discardAll.EmitSignal(BaseButton.SignalName.Pressed);
+                    break;
+                case StopRow when _discarding && (one || all) && _pad.Index < _panel.OrderedRows.Count:
+                    RowClicked(_panel.OrderedRows[_pad.Index].good, all);
+                    break;
+                case StopRow when one:
+                    Close();
+                    return true;
+            }
+            return false;
+        }
+
         private void Refresh()
         {
             _panel.Render(_world.Inventory.PackRows(null), _world.Inventory.PostRows());
             _panel.Cap.Text = _world.Inventory.PackCapLine; // live: a pack upgrade raises it
             _summary.Text = _world.Inventory.PackSummary;
-            _hint.Text = InputDevices.PadInUse ? PadHint : Hint; // the Pack key can be rebound (Settings)
+            _hint.Text = _status
+                ?? (_discarding ? (InputDevices.PadInUse ? DiscardPadHint : DiscardHint)
+                    : InputDevices.PadInUse ? PadHint : Hint); // the Pack key can be rebound (Settings)
+            _discardAll.Visible = _discarding;
+        }
+
+        // A row's click: nothing unless discarding (goods move at a crate), then one away, or all with Shift.
+        private void RowClicked(string good, bool shift)
+        {
+            if (!_discarding)
+            {
+                return;
+            }
+            _discardAllArmed = false;
+            _status = _world.Inventory.Discard(good, shift);
+        }
+
+        // Two presses: the first asks, the second empties the pack.
+        private void DiscardAllPressed()
+        {
+            _status = _world.Inventory.DiscardAll(_discardAllArmed);
+            _discardAllArmed = _status == CrateScreenReadout.DiscardAllConfirm;
+        }
+
+        private void SetDiscarding(bool on)
+        {
+            _discarding = on;
+            if (_panel != null)
+            {
+                _panel.Clickable = on;
+            }
+            _discardAllArmed = false;
+            _status = null;
+            if (_discard?.GetNodeOrNull<Label>("Label") is Label label)
+            {
+                label.Text = on ? CrateScreenReadout.DiscardDone : CrateScreenReadout.DiscardButton;
+            }
+            if (_discardAll != null)
+            {
+                _discardAll.Visible = on;
+            }
         }
 
         private void Build()
@@ -150,14 +251,28 @@ namespace GolemFactory.Nodes
             AddChild(_root);
             _root.AddChild(Ugui.Fill(Ugui.Rect("Backdrop", new Color(0.055f, 0.045f, 0.038f, 0.80f))));
 
-            _panel = new InventoryPanel("PackPanel", 64f, Close, null);
+            _panel = new InventoryPanel("PackPanel", 64f, Close, RowClicked) { Clickable = false };
             _root.AddChild(Ugui.Place(_panel.Root, 0.5f, 0.5f, 0.5f, 0.5f, 0f, 0f, 380f, 520f, 0.5f, 0.5f));
             _panel.Title.Text = CrateScreenReadout.PackTitle;
             _summary = Ugui.Place(Ugui.Text("Summary", "", 12, ManagementScreen.DimInk), 0f, 0f, 1f, 0f, 0f, 12f, -24f, 30f, 0.5f, 0f);
             _panel.Root.AddChild(_summary);
 
+            // Discard sits at the right of the cap line, under Close; Discard all, at the right of the
+            // summary, shows only while discarding.
+            _discard = Ugui.Place(ManagementScreen.PlateButton("DiscardButton", ManagementScreen.Ui + "Hud/hud_button.png", Colors.White,
+                CrateScreenReadout.DiscardButton, 12, Colors.Black, bold: false), 1f, 1f, 1f, 1f, -10f, -36f, 70f, 22f, 1f, 1f);
+            _discard.Pressed += () => SetDiscarding(!_discarding);
+            _panel.Root.AddChild(_discard);
+            _discardAll = Ugui.Place(ManagementScreen.PlateButton("DiscardAllButton", ManagementScreen.Ui + "Hud/hud_button_close.png", new Color(0.35f, 0.10f, 0.10f),
+                CrateScreenReadout.DiscardAllButton, 12, Colors.White, bold: false), 1f, 0f, 1f, 0f, -10f, 12f, 90f, 24f, 1f, 0f);
+            _discardAll.Pressed += DiscardAllPressed;
+            _discardAll.Visible = false;
+            _panel.Root.AddChild(_discardAll);
+
             _root.AddChild(Ugui.Place(_hint = Ugui.Text("Hint", Hint, 12, ManagementScreen.DimInk, align: 2), 0.5f, 0.5f, 0.5f, 0.5f, 0f, -272f, 380f, 18f, 0.5f, 1f));
             _pad = new PadFocus(_root);
+            // The ring opens on the first good, not on Discard above it.
+            _pad.Default = stops => PadFocus.Find(stops, StopRow, 0) ?? PadFocus.Find(stops, StopDiscard, 0);
         }
     }
 }

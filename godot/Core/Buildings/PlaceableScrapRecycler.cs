@@ -9,7 +9,7 @@ namespace GolemFactory.Buildings
     /// rather than a sink, so a golem has to be able to haul from it. Ported from Unity's
     /// sibling component (G2b).
     /// </summary>
-    public sealed class PlaceableScrapRecycler : IBuildingPart
+    public sealed class PlaceableScrapRecycler : IBuildingPart, ICokeHolder
     {
         public const int ScrapCost = 20;
         public const int IronPlateCost = 10;
@@ -29,6 +29,15 @@ namespace GolemFactory.Buildings
                 return _recycler;
             }
         }
+
+        // --- ICokeHolder (the player's [E] and [I]) ---
+        public string CokeHolderName => "Scrap Recycler";
+        public string CokeHolderInSentence => "the Scrap Recycler";
+        public bool HasCokeStore => true;
+        public int CokeStock => Recycler.CokeStock;
+        public int CokeRoom => Recycler.CokeRoom;
+        public int AddCoke(int quantity) => Recycler.AddCoke(quantity);
+        public int TakeCoke(int quantity) => Recycler.TakeCoke(quantity);
 
         public void Configure(string id, int coke)
         {

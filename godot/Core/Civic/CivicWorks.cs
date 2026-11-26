@@ -124,13 +124,18 @@ namespace GolemFactory.Civic
 
         // --- Saves -----------------------------------------------------------------------------
 
-        public Save.CivicEntry Capture() => new Save.CivicEntry
+        public Save.CivicEntry Capture()
         {
-            work = Current?.name,
-            worksBuilt = WorkIndex,
-            stageIndex = Site.StageIndex,
-            progressUnits = Site.ProgressUnits,
-        };
+            var entry = new Save.CivicEntry
+            {
+                work = Current?.name,
+                worksBuilt = WorkIndex,
+                stageIndex = Site.StageIndex,
+                progressUnits = Site.ProgressUnits,
+            };
+            Site.CaptureMeters(entry.meterItemTypes, entry.meterScaled);
+            return entry;
+        }
 
         /// <summary>The works as a save left them; none saved (an older save) starts at the first. Never clamps a count.</summary>
         public void Restore(Save.CivicEntry entry)
@@ -145,6 +150,7 @@ namespace GolemFactory.Civic
             if (entry != null && Current != null)
             {
                 Site.RestoreProgress(entry.stageIndex, entry.progressUnits, false);
+                Site.RestoreMeters(entry.meterItemTypes, entry.meterScaled);
             }
         }
     }

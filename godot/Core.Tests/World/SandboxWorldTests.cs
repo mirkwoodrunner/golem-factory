@@ -292,6 +292,50 @@ namespace GolemFactory.Tests.World
         }
 
         [Test]
+        public void ATowerFedJustBeforeASave_LoadsWithItsMeters_AndNoAlarm()
+        {
+            // 2026-11-26: the meters weren't saved, so a part-built stage loaded starved and
+            // raised its alarm until the next delivery landed, a working line or not.
+            SandboxWorld world = Compose();
+            world.Clock.Play();
+            world.TechTree.Ledger.RecordChassis(SandboxWorld.ZeppelinChassis);
+            Assert.IsTrue(world.Endpoints.TryGetEndpoint(TownSquare.TowerCentre, out IItemEndpoint tower));
+            for (int i = 0; i < 20; i++)
+            {
+                Assert.IsTrue(tower.TryGive(new Belts.ItemStack { ItemType = ItemType.FrameSection }));
+            }
+            for (int frame = 0; frame < 60; frame++)
+            {
+                world.Advance(1f / 30f);
+            }
+            world.ClockTower.Site.RestoreProgress(0, 1000, false);
+            int meter = world.ClockTower.Site.MeterUnits(ItemType.FrameSection);
+            Assert.Greater(meter, 0, "precondition: fed");
+            string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "golem-factory-meters-" + System.Guid.NewGuid() + ".json");
+            try
+            {
+                world.SaveTo(path);
+                SandboxWorld fresh = Compose();
+                fresh.LoadFrom(path);
+                fresh.Clock.Play();
+                fresh.Advance(1f / 30f);
+
+                Assert.AreEqual(meter, fresh.ClockTower.Site.MeterUnits(ItemType.FrameSection), "the meter came back");
+                Assert.IsFalse(fresh.ClockTower.Site.BuildReading().IsStarved, "so no alarm right after the load");
+
+                for (int frame = 0; frame < 30 * 600; frame++)
+                {
+                    fresh.Advance(1f / 30f);
+                }
+                Assert.IsTrue(fresh.ClockTower.Site.BuildReading().IsStarved, "left unfed, it still drains and says so");
+            }
+            finally
+            {
+                System.IO.File.Delete(path);
+            }
+        }
+
+        [Test]
         public void TheClockTowersProgress_SurvivesASaveAndLoad()
         {
             // G10: the tower is a fixture now, never in the save's building list, so its

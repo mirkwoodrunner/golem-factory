@@ -130,6 +130,10 @@ namespace GolemFactory.Save
         public int worksBuilt;
         public int stageIndex;
         public long progressUnits;
+
+        /// <summary>The site's supply meters (<c>ClockTowerSite.CaptureMeters</c>); empty in an older save.</summary>
+        public List<string> meterItemTypes = new List<string>();
+        public List<int> meterScaled = new List<int>();
     }
 
     /// <summary>A save's summary for its slot: display only, never restored.</summary>
@@ -249,6 +253,9 @@ namespace GolemFactory.Save
         public int clockTowerStageIndex;
         public long clockTowerProgressUnits;
         public bool clockTowerComplete;
+        /// <summary>The tower's supply meters (<c>ClockTowerSite.CaptureMeters</c>); empty in an older save.</summary>
+        public List<string> clockTowerMeterItemTypes = new List<string>();
+        public List<int> clockTowerMeterScaled = new List<int>();
     }
 
     /// <summary>
@@ -308,6 +315,16 @@ namespace GolemFactory.Save
         public int recyclerScrapStock;
 
         public int recyclerPendingPoints;
+
+        /// <summary>
+        /// A Slag Heap's fuel and the Slag it has voided toward its next Coke (2026-11-26; before,
+        /// a load restarted every heap empty, so it refused Slag and its smelter stalled). Both,
+        /// for the recycler's reason: dropping the remainder rounds the ratio down on every load.
+        /// A save from before has neither, and its heaps start empty, as they always did.
+        /// </summary>
+        public int heapCokeStock;
+
+        public int heapPendingSlag;
 
         /// <summary>A Golem Foundry's chassis under way or held (docs/golem-sales-design.md §2.2); null idle.</summary>
         public string foundryChassis;

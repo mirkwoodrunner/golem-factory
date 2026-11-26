@@ -59,6 +59,64 @@ namespace GolemFactory.Nodes
 
         public override void _EnterTree() => AddToGroup(GroupName);
 
+        /// <summary>
+        /// Quits the game with every sound stopped first (2026-11-26). Godot counts what is still
+        /// held at exit, and a playback is let go by the audio thread on its next mix, so a quit in
+        /// the same frame as the stop still read as "resources still in use" on some runs. The
+        /// short wait lets that mix happen. Every quit goes through here.
+        /// </summary>
+        public static void Quit(Node from, int exitCode = 0)
+        {
+            AudioNode audio = Find(from);
+            if (audio != null)
+            {
+                audio.Silence();
+                OS.DelayMsec(QuitSilenceMsec);
+            }
+            from.GetTree().Quit(exitCode);
+        }
+
+        /// <summary>How long a quit waits after stopping every sound, in real milliseconds.</summary>
+        public const int QuitSilenceMsec = 100;
+
+        /// <summary>Stops every player under this node, loops, flat and positional, and lets go of its sound.</summary>
+        public void Silence()
+        {
+            foreach (Node child in GetChildren())
+            {
+                if (child is AudioStreamPlayer flat)
+                {
+                    flat.Stop();
+                    flat.Stream = null;
+                }
+                else if (child is AudioStreamPlayer2D placed)
+                {
+                    placed.Stop();
+                    placed.Stream = null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Stops and lets go of every sound as the node leaves, so nothing holds them at exit: a
+        /// loop still playing, and C#'s references to the loaded sounds, kept them alive, Godot's
+        /// "7 resources still in use at exit" on every run (traced 2026-11-26).
+        /// </summary>
+        public override void _ExitTree()
+        {
+            Silence();
+            _loops.Clear();
+            _flat.Clear();
+            // Let go of C#'s own hold on each sound now: Godot counts what is still held before
+            // .NET disposes its wrappers, so a wrapper the collector hadn't reached yet still read
+            // as a leak on some runs and not others.
+            foreach (AudioStream stream in _streams.Values)
+            {
+                stream.Dispose();
+            }
+            _streams.Clear();
+        }
+
         public override void _Ready()
         {
             string[] args = OS.GetCmdlineUserArgs();

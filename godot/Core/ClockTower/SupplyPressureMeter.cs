@@ -80,5 +80,8 @@ namespace GolemFactory.ClockTower
         }
 
         public void Reset() => Scaled = 0;
+
+        /// <summary>A save's reading, held to [0, <see cref="CapScaled"/>]: a meter is not goods, so the bound holds on a load too.</summary>
+        public void Restore(int scaled) => Scaled = scaled < 0 ? 0 : (scaled > CapScaled ? CapScaled : scaled);
     }
 }

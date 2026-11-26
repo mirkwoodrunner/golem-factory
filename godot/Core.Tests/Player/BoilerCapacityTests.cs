@@ -48,7 +48,7 @@ namespace GolemFactory.Tests.Player
         public void TheBoilersCap_FitsAnEmptySlotOfTheBasePack()
         {
             int pack = SandboxSetupTests.LoadReal().packCapacityPerType;
-            Assert.LessOrEqual(SteamBoiler.CokeCapacity, pack,
+            Assert.Less(SteamBoiler.CokeCapacity, pack,
                 "a full boiler's Coke must fit an empty pack, or a full boiler can't be demolished");
         }
 
