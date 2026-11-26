@@ -9,7 +9,7 @@ namespace GolemFactory.Buildings
     /// its fuel hatch on its cell so Coke can reach it in a golem's hold like any other good
     /// (see <see cref="BoilerFuelEndpoint"/>). Ported from Unity's sibling component (G2b).
     /// </summary>
-    public sealed class PlaceableBoiler : IBuildingPart
+    public sealed class PlaceableBoiler : IBuildingPart, ICokeHolder
     {
         /// <summary>An unconfigured boiler starts full. Placed boilers start at 0 (placeables.json).</summary>
         public const int DefaultStartingCoke = SteamBoiler.CokeCapacity;
@@ -21,6 +21,15 @@ namespace GolemFactory.Buildings
         public string BoilerId => boilerId;
         public int StartingCoke => startingCoke;
         public BoilerFuelEndpoint FuelEndpoint { get; private set; }
+
+        // --- ICokeHolder (the player's [E] and [I]) ---
+        public string CokeHolderName => "Boiler";
+        public string CokeHolderInSentence => "the boiler";
+        public bool HasCokeStore => Boiler != null;
+        public int CokeStock => Boiler?.CokeStock ?? 0;
+        public int CokeRoom => Boiler?.CokeRoom ?? 0;
+        public int AddCoke(int quantity) => Boiler?.AddCoke(quantity) ?? 0;
+        public int TakeCoke(int quantity) => Boiler?.TakeCoke(quantity) ?? 0;
 
         public void Configure(string id, int coke)
         {

@@ -886,6 +886,7 @@ namespace GolemFactory.World
                 clockTowerProgressUnits = ClockTower.Site.ProgressUnits,
                 clockTowerComplete = ClockTower.Site.IsComplete,
             };
+            ClockTower.Site.CaptureMeters(progress.clockTowerMeterItemTypes, progress.clockTowerMeterScaled);
             progress.ledgerItems.AddRange(TechTree.Ledger.Items.OrderBy(x => x));
             progress.ledgerChassis.AddRange(TechTree.Ledger.Chassis.OrderBy(x => x));
             progress.ledgerBuildings.AddRange(TechTree.Ledger.Buildings.OrderBy(x => x));
@@ -948,6 +949,7 @@ namespace GolemFactory.World
                 ClockTower.Site.Reset();
                 ClockTower.Site.RestoreProgress(
                     progress.clockTowerStageIndex, progress.clockTowerProgressUnits, progress.clockTowerComplete);
+                ClockTower.Site.RestoreMeters(progress.clockTowerMeterItemTypes, progress.clockTowerMeterScaled);
             }
 
 

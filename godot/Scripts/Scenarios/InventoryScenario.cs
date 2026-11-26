@@ -797,10 +797,16 @@ namespace GolemFactory.Nodes.Scenarios
                 {
                     return "Discard all shows before Discard is on";
                 }
+                if (_pack.Rows[ItemType.Coke].MouseFilter != Control.MouseFilterEnum.Ignore)
+                {
+                    return "a pack row takes the mouse with Discard off";
+                }
                 Click(_pack.DiscardToggle);
                 return null;
             });
-            Do("click Coke", () => _pack.Discarding ? Click(_pack.Rows, ItemType.Coke) : "Discard did not turn on");
+            Do("click Coke", () => !_pack.Discarding ? "Discard did not turn on"
+                : _pack.Rows[ItemType.Coke].MouseFilter != Control.MouseFilterEnum.Stop ? "a pack row ignores the mouse with Discard on"
+                : Click(_pack.Rows, ItemType.Coke));
             Do("one went; Shift-click Coke", () =>
             {
                 if (Pack(ItemType.Coke) != 19 || _pack.HintText != "Threw away 1 Coke")

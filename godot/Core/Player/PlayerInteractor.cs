@@ -125,7 +125,8 @@ namespace GolemFactory.Player
         private ResourceNodeMarker[] _nodeMarkers = new ResourceNodeMarker[0];
         private GolemConstructionStation[] _stations = new GolemConstructionStation[0];
         private GolemEntity[] _golems = new GolemEntity[0];
-        private PlaceableBoiler[] _boilers = new PlaceableBoiler[0];
+        // Every Coke holder the hands reach: boilers, Slag Heaps, Scrap Recyclers (ICokeHolder).
+        private ICokeHolder[] _boilers = new ICokeHolder[0];
         private ICrate[] _depots = new ICrate[0];
 
         // The supply street (docs/supply-design.md): its empty spots are interactables of their
@@ -375,7 +376,7 @@ namespace GolemFactory.Player
             _spotPositions = Resize(_spotPositions, _spots.Length);
 
             var stations = new List<GolemConstructionStation>();
-            var boilers = new List<PlaceableBoiler>();
+            var boilers = new List<ICokeHolder>();
             var boilerCells = new List<Vector2Int>();
             var depots = new List<ICrate>();
             var depotCells = new List<Vector2Int>();
@@ -394,7 +395,7 @@ namespace GolemFactory.Player
                     stations.Add(station);
                 }
 
-                PlaceableBoiler boiler = building.GetPart<PlaceableBoiler>();
+                ICokeHolder boiler = building.GetPart<ICokeHolder>();
                 if (boiler != null)
                 {
                     boilers.Add(boiler);
@@ -905,7 +906,7 @@ namespace GolemFactory.Player
             }
             // [I] takes a boiler's Coke whatever E would do there (2026-11-21).
             if (pick.Kind == InteractionKind.Refuel && CurrentAffordance != InteractionAffordance.OutOfRange
-                && (target as PlaceableBoiler)?.Boiler?.CokeStock > 0)
+                && target is ICokeHolder { CokeStock: > 0 })
             {
                 detail = InteractionTargeting.AppendDetail(detail, "[" + InventoryKeyLabel + "] take Coke");
             }
@@ -1042,7 +1043,7 @@ namespace GolemFactory.Player
 
         private PlayerWallet Wallet => _stockpile == null ? null : new PlayerWallet(_stockpile, _stockpileBufferId, _postBufferId);
 
-        private static int RoomIn(object boiler) => (boiler as PlaceableBoiler)?.Boiler?.CokeRoom ?? 0;
+        private static int RoomIn(object holder) => (holder as ICokeHolder)?.CokeRoom ?? 0;
 
         private int StockpileCoke => Wallet?.Quantity(ItemType.Coke) ?? 0;
 
@@ -1078,13 +1079,20 @@ namespace GolemFactory.Player
                     break;
                 case InteractionKind.Refuel:
                 {
-                    var boiler = (PlaceableBoiler)target;
-                    targetName = "Boiler";
-                    // The boiler's own stock, not the player's: what the player wants to know
+                    var holder = (ICokeHolder)target;
+                    targetName = holder.CokeHolderName;
+                    // The machine's own stock, not the player's: what the player wants to know
                     // standing here is whether this firebox needs feeding.
-                    detail = boiler.Boiler != null
-                        ? SteamGaugeUtility.FormatBoiler(boiler.Boiler.CokeStock, boiler.Boiler.WorkingGolemCount)
-                        : "cold";
+                    if (holder is PlaceableBoiler boiler)
+                    {
+                        detail = boiler.Boiler != null
+                            ? SteamGaugeUtility.FormatBoiler(boiler.Boiler.CokeStock, boiler.Boiler.WorkingGolemCount)
+                            : "cold";
+                    }
+                    else
+                    {
+                        detail = holder.CokeStock + "/" + (holder.CokeStock + holder.CokeRoom) + " Coke";
+                    }
                     break;
                 }
                 case InteractionKind.Sort:
@@ -1155,7 +1163,7 @@ namespace GolemFactory.Player
                 case InteractionKind.Program:
                     return TryProgram(target as GolemEntity);
                 case InteractionKind.Refuel:
-                    return TryRefuelBoiler(target as PlaceableBoiler);
+                    return TryRefuel(target as ICokeHolder);
                 case InteractionKind.Sort:
                     return TryCollect(target as ICrate);
                 case InteractionKind.Supply:
@@ -1210,11 +1218,12 @@ namespace GolemFactory.Player
             {
                 return TryOpenSupply(spot);
             }
-            // A boiler empties like a crate (2026-11-21): [I] takes its Coke into the pack, so a
-            // boiler can always be emptied, and then demolished.
+            // A boiler empties like a crate (2026-11-21), and so do a Slag Heap and a Scrap Recycler
+            // (2026-11-26): [I] takes the Coke into the pack, so each can always be emptied, and
+            // then demolished.
             InteractionPick pick = SelectNearestPick();
             if (pick.Kind == InteractionKind.Refuel && pick.IsInRange(_interactRange)
-                && ResolveTarget(pick, out _) is PlaceableBoiler boiler)
+                && ResolveTarget(pick, out _) is ICokeHolder boiler)
             {
                 return TryTakeCoke(boiler);
             }
@@ -1367,7 +1376,7 @@ namespace GolemFactory.Player
             return Position;
         }
 
-        private Vector3 BoilerPosition(PlaceableBoiler boiler)
+        private Vector3 BoilerPosition(ICokeHolder boiler)
         {
             for (int i = 0; i < _boilers.Length; i++)
             {
@@ -1389,23 +1398,32 @@ namespace GolemFactory.Player
         /// lit and a total blackout was permanent.
         /// </para>
         /// </summary>
-        public bool TryRefuelBoiler(PlaceableBoiler boiler)
+        public bool TryRefuelBoiler(PlaceableBoiler boiler) => TryRefuel(boiler);
+
+        /// <summary>
+        /// [E] at any Coke holder (<see cref="ICokeHolder"/>): a hand-load of Coke from the pack,
+        /// up to what it has room for. A boiler's line says how long it lasts; a Slag Heap's or a
+        /// Scrap Recycler's (2026-11-26) says what it now holds.
+        /// </summary>
+        public bool TryRefuel(ICokeHolder holder)
         {
-            if (boiler == null || boiler.Boiler == null)
+            if (holder == null || !holder.HasCokeStore)
             {
                 LastStatusMessage = "No boiler in range.";
                 return false;
             }
 
-            Vector3 at = BoilerPosition(boiler);
-            if (boiler.Boiler.IsFull)
+            Vector3 at = BoilerPosition(holder);
+            if (holder.CokeRoom <= 0)
             {
-                LastStatusMessage = $"The boiler is full ({SteamBoiler.CokeCapacity} Coke).";
+                LastStatusMessage = holder is PlaceableBoiler
+                    ? $"The boiler is full ({SteamBoiler.CokeCapacity} Coke)."
+                    : $"{Capitalised(holder.CokeHolderInSentence)} is full ({holder.CokeStock} Coke).";
                 Popup(at, "Full", InteractionPopupKind.Refused);
                 return false;
             }
 
-            int amount = BoilerRefuelPolicy.AmountToLoad(StockpileCoke, room: boiler.Boiler.CokeRoom);
+            int amount = BoilerRefuelPolicy.AmountToLoad(StockpileCoke, room: holder.CokeRoom);
             if (amount <= 0)
             {
                 LastStatusMessage = "No Coke in your pack.";
@@ -1422,31 +1440,36 @@ namespace GolemFactory.Player
                 return false;
             }
 
-            boiler.Boiler.AddCoke(amount);
+            holder.AddCoke(amount);
             // How long it lasts, said at the moment the player pays for it (G10).
-            LastStatusMessage = $"Loaded {amount} Coke: {SteamGaugeUtility.FormatLastsOneGolem(amount)} for one golem, "
-                + $"{SteamGaugeUtility.CokePerMinutePerGolem} Coke a minute per working golem.";
+            LastStatusMessage = holder is PlaceableBoiler
+                ? $"Loaded {amount} Coke: {SteamGaugeUtility.FormatLastsOneGolem(amount)} for one golem, "
+                  + $"{SteamGaugeUtility.CokePerMinutePerGolem} Coke a minute per working golem."
+                : $"Loaded {amount} Coke into {holder.CokeHolderInSentence}: it holds {holder.CokeStock}.";
             Popup(at, YieldPopupText.Gain(ItemType.Coke, amount), InteractionPopupKind.Gain);
             return true;
         }
 
+        private static string Capitalised(string text) =>
+            string.IsNullOrEmpty(text) ? text : char.ToUpperInvariant(text[0]) + text.Substring(1);
+
         /// <summary>
-        /// [I] at a boiler (2026-11-21): its Coke into the pack, as much as fits, the rest left
+        /// [I] at a boiler (2026-11-21), a Slag Heap or a Scrap Recycler (2026-11-26): its Coke into the pack, as much as fits, the rest left
         /// burning, as [E] at a crate collects. The pack only, never the Post, as any collect.
         /// </summary>
-        public bool TryTakeCoke(PlaceableBoiler boiler)
+        public bool TryTakeCoke(ICokeHolder boiler)
         {
-            // No pack wired, nowhere to put it: refused, so no Coke leaves the boiler for nothing.
-            if (boiler == null || boiler.Boiler == null || _stockpile == null)
+            // No pack wired, nowhere to put it: refused, so no Coke leaves the machine for nothing.
+            if (boiler == null || !boiler.HasCokeStore || _stockpile == null)
             {
                 LastStatusMessage = "No boiler in range.";
                 return false;
             }
 
             Vector3 at = BoilerPosition(boiler);
-            if (boiler.Boiler.CokeStock <= 0)
+            if (boiler.CokeStock <= 0)
             {
-                LastStatusMessage = "The boiler is empty.";
+                LastStatusMessage = Capitalised(boiler.CokeHolderInSentence) + " is empty.";
                 Popup(at, "Empty", InteractionPopupKind.Refused);
                 return false;
             }
@@ -1459,10 +1482,10 @@ namespace GolemFactory.Player
                 return false;
             }
 
-            int amount = boiler.Boiler.TakeCoke(room < boiler.Boiler.CokeStock ? room : boiler.Boiler.CokeStock);
+            int amount = boiler.TakeCoke(room < boiler.CokeStock ? room : boiler.CokeStock);
             // Room was asked first, so the whole amount lands.
             _stockpile.Deposit(_stockpileBufferId, ItemType.Coke, amount);
-            LastStatusMessage = "Took " + amount + " Coke from the boiler.";
+            LastStatusMessage = "Took " + amount + " Coke from " + boiler.CokeHolderInSentence + ".";
             Collected?.Invoke();
             Popup(at, YieldPopupText.Gain(ItemType.Coke, amount), InteractionPopupKind.Gain);
             return true;

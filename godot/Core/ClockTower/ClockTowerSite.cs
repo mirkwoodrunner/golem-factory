@@ -269,9 +269,52 @@ namespace GolemFactory.ClockTower
             _complete = complete || _stageIndex >= _stages.Count;
             // A stage saved part-built had been fed, so its alarm is armed: a load into a factory
             // whose line has since broken must still say so. (Unarmed, it never would, since no
-            // delivery ever comes. The cost: right after a load, a working line's alarm can show
-            // until its first delivery lands, because the meters are not saved.)
+            // delivery ever comes.) The meters come back with RestoreMeters, so a working line's
+            // alarm stays quiet while its first delivery travels.
             _fedThisStage = _progressUnits > 0L;
+        }
+
+        /// <summary>
+        /// The supply-pressure meters as a save keeps them: each demanded good's reading, scaled
+        /// (2026-11-26). Unlike the delivery windows, a meter is a plain level with no tick in it,
+        /// so it carries across a load. Saved, a working line's meter is still up after a load
+        /// and raises no alarm while its first delivery travels; a broken line's drains and
+        /// raises it, as it would have without the save.
+        /// </summary>
+        public void CaptureMeters(List<string> itemTypes, List<int> scaled)
+        {
+            // In ordinal order, not the dictionary's, so the same site always writes the same save.
+            var keys = new List<string>(_meters.Keys);
+            keys.Sort(StringComparer.Ordinal);
+            foreach (string key in keys)
+            {
+                int level = _meters[key].Scaled;
+                if (level > 0)
+                {
+                    itemTypes.Add(key);
+                    scaled.Add(level);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Puts the meters back as <see cref="CaptureMeters"/> left them. After
+        /// <see cref="RestoreProgress"/>. A good no stage demands is skipped; missing lists (a save
+        /// from before) leave every meter empty, as loads always did.
+        /// </summary>
+        public void RestoreMeters(List<string> itemTypes, List<int> scaled)
+        {
+            if (itemTypes == null || scaled == null)
+            {
+                return;
+            }
+            for (int i = 0; i < itemTypes.Count && i < scaled.Count; i++)
+            {
+                if (_trackedTypes.Contains(itemTypes[i] ?? string.Empty))
+                {
+                    MeterFor(itemTypes[i]).Restore(scaled[i]);
+                }
+            }
         }
 
         /// <summary>

@@ -94,7 +94,7 @@ namespace GolemFactory.Nodes
         public override void _Ready()
         {
             _world = WorldNode.Find(this);
-            QuitAction ??= () => GetTree().Quit();
+            QuitAction ??= () => AudioNode.Quit(this);
             switch (_world?.Launch)
             {
                 case LaunchKind.Title:

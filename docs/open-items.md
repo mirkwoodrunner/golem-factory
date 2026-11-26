@@ -53,24 +53,27 @@ It no longer asks questions (cleared 2026-11-21), so the script's questions are 
 
 - **A Slag Heap or Scrap Recycler could hold more Coke than a pack: closed 2026-11-26.** The user
   decided a machine always holds less than the pack. Both now hold 50 Coke, a crate's size, and a
-  golem bringing more stalls as at a full crate (`MachineStorageTests`). One from an old save over
-  the base pack still can't be demolished until it burns down to the cap or the pack grows: a load
-  never clamps, and neither machine has an [I] take, as the boiler does.
-- **The boiler holds exactly a base pack, not less.** 100 Coke against a 100 pack: it still fits an
-  empty slot, and [I] empties it. The user's 2026-11-26 rule says "smaller". Lowering it moves the
-  chapter floor tests (a new boiler starts full), so it is left for the user to call.
-- **A Slag Heap's Coke is not saved.** `SaveLoadService` saves a boiler's Coke and a recycler's
-  Coke, Scrap and points, but nothing of a heap: a load restarts every heap at the prefab's 0 Coke
-  and drops its carried Slag. Found 2026-11-26, not yet fixed. It needs a field on `BuildingEntry`.
+  golem bringing more stalls as at a full crate (`MachineStorageTests`). Both now take Coke by hand
+  as a boiler does (`ICokeHolder`): [E] loads it from the pack, [I] takes it back, so one from an
+  old save over the base pack can be emptied and demolished. The prompt's verb is "Fuel" with the
+  machine's name after it; it read "Fuel Boiler Boiler" before.
+- **The boiler held exactly a base pack: closed 2026-11-26.** The user's call: 80 Coke, under the
+  100 pack, four 20-Coke hand-loads (`tuning-data-spec.md`). Placed boilers start at 0, so the
+  chapter floors didn't move.
+- **A Slag Heap's Coke wasn't saved: closed 2026-11-26.** A load restarted every heap empty, so it
+  refused Slag and its smelter stalled. `BuildingEntry.heapCokeStock` and `heapPendingSlag` keep
+  it now; an older save's heaps still start empty.
 
 - **Old saves resume the guide a few steps off.** Saves from before the guide stored its step by
   id (#49), or its golems' roles (#52), fall back to the step's index and to build order. A fresh
   game is unaffected.
 - **A Clock Tower placed by hand in a save from before #47 is not rebuilt.** The tower is a
   fixture in the town square now; such a save restarts it at stage 1.
-- **After a load mid-stage, the tower's starved alarm can show briefly** until the first
-  delivery lands, because supply meters aren't saved. Without that, a line that broke since the
-  save would never raise the alarm.
+- **After a load mid-stage, the tower's starved alarm showed briefly: closed 2026-11-26.** The
+  supply meters are saved now (`ClockTowerSite.CaptureMeters`, for the tower and the civic works),
+  so a working line's meter is still up after a load and a broken one drains and raises the
+  alarm, as it would have without the save. The delivery windows still restart, so the rate (and
+  progress) rebuilds over the first minute.
 - **The Ledger's golem estimates were hand-written: closed 2026-10-22.** The user decided to
   drop them. The stage lines no longer say "~63 golems", "~72" or "~96", and phase VI reads
   "Four rate-scaled stages"; `NoLedgerText_EstimatesAGolemCount` keeps them out
@@ -111,8 +114,14 @@ It no longer asks questions (cleared 2026-11-21), so the script's questions are 
   fixed pixels for a 1280 x 720 canvas, so the scale is capped where it would cut a screen off
   (`menus-design.md` §4, call 6). Bigger text on the Steam Deck (`steam-deck-design.md` D3) needs
   the screens to reflow first.
-- **Godot reports "7 resources still in use at exit"** at the end of every scenario run, on
-  `phase6/feel` as well. Harmless so far; not yet traced.
+- **"7 resources still in use at exit": closed 2026-11-26.** Traced with `--verbose` to the
+  sounds: loops still playing, C#'s references to the loaded sounds, and playbacks the audio thread
+  hadn't let go of. `AudioNode` lets go of all of them as it leaves, and every quit goes through
+  `AudioNode.Quit`, which stops the sound and waits 100 ms for the audio thread first.
+- **The `build` scenario throws on its Gear check, and still passes.** Its "stands" step reads
+  `Stock()[c.itemType]`, and once a price spends every Gear the key is gone, so a
+  `KeyNotFoundException` ends that step's checks for the building unseen (seen on Linux,
+  2026-11-26, and on the commit before). Found, not yet fixed.
 - **No scenario flies a Zeppelin between the workshop and the Docks** (`region-design.md` §7).
   The mast and the Freight Link are unchanged and covered by `golems`; the distance is not.
 - **The golem cap stays 112** with the Docks (`performance-report-endless.md` §5): the p95s hold to
@@ -126,8 +135,7 @@ It no longer asks questions (cleared 2026-11-21), so the script's questions are 
 - **Discarding from the pack: built 2026-11-26** (the user's call). The Pack screen's Discard
   throws one good away, Shift all of it, and Discard all empties the pack after asking once
   (`inventory-screens-design.md` §4.6). Not yet played: whether players find it, and whether one
-  confirm is enough for Discard all. Pack rows now show a hover tint even with Discard off, when
-  a click does nothing.
+  confirm is enough for Discard all. Pack rows take the mouse only while Discard is on.
 
 - **The art is placeholder** throughout, and the Workbench's lever housing, display face and
   card faces most of all. The City Office, the civic works' site, the Docks' gate and water and

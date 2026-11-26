@@ -50,7 +50,7 @@ namespace GolemFactory.Nodes
         {
             _world = WorldNode.Find(this);
             InGame = _world != null && _world.Launch != LaunchKind.Title && Sandbox.SaveFolder != null;
-            QuitAction ??= () => GetTree().Quit();
+            QuitAction ??= () => AudioNode.Quit(this);
             // In a game, closing the window autosaves first (_Notification); the title just goes.
             GetTree().AutoAcceptQuit = !InGame;
         }

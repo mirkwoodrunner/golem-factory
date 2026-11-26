@@ -156,6 +156,43 @@ namespace GolemFactory.Nodes
                     button.QueueFree(); // a good no longer listed
                 }
             }
+            ApplyClickable();
+        }
+
+        private bool _clickable = true;
+
+        /// <summary>
+        /// Whether the list's own rows take clicks now (the Post's never do). The Pack screen's
+        /// rows only do while Discard is on (2026-11-26): off, they show no hover tint and let the
+        /// mouse through, as a panel built without a click does.
+        /// </summary>
+        public bool Clickable
+        {
+            get => _clickable;
+            set
+            {
+                if (_clickable == value)
+                {
+                    return;
+                }
+                _clickable = value;
+                ApplyClickable();
+            }
+        }
+
+        private void ApplyClickable()
+        {
+            if (_click == null)
+            {
+                return;
+            }
+            bool on = _clickable;
+            foreach (Button button in _rows.Values)
+            {
+                button.AddThemeStyleboxOverride("hover", on ? Hover : Plain);
+                button.AddThemeStyleboxOverride("pressed", on ? Pressed : Plain);
+                button.MouseFilter = on ? Control.MouseFilterEnum.Stop : Control.MouseFilterEnum.Ignore;
+            }
         }
 
         // Each good's row, kept between layouts: the list's own, and the Post's under it.

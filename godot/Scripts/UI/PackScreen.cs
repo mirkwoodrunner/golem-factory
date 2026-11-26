@@ -229,6 +229,10 @@ namespace GolemFactory.Nodes
         private void SetDiscarding(bool on)
         {
             _discarding = on;
+            if (_panel != null)
+            {
+                _panel.Clickable = on;
+            }
             _discardAllArmed = false;
             _status = null;
             if (_discard?.GetNodeOrNull<Label>("Label") is Label label)
@@ -247,7 +251,7 @@ namespace GolemFactory.Nodes
             AddChild(_root);
             _root.AddChild(Ugui.Fill(Ugui.Rect("Backdrop", new Color(0.055f, 0.045f, 0.038f, 0.80f))));
 
-            _panel = new InventoryPanel("PackPanel", 64f, Close, RowClicked);
+            _panel = new InventoryPanel("PackPanel", 64f, Close, RowClicked) { Clickable = false };
             _root.AddChild(Ugui.Place(_panel.Root, 0.5f, 0.5f, 0.5f, 0.5f, 0f, 0f, 380f, 520f, 0.5f, 0.5f));
             _panel.Title.Text = CrateScreenReadout.PackTitle;
             _summary = Ugui.Place(Ugui.Text("Summary", "", 12, ManagementScreen.DimInk), 0f, 0f, 1f, 0f, 0f, 12f, -24f, 30f, 0.5f, 0f);

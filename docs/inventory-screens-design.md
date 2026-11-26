@@ -193,7 +193,7 @@ store's goods below it, read-only (no hover tint, no click). The store is reache
 ### 4.6 Discard on the Pack screen (2026-11-26, the user's call)
 
 The Pack screen can throw goods away. A **Discard** button sits at the right of the cap line,
-under Close. Off, a row's click does nothing (goods move at a crate). On, the button reads
+under Close. Off, the rows ignore the mouse, with no hover tint (goods move at a crate). On, the button reads
 **Done**, the hint reads "Click a good to throw one away · Shift: all of it", and a row's click
 throws one away, Shift all of that good. A **Discard all** button shows at the right of the
 summary while Discard is on: its first press asks ("Press Discard all again to empty your pack"),
@@ -247,7 +247,7 @@ control clicked a frame after the screen opened). It checks:
 10. **The guide's dock.** On `smelt-feed`, with the crate screen open, the guide's plate rect does
     not overlap either panel's rect.
 11. **Boiler.** [I] at a boiler over the pack's cap takes a packful, and it then demolishes.
-12. **Discard.** A plain click on a pack row moves nothing; with Discard on, a click throws one
+12. **Discard.** A pack row ignores the mouse and a click on it moves nothing; with Discard on, a click throws one
     away and a Shift-click all of that good; Discard all asks once, then empties the pack and
     leaves the Post. Frame `screen-pack-discard`.
 

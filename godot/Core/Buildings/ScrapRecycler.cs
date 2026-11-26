@@ -147,6 +147,30 @@ namespace GolemFactory.Buildings
         /// <summary>Whether the hopper holds all the Coke it will take.</summary>
         public bool IsCokeFull => CokeStock >= CokeCapacity;
 
+        /// <summary>How much more Coke it takes: 0 at or over the cap.</summary>
+        public int CokeRoom => CokeStock >= CokeCapacity ? 0 : CokeCapacity - CokeStock;
+
+        /// <summary>
+        /// Takes up to <paramref name="quantity"/> Coke out, for the player's [I] (2026-11-26), so
+        /// a hopper holding more than the pack (a save from before the cap) can still be emptied.
+        /// Returns how much came out; never more than it holds.
+        /// </summary>
+        public int TakeCoke(int quantity)
+        {
+            if (quantity > CokeStock)
+            {
+                quantity = CokeStock;
+            }
+
+            if (quantity <= 0)
+            {
+                return 0;
+            }
+
+            CokeStock -= quantity;
+            return quantity;
+        }
+
         /// <summary>
         /// Refuel, up to <see cref="CokeCapacity"/>. Returns how much went in. A hopper over the
         /// cap (a save from before it; a load never clamps) takes none and burns down to it.

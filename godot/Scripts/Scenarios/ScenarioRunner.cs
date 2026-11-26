@@ -352,7 +352,7 @@ namespace GolemFactory.Nodes.Scenarios
             GD.Print($"[scenario {_name}] {(result.Passed ? "PASS" : "FAIL")} {result.Report}");
             _scenario = null;
             SetProcess(false);
-            GetTree().Quit(result.Passed ? 0 : 1);
+            AudioNode.Quit(this, result.Passed ? 0 : 1);
         }
     }
 }

@@ -72,8 +72,9 @@ The rules `docs/crates-design.md` and `docs/inventory-screens-design.md` set.
   `packUpgrades`, the Workshop tab's Pack row): never lowered in play, restored by rung on a
   load (`packUpgradeTier`) without clamping. Crates stay at 50 and the Post at 200. **A machine holds less than the pack per good** (the user's call, 2026-11-26;
   `MachineStorageTests`): a crate 50, a Slag Heap's and a Scrap Recycler's Coke 50, a recycler's
-  Scrap 24; a boiler holds the base pack exactly (100 Coke, `BoilerCapacityTests`) and also empties
-  by [I]. So an empty pack slot always takes what demolition hands back. A new machine that stores
+  Scrap 24, a boiler's Coke 80 (`BoilerCapacityTests`). So an empty pack slot always takes what
+  demolition hands back. Each Coke holder (`ICokeHolder`: boiler, heap, recycler) also takes Coke by
+  [E] and gives it back by [I], for a save from before a cap. A new machine that stores
   goods keeps under the base pack. **Every price
   fits the pack reachable when it opens** on the guide's path, pack only
   (`PriceReachTests`): a new price or rung must pass it. Floor Expansion charges
