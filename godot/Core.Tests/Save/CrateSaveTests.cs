@@ -131,6 +131,34 @@ namespace GolemFactory.Tests.EditMode
             Assert.IsTrue(world.Wallet.TryCharge(new[] { new PunchCards.RecipeIngredient(ItemType.Scrap, 30) }), "and spendable");
         }
 
+        // A Slag Heap's Coke is saved on its own field (heapCokeStock), and comes back the same way.
+        [Test]
+        public void ASlagHeapWithAnUnknownPrefab_PutsItsCokeInThePack_Once()
+        {
+            SandboxWorld world = Compose();
+            Give(world, ItemType.Scrap, PlaceableSlagHeap.ScrapCost);
+            Give(world, ItemType.IronPlate, PlaceableSlagHeap.IronPlateCost);
+            var cell = new Vector2Int(6, 6);
+            PlaceableSlagHeap heap = Place(world, "SlagHeapPrefab", cell).GetPart<PlaceableSlagHeap>();
+            heap.Heap.Restore(37, 0);
+            world.SaveTo(_path);
+
+            SaveData data = SaveFileIO.ReadFromFile(_path);
+            BuildingEntry entry = data.buildings.Single(b => b.cellX == 6 && b.cellY == 6);
+            Assert.AreEqual(37, entry.heapCokeStock, "precondition: saved on its own field");
+            entry.prefabKey = "NoSuchPrefab";
+            SaveFileIO.WriteToFile(data, _path);
+            int cokeBefore = Pack(world, ItemType.Coke);
+
+            for (int round = 0; round < 3; round++)
+            {
+                world.LoadFrom(_path);
+                Assert.IsFalse(world.Build.Buildings.Any(b => !b.IsRemoved && b.Cell == cell), "skipped");
+                Assert.AreEqual(cokeBefore + 37, Pack(world, ItemType.Coke), "round " + round + ": the heap's Coke, once");
+                world.SaveTo(_path);
+            }
+        }
+
         [Test]
         public void ADepotOnATakenCell_PutsItsGoodsInThePack()
         {

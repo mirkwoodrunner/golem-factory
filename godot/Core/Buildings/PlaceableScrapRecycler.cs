@@ -35,6 +35,7 @@ namespace GolemFactory.Buildings
         public string CokeHolderInSentence => "the Scrap Recycler";
         public bool HasCokeStore => true;
         public int CokeStock => Recycler.CokeStock;
+        public int CokeCapacity => ScrapRecycler.CokeCapacity;
         public int CokeRoom => Recycler.CokeRoom;
         public int AddCoke(int quantity) => Recycler.AddCoke(quantity);
         public int TakeCoke(int quantity) => Recycler.TakeCoke(quantity);

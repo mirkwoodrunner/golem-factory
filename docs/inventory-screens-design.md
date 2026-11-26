@@ -201,7 +201,9 @@ the second empties the pack. Each result is the hint line ("Threw away 1 Coke").
 screen turns Discard off.
 
 The pack only: the Post's rows stay read-only and crates are untouched. Goods thrown away publish
-`EventBus.Consumed`, as every place that destroys goods does, so they count as spent. The rules
+no `EventBus.Consumed` (2026-11-26): the overview's "goods spent" counts the factory's own work,
+never the player's hands (`docs/supply-design.md` §4). A click on a good with none left reads
+"No Coke left", and the hint says only what actually left the pack. The rules
 are `CrateScreenReadout.Discard` and `DiscardAll` (`MachineStorageTests`). By pad, the ring reaches
 Discard and Discard all; on a row, A throws one away and X all of it while Discard is on, and
 otherwise A closes, as before.

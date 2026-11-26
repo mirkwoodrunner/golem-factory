@@ -259,14 +259,18 @@ namespace GolemFactory.UI
 
         // --- Discarding (2026-11-26, the user's call) --------------------------------------------
         // The Pack screen can throw goods away: one, all of a good, or the whole pack. The pack only,
-        // never the Post or a crate. Goods thrown away are gone: they publish EventBus.Consumed,
-        // as every place that destroys goods does, and come back through nothing.
+        // never the Post or a crate. Goods thrown away are gone and come back through nothing. They
+        // publish no EventBus.Consumed: "goods spent" is the factory's own work, never the
+        // player's hands (supply-design §4, ConsumptionTally).
 
         public const string DiscardButton = "Discard";
         public const string DiscardDone = "Done";
         public const string DiscardAllButton = "Discard all";
         public const string DiscardAllConfirm = "Press Discard all again to empty your pack";
         public const string NothingToDiscard = "Your pack is empty";
+
+        /// <summary>A row's click on a good the pack has none of left, while it holds others.</summary>
+        public static string NoneLeft(string itemType) => "No " + ItemTiers.DisplayName(itemType) + " left";
 
         /// <summary>Goods left the pack for good: the screen's sound, if any.</summary>
         public event Action Discarded;
@@ -277,10 +281,13 @@ namespace GolemFactory.UI
             int held = itemType == null ? 0 : Pack.GetQuantity(itemType);
             if (held <= 0)
             {
-                return NothingToDiscard;
+                return itemType == null || Pack.HeldGoods().Count == 0 ? NothingToDiscard : NoneLeft(itemType);
             }
-            int amount = shift ? held : 1;
-            Throw(itemType, amount);
+            int amount = Throw(itemType, shift ? held : 1);
+            if (amount <= 0)
+            {
+                return NoneLeft(itemType);
+            }
             Discarded?.Invoke();
             return "Threw away " + amount + " " + ItemTiers.DisplayName(itemType);
         }
@@ -303,21 +310,19 @@ namespace GolemFactory.UI
             int total = 0;
             foreach (string good in goods)
             {
-                int held = Pack.GetQuantity(good);
-                Throw(good, held);
-                total += held;
+                total += Throw(good, Pack.GetQuantity(good));
+            }
+            if (total <= 0)
+            {
+                return NothingToDiscard;
             }
             Discarded?.Invoke();
             return "Emptied your pack: threw away " + total + (total == 1 ? " good" : " goods");
         }
 
-        private void Throw(string itemType, int amount)
-        {
-            if (amount > 0 && Pack.TryWithdraw(itemType, amount))
-            {
-                Events.EventBus.Consumed(itemType, amount);
-            }
-        }
+        // How much actually left the pack: 0 when the withdrawal is refused.
+        private int Throw(string itemType, int amount) =>
+            amount > 0 && Pack.TryWithdraw(itemType, amount) ? amount : 0;
 
         // --- Labels ----------------------------------------------------------------------------
 

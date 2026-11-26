@@ -167,6 +167,53 @@ namespace GolemFactory.Tests.EditMode
             StringAssert.Contains("is full", world.Interactor.LastStatusMessage);
         }
 
+        private sealed class FakePack : IPackScreen
+        {
+            public bool IsOpen { get; private set; }
+            public void Open() => IsOpen = true;
+        }
+
+        // An empty one is passed over (2026-11-26): [I] opens the Pack screen, never "is empty".
+        [TestCase("SlagHeapPrefab")]
+        [TestCase("ScrapRecyclerPrefab")]
+        public void IAtAnEmptyHeapOrRecycler_OpensThePack(string prefab)
+        {
+            SandboxWorld world = Compose();
+            var pack = new FakePack();
+            world.ConfigureInventoryScreens(pack, null);
+            ICokeHolder holder = PlaceHolder(world, prefab);
+            holder.TakeCoke(holder.CokeStock);
+            world.Interactor.Poll();
+
+            StringAssert.DoesNotContain("take Coke", world.Interactor.CurrentPrompt);
+            Assert.IsTrue(world.Interactor.OpenInventory(), world.Interactor.LastStatusMessage);
+            Assert.IsTrue(pack.IsOpen, "the Pack screen, not a refusal");
+        }
+
+        // Over its cap from an old save, the prompt still shows the cap, not the stock.
+        [TestCase("SlagHeapPrefab")]
+        [TestCase("ScrapRecyclerPrefab")]
+        public void OneOverItsCap_ShowsItsCap_NotItsStock(string prefab)
+        {
+            SandboxWorld world = Compose();
+            ICokeHolder holder = PlaceHolder(world, prefab);
+            int over = holder.CokeCapacity + 70;
+            if (holder is PlaceableSlagHeap heap)
+            {
+                heap.Heap.Restore(over, 0);
+            }
+            else
+            {
+                ((PlaceableScrapRecycler)holder).Recycler.Restore(over, 0, 0);
+            }
+            world.Interactor.Poll();
+
+            StringAssert.Contains(over + "/" + holder.CokeCapacity + " Coke", world.Interactor.CurrentPrompt);
+            Give(world, ItemType.Coke, 5);
+            Assert.IsFalse(world.Interactor.TryRefuel(holder));
+            StringAssert.EndsWith("is full (" + holder.CokeCapacity + " Coke).", world.Interactor.LastStatusMessage);
+        }
+
         [TestCase("SlagHeapPrefab")]
         [TestCase("ScrapRecyclerPrefab")]
         public void OneOverThePackFromAnOldSave_IsEmptiedByI_ThenDemolished(string prefab)
@@ -220,6 +267,7 @@ namespace GolemFactory.Tests.EditMode
         public void DiscardingAGood_ThrowsOneAway_OrAllWithShift()
         {
             SandboxWorld world = Compose();
+            Give(world, ItemType.Scrap, 5);
             int scrap = Pack(world, ItemType.Scrap);
             Give(world, ItemType.Coke, 30);
             List<ItemConsumedEvent> heard = Listen(out System.Action stop);
@@ -232,9 +280,9 @@ namespace GolemFactory.Tests.EditMode
                 Assert.AreEqual(0, Pack(world, ItemType.Coke));
                 Assert.AreEqual(scrap, Pack(world, ItemType.Scrap), "other goods stay");
 
-                Assert.AreEqual(CrateScreenReadout.NothingToDiscard, world.Inventory.Discard(ItemType.Coke, shift: true));
-                Assert.AreEqual(30, heard.Where(e => e.ItemType == ItemType.Coke).Sum(e => e.Quantity),
-                    "goods thrown away are spent, as every place that destroys goods says");
+                Assert.AreEqual(CrateScreenReadout.NoneLeft(ItemType.Coke), world.Inventory.Discard(ItemType.Coke, shift: true),
+                    "none of that good left, while the pack holds others");
+                Assert.IsEmpty(heard, "goods thrown away are not goods spent: the player's hands, not the factory's work");
             }
             finally
             {
@@ -258,7 +306,16 @@ namespace GolemFactory.Tests.EditMode
             {
                 held += Pack(world, good);
             }
-            StringAssert.Contains(held + " goods", world.Inventory.DiscardAll(confirmed: true));
+            List<ItemConsumedEvent> heard = Listen(out System.Action stop);
+            try
+            {
+                StringAssert.Contains(held + " goods", world.Inventory.DiscardAll(confirmed: true));
+                Assert.IsEmpty(heard, "not goods spent");
+            }
+            finally
+            {
+                stop();
+            }
 
             Assert.IsEmpty(world.Inventory.Pack.HeldGoods(), "the pack is empty");
             Assert.AreEqual(7, world.Buffers.GetQuantity(SandboxWorld.PostBufferId, ItemType.Coke), "the Post is untouched");
