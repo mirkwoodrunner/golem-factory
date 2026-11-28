@@ -40,6 +40,7 @@ Read the docs before making design calls, not just the code:
 - `docs/scenarios.md` -- what each scenario checks, in full.
 - `docs/open-items.md` -- the backlog: open decisions, known gaps, deliberate scope cuts.
 - `docs/godot-spike.md` -- what the port measured before it began.
+- `docs/godot-mcp-toolkit-setup.md` -- connecting Claude Code to the open editor on the PC (local only, read-only first).
 - `docs/history/` -- the Unity era (M0-M9, test ledger, MCP setup), the port (G0-G10), the roadmap's phase log. History, not instructions.
 - `testscript/phase-1-playtest.md` -- how to run a playtest; the report times it, the questions are asked by hand.
 - `testscript/phase-2-playtest.md` -- chapters 1–4 without F9 in 15 minutes; run it first.
